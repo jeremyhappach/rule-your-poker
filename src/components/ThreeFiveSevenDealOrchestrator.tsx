@@ -596,7 +596,7 @@ export function ThreeFiveSevenDealRuntimeMaybe({
 }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="three-five-seven">
       {children}
     </DealRuntime>
   );
