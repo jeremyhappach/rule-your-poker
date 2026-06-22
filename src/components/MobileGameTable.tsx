@@ -1,4 +1,6 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
+import { nextClockwise } from "@/lib/canonicalShell/seatRing";
+import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -491,9 +493,19 @@ function getHolmSelfDealCardIds({
   const active = players
     .filter((p) => p.status === 'active' && !p.sitting_out)
     .sort((a, b) => a.position - b.position);
-  const start = active.findIndex((p) => p.position === buckPosition);
-  if (start < 0) return [];
-  const ring = [...active.slice(start), ...active.slice(0, start)];
+  if (!active.length) return [];
+  // CLOCKWISE from buck — must match HolmDealOrchestrator.
+  const positions = active.map(p => p.position);
+  const byPos = new Map(active.map(p => [p.position, p]));
+  if (!byPos.has(buckPosition)) return [];
+  const ring: Player[] = [];
+  let cur = buckPosition;
+  for (let i = 0; i < active.length; i++) {
+    const seat = byPos.get(cur);
+    if (!seat) return [];
+    ring.push(seat);
+    if (i < active.length - 1) cur = nextClockwise(cur, positions);
+  }
   const ids: string[] = [];
   let dealIndex = 0;
   for (let round = 0; round < cardsPerPlayer; round++) {
@@ -4537,23 +4549,34 @@ export const MobileGameTable = ({
     }
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
 
-  // Sequential stepper: advance cachedChuckyCardsRevealed one card at a time toward
-  // the target. Latches community-fully-revealed before stepping so Chucky reveal
-  // never overlaps community reveal. Resets are handled by hand-identity changes.
+  // Chucky reveal BARRIER: hold all reveals until every chucky card has
+  // settled (DealRuntime enters GAMEPLAY → markHolmHandReady). Once the
+  // barrier trips, force-reveal all 4 in a fast sequence regardless of
+  // the authoritative chuckyCardsRevealed counter — animation contract
+  // requires sequential reveal, not per-card settled callbacks.
+  const [holmBarrierTick, setHolmBarrierTick] = useState(0);
+  useEffect(() => subscribeHolmHandReady(() => setHolmBarrierTick(t => t + 1)), []);
+  const chuckyBarrierOpen =
+    gameType === 'holm-game' &&
+    !!handContextId &&
+    isHolmHandReady(handContextId);
+  void holmBarrierTick; // re-evaluates above on barrier flip
+
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
     if (!holmCommunityFullyRevealed) return; // Latch: community must finish first
-    const target = chuckyTargetRevealedRef.current;
-    if (cachedChuckyCardsRevealed >= target) return;
+    if (!chuckyBarrierOpen) return;           // Barrier: all chucky settled
+    const total = cachedChuckyCards?.length ?? 0;
+    if (total <= 0) return;
+    // Override the server target — once barrier is open we reveal ALL.
+    if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
+    if (cachedChuckyCardsRevealed >= total) return;
     const t = setTimeout(() => {
-      setCachedChuckyCardsRevealed(prev => {
-        const tgt = chuckyTargetRevealedRef.current;
-        return prev < tgt ? prev + 1 : prev;
-      });
-    }, 600);
+      setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
+    }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed, chuckyBarrierOpen, cachedChuckyCards]);
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────

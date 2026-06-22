@@ -38,6 +38,7 @@ import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
 import { holmDealDbgRecordRuntime } from './holmDealDbg';
 import { holmTimelineRecordSettle } from './holmCardTimeline';
+import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
 
 interface DealContextValue {
   handContextId: string;
@@ -175,8 +176,14 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     if (gameType === 'holm-game') {
       holmDealDbgRecordRuntime({ enterGameplayAt: performance.now(), phase: 'GAMEPLAY' });
+      markHolmHandReady(handContextId);
     }
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
+  }, [gameType, handContextId]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    return () => { clearHolmHandReady(handContextId); };
   }, [gameType, handContextId]);
 
   useEffect(() => {
