@@ -361,6 +361,8 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
 
   // Cache the longest authoritative cards array seen for this hand. If
   // the upstream DB transiently empties `cards` between waves (e.g. r1→r2
@@ -398,6 +400,35 @@ export function Use357SelfHand<T>({
       renderGuardPassed: true,
     });
   }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase, sourceCards.length]);
+  const forensicsId = `357Self:${currentPlayerId || 'unknown'}`;
+  useEffect(() => {
+    if (!currentPlayerId) return;
+    const region = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-357-active-hand-region]')
+      : null;
+    const handAnchor = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position="top-of-pane"]')
+      : null;
+    const actualRenderedDomCount = region
+      ? region.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]').length
+      : 0;
+    recordThreeFiveSevenHandRender(forensicsId, {
+      component: 'SELF',
+      componentName: 'SELF Use357SelfHand render layer',
+      seat: null,
+      playerId: currentPlayerId,
+      playerHandMounted: !!region,
+      playerHandKey: handAnchor?.getAttribute('data-card-anchor') ?? `hand-${currentPlayerId}`,
+      reactKey: `${deal?.handContextId ?? 'no-runtime'}:${currentPlayerId}`,
+      renderCount: renderCountRef.current,
+      cardsLength: cards.length,
+      effectiveCardsLength: effectiveCards.length,
+      visibleCount: effectiveCards.length,
+      actualRenderedDomCount,
+      fanLayoutInitialized: actualRenderedDomCount > 0,
+    });
+  }, [forensicsId, deal?.handContextId, currentPlayerId, cards.length, effectiveCards.length]);
+  useEffect(() => () => unregisterThreeFiveSevenHandRender(forensicsId), [forensicsId]);
   return <>{render(effectiveCards)}</>;
 }
 
