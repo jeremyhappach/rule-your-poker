@@ -48,6 +48,7 @@ import {
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
 import {
   record357CardOwnership,
+  record357DiagnosticViolation,
   type CardHiddenReason,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
 
@@ -423,6 +424,7 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  const settledCardIds = deal?.getSettledCardIdsForPlayer(currentPlayerId) ?? [];
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
@@ -451,7 +453,31 @@ export function Use357SelfHand<T>({
       ? Math.min(settled, sourceCards.length)
       : sourceCards.length
     : sourceCards.length;
-  const effectiveCards = sourceCards.slice(0, Math.min(allowed, sourceCards.length));
+  const resolvedCards: T[] = [];
+  if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
+    for (let i = 0; i < allowed; i++) {
+      const card = sourceCards[i];
+      if (card) resolvedCards.push(card);
+      else {
+        record357DiagnosticViolation('357_SELF_CARD_FACE_UNRESOLVED', {
+          intentId: settledCardIds[i] ?? null,
+          cardId: settledCardIds[i] ?? null,
+          playerId: currentPlayerId,
+          claimedIndex: i,
+          authoritativeHandIds: sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`),
+          dealPhase: phase,
+        }, {
+          handContextId: deal.handContextId,
+          phase,
+          component: 'SELF',
+          playerId: currentPlayerId,
+        });
+      }
+    }
+  } else {
+    resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
+  }
+  const effectiveCards = resolvedCards;
   useEffect(() => {
     if (!deal?.handContextId || !currentPlayerId) return;
     dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
