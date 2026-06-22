@@ -820,7 +820,9 @@ export function ThreeFiveSevenForensicsPanel() {
                           <div style={{ color: bad || gap ? '#ff6b6b' : '#87CEFA' }}>
                             +{(f.t - (card0LaunchedAt ?? f.t)).toFixed(0)}ms · M{f.transportMounted ? '1' : '0'} V{f.transportVisible ? '1' : '0'} OC{f.ownershipClaimed ? '1' : '0'} D{f.destroyed ? '1' : '0'} · domCard0={String(f.card0PresentInDOM)} domTransport={String(f.transportPresentInDOM)} {gap ? '⚠ GAP' : ''}
                           </div>
-                          <div style={{ opacity: 0.8 }}>dist={f.distancePx ?? '—'}px · anchor={f.handAnchorRect ? `(${f.handAnchorRect.cx},${f.handAnchorRect.cy})` : '—'} card={f.card0Rect ? `(${f.card0Rect.cx},${f.card0Rect.cy})` : '—'}</div>
+                          <div style={{ opacity: 0.8 }}>ownershipClaimAt={f.ownershipClaimAt ? `${(f.ownershipClaimAt/1000).toFixed(2)}s` : '—'} destroyedAt={f.transportDestroyedAt ? `${(f.transportDestroyedAt/1000).toFixed(2)}s` : '—'} domMountedAt={f.card0DomMountedAt ? `${(f.card0DomMountedAt/1000).toFixed(2)}s` : '—'}</div>
+                          <div style={{ color: f.distancePx != null && f.distancePx > 5 ? '#ff6b6b' : '#9fb3c8', fontWeight: f.distancePx != null && f.distancePx > 5 ? 700 : 400 }}>distancePx={f.distancePx ?? '—'} · card0DomRect={fmtRect(f.card0Rect)} · fanRootRect={fmtRect(f.fanRootRect)}</div>
+                          <div style={{ opacity: 0.8 }}>anchor={fmtRect(f.handAnchorRect)}</div>
                         </div>
                       );
                     })}
@@ -844,13 +846,13 @@ export function ThreeFiveSevenForensicsPanel() {
 
               {activeSection === 'G' && (
                 <div style={sect}>
-                  <div style={sectTitle}>G · TRANSITION HISTORY (last {transitions.length}/{TRANSITIONS_MAX})</div>
+                  <div style={sectTitle}>G · RENDER TRANSITION LOG (last {renderTransitions.length})</div>
                   <div style={{ maxHeight: 360, overflow: 'auto' }}>
-                    {transitions.length === 0 ? <div style={{ opacity: 0.6 }}>(no transitions yet)</div> : [...transitions].reverse().map((tr, i) => (
+                    {renderTransitions.length === 0 ? <div style={{ opacity: 0.6 }}>(no render transitions yet)</div> : [...renderTransitions].reverse().map((tr, i) => (
                       <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0' }}>
-                        <div style={{ color: '#FFD580' }}>+{tr.t.toFixed(0)}ms · <b>{tr.field}</b></div>
-                        <div>old={fmtVal(tr.oldValue)} → new={fmtVal(tr.newValue)}</div>
-                        <div style={{ opacity: 0.6 }}>{tr.stackHint}</div>
+                        <div style={{ color: '#FFD580' }}>+{tr.timestamp.toFixed(0)}ms · <b>{tr.component}</b> · {tr.event}</div>
+                        <div>old={fmtVal(tr.old)} → new={fmtVal(tr.new)}</div>
+                        <div style={{ opacity: 0.6 }}>{tr.wallTime}</div>
                       </div>
                     ))}
                   </div>
