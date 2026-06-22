@@ -6059,12 +6059,12 @@ export const MobileGameTable = ({
           cardsPerPlayer={4}
           selfHand={currentPlayerCards}
           communityCards={communityCards ?? []}
-          soloDeclared={isSoloVsChucky}
+          soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
         />
         <HolmDealPhaseHost
           handContextId={handContextId}
-          soloDeclared={isSoloVsChucky}
+          soloDeclared={!!isSoloVsChucky}
           chuckyCount={(chuckyCards ?? []).length}
         />
       </>
