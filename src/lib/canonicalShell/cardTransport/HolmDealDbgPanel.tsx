@@ -31,6 +31,10 @@ import {
   getHolmOwnershipViolations,
   scanHolmDomOwnership,
 } from './holmCardOwnership';
+import {
+  getHolmSoloOwnership,
+  getHolmSoloOwnershipViolations,
+} from './holmSoloOwnership';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
