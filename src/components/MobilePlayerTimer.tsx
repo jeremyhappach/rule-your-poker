@@ -4,6 +4,7 @@ import {
   recordLifecycleEvent,
 } from "@/lib/canonicalShell/lifecycleDebug";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
+import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
@@ -34,6 +35,16 @@ export const MobilePlayerTimer = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const deal = useDealRuntime();
+  const eligibility = deal
+    ? getCanonicalTimerEligibility({
+        dealPhase: deal.phase,
+        dealSettled: deal.dealSettled,
+        readyReleased: deal.readyReleased,
+        activePlayerId: isActive ? 'MobilePlayerTimer' : null,
+      })
+    : { visible: isActive, running: isActive && timeLeft !== null && timeLeft > 0 };
+  const effectiveIsActive = eligibility.visible && isActive;
+  const effectiveTimeLeft = eligibility.running ? timeLeft : null;
 
   // ── DIAGNOSTIC: timer remount audit ─────────────────────────────
   const instanceIdRef = useRef<number>(0);
@@ -65,44 +76,44 @@ export const MobilePlayerTimer = ({
   const [seedReady, setSeedReady] = useState(false);
 
   useEffect(() => {
-    if (isActive && !wasActiveRef.current) {
+    if (effectiveIsActive && !wasActiveRef.current) {
       setSuppressTransition(true);
       requestAnimationFrame(() => setSuppressTransition(false));
-      seedReadyRef.current = timeLeft !== null;
-      setSeedReady(timeLeft !== null);
+      seedReadyRef.current = effectiveTimeLeft !== null;
+      setSeedReady(effectiveTimeLeft !== null);
       recordLifecycleEvent('timer.activate', {
         component: 'MobilePlayerTimer',
         instance_id: instanceIdRef.current,
-        time_left_seed: timeLeft,
+        time_left_seed: effectiveTimeLeft,
         max_time: maxTime,
-        timer_seed_source: timeLeft === null ? 'null-seed' : 'prop-seed',
+        timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
       });
-    } else if (isActive && !seedReadyRef.current && timeLeft !== null) {
+    } else if (effectiveIsActive && !seedReadyRef.current && effectiveTimeLeft !== null) {
       seedReadyRef.current = true;
       setSeedReady(true);
-    } else if (!isActive && wasActiveRef.current) {
+    } else if (!effectiveIsActive && wasActiveRef.current) {
       seedReadyRef.current = false;
       setSeedReady(false);
     }
-    wasActiveRef.current = isActive;
-  }, [isActive, timeLeft, maxTime]);
+    wasActiveRef.current = effectiveIsActive;
+  }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
 
   
   const progress = useMemo(() => {
-    if (!isActive || timeLeft === null || maxTime <= 0) return 0;
-    return Math.max(0, Math.min(1, timeLeft / maxTime));
-  }, [timeLeft, maxTime, isActive]);
+    if (!effectiveIsActive || effectiveTimeLeft === null || maxTime <= 0) return 0;
+    return Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
+  }, [effectiveTimeLeft, maxTime, effectiveIsActive]);
   
   const strokeDashoffset = circumference * (1 - progress);
   
   // Determine urgency levels
-  const isUrgent = isActive && timeLeft !== null && timeLeft <= 3;
-  const isWarning = isActive && timeLeft !== null && timeLeft <= 5 && timeLeft > 3;
-  const isNormal = isActive && timeLeft !== null && timeLeft > 5;
+  const isUrgent = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft <= 3;
+  const isWarning = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft <= 5 && effectiveTimeLeft > 3;
+  const isNormal = effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 5;
   
   // Color based on time remaining
   const getStrokeColor = () => {
-    if (!isActive || timeLeft === null) return 'hsl(var(--muted))';
+    if (!effectiveIsActive || effectiveTimeLeft === null) return 'hsl(var(--muted))';
     if (progress > 0.5) return 'hsl(142, 76%, 36%)'; // Green
     if (progress > 0.25) return 'hsl(45, 93%, 47%)'; // Yellow/Gold
     return 'hsl(0, 84%, 60%)'; // Red
@@ -140,14 +151,16 @@ export const MobilePlayerTimer = ({
       waveContextId: deal?.handContextId ?? null,
       dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
       phase: deal?.phase ?? 'NO_RUNTIME',
-      visible: !!isActive,
-      running: !!isActive && timeLeft !== null && timeLeft > 0,
-      timeLeft,
+      visible: !!effectiveIsActive,
+      running: !!effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0,
+      timeLeft: effectiveTimeLeft,
       usesDealRuntime: !!deal,
+      suppressedLegacySource: deal?.phase === 'DEALING' && isActive ? 'MobilePlayerTimer props' : null,
+      attemptedRunning: !!isActive && timeLeft !== null && timeLeft > 0,
       reactKey: `MobilePlayerTimer:${instanceIdRef.current}`,
       renderCount: renderCountRef.current,
     });
-  }, [timerOwnerId, deal?.handContextId, deal?.phase, isActive, timeLeft]);
+  }, [timerOwnerId, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, effectiveIsActive, effectiveTimeLeft, isActive, timeLeft]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
 
   return (
@@ -156,13 +169,13 @@ export const MobilePlayerTimer = ({
       data-forensics-component="MobilePlayerTimer"
       data-forensics-timer-owner-id={timerOwnerId}
       data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
-      data-forensics-timer-running={isActive && timeLeft !== null && timeLeft > 0 ? '1' : '0'}
-      data-forensics-timer-time-left={timeLeft === null ? '' : String(timeLeft)}
+      data-forensics-timer-running={effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0 ? '1' : '0'}
+      data-forensics-timer-time-left={effectiveTimeLeft === null ? '' : String(effectiveTimeLeft)}
       className="relative inline-flex items-center justify-center" 
       style={{ width: size + 8, height: size + 8 }}
     >
       {/* Flashing glow ring when active */}
-      {isActive && timeLeft !== null && (
+      {effectiveIsActive && effectiveTimeLeft !== null && (
         <div 
           className={`absolute inset-0 rounded-full border-3 ${isUrgent ? 'animate-pulse' : isWarning ? 'animate-pulse' : ''}`}
           style={{ 
@@ -192,7 +205,7 @@ export const MobilePlayerTimer = ({
         {/* Progress circle — gated on seedReady so a null-seed activation
             does not paint a stale full-ring before the real timeLeft
             commits the following frame. */}
-        {isActive && seedReady && timeLeft !== null && (
+        {effectiveIsActive && seedReady && effectiveTimeLeft !== null && (
           <circle
             cx={size / 2}
             cy={size / 2}
