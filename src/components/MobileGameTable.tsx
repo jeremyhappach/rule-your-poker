@@ -8595,11 +8595,14 @@ export const MobileGameTable = ({
                                 currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
-                              <Use357SelfHand
-                                currentPlayerId={currentPlayer?.id ?? ''}
-                                cards={currentPlayerCards}
-                                baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards, dealPhase, boundary) => {
+                              {(() => {
+                                const renderActiveSelfHand = (effectiveCards: CardType[], dealPhase: string, boundary: {
+                                  claimedCardIds: string[];
+                                  rawClaimedCardIds: string[];
+                                  baseHandContextId: string;
+                                  playerId: string;
+                                  boundaryCardIdPrefix: string;
+                                }) => {
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
                                   // 357 HARD CONTRACT: during the staged
@@ -8636,8 +8639,25 @@ export const MobileGameTable = ({
                                       wrapperScale={handScaleNum}
                                     />
                                   );
-                                }}
-                              />
+                                };
+                                return gameType === 'holm-game' ? (
+                                  <UseHolmSelfHand
+                                    currentPlayerId={currentPlayer?.id ?? ''}
+                                    handContextId={handContextId}
+                                    players={players}
+                                    buckPosition={buckPosition}
+                                    cards={currentPlayerCards}
+                                    render={renderActiveSelfHand}
+                                  />
+                                ) : (
+                                  <Use357SelfHand
+                                    currentPlayerId={currentPlayer?.id ?? ''}
+                                    cards={currentPlayerCards}
+                                    baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                    render={renderActiveSelfHand}
+                                  />
+                                );
+                              })()}
                             </div>
                           </div>
                         )}
