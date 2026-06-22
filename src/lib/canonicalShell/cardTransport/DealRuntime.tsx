@@ -133,7 +133,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       }
     });
     return off;
-  }, [ctx, handContextId]);
+  }, [ctx, handContextId, gameType]);
 
   const beginDeal = useCallback((count: number) => {
     setExpectedCount(count);
