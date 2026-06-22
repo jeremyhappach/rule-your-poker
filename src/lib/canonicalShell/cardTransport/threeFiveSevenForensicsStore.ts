@@ -10,6 +10,8 @@ export interface ForensicsTimerOwner {
   running: boolean;
   timeLeft: number | null;
   usesDealRuntime: boolean;
+  suppressedLegacySource?: string | null;
+  attemptedRunning?: boolean;
   reactKey: string | null;
   renderCount: number;
   mountedAt: number;
@@ -118,6 +120,8 @@ export function recordThreeFiveSevenTimerOwner(
       running: !!patch.running,
       timeLeft: patch.timeLeft ?? null,
       usesDealRuntime: !!patch.usesDealRuntime,
+      suppressedLegacySource: patch.suppressedLegacySource ?? null,
+      attemptedRunning: patch.attemptedRunning ?? false,
       reactKey: patch.reactKey ?? null,
       renderCount: patch.renderCount ?? 1,
       mountedAt: t,
