@@ -572,8 +572,14 @@ export function ThreeFiveSevenForensicsPanel() {
   useSyncExternalStore(subscribeForensics, getRingBuffer, getRingBuffer);
   useSyncExternalStore(subscribeDealDbg, getDealDbg, getDealDbg);
   useSyncExternalStore(subscribeCardTransportDbg, getCardTransportDbg, getCardTransportDbg);
+  useSyncExternalStore(subscribeThreeFiveSevenForensics, getThreeFiveSevenHandRenders, getThreeFiveSevenHandRenders);
   const transitions = useSyncExternalStore(subscribeForensics, getTransitionLog, getTransitionLog);
   const card0frames = useSyncExternalStore(subscribeForensics, getCard0Timeline, getCard0Timeline);
+  const renderTransitions = useSyncExternalStore(
+    subscribeThreeFiveSevenForensics,
+    getThreeFiveSevenRenderTransitions,
+    getThreeFiveSevenRenderTransitions,
+  );
 
   const [expanded, setExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<'A'|'B'|'C'|'D'|'E'|'F'|'G'>('A');
@@ -609,7 +615,10 @@ export function ThreeFiveSevenForensicsPanel() {
       latest: snap,
       ringBuffer: [...ringBuffer],
       transitions: [...transitions],
+      renderLayerTransitions: [...renderTransitions],
       card0Timeline: [...card0frames],
+      timerOwners: getMountedThreeFiveSevenTimerOwners(),
+      handRenders: getThreeFiveSevenHandRenders(),
       inventory: {
         timers: inventory('Timer', '[data-canonical-shell-timer-rail], [data-shell-timer], [data-mobile-player-timer], [data-three-five-seven-timer], [data-legacy-timer], [data-active-player-timer], [data-game-timer]'),
         playerHands: inventory('PlayerHand', '[data-canonical-self-hand-anchor-position], [data-player-hand]'),
