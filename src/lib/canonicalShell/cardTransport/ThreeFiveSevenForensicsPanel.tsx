@@ -344,7 +344,22 @@ function scan(): ForensicsSnapshot | null {
   }
   const timers: TimerInventoryItem[] = Array.from(timerEls).map((el) => {
     const sel = timerSelectors.find((s) => el.matches(s)) ?? '?';
+    const phase = el.getAttribute('data-forensics-timer-phase') ?? String(deal?.phase ?? 'NO_RUNTIME');
+    const running = el.getAttribute('data-forensics-timer-running') === '1'
+      || (isVisible(el) && el.getAttribute('data-shell-timer-paused') !== '1');
+    const timeLeftRaw = el.getAttribute('data-forensics-timer-time-left');
     return {
+      componentName: el.getAttribute('data-forensics-component') ?? (sel.includes('canonical') ? 'ShellTimerRail' : 'DOM timer'),
+      gameType: el.getAttribute('data-forensics-game-type') ?? null,
+      handContextId: el.getAttribute('data-forensics-hand-context-id') ?? ctx,
+      waveContextId: el.getAttribute('data-forensics-wave-context-id') ?? ctx,
+      dealRuntimeId: el.getAttribute('data-forensics-deal-runtime-id') ?? ctx?.replace(/#r\d+$/, '') ?? null,
+      phase,
+      running,
+      timeLeft: timeLeftRaw != null && timeLeftRaw !== '' ? Number(timeLeftRaw) : null,
+      usesDealRuntime: !!ctx,
+      reactKey: el.getAttribute('data-forensics-react-key'),
+      renderCount: Number(el.getAttribute('data-forensics-render-count') ?? 0),
       selector: sel,
       tag: el.tagName.toLowerCase(),
       rect: rectOf(el),
