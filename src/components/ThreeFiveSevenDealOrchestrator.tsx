@@ -492,8 +492,65 @@ export function Use357SelfHand<T>({
     });
   }, [forensicsId, deal?.handContextId, currentPlayerId, cards.length, effectiveCards.length]);
   useEffect(() => () => unregisterThreeFiveSevenHandRender(forensicsId), [forensicsId]);
+  // ─── PER-CARD FORENSIC (self) ────────────────────────────────────
+  // For every authoritative card in `cards`, determine if it is mounted
+  // in the active-hand region and — if not — WHY. The murderer signs the
+  // confession in window.__357CardOwnershipTimeline.
+  useEffect(() => {
+    if (!deal?.handContextId || !currentPlayerId || typeof document === 'undefined') return;
+    const hand = deal.handContextId;
+    const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
+    const mounted = region
+      ? Array.from(region.querySelectorAll<HTMLElement>('[data-playing-card-root]'))
+      : [];
+    const flying = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-card-transport-flying="true"]'),
+    ).filter((el) => el.getAttribute('data-recipient-player-id') === currentPlayerId);
+    for (let i = 0; i < cards.length; i++) {
+      const node = mounted[i] ?? null;
+      const allowed = i < effectiveCards.length;
+      let reason: CardHiddenReason = 'none';
+      let domRect: { x: number; y: number; w: number; h: number } | null = null;
+      const domMounted = !!node;
+      if (node) {
+        const r = node.getBoundingClientRect();
+        domRect = { x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.width.toFixed(2), h: +r.height.toFixed(2) };
+        const cs = window.getComputedStyle(node);
+        if (cs.display === 'none') reason = 'display_none';
+        else if (cs.visibility === 'hidden') reason = 'visibility_hidden';
+        else if (parseFloat(cs.opacity) === 0) reason = 'opacity_zero';
+        else if (r.width === 0 || r.height === 0) reason = 'fan_layout';
+        else reason = 'none';
+      } else if (!allowed) {
+        reason = phase === 'DEALING'
+          ? 'render_guard'
+          : phase === 'PRE_DEAL'
+            ? 'wave_transition'
+            : 'render_guard';
+      } else if (flying.length > 0) {
+        reason = 'transport_inflight';
+      } else {
+        reason = 'unknown';
+      }
+      record357CardOwnership(`${hand}#self#${currentPlayerId}#idx-${i}`, {
+        handContextId: hand,
+        role: 'self',
+        playerId: currentPlayerId,
+        fanIndex: i,
+        authoritativeVisible: true,
+        domMounted,
+        domRect,
+        hiddenByReason: reason,
+        dealPhase: phase,
+        authoritativeCount: cards.length,
+        visibleCount: effectiveCards.length,
+        settledCount: settled,
+      });
+    }
+  });
   return <>{render(effectiveCards)}</>;
 }
+
 
 // ─── DealRuntime per-wave wrapper ────────────────────────────────────
 
