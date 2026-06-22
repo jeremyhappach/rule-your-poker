@@ -4882,6 +4882,9 @@ export const MobileGameTable = ({
     );
   }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
 
+  // WAR-TIME AUDIT: capture which dep triggers effect cleanup before timeout fires.
+  const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
+  const chuckyEffectTimeoutSeqRef = useRef(0);
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
@@ -4894,6 +4897,37 @@ export const MobileGameTable = ({
     // Override the server target — once barrier is open we reveal ALL.
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
+
+    const newDeps: Record<string, unknown> = {
+      gameType,
+      cachedChuckyActive,
+      cachedChuckyCardsRevealed,
+      chuckyCardsRevealed,
+      chuckyBarrierOpen,
+      cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
+      cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
+      cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
+      handContextId: handContextId ?? null,
+      cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+      isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+      chuckyActive: !!chuckyActive,
+    };
+    const oldDeps = chuckyEffectDepsRef.current;
+    const changed: Record<string, { from: unknown; to: unknown }> = {};
+    if (oldDeps) {
+      for (const k of Object.keys(newDeps)) {
+        if (oldDeps[k] !== newDeps[k]) changed[k] = { from: oldDeps[k], to: newDeps[k] };
+      }
+    }
+    chuckyEffectDepsRef.current = newDeps;
+
+    recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
+      handContextId: handContextId ?? null,
+      deps: newDeps,
+      changedSinceLastEnter: oldDeps ? changed : null,
+    }, handContextId ?? null);
+
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
     const schedStack = captureStack();
     recordChuckyVisualTrigger({
@@ -4914,10 +4948,25 @@ export const MobileGameTable = ({
         isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
       },
     });
+
+    const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
+    let fired = false;
+    recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
+      handContextId: handContextId ?? null,
+      timeoutId: timeoutSeq,
+      delay: 250,
+      prev: cachedChuckyCardsRevealed,
+      total,
+    }, handContextId ?? null);
+
     const t = setTimeout(() => {
-      // WAR-TIME: emit the canonical TIMEOUT_FIRED event regardless of
-      // what the setter wrapper does next — this proves the scheduled
-      // timeout actually executed (vs. being cancelled by cleanup).
+      fired = true;
+      recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
+        handContextId: handContextId ?? null,
+        timeoutId: timeoutSeq,
+        prev: cachedChuckyCardsRevealed,
+        next: cachedChuckyCardsRevealed + 1,
+      }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_FIRED', {
         handContextId: handContextId ?? null,
         prev: cachedChuckyCardsRevealed,
@@ -4944,18 +4993,50 @@ export const MobileGameTable = ({
         { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
       );
     }, 250);
+
     return () => {
       clearTimeout(t);
-      // Capture cleanup so we can prove whether the timeout was cancelled
-      // before it fired (re-run of the effect, unmount, dep churn).
+      // Capture cleanup so we can prove WHICH dep caused cancellation.
+      const nextSnapshot: Record<string, unknown> = {
+        gameType,
+        cachedChuckyActive,
+        cachedChuckyCardsRevealed,
+        chuckyCardsRevealed,
+        chuckyBarrierOpen,
+        cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
+        cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
+        cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
+        handContextId: handContextId ?? null,
+        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+        soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+        chuckyActive: !!chuckyActive,
+      };
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      for (const k of Object.keys(newDeps)) {
+        if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
+      }
+      const reasonKeys = Object.keys(diff);
+      recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
+        handContextId: handContextId ?? null,
+        timeoutId: timeoutSeq,
+        firedBeforeCleanup: fired,
+        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF (unmount or identical re-run)' : reasonKeys.join(','),
+        changedDeps: diff,
+        oldDeps: newDeps,
+        newDeps: nextSnapshot,
+      }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
         handContextId: handContextId ?? null,
         prev: cachedChuckyCardsRevealed,
         total,
         cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+        firedBeforeCleanup: fired,
+        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF' : reasonKeys.join(','),
       }, handContextId ?? null);
     };
   }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive, setCachedChuckyCardsRevealed]);
+
 
 
 
