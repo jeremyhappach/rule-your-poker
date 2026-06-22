@@ -2606,7 +2606,7 @@ export const MobileGameTable = ({
       setShowCommunityCards(gameType !== 'holm-game');
 
       // Chucky UI cache
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       chuckyTargetRevealedRef.current = 0;
@@ -2652,7 +2652,7 @@ export const MobileGameTable = ({
     showdownHandContextRef.current = null;
 
     // Chucky UI cache
-    setCachedChuckyCards(null);
+    setCachedChuckyCards(null, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     chuckyTargetRevealedRef.current = 0;
@@ -2945,7 +2945,7 @@ export const MobileGameTable = ({
     chuckyVisualResetForHand(next);
     if (!wasSolo) return;
     // Force-destroy regardless of deferral state.
-    setCachedChuckyCards(null);
+    setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     chuckyTargetRevealedRef.current = 0;
