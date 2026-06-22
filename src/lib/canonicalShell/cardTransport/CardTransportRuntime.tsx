@@ -190,13 +190,8 @@ export function CardTransportRuntime({
         cardTransportDbgUpsert(intent.id, {
           droppedReason: null,
           transportMounted: false,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          pendingEndpointResolution: true as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          pendingFirstSeenAt: firstSeenAt as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          pendingWaitedMs: waited as any,
         });
+
         if (waited > MAX_PENDING_MS) {
           pendingRef.current.delete(intent.id);
           cardTransportDbgUpsert(intent.id, {
