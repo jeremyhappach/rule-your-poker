@@ -42,6 +42,10 @@ import { SLOT } from '@/lib/canonicalShell/seatAnchors';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import { dealDbgUpsertOwnership } from '@/lib/canonicalShell/cardTransport/cardTransportDbg';
+import {
+  recordThreeFiveSevenHandRender,
+  unregisterThreeFiveSevenHandRender,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
 export interface ThreeFiveSevenSeatEntry {
@@ -271,12 +275,14 @@ export function totalAfterWaveFor357(round: number): number {
  */
 export function Use357OppCount({
   playerId,
+  seat,
   baseline,
   defaultCount,
   expected,
   render,
 }: {
   playerId: string;
+  seat?: number | null;
   baseline: number;          // prevWaveCount (0/3/5)
   defaultCount: number;      // legacy cardCountToShow
   expected: number;          // total expected after this wave (3/5/7)
@@ -308,6 +314,30 @@ export function Use357OppCount({
       renderGuardPassed: true,
     });
   }, [deal?.handContextId, playerId, baseline, defaultCount, visible, phase]);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  const forensicsId = `357Opp:${playerId}`;
+  useEffect(() => {
+    const actualRenderedDomCount = typeof document !== 'undefined' && seat != null
+      ? document.querySelectorAll(`[data-card-anchor="opp-stack-${seat}"] [data-playing-card-root], [data-card-anchor="opp-stack-${seat}"] [data-canonical-card-back]`).length
+      : visible;
+    recordThreeFiveSevenHandRender(forensicsId, {
+      component: 'OPPONENT',
+      componentName: `OPPONENT seat ${seat ?? '?'} card backs`,
+      seat: seat ?? null,
+      playerId,
+      playerHandMounted: visible > 0,
+      playerHandKey: seat != null ? `opp-stack-${seat}` : null,
+      reactKey: `${deal?.handContextId ?? 'no-runtime'}:${playerId}`,
+      renderCount: renderCountRef.current,
+      cardsLength: defaultCount,
+      effectiveCardsLength: visible,
+      visibleCount: visible,
+      actualRenderedDomCount,
+      fanLayoutInitialized: visible > 0,
+    });
+  }, [forensicsId, deal?.handContextId, playerId, seat, defaultCount, visible]);
+  useEffect(() => () => unregisterThreeFiveSevenHandRender(forensicsId), [forensicsId]);
   // During DEALING: baseline + settled (this wave), clamped to expected.
   return <>{render(visible)}</>;
 }
