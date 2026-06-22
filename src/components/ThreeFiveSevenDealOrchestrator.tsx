@@ -303,9 +303,10 @@ export function Use357OppCount({
   // GAMEPLAY may fall through to authoritative. (READY is the transient
   // gap between waves; admitting authoritative there leaks future cards
   // instantly at r2/r3 start.)
+  const claimOnlyVisible = !!deal && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
   const dealingVisible = Math.min(settled, expected);
   const visible = deal
-    ? deal.phase === 'GAMEPLAY'
+    ? !claimOnlyVisible
       ? Math.max(defaultCount, dealingVisible)
       : dealingVisible
     : defaultCount;
@@ -421,7 +422,13 @@ export function Use357SelfHand<T>({
   currentPlayerId: string;
   cards: T[];
   baseline: number;          // prevWaveCount
-  render: (effectiveCards: T[], dealPhase: string) => ReactNode;
+  render: (effectiveCards: T[], dealPhase: string, boundary: {
+    claimedCardIds: string[];
+    rawClaimedCardIds: string[];
+    baseHandContextId: string;
+    playerId: string;
+    boundaryCardIdPrefix: string;
+  }) => ReactNode;
 }) {
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
@@ -453,18 +460,17 @@ export function Use357SelfHand<T>({
   }
   const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
 
-  // CONTRACT: during DEALING / PRE_DEAL / READY render ONLY transport-
-  // claimed cards (cumulative `settled`). Authoritative `cards` length
-  // must NEVER mount DOM during a staged deal — it exists in state for
-  // ownership math and face resolution only. Only GAMEPLAY may render
-  // the full authoritative hand. (READY is the transient gap between
-  // waves; admitting authoritative there leaks future cards instantly at
-  // r2/r3 start.)
-  const isStagedRender = deal && deal.phase !== 'GAMEPLAY';
-  const allowed = isStagedRender ? settled : sourceCards.length;
+  // CONTRACT: while a DealRuntime exists, cache/render admission is
+  // ownership-claim first. The old GAMEPLAY phase can briefly survive
+  // into the next round before beginWave() flips DEALING; if authoritative
+  // has already grown beyond `settled`, that is a pending wave and MUST
+  // still be clipped to ownership claims. GAMEPLAY converges naturally
+  // once settled === authoritative length.
+  const isClaimOnlyRender = !!deal && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
+  const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
-  if (isStagedRender) {
+  if (isClaimOnlyRender) {
     for (let i = 0; i < allowed; i++) {
       // Try authoritative first, then previously-rendered card for the
       // same index within the same base hand. NEVER render a cardback —
@@ -490,16 +496,24 @@ export function Use357SelfHand<T>({
   // equality — on hand boundary the cache is already reset above, so this
   // fallback cannot leak prior-hand cards.
   if (resolvedCards.length < cacheRef.current.rendered.length && cacheRef.current.cacheKey === cacheKey) {
-    for (let i = resolvedCards.length; i < cacheRef.current.rendered.length; i++) {
+    const stickyLimit = isClaimOnlyRender ? allowed : cacheRef.current.rendered.length;
+    for (let i = resolvedCards.length; i < Math.min(cacheRef.current.rendered.length, stickyLimit); i++) {
       const prev = cacheRef.current.rendered[i];
       if (prev) resolvedCards.push(prev);
     }
   }
-  // Update rendered cache (monotonic within hand).
-  if (resolvedCards.length >= cacheRef.current.rendered.length) {
+  // Update rendered cache. Within claim-only windows it is bounded by
+  // ownership count so a previously-admitted future card is actively
+  // evicted; outside claim-only it may converge to authoritative.
+  if (isClaimOnlyRender || resolvedCards.length >= cacheRef.current.rendered.length) {
     cacheRef.current.rendered = resolvedCards.slice();
   }
   const effectiveCards = resolvedCards;
+  const boundaryCardIdPrefix = `${baseHandContextId}#self#${currentPlayerId || 'no-player'}`;
+  const boundaryClaimedCardIds = Array.from(
+    { length: Math.max(0, settled) },
+    (_, i) => `${boundaryCardIdPrefix}#idx-${i}`,
+  );
   useEffect(() => {
     if (!deal?.handContextId || unresolvedSelfCards.length === 0) return;
     const authoritativeCardIds = sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`);
@@ -616,7 +630,13 @@ export function Use357SelfHand<T>({
       });
     }
   });
-  return <>{render(effectiveCards, phase)}</>;
+  return <>{render(effectiveCards, phase, {
+    claimedCardIds: boundaryClaimedCardIds,
+    rawClaimedCardIds: settledCardIds,
+    baseHandContextId,
+    playerId: currentPlayerId,
+    boundaryCardIdPrefix,
+  })}</>;
 }
 
 

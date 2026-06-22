@@ -11,6 +11,7 @@ import {
   record357HandLifecycle,
   record357FanLifecycle,
   record357CardOwnership,
+  record357DiagnosticViolation,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 
 let __playerHandForensicsSeq = 0;
@@ -60,6 +61,11 @@ interface PlayerHandProps {
    * works in. Defaults to 1.
    */
   wrapperScale?: number;
+  dealPhase?: string | null;
+  claimedCardIds?: string[];
+  baseHandContextId?: string | null;
+  boundaryCardIdPrefix?: string | null;
+  source?: string;
 }
 
 
@@ -75,7 +81,7 @@ const getWildRank = (round: number): string | null => {
 };
 
 export const PlayerHand = ({ 
-  cards, 
+  cards: incomingCards, 
   isHidden = false, 
   expectedCardCount,
   highlightedIndices = [],
@@ -92,6 +98,11 @@ export const PlayerHand = ({
   availableHeightPx,
   availableWidthPx,
   wrapperScale = 1,
+  dealPhase = null,
+  claimedCardIds,
+  baseHandContextId = null,
+  boundaryCardIdPrefix = null,
+  source = 'PlayerHand.cards',
 }: PlayerHandProps) => {
   const instanceIdRef = useRef(0);
   if (instanceIdRef.current === 0) {
@@ -107,7 +118,42 @@ export const PlayerHand = ({
   };
   
   // Determine wild rank for 3-5-7 games
-  const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game';
+  const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
+  const claimedSet = new Set(claimedCardIds ?? []);
+  const cardBoundaryId = (card: CardType, index: number) => {
+    const explicitId = (card as any).id ?? (card as any).cardId;
+    if (explicitId != null && claimedSet.has(String(explicitId))) return String(explicitId);
+    return `${boundaryCardIdPrefix ?? baseHandContextId ?? 'no-base'}#idx-${index}`;
+  };
+  const incomingIds = incomingCards.map(cardBoundaryId);
+  const boundaryBlocked = is357Game && dealPhase === 'DEALING' && claimedCardIds
+    ? incomingCards
+        .map((card, index) => ({ card, index, id: cardBoundaryId(card, index) }))
+        .filter(({ id }) => !claimedSet.has(id))
+    : [];
+  const cards = boundaryBlocked.length > 0
+    ? incomingCards.filter((card, index) => claimedSet.has(cardBoundaryId(card, index)))
+    : incomingCards;
+  useEffect(() => {
+    if (!is357Game || dealPhase !== 'DEALING' || boundaryBlocked.length === 0) return;
+    const renderedIds = cards.map(cardBoundaryId);
+    boundaryBlocked.forEach(({ id }) => {
+      record357DiagnosticViolation('357_UNCLAIMED_CARD_BLOCKED_AT_PLAYERHAND_BOUNDARY', {
+        cardId: id,
+        source,
+        dealPhase,
+        claimedIds: claimedCardIds ?? [],
+        incomingIds,
+        baseHandContextId,
+        renderedIds,
+      }, {
+        handContextId: baseHandContextId,
+        phase: dealPhase,
+        component: 'SELF',
+        cardIds: incomingIds,
+      });
+    });
+  }, [is357Game, dealPhase, boundaryBlocked.length, source, claimedCardIds, incomingIds, baseHandContextId, cards]);
   const wildRank = is357Game ? getWildRank(currentRound) : null;
   
   // For round 3 with 7 cards, separate into used and unused
