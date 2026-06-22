@@ -171,6 +171,11 @@ import {
   chuckyVisualResetForHand,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
+import {
+  recordSoloStateChange,
+  recordChuckyVisualTrigger,
+  captureStack,
+} from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
@@ -2724,6 +2729,51 @@ export const MobileGameTable = ({
     }, prev);
   }, [gameType, handContextId]);
 
+  // ── WAR-TIME: SOLO_STATE_CHANGED watcher ──
+  // Pure instrumentation: fire on every observable transition of the
+  // solo-leakage surface. Records the prev/next snapshot + the current
+  // hand context so we can pinpoint the writer that produced
+  // SOLO_DECLARED during PRE_DEAL of h2.
+  const soloTraceSnapRef = useRef<string>('');
+  const prevHandCtxForTraceRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const snap = {
+      handContextId: handContextId ?? null,
+      prevHandContextId: prevHandCtxForTraceRef.current,
+      isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+      soloDeclared: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
+      soloVsChuckyPlayerIdLocked,
+      chuckyActive: !!chuckyActive,
+      cachedChuckyActive,
+      cachedChuckyCardsExists: !!(cachedChuckyCards && cachedChuckyCards.length > 0),
+      cachedChuckyCardsCount: cachedChuckyCards?.length ?? 0,
+      cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+      tabledSnapshotExists: !!lonePlayerStageSnapshotRef.current,
+      tabledSnapshotHandId: lonePlayerStageSnapshotRef.current?.handContextId ?? null,
+      holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+      roundStatus,
+      allDecisionsIn,
+      stayedPlayersCount,
+    };
+    const key = JSON.stringify(snap);
+    if (key === soloTraceSnapRef.current) return;
+    soloTraceSnapRef.current = key;
+    recordSoloStateChange({
+      ...snap,
+      source: 'watcher-effect',
+      callsite: 'MobileGameTable:soloStateWatcher',
+      reason: 'state-diff',
+    });
+    prevHandCtxForTraceRef.current = handContextId ?? null;
+  }, [
+    gameType, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked,
+    soloVsChuckyPlayerIdLocked, chuckyActive, cachedChuckyActive, cachedChuckyCards,
+    holmWinPotTriggerId, roundStatus, allDecisionsIn, stayedPlayersCount,
+  ]);
+
+
 
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
@@ -4667,11 +4717,42 @@ export const MobileGameTable = ({
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
+    const schedStack = captureStack();
+    recordChuckyVisualTrigger({
+      handContextId: handContextId ?? null,
+      source: 'stepper.schedule',
+      callsite: 'MobileGameTable:4720 setTimeout(setCachedChuckyCardsRevealed)',
+      stack: schedStack,
+      prevRevealed: cachedChuckyCardsRevealed,
+      nextRevealed: cachedChuckyCardsRevealed + 1,
+      total,
+      cachedChuckyCardsRevealed,
+      chuckyBarrierOpen,
+      revealSchedulerState: 'scheduled',
+      extra: {
+        chuckyCardsRevealedServer: chuckyCardsRevealed,
+        cachedChuckyActive,
+        chuckyActive: !!chuckyActive,
+        isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
+      },
+    });
     const t = setTimeout(() => {
+      recordChuckyVisualTrigger({
+        handContextId: handContextId ?? null,
+        source: 'stepper.fire',
+        callsite: 'MobileGameTable:4721 setCachedChuckyCardsRevealed(prev=>prev+1)',
+        stack: captureStack(),
+        prevRevealed: cachedChuckyCardsRevealed,
+        nextRevealed: cachedChuckyCardsRevealed + 1,
+        total,
+        cachedChuckyCardsRevealed,
+        chuckyBarrierOpen,
+        revealSchedulerState: 'fired',
+      });
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive]);
 
 
 
