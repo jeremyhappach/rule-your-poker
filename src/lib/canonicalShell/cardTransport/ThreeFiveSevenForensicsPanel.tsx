@@ -415,7 +415,7 @@ function scan(): ForensicsSnapshot | null {
   // ── Self hand probes ────────────────────────────────────────────
   const handAnchorEl = document.querySelector('[data-canonical-self-hand-anchor-position="top-of-pane"]');
   const activeRegion = document.querySelector('[data-357-active-hand-region]');
-  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-card-id]')) : [];
+  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
   const fanLayoutInitialized = selfCardEls.length > 0;
   const playerHandKey = handAnchorEl?.getAttribute('data-card-anchor') ?? '∅';
   if (playerHandKey !== lastPlayerHandKey) {
@@ -450,7 +450,7 @@ function scan(): ForensicsSnapshot | null {
     // Use opp-stack anchor proximity if present; otherwise filter [data-card-id] containing playerId.
     const stackEl = document.querySelector(`[data-card-anchor="opp-stack-${o.playerId}"]`)
       || document.querySelector(`[data-opp-player-id="${o.playerId}"]`);
-    const stackChildren = stackEl ? Array.from(stackEl.querySelectorAll('[data-card-id], [data-canonical-card-back]')) : [];
+    const stackChildren = stackEl ? Array.from(stackEl.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
     // Fallback: any [data-card-id*=":<playerId-prefix>:"] outside active region
     const fallback = stackChildren.length === 0
       ? Array.from(document.querySelectorAll(`[data-card-id*="${o.playerId.slice(0, 6)}"]`))
