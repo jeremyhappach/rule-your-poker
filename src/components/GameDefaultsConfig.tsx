@@ -10,51 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Settings, Bot, DollarSign, Timer, Spade, Dice5, Anchor, Crown, FlaskConical } from 'lucide-react';
 import { getHarnessProfiles } from '@/lib/debugHarness/profiles';
-import { useSyncExternalStore } from 'react';
-import {
-  isForcePlayerBeatsChucky,
-  isForceChuckyBeatsPlayer,
-  setForcePlayerBeatsChucky,
-  setForceChuckyBeatsPlayer,
-  subscribeHolmDebugOverrides,
-} from '@/lib/holm/holmDebugOverrides';
 
-function HolmDebugOverridesSection() {
-  useSyncExternalStore(
-    subscribeHolmDebugOverrides,
-    () => `${isForcePlayerBeatsChucky() ? 1 : 0}|${isForceChuckyBeatsPlayer() ? 1 : 0}`,
-    () => '0|0',
-  );
-  const playerOn = isForcePlayerBeatsChucky();
-  const chuckyOn = isForceChuckyBeatsPlayer();
-  return (
-    <div className="space-y-4 pt-4 border-t border-border">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <FlaskConical className="h-4 w-4" />
-        Debug — Solo vs Chucky Result Override
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Persisted on this device. Override applies only AFTER Chucky reveal completes —
-        deal, visual reveal, announcement, pot transfer, and win sequence all run naturally.
-        Toggles are mutually exclusive.
-      </p>
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label>Force Player Beats Chucky</Label>
-          <p className="text-xs text-muted-foreground">Solo vs Chucky → winner = PLAYER.</p>
-        </div>
-        <Switch checked={playerOn} onCheckedChange={setForcePlayerBeatsChucky} />
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label>Force Chucky Beats Player</Label>
-          <p className="text-xs text-muted-foreground">Solo vs Chucky → winner = CHUCKY.</p>
-        </div>
-        <Switch checked={chuckyOn} onCheckedChange={setForceChuckyBeatsPlayer} />
-      </div>
-    </div>
-  );
-}
 
 
 interface GameDefaults {
@@ -519,7 +475,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
         {renderGameSettings('holm')}
         {renderBotSettings('holm')}
-        <HolmDebugOverridesSection />
+        
       </>
     );
   };
