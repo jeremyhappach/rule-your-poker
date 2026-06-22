@@ -407,6 +407,30 @@ export function HolmDealDbgPanel() {
               <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
             ))}
           </div>
+          <div style={sect}>
+            <div style={title}>Timeline (per card)</div>
+            {Object.values(timeline).length === 0 ? <div style={{ opacity: 0.6 }}>(empty)</div> : Object.values(timeline).map((e) => {
+              const visBeforeSettle = e.firstVisibleAt != null && (e.settleAt == null || e.firstVisibleAt < e.settleAt);
+              return (
+                <div key={e.cardId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: visBeforeSettle ? '#ff6b6b' : '#cfd8e3' }}>
+                  <div style={{ fontWeight: 700 }}>{e.cardId} · {e.endpoint} · {e.wave}</div>
+                  <div>dispatch={fmt(e.dispatchAt)} claim={fmt(e.claimAt)} settle={fmt(e.settleAt)} mount={fmt(e.domMountAt)} visible={fmt(e.firstVisibleAt)}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={sect}>
+            <div style={title}>Frames (last {frames.length})</div>
+            {frames.slice(-8).map((f, i) => (
+              <div key={i} style={rowStyle}><span style={k}>{f.t.toFixed(0)} {f.phase}</span><span style={v}>claim={f.cardsClaimed} settle={f.cardsSettled} vis={f.visibleDomCards} self={f.actualSelfDomCount} opp={`[${f.actualOppDomCounts.join(',')}]`} comm={f.actualCommunityDomCount} chk={f.actualChuckyDomCount}</span></div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>Timeline Violations</div>
+            {timelineViolations.length === 0 ? <div style={ok}>none</div> : timelineViolations.slice(-20).map((violation, index) => (
+              <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
