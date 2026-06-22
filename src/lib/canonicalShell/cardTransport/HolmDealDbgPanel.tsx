@@ -395,8 +395,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const totalViol = snapshot.violations.length + timelineViolations.length;
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length}`;
 
   return (
     <div
