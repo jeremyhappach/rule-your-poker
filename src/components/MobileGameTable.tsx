@@ -107,6 +107,7 @@ import {
   HolmDealOrchestrator,
   HolmDealRuntimeMaybe,
   HolmDealPhaseHost,
+  HolmSettledGate,
   useHolmSettledIds,
 } from "./HolmDealOrchestrator";
 import { ThreeFiveSevenGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/ThreeFiveSevenGameplayGeometryProvider";
