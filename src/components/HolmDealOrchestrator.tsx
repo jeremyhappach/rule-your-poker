@@ -268,6 +268,8 @@ export function HolmDealOrchestrator({
         index,
       })),
     });
+    const dispatchAtC = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'community', holmDbgEndpoint(intent.to), dispatchAtC);
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
