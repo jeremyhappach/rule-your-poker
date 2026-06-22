@@ -163,7 +163,7 @@ export const PlayingCard = ({
   // fills it via width:100%/height:100% so we never duplicate gradient/border code.
   if (isHidden || !card) {
     return (
-      <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-root="" data-playing-card-hidden="1">
+      <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-hidden="1">
         <CanonicalCardBack
           widthPx={40}
           heightPx={60}
