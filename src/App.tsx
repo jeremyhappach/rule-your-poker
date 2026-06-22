@@ -32,6 +32,7 @@ import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPane
 import { CardTransportDbgPanel } from "@/lib/canonicalShell/cardTransport/CardTransportDbgPanel";
 import { ThreeFiveSevenDealDiagPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenDealDiagPanel";
 import { ThreeFiveSevenForensicsPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenForensicsPanel";
+import { HolmDealDbgPanel } from "@/lib/canonicalShell/cardTransport/HolmDealDbgPanel";
 
 import { CardBackDbgPanel } from "@/lib/canonicalShell/CardBackDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
@@ -134,6 +135,7 @@ const App = () => {
                 <CardTransportDbgPanel />
                 <ThreeFiveSevenDealDiagPanel />
                 <ThreeFiveSevenForensicsPanel />
+                <HolmDealDbgPanel />
 
 
                 <CardBackDbgPanel />

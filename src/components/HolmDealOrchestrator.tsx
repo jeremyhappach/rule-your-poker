@@ -35,6 +35,7 @@ import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/C
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
+import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import type { Card as CardType } from '@/lib/cardUtils';
 
 interface SeatEntry {
@@ -195,7 +196,29 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
+    const beginAt = performance.now();
     deal.beginDeal(intents.length);
+    holmDealDbgRecordWave({
+      handContextId,
+      wave: 'hands',
+      expected: intents.length,
+      dispatched: intents.length,
+      beginAt,
+      cards: intents.map((intent, index): HolmExpectedCardDbg => ({
+        cardId: intent.cardId,
+        wave: 'hands',
+        endpoint: holmDbgEndpoint(intent.to),
+        playerId: intent.recipientPlayerId ?? null,
+        seatPosition: intent.to.kind === 'oppStack' ? intent.to.position : null,
+        index,
+      })),
+      buckPosition,
+      dealerPosition,
+      seatOrder: ring.map((s) => s.position),
+      seatPlayerIds: ring.map((s) => s.playerId),
+      selfPlayerId,
+      soloDeclared,
+    });
     ct.dispatchMany(intents);
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
@@ -224,7 +247,23 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     communityDispatchedRef.current = true;
+    const beginAt = performance.now();
     deal.beginWave(intents.length);
+    holmDealDbgRecordWave({
+      handContextId,
+      wave: 'community',
+      expected: intents.length,
+      dispatched: intents.length,
+      beginAt,
+      cards: intents.map((intent, index): HolmExpectedCardDbg => ({
+        cardId: intent.cardId,
+        wave: 'community',
+        endpoint: holmDbgEndpoint(intent.to),
+        playerId: null,
+        seatPosition: null,
+        index,
+      })),
+    });
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
@@ -245,7 +284,24 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     chuckyDispatchedRef.current = true;
+    const beginAt = performance.now();
     deal.beginWave(intents.length);
+    holmDealDbgRecordWave({
+      handContextId,
+      wave: 'chucky',
+      expected: intents.length,
+      dispatched: intents.length,
+      beginAt,
+      cards: intents.map((intent, index): HolmExpectedCardDbg => ({
+        cardId: intent.cardId,
+        wave: 'chucky',
+        endpoint: holmDbgEndpoint(intent.to),
+        playerId: null,
+        seatPosition: null,
+        index,
+      })),
+      soloDeclared,
+    });
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, soloDeclared, chuckyCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 

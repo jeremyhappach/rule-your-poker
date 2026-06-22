@@ -5271,6 +5271,25 @@ export const MobileGameTable = ({
     const showNameBelowCards = false;
     const namePlacement: 'above-chip' | 'below-chip' | 'none' = 'above-chip';
 
+    const holmDealCardIdsForPlayer = (() => {
+      if (gameType !== 'holm-game' || !handContextId || typeof buckPosition !== 'number') return [] as string[];
+      const active = players
+        .filter(p => p.status === 'active' && !p.sitting_out)
+        .sort((a, b) => a.position - b.position);
+      const start = active.findIndex(p => p.position === buckPosition);
+      if (start < 0) return [] as string[];
+      const ring = [...active.slice(start), ...active.slice(0, start)];
+      const ids: string[] = [];
+      let dealIndex = 0;
+      for (let round = 0; round < 4; round++) {
+        for (const recipient of ring) {
+          if (recipient.id === player.id) ids.push(`${handContextId}#hand-${dealIndex}`);
+          dealIndex += 1;
+        }
+      }
+      return ids;
+    })();
+
 
     const cardsNode = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
       <div
@@ -5304,6 +5323,11 @@ export const MobileGameTable = ({
               widthPx={12}
               heightPx={20}
               variant="flat"
+              dataAttrs={{
+                'data-holm-card-id': holmDealCardIdsForPlayer[i] ?? `${handContextId ?? 'no-hand'}#opp-${player.id}-${i}`,
+                'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
+                'data-holm-component': 'OPPONENT',
+              }}
 
               style={{
                 marginLeft: i > 0 ? '-5px' : '0',
@@ -7655,6 +7679,7 @@ export const MobileGameTable = ({
                     <HolmSettledGate cardId={`${handContextId}#community-0`}>
                       <CommunityCards
                         cards={approvedCommunityCards!}
+                        holmHandContextId={handContextId}
                         revealed={
                           isDelayingCommunityCards
                             ? staggeredCardCount
@@ -7713,6 +7738,11 @@ export const MobileGameTable = ({
                       return (
                         <div
                           key={index}
+                          data-holm-card-id={`${handContextId}#chucky-${index}`}
+                          data-holm-renderer="MobileGameTable.holmChuckyStage"
+                          data-holm-component="CHUCKY"
+                          data-card-anchor={`chucky-${index}`}
+                          data-anchor-owner="MobileGameTable.holmChuckyStage.slot"
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
                           <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
