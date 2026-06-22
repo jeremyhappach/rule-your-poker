@@ -276,8 +276,20 @@ function CommunityStageHolmSwitch({
   tightOverlap: boolean;
 }) {
   const deal = useDealRuntime();
-  const inCanonicalDeal =
+  // HARD LATCH: once we have ever rendered the legacy CommunityCards
+  // renderer for this handContextId (i.e. DealRuntime reached GAMEPLAY,
+  // OR no DealRuntime is mounted), we MUST NOT revert to the canonical
+  // per-slot row. Subsequent waves (e.g. Chucky) call beginWave() which
+  // sets phase back to DEALING — without this latch, already-revealed
+  // community cards would regress to face-down backs mid-hand.
+  const handedOffRef = useRef<string | null>(null);
+  const inCanonicalDealRaw =
     !!deal && deal.gameType === 'holm-game' && deal.phase !== 'GAMEPLAY';
+  const latchedForThisHand = handedOffRef.current === handContextId;
+  if (!inCanonicalDealRaw && !latchedForThisHand) {
+    handedOffRef.current = handContextId;
+  }
+  const inCanonicalDeal = inCanonicalDealRaw && !latchedForThisHand;
   if (inCanonicalDeal) {
     return (
       <HolmCanonicalCommunityRow
