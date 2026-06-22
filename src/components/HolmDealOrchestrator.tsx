@@ -352,3 +352,19 @@ export function useHolmSettledIds(): { has: (cardId: string) => boolean } | null
   if (!deal) return null;
   return { has: (id: string) => deal.isSettled(id) };
 }
+
+/**
+ * Renders children iff `cardId` is settled in the active DealRuntime.
+ * Falls back to rendering when no DealRuntime is mounted (legacy path).
+ */
+export function HolmSettledGate({
+  cardId,
+  children,
+}: {
+  cardId: string;
+  children: ReactNode;
+}) {
+  const settled = useHolmSettledIds();
+  if (!settled) return <>{children}</>;
+  return settled.has(cardId) ? <>{children}</> : null;
+}
