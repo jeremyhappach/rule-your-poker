@@ -44,6 +44,7 @@ interface DealContextValue {
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
   readyReleased: boolean;
+  timerAllowed: boolean;
   isSettled: (cardId: string) => boolean;
   /**
    * Per-recipient settled count. Cumulative across waves within the
@@ -186,6 +187,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
       readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
+      timerAllowed: phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
       isSettled,
       getSettledCountForPlayer,
       beginDeal,
