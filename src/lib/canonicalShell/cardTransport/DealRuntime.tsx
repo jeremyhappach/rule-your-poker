@@ -43,6 +43,7 @@ interface DealContextValue {
   expectedCount: number;
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
+  readyReleased: boolean;
   isSettled: (cardId: string) => boolean;
   /**
    * Per-recipient settled count. Cumulative across waves within the
@@ -76,6 +77,13 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const ctx = useCardTransportInternal();
+  const activeIntentsForHand = useMemo(
+    () => (ctx?.__activeIntents ?? []).filter((intent) => {
+      const intentHand = intent.handContextId?.replace(/#r\d+$/, '') ?? null;
+      return intentHand === handContextId;
+    }).length,
+    [ctx?.__activeIntents, handContextId],
+  );
 
   const expectedRef = useRef(0);
   expectedRef.current = expectedCount;
@@ -94,7 +102,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
           dealSettled: ready,
-          ...(ready ? { phase: 'READY', readyReleased: true, dealSettled: true } : {}),
+          ...(ready ? { phase: 'READY', readyReleased: false, dealSettled: true } : {}),
         });
         if (ready) {
           queueMicrotask(() => setPhase((p) => (p === 'DEALING' ? 'READY' : p)));
@@ -153,6 +161,13 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
   }, [handContextId]);
 
+  useEffect(() => {
+    if (phase !== 'READY') return;
+    if (!(expectedCount > 0 && settledCardIds.size >= expectedCount)) return;
+    if (activeIntentsForHand !== 0) return;
+    dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
+  }, [phase, expectedCount, settledCardIds.size, activeIntentsForHand, handContextId]);
+
   const isSettled = useCallback(
     (cardId: string) => settledCardIds.has(cardId),
     [settledCardIds],
@@ -170,13 +185,14 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       expectedCount,
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
+      readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
       isSettled,
       getSettledCountForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;

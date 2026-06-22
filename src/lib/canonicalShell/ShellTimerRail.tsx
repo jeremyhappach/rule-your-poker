@@ -36,6 +36,7 @@ import {
   useState,
 } from 'react';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { getCanonicalTimerEligibility } from '@/lib/canonicalShell/timerEligibility';
 import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
@@ -50,6 +51,7 @@ export interface ShellTimerState {
   paused?: boolean;
   /** Optional short label appended to the timer caption. */
   actorLabel?: string | null;
+  activePlayerId?: string | null;
   /**
    * Optional opaque identity string. When it changes, the renderer
    * snaps the bar to its initial width without animating (used for
@@ -103,6 +105,7 @@ export function useShellTimer(state: ShellTimerState | null): void {
         t: state.totalSeconds,
         p: !!state.paused,
         a: state.actorLabel ?? null,
+        pid: state.activePlayerId ?? null,
         k: state.identityKey ?? null,
       })
     : 'null';
@@ -142,11 +145,20 @@ export function ShellTimerRail() {
   }, [identityKey]);
 
   const paused = !!state?.paused;
+  const eligibility = deal
+    ? getCanonicalTimerEligibility({
+        dealPhase: deal.phase,
+        dealSettled: deal.dealSettled,
+        readyReleased: deal.readyReleased,
+        activePlayerId: state?.activePlayerId ?? state?.identityKey ?? null,
+      })
+    : { visible: !!state, running: !!state && !paused && state.secondsRemaining > 0 };
   const total = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
   const seconds = Math.max(0, Math.round(state?.secondsRemaining ?? 0));
-  const pct = paused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
+  const effectivePaused = paused || !eligibility.running;
+  const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
 
-  const fillClass = paused
+  const fillClass = effectivePaused
     ? 'bg-muted-foreground/40'
     : seconds <= 3
       ? 'bg-red-500'
@@ -156,7 +168,7 @@ export function ShellTimerRail() {
 
   const ownerId = `ShellTimerRail:${deal?.handContextId ?? state?.identityKey ?? 'global'}`;
   useEffect(() => {
-    if (!state) {
+    if (!state && !deal) {
       unregisterThreeFiveSevenTimerOwner(ownerId);
       return;
     }
@@ -167,17 +179,19 @@ export function ShellTimerRail() {
       waveContextId: deal?.handContextId ?? null,
       dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
       phase: deal?.phase ?? 'NO_RUNTIME',
-      visible: true,
-      running: !paused && seconds > 0,
+      visible: eligibility.visible,
+      running: eligibility.running && seconds > 0,
       timeLeft: seconds,
       usesDealRuntime: !!deal,
-      reactKey: state.identityKey ?? null,
+      suppressedLegacySource: deal?.phase === 'DEALING' && state ? 'ShellTimerRail/useShellTimer' : null,
+      attemptedRunning: !!state && !paused && seconds > 0,
+      reactKey: state?.identityKey ?? null,
       renderCount: renderCountRef.current,
     });
-  }, [ownerId, state, deal?.handContextId, deal?.phase, paused, seconds]);
+  }, [ownerId, state, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, paused, seconds, eligibility.visible, eligibility.running]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(ownerId), [ownerId]);
 
-  if (!state) return null;
+  if (!eligibility.visible) return null;
 
   // ROOT-CAUSE FIX (helper-text clipping under timer):
   // The timer row's fixed height (`--hud-h-timer`) clips any text rendered
@@ -190,13 +204,13 @@ export function ShellTimerRail() {
   return (
     <div
       data-canonical-shell-timer-rail=""
-      data-shell-timer-paused={paused ? '1' : '0'}
+      data-shell-timer-paused={effectivePaused ? '1' : '0'}
       data-forensics-component="ShellTimerRail"
       data-forensics-timer-owner-id={ownerId}
       data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
-      data-forensics-timer-running={!paused && seconds > 0 ? '1' : '0'}
+      data-forensics-timer-running={eligibility.running && seconds > 0 ? '1' : '0'}
       data-forensics-timer-time-left={String(seconds)}
-      aria-label={paused ? 'Paused' : `${seconds} seconds remaining`}
+      aria-label={effectivePaused ? 'Paused' : `${seconds} seconds remaining`}
       className="w-full h-full flex items-center px-3"
     >
       <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">

@@ -30,6 +30,7 @@ interface PlayerHandProps {
   unusedCardsBelow?: boolean;
   isRightSide?: boolean;
   isBottomPosition?: boolean;
+  forceHiddenFaces?: boolean;
   /**
    * Wave 2A (3-5-7). Vertical budget already net of the contract-owned
    * action-strip reservation. Pass the *unscaled* reserve when the
@@ -87,6 +88,7 @@ export const PlayerHand = ({
   unusedCardsBelow = false,
   isRightSide = false,
   isBottomPosition = false,
+  forceHiddenFaces = false,
   availableHeightPx,
   availableWidthPx,
   wrapperScale = 1,
@@ -500,8 +502,8 @@ export const PlayerHand = ({
 
 
   // Render card backs for hidden cards
-  if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
-    const count = isHidden ? displayCardCount : expectedCardCount!;
+  if (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
+    const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
     
     
     // For 3-5-7 games with multiple cards, use fanned arc layout
@@ -658,6 +660,7 @@ export const PlayerHand = ({
           <PlayingCard
             key={`${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
+            isHidden={forceHiddenFaces}
             size={cardSize}
             isHighlighted={isHighlighted}
             isKicker={isKicker}

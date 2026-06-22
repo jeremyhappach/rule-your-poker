@@ -152,6 +152,7 @@ import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
+import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
 
 // P9.1 — First visible canonical shell visual cutover.
@@ -161,8 +162,14 @@ const CANONICAL_SHELL_VISUAL_ENABLED =
 
 function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
-  const hiddenForDeal = deal?.phase === 'DEALING' || (deal?.phase === 'PRE_DEAL' && deal.expectedCount === 0);
-  const timerVisible = !hiddenForDeal;
+  const eligibility = deal
+    ? getCanonicalTimerEligibility({
+        dealPhase: deal.phase,
+        dealSettled: deal.dealSettled,
+        readyReleased: deal.readyReleased,
+        activePlayerId: deal.phase === 'GAMEPLAY' ? 'shell-active-turn' : null,
+      })
+    : { visible: true, running: true };
 
   useEffect(() => {
     if (!deal) return;
@@ -171,15 +178,16 @@ function DealAwareShellTimerRail() {
       expectedCount: deal.expectedCount,
       cardsSettled: deal.settledCardIds.size,
       dealSettled: deal.dealSettled,
-      timerVisible,
-      timerRunning: timerVisible && deal.phase === 'GAMEPLAY',
+      readyReleased: deal.readyReleased,
+      timerVisible: eligibility.visible,
+      timerRunning: eligibility.running,
     });
-    if (deal.phase !== 'READY' || !timerVisible) return;
+    if (deal.phase !== 'READY' || !deal.readyReleased) return;
     const raf = requestAnimationFrame(() => deal.enterGameplay());
     return () => cancelAnimationFrame(raf);
-  }, [deal, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, timerVisible]);
+  }, [deal, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, deal?.readyReleased, eligibility.visible, eligibility.running]);
 
-  if (hiddenForDeal) return null;
+  if (!eligibility.visible) return null;
   return <ShellTimerRail />;
 }
 
@@ -3429,12 +3437,14 @@ export const MobileGameTable = ({
         secondsRemaining: horsesController.timeLeft as number,
         totalSeconds: horsesController.maxTime ?? 30,
         actorLabel: horsesController.currentTurnPlayerName ?? null,
+        activePlayerId: horsesController.currentTurnPlayerId,
         identityKey: `dice-${horsesController.currentTurnPlayerId}`,
       };
     } else if (turnTimerActive) {
       shellTimerState = {
         secondsRemaining: timeLeft as number,
         totalSeconds: maxTime as number,
+        activePlayerId: currentPlayer.id,
         identityKey: `turn-${currentRound}-${currentTurnPosition ?? ''}`,
       };
     }
@@ -8353,14 +8363,14 @@ export const MobileGameTable = ({
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
                                 isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
                                 (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : '',
-                                currentPlayerCards.length === 0 ? 'opacity-0 pointer-events-none' : '',
+                                currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
                               <Use357SelfHand
                                 currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
                                 baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards) => (
+                                render={(effectiveCards, dealPhase) => (
                                   <PlayerHand
                                     cards={effectiveCards}
                                     isHidden={effectiveCards.length === 0}
@@ -8370,6 +8380,7 @@ export const MobileGameTable = ({
                                     hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                     gameType={gameType}
                                     currentRound={currentRound}
+                                    forceHiddenFaces={__is357GameType(gameType) && dealPhase === 'DEALING'}
                                     showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                     tightOverlap={isHolmMultiPlayerShowdown}
                                     availableHeightPx={handAvailableHeightPx357}

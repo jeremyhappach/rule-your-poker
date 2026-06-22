@@ -19,6 +19,7 @@
 
 import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { getCanonicalTimerEligibility } from '@/lib/canonicalShell/timerEligibility';
 import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
@@ -43,6 +44,7 @@ export interface ActivePlayerHUDProps {
   seatPosition?: number;
   gameId?: string;
   gameType?: string;
+  activePlayerId?: string | null;
   /** The content this HUD frames (typically the player's chip stack).
    *  Optional so the cluster (Wave 3C.3a chipHUD slot) can mount this
    *  as a wrapper element and inject the chip body via cloneElement. */
@@ -61,6 +63,7 @@ export function ActivePlayerHUD({
   seatPosition,
   gameId,
   gameType,
+  activePlayerId,
   children,
 }: ActivePlayerHUDProps) {
   useLifecycleMount('ActivePlayerHUD');
@@ -109,9 +112,16 @@ export function ActivePlayerHUD({
   // the authoritative props. Applies to every game (Cribbage, Gin,
   // 3-5-7) for consistency.
   const deal = useDealRuntime();
-  const dealing = !!deal && deal.phase === 'DEALING';
-  const effectiveIsActive = dealing ? false : isActive;
-  const effectiveTimeLeft = dealing ? null : timeLeft;
+  const eligibility = deal
+    ? getCanonicalTimerEligibility({
+        dealPhase: deal.phase,
+        dealSettled: deal.dealSettled,
+        readyReleased: deal.readyReleased,
+        activePlayerId: activePlayerId ?? (isActive ? String(seatPosition ?? '') : null),
+      })
+    : { visible: isActive, running: isActive && timeLeft !== null && timeLeft > 0 };
+  const effectiveIsActive = eligibility.visible;
+  const effectiveTimeLeft = eligibility.running ? timeLeft : null;
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
   const timerOwnerId = `ActivePlayerHUD:${gameId ?? 'game'}:${seatPosition ?? 'seat'}:${gameType ?? 'unknown'}`;
@@ -127,10 +137,12 @@ export function ActivePlayerHUD({
       running: !!effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0,
       timeLeft: effectiveTimeLeft,
       usesDealRuntime: !!deal,
+      suppressedLegacySource: deal?.phase === 'DEALING' && isActive ? 'ActivePlayerHUD props' : null,
+      attemptedRunning: !!isActive && timeLeft !== null && timeLeft > 0,
       reactKey: `${gameType ?? 'unknown'}:${seatPosition ?? 'seat'}`,
       renderCount: renderCountRef.current,
     });
-  }, [timerOwnerId, gameType, seatPosition, deal?.handContextId, deal?.phase, effectiveIsActive, effectiveTimeLeft, gameId]);
+  }, [timerOwnerId, gameType, seatPosition, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, effectiveIsActive, effectiveTimeLeft, isActive, timeLeft, gameId]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
 
   return (
