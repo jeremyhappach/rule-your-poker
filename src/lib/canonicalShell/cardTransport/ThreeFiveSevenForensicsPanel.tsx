@@ -28,6 +28,15 @@ import {
 } from './cardTransportDbg';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
+import {
+  getMountedThreeFiveSevenTimerOwners,
+  getThreeFiveSevenHandRenders,
+  getThreeFiveSevenRenderTransitions,
+  subscribeThreeFiveSevenForensics,
+  type ForensicsHandRender,
+  type ForensicsRenderTransition,
+  type ForensicsTimerOwner,
+} from './threeFiveSevenForensicsStore';
 
 // ─────────────────────────────────────────────────────────────────────
 // Ring buffers + transition log (module-level so data survives panel
@@ -41,6 +50,17 @@ const CARD0_TIMELINE_MAX = 500;
 interface Rect { x: number; y: number; w: number; h: number; cx: number; cy: number }
 
 interface TimerInventoryItem {
+  componentName: string;
+  gameType: string | null;
+  handContextId: string | null;
+  waveContextId: string | null;
+  dealRuntimeId: string | null;
+  phase: string;
+  running: boolean;
+  timeLeft: number | null;
+  usesDealRuntime: boolean;
+  reactKey: string | null;
+  renderCount: number;
   selector: string;
   tag: string;
   rect: Rect | null;
