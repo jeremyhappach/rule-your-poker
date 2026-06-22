@@ -504,6 +504,8 @@ function scan(): ForensicsSnapshot | null {
     timers,
     selfHand,
     opponents,
+    handRenders: getThreeFiveSevenHandRenders(),
+    renderTransitions: [...getThreeFiveSevenRenderTransitions()],
   };
 
   diffAndRecord(lastSnapshot, snap);
