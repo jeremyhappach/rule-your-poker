@@ -37,6 +37,7 @@ import type { DealPhase } from './types';
 import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
 import { holmDealDbgRecordRuntime } from './holmDealDbg';
+import { holmTimelineRecordSettle } from './holmCardTimeline';
 
 interface DealContextValue {
   handContextId: string;
@@ -99,6 +100,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     if (!ctx) return;
     const off = ctx.onCardSettledIntent((intent) => {
       const cardId = intent.cardId;
+      if (gameType === 'holm-game') holmTimelineRecordSettle(cardId, performance.now());
       setSettledCardIds((prev) => {
         if (prev.has(cardId)) return prev;
         const next = new Set(prev);
@@ -131,7 +133,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       }
     });
     return off;
-  }, [ctx, handContextId]);
+  }, [ctx, handContextId, gameType]);
 
   const beginDeal = useCallback((count: number) => {
     setExpectedCount(count);

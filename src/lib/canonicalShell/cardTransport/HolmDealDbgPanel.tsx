@@ -17,6 +17,15 @@ import {
   type HolmHiddenByReason,
   type HolmRenderedCardDbg,
 } from './holmDealDbg';
+import {
+  getHolmCardTimeline,
+  getHolmDealFrames,
+  getHolmTimelineViolations,
+  holmFramesAppend,
+  holmTimelineRecordClaim,
+  holmTimelineRecordDomMount,
+  holmTimelineRecordVisible,
+} from './holmCardTimeline';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -229,6 +238,94 @@ export function HolmDealDbgPanel() {
     return () => window.clearInterval(id);
   }, [enabled, expanded]);
 
+  // ── rAF timeline scanner: claim/mount/visible per card + per-frame snapshot
+  useEffect(() => {
+    if (!enabled) return;
+    let raf = 0;
+    const loop = () => {
+      const m = getHolmDealDbgMeta();
+      const recs = getCardTransportDbg();
+      const recById = new Map<string, CardTransportDbgEntry>();
+      for (const r of recs) {
+        const id = r.cardId ?? r.intentId;
+        if (id) recById.set(id, r);
+      }
+      const now = performance.now();
+      const handCtx = m.handContextId;
+
+      // self ordering
+      const selfNodes = typeof document !== 'undefined'
+        ? Array.from(document.querySelectorAll<HTMLElement>('[data-holm-active-hand-region] [data-playing-card-root], [data-holm-active-hand-region] [data-canonical-card-back]'))
+        : [];
+      const selfIdxByPlayer = new Map<string, number>();
+      let visibleCount = 0;
+      let selfDom = 0;
+      const oppDom = new Map<number, number>();
+      let commDom = 0;
+      let chuckyDom = 0;
+
+      for (const exp of m.expectedCards) {
+        const rec = recById.get(exp.cardId);
+        if (rec?.ownershipClaimTime) holmTimelineRecordClaim(exp.cardId, rec.ownershipClaimTime);
+        let node: HTMLElement | null = null;
+        if (exp.endpoint.startsWith('hand:')) {
+          const key = exp.playerId ?? 'self';
+          const idx = selfIdxByPlayer.get(key) ?? 0;
+          selfIdxByPlayer.set(key, idx + 1);
+          node = selfNodes[idx] ?? null;
+          if (node) selfDom++;
+        } else {
+          node = typeof document !== 'undefined'
+            ? document.querySelector<HTMLElement>(`[data-holm-card-id="${CSS.escape(exp.cardId)}"]`)
+            : null;
+          if (node) {
+            if (exp.endpoint.startsWith('opp-stack:')) {
+              const pos = Number(exp.endpoint.split(':')[1]);
+              oppDom.set(pos, (oppDom.get(pos) ?? 0) + 1);
+            } else if (exp.endpoint.startsWith('community:')) commDom++;
+            else if (exp.endpoint.startsWith('chucky:')) chuckyDom++;
+          }
+        }
+        if (node) {
+          holmTimelineRecordDomMount(exp.cardId, now);
+          const cs = window.getComputedStyle(node);
+          const r = node.getBoundingClientRect();
+          const vis = cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || '1') > 0 && r.width > 0 && r.height > 0;
+          if (vis) {
+            visibleCount++;
+            holmTimelineRecordVisible(exp.cardId, now);
+          }
+        }
+      }
+
+      const settledSet = new Set(m.settledIds);
+      const cardsSettled = settledSet.size;
+      let cardsClaimed = 0;
+      for (const exp of m.expectedCards) {
+        const rec = recById.get(exp.cardId);
+        if (rec?.ownershipClaimTime || settledSet.has(exp.cardId)) cardsClaimed++;
+      }
+
+      holmFramesAppend({
+        t: now,
+        phase: m.phase,
+        cardsClaimed,
+        cardsSettled,
+        actualSelfDomCount: selfDom,
+        actualOppDomCounts: Array.from(oppDom.entries()).sort((a, b) => a[0] - b[0]).map(([, n]) => n),
+        actualCommunityDomCount: commDom,
+        actualChuckyDomCount: chuckyDom,
+        visibleDomCards: visibleCount,
+      });
+
+      // keep panel-side meta fresh too
+      void handCtx;
+      raf = window.requestAnimationFrame(loop);
+    };
+    raf = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(raf);
+  }, [enabled]);
+
   const snapshot = useMemo(() => buildSnapshot(meta, records), [meta, records, sampleTick]);
   useEffect(() => {
     if (!enabled) return;
@@ -245,8 +342,16 @@ export function HolmDealDbgPanel() {
   const sect: React.CSSProperties = { borderTop: '1px solid #2a2a2a', padding: '6px 6px 4px', marginTop: 4 };
   const title: React.CSSProperties = { color: '#FFD580', fontWeight: 800, marginBottom: 3 };
 
+  const timeline = getHolmCardTimeline();
+  const frames = getHolmDealFrames();
+  const timelineViolations = getHolmTimelineViolations();
+  void sampleTick;
+
   const copy = async () => {
-    const text = formatHolmDealDbgSnapshot(snapshot);
+    const text = formatHolmDealDbgSnapshot(snapshot) +
+      '\n\n--- TIMELINE ---\n' + JSON.stringify(timeline, null, 2) +
+      '\n\n--- FRAMES (last ' + frames.length + ') ---\n' + JSON.stringify(frames.slice(-60), null, 2) +
+      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -254,7 +359,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${snapshot.violations.length}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol}`;
 
   return (
     <div
@@ -265,7 +371,7 @@ export function HolmDealDbgPanel() {
         maxWidth: expanded ? undefined : 380,
         background: 'rgba(0,0,0,0.92)',
         color: '#fff',
-        border: `1px solid ${snapshot.violations.length ? '#ff6b6b' : '#555'}`,
+        border: `1px solid ${totalViol ? '#ff6b6b' : '#555'}`,
         borderRadius: 4,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
         fontSize: 10,
@@ -275,7 +381,7 @@ export function HolmDealDbgPanel() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderBottom: expanded ? '1px solid #333' : 'none' }}>
         <button type="button" onClick={() => setExpanded((e) => !e)} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit', color: '#fff', padding: 0, fontWeight: 800 }}>
-          {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={snapshot.violations.length ? bad : v}>· {compact}</span>
+          {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={totalViol ? bad : v}>· {compact}</span>
         </button>
         <button type="button" onClick={copy} style={{ background: '#1e3a5f', color: copied ? '#7CFC00' : '#fff', border: '1px solid #4a7bb8', borderRadius: 3, padding: '2px 8px', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓' : 'Copy'}</button>
       </div>
@@ -298,6 +404,30 @@ export function HolmDealDbgPanel() {
           <div style={sect}>
             <div style={title}>Violations</div>
             {snapshot.violations.length === 0 ? <div style={ok}>none</div> : snapshot.violations.map((violation, index) => (
+              <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>Timeline (per card)</div>
+            {Object.values(timeline).length === 0 ? <div style={{ opacity: 0.6 }}>(empty)</div> : Object.values(timeline).map((e) => {
+              const visBeforeSettle = e.firstVisibleAt != null && (e.settleAt == null || e.firstVisibleAt < e.settleAt);
+              return (
+                <div key={e.cardId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: visBeforeSettle ? '#ff6b6b' : '#cfd8e3' }}>
+                  <div style={{ fontWeight: 700 }}>{e.cardId} · {e.endpoint} · {e.wave}</div>
+                  <div>dispatch={fmt(e.dispatchAt)} claim={fmt(e.claimAt)} settle={fmt(e.settleAt)} mount={fmt(e.domMountAt)} visible={fmt(e.firstVisibleAt)}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={sect}>
+            <div style={title}>Frames (last {frames.length})</div>
+            {frames.slice(-8).map((f, i) => (
+              <div key={i} style={rowStyle}><span style={k}>{f.t.toFixed(0)} {f.phase}</span><span style={v}>claim={f.cardsClaimed} settle={f.cardsSettled} vis={f.visibleDomCards} self={f.actualSelfDomCount} opp={`[${f.actualOppDomCounts.join(',')}]`} comm={f.actualCommunityDomCount} chk={f.actualChuckyDomCount}</span></div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>Timeline Violations</div>
+            {timelineViolations.length === 0 ? <div style={ok}>none</div> : timelineViolations.slice(-20).map((violation, index) => (
               <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
             ))}
           </div>

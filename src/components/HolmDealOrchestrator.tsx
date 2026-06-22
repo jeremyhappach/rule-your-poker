@@ -36,6 +36,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
+import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
 import type { Card as CardType } from '@/lib/cardUtils';
 
 interface SeatEntry {
@@ -197,6 +198,7 @@ export function HolmDealOrchestrator({
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
     const beginAt = performance.now();
+    holmTimelineResetForHand(handContextId);
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
       handContextId,
@@ -219,6 +221,8 @@ export function HolmDealOrchestrator({
       selfPlayerId,
       soloDeclared,
     });
+    const dispatchAt = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'hands', holmDbgEndpoint(intent.to), dispatchAt);
     ct.dispatchMany(intents);
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
@@ -264,6 +268,8 @@ export function HolmDealOrchestrator({
         index,
       })),
     });
+    const dispatchAtC = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'community', holmDbgEndpoint(intent.to), dispatchAtC);
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
@@ -302,6 +308,8 @@ export function HolmDealOrchestrator({
       })),
       soloDeclared,
     });
+    const dispatchAtK = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'chucky', holmDbgEndpoint(intent.to), dispatchAtK);
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, soloDeclared, chuckyCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
