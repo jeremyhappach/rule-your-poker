@@ -17,6 +17,15 @@ import {
   type HolmHiddenByReason,
   type HolmRenderedCardDbg,
 } from './holmDealDbg';
+import {
+  getHolmCardTimeline,
+  getHolmDealFrames,
+  getHolmTimelineViolations,
+  holmFramesAppend,
+  holmTimelineRecordClaim,
+  holmTimelineRecordDomMount,
+  holmTimelineRecordVisible,
+} from './holmCardTimeline';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
