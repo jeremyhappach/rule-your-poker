@@ -2729,6 +2729,51 @@ export const MobileGameTable = ({
     }, prev);
   }, [gameType, handContextId]);
 
+  // ── WAR-TIME: SOLO_STATE_CHANGED watcher ──
+  // Pure instrumentation: fire on every observable transition of the
+  // solo-leakage surface. Records the prev/next snapshot + the current
+  // hand context so we can pinpoint the writer that produced
+  // SOLO_DECLARED during PRE_DEAL of h2.
+  const soloTraceSnapRef = useRef<string>('');
+  const prevHandCtxForTraceRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const snap = {
+      handContextId: handContextId ?? null,
+      prevHandContextId: prevHandCtxForTraceRef.current,
+      isSoloVsChuckyRaw,
+      soloVsChuckyTableLocked,
+      soloDeclared: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
+      soloVsChuckyPlayerIdLocked,
+      chuckyActive: !!chuckyActive,
+      cachedChuckyActive,
+      cachedChuckyCardsExists: !!(cachedChuckyCards && cachedChuckyCards.length > 0),
+      cachedChuckyCardsCount: cachedChuckyCards?.length ?? 0,
+      cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+      tabledSnapshotExists: !!lonePlayerStageSnapshotRef.current,
+      tabledSnapshotHandId: lonePlayerStageSnapshotRef.current?.handContextId ?? null,
+      holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+      roundStatus,
+      allDecisionsIn,
+      stayedPlayersCount,
+    };
+    const key = JSON.stringify(snap);
+    if (key === soloTraceSnapRef.current) return;
+    soloTraceSnapRef.current = key;
+    recordSoloStateChange({
+      ...snap,
+      source: 'watcher-effect',
+      callsite: 'MobileGameTable:soloStateWatcher',
+      reason: 'state-diff',
+    });
+    prevHandCtxForTraceRef.current = handContextId ?? null;
+  }, [
+    gameType, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked,
+    soloVsChuckyPlayerIdLocked, chuckyActive, cachedChuckyActive, cachedChuckyCards,
+    holmWinPotTriggerId, roundStatus, allDecisionsIn, stayedPlayersCount,
+  ]);
+
+
 
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
