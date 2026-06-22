@@ -535,6 +535,14 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       transportVisible: true,
       transportMountTime: performance.now(),
     });
+    const holmOwnerInstance = registerHolmCardOwner({
+      cardId: card.intent.cardId,
+      renderer: 'CardTransportRuntime.FlyingCard',
+      componentName: 'FlyingCard',
+      handContextId: card.intent.handContextId ?? null,
+      phase: 'TRANSPORT',
+      renderReason: 'launched',
+    });
 
     return () => {
       window.clearTimeout(tLaunch);
