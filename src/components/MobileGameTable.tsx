@@ -398,6 +398,86 @@ interface PlayerCards {
   cards: CardType[];
 }
 
+function getHolmSelfDealCardIds({
+  handContextId,
+  players,
+  buckPosition,
+  selfPlayerId,
+  cardsPerPlayer = 4,
+}: {
+  handContextId: string | null | undefined;
+  players: Player[];
+  buckPosition: number | null | undefined;
+  selfPlayerId: string;
+  cardsPerPlayer?: number;
+}): string[] {
+  if (!handContextId || typeof buckPosition !== 'number' || !selfPlayerId) return [];
+  const active = players
+    .filter((p) => p.status === 'active' && !p.sitting_out)
+    .sort((a, b) => a.position - b.position);
+  const start = active.findIndex((p) => p.position === buckPosition);
+  if (start < 0) return [];
+  const ring = [...active.slice(start), ...active.slice(0, start)];
+  const ids: string[] = [];
+  let dealIndex = 0;
+  for (let round = 0; round < cardsPerPlayer; round++) {
+    for (const recipient of ring) {
+      if (recipient.id === selfPlayerId) ids.push(`${handContextId}#hand-${dealIndex}`);
+      dealIndex += 1;
+    }
+  }
+  return ids;
+}
+
+function UseHolmSelfHand<T>({
+  currentPlayerId,
+  handContextId,
+  players,
+  buckPosition,
+  cards,
+  render,
+}: {
+  currentPlayerId: string;
+  handContextId: string | null | undefined;
+  players: Player[];
+  buckPosition: number | null | undefined;
+  cards: T[];
+  render: (effectiveCards: T[], dealPhase: string, boundary: {
+    claimedCardIds: string[];
+    rawClaimedCardIds: string[];
+    baseHandContextId: string;
+    playerId: string;
+    boundaryCardIdPrefix: string;
+  }) => ReactNode;
+}) {
+  const deal = useDealRuntime();
+  const phase = deal?.phase ?? 'NO_RUNTIME';
+  const baseHandContextId = handContextId ?? deal?.handContextId ?? 'no-runtime';
+  const selfCardIds = useMemo(
+    () => getHolmSelfDealCardIds({ handContextId: baseHandContextId, players, buckPosition, selfPlayerId: currentPlayerId }),
+    [baseHandContextId, players, buckPosition, currentPlayerId],
+  );
+  const effectiveCards = useMemo(() => {
+    if (!deal || deal.gameType !== 'holm-game' || deal.phase === 'GAMEPLAY') return cards;
+    return cards.filter((_card, index) => {
+      const cardId = selfCardIds[index];
+      return !!cardId && deal.isSettled(cardId);
+    });
+  }, [cards, deal, selfCardIds]);
+  const settledSelfCardIds = useMemo(
+    () => selfCardIds.filter((cardId) => deal?.isSettled(cardId)),
+    [deal, selfCardIds],
+  );
+
+  return <>{render(effectiveCards, phase, {
+    claimedCardIds: settledSelfCardIds,
+    rawClaimedCardIds: settledSelfCardIds,
+    baseHandContextId,
+    playerId: currentPlayerId,
+    boundaryCardIdPrefix: `${baseHandContextId}#holm-self#${currentPlayerId || 'no-player'}`,
+  })}</>;
+}
+
 
 interface ChatBubbleData {
   id: string;
