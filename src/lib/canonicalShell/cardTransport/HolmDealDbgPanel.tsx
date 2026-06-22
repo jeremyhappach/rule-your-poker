@@ -371,7 +371,7 @@ export function HolmDealDbgPanel() {
         maxWidth: expanded ? undefined : 380,
         background: 'rgba(0,0,0,0.92)',
         color: '#fff',
-        border: `1px solid ${snapshot.violations.length ? '#ff6b6b' : '#555'}`,
+        border: `1px solid ${totalViol ? '#ff6b6b' : '#555'}`,
         borderRadius: 4,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
         fontSize: 10,
