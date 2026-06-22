@@ -9599,14 +9599,15 @@ export const MobileGameTable = ({
                                     return (
                                      <>
                                        {gameType === 'holm-game' && (
-                                         <HolmSoloRootRegistrar
-                                           root="SELF_HAND"
-                                           mounted={effectiveCards.length > 0}
-                                           cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
-                                           handContextId={boundary.baseHandContextId}
-                                           soloDeclared={!!isSoloVsChucky}
-                                           phase={dealPhase}
-                                         />
+                                          <HolmSoloRootRegistrar
+                                            root="SELF_HAND"
+                                            mounted={effectiveCards.length > 0}
+                                            cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
+                                            handContextId={boundary.baseHandContextId}
+                                            soloDeclared={!!isSoloVsChucky}
+                                            phase={dealPhase}
+                                            caller="MobileGameTable.activeSelfHand.PlayerHand"
+                                          />
                                        )}
                                        {gameType === 'holm-game' && boundary.rawClaimedCardIds.map((cid) => (
                                          <HolmOwnershipBeacon
