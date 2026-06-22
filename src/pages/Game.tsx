@@ -11377,8 +11377,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
-              timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
-              maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
+              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : timeLeft) : (isAnteDecision ? anteTimeLeft : null)}
+              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
