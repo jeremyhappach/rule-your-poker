@@ -1589,7 +1589,20 @@ async function handleChuckyShowdown(
   console.log('[HOLM SHOWDOWN] Chucky:', chuckyHandDesc, '| rank:', chuckyEval.rank, '| value:', chuckyEval.value);
   console.log('[HOLM SHOWDOWN] Player value > Chucky value?', playerEval.value, '>', chuckyEval.value, '=', playerEval.value > chuckyEval.value);
 
-  const playerWins = playerEval.value > chuckyEval.value;
+  const naturalPlayerWins = playerEval.value > chuckyEval.value;
+  // ADMIN DEBUG: Result override (post-reveal only — see handleHolmGameEnd
+  // which awaits the full Chucky reveal sequence before invoking this).
+  const forced = (() => {
+    try {
+      // Lazy require so the server-side bundling path is fine.
+      const m = require('./holm/holmDebugOverrides');
+      return m.getHolmForcedWinner?.() ?? null;
+    } catch { return null; }
+  })();
+  const playerWins = forced === 'player' ? true : forced === 'chucky' ? false : naturalPlayerWins;
+  if (forced) {
+    console.log('[HOLM SHOWDOWN] *** ADMIN OVERRIDE active:', forced, '(natural would be', naturalPlayerWins ? 'PLAYER' : 'CHUCKY', ')');
+  }
 
   console.log('[HOLM SHOWDOWN] *** WINNER:', playerWins ? 'PLAYER' : 'CHUCKY', '***');
   
