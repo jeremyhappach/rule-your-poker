@@ -5105,10 +5105,7 @@ export const MobileGameTable = ({
 
     const effectId = ++chuckyEffectIdRef.current;
     const mountAt = __chuckyAuditNow();
-    const newDeps: Record<string, unknown> = {
-      ...chuckyRevealDepSnapshot,
-      renderSeq: chuckyRenderSeqRef.current,
-    };
+    const newDeps: Record<string, unknown> = chuckyRevealDepSnapshot;
     const oldDeps = chuckyEffectDepsRef.current;
     const changed: Record<string, { from: unknown; to: unknown }> = {};
     if (oldDeps) {
