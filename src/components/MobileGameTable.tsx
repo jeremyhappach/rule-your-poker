@@ -4951,7 +4951,12 @@ export const MobileGameTable = ({
     }
     chuckyEffectDepsRef.current = newDeps;
 
+    const effectInstance = ++chuckyEffectInstanceRef.current;
+    const instanceId = chuckyInstanceIdRef.current;
+
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
+      instanceId,
+      effectInstance,
       handContextId: handContextId ?? null,
       deps: newDeps,
       changedSinceLastEnter: oldDeps ? changed : null,
