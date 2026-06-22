@@ -129,6 +129,8 @@ interface ForensicsSnapshot {
   selfHand: SelfHandSnapshot;
   // Section D
   opponents: OpponentSnapshot[];
+  handRenders: ForensicsHandRender[];
+  renderTransitions: ForensicsRenderTransition[];
 }
 
 interface TransitionEntry {
@@ -141,6 +143,9 @@ interface TransitionEntry {
 
 interface Card0Frame {
   t: number;
+  ownershipClaimAt: number | null;
+  transportDestroyedAt: number | null;
+  card0DomMountedAt: number | null;
   transportMounted: boolean;
   transportVisible: boolean;
   ownershipClaimed: boolean;
@@ -169,6 +174,7 @@ let lastSnapshot: ForensicsSnapshot | null = null;
 let lastCard0IntentId: string | null = null;
 let card0LaunchedAt: number | null = null;
 let card0DestroyedAt: number | null = null;
+let card0DomMountedAt: number | null = null;
 let installed = false;
 
 function emit() { listeners.forEach((l) => { try { l(); } catch { /* */ } }); }
@@ -284,6 +290,7 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
     lastCard0IntentId = card0.intentId;
     card0LaunchedAt = performance.now();
     card0DestroyedAt = null;
+    card0DomMountedAt = null;
     card0Timeline.length = 0;
   }
   if (card0.transportDestroyedTime && card0DestroyedAt == null) {
@@ -293,8 +300,9 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
   // DOM probes
   const handAnchorEl = document.querySelector('[data-canonical-self-hand-anchor-position="top-of-pane"]');
   const activeRegion = document.querySelector('[data-357-active-hand-region]');
-  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-card-id]')) : [];
+  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
   const card0DomEl = selfCardEls[0] ?? null;
+  if (card0DomEl && card0DomMountedAt == null) card0DomMountedAt = performance.now();
   const flyingCardEl = document.querySelector(`[data-card-transport-intent-id="${card0.intentId}"]`);
   const handAnchorRect = rectOf(handAnchorEl);
   const fanRootRect = rectOf((selfCardEls[0]?.parentElement as Element | null) ?? activeRegion);
@@ -305,6 +313,9 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
 
   card0Timeline.push({
     t: performance.now(),
+    ownershipClaimAt: card0.ownershipClaimTime ?? null,
+    transportDestroyedAt: card0.transportDestroyedTime ?? null,
+    card0DomMountedAt,
     transportMounted: !!card0.transportMounted,
     transportVisible: !!card0.transportVisible,
     ownershipClaimed: !!card0.ownershipClaimTime,
