@@ -181,6 +181,40 @@ import {
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
+const __chuckyAuditRefIds = new WeakMap<object, string>();
+let __chuckyAuditRefSeq = 0;
+
+function __chuckyAuditRefId(value: unknown): string {
+  if (value == null) return 'null';
+  if (typeof value !== 'object' && typeof value !== 'function') return `${typeof value}:${String(value)}`;
+  const obj = value as object;
+  let id = __chuckyAuditRefIds.get(obj);
+  if (!id) {
+    id = `ref#${++__chuckyAuditRefSeq}`;
+    __chuckyAuditRefIds.set(obj, id);
+  }
+  return id;
+}
+
+function __chuckyAuditCardsHash(cards: CardType[] | null | undefined): string {
+  if (!cards) return 'null';
+  return cards.map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join('|');
+}
+
+function __chuckyAuditNow(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
+function __chuckyAuditOwnerStack(): string | null {
+  try {
+    return typeof (React as any).captureOwnerStack === 'function'
+      ? (React as any).captureOwnerStack()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
