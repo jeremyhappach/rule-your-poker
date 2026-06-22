@@ -249,6 +249,54 @@ function HolmOpponentCardBackSlot({
   );
 }
 
+/**
+ * CommunityStageHolmSwitch — owns the per-phase swap between the
+ * canonical per-slot community renderer (during DealRuntime
+ * DEALING/READY) and the legacy CommunityCards reveal renderer
+ * (during GAMEPLAY or when no DealRuntime is mounted).
+ */
+function CommunityStageHolmSwitch({
+  handContextId,
+  cards,
+  revealed,
+  highlightedIndices,
+  kickerIndices,
+  hasHighlights,
+  tightOverlap,
+}: {
+  handContextId: string;
+  cards: CardType[];
+  revealed: number;
+  highlightedIndices: number[];
+  kickerIndices: number[];
+  hasHighlights: boolean;
+  tightOverlap: boolean;
+}) {
+  const deal = useDealRuntime();
+  const inCanonicalDeal =
+    !!deal && deal.gameType === 'holm-game' && deal.phase !== 'GAMEPLAY';
+  if (inCanonicalDeal) {
+    return (
+      <HolmCanonicalCommunityRow
+        handContextId={handContextId}
+        cards={cards}
+        tightOverlap={tightOverlap}
+      />
+    );
+  }
+  return (
+    <CommunityCards
+      cards={cards}
+      holmHandContextId={handContextId}
+      revealed={revealed}
+      highlightedIndices={highlightedIndices}
+      kickerIndices={kickerIndices}
+      hasHighlights={hasHighlights}
+      tightOverlap={tightOverlap}
+    />
+  );
+}
+
 function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
   const eligibility = deal
