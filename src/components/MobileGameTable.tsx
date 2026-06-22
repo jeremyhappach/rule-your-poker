@@ -8638,34 +8638,47 @@ export const MobileGameTable = ({
                                   // placeholder backs, no isHidden
                                   // expansion, no expectedCardCount
                                   // pre-render. 0→1→2→3 strictly.
-                                  return (
-                                    <PlayerHand
-                                      cards={effectiveCards}
-                                      isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
-                                      expectedCardCount={
-                                        is357Staged || isHolmStaged
-                                          ? undefined
-                                          : (effectiveCards.length === 0
-                                            ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
-                                            : undefined)
-                                      }
-                                      highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                                      kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                                      hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                                      gameType={gameType}
-                                      currentRound={currentRound}
-                                      dealPhase={dealPhase}
-                                      claimedCardIds={boundary.claimedCardIds}
-                                      baseHandContextId={boundary.baseHandContextId}
-                                      boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
-                                      source="MobileGameTable.activeSelfHand"
-                                      forceHiddenFaces={false}
-                                      showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
-                                      tightOverlap={isHolmMultiPlayerShowdown}
-                                      availableHeightPx={handAvailableHeightPx357}
-                                      wrapperScale={handScaleNum}
-                                    />
-                                  );
+                                   return (
+                                     <>
+                                       {gameType === 'holm-game' && boundary.rawClaimedCardIds.map((cid) => (
+                                         <HolmOwnershipBeacon
+                                           key={`holm-self-beacon-${cid}`}
+                                           cardId={cid}
+                                           renderer="MobileGameTable.activeSelfHand.PlayerHand"
+                                           componentName="PlayerHand(self)"
+                                           handContextId={boundary.baseHandContextId}
+                                           phase={dealPhase}
+                                           renderReason={`self-rendered count=${effectiveCards.length}`}
+                                         />
+                                       ))}
+                                       <PlayerHand
+                                         cards={effectiveCards}
+                                         isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
+                                         expectedCardCount={
+                                           is357Staged || isHolmStaged
+                                             ? undefined
+                                             : (effectiveCards.length === 0
+                                               ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
+                                               : undefined)
+                                         }
+                                         highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                         kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                         hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                         gameType={gameType}
+                                         currentRound={currentRound}
+                                         dealPhase={dealPhase}
+                                         claimedCardIds={boundary.claimedCardIds}
+                                         baseHandContextId={boundary.baseHandContextId}
+                                         boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
+                                         source="MobileGameTable.activeSelfHand"
+                                         forceHiddenFaces={false}
+                                         showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
+                                         tightOverlap={isHolmMultiPlayerShowdown}
+                                         availableHeightPx={handAvailableHeightPx357}
+                                         wrapperScale={handScaleNum}
+                                       />
+                                     </>
+                                   );
                                 };
                                 return gameType === 'holm-game' ? (
                                   <UseHolmSelfHand
