@@ -10,6 +10,7 @@ import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
+import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
@@ -175,6 +176,22 @@ const CANONICAL_SHELL_VISUAL_ENABLED =
  * canonical deal animation by mounting all opponent cards in a single
  * React commit (which made domMountAt == firstVisibleAt < settleAt).
  */
+/**
+ * HolmOpponentCardBackSlot — strict anchor/card split.
+ *
+ * Outer container is a layout-stable invisible spacer. It is NOT a card:
+ * no `data-holm-card-id`, no `data-holm-renderer`, no card markers, not
+ * counted by the ownership scanner. It exists only to reserve fan
+ * geometry so settled cards land in the same x-positions they will
+ * occupy after settle.
+ *
+ * The actual `CanonicalCardBack` (with `data-holm-card-id`) mounts ONLY
+ * when `deal.isSettled(cardId)`. Before settle, the slot's visible
+ * width is zero — no painted DOM that the DOM scanner can mistake for
+ * a card. The opp-stack flight target itself is owned by
+ * `GameplayOpponentSeatLayer` via `[data-card-anchor="opp-stack-{pos}"]`,
+ * not by this slot.
+ */
 function HolmOpponentCardBackSlot({
   index,
   cardId,
@@ -188,57 +205,95 @@ function HolmOpponentCardBackSlot({
 }) {
   const deal = useDealRuntime();
   const settled = deal ? deal.isSettled(cardId) : true;
-  const slotStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties = {
+    position: 'relative',
     width: 12,
     height: 20,
     marginLeft: index > 0 ? '-5px' : '0',
     zIndex: cardCount - index,
-    animationDelay: hasFolded ? `${index * 0.05}s` : '0s',
   };
-  if (!settled) {
+  return (
+    <div
+      style={containerStyle}
+      data-holm-opp-slot-pending={settled ? undefined : '1'}
+      aria-hidden={settled ? undefined : 'true'}
+    >
+      {settled && (
+        <>
+          <HolmOwnershipBeacon
+            cardId={cardId}
+            renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
+            componentName="HolmOpponentCardBackSlot"
+            handContextId={deal?.handContextId ?? null}
+            phase={deal?.phase ?? 'NO_RUNTIME'}
+            renderReason="settled-cardback"
+          />
+          <CanonicalCardBack
+            widthPx={12}
+            heightPx={20}
+            variant="flat"
+            dataAttrs={{
+              'data-holm-card-id': cardId,
+              'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
+              'data-holm-component': 'OPPONENT',
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              animationDelay: hasFolded ? `${index * 0.05}s` : '0s',
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * CommunityStageHolmSwitch — owns the per-phase swap between the
+ * canonical per-slot community renderer (during DealRuntime
+ * DEALING/READY) and the legacy CommunityCards reveal renderer
+ * (during GAMEPLAY or when no DealRuntime is mounted).
+ */
+function CommunityStageHolmSwitch({
+  handContextId,
+  cards,
+  revealed,
+  highlightedIndices,
+  kickerIndices,
+  hasHighlights,
+  tightOverlap,
+}: {
+  handContextId: string;
+  cards: CardType[];
+  revealed: number;
+  highlightedIndices: number[];
+  kickerIndices: number[];
+  hasHighlights: boolean;
+  tightOverlap: boolean;
+}) {
+  const deal = useDealRuntime();
+  const inCanonicalDeal =
+    !!deal && deal.gameType === 'holm-game' && deal.phase !== 'GAMEPLAY';
+  if (inCanonicalDeal) {
     return (
-      <>
-        <HolmOwnershipBeacon
-          cardId={cardId}
-          renderer="MobileGameTable.holmCanonicalSeat.cardBacks.pending"
-          componentName="HolmOpponentCardBackSlot"
-          handContextId={deal?.handContextId ?? null}
-          phase={deal?.phase ?? 'NO_RUNTIME'}
-          renderReason="not-settled-placeholder"
-        />
-        <div
-          data-holm-card-id={cardId}
-          data-holm-renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
-          data-holm-component="OPPONENT"
-          data-holm-slot-pending="1"
-          style={slotStyle}
-          aria-hidden="true"
-        />
-      </>
+      <HolmCanonicalCommunityRow
+        handContextId={handContextId}
+        cards={cards}
+        tightOverlap={tightOverlap}
+      />
     );
   }
   return (
-    <>
-      <HolmOwnershipBeacon
-        cardId={cardId}
-        renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
-        componentName="HolmOpponentCardBackSlot"
-        handContextId={deal?.handContextId ?? null}
-        phase={deal?.phase ?? 'NO_RUNTIME'}
-        renderReason="settled-cardback"
-      />
-      <CanonicalCardBack
-        widthPx={12}
-        heightPx={20}
-        variant="flat"
-        dataAttrs={{
-          'data-holm-card-id': cardId,
-          'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
-          'data-holm-component': 'OPPONENT',
-        }}
-        style={slotStyle}
-      />
-    </>
+    <CommunityCards
+      cards={cards}
+      holmHandContextId={handContextId}
+      revealed={revealed}
+      highlightedIndices={highlightedIndices}
+      kickerIndices={kickerIndices}
+      hasHighlights={hasHighlights}
+      tightOverlap={tightOverlap}
+    />
   );
 }
 
@@ -478,12 +533,22 @@ function UseHolmSelfHand<T>({
     () => getHolmSelfDealCardIds({ handContextId: baseHandContextId, players, buckPosition, selfPlayerId: currentPlayerId }),
     [baseHandContextId, players, buckPosition, currentPlayerId],
   );
+  // EXPLICIT 1:1 self-ordinal → settled mapping.
+  //
+  // selfCardIds is built in self-ordinal order from the buck-first ring
+  // (e.g. hand-1, hand-5, hand-9, hand-13 for a 4-handed table). For
+  // each self ordinal i, render currentPlayerCards[i] iff that ordinal
+  // has been canonically settled. Cards appear in self-ordinal order;
+  // never bulk-flash, never fall through to authoritative until the
+  // canonical Holm deal completes (phase === GAMEPLAY).
   const effectiveCards = useMemo(() => {
     if (!deal || deal.gameType !== 'holm-game' || deal.phase === 'GAMEPLAY') return cards;
-    return cards.filter((_card, index) => {
-      const cardId = selfCardIds[index];
-      return !!cardId && deal.isSettled(cardId);
-    });
+    const out: T[] = [];
+    for (let i = 0; i < selfCardIds.length; i++) {
+      const cid = selfCardIds[i];
+      if (cid && deal.isSettled(cid) && cards[i] != null) out.push(cards[i]);
+    }
+    return out;
   }, [cards, deal, selfCardIds]);
   const settledSelfCardIds = useMemo(
     () => selfCardIds.filter((cardId) => deal?.isSettled(cardId)),
@@ -7830,21 +7895,33 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
-                    <HolmSettledGate cardId={`${handContextId}#community-0`}>
-                      <CommunityCards
-                        cards={approvedCommunityCards!}
-                        holmHandContextId={handContextId}
-                        revealed={
-                          isDelayingCommunityCards
-                            ? staggeredCardCount
-                            : (communityCardsRevealed || 2)
-                        }
-                        highlightedIndices={winningCardHighlights.communityIndices}
-                        kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                        hasHighlights={winningCardHighlights.hasHighlights}
-                        tightOverlap={isHolmMultiPlayerShowdown}
-                      />
-                    </HolmSettledGate>
+                    {/*
+                      Holm canonical deal ownership cutover:
+                        - Always mount HolmCanonicalCommunityRow so the
+                          4 community anchors exist BEFORE the community
+                          wave dispatches. Per-slot card content is gated
+                          on DealRuntime settled ids — no placeholders,
+                          no local animation refs, no authoritative
+                          fall-through.
+                        - Once DealRuntime hands off to GAMEPLAY (or no
+                          DealRuntime is mounted), defer to the legacy
+                          CommunityCards renderer for the reveal /
+                          highlight pipeline.
+                    */}
+                    <CommunityStageHolmSwitch
+                      handContextId={handContextId!}
+                      cards={approvedCommunityCards!}
+                      revealed={
+                        isDelayingCommunityCards
+                          ? staggeredCardCount
+                          : (communityCardsRevealed || 2)
+                      }
+                      highlightedIndices={winningCardHighlights.communityIndices}
+                      kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                      hasHighlights={winningCardHighlights.hasHighlights}
+                      tightOverlap={isHolmMultiPlayerShowdown}
+                    />
+
                   </HolmAnchoredSlot>
 
                   {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
