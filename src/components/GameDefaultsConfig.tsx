@@ -519,6 +519,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
         {renderGameSettings('holm')}
         {renderBotSettings('holm')}
+        <HolmDebugOverridesSection />
       </>
     );
   };
