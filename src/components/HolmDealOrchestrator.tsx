@@ -198,6 +198,7 @@ export function HolmDealOrchestrator({
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
     const beginAt = performance.now();
+    holmTimelineResetForHand(handContextId);
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
       handContextId,
@@ -220,6 +221,8 @@ export function HolmDealOrchestrator({
       selfPlayerId,
       soloDeclared,
     });
+    const dispatchAt = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'hands', holmDbgEndpoint(intent.to), dispatchAt);
     ct.dispatchMany(intents);
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
