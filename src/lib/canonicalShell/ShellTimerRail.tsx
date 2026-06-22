@@ -41,6 +41,7 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
+import { record357DiagnosticViolation } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
 
 export interface ShellTimerState {
   /** Seconds remaining (integer, clamped >= 0 by renderer). */
@@ -147,6 +148,7 @@ export function ShellTimerRail() {
   const paused = !!state?.paused;
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType: 'three-five-seven',
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
@@ -167,6 +169,7 @@ export function ShellTimerRail() {
         : 'bg-green-500';
 
   const ownerId = `ShellTimerRail:${deal?.handContextId ?? state?.identityKey ?? 'global'}`;
+  const blocked357TimerAttempt = !!deal && !deal.timerAllowed && !!state && !paused && seconds > 0;
   useEffect(() => {
     if (!state && !deal) {
       unregisterThreeFiveSevenTimerOwner(ownerId);
@@ -191,7 +194,22 @@ export function ShellTimerRail() {
   }, [ownerId, state, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, paused, seconds, eligibility.visible, eligibility.running]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(ownerId), [ownerId]);
 
-  if (!eligibility.visible) return null;
+  useEffect(() => {
+    if (!blocked357TimerAttempt || !deal) return;
+    record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+      component: 'ShellTimerRail',
+      attemptedSeconds: seconds,
+      dealPhase: deal.phase,
+      dealSettled: deal.dealSettled,
+      readyReleased: deal.readyReleased,
+    }, {
+      handContextId: deal.handContextId,
+      phase: deal.phase,
+      component: 'PLAYER_HAND',
+    });
+  }, [blocked357TimerAttempt, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, seconds]);
+
+  if (!eligibility.visible || blocked357TimerAttempt) return null;
 
   // ROOT-CAUSE FIX (helper-text clipping under timer):
   // The timer row's fixed height (`--hud-h-timer`) clips any text rendered
