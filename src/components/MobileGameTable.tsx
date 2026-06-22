@@ -4883,6 +4883,35 @@ export const MobileGameTable = ({
   }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
 
   // WAR-TIME AUDIT: capture which dep triggers effect cleanup before timeout fires.
+  // instanceId: stable per MobileGameTable mount. effectInstance: incremented
+  // each time the chucky stepper effect ENTERS, so we can distinguish
+  //   CASE A (remount): MOUNT#1→ARM→UNMOUNT→MOUNT#2→ARM
+  //   CASE B (effect re-run): MOUNT#1→ARM→CLEANUP→ARM→CLEANUP→ARM
+  const chuckyInstanceIdRef = useRef<string>('');
+  if (!chuckyInstanceIdRef.current) {
+    chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
+  }
+  const chuckyEffectInstanceRef = useRef(0);
+  // Component MOUNT / UNMOUNT (per MobileGameTable instance).
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const instanceId = chuckyInstanceIdRef.current;
+    recordHolmTimelineEvent('CHUCKY_COMPONENT_MOUNT', {
+      instanceId,
+      handContextId: handContextIdRef.current ?? null,
+      cachedChuckyCardsIdentity: null,
+      cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+    }, handContextIdRef.current ?? null);
+    return () => {
+      recordHolmTimelineEvent('CHUCKY_COMPONENT_UNMOUNT', {
+        instanceId,
+        handContextId: handContextIdRef.current ?? null,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, handContextIdRef.current ?? null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
   const chuckyEffectTimeoutSeqRef = useRef(0);
   useEffect(() => {
