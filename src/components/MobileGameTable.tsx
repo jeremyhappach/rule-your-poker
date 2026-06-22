@@ -4792,6 +4792,31 @@ export const MobileGameTable = ({
   // simultaneously under jittered/coalesced snapshots).
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    // CALLGRAPH: identity churn audit. If chuckyCards is a NEW array reference
+    // but contents are unchanged, the parent is churning the prop identity which
+    // re-runs this effect → setCachedChuckyCards([...]) → new cachedChuckyCards
+    // identity → stepper effect re-arms → cleanup clears timeout before fire.
+    {
+      const contents = chuckyCards ? chuckyCards.map((c: any) => `${c?.rank}${c?.suit}`).join('|') : '';
+      const prev = chuckyCardsPropIdentityRef.current;
+      const refChanged = !prev || prev.ref !== chuckyCards;
+      const contentsChanged = !prev || prev.contents !== contents;
+      if (refChanged) {
+        recordHolmTimelineEvent('CHUCKY_CACHE_EFFECT_ENTER', {
+          renderSeq: chuckyRenderSeqRef.current,
+          instanceId: chuckyInstanceIdRef.current,
+          chuckyCardsRefChanged: refChanged,
+          chuckyCardsContentsChanged: contentsChanged,
+          identityChurn: refChanged && !contentsChanged,
+          prevRenderSeq: prev?.renderSeq ?? null,
+          contentsLen: chuckyCards?.length ?? 0,
+          chuckyActive,
+          handContextId: handContextId ?? null,
+        }, handContextId ?? null);
+        chuckyCardsPropIdentityRef.current = { ref: chuckyCards, contents, renderSeq: chuckyRenderSeqRef.current };
+      }
+    }
+
     
     // CRITICAL: Clear cached Chucky cards when entering dealer config phases
     if (isDealerConfigPhase) {
