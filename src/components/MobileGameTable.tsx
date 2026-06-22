@@ -8405,7 +8405,7 @@ export const MobileGameTable = ({
                                 currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
                                 baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards, dealPhase) => {
+                                render={(effectiveCards, dealPhase, boundary) => {
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
                                   // 357 HARD CONTRACT: during the staged
@@ -8430,6 +8430,11 @@ export const MobileGameTable = ({
                                       hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                       gameType={gameType}
                                       currentRound={currentRound}
+                                      dealPhase={dealPhase}
+                                      claimedCardIds={boundary.claimedCardIds}
+                                      baseHandContextId={boundary.baseHandContextId}
+                                      boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
+                                      source="MobileGameTable.activeSelfHand"
                                       forceHiddenFaces={false}
                                       showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                       tightOverlap={isHolmMultiPlayerShowdown}
