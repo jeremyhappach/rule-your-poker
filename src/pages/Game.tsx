@@ -182,6 +182,7 @@ import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDele
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed, logTurnTimerFirstRender, checkTimerRefill } from "@/lib/turnTransitionInstrumentation";
+import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
@@ -781,6 +782,7 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
+  const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(true);
   // Per-deadline maxTime: captured from the first frame of a new deadline identity so
   // visuals always start full and scale to the actual configured timeout window,
   // independent of any stale game_defaults cache (memory or localStorage).
