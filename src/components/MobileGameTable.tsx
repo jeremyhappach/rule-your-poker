@@ -5103,20 +5103,11 @@ export const MobileGameTable = ({
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
 
+    const effectId = ++chuckyEffectIdRef.current;
+    const mountAt = __chuckyAuditNow();
     const newDeps: Record<string, unknown> = {
-      gameType,
-      cachedChuckyActive,
-      cachedChuckyCardsRevealed,
-      chuckyCardsRevealed,
-      chuckyBarrierOpen,
-      cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
-      cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
-      cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
-      handContextId: handContextId ?? null,
-      cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-      isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
-      chuckyActive: !!chuckyActive,
+      ...chuckyRevealDepSnapshot,
+      renderSeq: chuckyRenderSeqRef.current,
     };
     const oldDeps = chuckyEffectDepsRef.current;
     const changed: Record<string, { from: unknown; to: unknown }> = {};
@@ -5145,7 +5136,9 @@ export const MobileGameTable = ({
 
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
       instanceId,
+      effectId,
       effectInstance,
+      mountAt,
       renderSeq: enterRenderSeq,
       handContextId: handContextId ?? null,
       deps: newDeps,
