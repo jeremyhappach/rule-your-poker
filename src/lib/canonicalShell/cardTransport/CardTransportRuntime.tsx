@@ -225,6 +225,7 @@ export function CardTransportRuntime({
           transportVisible: false,
           ownershipClaimTime: tnow,
         });
+        record357CardOwnership(intent.cardId, { ownershipClaimed: true });
         settleTimersRef.current.delete(intent.id);
         ctx.__markSettled(intent.id, intent.cardId);
       }, delayMs + flightMs + ownershipClaimDelayMs);
