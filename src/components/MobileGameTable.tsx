@@ -8412,7 +8412,7 @@ export const MobileGameTable = ({
                                       hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                       gameType={gameType}
                                       currentRound={currentRound}
-                                      forceHiddenFaces={is357 && dealPhase === 'DEALING'}
+                                      forceHiddenFaces={false}
                                       showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                       tightOverlap={isHolmMultiPlayerShowdown}
                                       availableHeightPx={handAvailableHeightPx357}
