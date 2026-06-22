@@ -157,7 +157,7 @@ export const PlayerHand = ({
         cardIds: incomingIds,
       });
     });
-  }, [is357Game, dealPhase, boundaryBlocked.length, source, claimedCardIds, incomingIds, baseHandContextId, cards]);
+  }, [isCanonicalDealGuarded, dealPhase, boundaryBlocked.length, source, claimedCardIds, incomingIds, baseHandContextId, cards]);
   const wildRank = is357Game ? getWildRank(currentRound) : null;
   
   // For round 3 with 7 cards, separate into used and unused
