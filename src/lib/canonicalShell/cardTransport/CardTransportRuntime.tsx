@@ -438,7 +438,6 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     });
     if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordArrival(card.intent.cardId, now);
-      holmTimelineRecordClaim(card.intent.cardId, now);
     }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF ARRIVAL]', {
