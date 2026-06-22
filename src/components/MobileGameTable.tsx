@@ -4815,7 +4815,7 @@ export const MobileGameTable = ({
       console.log('[MOBILE_CHUCKY] Buck passed - clearing cached Chucky cards');
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
+      setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
       return;
