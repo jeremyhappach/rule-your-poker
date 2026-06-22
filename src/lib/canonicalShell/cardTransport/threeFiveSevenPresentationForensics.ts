@@ -35,6 +35,8 @@ export interface HandLifecycleEntry {
   cardIds: string[];
   component: 'SELF' | 'OPPONENT' | 'PLAYER_HAND';
   playerId: string | null;
+  violation?: string;
+  detail?: Record<string, unknown>;
 }
 
 export type CardHiddenReason =
@@ -134,6 +136,28 @@ export function record357HandLifecycle(entry: Omit<HandLifecycleEntry, 't' | 'wa
   const buf = g.__357HandLifecycle!;
   buf.push({ ...entry, t: now(), wallTime: wall() });
   if (buf.length > HAND_CAP) buf.splice(0, buf.length - HAND_CAP);
+}
+
+export function record357DiagnosticViolation(
+  violation: string,
+  detail: Record<string, unknown>,
+  context: Partial<Pick<HandLifecycleEntry, 'handContextId' | 'phase' | 'component' | 'playerId' | 'cardIds'>> = {},
+): void {
+  record357HandLifecycle({
+    handContextId: context.handContextId ?? null,
+    phase: context.phase ?? null,
+    reactKey: violation,
+    mounted: true,
+    visible: false,
+    opacity: null,
+    display: null,
+    cardCount: context.cardIds?.length ?? 0,
+    cardIds: context.cardIds ?? [],
+    component: context.component ?? 'PLAYER_HAND',
+    playerId: context.playerId ?? null,
+    violation,
+    detail,
+  });
 }
 
 export function record357FanLifecycle(entry: Omit<FanLifecycleEntry, 't' | 'wallTime'>): void {
