@@ -238,6 +238,94 @@ export function HolmDealDbgPanel() {
     return () => window.clearInterval(id);
   }, [enabled, expanded]);
 
+  // ── rAF timeline scanner: claim/mount/visible per card + per-frame snapshot
+  useEffect(() => {
+    if (!enabled) return;
+    let raf = 0;
+    const loop = () => {
+      const m = getHolmDealDbgMeta();
+      const recs = getCardTransportDbg();
+      const recById = new Map<string, CardTransportDbgEntry>();
+      for (const r of recs) {
+        const id = r.cardId ?? r.intentId;
+        if (id) recById.set(id, r);
+      }
+      const now = performance.now();
+      const handCtx = m.handContextId;
+
+      // self ordering
+      const selfNodes = typeof document !== 'undefined'
+        ? Array.from(document.querySelectorAll<HTMLElement>('[data-holm-active-hand-region] [data-playing-card-root], [data-holm-active-hand-region] [data-canonical-card-back]'))
+        : [];
+      const selfIdxByPlayer = new Map<string, number>();
+      let visibleCount = 0;
+      let selfDom = 0;
+      const oppDom = new Map<number, number>();
+      let commDom = 0;
+      let chuckyDom = 0;
+
+      for (const exp of m.expectedCards) {
+        const rec = recById.get(exp.cardId);
+        if (rec?.ownershipClaimTime) holmTimelineRecordClaim(exp.cardId, rec.ownershipClaimTime);
+        let node: HTMLElement | null = null;
+        if (exp.endpoint.startsWith('hand:')) {
+          const key = exp.playerId ?? 'self';
+          const idx = selfIdxByPlayer.get(key) ?? 0;
+          selfIdxByPlayer.set(key, idx + 1);
+          node = selfNodes[idx] ?? null;
+          if (node) selfDom++;
+        } else {
+          node = typeof document !== 'undefined'
+            ? document.querySelector<HTMLElement>(`[data-holm-card-id="${CSS.escape(exp.cardId)}"]`)
+            : null;
+          if (node) {
+            if (exp.endpoint.startsWith('opp-stack:')) {
+              const pos = Number(exp.endpoint.split(':')[1]);
+              oppDom.set(pos, (oppDom.get(pos) ?? 0) + 1);
+            } else if (exp.endpoint.startsWith('community:')) commDom++;
+            else if (exp.endpoint.startsWith('chucky:')) chuckyDom++;
+          }
+        }
+        if (node) {
+          holmTimelineRecordDomMount(exp.cardId, now);
+          const cs = window.getComputedStyle(node);
+          const r = node.getBoundingClientRect();
+          const vis = cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || '1') > 0 && r.width > 0 && r.height > 0;
+          if (vis) {
+            visibleCount++;
+            holmTimelineRecordVisible(exp.cardId, now);
+          }
+        }
+      }
+
+      const settledSet = new Set(m.settledIds);
+      const cardsSettled = settledSet.size;
+      let cardsClaimed = 0;
+      for (const exp of m.expectedCards) {
+        const rec = recById.get(exp.cardId);
+        if (rec?.ownershipClaimTime || settledSet.has(exp.cardId)) cardsClaimed++;
+      }
+
+      holmFramesAppend({
+        t: now,
+        phase: m.phase,
+        cardsClaimed,
+        cardsSettled,
+        actualSelfDomCount: selfDom,
+        actualOppDomCounts: Array.from(oppDom.entries()).sort((a, b) => a[0] - b[0]).map(([, n]) => n),
+        actualCommunityDomCount: commDom,
+        actualChuckyDomCount: chuckyDom,
+        visibleDomCards: visibleCount,
+      });
+
+      // keep panel-side meta fresh too
+      void handCtx;
+      raf = window.requestAnimationFrame(loop);
+    };
+    raf = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(raf);
+  }, [enabled]);
+
   const snapshot = useMemo(() => buildSnapshot(meta, records), [meta, records, sampleTick]);
   useEffect(() => {
     if (!enabled) return;
