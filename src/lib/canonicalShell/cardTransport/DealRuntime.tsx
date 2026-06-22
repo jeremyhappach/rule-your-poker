@@ -36,6 +36,7 @@ import {
 import type { DealPhase } from './types';
 import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
+import { holmDealDbgRecordRuntime } from './holmDealDbg';
 
 interface DealContextValue {
   handContextId: string;
@@ -170,8 +171,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   const enterGameplay = useCallback(() => {
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
+    if (gameType === 'holm-game') {
+      holmDealDbgRecordRuntime({ enterGameplayAt: performance.now(), phase: 'GAMEPLAY' });
+    }
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
-  }, [handContextId]);
+  }, [gameType, handContextId]);
 
   useEffect(() => {
     if (phase !== 'READY') return;
@@ -179,6 +183,25 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     if (activeIntentsForHand !== 0) return;
     dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
   }, [phase, expectedCount, settledCardIds.size, activeIntentsForHand, handContextId]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const ids = Array.from(settledCardIds);
+    holmDealDbgRecordRuntime({
+      handContextId,
+      gameType,
+      dealRuntimeMounted: true,
+      phase,
+      expectedCount,
+      settledIds: ids,
+      cardsSettled: ids.filter((id) => id.includes('#hand-')).length,
+      communitySettled: ids.filter((id) => id.includes('#community-')).length,
+      chuckySettled: ids.filter((id) => id.includes('#chucky-')).length,
+      dealSettled: expectedCount > 0 && ids.length >= expectedCount,
+      readyReleased: expectedCount > 0 && ids.length >= expectedCount && activeIntentsForHand === 0,
+      activeIntentCount: activeIntentsForHand,
+    });
+  }, [gameType, handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand]);
 
   const isSettled = useCallback(
     (cardId: string) => settledCardIds.has(cardId),

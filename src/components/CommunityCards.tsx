@@ -10,6 +10,7 @@ interface CommunityCardsProps {
   kickerIndices?: number[];
   hasHighlights?: boolean;
   tightOverlap?: boolean;
+  holmHandContextId?: string | null;
 }
 
 /**
@@ -32,6 +33,7 @@ export const CommunityCards = ({
   kickerIndices = [],
   hasHighlights = false,
   tightOverlap = false,
+  holmHandContextId = null,
 }: CommunityCardsProps) => {
   const handId = cards.map((c) => `${c.rank}${c.suit}`).join(",");
 
@@ -199,6 +201,11 @@ export const CommunityCards = ({
             return (
               <div
                 key={index}
+                data-holm-card-id={holmHandContextId ? `${holmHandContextId}#community-${index}` : undefined}
+                data-holm-renderer="CommunityCards"
+                data-holm-component="COMMUNITY"
+                data-card-anchor={`community-${index}`}
+                data-anchor-owner="CommunityCards.slot"
                 style={{
                   marginLeft: index > 0 ? `-${layout.overlapPx}px` : "0",
                   transition: "opacity 0.3s ease-out, transform 0.3s ease-out",
