@@ -24,6 +24,7 @@ export type CardEndpoint =
   | { kind: 'oppStack'; position: number }
   | { kind: 'hand'; playerId: string }
   | { kind: 'community'; index: number }
+  | { kind: 'chucky'; index: number }
   | { kind: 'stock' }
   | { kind: 'discard' };
 
