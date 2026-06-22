@@ -2467,7 +2467,7 @@ export const MobileGameTable = ({
           newHash: __chuckyAuditCardsHash(resolved),
           sameContents: __chuckyAuditCardsHash(prev) === __chuckyAuditCardsHash(resolved),
           handContextId: handContextIdRef.current ?? null,
-          phase: roundStatusRef.current ?? null,
+          phase: chuckyPhaseRef.current ?? null,
         }, handContextIdRef.current ?? null);
         return resolved;
       });
@@ -2516,6 +2516,8 @@ export const MobileGameTable = ({
   // useCallback) can always read the latest value without re-creating.
   const handContextIdRef = useRef<string | null>(null);
   useEffect(() => { handContextIdRef.current = handContextId ?? null; }, [handContextId]);
+  const chuckyPhaseRef = useRef<string | null>(null);
+  useEffect(() => { chuckyPhaseRef.current = roundStatus ?? null; }, [roundStatus]);
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
