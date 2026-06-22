@@ -50,6 +50,7 @@ const CARD0_TIMELINE_MAX = 500;
 interface Rect { x: number; y: number; w: number; h: number; cx: number; cy: number }
 
 interface TimerInventoryItem {
+  ownerId: string;
   componentName: string;
   gameType: string | null;
   handContextId: string | null;
@@ -342,13 +343,40 @@ function scan(): ForensicsSnapshot | null {
   for (const sel of timerSelectors) {
     document.querySelectorAll(sel).forEach((el) => timerEls.add(el));
   }
-  const timers: TimerInventoryItem[] = Array.from(timerEls).map((el) => {
+  const registeredTimerOwners = getMountedThreeFiveSevenTimerOwners();
+  const registeredIds = new Set(registeredTimerOwners.map((o) => o.id));
+  const registeredTimers: TimerInventoryItem[] = registeredTimerOwners.map((o) => ({
+    ownerId: o.id,
+    componentName: o.componentName,
+    gameType: o.gameType,
+    handContextId: o.handContextId,
+    waveContextId: o.waveContextId,
+    dealRuntimeId: o.dealRuntimeId,
+    phase: o.phase,
+    running: o.running,
+    timeLeft: o.timeLeft,
+    usesDealRuntime: o.usesDealRuntime,
+    reactKey: o.reactKey,
+    renderCount: o.renderCount,
+    selector: 'registered-owner',
+    tag: 'react',
+    rect: null,
+    mounted: o.mounted,
+    visible: o.visible,
+    parent: '',
+    attrs: {},
+  }));
+  const domTimers: TimerInventoryItem[] = Array.from(timerEls).filter((el) => {
+    const id = el.getAttribute('data-forensics-timer-owner-id');
+    return !id || !registeredIds.has(id);
+  }).map((el) => {
     const sel = timerSelectors.find((s) => el.matches(s)) ?? '?';
     const phase = el.getAttribute('data-forensics-timer-phase') ?? String(deal?.phase ?? 'NO_RUNTIME');
     const running = el.getAttribute('data-forensics-timer-running') === '1'
       || (isVisible(el) && el.getAttribute('data-shell-timer-paused') !== '1');
     const timeLeftRaw = el.getAttribute('data-forensics-timer-time-left');
     return {
+      ownerId: el.getAttribute('data-forensics-timer-owner-id') ?? `DOM:${sel}:${parentChain(el, 1)}`,
       componentName: el.getAttribute('data-forensics-component') ?? (sel.includes('canonical') ? 'ShellTimerRail' : 'DOM timer'),
       gameType: el.getAttribute('data-forensics-game-type') ?? null,
       handContextId: el.getAttribute('data-forensics-hand-context-id') ?? ctx,
@@ -369,12 +397,9 @@ function scan(): ForensicsSnapshot | null {
       attrs: attrsOf(el),
     };
   });
+  const timers: TimerInventoryItem[] = [...registeredTimers, ...domTimers];
   const visibleTimerCount = timers.filter((t) => t.visible).length;
-  // "running" heuristic: timer rail with a non-paused attr
-  const runningTimerCount = timers.filter((t) => {
-    if (t.attrs['data-shell-timer-paused'] === '1') return false;
-    return t.visible;
-  }).length;
+  const runningTimerCount = timers.filter((t) => t.running).length;
 
   // ── Self hand probes ────────────────────────────────────────────
   const handAnchorEl = document.querySelector('[data-canonical-self-hand-anchor-position="top-of-pane"]');
