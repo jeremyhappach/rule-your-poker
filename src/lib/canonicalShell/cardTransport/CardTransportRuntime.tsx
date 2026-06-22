@@ -164,6 +164,28 @@ export function CardTransportRuntime({
       resolveAttemptCountRef.current.set(intent.id, attemptCount);
       const from = resolveCardEndpoint(intent.from, container);
       const to = resolveCardEndpoint(intent.to, container);
+      // WAR-TIME: Holm endpoint resolver assertions. Cheap no-op when no
+      // Holm markers exist in the container (non-Holm games).
+      const looksLikeHolm =
+        !!container.querySelector('[data-holm-active-hand-region], [data-holm-lone-player-fan], [data-holm-tabled-self], [data-holm-solo-showdown], [data-card-anchor^="chucky-"]');
+      if (looksLikeHolm) {
+        auditHolmEndpointResolution({
+          gameType: 'holm-game',
+          handContextId: intent.handContextId ?? null,
+          cardId: intent.cardId,
+          endpoint: intent.from,
+          resolved: from,
+          container,
+        });
+        auditHolmEndpointResolution({
+          gameType: 'holm-game',
+          handContextId: intent.handContextId ?? null,
+          cardId: intent.cardId,
+          endpoint: intent.to,
+          resolved: to,
+          container,
+        });
+      }
       cardTransportDbgUpsert(intent.id, {
         cardId: intent.cardId,
         face: intent.face,
