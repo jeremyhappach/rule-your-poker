@@ -5027,6 +5027,7 @@ export const MobileGameTable = ({
 
 
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
+    step('chuckyVisualMarkRevealSequenceScheduled');
     const schedStack = captureStack();
     recordChuckyVisualTrigger({
       handContextId: handContextId ?? null,
@@ -5046,24 +5047,29 @@ export const MobileGameTable = ({
         isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
       },
     });
+    step('recordChuckyVisualTrigger(scheduled)');
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectInstance,
+      renderSeq: chuckyRenderSeqRef.current,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
       delay: 250,
       prev: cachedChuckyCardsRevealed,
       total,
     }, handContextId ?? null);
+    step('setTimeout(armed)', { timeoutId: timeoutSeq });
 
     const t = setTimeout(() => {
       fired = true;
       recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
         instanceId,
         effectInstance,
+        renderSeq: chuckyRenderSeqRef.current,
+        armedAtRenderSeq: enterRenderSeq,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         prev: cachedChuckyCardsRevealed,
