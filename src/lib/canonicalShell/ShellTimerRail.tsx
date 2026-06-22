@@ -194,7 +194,7 @@ export function ShellTimerRail() {
     }
     recordThreeFiveSevenTimerOwner(ownerId, {
       componentName: 'ShellTimerRail',
-      gameType: null,
+      gameType: deal?.gameType ?? null,
       handContextId: deal?.handContextId ?? null,
       waveContextId: deal?.handContextId ?? null,
       dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
