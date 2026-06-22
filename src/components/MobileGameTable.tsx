@@ -4650,7 +4650,7 @@ export const MobileGameTable = ({
     chuckyVisualMarkAnnouncement(
       handContextId ?? null,
       !!isShowingAnnouncement,
-      lastRoundResult?.winnerName ?? null,
+      typeof lastRoundResult === 'string' ? lastRoundResult : null,
     );
   }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
 
