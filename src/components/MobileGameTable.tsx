@@ -197,28 +197,48 @@ function HolmOpponentCardBackSlot({
   };
   if (!settled) {
     return (
-      <div
-        data-holm-card-id={cardId}
-        data-holm-renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
-        data-holm-component="OPPONENT"
-        data-holm-slot-pending="1"
-        style={slotStyle}
-        aria-hidden="true"
-      />
+      <>
+        <HolmOwnershipBeacon
+          cardId={cardId}
+          renderer="MobileGameTable.holmCanonicalSeat.cardBacks.pending"
+          componentName="HolmOpponentCardBackSlot"
+          handContextId={deal?.handContextId ?? null}
+          phase={deal?.phase ?? 'NO_RUNTIME'}
+          renderReason="not-settled-placeholder"
+        />
+        <div
+          data-holm-card-id={cardId}
+          data-holm-renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
+          data-holm-component="OPPONENT"
+          data-holm-slot-pending="1"
+          style={slotStyle}
+          aria-hidden="true"
+        />
+      </>
     );
   }
   return (
-    <CanonicalCardBack
-      widthPx={12}
-      heightPx={20}
-      variant="flat"
-      dataAttrs={{
-        'data-holm-card-id': cardId,
-        'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
-        'data-holm-component': 'OPPONENT',
-      }}
-      style={slotStyle}
-    />
+    <>
+      <HolmOwnershipBeacon
+        cardId={cardId}
+        renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
+        componentName="HolmOpponentCardBackSlot"
+        handContextId={deal?.handContextId ?? null}
+        phase={deal?.phase ?? 'NO_RUNTIME'}
+        renderReason="settled-cardback"
+      />
+      <CanonicalCardBack
+        widthPx={12}
+        heightPx={20}
+        variant="flat"
+        dataAttrs={{
+          'data-holm-card-id': cardId,
+          'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
+          'data-holm-component': 'OPPONENT',
+        }}
+        style={slotStyle}
+      />
+    </>
   );
 }
 
