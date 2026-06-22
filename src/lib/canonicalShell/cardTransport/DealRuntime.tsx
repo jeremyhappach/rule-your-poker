@@ -51,6 +51,7 @@ interface DealContextValue {
    * same hand — consumers clip visible card count to this directly.
    */
   getSettledCountForPlayer: (playerId: string) => number;
+  getSettledCardIdsForPlayer: (playerId: string) => string[];
   beginDeal: (expectedCount: number) => void;
   /**
    * Begin an additional wave of cards in the SAME hand without dropping
@@ -77,6 +78,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const [expectedCount, setExpectedCount] = useState(0);
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
+  const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
   const ctx = useCardTransportInternal();
   const activeIntentsForHand = useMemo(
     () => (ctx?.__activeIntents ?? []).filter((intent) => {
@@ -117,6 +119,12 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
           next.set(pid, (next.get(pid) ?? 0) + 1);
           return next;
         });
+        setSettledCardIdsByRecipient((prev) => {
+          const next = new Map(prev);
+          const list = next.get(pid) ?? [];
+          next.set(pid, list.includes(cardId) ? list : list.concat(cardId));
+          return next;
+        });
       }
     });
     return off;
@@ -126,6 +134,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     setExpectedCount(count);
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
+    setSettledCardIdsByRecipient(new Map());
     setPhase('DEALING');
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
@@ -179,6 +188,11 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     [settledByRecipient],
   );
 
+  const getSettledCardIdsForPlayer = useCallback(
+    (playerId: string) => settledCardIdsByRecipient.get(playerId) ?? [],
+    [settledCardIdsByRecipient],
+  );
+
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
@@ -190,11 +204,12 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       timerAllowed: phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
       isSettled,
       getSettledCountForPlayer,
+      getSettledCardIdsForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
