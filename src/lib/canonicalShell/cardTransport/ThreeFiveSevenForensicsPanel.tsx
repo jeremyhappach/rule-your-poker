@@ -742,18 +742,25 @@ export function ThreeFiveSevenForensicsPanel() {
                   <Row label="visibleTimerCount" value={String(snap.visibleTimerCount)} bad={!!bBadVisible} />
                   {bBadRunning ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ timer owner running=true AND phase=DEALING</div> : null}
                   <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>ALL TIMER OWNERS</div>
-                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no mounted timer owners)</div> : snap.timers.map((t, i) => {
-                    const bad = t.running && t.phase === 'DEALING';
-                    return (
-                    <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0', background: bad ? 'rgba(255,0,0,0.18)' : undefined }}>
-                      <div style={{ color: bad ? '#ff6b6b' : t.running ? '#7CFC00' : '#9fb3c8', fontWeight: 700 }}>{t.componentName} <span style={{ opacity: 0.7 }}>id={t.ownerId}</span></div>
-                      <div>gameType={t.gameType ?? '∅'} handContextId={t.handContextId ?? '∅'}</div>
-                      <div>waveContextId={t.waveContextId ?? '∅'} dealRuntimeId={t.dealRuntimeId ?? '∅'}</div>
-                      <div>phase={t.phase} visible={String(t.visible)} running={String(t.running)} timeLeft={t.timeLeft ?? '—'}</div>
-                      <div>usesDealRuntime={String(t.usesDealRuntime)} reactKey={t.reactKey ?? '∅'} renderCount={t.renderCount}</div>
-                      <div style={{ opacity: 0.75 }}>source={t.selector} rect={t.rect ? `${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}` : '—'} parent={t.parent || '∅'}</div>
-                    </div>
-                  );})}
+                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no mounted timer owners)</div> : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginTop: 3 }}>
+                      <thead>
+                        <tr style={{ color: '#9fb3c8', textAlign: 'left' }}>
+                          <th>componentName</th><th>gameType</th><th>handContextId</th><th>waveContextId</th><th>dealRuntimeId</th><th>phase</th><th>visible</th><th>running</th><th>timeLeft</th><th>usesDealRuntime</th><th>reactKey</th><th>renderCount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {snap.timers.map((t, i) => {
+                          const bad = t.running && t.phase === 'DEALING';
+                          return (
+                            <tr key={i} style={{ background: bad ? 'rgba(255,0,0,0.25)' : undefined, color: bad ? '#ff6b6b' : '#fff', borderTop: '1px dashed #2a2a2a' }}>
+                              <td title={t.ownerId}>{t.componentName}</td><td>{t.gameType ?? '∅'}</td><td>{short(t.handContextId)}</td><td>{short(t.waveContextId)}</td><td>{short(t.dealRuntimeId)}</td><td>{t.phase}</td><td>{String(t.visible)}</td><td>{String(t.running)}</td><td>{t.timeLeft ?? '—'}</td><td>{String(t.usesDealRuntime)}</td><td>{short(t.reactKey)}</td><td>{t.renderCount}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
 
