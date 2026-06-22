@@ -4863,6 +4863,18 @@ export const MobileGameTable = ({
     // Cache Chucky data when it's available AND track which hand it belongs to
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
       if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
+        // CALLGRAPH: every call to setCachedChuckyCards from this branch creates a
+        // BRAND NEW array reference (`[...chuckyCards]`). If this fires every render
+        // it directly causes cachedChuckyCards identity to churn → stepper re-arm loop.
+        recordHolmTimelineEvent('CHUCKY_CACHE_SET_CARDS', {
+          renderSeq: chuckyRenderSeqRef.current,
+          instanceId: chuckyInstanceIdRef.current,
+          writer: 'cacheEffect.cachePath',
+          chuckyCardsLen: chuckyCards.length,
+          alreadyCachedLen: cachedChuckyCards?.length ?? 0,
+          willCreateNewArrayIdentity: true,
+          handContextId: handContextId ?? null,
+        }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards]);
         setCachedChuckyActive(true);
