@@ -56,6 +56,9 @@ function anchorCandidates(ep: CardEndpoint): AnchorCandidate[] {
     case 'community': return [
       { selector: `[data-card-anchor="community-${ep.index}"]`, label: `community-${ep.index}` },
     ];
+    case 'chucky': return [
+      { selector: `[data-card-anchor="chucky-${ep.index}"]`, label: `chucky-${ep.index}` },
+    ];
     case 'stock':   return [
       { selector: `[data-card-anchor="stock"]`, label: 'stock' },
     ];
