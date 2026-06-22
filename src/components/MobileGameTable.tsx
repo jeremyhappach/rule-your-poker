@@ -2395,11 +2395,52 @@ export const MobileGameTable = ({
   // effect below advances the rendered count one card at a time toward that target.
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
-  const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
+  // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
+  // through this wrapper so we capture (a) STATE_CHANGED transitions and
+  // (b) RESET events with writer attribution. NO logic changes.
+  const lastChuckyRevealedRef = useRef<number>(0);
+  const setCachedChuckyCardsRevealed = useCallback(
+    (
+      next: number | ((prev: number) => number),
+      writerMeta?: { writer: string; reason: string },
+    ) => {
+      _setCachedChuckyCardsRevealedRaw((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: number) => number)(prev) : next;
+        const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
+        if (resolved !== prev) {
+          recordHolmTimelineEvent('CHUCKY_REVEALED_STATE_CHANGED', {
+            oldValue: prev,
+            newValue: resolved,
+            source: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            handContextId: handCtx,
+            cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+          }, handCtx);
+        }
+        if (resolved === 0 && prev !== 0) {
+          recordHolmTimelineEvent('CHUCKY_REVEALED_RESET', {
+            writer: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            handContextId: handCtx,
+            cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+            prev,
+          }, handCtx);
+        }
+        lastChuckyRevealedRef.current = resolved;
+        return resolved;
+      });
+    },
+    [],
+  );
   // Target reveal count (latest authoritative value); rendered count steps toward this.
   const chuckyTargetRevealedRef = useRef<number>(0);
   // Track which handContextId the cached Chucky cards belong to
   const cachedChuckyHandContextRef = useRef<string | null>(null);
+  // Mirror handContextId in a ref so the setter wrapper (created once via
+  // useCallback) can always read the latest value without re-creating.
+  const handContextIdRef = useRef<string | null>(null);
+  useEffect(() => { handContextIdRef.current = handContextId ?? null; }, [handContextId]);
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
