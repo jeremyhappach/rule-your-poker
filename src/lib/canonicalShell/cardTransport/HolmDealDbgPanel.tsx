@@ -41,6 +41,10 @@ import {
   holmWartimeTick,
   subscribeHolmWartime,
 } from './holmWartimeForensics';
+import {
+  buildChuckyFullForensicsText,
+  getChuckyFullForensics,
+} from './holmChuckyFullForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -420,6 +424,24 @@ export function HolmDealDbgPanel() {
           {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={totalViol ? bad : v}>· {compact}</span>
         </button>
         <button type="button" onClick={copy} style={{ background: '#1e3a5f', color: copied ? '#7CFC00' : '#fff', border: '1px solid #4a7bb8', borderRadius: 3, padding: '2px 8px', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓' : 'Copy'}</button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildChuckyFullForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmChuckyFullForensics?: unknown }).__holmChuckyFullForensics = getChuckyFullForensics();
+            } catch { /* noop */ }
+          }}
+          title="Copy categorized Chucky forensics (source/cache/soloState/stage/barrier/timer/visual/announcement/win/persistence/render/violation)"
+          style={{ background: '#5f1e3a', color: '#fff', border: '1px solid #b84a7b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY CHUCKY FORENSICS
+        </button>
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
