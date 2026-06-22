@@ -47,6 +47,7 @@ import {
 } from './cardTransportDbg';
 import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
 import { holmTimelineRecordArrival, holmTimelineRecordClaim, holmTimelineRecordLaunch } from './holmCardTimeline';
+import { updateHolmTransportInventory, registerHolmCardOwner, unregisterHolmCardOwner } from './holmCardOwnership';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
