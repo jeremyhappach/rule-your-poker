@@ -8110,6 +8110,14 @@ export const MobileGameTable = ({
                           data-anchor-owner="MobileGameTable.holmChuckyStage.slot"
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
+                          <ChuckyVisualCardInstrumenter
+                            handContextId={handContextId ?? null}
+                            index={index}
+                            isRevealed={isRevealed}
+                            renderer="MobileGameTable.holmChuckyStage"
+                            owner="cachedChuckyCardsRevealed"
+                            phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                          />
                           <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
                             {isRevealed ? (
                               <div
