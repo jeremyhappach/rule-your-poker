@@ -114,6 +114,7 @@ export function ActivePlayerHUD({
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType,
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
