@@ -337,6 +337,8 @@ export function ChuckyVisualCardInstrumenter({
   owner = 'cachedChuckyCardsRevealed',
   phase = null,
   flipAnimationMs = 300,
+  cachedChuckyCardsRevealed = null,
+  cachedChuckyCardsCount = null,
 }: {
   handContextId: string | null;
   index: number;
@@ -345,12 +347,37 @@ export function ChuckyVisualCardInstrumenter({
   owner?: string | null;
   phase?: string | null;
   flipAnimationMs?: number;
+  cachedChuckyCardsRevealed?: number | null;
+  cachedChuckyCardsCount?: number | null;
 }) {
   const lastRevealedRef = useRef<boolean | null>(null);
+  const lastReadRef = useRef<string | null>(null);
   // Mount.
   useEffect(() => {
     chuckyVisualMarkDomMounted(handContextId, index, { renderer, owner, phase });
   }, [handContextId, index, renderer, owner, phase]);
+
+  // WAR-TIME: CHUCKY_RENDERER_READ — emit once per meaningful change so
+  // we can prove what the renderer actually consumed per card.
+  useEffect(() => {
+    const shouldBeFaceUp =
+      cachedChuckyCardsRevealed != null ? index < cachedChuckyCardsRevealed : isRevealed;
+    const key = `${handContextId}|${index}|${cachedChuckyCardsRevealed}|${isRevealed}|${shouldBeFaceUp}`;
+    if (lastReadRef.current === key) return;
+    lastReadRef.current = key;
+    recordHolmTimelineEvent('CHUCKY_RENDERER_READ', {
+      handContextId,
+      cachedChuckyCardsRevealed,
+      cachedChuckyCardsCount,
+      cardIndex: index,
+      shouldBeFaceUp,
+      actualFaceUp: isRevealed,
+      renderer,
+      owner,
+      phase,
+      mismatch: shouldBeFaceUp !== isRevealed,
+    }, handContextId);
+  }, [handContextId, index, isRevealed, cachedChuckyCardsRevealed, cachedChuckyCardsCount, renderer, owner, phase]);
 
   // Face-down tick (only when first rendered as cardback).
   useEffect(() => {
