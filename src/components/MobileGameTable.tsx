@@ -10,6 +10,7 @@ import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
+import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
@@ -7846,21 +7847,33 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
-                    <HolmSettledGate cardId={`${handContextId}#community-0`}>
-                      <CommunityCards
-                        cards={approvedCommunityCards!}
-                        holmHandContextId={handContextId}
-                        revealed={
-                          isDelayingCommunityCards
-                            ? staggeredCardCount
-                            : (communityCardsRevealed || 2)
-                        }
-                        highlightedIndices={winningCardHighlights.communityIndices}
-                        kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                        hasHighlights={winningCardHighlights.hasHighlights}
-                        tightOverlap={isHolmMultiPlayerShowdown}
-                      />
-                    </HolmSettledGate>
+                    {/*
+                      Holm canonical deal ownership cutover:
+                        - Always mount HolmCanonicalCommunityRow so the
+                          4 community anchors exist BEFORE the community
+                          wave dispatches. Per-slot card content is gated
+                          on DealRuntime settled ids — no placeholders,
+                          no local animation refs, no authoritative
+                          fall-through.
+                        - Once DealRuntime hands off to GAMEPLAY (or no
+                          DealRuntime is mounted), defer to the legacy
+                          CommunityCards renderer for the reveal /
+                          highlight pipeline.
+                    */}
+                    <CommunityStageHolmSwitch
+                      handContextId={handContextId!}
+                      cards={approvedCommunityCards!}
+                      revealed={
+                        isDelayingCommunityCards
+                          ? staggeredCardCount
+                          : (communityCardsRevealed || 2)
+                      }
+                      highlightedIndices={winningCardHighlights.communityIndices}
+                      kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                      hasHighlights={winningCardHighlights.hasHighlights}
+                      tightOverlap={isHolmMultiPlayerShowdown}
+                    />
+
                   </HolmAnchoredSlot>
 
                   {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
