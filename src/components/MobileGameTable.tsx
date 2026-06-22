@@ -4644,6 +4644,16 @@ export const MobileGameTable = ({
     chuckyVisualMarkAllSettled(handContextId ?? null);
   }, [gameType, chuckyBarrierOpen, handContextId]);
 
+  // War-time forensics: announcement visibility → barrier marker.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    chuckyVisualMarkAnnouncement(
+      handContextId ?? null,
+      !!isShowingAnnouncement,
+      lastRoundResult?.winnerName ?? null,
+    );
+  }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
+
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
