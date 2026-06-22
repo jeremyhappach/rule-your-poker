@@ -165,7 +165,7 @@ export function ShellTimerRail() {
   const paused = !!state?.paused;
   const eligibility = deal
     ? getCanonicalTimerEligibility({
-        gameType: 'three-five-seven',
+        gameType: deal.gameType,
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
