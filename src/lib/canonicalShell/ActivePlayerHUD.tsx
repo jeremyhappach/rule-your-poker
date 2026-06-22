@@ -112,7 +112,12 @@ export function ActivePlayerHUD({
   // the authoritative props. Applies to every game (Cribbage, Gin,
   // 3-5-7) for consistency.
   const deal = useDealRuntime();
-  const eligibility = deal
+  // Holm bypasses DealRuntime timer gating entirely. Holm seat ring
+  // visibility is `isActive` (caller has already AND-ed with canAct).
+  // This bypass is TIMER-ONLY — Holm card render still uses
+  // DealRuntime settle gating elsewhere.
+  const isHolm = gameType === 'holm-game';
+  const eligibility = (deal && !isHolm)
     ? getCanonicalTimerEligibility({
         gameType,
         dealPhase: deal.phase,

@@ -24,6 +24,7 @@ export type CardEndpoint =
   | { kind: 'oppStack'; position: number }
   | { kind: 'hand'; playerId: string }
   | { kind: 'community'; index: number }
+  | { kind: 'chucky'; index: number }
   | { kind: 'stock' }
   | { kind: 'discard' };
 
@@ -112,6 +113,7 @@ export function describeCardEndpoint(ep: CardEndpoint): string {
     case 'oppStack':  return `opp-stack:${ep.position}`;
     case 'hand':      return `hand:${ep.playerId}`;
     case 'community': return `community:${ep.index}`;
+    case 'chucky':    return `chucky:${ep.index}`;
     case 'stock':     return 'stock';
     case 'discard':   return 'discard';
   }
