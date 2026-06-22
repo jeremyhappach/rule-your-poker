@@ -8380,7 +8380,7 @@ export const MobileGameTable = ({
                           (() => {
                             if (currentRound === 3) return null;
                             return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
+                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="" data-holm-active-hand-region="">
                                 <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                                   <PlayerHand
                                     cards={currentPlayerCards}
@@ -8422,7 +8422,7 @@ export const MobileGameTable = ({
                               currentPlayerHandReserveClass,
                               gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
                             )}
-                            data-357-active-hand-region=""
+                            data-357-active-hand-region="" data-holm-active-hand-region=""
                           >
                             <div
                               className={cn(
