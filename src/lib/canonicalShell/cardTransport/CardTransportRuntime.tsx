@@ -559,6 +559,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         transportVisible: false,
         transportDestroyTime: destroyT,
       });
+      unregisterHolmCardOwner(card.intent.cardId, holmOwnerInstance);
     };
   }, [card.intent.id, card.intent.cardId, card.intent.handContextId, card.delayMs, card.flightMs, containerRef]);
 
