@@ -782,7 +782,7 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
-  const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(true);
+  const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(false);
   // Per-deadline maxTime: captured from the first frame of a new deadline identity so
   // visuals always start full and scale to the actual configured timeout window,
   // independent of any stale game_defaults cache (memory or localStorage).
