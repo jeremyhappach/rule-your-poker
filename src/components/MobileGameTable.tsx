@@ -2870,7 +2870,7 @@ export const MobileGameTable = ({
     // Force-destroy regardless of deferral state.
     setCachedChuckyCards(null);
     setCachedChuckyActive(false);
-    setCachedChuckyCardsRevealed(0);
+    setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     chuckyTargetRevealedRef.current = 0;
     cachedChuckyHandContextRef.current = null;
     lonePlayerStageSnapshotRef.current = null;
