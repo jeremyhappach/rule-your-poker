@@ -7715,31 +7715,33 @@ export const MobileGameTable = ({
                           key={index}
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
-                          {isRevealed ? (
-                            <div
-                              className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
-                              style={{
-                                backgroundColor: cardBg,
-                                ...twoColorTextStyle,
-                                ...dimStyle,
-                              }}
-                            >
-                              <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                                {card.rank}
-                              </span>
-                              {!isFourColor && (
-                                <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <CanonicalCardBack
-                              widthPx={40}
-                              heightPx={60}
-                              variant="raised"
-                              radiusPx={6}
-                              style={{ width: '100%', height: '100%' }}
-                            />
-                          )}
+                          <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
+                            {isRevealed ? (
+                              <div
+                                className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
+                                style={{
+                                  backgroundColor: cardBg,
+                                  ...twoColorTextStyle,
+                                  ...dimStyle,
+                                }}
+                              >
+                                <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                                  {card.rank}
+                                </span>
+                                {!isFourColor && (
+                                  <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <CanonicalCardBack
+                                widthPx={40}
+                                heightPx={60}
+                                variant="raised"
+                                radiusPx={6}
+                                style={{ width: '100%', height: '100%' }}
+                              />
+                            )}
+                          </HolmSettledGate>
                         </div>
                       );
                     })}
