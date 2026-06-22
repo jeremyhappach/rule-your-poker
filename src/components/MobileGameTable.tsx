@@ -2741,8 +2741,8 @@ export const MobileGameTable = ({
     const snap = {
       handContextId: handContextId ?? null,
       prevHandContextId: prevHandCtxForTraceRef.current,
-      isSoloVsChuckyRaw,
-      soloVsChuckyTableLocked,
+      isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
       soloDeclared: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
       soloVsChuckyPlayerIdLocked,
       chuckyActive: !!chuckyActive,
