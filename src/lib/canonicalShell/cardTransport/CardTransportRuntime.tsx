@@ -68,6 +68,10 @@ const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
 const NORMAL_EASING = 'ease-out';
 const launchProofByHand = new Map<string, Map<number, { start: number; delay: number }>>();
 
+function isHolmTimelineCardId(cardId: string): boolean {
+  return cardId.includes('#hand-') || cardId.includes('#community-') || cardId.includes('#chucky-');
+}
+
 function cardIndexFromIntentId(intentId: string): number | null {
   const m = intentId.match(/#card-(\d+)$/);
   return m ? Number(m[1]) : null;
@@ -259,6 +263,10 @@ export function CardTransportRuntime({
       // Schedule settle relative to launch time (flight has no extra CSS delay).
       const tSettle = window.setTimeout(() => {
         const tnow = performance.now();
+        if (isHolmTimelineCardId(intent.cardId)) {
+          holmTimelineRecordArrival(intent.cardId, tnow);
+          holmTimelineRecordClaim(intent.cardId, tnow);
+        }
         cardTransportDbgUpsert(intent.id, {
           settled: true,
           transportVisible: false,
