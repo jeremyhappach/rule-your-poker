@@ -43,6 +43,7 @@ interface DealContextValue {
   expectedCount: number;
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
+  readyReleased: boolean;
   isSettled: (cardId: string) => boolean;
   /**
    * Per-recipient settled count. Cumulative across waves within the
@@ -76,6 +77,13 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const ctx = useCardTransportInternal();
+  const activeIntentsForHand = useMemo(
+    () => (ctx?.__activeIntents ?? []).filter((intent) => {
+      const intentHand = intent.handContextId?.replace(/#r\d+$/, '') ?? null;
+      return intentHand === handContextId;
+    }).length,
+    [ctx?.__activeIntents, handContextId],
+  );
 
   const expectedRef = useRef(0);
   expectedRef.current = expectedCount;
@@ -170,13 +178,14 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       expectedCount,
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
+      readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
       isSettled,
       getSettledCountForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
