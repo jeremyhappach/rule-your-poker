@@ -45,6 +45,7 @@ import {
   cardTransportDbgSample,
   type CardTransportDbgSample,
 } from './cardTransportDbg';
+import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
