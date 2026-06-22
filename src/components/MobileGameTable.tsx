@@ -162,6 +162,7 @@ import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { HolmOwnershipBeacon } from "@/lib/canonicalShell/cardTransport/HolmOwnershipBeacon";
+import { HolmSoloRootRegistrar } from "@/lib/canonicalShell/cardTransport/holmSoloOwnership";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
@@ -275,8 +276,20 @@ function CommunityStageHolmSwitch({
   tightOverlap: boolean;
 }) {
   const deal = useDealRuntime();
-  const inCanonicalDeal =
+  // HARD LATCH: once we have ever rendered the legacy CommunityCards
+  // renderer for this handContextId (i.e. DealRuntime reached GAMEPLAY,
+  // OR no DealRuntime is mounted), we MUST NOT revert to the canonical
+  // per-slot row. Subsequent waves (e.g. Chucky) call beginWave() which
+  // sets phase back to DEALING — without this latch, already-revealed
+  // community cards would regress to face-down backs mid-hand.
+  const handedOffRef = useRef<string | null>(null);
+  const inCanonicalDealRaw =
     !!deal && deal.gameType === 'holm-game' && deal.phase !== 'GAMEPLAY';
+  const latchedForThisHand = handedOffRef.current === handContextId;
+  if (!inCanonicalDealRaw && !latchedForThisHand) {
+    handedOffRef.current = handContextId;
+  }
+  const inCanonicalDeal = inCanonicalDealRaw && !latchedForThisHand;
   if (inCanonicalDeal) {
     return (
       <HolmCanonicalCommunityRow
@@ -4565,8 +4578,10 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
-    if (!holmCommunityFullyRevealed) return; // Latch: community must finish first
-    if (!chuckyBarrierOpen) return;           // Barrier: all chucky settled
+    // BARRIER ONLY: All chucky cards must be settled (DealRuntime →
+    // GAMEPLAY → markHolmHandReady). Do NOT gate on community reveal —
+    // announcement is cosmetic and must not delay reveal sequencing.
+    if (!chuckyBarrierOpen) return;
     const total = cachedChuckyCards?.length ?? 0;
     if (total <= 0) return;
     // Override the server target — once barrier is open we reveal ALL.
@@ -4576,7 +4591,7 @@ export const MobileGameTable = ({
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed, chuckyBarrierOpen, cachedChuckyCards]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards]);
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
@@ -7891,6 +7906,14 @@ export const MobileGameTable = ({
                     artifactId="holm.lonePlayerTabledCardsStage"
                     zIndex={20}
                   >
+                    <HolmSoloRootRegistrar
+                      root="TABLED_SELF"
+                      mounted={true}
+                      cardIds={loneSoloCards.map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={handContextId ?? null}
+                      soloDeclared={!!isSoloVsChucky}
+                      phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                    />
                     <HolmLonePlayerFan
                       sortedCards={sortedCards}
                       isSoloPlayerWinner={isSoloPlayerWinner}
@@ -7919,6 +7942,14 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
+                    <HolmSoloRootRegistrar
+                      root="COMMUNITY"
+                      mounted={true}
+                      cardIds={(approvedCommunityCards ?? []).map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={handContextId ?? null}
+                      soloDeclared={!!isSoloVsChucky}
+                      phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
+                    />
                     {/*
                       Holm canonical deal ownership cutover:
                         - Always mount HolmCanonicalCommunityRow so the
@@ -7965,6 +7996,14 @@ export const MobileGameTable = ({
                   artifactId="holm.chuckyStage"
                   zIndex={10}
                 >
+                  <HolmSoloRootRegistrar
+                    root="CHUCKY_TABLED"
+                    mounted={true}
+                    cardIds={(cachedChuckyCards ?? []).map((c) => `${c.rank}${c.suit}`)}
+                    handContextId={handContextId ?? null}
+                    soloDeclared={!!isSoloVsChucky}
+                    phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                  />
                   <div
                     className={cn(
                       "flex items-center",
@@ -8739,8 +8778,18 @@ export const MobileGameTable = ({
                                   // placeholder backs, no isHidden
                                   // expansion, no expectedCardCount
                                   // pre-render. 0→1→2→3 strictly.
-                                   return (
+                                    return (
                                      <>
+                                       {gameType === 'holm-game' && (
+                                         <HolmSoloRootRegistrar
+                                           root="SELF_HAND"
+                                           mounted={effectiveCards.length > 0}
+                                           cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
+                                           handContextId={boundary.baseHandContextId}
+                                           soloDeclared={!!isSoloVsChucky}
+                                           phase={dealPhase}
+                                         />
+                                       )}
                                        {gameType === 'holm-game' && boundary.rawClaimedCardIds.map((cid) => (
                                          <HolmOwnershipBeacon
                                            key={`holm-self-beacon-${cid}`}

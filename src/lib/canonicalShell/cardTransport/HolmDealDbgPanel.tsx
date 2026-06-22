@@ -31,6 +31,10 @@ import {
   getHolmOwnershipViolations,
   scanHolmDomOwnership,
 } from './holmCardOwnership';
+import {
+  getHolmSoloOwnership,
+  getHolmSoloOwnershipViolations,
+} from './holmSoloOwnership';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -476,6 +480,34 @@ export function HolmDealDbgPanel() {
                   })}
                   <div style={{ marginTop: 4 }}><span style={title}>Ownership Violations</span></div>
                   {violOwn.length === 0 ? <div style={ok}>none</div> : violOwn.slice(-20).map((v2, i) => (
+                    <pre key={`${v2.type}-${i}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
+                  ))}
+                </>
+              );
+            })()}
+          </div>
+          <div style={sect}>
+            <div style={title}>SOLO Ownership</div>
+            {(() => {
+              const roots = getHolmSoloOwnership();
+              const vs = getHolmSoloOwnershipViolations();
+              const order: Array<'SELF_HAND'|'TABLED_SELF'|'CHUCKY_TABLED'|'COMMUNITY'> = ['SELF_HAND','TABLED_SELF','CHUCKY_TABLED','COMMUNITY'];
+              return (
+                <>
+                  {order.map((r) => {
+                    const rec = roots[r];
+                    const mounted = !!rec?.mounted;
+                    return (
+                      <div key={r} style={rowStyle}>
+                        <span style={k}>{r}</span>
+                        <span style={v}>
+                          {mounted ? 'MOUNTED' : 'off'} · solo={String(rec?.soloDeclared ?? false)} · phase={rec?.phase ?? '-'} · cards=[{(rec?.cardIds ?? []).join(',')}]
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ marginTop: 4 }}><span style={title}>SOLO Violations</span></div>
+                  {vs.length === 0 ? <div style={ok}>none</div> : vs.slice(-10).map((v2, i) => (
                     <pre key={`${v2.type}-${i}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
                   ))}
                 </>
