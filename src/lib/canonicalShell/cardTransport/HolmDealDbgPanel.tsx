@@ -26,6 +26,11 @@ import {
   holmTimelineRecordDomMount,
   holmTimelineRecordVisible,
 } from './holmCardTimeline';
+import {
+  getHolmCardOwnership,
+  getHolmOwnershipViolations,
+  scanHolmDomOwnership,
+} from './holmCardOwnership';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
