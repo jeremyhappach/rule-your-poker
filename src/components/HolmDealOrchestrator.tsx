@@ -345,12 +345,34 @@ export function HolmDealOrchestrator({
   }, [deal, ct, handContextId, soloDeclared, chuckyCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
   // ── Self-hand anchor — portal a 1×1 anchor at top of active pane ──
+  //
+  // WAR-TIME CONTRACT: the self-hand anchor MUST live inside
+  // [data-holm-active-hand-region] (the ACTIVE_SELF_HAND owner). It
+  // must NEVER render inside tabled / lone-player / solo-showdown
+  // geometry. We therefore:
+  //   (a) only render the anchor when an active region is in the DOM,
+  //   (b) keep re-querying via MutationObserver so the anchor follows
+  //       region remounts across hand boundaries,
+  //   (c) never render an inline (non-portaled) fallback — a missing
+  //       region means NO anchor, not "anchor in whatever DOM happens
+  //       to surround the orchestrator (which is often the tabled
+  //       presentation stage at hand boundary)".
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el =
+    if (typeof window === 'undefined') return;
+    const findRegion = (): HTMLElement | null =>
       (document.querySelector('[data-holm-active-hand-region]') as HTMLElement | null) ??
       (document.querySelector('[data-357-active-hand-region]') as HTMLElement | null);
-    setSelfHandRegion(el);
+    setSelfHandRegion((prev) => {
+      const next = findRegion();
+      return prev === next ? prev : next;
+    });
+    const mo = new MutationObserver(() => {
+      const next = findRegion();
+      setSelfHandRegion((prev) => (prev === next ? prev : next));
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
   }, [handContextId, selfPlayerId]);
 
   const anchorEl = (
@@ -384,7 +406,7 @@ export function HolmDealOrchestrator({
     ) : null;
   return (
     <>
-      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl}
+      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : null}
       {selfDealerOriginEl && selfDealerFelt
         ? createPortal(selfDealerOriginEl, selfDealerFelt)
         : null}

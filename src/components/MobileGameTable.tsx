@@ -2400,6 +2400,13 @@ export const MobileGameTable = ({
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
   const lastChuckyRevealedRef = useRef<number>(0);
+  // Stable per-MobileGameTable instance id. Declared here (instead of next
+  // to the chucky stepper effect) so the state-setter wrapper can stamp it
+  // onto CHUCKY_REVEALED_STATE_CHANGED. WAR-TIME ONLY.
+  const chuckyInstanceIdRef = useRef<string>('');
+  if (!chuckyInstanceIdRef.current) {
+    chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
+  }
   const setCachedChuckyCardsRevealed = useCallback(
     (
       next: number | ((prev: number) => number),
@@ -2410,6 +2417,7 @@ export const MobileGameTable = ({
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
         if (resolved !== prev) {
           recordHolmTimelineEvent('CHUCKY_REVEALED_STATE_CHANGED', {
+            instanceId: chuckyInstanceIdRef.current,
             oldValue: prev,
             newValue: resolved,
             source: writerMeta?.writer ?? 'unknown',
@@ -4883,6 +4891,32 @@ export const MobileGameTable = ({
   }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
 
   // WAR-TIME AUDIT: capture which dep triggers effect cleanup before timeout fires.
+  // chuckyInstanceIdRef is declared above (next to setCachedChuckyCardsRevealed).
+  // effectInstance: incremented each time the chucky stepper effect ENTERS, so
+  // we can distinguish:
+  //   CASE A (remount): MOUNT#1→ARM→UNMOUNT→MOUNT#2→ARM
+  //   CASE B (effect re-run): MOUNT#1→ARM→CLEANUP→ARM→CLEANUP→ARM
+  const chuckyEffectInstanceRef = useRef(0);
+  // Component MOUNT / UNMOUNT (per MobileGameTable instance).
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const instanceId = chuckyInstanceIdRef.current;
+    recordHolmTimelineEvent('CHUCKY_COMPONENT_MOUNT', {
+      instanceId,
+      handContextId: handContextIdRef.current ?? null,
+      cachedChuckyCardsIdentity: null,
+      cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+    }, handContextIdRef.current ?? null);
+    return () => {
+      recordHolmTimelineEvent('CHUCKY_COMPONENT_UNMOUNT', {
+        instanceId,
+        handContextId: handContextIdRef.current ?? null,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, handContextIdRef.current ?? null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
   const chuckyEffectTimeoutSeqRef = useRef(0);
   useEffect(() => {
@@ -4922,7 +4956,12 @@ export const MobileGameTable = ({
     }
     chuckyEffectDepsRef.current = newDeps;
 
+    const effectInstance = ++chuckyEffectInstanceRef.current;
+    const instanceId = chuckyInstanceIdRef.current;
+
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
+      instanceId,
+      effectInstance,
       handContextId: handContextId ?? null,
       deps: newDeps,
       changedSinceLastEnter: oldDeps ? changed : null,
@@ -4952,6 +4991,8 @@ export const MobileGameTable = ({
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
+      instanceId,
+      effectInstance,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
       delay: 250,
@@ -4962,6 +5003,8 @@ export const MobileGameTable = ({
     const t = setTimeout(() => {
       fired = true;
       recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
+        instanceId,
+        effectInstance,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         prev: cachedChuckyCardsRevealed,
@@ -5017,11 +5060,17 @@ export const MobileGameTable = ({
         if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
       }
       const reasonKeys = Object.keys(diff);
+      const cleanupReason = reasonKeys.length === 0
+        ? 'NO_DEP_DIFF (unmount or identical re-run)'
+        : reasonKeys.join(',');
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
+        instanceId,
+        effectInstance,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         firedBeforeCleanup: fired,
-        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF (unmount or identical re-run)' : reasonKeys.join(','),
+        reason: cleanupReason,
+        cleanupReason,
         changedDeps: diff,
         oldDeps: newDeps,
         newDeps: nextSnapshot,
