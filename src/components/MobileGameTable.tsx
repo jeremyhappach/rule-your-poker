@@ -202,6 +202,24 @@ function ThreeFiveSevenTimerGateReporter({
   useEffect(() => {
     onAllowedChange?.(allowed);
   }, [allowed, onAllowedChange]);
+  // BREAK THE TIMER DEADLOCK:
+  // The canonical rail (DealAwareShellTimerRail) is the historical
+  // driver of enterGameplay(), but it is only mounted when `hasTimer`
+  // is true — and for 3-5-7 `hasTimer` requires `timeLeft !== null`,
+  // which is itself gated by `dealTimerAllowed357 === true`, which
+  // requires phase === 'GAMEPLAY'. That's circular.
+  //
+  // This reporter is mounted unconditionally inside the
+  // ThreeFiveSevenDealRuntimeMaybe provider, so it always sees the
+  // live DealRuntime. Drive READY → GAMEPLAY here so phase advances
+  // regardless of rail mount state. Idempotent: DealRuntime's
+  // enterGameplay only advances when phase === 'READY'.
+  useEffect(() => {
+    if (!deal) return;
+    if (deal.phase !== 'READY' || !deal.readyReleased) return;
+    const raf = requestAnimationFrame(() => deal.enterGameplay());
+    return () => cancelAnimationFrame(raf);
+  }, [deal, deal?.phase, deal?.readyReleased]);
   return null;
 }
 
