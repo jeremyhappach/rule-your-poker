@@ -40,9 +40,13 @@ export function getCanonicalTimerEligibility({
 }: TimerEligibilityInput): TimerEligibility {
   const isHolm = gameType === 'holm-game';
   if (isHolm) {
-    // Pass-through: consumer (ActivePlayerHUD / ShellTimerRail) already
-    // gates on `isActive` / `canAct`. DealRuntime must not suppress.
-    return { visible: true, running: true };
+    // Canonical animation contract: timers MUST NOT run while the
+    // initial deal (hands + community + chucky) is still in flight.
+    // We still defer presence (visible) to actionability, but suppress
+    // visibility AND running until the deal has fully settled and
+    // readyReleased = true (DealRuntime enters GAMEPLAY).
+    const settled = dealSettled === true && readyReleased === true;
+    return { visible: settled, running: settled && !!activePlayerId };
   }
 
   const is357 = gameType === 'three-five-seven' || gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357';
