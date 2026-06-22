@@ -2577,7 +2577,7 @@ export const MobileGameTable = ({
     // Chucky UI cache
     setCachedChuckyCards(null);
     setCachedChuckyActive(false);
-    setCachedChuckyCardsRevealed(0);
+    setCachedChuckyCardsRevealed(0, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     chuckyTargetRevealedRef.current = 0;
     cachedChuckyHandContextRef.current = null;
 
