@@ -658,17 +658,20 @@ export function holmWartimeTick(): {
   }
 
   const tabledHand = ownership.owners.TABLED_SELF.handContextId;
+  // Spec: fire if TABLED_SELF.handContextId == DealRuntime.activeHandContextId
+  // AND phase in { PRE_DEAL, DEALING } — i.e. anything that is not the
+  // settled GAMEPLAY phase. READY/PRE_DEAL/DEALING all qualify.
   if (
     ownership.owners.TABLED_SELF.mounted &&
     tabledHand != null &&
     handCtx != null &&
     tabledHand === handCtx &&
-    phase === 'DEALING'
+    phase !== 'GAMEPLAY'
   ) {
     recordViolation('TABLED_SELF_NEXT_HAND', handCtx, {
       tabledSelfCardIds: ownership.owners.TABLED_SELF.cardIds,
       selfHandCardIds: ownership.owners.SELF_HAND.cardIds,
-      mountedBefore: tabledHand !== handCtx ? 'previous-hand' : 'same-hand-but-dealing',
+      mountedBefore: tabledHand !== handCtx ? 'previous-hand' : 'same-hand-but-not-gameplay',
       phase,
     });
   }

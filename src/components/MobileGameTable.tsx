@@ -163,6 +163,14 @@ import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { HolmOwnershipBeacon } from "@/lib/canonicalShell/cardTransport/HolmOwnershipBeacon";
 import { HolmSoloRootRegistrar } from "@/lib/canonicalShell/cardTransport/holmSoloOwnership";
+import {
+  ChuckyVisualCardInstrumenter,
+  chuckyVisualMarkAllSettled,
+  chuckyVisualMarkAnnouncement,
+  chuckyVisualMarkRevealSequenceScheduled,
+  chuckyVisualResetForHand,
+} from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
+import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
@@ -2663,6 +2671,60 @@ export const MobileGameTable = ({
     setShowdownModeLocked(false);
   }, [handContextId]);
 
+  // ── Explicit TABLED_SELF / CHUCKY_TABLED destroy-on-NEW_HAND_STARTED ──
+  // Ownership contract:
+  //   For a given handContextId, EITHER SELF_HAND OR TABLED_SELF.
+  // When a new handContextId arrives and the previous hand was a solo
+  // (TABLED_SELF was alive), we MUST immediately:
+  //   - destroy TABLED_SELF
+  //   - destroy CHUCKY_TABLED
+  //   - clear solo snapshots
+  //   - clear reveal caches (cachedChuckyCards / cachedChuckyActive /
+  //     cachedChuckyCardsRevealed / chuckyTargetRevealedRef)
+  //   - clear cachedChuckyHandContextRef
+  // and emit TABLED_SELF_UNMOUNT(reason=NEW_HAND_STARTED) into the
+  // wartime timeline. This DOES NOT wait for resetHandUiCaches (which is
+  // deferred during win animations) and DOES NOT depend on
+  // shouldDeferHandReset. Solo cross-hand carryover is illegal regardless
+  // of payout animation state.
+  const prevHandWasSoloRef = useRef(false);
+  const prevHandContextForSoloDestroyRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    // Track wasSolo while the current hand is alive.
+    if (soloVsChuckyTableLocked || isSoloVsChuckyRaw || cachedChuckyActive || (cachedChuckyCards && cachedChuckyCards.length > 0)) {
+      prevHandWasSoloRef.current = true;
+    }
+  }, [gameType, soloVsChuckyTableLocked, isSoloVsChuckyRaw, cachedChuckyActive, cachedChuckyCards]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prev = prevHandContextForSoloDestroyRef.current;
+    const next = handContextId ?? null;
+    if (prev === next) return;
+    const wasSolo = prevHandWasSoloRef.current;
+    prevHandContextForSoloDestroyRef.current = next;
+    prevHandWasSoloRef.current = false;
+    chuckyVisualResetForHand(next);
+    if (!wasSolo) return;
+    // Force-destroy regardless of deferral state.
+    setCachedChuckyCards(null);
+    setCachedChuckyActive(false);
+    setCachedChuckyCardsRevealed(0);
+    chuckyTargetRevealedRef.current = 0;
+    cachedChuckyHandContextRef.current = null;
+    lonePlayerStageSnapshotRef.current = null;
+    setSoloVsChuckyTableLocked(false);
+    setSoloVsChuckyPlayerIdLocked(null);
+    soloVsChuckyAnimatedRef.current = false;
+    recordHolmTimelineEvent('TABLED_SELF_UNMOUNT', {
+      reason: 'NEW_HAND_STARTED',
+      prevHandContextId: prev,
+      nextHandContextId: next,
+    }, prev);
+  }, [gameType, handContextId]);
+
+
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
     if (soloVsChuckyPlayerIdLocked) return;
@@ -4575,6 +4637,23 @@ export const MobileGameTable = ({
     isHolmHandReady(handContextId);
   void holmBarrierTick; // re-evaluates above on barrier flip
 
+  // War-time forensics: hook the barrier flip → allChuckySettled marker.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!chuckyBarrierOpen) return;
+    chuckyVisualMarkAllSettled(handContextId ?? null);
+  }, [gameType, chuckyBarrierOpen, handContextId]);
+
+  // War-time forensics: announcement visibility → barrier marker.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    chuckyVisualMarkAnnouncement(
+      handContextId ?? null,
+      !!isShowingAnnouncement,
+      typeof lastRoundResult === 'string' ? lastRoundResult : null,
+    );
+  }, [gameType, isShowingAnnouncement, handContextId, lastRoundResult]);
+
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
@@ -4587,11 +4666,13 @@ export const MobileGameTable = ({
     // Override the server target — once barrier is open we reveal ALL.
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
+    chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
     const t = setTimeout(() => {
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId]);
+
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
@@ -8039,6 +8120,14 @@ export const MobileGameTable = ({
                           data-anchor-owner="MobileGameTable.holmChuckyStage.slot"
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
+                          <ChuckyVisualCardInstrumenter
+                            handContextId={handContextId ?? null}
+                            index={index}
+                            isRevealed={isRevealed}
+                            renderer="MobileGameTable.holmChuckyStage"
+                            owner="cachedChuckyCardsRevealed"
+                            phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                          />
                           <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
                             {isRevealed ? (
                               <div
