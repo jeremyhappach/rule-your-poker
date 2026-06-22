@@ -2634,9 +2634,36 @@ export const MobileGameTable = ({
   // to confirm this is the CURRENT hand's state, not stale roundStatus from the previous hand.
   // Without this, lingering current_decision='stay' + stale roundStatus='completed' causes
   // isSoloVsChuckyRaw to be true during hand transitions, locking the wrong player.
-  const isSoloVsChuckyRaw = gameType === 'holm-game' && 
-    stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || (roundStatus === 'completed' && (chuckyActive || !!holmWinPotTriggerId || isGameOver)) || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+  // WAR-TIME GUARD: Carryover branches (showdown/completed/winPot/awaiting-result/gameOver)
+  // can persist from the previous hand into PRE_DEAL of the next hand for a few frames
+  // while authoritative state catches up. To prevent SOLO_DECLARED during PRE_DEAL we
+  // require that carryover branches only count for a handContextId we've already
+  // observed legitimately enter solo (allDecisionsIn or chuckyActive present for that hand).
+  const soloLegalHandRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      gameType === 'holm-game' &&
+      handContextId &&
+      stayedPlayersCount === 1 &&
+      (allDecisionsIn || chuckyActive)
+    ) {
+      soloLegalHandRef.current = handContextId;
+    }
+  }, [gameType, handContextId, stayedPlayersCount, allDecisionsIn, chuckyActive]);
+  const soloCarryoverLegal = !!handContextId && soloLegalHandRef.current === handContextId;
+  const isSoloVsChuckyRaw = gameType === 'holm-game' &&
+    stayedPlayersCount === 1 &&
+    (
+      chuckyActive ||
+      allDecisionsIn ||
+      (soloCarryoverLegal && (
+        roundStatus === 'showdown' ||
+        (roundStatus === 'completed' && (!!holmWinPotTriggerId || isGameOver)) ||
+        (awaitingNextRound && lastRoundResult) ||
+        !!holmWinPotTriggerId
+      )) ||
+      isGameOver
+    );
 
   useEffect(() => {
     if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
