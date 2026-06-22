@@ -46,6 +46,20 @@ export interface CardTransportDbgEntry {
   face?: CardFace;
   from?: CardEndpoint;
   to?: CardEndpoint;
+  providerReceivedAt?: number;
+  activeIntentVisibleAt?: number;
+  endpointResolveAttemptedAt?: number;
+  endpointResolveAttemptCount?: number;
+  endpointResolvedAt?: number;
+  queuedAt?: number;
+  launchedAt?: number;
+  droppedAt?: number;
+  flyingCardMountedAt?: number;
+  animationStartAt?: number;
+  animationEndAt?: number;
+  markSettledAt?: number;
+  markSettledSource?: 'flight_complete' | 'timer_fallback' | 'dropped' | 'forced_wave_complete' | string;
+  lifecycleState?: 'provider_received' | 'active_visible' | 'resolving' | 'queued' | 'launched' | 'flying_mounted' | 'settled' | 'dropped';
   fromEndpointFound?: boolean;
   toEndpointFound?: boolean;
   resolvedFromAnchor?: string | null;
@@ -271,6 +285,8 @@ export function formatCardTransportDbgAsText(): string {
       `${new Date(r.updatedAt).toISOString()} ${r.intentId}`,
       `  cardId=${r.cardId} face=${r.face} handCtx=${r.handContextId ?? '∅'}`,
       `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
+      `  LIFECYCLE state=${r.lifecycleState ?? '?'} provider=${r.providerReceivedAt} active=${r.activeIntentVisibleAt} resolveAt=${r.endpointResolveAttemptedAt} resolves=${r.endpointResolveAttemptCount ?? 0} endpointResolved=${r.endpointResolvedAt}`,
+      `  LIFECYCLE queued=${r.queuedAt} launched=${r.launchedAt} flyingMount=${r.flyingCardMountedAt} animationStart=${r.animationStartAt} animationEnd=${r.animationEndAt} markSettled=${r.markSettledAt} source=${r.markSettledSource ?? '?'}`,
       `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
       `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
       `  dealerIsSelf=${r.dealerIsSelf ?? '∅'} anchorOwner=${r.fromAnchorOwner ?? '∅'} anchorParent=${r.fromAnchorParent ?? '∅'} anchorRect=${JSON.stringify(r.fromAnchorViewportRect)}`,
