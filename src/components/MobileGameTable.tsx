@@ -4915,6 +4915,18 @@ export const MobileGameTable = ({
       },
     });
     const t = setTimeout(() => {
+      // WAR-TIME: emit the canonical TIMEOUT_FIRED event regardless of
+      // what the setter wrapper does next — this proves the scheduled
+      // timeout actually executed (vs. being cancelled by cleanup).
+      recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_FIRED', {
+        handContextId: handContextId ?? null,
+        prev: cachedChuckyCardsRevealed,
+        next: cachedChuckyCardsRevealed + 1,
+        total,
+        cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+        cachedChuckyActive,
+        chuckyBarrierOpen,
+      }, handContextId ?? null);
       recordChuckyVisualTrigger({
         handContextId: handContextId ?? null,
         source: 'stepper.fire',
@@ -4927,10 +4939,23 @@ export const MobileGameTable = ({
         chuckyBarrierOpen,
         revealSchedulerState: 'fired',
       });
-      setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
+      setCachedChuckyCardsRevealed(
+        (prev) => (prev < total ? prev + 1 : prev),
+        { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
+      );
     }, 250);
-    return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive]);
+    return () => {
+      clearTimeout(t);
+      // Capture cleanup so we can prove whether the timeout was cancelled
+      // before it fired (re-run of the effect, unmount, dep churn).
+      recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
+        handContextId: handContextId ?? null,
+        prev: cachedChuckyCardsRevealed,
+        total,
+        cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
+      }, handContextId ?? null);
+    };
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive, setCachedChuckyCardsRevealed]);
 
 
 
