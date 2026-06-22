@@ -4769,6 +4769,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
         return;
       }
+
+      // Canonical animation contract: bots may not act until the Holm
+      // initial deal (hands + community + chucky) has fully settled.
+      // DealRuntime marks the barrier when phase enters GAMEPLAY.
+      if (isHolmGame && !isHolmHandReady(handContextKey)) {
+        console.log('[BOT TRIGGER] Holm deal not complete — barrier blocks bot decision', { handContextKey });
+        return;
+      }
       
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
