@@ -4549,23 +4549,34 @@ export const MobileGameTable = ({
     }
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
 
-  // Sequential stepper: advance cachedChuckyCardsRevealed one card at a time toward
-  // the target. Latches community-fully-revealed before stepping so Chucky reveal
-  // never overlaps community reveal. Resets are handled by hand-identity changes.
+  // Chucky reveal BARRIER: hold all reveals until every chucky card has
+  // settled (DealRuntime enters GAMEPLAY → markHolmHandReady). Once the
+  // barrier trips, force-reveal all 4 in a fast sequence regardless of
+  // the authoritative chuckyCardsRevealed counter — animation contract
+  // requires sequential reveal, not per-card settled callbacks.
+  const [holmBarrierTick, setHolmBarrierTick] = useState(0);
+  useEffect(() => subscribeHolmHandReady(() => setHolmBarrierTick(t => t + 1)), []);
+  const chuckyBarrierOpen =
+    gameType === 'holm-game' &&
+    !!handContextId &&
+    isHolmHandReady(handContextId);
+  void holmBarrierTick; // re-evaluates above on barrier flip
+
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
     if (!holmCommunityFullyRevealed) return; // Latch: community must finish first
-    const target = chuckyTargetRevealedRef.current;
-    if (cachedChuckyCardsRevealed >= target) return;
+    if (!chuckyBarrierOpen) return;           // Barrier: all chucky settled
+    const total = cachedChuckyCards?.length ?? 0;
+    if (total <= 0) return;
+    // Override the server target — once barrier is open we reveal ALL.
+    if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
+    if (cachedChuckyCardsRevealed >= total) return;
     const t = setTimeout(() => {
-      setCachedChuckyCardsRevealed(prev => {
-        const tgt = chuckyTargetRevealedRef.current;
-        return prev < tgt ? prev + 1 : prev;
-      });
-    }, 600);
+      setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
+    }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed, chuckyBarrierOpen, cachedChuckyCards]);
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
