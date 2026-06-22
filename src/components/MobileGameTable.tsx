@@ -181,6 +181,40 @@ import {
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
+const __chuckyAuditRefIds = new WeakMap<object, string>();
+let __chuckyAuditRefSeq = 0;
+
+function __chuckyAuditRefId(value: unknown): string {
+  if (value == null) return 'null';
+  if (typeof value !== 'object' && typeof value !== 'function') return `${typeof value}:${String(value)}`;
+  const obj = value as object;
+  let id = __chuckyAuditRefIds.get(obj);
+  if (!id) {
+    id = `ref#${++__chuckyAuditRefSeq}`;
+    __chuckyAuditRefIds.set(obj, id);
+  }
+  return id;
+}
+
+function __chuckyAuditCardsHash(cards: CardType[] | null | undefined): string {
+  if (!cards) return 'null';
+  return cards.map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join('|');
+}
+
+function __chuckyAuditNow(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
+function __chuckyAuditOwnerStack(): string | null {
+  try {
+    return typeof (React as any).captureOwnerStack === 'function'
+      ? (React as any).captureOwnerStack()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -2393,7 +2427,7 @@ export const MobileGameTable = ({
   // cachedChuckyCardsRevealed is a LOCAL, MONOTONIC, SEQUENTIAL render count.
   // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
   // effect below advances the rendered count one card at a time toward that target.
-  const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
+  const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
@@ -2413,6 +2447,31 @@ export const MobileGameTable = ({
   chuckyRenderSeqRef.current += 1;
   // Track chuckyCards PROP identity (same contents, new array reference each render = parent churn).
   const chuckyCardsPropIdentityRef = useRef<{ ref: unknown; contents: string; renderSeq: number } | null>(null);
+  const setCachedChuckyCards = useCallback(
+    (
+      next: CardType[] | null | ((prev: CardType[] | null) => CardType[] | null),
+      writerMeta?: { writer: string; reason?: string },
+    ) => {
+      _setCachedChuckyCardsRaw((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        recordHolmTimelineEvent('CHUCKY_ARRAY_IDENTITY_CHURN', {
+          instanceId: chuckyInstanceIdRef.current,
+          renderSeq: chuckyRenderSeqRef.current,
+          writer: writerMeta?.writer ?? 'unknown',
+          reason: writerMeta?.reason ?? null,
+          oldRef: __chuckyAuditRefId(prev),
+          newRef: __chuckyAuditRefId(resolved),
+          oldHash: __chuckyAuditCardsHash(prev),
+          newHash: __chuckyAuditCardsHash(resolved),
+          sameContents: __chuckyAuditCardsHash(prev) === __chuckyAuditCardsHash(resolved),
+          handContextId: handContextIdRef.current ?? null,
+          phase: chuckyPhaseRef.current ?? null,
+        }, handContextIdRef.current ?? null);
+        return resolved;
+      });
+    },
+    [],
+  );
   const setCachedChuckyCardsRevealed = useCallback(
     (
       next: number | ((prev: number) => number),
@@ -2455,6 +2514,8 @@ export const MobileGameTable = ({
   // useCallback) can always read the latest value without re-creating.
   const handContextIdRef = useRef<string | null>(null);
   useEffect(() => { handContextIdRef.current = handContextId ?? null; }, [handContextId]);
+  const chuckyPhaseRef = useRef<string | null>(null);
+  useEffect(() => { chuckyPhaseRef.current = roundStatus ?? null; }, [roundStatus]);
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
@@ -2543,7 +2604,7 @@ export const MobileGameTable = ({
       setShowCommunityCards(gameType !== 'holm-game');
 
       // Chucky UI cache
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       chuckyTargetRevealedRef.current = 0;
@@ -2589,7 +2650,7 @@ export const MobileGameTable = ({
     showdownHandContextRef.current = null;
 
     // Chucky UI cache
-    setCachedChuckyCards(null);
+    setCachedChuckyCards(null, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     chuckyTargetRevealedRef.current = 0;
@@ -2882,7 +2943,7 @@ export const MobileGameTable = ({
     chuckyVisualResetForHand(next);
     if (!wasSolo) return;
     // Force-destroy regardless of deferral state.
-    setCachedChuckyCards(null);
+    setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     chuckyTargetRevealedRef.current = 0;
@@ -4822,7 +4883,7 @@ export const MobileGameTable = ({
     if (isDealerConfigPhase) {
       if (cachedChuckyCards && cachedChuckyCards.length > 0) {
         console.log('[MOBILE_CHUCKY] Dealer config phase - clearing cached Chucky cards');
-        setCachedChuckyCards(null);
+        setCachedChuckyCards(null, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         chuckyTargetRevealedRef.current = 0;
@@ -4841,7 +4902,7 @@ export const MobileGameTable = ({
         prev: cachedChuckyHandContextRef.current,
         next: handContextId,
       });
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       chuckyTargetRevealedRef.current = 0;
@@ -4852,7 +4913,7 @@ export const MobileGameTable = ({
     // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
     if (awaitingNextRound && !lastRoundResult) {
       console.log('[MOBILE_CHUCKY] Buck passed - clearing cached Chucky cards');
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       chuckyTargetRevealedRef.current = 0;
@@ -4876,7 +4937,7 @@ export const MobileGameTable = ({
           handContextId: handContextId ?? null,
         }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
-        setCachedChuckyCards([...chuckyCards]);
+        setCachedChuckyCards([...chuckyCards], { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
         setCachedChuckyActive(true);
         // Update TARGET only (monotonic). Rendered count is advanced by the stepper.
         const newTarget = chuckyCardsRevealed || 0;
@@ -4940,9 +5001,55 @@ export const MobileGameTable = ({
   //   CASE A (remount): MOUNT#1→ARM→UNMOUNT→MOUNT#2→ARM
   //   CASE B (effect re-run): MOUNT#1→ARM→CLEANUP→ARM→CLEANUP→ARM
   const chuckyEffectInstanceRef = useRef(0);
+  const chuckyEffectIdRef = useRef(0);
+  const chuckyComponentUnmountingRef = useRef(false);
+  const chuckyLatestRevealDepsRef = useRef<Record<string, unknown> | null>(null);
+  const chuckyRevealDepSnapshot: Record<string, unknown> = {
+    cachedChuckyCardsRef: __chuckyAuditRefId(cachedChuckyCards),
+    cachedChuckyCardsContentsHash: __chuckyAuditCardsHash(cachedChuckyCards),
+    cachedChuckyCardsRevealed,
+    cachedChuckyActive,
+    cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+    handContextId: handContextId ?? null,
+    phase: roundStatus ?? null,
+    announcementShowing: !!isShowingAnnouncement,
+    soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+    gameType,
+    chuckyCardsRevealed,
+    chuckyBarrierOpen,
+    cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
+    isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+    chuckyActive: !!chuckyActive,
+  };
+  chuckyLatestRevealDepsRef.current = chuckyRevealDepSnapshot;
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    recordHolmTimelineEvent('CHUCKY_RENDER_TREE', {
+      instanceId: chuckyInstanceIdRef.current,
+      renderSeq: chuckyRenderSeqRef.current,
+      mounted: true,
+      owners: {
+        chuckyStage: cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 ? 'MobileGameTable.holmChuckyStage' : null,
+        cachedChuckyCards: 'MobileGameTable.useState(cachedChuckyCards)',
+        cachedChuckyCardsRevealed: 'MobileGameTable.useState(cachedChuckyCardsRevealed)',
+        revealEffect: 'MobileGameTable.ChuckyRevealStepperEffect',
+      },
+      cachedChuckyCardsRef: __chuckyAuditRefId(cachedChuckyCards),
+      cachedChuckyCardsContentsHash: __chuckyAuditCardsHash(cachedChuckyCards),
+      cachedChuckyCardsCount: cachedChuckyCards?.length ?? 0,
+      cachedChuckyCardsRevealed,
+      cachedChuckyActive,
+      handContextId: handContextId ?? null,
+      cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+      phase: roundStatus ?? null,
+      announcementShowing: !!isShowingAnnouncement,
+      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+    }, handContextId ?? null);
+  });
   // Component MOUNT / UNMOUNT (per MobileGameTable instance).
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    chuckyComponentUnmountingRef.current = false;
     const instanceId = chuckyInstanceIdRef.current;
     recordHolmTimelineEvent('CHUCKY_COMPONENT_MOUNT', {
       instanceId,
@@ -4951,10 +5058,29 @@ export const MobileGameTable = ({
       cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
     }, handContextIdRef.current ?? null);
     return () => {
+      chuckyComponentUnmountingRef.current = true;
+      const componentStack = captureStack();
+      const ownerStack = __chuckyAuditOwnerStack();
       recordHolmTimelineEvent('CHUCKY_COMPONENT_UNMOUNT', {
         instanceId,
         handContextId: handContextIdRef.current ?? null,
         cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+        componentStack,
+        ownerStack,
+      }, handContextIdRef.current ?? null);
+      recordHolmTimelineEvent('CHUCKY_RENDER_TREE', {
+        instanceId,
+        renderSeq: chuckyRenderSeqRef.current,
+        mounted: false,
+        owners: {
+          chuckyStage: null,
+          cachedChuckyCards: 'MobileGameTable.useState(cachedChuckyCards)',
+          cachedChuckyCardsRevealed: 'MobileGameTable.useState(cachedChuckyCardsRevealed)',
+          revealEffect: 'MobileGameTable.ChuckyRevealStepperEffect',
+        },
+        why: 'MobileGameTable component unmount cleanup',
+        componentStack,
+        ownerStack,
       }, handContextIdRef.current ?? null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4975,21 +5101,9 @@ export const MobileGameTable = ({
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
 
-    const newDeps: Record<string, unknown> = {
-      gameType,
-      cachedChuckyActive,
-      cachedChuckyCardsRevealed,
-      chuckyCardsRevealed,
-      chuckyBarrierOpen,
-      cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
-      cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
-      cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
-      handContextId: handContextId ?? null,
-      cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-      isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
-      chuckyActive: !!chuckyActive,
-    };
+    const effectId = ++chuckyEffectIdRef.current;
+    const mountAt = __chuckyAuditNow();
+    const newDeps: Record<string, unknown> = chuckyRevealDepSnapshot;
     const oldDeps = chuckyEffectDepsRef.current;
     const changed: Record<string, { from: unknown; to: unknown }> = {};
     if (oldDeps) {
@@ -5015,9 +5129,24 @@ export const MobileGameTable = ({
     };
     step('EFFECT_BODY_ENTER', { changedDeps: oldDeps ? Object.keys(changed) : null });
 
+    recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
+      instanceId,
+      effectId,
+      effectInstance,
+      mountAt,
+      cleanupAt: null,
+      reason: 'MOUNT',
+      renderSeqAtMount: enterRenderSeq,
+      renderSeqAtCleanup: null,
+      timeoutId: null,
+      firedBeforeCleanup: null,
+    }, handContextId ?? null);
+
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
       instanceId,
+      effectId,
       effectInstance,
+      mountAt,
       renderSeq: enterRenderSeq,
       handContextId: handContextId ?? null,
       deps: newDeps,
@@ -5053,8 +5182,10 @@ export const MobileGameTable = ({
     let fired = false;
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
+      effectId,
       effectInstance,
       renderSeq: chuckyRenderSeqRef.current,
+      mountAt,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
       delay: 250,
@@ -5067,9 +5198,11 @@ export const MobileGameTable = ({
       fired = true;
       recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
         instanceId,
+        effectId,
         effectInstance,
         renderSeq: chuckyRenderSeqRef.current,
         armedAtRenderSeq: enterRenderSeq,
+        mountAt,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         prev: cachedChuckyCardsRevealed,
@@ -5104,33 +5237,57 @@ export const MobileGameTable = ({
 
     return () => {
       clearTimeout(t);
-      // Capture cleanup so we can prove WHICH dep caused cancellation.
-      const nextSnapshot: Record<string, unknown> = {
-        gameType,
-        cachedChuckyActive,
-        cachedChuckyCardsRevealed,
-        chuckyCardsRevealed,
-        chuckyBarrierOpen,
-        cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
-        cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
-        cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
-        handContextId: handContextId ?? null,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-        soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
-        chuckyActive: !!chuckyActive,
-      };
+      const cleanupAt = __chuckyAuditNow();
+      const nextSnapshot = chuckyLatestRevealDepsRef.current ?? newDeps;
       const diff: Record<string, { from: unknown; to: unknown }> = {};
-      for (const k of Object.keys(newDeps)) {
+      for (const k of Array.from(new Set([...Object.keys(newDeps), ...Object.keys(nextSnapshot)]))) {
         if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
       }
       const reasonKeys = Object.keys(diff);
-      const cleanupReason = reasonKeys.length === 0
-        ? 'NO_DEP_DIFF (unmount or identical re-run)'
-        : reasonKeys.join(',');
+      const cleanupReason = chuckyComponentUnmountingRef.current
+        ? 'COMPONENT_UNMOUNT'
+        : reasonKeys.length === 0
+          ? 'NO_DEP_DIFF (identical re-run / StrictMode cleanup)'
+          : `DEP_DIFF:${reasonKeys.join(',')}`;
+      const componentStack = captureStack();
+      const ownerStack = __chuckyAuditOwnerStack();
+      recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
+        instanceId,
+        effectId,
+        effectInstance,
+        mountAt,
+        cleanupAt,
+        reason: cleanupReason,
+        renderSeqAtMount: enterRenderSeq,
+        renderSeqAtCleanup: chuckyRenderSeqRef.current,
+        timeoutId: timeoutSeq,
+        firedBeforeCleanup: fired,
+      }, handContextId ?? null);
+      recordHolmTimelineEvent('CHUCKY_EFFECT_DEP_DIFF', {
+        instanceId,
+        effectId,
+        effectInstance,
+        oldDeps: newDeps,
+        newDeps: nextSnapshot,
+        changedDeps: diff,
+        reason: cleanupReason,
+      }, handContextId ?? null);
+      recordHolmTimelineEvent('CHUCKY_UNMOUNT_STACK', {
+        instanceId,
+        effectId,
+        effectInstance,
+        componentStack,
+        ownerStack,
+        whyReactThinksCleanupOccurred: cleanupReason,
+        componentUnmounting: chuckyComponentUnmountingRef.current,
+        firedBeforeCleanup: fired,
+      }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
         instanceId,
+        effectId,
         effectInstance,
+        mountAt,
+        cleanupAt,
         armedAtRenderSeq: enterRenderSeq,
         cleanupAtRenderSeq: chuckyRenderSeqRef.current,
         rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
@@ -5146,6 +5303,7 @@ export const MobileGameTable = ({
       // CALLGRAPH SUMMARY: ordered synchronous step list for this effect run.
       recordHolmTimelineEvent('CHUCKY_EFFECT_CALLGRAPH', {
         instanceId,
+        effectId,
         effectInstance,
         armedAtRenderSeq: enterRenderSeq,
         cleanupAtRenderSeq: chuckyRenderSeqRef.current,
@@ -5155,12 +5313,15 @@ export const MobileGameTable = ({
         trail: callgraph,
       }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
+        instanceId,
+        effectId,
+        effectInstance,
         handContextId: handContextId ?? null,
         prev: cachedChuckyCardsRevealed,
         total,
         cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
         firedBeforeCleanup: fired,
-        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF' : reasonKeys.join(','),
+        reason: cleanupReason,
       }, handContextId ?? null);
     };
   }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive, setCachedChuckyCardsRevealed]);
