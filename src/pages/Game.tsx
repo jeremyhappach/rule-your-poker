@@ -3342,7 +3342,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id, dealTimerAllowed357, currentRound?.id, currentRound?.status]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id, dealTimerAllowed357]);
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
