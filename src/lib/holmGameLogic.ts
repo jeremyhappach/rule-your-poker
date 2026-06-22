@@ -12,7 +12,7 @@ import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransitio
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
 import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
-import { getHolmForcedWinner } from "./holm/holmDebugOverrides";
+import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugOverrides";
 
 /**
  * Check if all players have decided in a Holm game round
