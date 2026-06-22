@@ -163,7 +163,7 @@ export const PlayingCard = ({
   // fills it via width:100%/height:100% so we never duplicate gradient/border code.
   if (isHidden || !card) {
     return (
-      <div className={`${sizeClasses.container} ${className}`} style={style}>
+      <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-root="" data-playing-card-hidden="1">
         <CanonicalCardBack
           widthPx={40}
           heightPx={60}
@@ -180,6 +180,9 @@ export const PlayingCard = ({
   if (isFlipping !== undefined && !showFront) {
     return (
       <div
+        data-playing-card-root=""
+        data-playing-card-flip=""
+        data-card-id={card ? `${card.rank}-${card.suit}` : undefined}
         className={`${sizeClasses.container} relative ${className}`}
         style={{ 
           transformStyle: 'preserve-3d',
@@ -262,6 +265,9 @@ export const PlayingCard = ({
 
   return (
     <Card
+      data-playing-card-root=""
+      data-playing-card-face=""
+      data-card-id={`${card.rank}-${card.suit}`}
       className={`${sizeClasses.container} flex flex-col items-center ${fillMode ? 'justify-between py-0.5' : 'justify-center p-0'} shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >

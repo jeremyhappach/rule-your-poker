@@ -35,6 +35,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import {
+  recordThreeFiveSevenTimerOwner,
+  unregisterThreeFiveSevenTimerOwner,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
 
 export interface ShellTimerState {
   /** Seconds remaining (integer, clamped >= 0 by renderer). */
@@ -120,6 +125,9 @@ export function useShellTimer(state: ShellTimerState | null): void {
 /** Shell-rendered timer. Reads from the provider. */
 export function ShellTimerRail() {
   const state = useContext(ShellTimerStateContext);
+  const deal = useDealRuntime();
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
 
   // Snap-to-mount: enable CSS width transitions only after the first
   // paint (so the bar appears at its correct width without animating
@@ -133,11 +141,9 @@ export function ShellTimerRail() {
     return () => cancelAnimationFrame(id);
   }, [identityKey]);
 
-  if (!state) return null;
-
-  const paused = !!state.paused;
-  const total = state.totalSeconds > 0 ? state.totalSeconds : 1;
-  const seconds = Math.max(0, Math.round(state.secondsRemaining));
+  const paused = !!state?.paused;
+  const total = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
+  const seconds = Math.max(0, Math.round(state?.secondsRemaining ?? 0));
   const pct = paused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
 
   const fillClass = paused
@@ -147,6 +153,31 @@ export function ShellTimerRail() {
       : seconds <= 5
         ? 'bg-yellow-500'
         : 'bg-green-500';
+
+  const ownerId = `ShellTimerRail:${deal?.handContextId ?? state?.identityKey ?? 'global'}`;
+  useEffect(() => {
+    if (!state) {
+      unregisterThreeFiveSevenTimerOwner(ownerId);
+      return;
+    }
+    recordThreeFiveSevenTimerOwner(ownerId, {
+      componentName: 'ShellTimerRail',
+      gameType: null,
+      handContextId: deal?.handContextId ?? null,
+      waveContextId: deal?.handContextId ?? null,
+      dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
+      phase: deal?.phase ?? 'NO_RUNTIME',
+      visible: true,
+      running: !paused && seconds > 0,
+      timeLeft: seconds,
+      usesDealRuntime: !!deal,
+      reactKey: state.identityKey ?? null,
+      renderCount: renderCountRef.current,
+    });
+  }, [ownerId, state, deal?.handContextId, deal?.phase, paused, seconds]);
+  useEffect(() => () => unregisterThreeFiveSevenTimerOwner(ownerId), [ownerId]);
+
+  if (!state) return null;
 
   // ROOT-CAUSE FIX (helper-text clipping under timer):
   // The timer row's fixed height (`--hud-h-timer`) clips any text rendered
@@ -160,6 +191,11 @@ export function ShellTimerRail() {
     <div
       data-canonical-shell-timer-rail=""
       data-shell-timer-paused={paused ? '1' : '0'}
+      data-forensics-component="ShellTimerRail"
+      data-forensics-timer-owner-id={ownerId}
+      data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
+      data-forensics-timer-running={!paused && seconds > 0 ? '1' : '0'}
+      data-forensics-timer-time-left={String(seconds)}
       aria-label={paused ? 'Paused' : `${seconds} seconds remaining`}
       className="w-full h-full flex items-center px-3"
     >
