@@ -364,6 +364,12 @@ export function HolmDealDbgPanel() {
   const timeline = getHolmCardTimeline();
   const frames = getHolmDealFrames();
   const timelineViolations = getHolmTimelineViolations();
+  // WAR-TIME ring buffers (subscribed via useSyncExternalStore below)
+  const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
+  const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
+  const wartimeCommunity = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeCommunity) as Record<string, unknown> | undefined;
+  const wartimeChucky = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeChucky) as Record<string, unknown> | undefined;
+  const wartimeOwnership = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeOwnership) as Record<string, unknown> | undefined;
   const expectedIds = new Set(snapshot.expectedCards.map((c) => c.cardId));
   const transportLifecycle = records.filter((r) =>
     (snapshot.handContextId && r.handContextId === snapshot.handContextId) ||
@@ -376,7 +382,12 @@ export function HolmDealDbgPanel() {
       '\n\n--- TRANSPORT LIFECYCLE ---\n' + JSON.stringify(transportLifecycle, null, 2) +
       '\n\n--- TIMELINE ---\n' + JSON.stringify(timeline, null, 2) +
       '\n\n--- FRAMES (last ' + frames.length + ') ---\n' + JSON.stringify(frames.slice(-60), null, 2) +
-      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2);
+      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2) +
+      '\n\n--- WARTIME COMMUNITY ---\n' + JSON.stringify(wartimeCommunity, null, 2) +
+      '\n\n--- WARTIME CHUCKY ---\n' + JSON.stringify(wartimeChucky, null, 2) +
+      '\n\n--- WARTIME OWNERSHIP ---\n' + JSON.stringify(wartimeOwnership, null, 2) +
+      '\n\n--- WARTIME TIMELINE EVENTS (' + wartimeEvents.length + ') ---\n' + JSON.stringify(wartimeEvents, null, 2) +
+      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
