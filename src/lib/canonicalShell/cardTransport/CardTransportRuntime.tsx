@@ -46,6 +46,7 @@ import {
   type CardTransportDbgSample,
 } from './cardTransportDbg';
 import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
+import { holmTimelineRecordArrival, holmTimelineRecordClaim, holmTimelineRecordLaunch } from './holmCardTimeline';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
@@ -391,6 +392,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       startSkewMs: now - expectedStartTime,
       launchProofSource: source,
     });
+    if (card.intent.gameType === 'holm-game' || card.intent.handContextId?.includes('#hand-')) {
+      holmTimelineRecordLaunch(card.intent.cardId, now);
+    }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF LAUNCH]', {
       intentId: card.intent.id,
@@ -424,6 +428,10 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       arrivalSkewMs: now - expectedArrivalTime,
       arrivalProofSource: source,
     });
+    if (card.intent.gameType === 'holm-game' || card.intent.handContextId?.includes('#hand-')) {
+      holmTimelineRecordArrival(card.intent.cardId, now);
+      holmTimelineRecordClaim(card.intent.cardId, now);
+    }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF ARRIVAL]', {
       intentId: card.intent.id,
