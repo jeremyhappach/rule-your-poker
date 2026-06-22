@@ -3191,10 +3191,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         component: 'Game timer countdown',
         decisionDeadline,
         dealTimerAllowed357,
-        roundId: currentRound?.id ?? null,
       }, {
-        handContextId: currentRound?.id ?? null,
-        phase: currentRound?.status ?? null,
+        handContextId: null,
+        phase: null,
         component: 'PLAYER_HAND',
       });
       decisionMaxTimeDeadlineRef.current = null;
