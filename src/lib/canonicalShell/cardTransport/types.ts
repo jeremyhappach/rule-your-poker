@@ -113,6 +113,7 @@ export function describeCardEndpoint(ep: CardEndpoint): string {
     case 'oppStack':  return `opp-stack:${ep.position}`;
     case 'hand':      return `hand:${ep.playerId}`;
     case 'community': return `community:${ep.index}`;
+    case 'chucky':    return `chucky:${ep.index}`;
     case 'stock':     return 'stock';
     case 'discard':   return 'discard';
   }
