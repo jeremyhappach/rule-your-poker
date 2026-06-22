@@ -381,7 +381,7 @@ export function HolmDealDbgPanel() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderBottom: expanded ? '1px solid #333' : 'none' }}>
         <button type="button" onClick={() => setExpanded((e) => !e)} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit', color: '#fff', padding: 0, fontWeight: 800 }}>
-          {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={snapshot.violations.length ? bad : v}>· {compact}</span>
+          {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={totalViol ? bad : v}>· {compact}</span>
         </button>
         <button type="button" onClick={copy} style={{ background: '#1e3a5f', color: copied ? '#7CFC00' : '#fff', border: '1px solid #4a7bb8', borderRadius: 3, padding: '2px 8px', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓' : 'Copy'}</button>
       </div>
