@@ -350,10 +350,16 @@ export function HolmDealDbgPanel() {
   const timeline = getHolmCardTimeline();
   const frames = getHolmDealFrames();
   const timelineViolations = getHolmTimelineViolations();
+  const expectedIds = new Set(snapshot.expectedCards.map((c) => c.cardId));
+  const transportLifecycle = records.filter((r) =>
+    (snapshot.handContextId && r.handContextId === snapshot.handContextId) ||
+    (r.cardId != null && expectedIds.has(r.cardId)),
+  );
   void sampleTick;
 
   const copy = async () => {
     const text = formatHolmDealDbgSnapshot(snapshot) +
+      '\n\n--- TRANSPORT LIFECYCLE ---\n' + JSON.stringify(transportLifecycle, null, 2) +
       '\n\n--- TIMELINE ---\n' + JSON.stringify(timeline, null, 2) +
       '\n\n--- FRAMES (last ' + frames.length + ') ---\n' + JSON.stringify(frames.slice(-60), null, 2) +
       '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2);
@@ -397,6 +403,18 @@ export function HolmDealDbgPanel() {
           <div style={sect}><div style={title}>Community</div>{Object.entries(snapshot.community).map(([key, value]) => <div key={key} style={rowStyle}><span style={k}>{key}</span><span style={v}>{fmt(value)}</span></div>)}</div>
           <div style={sect}><div style={title}>Chucky</div>{Object.entries(snapshot.chucky).map(([key, value]) => <div key={key} style={rowStyle}><span style={k}>{key}</span><span style={v}>{fmt(value)}</span></div>)}</div>
           <div style={sect}>
+            <div style={title}>Transport Lifecycle</div>
+            {transportLifecycle.length === 0 ? <div style={{ opacity: 0.6 }}>(no Holm transport records yet)</div> : transportLifecycle.map((r) => (
+              <div key={r.intentId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: r.droppedReason ? '#ff6b6b' : '#cfd8e3' }}>
+                <div style={{ fontWeight: 700 }}>{r.cardId ?? r.intentId}</div>
+                <div>state={r.lifecycleState ?? '—'} source={r.markSettledSource ?? '—'} dropped={r.droppedReason ?? '—'}</div>
+                <div>provider={fmt(r.providerReceivedAt)} active={fmt(r.activeIntentVisibleAt)} resolve={fmt(r.endpointResolveAttemptedAt)}#{r.endpointResolveAttemptCount ?? 0} endpointResolved={fmt(r.endpointResolvedAt)}</div>
+                <div>fromFound={String(!!r.fromEndpointFound)} toFound={String(!!r.toEndpointFound)} from={r.resolvedFromAnchor ?? '—'} to={r.resolvedToAnchor ?? '—'}</div>
+                <div>queued={fmt(r.queuedAt)} launched={fmt(r.launchedAt)} flyingMount={fmt(r.flyingCardMountedAt)} animStart={fmt(r.animationStartAt)} animEnd={fmt(r.animationEndAt)} markSettled={fmt(r.markSettledAt)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
             <div style={title}>Visibility</div>
             {snapshot.visibility.length === 0 ? <div style={{ opacity: 0.6 }}>(no Holm expected cards yet)</div> : snapshot.visibility.map((row) => (
               <div key={row.cardId} style={{ borderTop: '1px dashed #333', padding: '3px 0' }}>
@@ -419,7 +437,7 @@ export function HolmDealDbgPanel() {
               return (
                 <div key={e.cardId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: visBeforeSettle ? '#ff6b6b' : '#cfd8e3' }}>
                   <div style={{ fontWeight: 700 }}>{e.cardId} · {e.endpoint} · {e.wave}</div>
-                  <div>dispatch={fmt(e.dispatchAt)} claim={fmt(e.claimAt)} settle={fmt(e.settleAt)} mount={fmt(e.domMountAt)} visible={fmt(e.firstVisibleAt)}</div>
+                  <div>dispatch={fmt(e.dispatchAt)} launch={fmt(e.launchAt)} arrival={fmt(e.arrivalAt)} claim={fmt(e.claimAt)} settle={fmt(e.settleAt)} mount={fmt(e.domMountAt)} visible={fmt(e.firstVisibleAt)}</div>
                 </div>
               );
             })}
