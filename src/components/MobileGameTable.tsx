@@ -4885,7 +4885,7 @@ export const MobileGameTable = ({
     if (isDealerConfigPhase) {
       if (cachedChuckyCards && cachedChuckyCards.length > 0) {
         console.log('[MOBILE_CHUCKY] Dealer config phase - clearing cached Chucky cards');
-        setCachedChuckyCards(null);
+        setCachedChuckyCards(null, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         chuckyTargetRevealedRef.current = 0;
@@ -4904,7 +4904,7 @@ export const MobileGameTable = ({
         prev: cachedChuckyHandContextRef.current,
         next: handContextId,
       });
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       chuckyTargetRevealedRef.current = 0;
@@ -4915,7 +4915,7 @@ export const MobileGameTable = ({
     // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
     if (awaitingNextRound && !lastRoundResult) {
       console.log('[MOBILE_CHUCKY] Buck passed - clearing cached Chucky cards');
-      setCachedChuckyCards(null);
+      setCachedChuckyCards(null, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       chuckyTargetRevealedRef.current = 0;
@@ -4939,7 +4939,7 @@ export const MobileGameTable = ({
           handContextId: handContextId ?? null,
         }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
-        setCachedChuckyCards([...chuckyCards]);
+        setCachedChuckyCards([...chuckyCards], { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
         setCachedChuckyActive(true);
         // Update TARGET only (monotonic). Rendered count is advanced by the stepper.
         const newTarget = chuckyCardsRevealed || 0;
