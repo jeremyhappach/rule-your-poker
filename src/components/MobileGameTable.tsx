@@ -8920,6 +8920,38 @@ export const MobileGameTable = ({
                 const chuckyHandIdForRender =
                   handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
                 const chuckyTotalForRender = chuckyCardsForRender.length;
+                // ── WAR-TIME TOTAL FORENSICS — F: stage render input ──
+                try {
+                  const isHiddenArr: boolean[] = [];
+                  const faceUpArr: boolean[] = [];
+                  for (let i = 0; i < chuckyTotalForRender; i++) {
+                    const up = i < cachedChuckyCardsRevealed;
+                    faceUpArr.push(up);
+                    isHiddenArr.push(!up);
+                  }
+                  recordChuckyStageRenderInput({
+                    handContextId: chuckyHandIdForRender,
+                    phase: holmWinPotTriggerId
+                      ? 'WIN_SEQUENCE'
+                      : isShowingAnnouncement
+                        ? 'RESULT_ANNOUNCEMENT'
+                        : cachedChuckyCardsRevealed >= chuckyTotalForRender
+                          ? 'SHOWDOWN'
+                          : 'CHUCKY_REVEAL',
+                    roundStatus: roundStatus ?? null,
+                    stageMounted: true,
+                    cardIds: chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`),
+                    cardsLen: chuckyTotalForRender,
+                    cachedChuckyCardsRevealed,
+                    chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+                    computedRevealCount: cachedChuckyCardsRevealed,
+                    computedRevealCountSource: 'cachedVisual',
+                    isHiddenArrayByIndex: isHiddenArr,
+                    faceUpArrayByIndex: faceUpArr,
+                    caller: 'MobileGameTable.chuckyStage',
+                    callsite: 'MobileGameTable.tsx@chuckyVisible',
+                  });
+                } catch { /* forensics-only */ }
                 return (
                 <HolmAnchoredSlot
                   artifactId="holm.chuckyStage"
