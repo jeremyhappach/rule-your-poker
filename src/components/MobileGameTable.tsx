@@ -173,6 +173,7 @@ import {
   chuckyVisualResetForHand,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
+import { recordChuckyRenderState } from "@/lib/canonicalShell/cardTransport/holmChuckyRenderStateForensics";
 import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
