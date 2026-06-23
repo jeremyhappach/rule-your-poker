@@ -200,6 +200,11 @@ import {
   captureStack,
 } from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
+import {
+  setHolmChuckyTeardownContext,
+  recordHolmChuckyTeardownEvent,
+  recordHolmChuckyTeardownViolation,
+} from "@/lib/canonicalShell/cardTransport/holmChuckyTeardownForensics";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
 const __chuckyAuditRefIds = new WeakMap<object, string>();
