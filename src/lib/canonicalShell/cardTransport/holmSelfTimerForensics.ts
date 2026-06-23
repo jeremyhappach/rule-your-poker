@@ -43,7 +43,9 @@ export type HolmTimerWriteField =
   | 'maxTimeProp'
   | 'isActiveProp'
   | 'svgStrokeDashoffset'
-  | 'svgClassNameTransition';
+  | 'svgClassNameTransition'
+  | 'activationKey';
+
 
 export type HolmTimerWriteKind =
   | 'render-derivation'
