@@ -2976,6 +2976,31 @@ export const MobileGameTable = ({
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
+  // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
+  if (gameType === 'holm-game') {
+    try {
+      instrumentHolmPotRender({
+        handContextId: handContextId ?? null,
+        phase: String(holmDealPhaseForHand ?? 'unknown'),
+        roundStatus: (roundStatus as string | null) ?? null,
+        rawTriggerId: holmWinPotTriggerId ?? null,
+        gatedTriggerId: holmWinPotTriggerIdGated ?? null,
+        winnerPlayerId: winnerPlayerId ?? null,
+        potAmount: typeof holmWinPotAmount === 'number' ? holmWinPotAmount : null,
+        lastRoundResultHandContextId:
+          (lastRoundResult as { handContextId?: string | null } | null)?.handContextId ?? null,
+        chuckyVisualRevealComplete,
+        isShowingAnnouncement: !!isShowingAnnouncement,
+        sessionPaused: !!isPaused,
+        consumedTriggerId: null,
+        callerFile: 'src/components/MobileGameTable.tsx',
+        callerFn: 'componentBody.potRender',
+      });
+    } catch { /* noop */ }
+  }
+
+
+
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
       setSoloVsChuckyTableLocked(true);
