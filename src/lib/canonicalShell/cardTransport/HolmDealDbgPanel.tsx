@@ -441,104 +441,77 @@ export function HolmDealDbgPanel() {
         pointerEvents: 'auto',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderBottom: expanded ? '1px solid #333' : 'none' }}>
-        <button type="button" onClick={() => setExpanded((e) => !e)} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit', color: '#fff', padding: 0, fontWeight: 800 }}>
-          {expanded ? '▼' : '▶'} HOLM DEAL DBG <span style={totalViol ? bad : v}>· {compact}</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, padding: '3px 6px', borderBottom: expanded ? '1px solid #333' : 'none' }}>
+        <button type="button" onClick={() => setExpanded((e) => !e)} style={{ flex: '1 1 100%', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit', color: '#fff', padding: 0, fontWeight: 800, fontSize: 10 }}>
+          {expanded ? '▼' : '▶'} HOLM DBG <span style={totalViol ? bad : v}>· {compact}</span>
         </button>
-        <button type="button" onClick={copy} style={{ background: '#1e3a5f', color: copied ? '#7CFC00' : '#fff', border: '1px solid #4a7bb8', borderRadius: 3, padding: '2px 8px', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓' : 'Copy'}</button>
-        <button
-          type="button"
-          onClick={async () => {
-            const text = buildChuckyFullForensicsText();
-            try {
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            } catch { /* noop */ }
-            try {
-              (window as unknown as { __holmChuckyFullForensics?: unknown }).__holmChuckyFullForensics = getChuckyFullForensics();
-            } catch { /* noop */ }
-          }}
-          title="Copy categorized Chucky forensics (source/cache/soloState/stage/barrier/timer/visual/announcement/win/persistence/render/violation)"
-          style={{ background: '#5f1e3a', color: '#fff', border: '1px solid #b84a7b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-        >
-          COPY CHUCKY FORENSICS
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const text = buildChuckyRenderStateForensicsText();
-            try {
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            } catch { /* noop */ }
-            try {
-              (window as unknown as { __holmChuckyRenderStateForensics?: unknown }).__holmChuckyRenderStateForensics = getChuckyRenderStateForensics();
-            } catch { /* noop */ }
-          }}
-          title="Copy per-render Chucky card state forensics (branch, propSource, faceUp/Down regressions, server-vs-visual completeness)"
-          style={{ background: '#3a5f1e', color: '#fff', border: '1px solid #7bb84a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-        >
-          COPY HOLM CHUCKY RENDER STATE FORENSICS
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const text = buildBucksForensicsText();
-            try {
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            } catch { /* noop */ }
-            try {
-              (window as unknown as { __holmBucksForensics?: unknown }).__holmBucksForensics = getBucksForensics();
-            } catch { /* noop */ }
-          }}
-          title="Copy Holm BUCK'S ON YOU overlay forensics (every render/mount/show/suppress/dismiss + violations)"
-          style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-        >
-          COPY BUCKS FORENSICS
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            try {
-              const text = buildBucksForensicsText();
-              const blob = new Blob([text], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `bucks-forensics-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            } catch { /* noop */ }
-          }}
-          title="Download Holm BUCK'S ON YOU overlay forensics as a .txt file"
-          style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-        >
-          TXT BUCKS FORENSICS
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const text = buildHolmSelfTimerForensicsText();
-            try {
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            } catch { /* noop */ }
-            try {
-              (window as unknown as { __holmSelfTimerForensicsExport?: string }).__holmSelfTimerForensicsExport = text;
-            } catch { /* noop */ }
-          }}
-          title="Copy Holm SELF-TIMER forensics (every owner / segment / prepaint / rAF1 / rAF2 / 250ms / violation)"
-          style={{ background: '#1e5f3a', color: '#fff', border: '1px solid #4ab87b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-        >
-          COPY SELF-TIMER FORENSICS
-        </button>
+        {(() => {
+          const btn = (bg: string, bd: string): React.CSSProperties => ({ background: bg, color: '#fff', border: `1px solid ${bd}`, borderRadius: 3, padding: '1px 5px', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, cursor: 'pointer', lineHeight: 1.2 });
+          return (
+            <>
+              <button type="button" onClick={copy} title="Copy full Holm deal dbg snapshot" style={{ ...btn('#1e3a5f', '#4a7bb8'), color: copied ? '#7CFC00' : '#fff' }}>{copied ? '✓' : 'CPY'}</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildChuckyFullForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try { (window as unknown as { __holmChuckyFullForensics?: unknown }).__holmChuckyFullForensics = getChuckyFullForensics(); } catch { /* noop */ }
+                }}
+                title="Copy CHUCKY forensics"
+                style={btn('#5f1e3a', '#b84a7b')}
+              >CHK</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildChuckyRenderStateForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try { (window as unknown as { __holmChuckyRenderStateForensics?: unknown }).__holmChuckyRenderStateForensics = getChuckyRenderStateForensics(); } catch { /* noop */ }
+                }}
+                title="Copy CHUCKY render-state forensics"
+                style={btn('#3a5f1e', '#7bb84a')}
+              >RND</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildBucksForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try { (window as unknown as { __holmBucksForensics?: unknown }).__holmBucksForensics = getBucksForensics(); } catch { /* noop */ }
+                }}
+                title="Copy BUCKS forensics"
+                style={btn('#5f3a1e', '#b87b4a')}
+              >BCK</button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const text = buildBucksForensicsText();
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bucks-forensics-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch { /* noop */ }
+                }}
+                title="Download BUCKS forensics as .txt"
+                style={btn('#5f3a1e', '#b87b4a')}
+              >BCK↓</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildHolmSelfTimerForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try { (window as unknown as { __holmSelfTimerForensicsExport?: string }).__holmSelfTimerForensicsExport = text; } catch { /* noop */ }
+                }}
+                title="Copy SELF-TIMER forensics"
+                style={btn('#1e5f3a', '#4ab87b')}
+              >TMR</button>
+            </>
+          );
+        })()}
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
