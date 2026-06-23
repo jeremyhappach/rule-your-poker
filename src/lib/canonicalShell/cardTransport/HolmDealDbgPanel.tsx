@@ -45,6 +45,10 @@ import {
   buildChuckyFullForensicsText,
   getChuckyFullForensics,
 } from './holmChuckyFullForensics';
+import {
+  buildChuckyRenderStateForensicsText,
+  getChuckyRenderStateForensics,
+} from './holmChuckyRenderStateForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -441,6 +445,24 @@ export function HolmDealDbgPanel() {
           style={{ background: '#5f1e3a', color: '#fff', border: '1px solid #b84a7b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
         >
           COPY CHUCKY FORENSICS
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildChuckyRenderStateForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmChuckyRenderStateForensics?: unknown }).__holmChuckyRenderStateForensics = getChuckyRenderStateForensics();
+            } catch { /* noop */ }
+          }}
+          title="Copy per-render Chucky card state forensics (branch, propSource, faceUp/Down regressions, server-vs-visual completeness)"
+          style={{ background: '#3a5f1e', color: '#fff', border: '1px solid #7bb84a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY HOLM CHUCKY RENDER STATE FORENSICS
         </button>
       </div>
       {expanded ? (
