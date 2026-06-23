@@ -3244,18 +3244,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setTimeLeft(null);
       return;
     }
-    // Don't start timer if no deadline or game conditions prevent it
-    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
-      console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
-        decisionDeadline, 
-        awaiting: game?.awaiting_next_round, 
-        result: game?.last_round_result, 
+    // CANONICAL gate: countdown projection runs ONLY when all three
+    // authoritative server fields prove actionability:
+    //   round.status === 'betting' AND current_turn_position != null
+    //   AND decision_deadline != null
+    // No DealRuntime observation here. No client-owned grace. If any
+    // of these fail (PRE_DEAL, DEALING, pause, recovery, awaiting next
+    // round, all-decisions-in), suppress the timer.
+    const roundIsBetting = currentRound?.status === 'betting';
+    const turnPositionPresent = currentRound?.current_turn_position != null;
+    if (
+      !decisionDeadline ||
+      !roundIsBetting ||
+      !turnPositionPresent ||
+      game?.awaiting_next_round ||
+      game?.last_round_result ||
+      isAllDecisionsInFor(game, currentRound?.id)
+    ) {
+      console.log('[TIMER COUNTDOWN] Not starting - conditions not met', {
+        decisionDeadline,
+        roundStatus: currentRound?.status,
+        currentTurnPosition: currentRound?.current_turn_position,
+        awaiting: game?.awaiting_next_round,
+        result: game?.last_round_result,
         allDecisionsIn: isAllDecisionsInFor(game, currentRound?.id),
         rawAllDecisionsIn: game?.all_decisions_in,
         allDecisionsInRoundId: game?.all_decisions_in_round_id ?? null,
       });
       decisionMaxTimeDeadlineRef.current = null;
       setDecisionMaxTime(null);
+      setTimeLeft(null);
       return;
     }
 
@@ -3273,11 +3291,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // Calculate time from server deadline
+    // Calculate time from server deadline. CEILING projection so the
+    // first visible label is full under sub-second propagation and
+    // honest under longer propagation — never invents client-owned
+    // grace, never floors away a partial second.
     const calculateRemaining = () => {
       const deadline = new Date(decisionDeadline).getTime();
       const now = Date.now();
-      return Math.max(0, Math.floor((deadline - now) / 1000));
+      return Math.max(0, Math.ceil((deadline - now) / 1000));
     };
 
     // Set real backend-derived time immediately — no fake seeding.
