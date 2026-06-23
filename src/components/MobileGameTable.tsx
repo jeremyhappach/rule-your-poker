@@ -6490,9 +6490,7 @@ export const MobileGameTable = ({
 
     // Holm polish: turn indication is the descending timer ring + table
     // spotlight only. No separate yellow chip-disc underlay/highlight.
-    const showTurnRing = false;
     const statusRing: CanonicalSeatStatusRing | undefined = undefined;
-    void isTheirTurn; void playerDecision; void showTurnRing;
 
     // ActivePlayerHUD wraps the chip-disc body so the countdown ring
     // is preserved 1:1. The HUD's children are injected by the cluster
