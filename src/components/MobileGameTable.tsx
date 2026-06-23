@@ -2458,41 +2458,9 @@ export const MobileGameTable = ({
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
   useEffect(() => { ensureChuckyConfigLoaded(); }, []);
-  // Apply the VISUAL-REVEAL GATE for Chucky win/announcement (see top of
-  // component for rationale). After this point in render flow,
-  // `holmWinPotTriggerId` is null until the visual stepper has reached
-  // the full Chucky card count. Consumers below this line (win pot
-  // animation render, winnerPlayerId derivation, winnerCards derivation,
-  // dim/branch classification) all observe the gated value.
-  {
-    // Gate must mirror the EXACT render-time source-of-truth that drives the
-    // inline Chucky card render (chuckyRevealedCountForRender /
-    // chuckyTotalVisibleForRender). The render falls back to the sticky
-    // stage cache when `cachedChuckyCards` has been cleared mid-phase, so
-    // the gate must consult the sticky too — otherwise serverRevealCount
-    // can authorize WIN_SEQUENCE_BRANCH while the visual stepper is still
-    // mid-flip (e.g. visualRevealCount=3 of 4).
-    const _stickyHandMatchesForGate =
-      !!chuckyStageStickyRef.current &&
-      (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
-    const _effectiveChuckyCardsLenForGate =
-      (cachedChuckyCards && cachedChuckyCards.length > 0)
-        ? cachedChuckyCards.length
-        : (_stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0);
-    const _effectiveChuckyRevealedForGate = Math.max(
-      cachedChuckyCardsRevealed,
-      _stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
-    );
-    const _chuckyVisualRevealPendingForWinGate =
-      gameType === 'holm-game' &&
-      !!cachedChuckyActive &&
-      _effectiveChuckyCardsLenForGate > 0 &&
-      _effectiveChuckyRevealedForGate < _effectiveChuckyCardsLenForGate;
-    holmWinPotTriggerIdGated =
-      _chuckyVisualRevealPendingForWinGate && holmWinPotTriggerId
-        ? null
-        : holmWinPotTriggerId;
-  }
+  // Chucky visual-result gate is derived below, after solo ownership and
+  // Holm DealRuntime metadata are in scope. No result/win/announcement path
+  // may consume raw `holmWinPotTriggerId` for presentation.
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
