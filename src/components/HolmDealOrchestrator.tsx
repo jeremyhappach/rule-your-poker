@@ -334,6 +334,7 @@ export function HolmDealOrchestrator({
     handsDispatchedRef.current = true;
     const beginAt = performance.now();
     holmTimelineResetForHand(handContextId);
+    try { recordHolmFull({ category: 'RUNTIME_WRITE', event: 'HOLM_BEGIN_DEAL_FOR_HAND', source: 'HolmDealOrchestrator.handsEffect', sourceCategory: 'EFFECT', callsite: 'src/components/HolmDealOrchestrator.tsx:337', identityOverrides: { handContextId }, payload: { wave: 'hands', intentCount: intents.length, beginAt, dealPhase: deal.phase } }); } catch { /* */ }
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
       handContextId,
@@ -358,7 +359,9 @@ export function HolmDealOrchestrator({
     });
     const dispatchAt = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'hands', holmDbgEndpoint(intent.to), dispatchAt);
+    try { recordHolmFull({ category: 'TRANSPORT', event: 'HOLM_DISPATCH_MANY', source: 'HolmDealOrchestrator.handsEffect', sourceCategory: 'EFFECT', callsite: 'src/components/HolmDealOrchestrator.tsx:361', identityOverrides: { handContextId }, payload: { wave: 'hands', intentCount: intents.length, dispatchAt } }); } catch { /* */ }
     ct.dispatchMany(intents);
+
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated,
