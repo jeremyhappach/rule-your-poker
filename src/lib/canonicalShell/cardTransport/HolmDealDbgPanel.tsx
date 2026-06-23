@@ -260,7 +260,7 @@ export function HolmDealDbgPanel() {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sampleTick, tick] = useState(0);
-  const enabled = toggleEnabled || meta.gameType === 'holm-game';
+  const enabled = toggleEnabled;
 
   useEffect(() => {
     if (!enabled) return;
