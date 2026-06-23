@@ -538,7 +538,6 @@ export function HolmDealDbgPanel() {
                   // eslint-disable-next-line @typescript-eslint/no-var-requires
                   const mod = await import('./holmFullForensics');
                   const text = mod.buildHolmFullForensicsText();
-                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
                   try {
                     (window as unknown as { __holmFullForensicsExport?: unknown }).__holmFullForensicsExport = {
                       text,
@@ -548,10 +547,25 @@ export function HolmDealDbgPanel() {
                       dropped: mod.getHolmFullDropped(),
                     };
                   } catch { /* noop */ }
+                  try {
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                    a.href = url;
+                    a.download = `holm-full-forensics-${ts}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  } catch { /* noop */ }
                 }}
-                title="Copy UNIFIED HOLM FULL forensics (10k records)"
+                title="Download UNIFIED HOLM FULL forensics as .txt (10k records)"
                 style={btn('#5f5f1e', '#b8b84a')}
               >FULL</button>
+
 
             </>
           );
