@@ -1041,17 +1041,6 @@ export const MobileGameTable = ({
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
-  // VISUAL-REVEAL GATE for Chucky:
-  // The server fires `holmWinPotTriggerId` as soon as it considers the
-  // hand resolved, but that can land WHILE the local Chucky reveal stepper
-  // is still flipping cards. Per HOLM render-state forensics, this caused
-  // WIN_SEQUENCE_BRANCH to render Chucky cards face-down at
-  // visualRevealCount=0/4. The derived `holmWinPotTriggerIdGated` (assigned
-  // below once cachedChucky* state is in scope) is null until the visual
-  // stepper has flipped every Chucky card. UI consumers that drive
-  // announcement / win presentation must read THIS, not the raw prop, so
-  // win eligibility is driven exclusively by VISUAL reveal completion.
-  let holmWinPotTriggerIdGated: string | null | undefined = holmWinPotTriggerId;
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
     gameId: gameId ?? null,
@@ -1953,6 +1942,7 @@ export const MobileGameTable = ({
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
+  const chuckyVisualRevealCompleteRef = useRef(false);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
@@ -1988,7 +1978,7 @@ export const MobileGameTable = ({
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
     // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
-    if (chuckyLossTriggerId && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
+    if (chuckyLossTriggerId && chuckyVisualRevealCompleteRef.current && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
       const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
       const postPot = pot;
       const prePot = Math.max(0, postPot - totalAmount);
@@ -2469,41 +2459,9 @@ export const MobileGameTable = ({
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
   useEffect(() => { ensureChuckyConfigLoaded(); }, []);
-  // Apply the VISUAL-REVEAL GATE for Chucky win/announcement (see top of
-  // component for rationale). After this point in render flow,
-  // `holmWinPotTriggerId` is null until the visual stepper has reached
-  // the full Chucky card count. Consumers below this line (win pot
-  // animation render, winnerPlayerId derivation, winnerCards derivation,
-  // dim/branch classification) all observe the gated value.
-  {
-    // Gate must mirror the EXACT render-time source-of-truth that drives the
-    // inline Chucky card render (chuckyRevealedCountForRender /
-    // chuckyTotalVisibleForRender). The render falls back to the sticky
-    // stage cache when `cachedChuckyCards` has been cleared mid-phase, so
-    // the gate must consult the sticky too — otherwise serverRevealCount
-    // can authorize WIN_SEQUENCE_BRANCH while the visual stepper is still
-    // mid-flip (e.g. visualRevealCount=3 of 4).
-    const _stickyHandMatchesForGate =
-      !!chuckyStageStickyRef.current &&
-      (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
-    const _effectiveChuckyCardsLenForGate =
-      (cachedChuckyCards && cachedChuckyCards.length > 0)
-        ? cachedChuckyCards.length
-        : (_stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0);
-    const _effectiveChuckyRevealedForGate = Math.max(
-      cachedChuckyCardsRevealed,
-      _stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
-    );
-    const _chuckyVisualRevealPendingForWinGate =
-      gameType === 'holm-game' &&
-      !!cachedChuckyActive &&
-      _effectiveChuckyCardsLenForGate > 0 &&
-      _effectiveChuckyRevealedForGate < _effectiveChuckyCardsLenForGate;
-    holmWinPotTriggerIdGated =
-      _chuckyVisualRevealPendingForWinGate && holmWinPotTriggerId
-        ? null
-        : holmWinPotTriggerId;
-  }
+  // Chucky visual-result gate is derived below, after solo ownership and
+  // Holm DealRuntime metadata are in scope. No result/win/announcement path
+  // may consume raw `holmWinPotTriggerId` for presentation.
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
@@ -2881,6 +2839,34 @@ export const MobileGameTable = ({
       !!holmWinPotTriggerId ||
       isGameOver
     );
+
+  const stickyChuckyHandMatchesVisualGate =
+    !!chuckyStageStickyRef.current &&
+    (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
+  const visualRevealCount = Math.max(
+    cachedChuckyCardsRevealed,
+    stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
+  );
+  const requiredRevealCount = Math.max(
+    cachedChuckyCards?.length ?? 0,
+    stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0,
+    chuckyCards?.length ?? 0,
+    holmDealMetaSnap.handContextId === handContextId ? (holmDealMetaSnap.chuckyExpected ?? 0) : 0,
+  );
+  const isHolmSoloChucky =
+    gameType === 'holm-game' &&
+    (
+      isSoloVsChuckyRaw ||
+      soloVsChuckyTableLocked ||
+      cachedChuckyActive ||
+      chuckyActive ||
+      requiredRevealCount > 0
+    );
+  const chuckyVisualRevealComplete =
+    !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+  chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
+  const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
+  const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
@@ -4284,17 +4270,11 @@ export const MobileGameTable = ({
   // Result announcement must wait for the Chucky VISUAL reveal to finish.
   // Otherwise the announcement can render before / during the flips, gating
   // observers and producing the "rapid reveal after announcement" artifact.
-  const chuckyVisualRevealPending =
-    gameType === 'holm-game' &&
-    !!cachedChuckyActive &&
-    !!cachedChuckyCards &&
-    cachedChuckyCards.length > 0 &&
-    cachedChuckyCardsRevealed < cachedChuckyCards.length;
   const isShowingAnnouncement =
     gameType === 'holm-game' &&
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
-    !chuckyVisualRevealPending;
+    chuckyVisualRevealComplete;
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4486,8 +4466,8 @@ export const MobileGameTable = ({
     }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
-    // Holm: gate until community card 4 finishes flipping.
-    if (gameType === 'holm-game' && !holmCommunityFullyRevealed) return;
+    // Holm: gate until community card 4 and solo-Chucky visual reveal finish flipping.
+    if (gameType === 'holm-game' && (!holmCommunityFullyRevealed || !chuckyVisualRevealComplete)) return;
 
     const isResultEligible =
       isGameOver ||
@@ -4495,7 +4475,7 @@ export const MobileGameTable = ({
       roundStatus === 'completed' ||
       roundStatus === 'showdown' ||
       allDecisionsIn ||
-      chuckyActive;
+      (gameType === 'holm-game' ? chuckyVisualRevealComplete && chuckyActive : chuckyActive);
     if (!isResultEligible) return;
 
     const projectedText =
@@ -4538,7 +4518,7 @@ export const MobileGameTable = ({
   }, [
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
-    allDecisionsIn, chuckyActive, format357ShowdownAnnouncement, gameId, handContextId,
+    allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
     currentRound, announcements,
   ]);
 
@@ -4655,6 +4635,7 @@ export const MobileGameTable = ({
 
   // Detect Chucky chopped animation
   useEffect(() => {
+    if (gameType === 'holm-game' && !chuckyVisualRevealComplete) return;
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
       const currentUsername = currentPlayer?.profiles?.username || '';
       if (!currentUsername) return;
@@ -4665,7 +4646,7 @@ export const MobileGameTable = ({
         setShowChopped(true);
       }
     }
-  }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
+  }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyVisualRevealComplete]);
 
   // Detect 357 sweep animation (3-5-7 games only)
   useEffect(() => {
@@ -7445,7 +7426,7 @@ export const MobileGameTable = ({
           getClockwiseDistance={getClockwiseDistance}
           containerRef={tableContainerRef}
           gameType={gameType}
-          triggerId={chuckyLossTriggerId}
+          triggerId={chuckyLossTriggerIdGated}
           specificPlayerIds={chuckyLossPlayerIds}
            onAnimationStart={() => {
              // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
@@ -7818,7 +7799,7 @@ export const MobileGameTable = ({
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
         {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
         {(() => {
-          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerId || holmWinPotHiddenUntilReset ||
+          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
 
           // IMPORTANT: During the initial ante animation we must never briefly show a stale pre-ante pot
@@ -8880,9 +8861,9 @@ export const MobileGameTable = ({
                                 phase: chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
                                 isShowingAnnouncement: !!isShowingAnnouncement,
                                 holmWinPotTriggerActive: !!holmWinPotTriggerIdGated,
-                                resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
-                                awaitingNextRound: !!awaitingNextRound,
-                                lastRoundResultPresent: !!lastRoundResult,
+                                resultGateAllowed: !!(awaitingNextRound && lastRoundResult && chuckyVisualRevealComplete),
+                                awaitingNextRound: !!(awaitingNextRound && chuckyVisualRevealComplete),
+                                lastRoundResultPresent: !!(lastRoundResult && chuckyVisualRevealComplete),
                                 serverRevealCount: typeof chuckyCardsRevealed === 'number' ? chuckyCardsRevealed : null,
                                 cachedChuckyCardsRevealed: chuckyRevealedCountForRender,
                                 requiredRevealCount: chuckyTotalForRender,
