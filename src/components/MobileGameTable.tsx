@@ -6488,10 +6488,9 @@ export const MobileGameTable = ({
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
     const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
 
-    // Status ring: 'turn' while it's their decision window (and they
-    // have not already stayed).
-    const showTurnRing = isTheirTurn && playerDecision !== 'stay';
-    const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
+    // Holm polish: turn indication is the descending timer ring + table
+    // spotlight only. No separate yellow chip-disc underlay/highlight.
+    const statusRing: CanonicalSeatStatusRing | undefined = undefined;
 
     // ActivePlayerHUD wraps the chip-disc body so the countdown ring
     // is preserved 1:1. The HUD's children are injected by the cluster
