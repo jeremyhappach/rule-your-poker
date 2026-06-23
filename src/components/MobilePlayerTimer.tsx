@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect, useLayoutEffect, useState } from "react";
 import {
   useLifecycleMount,
   recordLifecycleEvent,
@@ -10,6 +10,14 @@ import {
   unregisterThreeFiveSevenTimerOwner,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
 import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
+import {
+  registerHolmTimerOwner,
+  updateHolmTimerOwner,
+  unregisterHolmTimerOwner,
+  beginHolmTimerSegment,
+  recordHolmTimerSample,
+  endHolmTimerSegment,
+} from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
