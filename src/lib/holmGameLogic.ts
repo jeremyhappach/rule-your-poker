@@ -2585,9 +2585,34 @@ export async function proceedToNextHolmRound(gameId: string) {
   }
 
   const positions = players.map((p) => p.position);
+  const fromBuckPosition: number | null =
+    typeof game.buck_position === 'number' ? game.buck_position : null;
   const newBuckPosition = nextClockwise(game.buck_position, positions);
 
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
+
+  // Canonical server-authored Buck-transfer presentation event.
+  // Emitted ONLY when the buck actually moves between hands. Clients latch
+  // on `id` and gate next-hand deal launch when `toPosition === self`.
+  let buckTransferPresentation: Record<string, unknown> | null = null;
+  if (
+    typeof fromBuckPosition === 'number' &&
+    typeof newBuckPosition === 'number' &&
+    fromBuckPosition !== newBuckPosition
+  ) {
+    buckTransferPresentation = {
+      id:
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? crypto.randomUUID()
+          : `btp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      sessionId: gameId,
+      sequence: Date.now(),
+      fromPosition: fromBuckPosition,
+      toPosition: newBuckPosition,
+      createdAt: new Date().toISOString(),
+      source: 'SERVER_BUCK_TRANSFER',
+    };
+  }
 
   // CRITICAL: Atomic guard so only ONE client proceeds (prevents duplicate round inserts)
   const { data: updateResult, error: updateError } = await supabase
@@ -2596,10 +2621,12 @@ export async function proceedToNextHolmRound(gameId: string) {
       awaiting_next_round: false,
       buck_position: newBuckPosition,
       last_round_result: null,
-    })
+      ...(buckTransferPresentation ? { buck_transfer_presentation: buckTransferPresentation } : {}),
+    } as never)
     .eq('id', gameId)
     .eq('awaiting_next_round', true)
     .select();
+
 
   if (updateError || !updateResult || updateResult.length === 0) {
     console.log('[HOLM NEXT] Another client already proceeding, skipping');

@@ -41,6 +41,8 @@ import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
+import { isBuckPresentationGated, subscribeBuckPresentationGate } from '@/lib/canonicalShell/holmBuckPresentationGate';
+import { useSyncExternalStore } from 'react';
 import type { Card as CardType } from '@/lib/cardUtils';
 
 interface SeatEntry {
@@ -182,9 +184,17 @@ export function HolmDealOrchestrator({
     });
   };
 
+  // Subscribe to buck-presentation gate so this effect re-runs on release.
+  const buckGated = useSyncExternalStore(
+    subscribeBuckPresentationGate,
+    () => isBuckPresentationGated(handContextId),
+    () => false,
+  );
+
   // ── 1. HANDS WAVE — buck-first, clockwise ─────────────────────────
   useEffect(() => {
     if (!deal || handsDispatchedRef.current) return;
+    if (buckGated) return; // BUCKS overlay must complete before deal launch
     if (!dealTimingHydrated) return;
     if (!seats.length || cardsPerPlayer <= 0) return;
     if (!selfHand || selfHand.length < cardsPerPlayer) return;
@@ -258,6 +268,7 @@ export function HolmDealOrchestrator({
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated,
+    buckGated,
   ]);
 
   // ── 2. COMMUNITY WAVE (4 cards) ───────────────────────────────────
