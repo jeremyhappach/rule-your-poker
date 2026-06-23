@@ -125,6 +125,7 @@ import {
   HolmSettledGate,
   useHolmSettledIds,
 } from "./HolmDealOrchestrator";
+import { useHolmHandAdmission } from "@/lib/canonicalShell/cardTransport/holmHandAdmission";
 import { ThreeFiveSevenGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/ThreeFiveSevenGameplayGeometryProvider";
 import { ThreeFiveSevenAnchoredSlot } from "./ThreeFiveSevenAnchoredSlot";
 import {
