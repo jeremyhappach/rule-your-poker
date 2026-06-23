@@ -1943,6 +1943,7 @@ export const MobileGameTable = ({
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
   const chuckyVisualRevealCompleteRef = useRef(false);
+  const chuckyNormalRevealBranchLockedRef = useRef(false);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
@@ -2454,7 +2455,9 @@ export const MobileGameTable = ({
   // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
   // effect below advances the rendered count one card at a time toward that target.
   const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
-  const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
+  const cachedChuckyCardsLiveRef = useRef<CardType[] | null>(null);
+  cachedChuckyCardsLiveRef.current = cachedChuckyCards;
+  const [cachedChuckyActive, _setCachedChuckyActiveRaw] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
@@ -2486,6 +2489,20 @@ export const MobileGameTable = ({
     ) => {
       _setCachedChuckyCardsRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        if (resolved == null && prev && prev.length > 0 && chuckyNormalRevealBranchLockedRef.current) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            attemptedClear: 'cachedChuckyCards',
+            handContextId: handContextIdRef.current ?? null,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: prev.length,
+            cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+          }, handContextIdRef.current ?? null);
+          return prev;
+        }
         recordHolmTimelineEvent('CHUCKY_ARRAY_IDENTITY_CHURN', {
           instanceId: chuckyInstanceIdRef.current,
           renderSeq: chuckyRenderSeqRef.current,
@@ -2499,6 +2516,30 @@ export const MobileGameTable = ({
           handContextId: handContextIdRef.current ?? null,
           phase: chuckyPhaseRef.current ?? null,
         }, handContextIdRef.current ?? null);
+        cachedChuckyCardsLiveRef.current = resolved;
+        return resolved;
+      });
+    },
+    [],
+  );
+  const setCachedChuckyActive = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      _setCachedChuckyActiveRaw((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: boolean) => boolean)(prev) : next;
+        if (resolved === false && prev && chuckyNormalRevealBranchLockedRef.current && (cachedChuckyCardsLiveRef.current?.length ?? 0) > 0) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: 'setCachedChuckyActive',
+            reason: 'attempted inactive while visual reveal incomplete',
+            attemptedClear: 'cachedChuckyActive',
+            handContextId: handContextIdRef.current ?? null,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+            cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+          }, handContextIdRef.current ?? null);
+          return prev;
+        }
         return resolved;
       });
     },
@@ -2512,6 +2553,21 @@ export const MobileGameTable = ({
       _setCachedChuckyCardsRevealedRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: number) => number)(prev) : next;
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
+        if (resolved === 0 && prev > 0 && chuckyNormalRevealBranchLockedRef.current) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            attemptedClear: 'cachedChuckyCardsRevealed',
+            handContextId: handCtx,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+            cachedChuckyCardsRevealed: prev,
+          }, handCtx);
+          lastChuckyRevealedRef.current = prev;
+          return prev;
+        }
         if (resolved !== prev) {
           recordHolmTimelineEvent('CHUCKY_REVEALED_STATE_CHANGED', {
             instanceId: chuckyInstanceIdRef.current,
