@@ -7792,6 +7792,18 @@ export const MobileGameTable = ({
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false); // Clear POT-OUT flag
               onHolmWinPotAnimationComplete?.();
+              try {
+                recordHolmPotComplete(
+                  {
+                    triggerId: holmWinPotTriggerIdGated ?? null,
+                    amount: holmWinPotAmount,
+                    callerFile: 'src/components/MobileGameTable.tsx',
+                    callerFn: 'HolmWinPotAnimation.onAnimationComplete',
+                  },
+                  handContextId ?? null,
+                );
+              } catch { /* noop */ }
+
               if (gameType === 'holm-game' && gameId) {
                 logResolutionGate(
                   {
