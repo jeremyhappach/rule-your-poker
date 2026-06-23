@@ -187,6 +187,18 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
+import {
+  beginNewHand as holmTxnBeginNewHand,
+  markNewHandInitComplete as holmTxnMarkNewHandInitComplete,
+  tryLatchOutcomeTxn as holmTxnTryLatchOutcomeTxn,
+  releaseOutcomePresentation as holmTxnReleaseOutcomePresentation,
+  recordVisualChuckyRevealCommitted as holmTxnRecordVisualReveal,
+  getVisualChuckyRevealCommittedIds as holmTxnGetVisualRevealCommittedIds,
+  isHolmChuckyWriteAllowed as holmTxnIsWriteAllowed,
+  recordSequencerEvent as holmTxnRecordSequencerEvent,
+  getActiveTxn as holmTxnGetActiveTxn,
+  subscribeHolmTxn as holmTxnSubscribe,
+} from "@/lib/canonicalShell/cardTransport/holmTxnState";
 
 const __chuckyAuditRefIds = new WeakMap<object, string>();
 let __chuckyAuditRefSeq = 0;
@@ -920,6 +932,51 @@ const DealerSelectionVisibilityTracker = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  return null;
+};
+
+
+// ──────────────────────────────────────────────────────────────────────
+// Holm v3 — renderer paint-commit acknowledger for an inline Chucky card.
+//
+// Once `isRevealed` flips true, schedule a double-rAF (paint barrier) and
+// then record the visual reveal against the active Holm txn. Generation-
+// fenced inside holmTxnRecordVisualReveal and deduped by exact cardId.
+// ──────────────────────────────────────────────────────────────────────
+const HolmChuckyRevealCommitter: React.FC<{
+  cardId: string;
+  isRevealed: boolean;
+  handContextId: string | null;
+}> = ({ cardId, isRevealed, handContextId }) => {
+  const committedRef = useRef(false);
+  useEffect(() => {
+    if (!isRevealed) return;
+    if (!handContextId) return;
+    if (committedRef.current) return;
+    let cancelled = false;
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const raf2 = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const txn = holmTxnGetActiveTxn();
+        if (!txn) return;
+        if (txn.handContextId !== handContextId) return;
+        if (committedRef.current) return;
+        committedRef.current = true;
+        holmTxnRecordVisualReveal({
+          cardId,
+          handContextId,
+          handGeneration: txn.handGeneration,
+        });
+      });
+      // best-effort cleanup of inner raf if outer cancels later
+      void raf2;
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+    };
+  }, [cardId, isRevealed, handContextId]);
   return null;
 };
 
@@ -2508,6 +2565,16 @@ export const MobileGameTable = ({
     ) => {
       _setCachedChuckyCardsRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        // Holm v3 legacy-writer firewall — while a Holm txn is active, only
+        // allowlisted writers may mutate cachedChuckyCards. Rejected writes
+        // are logged as HOLM_LEGACY_CHUCKY_WRITER_REJECTED and ignored.
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyCards',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved == null && prev && prev.length > 0 && chuckyNormalRevealBranchLockedRef.current) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
@@ -2542,15 +2609,22 @@ export const MobileGameTable = ({
     [],
   );
   const setCachedChuckyActive = useCallback(
-    (next: boolean | ((prev: boolean) => boolean)) => {
+    (next: boolean | ((prev: boolean) => boolean), writerMeta?: { writer: string; reason?: string }) => {
       _setCachedChuckyActiveRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: boolean) => boolean)(prev) : next;
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyActive',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved === false && prev && chuckyNormalRevealBranchLockedRef.current && (cachedChuckyCardsLiveRef.current?.length ?? 0) > 0) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
             renderSeq: chuckyRenderSeqRef.current,
-            writer: 'setCachedChuckyActive',
-            reason: 'attempted inactive while visual reveal incomplete',
+            writer: writerMeta?.writer ?? 'setCachedChuckyActive',
+            reason: writerMeta?.reason ?? 'attempted inactive while visual reveal incomplete',
             attemptedClear: 'cachedChuckyActive',
             handContextId: handContextIdRef.current ?? null,
             phase: chuckyPhaseRef.current ?? null,
@@ -2572,6 +2646,14 @@ export const MobileGameTable = ({
       _setCachedChuckyCardsRevealedRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: number) => number)(prev) : next;
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
+        // Holm v3 legacy-writer firewall — sequencer-only during active txn.
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyCardsRevealed',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved === 0 && prev > 0 && chuckyNormalRevealBranchLockedRef.current) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
@@ -2955,18 +3037,76 @@ export const MobileGameTable = ({
       chuckyActive ||
       requiredRevealCount > 0
     );
+  // Holm v3 — subscribe to txn store so derivations recompute when commits land.
+  const holmTxnTick = useSyncExternalStore(
+    holmTxnSubscribe,
+    () => {
+      const t = holmTxnGetActiveTxn();
+      if (!t) return '';
+      const committed = holmTxnGetVisualRevealCommittedIds(t.handContextId, t.handGeneration);
+      return `${t.handGeneration}|${committed.size}|${t.outcomeTxnKey ?? ''}|${t.outcomeReleased ? 1 : 0}`;
+    },
+    () => '',
+  );
+  void holmTxnTick;
+  const holmActiveTxn = holmTxnGetActiveTxn();
+  const visualChuckyFlipCommittedIds = (handContextId && holmActiveTxn && holmActiveTxn.handContextId === handContextId)
+    ? holmTxnGetVisualRevealCommittedIds(handContextId, holmActiveTxn.handGeneration)
+    : holmTxnGetVisualRevealCommittedIds(null, null);
+  // Holm v3 — reveal completion derived ONLY from renderer-committed card IDs.
+  // For non-Holm-Chucky paths, treat as complete (preserves prior behavior).
   const chuckyVisualRevealComplete =
-    !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+    !isHolmSoloChucky || (requiredRevealCount > 0 && visualChuckyFlipCommittedIds.size >= requiredRevealCount);
   chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
   const chuckyNormalRevealBranchLocked =
     isHolmSoloChucky &&
     requiredRevealCount > 0 &&
-    visualRevealCount < requiredRevealCount &&
+    visualChuckyFlipCommittedIds.size < requiredRevealCount &&
     !!cachedChuckyCards &&
     cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
-  const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
-  const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
+
+  // Holm v3 — outcome gating. Server completion (triggers) latches a pending
+  // outcome on the active txn. The trigger remains gated until BOTH:
+  //   (a) all required reveal IDs are committed via renderer rAF×2
+  //   (b) releaseOutcomePresentation has been called (sets outcomeReleased)
+  // The releaseOutcomePresentation call is dispatched by the effect below.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!isHolmSoloChucky) return;
+    if (!holmActiveTxn) return;
+    const ctx = holmActiveTxn.handContextId;
+    const gen = holmActiveTxn.handGeneration;
+    if (holmWinPotTriggerId) {
+      holmTxnTryLatchOutcomeTxn({
+        handContextId: ctx,
+        handGeneration: gen,
+        outcomeTxnKey: `${ctx}:win:${holmWinPotTriggerId}`,
+      });
+    } else if (chuckyLossTriggerId) {
+      holmTxnTryLatchOutcomeTxn({
+        handContextId: ctx,
+        handGeneration: gen,
+        outcomeTxnKey: `${ctx}:loss:${chuckyLossTriggerId}`,
+      });
+    }
+    // Release once all renderer commits land AND an outcome is latched.
+    if (
+      holmActiveTxn.outcomeTxnKey &&
+      !holmActiveTxn.outcomeReleased &&
+      requiredRevealCount > 0 &&
+      visualChuckyFlipCommittedIds.size >= requiredRevealCount
+    ) {
+      holmTxnReleaseOutcomePresentation({ handContextId: ctx, handGeneration: gen });
+    }
+  }, [
+    gameType, isHolmSoloChucky, holmActiveTxn, holmWinPotTriggerId, chuckyLossTriggerId,
+    requiredRevealCount, visualChuckyFlipCommittedIds,
+  ]);
+
+  const outcomeReleased = !!holmActiveTxn?.outcomeReleased;
+  const holmWinPotTriggerIdGated = (chuckyVisualRevealComplete && (!isHolmSoloChucky || outcomeReleased)) ? holmWinPotTriggerId : null;
+  const chuckyLossTriggerIdGated = (chuckyVisualRevealComplete && (!isHolmSoloChucky || outcomeReleased)) ? chuckyLossTriggerId : null;
 
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
@@ -5138,7 +5278,7 @@ export const MobileGameTable = ({
         }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards], { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
-        setCachedChuckyActive(true);
+        setCachedChuckyActive(true, { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
         const newTarget = chuckyCardsRevealed || 0;
         if (newTarget > chuckyTargetRevealedRef.current) {
           chuckyTargetRevealedRef.current = newTarget;
@@ -5298,157 +5438,179 @@ export const MobileGameTable = ({
   }, []);
 
   // ──────────────────────────────────────────────────────────────────
-  // CHUCKY REVEAL SCHEDULER — latched presentation transaction
+  // RETIRED — legacy CHUCKY REVEAL SCHEDULER (ChuckyRevealStepperEffect).
   //
-  // Once started for a handContextId, this loop must finish every configured
-  // visual reveal. Server completion / result / announcement / win state may
-  // observe it only; those states must not be dependencies that tear down the
-  // pending timeout before the next visible increment.
+  // Replaced by the generation-keyed Holm v3 sequencer below. The legacy
+  // effect is disabled here; the legacy-writer firewall in holmTxnState
+  // would already reject 'stepper.setTimeout' writes while a Holm txn is
+  // active, but we additionally short-circuit the effect body so it cannot
+  // arm timers or churn refs. Diagnostic emitted once per mount.
   // ──────────────────────────────────────────────────────────────────
-  const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
-  const chuckyEffectTimeoutSeqRef = useRef(0);
-  const chuckyRevealLoopHandRef = useRef<string | null>(null);
-  const chuckyRevealLoopCancelRef = useRef<((reason: string) => void) | null>(null);
+  const chuckyRevealLoopCancelRef = useRef<((reason: string) => void) | null>(null); // kept for unmount cleanup compat
   const totalLenForReveal = cachedChuckyCards?.length ?? 0;
+  const legacyStepperRetiredAnnouncedRef = useRef(false);
   useEffect(() => {
-    const enterDeps = { gameType, chuckyBarrierOpen, handContextId, totalLenForReveal };
-    const changedSinceLastEnter = __chuckyAuditDiffDeps(chuckyEffectDepsRef.current, enterDeps);
-    if (changedSinceLastEnter) {
-      chuckyVisualStepperLastDepChangeRef.current = changedSinceLastEnter;
-    }
-    chuckyEffectDepsRef.current = enterDeps;
+    if (gameType !== 'holm-game') return;
+    if (legacyStepperRetiredAnnouncedRef.current) return;
+    legacyStepperRetiredAnnouncedRef.current = true;
+    recordHolmTimelineEvent('HOLM_LEGACY_STEPPER_RETIRED', {
+      instanceId: chuckyInstanceIdRef.current,
+      reason: 'replaced by holm-v3 generation-keyed sequencer',
+    }, handContextIdRef.current ?? null);
+  }, [gameType]);
 
-    if (chuckyRevealLoopHandRef.current && handContextId && chuckyRevealLoopHandRef.current !== handContextId) {
-      chuckyRevealLoopCancelRef.current?.('handContextId changed');
-    }
+  // ──────────────────────────────────────────────────────────────────
+  // HOLM v3 — generation-keyed Chucky reveal sequencer (single owner).
+  //
+  // Contract:
+  //   • Exactly one sequencer per { handContextId, handGeneration }.
+  //   • Owns ALL four reveal advances via setCachedChuckyCardsRevealed
+  //     with writer='holm.sequencer.reveal' (allowlisted by the firewall).
+  //   • Cancels ONLY on:
+  //       - explicit runOutcomeTeardown (landing 2)
+  //       - accepted runNewHandInit replacing the generation (landing 2)
+  //       - true MobileGameTable unmount
+  //   • Does NOT observe: roundStatus, server reveal count, result
+  //     availability, win/loss triggers, announcement state, chucky array
+  //     reference identity, cache-effect rerenders.
+  //   • Cadence: existing getChuckyConfiguredStepperDelayMs (preserved).
+  //   • Next card scheduled by timer, never by transitionend.
+  // ──────────────────────────────────────────────────────────────────
+  const holmSequencerActiveRef = useRef<{
+    handContextId: string;
+    handGeneration: number;
+    cancel: (reason: string) => void;
+  } | null>(null);
 
+  // Stable refs the sequencer reads (so we don't list them as effect deps).
+  const requiredRevealCountRef = useRef<number>(0);
+  useEffect(() => { requiredRevealCountRef.current = totalLenForReveal; }, [totalLenForReveal]);
+  const chuckyBarrierOpenRef = useRef<boolean>(false);
+
+  useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!chuckyBarrierOpen) return;
     if (!handContextId) return;
     if (totalLenForReveal <= 0) return;
-    // Guard: never restart reveal loop within the same hand.
-    if (chuckyRevealLoopHandRef.current === handContextId) return;
-    chuckyRevealLoopHandRef.current = handContextId;
 
-    const effectId = ++chuckyEffectIdRef.current;
-    const mountAt = __chuckyAuditNow();
-    const effectInstance = ++chuckyEffectInstanceRef.current;
-    const instanceId = chuckyInstanceIdRef.current;
-    const enterRenderSeq = chuckyRenderSeqRef.current;
-    chuckyVisualStepperMountedRef.current = true;
-    chuckyVisualStepperLastCleanupReasonRef.current = null;
-    chuckyVisualStepperLastDepChangeRef.current = changedSinceLastEnter;
+    // Establish/refresh the txn for this handContextId.
+    const txn = holmTxnBeginNewHand(handContextId);
+    // Landing 1 stub: until runNewHandInit (landing 2) exists, mark init
+    // complete immediately so the fence is live.
+    holmTxnMarkNewHandInitComplete(txn.handContextId, txn.handGeneration);
 
-    if (chuckyTargetRevealedRef.current < totalLenForReveal) {
-      chuckyTargetRevealedRef.current = totalLenForReveal;
+    // Already running for this exact (hand, generation) — leave it alone.
+    const existing = holmSequencerActiveRef.current;
+    if (existing && existing.handContextId === txn.handContextId && existing.handGeneration === txn.handGeneration) {
+      return;
+    }
+    // A different identity owns the slot — only landing 2 may cancel via
+    // teardown/init; in landing 1, the txn module replaces identity on
+    // beginNewHand for a different handContextId, so we cancel the old.
+    if (existing) {
+      existing.cancel('superseded by new (handContextId, handGeneration)');
     }
 
-    recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
-      instanceId, effectId, effectInstance, mountAt, cleanupAt: null,
-      reason: 'MOUNT', renderSeqAtMount: enterRenderSeq,
-      renderSeqAtCleanup: null, timeoutId: null, firedBeforeCleanup: null,
-    }, handContextId);
-    recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
-      instanceId, effectId, effectInstance, mountAt,
-      renderSeq: enterRenderSeq, handContextId,
-      deps: enterDeps,
-      changedSinceLastEnter,
-    }, handContextId);
-
-    chuckyVisualMarkRevealSequenceScheduled(handContextId);
+    const seqHandContextId = txn.handContextId;
+    const seqHandGeneration = txn.handGeneration;
+    const HOLM_REVEAL_FALLBACK_MS = 1500;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const cancelLoop = (reason: string) => {
+
+    const cancel = (reason: string) => {
       if (cancelled) return;
       cancelled = true;
       if (timer) clearTimeout(timer);
-      chuckyVisualStepperMountedRef.current = false;
-      chuckyVisualStepperTimeoutActiveRef.current = false;
-      const cleanupAt = __chuckyAuditNow();
-      chuckyVisualStepperLastCleanupReasonRef.current = reason;
-      recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
-        instanceId, effectId, effectInstance, mountAt, cleanupAt,
-        handContextId,
+      timer = null;
+      holmTxnRecordSequencerEvent('HOLM_SEQUENCER_CANCEL', {
+        handContextId: seqHandContextId,
+        handGeneration: seqHandGeneration,
         reason,
-        dependencyChange: chuckyVisualStepperLastDepChangeRef.current,
-      }, handContextId);
-      if (chuckyRevealLoopHandRef.current === handContextId) {
-        chuckyRevealLoopHandRef.current = null;
-      }
-      if (chuckyRevealLoopCancelRef.current === cancelLoop) {
-        chuckyRevealLoopCancelRef.current = null;
+      });
+      if (holmSequencerActiveRef.current && holmSequencerActiveRef.current.handGeneration === seqHandGeneration) {
+        holmSequencerActiveRef.current = null;
       }
     };
-    chuckyRevealLoopCancelRef.current = cancelLoop;
-    // Local monotonic counter — starts from whatever has already been
-    // revealed (in case of remount after a true new-hand boundary).
+
+    holmSequencerActiveRef.current = { handContextId: seqHandContextId, handGeneration: seqHandGeneration, cancel };
+    holmTxnRecordSequencerEvent('HOLM_SEQUENCER_MOUNT', {
+      handContextId: seqHandContextId,
+      handGeneration: seqHandGeneration,
+      totalLenForReveal,
+    });
+    chuckyVisualMarkRevealSequenceScheduled(seqHandContextId);
+
+    // Start from whatever was already revealed (in case of mid-sequence remount).
     let idx = cachedChuckyCardsRevealedRef.current;
+    const total = totalLenForReveal;
 
-    const HOLM_REVEAL_FALLBACK_MS = 1500;
-
-    const tick = () => {
+    const scheduleNext = () => {
       if (cancelled) return;
-      const total = cachedChuckyCardsLenRef.current || totalLenForReveal;
       if (idx >= total) {
-        recordHolmTimelineEvent('CHUCKY_REVEAL_COMPLETE', {
-          instanceId, effectId, handContextId, total,
-        }, handContextId);
-        chuckyVisualStepperMountedRef.current = false;
-        chuckyVisualStepperTimeoutActiveRef.current = false;
-        if (chuckyRevealLoopCancelRef.current === cancelLoop) {
-          chuckyRevealLoopCancelRef.current = null;
-        }
+        // All four index advances dispatched. The renderer rAF×2 commit
+        // callback will eventually fill visualChuckyFlipCommittedIds. The
+        // outcome-release effect (below, separate effect) consumes that set
+        // plus pendingOutcome to actually release.
+        holmTxnRecordSequencerEvent('HOLM_SEQUENCER_OUTCOME_RELEASE_SCHEDULED', {
+          handContextId: seqHandContextId,
+          handGeneration: seqHandGeneration,
+          dispatched: idx,
+        });
         return;
       }
       const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
       const delayMs = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
       const source: 'gameDefaults' | 'fallback' =
         cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
-      const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
-      const deadline = __chuckyAuditNow() + delayMs;
-      chuckyVisualStepperTimeoutActiveRef.current = true;
-      chuckyVisualStepperLastDeadlineRef.current = deadline;
-
-      recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
-        instanceId, effectId, effectInstance,
-        renderSeq: chuckyRenderSeqRef.current, mountAt, handContextId,
-        timeoutId: timeoutSeq, delay: delayMs, deadline, prev: idx, total,
-      }, handContextId);
       recordChuckyRevealTimerArm({
-        handContextId, delayMs, index: idx, total, delaySource: source,
+        handContextId: seqHandContextId, delayMs, index: idx, total, delaySource: source,
       });
-
       timer = setTimeout(() => {
         if (cancelled) return;
-        chuckyVisualStepperTimeoutActiveRef.current = false;
+        // Identity-fence the advance against the active txn.
+        const live = holmTxnGetActiveTxn();
+        if (!live || live.handContextId !== seqHandContextId || live.handGeneration !== seqHandGeneration) {
+          cancel('txn identity changed before reveal advance');
+          return;
+        }
         idx += 1;
-        recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
-          instanceId, effectId, effectInstance,
-          renderSeq: chuckyRenderSeqRef.current,
-          armedAtRenderSeq: enterRenderSeq, mountAt, handContextId,
-          timeoutId: timeoutSeq, prev: idx - 1, next: idx,
-        }, handContextId);
         recordChuckyRevealStep({
-          handContextId, index: idx - 1, total,
+          handContextId: seqHandContextId, index: idx - 1, total,
           actualDelayUsedMs: delayMs, source,
         });
         setCachedChuckyCardsRevealed(
           (prev) => (prev < idx ? idx : prev),
-          { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
+          { writer: 'holm.sequencer.reveal', reason: `advance to ${idx}/${total}` },
         );
-        tick();
+        holmTxnRecordSequencerEvent('HOLM_SEQUENCER_REVEAL_ADVANCED', {
+          handContextId: seqHandContextId,
+          handGeneration: seqHandGeneration,
+          nextRevealedCount: idx,
+          total,
+          delayMs,
+          source,
+        });
+        scheduleNext();
       }, delayMs);
     };
-    tick();
+    scheduleNext();
+
+    return () => {
+      // Only true MGT unmount or barrier-close cancels. Barrier-close is a
+      // legitimate cancel (it means the wave was abandoned upstream).
+      cancel('effect cleanup (barrier/handContextId/total changed)');
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameType, chuckyBarrierOpen, handContextId, totalLenForReveal]);
 
+  // True-unmount safety: ensure any running sequencer terminates.
   useEffect(() => {
     return () => {
-      chuckyRevealLoopCancelRef.current?.('component unmount');
+      holmSequencerActiveRef.current?.cancel('MobileGameTable unmount');
     };
   }, []);
+
 
   useEffect(() => {
     if (gameType !== 'holm-game') return;
@@ -9026,6 +9188,11 @@ export const MobileGameTable = ({
                             phase={chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                             cachedChuckyCardsRevealed={chuckyRevealedCountForRender}
                             cachedChuckyCardsCount={chuckyTotalForRender}
+                          />
+                          <HolmChuckyRevealCommitter
+                            cardId={`${chuckyHandIdForRender}#chucky-${index}`}
+                            isRevealed={isRevealed}
+                            handContextId={chuckyHandIdForRender}
                           />
                           {(() => {
                             try {
