@@ -43,6 +43,13 @@ interface CardTransportContextValue {
   onCardSettled: (handler: (cardId: string) => void) => () => void;
   /** Subscribe to settle events with full intent metadata. */
   onCardSettledIntent: (handler: (intent: CardTransportIntent) => void) => () => void;
+  /**
+   * Holm v3 — synchronously drop every active intent whose
+   * `handContextId` does not match `handContextId`. Each dropped intent
+   * fires its onSettled / settled-subscribers as `dropped` so deal
+   * runtimes never hang. Non-Holm callers do not invoke this.
+   */
+  dropIntentsNotMatchingHand: (handContextId: string, reason: string) => number;
   __activeIntents: ActiveCardIntent[];
   __markSettled: (intentId: string, cardId: string, source?: string) => void;
   __markDropped: (intent: CardTransportIntent, reason: string) => void;
