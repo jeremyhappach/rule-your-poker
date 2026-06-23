@@ -2520,6 +2520,16 @@ export const MobileGameTable = ({
     ) => {
       _setCachedChuckyCardsRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        // Holm v3 legacy-writer firewall — while a Holm txn is active, only
+        // allowlisted writers may mutate cachedChuckyCards. Rejected writes
+        // are logged as HOLM_LEGACY_CHUCKY_WRITER_REJECTED and ignored.
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyCards',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved == null && prev && prev.length > 0 && chuckyNormalRevealBranchLockedRef.current) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
@@ -2554,15 +2564,22 @@ export const MobileGameTable = ({
     [],
   );
   const setCachedChuckyActive = useCallback(
-    (next: boolean | ((prev: boolean) => boolean)) => {
+    (next: boolean | ((prev: boolean) => boolean), writerMeta?: { writer: string; reason?: string }) => {
       _setCachedChuckyActiveRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: boolean) => boolean)(prev) : next;
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyActive',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved === false && prev && chuckyNormalRevealBranchLockedRef.current && (cachedChuckyCardsLiveRef.current?.length ?? 0) > 0) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
             renderSeq: chuckyRenderSeqRef.current,
-            writer: 'setCachedChuckyActive',
-            reason: 'attempted inactive while visual reveal incomplete',
+            writer: writerMeta?.writer ?? 'setCachedChuckyActive',
+            reason: writerMeta?.reason ?? 'attempted inactive while visual reveal incomplete',
             attemptedClear: 'cachedChuckyActive',
             handContextId: handContextIdRef.current ?? null,
             phase: chuckyPhaseRef.current ?? null,
@@ -2584,6 +2601,14 @@ export const MobileGameTable = ({
       _setCachedChuckyCardsRevealedRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: number) => number)(prev) : next;
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
+        // Holm v3 legacy-writer firewall — sequencer-only during active txn.
+        if (!holmTxnIsWriteAllowed({
+          writer: writerMeta?.writer,
+          field: 'cachedChuckyCardsRevealed',
+          reason: writerMeta?.reason ?? null,
+        })) {
+          return prev;
+        }
         if (resolved === 0 && prev > 0 && chuckyNormalRevealBranchLockedRef.current) {
           recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
             instanceId: chuckyInstanceIdRef.current,
