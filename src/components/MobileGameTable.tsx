@@ -2612,6 +2612,26 @@ export const MobileGameTable = ({
   const cachedChuckyCardsLenRef = useRef<number>(0);
   useEffect(() => { cachedChuckyCardsLenRef.current = cachedChuckyCards?.length ?? 0; }, [cachedChuckyCards]);
 
+  const clearChuckyRevealOwnership = useCallback((writer: string, reason: string) => {
+    if (chuckyNormalRevealBranchLockedRef.current) {
+      recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+        instanceId: chuckyInstanceIdRef.current,
+        renderSeq: chuckyRenderSeqRef.current,
+        writer,
+        reason,
+        attemptedClear: 'chuckyRevealOwnershipRefs',
+        handContextId: handContextIdRef.current ?? null,
+        phase: chuckyPhaseRef.current ?? null,
+        cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, handContextIdRef.current ?? null);
+      return false;
+    }
+    chuckyTargetRevealedRef.current = 0;
+    cachedChuckyHandContextRef.current = null;
+    return true;
+  }, []);
+
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
