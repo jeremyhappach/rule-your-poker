@@ -1943,6 +1943,7 @@ export const MobileGameTable = ({
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
   const chuckyVisualRevealCompleteRef = useRef(false);
+  const chuckyNormalRevealBranchLockedRef = useRef(false);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
@@ -2454,7 +2455,9 @@ export const MobileGameTable = ({
   // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
   // effect below advances the rendered count one card at a time toward that target.
   const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
-  const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
+  const cachedChuckyCardsLiveRef = useRef<CardType[] | null>(null);
+  cachedChuckyCardsLiveRef.current = cachedChuckyCards;
+  const [cachedChuckyActive, _setCachedChuckyActiveRaw] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
@@ -2486,6 +2489,20 @@ export const MobileGameTable = ({
     ) => {
       _setCachedChuckyCardsRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        if (resolved == null && prev && prev.length > 0 && chuckyNormalRevealBranchLockedRef.current) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            attemptedClear: 'cachedChuckyCards',
+            handContextId: handContextIdRef.current ?? null,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: prev.length,
+            cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+          }, handContextIdRef.current ?? null);
+          return prev;
+        }
         recordHolmTimelineEvent('CHUCKY_ARRAY_IDENTITY_CHURN', {
           instanceId: chuckyInstanceIdRef.current,
           renderSeq: chuckyRenderSeqRef.current,
@@ -2499,6 +2516,30 @@ export const MobileGameTable = ({
           handContextId: handContextIdRef.current ?? null,
           phase: chuckyPhaseRef.current ?? null,
         }, handContextIdRef.current ?? null);
+        cachedChuckyCardsLiveRef.current = resolved;
+        return resolved;
+      });
+    },
+    [],
+  );
+  const setCachedChuckyActive = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      _setCachedChuckyActiveRaw((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: boolean) => boolean)(prev) : next;
+        if (resolved === false && prev && chuckyNormalRevealBranchLockedRef.current && (cachedChuckyCardsLiveRef.current?.length ?? 0) > 0) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: 'setCachedChuckyActive',
+            reason: 'attempted inactive while visual reveal incomplete',
+            attemptedClear: 'cachedChuckyActive',
+            handContextId: handContextIdRef.current ?? null,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+            cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+          }, handContextIdRef.current ?? null);
+          return prev;
+        }
         return resolved;
       });
     },
@@ -2512,6 +2553,21 @@ export const MobileGameTable = ({
       _setCachedChuckyCardsRevealedRaw((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: number) => number)(prev) : next;
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
+        if (resolved === 0 && prev > 0 && chuckyNormalRevealBranchLockedRef.current) {
+          recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+            instanceId: chuckyInstanceIdRef.current,
+            renderSeq: chuckyRenderSeqRef.current,
+            writer: writerMeta?.writer ?? 'unknown',
+            reason: writerMeta?.reason ?? null,
+            attemptedClear: 'cachedChuckyCardsRevealed',
+            handContextId: handCtx,
+            phase: chuckyPhaseRef.current ?? null,
+            cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+            cachedChuckyCardsRevealed: prev,
+          }, handCtx);
+          lastChuckyRevealedRef.current = prev;
+          return prev;
+        }
         if (resolved !== prev) {
           recordHolmTimelineEvent('CHUCKY_REVEALED_STATE_CHANGED', {
             instanceId: chuckyInstanceIdRef.current,
@@ -2555,6 +2611,26 @@ export const MobileGameTable = ({
   useEffect(() => { cachedChuckyCardsRevealedRef.current = cachedChuckyCardsRevealed; }, [cachedChuckyCardsRevealed]);
   const cachedChuckyCardsLenRef = useRef<number>(0);
   useEffect(() => { cachedChuckyCardsLenRef.current = cachedChuckyCards?.length ?? 0; }, [cachedChuckyCards]);
+
+  const clearChuckyRevealOwnership = useCallback((writer: string, reason: string) => {
+    if (chuckyNormalRevealBranchLockedRef.current) {
+      recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+        instanceId: chuckyInstanceIdRef.current,
+        renderSeq: chuckyRenderSeqRef.current,
+        writer,
+        reason,
+        attemptedClear: 'chuckyRevealOwnershipRefs',
+        handContextId: handContextIdRef.current ?? null,
+        phase: chuckyPhaseRef.current ?? null,
+        cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, handContextIdRef.current ?? null);
+      return false;
+    }
+    chuckyTargetRevealedRef.current = 0;
+    cachedChuckyHandContextRef.current = null;
+    return true;
+  }, []);
 
   
   // Track previous round AND game type to detect new game start
@@ -2647,13 +2723,12 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('newGameCacheReset', 'new game detected (round drop or game-type change)');
     }
 
     prevRoundForCacheClearRef.current = currentRound;
     prevGameTypeForCacheClearRef.current = gameType;
-  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache, communityCardsCache]);
+  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache, communityCardsCache, clearChuckyRevealOwnership]);
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
@@ -2693,8 +2768,7 @@ export const MobileGameTable = ({
     setCachedChuckyCards(null, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
-    chuckyTargetRevealedRef.current = 0;
-    cachedChuckyHandContextRef.current = null;
+    clearChuckyRevealOwnership('resetHandUiCaches', 'hand-boundary reset');
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
@@ -2723,7 +2797,7 @@ export const MobileGameTable = ({
     if (externalCommunityCardsCache) {
       externalCommunityCardsCache.current = { cards: null, round: null, show: false };
     }
-  }, [currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
+  }, [currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache, clearChuckyRevealOwnership]);
 
   const shouldDeferHandReset = useCallback(() => {
     const isGameOverPhase = gameStatus === 'game_over' || !!isGameOver;
@@ -2865,6 +2939,13 @@ export const MobileGameTable = ({
   const chuckyVisualRevealComplete =
     !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
   chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
+  const chuckyNormalRevealBranchLocked =
+    isHolmSoloChucky &&
+    requiredRevealCount > 0 &&
+    visualRevealCount < requiredRevealCount &&
+    !!cachedChuckyCards &&
+    cachedChuckyCards.length > 0;
+  chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
@@ -3008,14 +3089,28 @@ export const MobileGameTable = ({
     const wasSolo = prevHandWasSoloRef.current;
     prevHandContextForSoloDestroyRef.current = next;
     prevHandWasSoloRef.current = false;
-    chuckyVisualResetForHand(next);
+    if (!chuckyNormalRevealBranchLockedRef.current) {
+      chuckyVisualResetForHand(next);
+    } else {
+      recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+        instanceId: chuckyInstanceIdRef.current,
+        renderSeq: chuckyRenderSeqRef.current,
+        writer: 'soloDestroyOnHandChange',
+        reason: 'blocked chuckyVisualResetForHand while visual reveal incomplete',
+        attemptedClear: 'chuckyVisualResetForHand',
+        handContextId: prev,
+        nextHandContextId: next,
+        phase: chuckyPhaseRef.current ?? null,
+        cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, prev);
+    }
     if (!wasSolo) return;
     // Force-destroy regardless of deferral state.
     setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
-    chuckyTargetRevealedRef.current = 0;
-    cachedChuckyHandContextRef.current = null;
+    clearChuckyRevealOwnership('soloDestroyOnHandChange', 'NEW_HAND_STARTED (was solo)');
     lonePlayerStageSnapshotRef.current = null;
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
@@ -3025,7 +3120,7 @@ export const MobileGameTable = ({
       prevHandContextId: prev,
       nextHandContextId: next,
     }, prev);
-  }, [gameType, handContextId]);
+  }, [gameType, handContextId, clearChuckyRevealOwnership]);
 
   // ── WAR-TIME: SOLO_STATE_CHANGED watcher ──
   // Pure instrumentation: fire on every observable transition of the
@@ -4949,8 +5044,7 @@ export const MobileGameTable = ({
         setCachedChuckyCards(null, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
-        chuckyTargetRevealedRef.current = 0;
-        cachedChuckyHandContextRef.current = null;
+        clearChuckyRevealOwnership('cacheEffect.dealerConfigPhase', 'dealer-config phase entered');
       }
       return;
     }
@@ -4968,8 +5062,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('cacheEffect.handContextChanged', 'handContextId changed (stale cache clear)');
       return;
     }
     
@@ -4979,8 +5072,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('cacheEffect.buckPassed', 'awaitingNextRound && !lastRoundResult');
       return;
     }
     
@@ -5052,7 +5144,7 @@ export const MobileGameTable = ({
     ) {
       setCachedChuckyActive(false);
     }
-  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase, cachedChuckyActive, cachedChuckyCardsRevealed]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase, cachedChuckyActive, cachedChuckyCardsRevealed, clearChuckyRevealOwnership]);
 
   // Chucky reveal BARRIER: hold all reveals until every chucky card has
   // settled (DealRuntime enters GAMEPLAY → markHolmHandReady). Once the
