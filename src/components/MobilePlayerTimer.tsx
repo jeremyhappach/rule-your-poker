@@ -64,48 +64,60 @@ export const MobilePlayerTimer = ({
     initialIsActive: isActive,
   });
 
-  // Track activation identity to suppress transition on first active frame
+  // Track activation identity to suppress transition on first active frame.
   const wasActiveRef = useRef(false);
   const [suppressTransition, setSuppressTransition] = useState(false);
 
-  // Null-seed paint guard: when isActive flips true with timeLeft===null
-  // (the "null-seed" source observed in lifecycle traces), the progress
-  // ring would otherwise jump from full→actual in a single 1s ease as
-  // the real seed lands one frame later. Suppress the progress ring
-  // entirely until the first non-null timeLeft commit per activation,
-  // eliminating the visible flash even if the activation happens on a
-  // freshly-mounted instance.
-  const seedReadyRef = useRef(false);
-  const [seedReady, setSeedReady] = useState(false);
+  // Canonical timer initialization invariant:
+  //   - On a new actionable turn, snap to FULL before any visible countdown.
+  //   - Within one uninterrupted active-turn segment, displayed progress
+  //     is monotonic non-increasing (no upward jumps from a stale seed,
+  //     a delayed deadline rebase, or a CSS transition off a prior value).
+  //   - A fresh full refill is permitted across activation boundaries
+  //     (e.g. pause→resume), because `wasActiveRef` flips false→true.
+  const displayProgressRef = useRef(1);
+  const activationSeqRef = useRef(0);
+
+  // Detect activation edge during render so the very first paint of a
+  // new active segment is already snapped to full — the ring never has
+  // a chance to paint a stale lower value, so there is no upward
+  // transition to chase.
+  if (effectiveIsActive && !wasActiveRef.current) {
+    displayProgressRef.current = 1;
+    activationSeqRef.current += 1;
+  }
 
   useEffect(() => {
     if (effectiveIsActive && !wasActiveRef.current) {
       setSuppressTransition(true);
       requestAnimationFrame(() => setSuppressTransition(false));
-      seedReadyRef.current = effectiveTimeLeft !== null;
-      setSeedReady(effectiveTimeLeft !== null);
       recordLifecycleEvent('timer.activate', {
         component: 'MobilePlayerTimer',
         instance_id: instanceIdRef.current,
         time_left_seed: effectiveTimeLeft,
         max_time: maxTime,
         timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
+        snapped_full: true,
       });
-    } else if (effectiveIsActive && !seedReadyRef.current && effectiveTimeLeft !== null) {
-      seedReadyRef.current = true;
-      setSeedReady(true);
-    } else if (!effectiveIsActive && wasActiveRef.current) {
-      seedReadyRef.current = false;
-      setSeedReady(false);
     }
     wasActiveRef.current = effectiveIsActive;
   }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
 
-  
   const progress = useMemo(() => {
-    if (!effectiveIsActive || effectiveTimeLeft === null || maxTime <= 0) return 0;
-    return Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
-  }, [effectiveTimeLeft, maxTime, effectiveIsActive]);
+    if (!effectiveIsActive) return 0;
+    if (effectiveTimeLeft === null || maxTime <= 0) {
+      // Hold the last displayed value (initialized to FULL at activation).
+      return displayProgressRef.current;
+    }
+    const raw = Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
+    // Clamp to non-increasing within the current activation segment.
+    const next = Math.min(displayProgressRef.current, raw);
+    displayProgressRef.current = next;
+    return next;
+    // activationSeqRef bump invalidates the memo whenever a fresh
+    // activation re-snaps `displayProgressRef` to 1.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTimeLeft, maxTime, effectiveIsActive, activationSeqRef.current]);
   
   const strokeDashoffset = circumference * (1 - progress);
   
