@@ -36,7 +36,7 @@ import {
 import type { DealPhase } from './types';
 import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
-import { holmDealDbgRecordRuntime } from './holmDealDbg';
+import { holmDealDbgRecordRuntime, holmDealDbgRecordViolation } from './holmDealDbg';
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
 
