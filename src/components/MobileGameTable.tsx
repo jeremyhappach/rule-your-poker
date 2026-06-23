@@ -4860,7 +4860,7 @@ export const MobileGameTable = ({
       buckPosition: buckPosition ?? null,
       selfPosition: _selfPosForensic,
       currentRound: typeof currentRound === 'number' ? currentRound : null,
-      phase,
+      gameStatus: gameStatus ?? null,
       roundStatus: roundStatus ?? null,
       derivedEventId: _eventId,
       derivedEventHci: handContextId ?? null,
