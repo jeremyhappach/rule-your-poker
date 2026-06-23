@@ -2926,8 +2926,7 @@ export const MobileGameTable = ({
     requiredRevealCount > 0 &&
     visualRevealCount < requiredRevealCount &&
     !!cachedChuckyCards &&
-    cachedChuckyCards.length > 0 &&
-    cachedChuckyHandContextRef.current === handContextId;
+    cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
