@@ -4309,6 +4309,131 @@ export const MobileGameTable = ({
       setShowdownModeLocked(true);
     }
   }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
+
+  // ── WAR-TIME TOTAL FORENSICS — C/G watcher effects ──────────────────────
+  // CHUCKY_SERVER_REVEAL_CHANGED
+  const _prevServerRevealRef = useRef<number>(0);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const newV = chuckyCardsRevealed ?? 0;
+    const oldV = _prevServerRevealRef.current;
+    if (newV === oldV) return;
+    recordChuckyServerRevealChanged({
+      handContextId: handContextId ?? null,
+      oldValue: oldV,
+      newValue: newV,
+      source: 'props.chuckyCardsRevealed',
+      writer: 'parent/Game.tsx',
+      callsite: 'MobileGameTable.serverRevealWatch',
+      cachedChuckyCardsRevealed,
+      chuckyCardsRevealedServer: newV,
+      roundStatus: roundStatus ?? null,
+      announcementShowing: isShowingAnnouncement,
+      winSequenceActive: !!holmWinPotTriggerId,
+    });
+    _prevServerRevealRef.current = newV;
+  }, [chuckyCardsRevealed, gameType, handContextId, cachedChuckyCardsRevealed, roundStatus, isShowingAnnouncement, holmWinPotTriggerId]);
+
+  // CHUCKY_VISUAL_REVEAL_CHANGED
+  const _prevVisualRevealRef = useRef<number>(0);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const newV = cachedChuckyCardsRevealed ?? 0;
+    const oldV = _prevVisualRevealRef.current;
+    if (newV === oldV) return;
+    recordChuckyVisualRevealChanged({
+      handContextId: handContextId ?? null,
+      oldValue: oldV,
+      newValue: newV,
+      source: 'state.cachedChuckyCardsRevealed',
+      writer: 'MobileGameTable.stepper',
+      callsite: 'MobileGameTable.visualRevealWatch',
+      cachedChuckyCardsRevealed: newV,
+      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+      roundStatus: roundStatus ?? null,
+      announcementShowing: isShowingAnnouncement,
+      winSequenceActive: !!holmWinPotTriggerId,
+    });
+    _prevVisualRevealRef.current = newV;
+  }, [cachedChuckyCardsRevealed, gameType, handContextId, chuckyCardsRevealed, roundStatus, isShowingAnnouncement, holmWinPotTriggerId]);
+
+  // HOLM_ANNOUNCEMENT_REQUEST / START on rising edge
+  const _prevAnnRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (isShowingAnnouncement === _prevAnnRef.current) return;
+    const base = {
+      handContextId: handContextId ?? null,
+      callsite: 'MobileGameTable.announcementEdge',
+      caller: 'isShowingAnnouncement effect',
+      phase: isShowingAnnouncement ? 'RESULT_ANNOUNCEMENT' : 'IDLE',
+      roundStatus: roundStatus ?? null,
+      cachedChuckyCardsRevealed,
+      cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+      allowed: isShowingAnnouncement,
+    };
+    if (isShowingAnnouncement) {
+      recordHolmAnnouncementRequest(base);
+      recordHolmAnnouncementStart(base);
+    }
+    _prevAnnRef.current = isShowingAnnouncement;
+  }, [isShowingAnnouncement, gameType, handContextId, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed, roundStatus]);
+
+  // HOLM_WIN_SEQUENCE_REQUEST / START / PLAYER_TO_POT_START on holmWinPotTriggerId rising edge
+  const _prevWinTrigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const cur = holmWinPotTriggerId ?? null;
+    const prev = _prevWinTrigRef.current;
+    if (cur === prev) return;
+    if (cur && !prev) {
+      const base = {
+        handContextId: handContextId ?? null,
+        callsite: 'MobileGameTable.holmWinPotEdge',
+        caller: 'holmWinPotTriggerId effect',
+        phase: 'WIN_SEQUENCE',
+        roundStatus: roundStatus ?? null,
+        cachedChuckyCardsRevealed,
+        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+        allowed: true,
+      };
+      recordHolmWinSequenceRequest(base);
+      recordHolmWinSequenceStart(base);
+      recordHolmPlayerToPotStart(base);
+    }
+    if (!cur && prev) {
+      recordHolmNextHandStart({
+        handContextId: handContextId ?? null,
+        callsite: 'MobileGameTable.holmWinPotEdge.fall',
+        phase: 'NEXT_HAND',
+        cachedChuckyCardsRevealed,
+        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+      });
+    }
+    _prevWinTrigRef.current = cur;
+  }, [holmWinPotTriggerId, gameType, handContextId, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed, roundStatus]);
+
+  // HOLM_PHASE_CHANGED — derived from chuckyVisualRevealPending / announcement / win
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const phase =
+      holmWinPotTriggerId ? 'WIN_SEQUENCE'
+      : isShowingAnnouncement ? 'RESULT_ANNOUNCEMENT'
+      : chuckyVisualRevealPending ? 'CHUCKY_REVEAL'
+      : (cachedChuckyActive ? 'CHUCKY_STAGE_IDLE' : 'GAMEPLAY');
+    recordHolmPhaseChanged({
+      handContextId: handContextId ?? null,
+      newPhase: phase,
+      cachedChuckyCardsRevealed,
+      cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+      triggeredBy: 'derived-from-flags',
+      callsite: 'MobileGameTable.phaseWatch',
+    });
+  }, [gameType, handContextId, holmWinPotTriggerId, isShowingAnnouncement, chuckyVisualRevealPending, cachedChuckyActive, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed]);
   
   // Use locked state to prevent snap-back (cards stay narrow after announcement clears)
   const isAnyPlayerInShowdown = isAnyPlayerInShowdownRaw || showdownModeLocked;
