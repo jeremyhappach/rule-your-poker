@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect, useLayoutEffect, useState } from "react";
 import {
   useLifecycleMount,
   recordLifecycleEvent,
@@ -10,6 +10,14 @@ import {
   unregisterThreeFiveSevenTimerOwner,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
 import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
+import {
+  registerHolmTimerOwner,
+  updateHolmTimerOwner,
+  unregisterHolmTimerOwner,
+  beginHolmTimerSegment,
+  recordHolmTimerSample,
+  endHolmTimerSegment,
+} from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
@@ -200,6 +208,182 @@ export const MobilePlayerTimer = ({
     });
   }, [blocked357TimerAttempt, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, timeLeft]);
 
+  // ─── HOLM SELF-TIMER FORENSICS ─────────────────────────────────
+  // Pure instrumentation. No behavior changes. Gated to Holm only.
+  const isHolm = deal?.gameType === 'holm-game';
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const holmOwnerRegisteredRef = useRef(false);
+  const holmLastSegmentIdRef = useRef<string | null>(null);
+  const holmLastActiveRef = useRef(false);
+  const holmRenderCountRef = useRef(0);
+  holmRenderCountRef.current += 1;
+
+  useEffect(() => {
+    if (!isHolm) return;
+    if (!holmOwnerRegisteredRef.current) {
+      holmOwnerRegisteredRef.current = true;
+      registerHolmTimerOwner({
+        instanceId: instanceIdRef.current,
+        componentName: 'MobilePlayerTimer',
+        callsite: 'src/components/MobilePlayerTimer.tsx',
+        gameType: deal?.gameType ?? null,
+        handContextId: deal?.handContextId ?? null,
+        selfPlayerId: null,
+        activePlayerId: null,
+        seatPosition: null,
+        mounted: true,
+        mountedAt: performance.now(),
+        unmountedAt: null,
+        lastSegmentId: null,
+        renderCount: 0,
+      });
+    }
+    updateHolmTimerOwner(instanceIdRef.current, {
+      handContextId: deal?.handContextId ?? null,
+      renderCount: holmRenderCountRef.current,
+    });
+    return () => {
+      if (holmOwnerRegisteredRef.current) {
+        unregisterHolmTimerOwner(instanceIdRef.current);
+        holmOwnerRegisteredRef.current = false;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHolm]);
+
+  // Capture every prepaint commit; emit on activation edge.
+  useLayoutEffect(() => {
+    if (!isHolm) return;
+    const wasActive = holmLastActiveRef.current;
+    const activated = effectiveIsActive && !wasActive;
+    const deactivated = !effectiveIsActive && wasActive;
+    holmLastActiveRef.current = effectiveIsActive;
+
+    if (activated) {
+      const segmentId = `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
+      const prevSegmentId = holmLastSegmentIdRef.current;
+      holmLastSegmentIdRef.current = segmentId;
+
+      // Read SVG ground-truth pre-paint.
+      let dashoffset: number | null = null;
+      let circ: number | null = null;
+      let className: string | null = null;
+      let cssTransition: string | null = null;
+      try {
+        const svgCircle = wrapperRef.current?.querySelector<SVGCircleElement>('svg circle:nth-of-type(2)');
+        if (svgCircle) {
+          const off = svgCircle.getAttribute('stroke-dashoffset');
+          const da = svgCircle.getAttribute('stroke-dasharray');
+          dashoffset = off != null ? Number(off) : null;
+          circ = da != null ? Number(da) : null;
+          className = svgCircle.getAttribute('class');
+          const cs = typeof window !== 'undefined' ? window.getComputedStyle(svgCircle) : null;
+          cssTransition = cs
+            ? `prop=${cs.transitionProperty} dur=${cs.transitionDuration} delay=${cs.transitionDelay} fn=${cs.transitionTimingFunction}`
+            : null;
+        }
+      } catch { /* noop */ }
+
+      // pause/resume heuristic: same handContextId as previous segment ⇒ refill.
+      const sameHandAsPrev = !!prevSegmentId && prevSegmentId.endsWith(`@${deal?.handContextId ?? 'nohand'}`);
+
+      beginHolmTimerSegment({
+        instanceId: instanceIdRef.current,
+        segmentId,
+        handContextId: deal?.handContextId ?? null,
+        selfPlayerId: null,
+        activePlayerId: null,
+        duration: maxTime,
+        deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
+        paused: false,
+        authoritativeSource: 'MobilePlayerTimer props (timeLeft,maxTime,isActive)',
+        preCommitProgress: displayProgressRef.current,
+        classNameFirstCommit: className,
+        cssTransition,
+        domSvgDashoffset: dashoffset,
+        domSvgCircumference: circ,
+        prevSegmentId,
+        isPauseResume: sameHandAsPrev,
+      });
+    } else if (deactivated) {
+      endHolmTimerSegment(instanceIdRef.current, holmLastSegmentIdRef.current, 'effectiveIsActive→false');
+    }
+  });
+
+  // rAF1 / rAF2 / 250ms sampling on activation. Plus continuous tick.
+  useEffect(() => {
+    if (!isHolm || !effectiveIsActive) return;
+    const segmentId = holmLastSegmentIdRef.current;
+    if (!segmentId) return;
+    let raf1 = 0;
+    let raf2 = 0;
+    let t250 = 0;
+    let tick = 0;
+
+    const readDom = () => {
+      let dashoffset: number | null = null;
+      let circ: number | null = null;
+      let className: string | null = null;
+      let cssTransition: string | null = null;
+      try {
+        const svgCircle = wrapperRef.current?.querySelector<SVGCircleElement>('svg circle:nth-of-type(2)');
+        if (svgCircle) {
+          const off = svgCircle.getAttribute('stroke-dashoffset');
+          const da = svgCircle.getAttribute('stroke-dasharray');
+          dashoffset = off != null ? Number(off) : null;
+          circ = da != null ? Number(da) : null;
+          className = svgCircle.getAttribute('class');
+          const cs = typeof window !== 'undefined' ? window.getComputedStyle(svgCircle) : null;
+          cssTransition = cs
+            ? `prop=${cs.transitionProperty} dur=${cs.transitionDuration} delay=${cs.transitionDelay} fn=${cs.transitionTimingFunction}`
+            : null;
+        }
+      } catch { /* noop */ }
+      let visibleOwnerCount = 0;
+      try {
+        const all = document.querySelectorAll<HTMLElement>('[data-mobile-player-timer][data-forensics-timer-running="1"]');
+        for (const el of Array.from(all)) {
+          const r = el.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) visibleOwnerCount++;
+        }
+      } catch { /* noop */ }
+      return { dashoffset, circ, className, cssTransition, visibleOwnerCount };
+    };
+
+    const sample = (stage: 'FIRST_RAF' | 'SECOND_RAF' | '250MS' | 'TICK') => {
+      const dom = readDom();
+      recordHolmTimerSample({
+        instanceId: instanceIdRef.current,
+        segmentId,
+        stage,
+        logicalProgress: displayProgressRef.current,
+        timeLeft: effectiveTimeLeft,
+        deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
+        domSvgDashoffset: dom.dashoffset,
+        domSvgCircumference: dom.circ,
+        className: dom.className,
+        cssTransition: dom.cssTransition,
+        visibleOwnerCount: dom.visibleOwnerCount,
+      });
+    };
+
+    raf1 = window.requestAnimationFrame(() => {
+      sample('FIRST_RAF');
+      raf2 = window.requestAnimationFrame(() => sample('SECOND_RAF'));
+    });
+    t250 = window.setTimeout(() => sample('250MS'), 250);
+    tick = window.setInterval(() => sample('TICK'), 100);
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.clearTimeout(t250);
+      window.clearInterval(tick);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHolm, effectiveIsActive, activationSeqRef.current]);
+  // ─── END HOLM SELF-TIMER FORENSICS ─────────────────────────────
+
   if (blocked357TimerAttempt || (!!deal && !deal.timerAllowed)) {
     return <>{children}</>;
   }
@@ -215,12 +399,14 @@ export const MobilePlayerTimer = ({
 
   return (
     <div
+      ref={wrapperRef}
       data-mobile-player-timer=""
       data-forensics-component="MobilePlayerTimer"
       data-forensics-timer-owner-id={timerOwnerId}
       data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
       data-forensics-timer-running={effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0 ? '1' : '0'}
       data-forensics-timer-time-left={effectiveTimeLeft === null ? '' : String(effectiveTimeLeft)}
+      data-forensics-instance={instanceIdRef.current}
       className="relative inline-flex items-center justify-center"
     >
       {/* Content defines the cell's natural geometric center. */}

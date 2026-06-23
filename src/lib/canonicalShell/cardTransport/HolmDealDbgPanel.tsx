@@ -53,6 +53,14 @@ import {
   buildBucksForensicsText,
   getBucksForensics,
 } from '@/lib/canonicalShell/holmBucksOverlayForensics';
+import {
+  buildHolmSelfTimerForensicsText,
+  getHolmTimerEvents as getHolmSelfTimerEvents,
+  getHolmTimerViolations as getHolmSelfTimerViolations,
+  getHolmTimerOwners as getHolmSelfTimerOwners,
+  getHolmTimerSegments as getHolmSelfTimerSegments,
+  subscribeHolmSelfTimer,
+} from './holmSelfTimerForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -257,6 +265,10 @@ export function HolmDealDbgPanel() {
   // WAR-TIME ring buffers — MUST be called unconditionally before any early return
   const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
   const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
+  const selfTimerEvents = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerEvents, getHolmSelfTimerEvents);
+  const selfTimerViolations = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerViolations, getHolmSelfTimerViolations);
+  const selfTimerSegments = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerSegments, getHolmSelfTimerSegments);
+  const selfTimerOwners = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerOwners, getHolmSelfTimerOwners);
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sampleTick, tick] = useState(0);
@@ -400,7 +412,8 @@ export function HolmDealDbgPanel() {
       '\n\n--- WARTIME CHUCKY ---\n' + JSON.stringify(wartimeChucky, null, 2) +
       '\n\n--- WARTIME OWNERSHIP ---\n' + JSON.stringify(wartimeOwnership, null, 2) +
       '\n\n--- WARTIME TIMELINE EVENTS (' + wartimeEvents.length + ') ---\n' + JSON.stringify(wartimeEvents, null, 2) +
-      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2);
+      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2) +
+      '\n\n--- SELF-TIMER FORENSICS ---\n' + buildHolmSelfTimerForensicsText();
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -408,8 +421,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length;
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length + selfTimerViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length} st=${selfTimerSegments.length}/${selfTimerViolations.length}`;
 
   return (
     <div
@@ -507,6 +520,24 @@ export function HolmDealDbgPanel() {
           style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
         >
           TXT BUCKS FORENSICS
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildHolmSelfTimerForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmSelfTimerForensicsExport?: string }).__holmSelfTimerForensicsExport = text;
+            } catch { /* noop */ }
+          }}
+          title="Copy Holm SELF-TIMER forensics (every owner / segment / prepaint / rAF1 / rAF2 / 250ms / violation)"
+          style={{ background: '#1e5f3a', color: '#fff', border: '1px solid #4ab87b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY SELF-TIMER FORENSICS
         </button>
       </div>
       {expanded ? (
@@ -653,6 +684,43 @@ export function HolmDealDbgPanel() {
           <div style={sect}>
             <div style={title}>WAR-TIME Violations ({wartimeViolations.length})</div>
             {wartimeViolations.length === 0 ? <div style={ok}>none</div> : wartimeViolations.slice(-20).map((v2) => (
+              <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Owners ({selfTimerOwners.length})</div>
+            {selfTimerOwners.length === 0 ? <div style={{ opacity: 0.6 }}>(none)</div> : selfTimerOwners.map((o) => (
+              <div key={o.instanceId} style={rowStyle}>
+                <span style={k}>inst{o.instanceId}</span>
+                <span style={v}>{o.mounted ? 'MOUNTED' : 'gone'} · seg={o.lastSegmentId ?? '—'} · renders={o.renderCount} · hand={o.handContextId ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Segments ({selfTimerSegments.length})</div>
+            {selfTimerSegments.slice(-12).map((s) => (
+              <div key={s.segmentId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: s.violations.length ? '#ff6b6b' : '#cfd8e3' }}>
+                <div style={{ fontWeight: 700 }}>{s.segmentId}</div>
+                <div>preCommit={fmt(s.preCommitProgress)} rAF1={fmt(s.firstRafProgress)} rAF2={fmt(s.secondRafProgress)} 250ms={fmt(s.at250msProgress)} last={fmt(s.lastProgress)}</div>
+                <div>domVisualRatio(first)={fmt(s.domSvgFirstVisualRatio)} dashoff={fmt(s.domSvgFirstDashoffset)} circ={fmt(s.domSvgFirstCircumference)}</div>
+                <div style={{ opacity: 0.8 }}>cssTransition={s.cssTransition ?? '—'}</div>
+                <div style={{ opacity: 0.8 }}>className={s.classNameFirstCommit ?? '—'}</div>
+                {s.violations.length > 0 && <div style={bad}>violations: {s.violations.join(', ')}</div>}
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Events ({selfTimerEvents.length})</div>
+            {selfTimerEvents.slice(-40).map((e) => (
+              <div key={e.seq} style={rowStyle}>
+                <span style={k}>#{e.seq} +{e.t.toFixed(0)} {e.event}</span>
+                <span style={v}>inst{e.instanceId} {e.segmentKind} {JSON.stringify(e.payload).slice(0, 100)}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Violations ({selfTimerViolations.length})</div>
+            {selfTimerViolations.length === 0 ? <div style={ok}>none</div> : selfTimerViolations.slice(-20).map((v2) => (
               <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
             ))}
           </div>
