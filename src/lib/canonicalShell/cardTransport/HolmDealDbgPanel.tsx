@@ -254,6 +254,9 @@ export function HolmDealDbgPanel() {
   const toggleEnabled = useDebugPillEnabled('holmDealDbg');
   const meta = useSyncExternalStore(subscribeHolmDealDbg, getHolmDealDbgMeta, getHolmDealDbgMeta);
   const records = useSyncExternalStore(subscribeCardTransportDbg, getCardTransportDbg, getCardTransportDbg);
+  // WAR-TIME ring buffers — MUST be called unconditionally before any early return
+  const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
+  const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sampleTick, tick] = useState(0);
@@ -376,9 +379,7 @@ export function HolmDealDbgPanel() {
   const timeline = getHolmCardTimeline();
   const frames = getHolmDealFrames();
   const timelineViolations = getHolmTimelineViolations();
-  // WAR-TIME ring buffers (subscribed via useSyncExternalStore below)
-  const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
-  const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
+  // WAR-TIME ring buffers were hoisted above the early return to keep hook order stable.
   const wartimeCommunity = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeCommunity) as Record<string, unknown> | undefined;
   const wartimeChucky = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeChucky) as Record<string, unknown> | undefined;
   const wartimeOwnership = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeOwnership) as Record<string, unknown> | undefined;
