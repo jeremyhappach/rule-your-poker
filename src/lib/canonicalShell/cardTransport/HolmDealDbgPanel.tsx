@@ -412,7 +412,8 @@ export function HolmDealDbgPanel() {
       '\n\n--- WARTIME CHUCKY ---\n' + JSON.stringify(wartimeChucky, null, 2) +
       '\n\n--- WARTIME OWNERSHIP ---\n' + JSON.stringify(wartimeOwnership, null, 2) +
       '\n\n--- WARTIME TIMELINE EVENTS (' + wartimeEvents.length + ') ---\n' + JSON.stringify(wartimeEvents, null, 2) +
-      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2);
+      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2) +
+      '\n\n--- SELF-TIMER FORENSICS ---\n' + buildHolmSelfTimerForensicsText();
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -420,8 +421,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length;
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length + selfTimerViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length} st=${selfTimerSegments.length}/${selfTimerViolations.length}`;
 
   return (
     <div
