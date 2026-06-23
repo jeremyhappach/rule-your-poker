@@ -1957,6 +1957,12 @@ export const MobileGameTable = ({
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
   const chuckyVisualRevealCompleteRef = useRef(false);
   const chuckyNormalRevealBranchLockedRef = useRef(false);
+  const chuckyVisualStepperMountedRef = useRef(false);
+  const chuckyVisualStepperTimeoutActiveRef = useRef(false);
+  const chuckyVisualStepperLastDeadlineRef = useRef<number | null>(null);
+  const chuckyVisualStepperLastCleanupReasonRef = useRef<string | null>(null);
+  const chuckyVisualStepperLastDepChangeRef = useRef<Record<string, { prev: unknown; next: unknown }> | null>(null);
+  const chuckyVisualStepperStallKeyRef = useRef<string | null>(null);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
