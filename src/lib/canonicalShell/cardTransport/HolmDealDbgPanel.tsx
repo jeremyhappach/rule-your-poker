@@ -45,6 +45,10 @@ import {
   buildChuckyFullForensicsText,
   getChuckyFullForensics,
 } from './holmChuckyFullForensics';
+import {
+  buildHolmChuckyTeardownForensicsText,
+  getHolmChuckyTeardownForensics,
+} from './holmChuckyTeardownForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
