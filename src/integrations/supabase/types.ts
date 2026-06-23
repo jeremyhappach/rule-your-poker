@@ -1120,28 +1120,34 @@ export type Database = {
         Row: {
           cards: Json
           created_at: string
+          hand_context_id: string | null
           id: string
           is_public: boolean
           player_id: string
           round_id: string
+          source_version: number
           visible_to_user_ids: string[] | null
         }
         Insert: {
           cards?: Json
           created_at?: string
+          hand_context_id?: string | null
           id?: string
           is_public?: boolean
           player_id: string
           round_id: string
+          source_version?: number
           visible_to_user_ids?: string[] | null
         }
         Update: {
           cards?: Json
           created_at?: string
+          hand_context_id?: string | null
           id?: string
           is_public?: boolean
           player_id?: string
           round_id?: string
+          source_version?: number
           visible_to_user_ids?: string[] | null
         }
         Relationships: [
