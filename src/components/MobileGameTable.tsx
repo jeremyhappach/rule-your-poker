@@ -7986,14 +7986,22 @@ export const MobileGameTable = ({
         <BucksOnYouAnimation
           show={showBucksOnYou}
           onComplete={() => {
+            const gatedHci = buckOverlayGatedHciRef.current;
             recordBucksForensic('DISMISSED', {
               ownerFile: 'src/components/MobileGameTable.tsx',
               ownerComponent: 'MobileGameTable',
               ownerBranch: 'BucksOnYouAnimation.onComplete',
               handContextId: handContextId ?? null,
-              setterCallsite: 'setShowBucksOnYou(false) from onComplete',
+              gatedHci,
             });
             setShowBucksOnYou(false);
+            if (gatedHci) {
+              releaseBuckPresentationGate(gatedHci);
+              buckOverlayGatedHciRef.current = null;
+              recordBucksForensic('LATCH_CLEARED', {
+                handContextId: gatedHci, predicate: 'BUCKS_GATE_RELEASED',
+              });
+            }
           }}
         />
         
