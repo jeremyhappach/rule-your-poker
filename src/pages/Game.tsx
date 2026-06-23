@@ -11325,6 +11325,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 allDecisionsIn={isDiceTerminalPresentation}
                 playerCards={[]}
                 timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
+                decisionDeadlineMs={isInProgress && decisionDeadline ? new Date(decisionDeadline).getTime() : null}
                 maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
                 lastRoundResult={(isInProgress || isDiceTerminalPresentation) ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
@@ -11455,6 +11456,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : timeLeft) : (isAnteDecision ? anteTimeLeft : null)}
+              decisionDeadlineMs={isInProgress && decisionDeadline && !(is357GameType && !dealTimerAllowed357) ? new Date(decisionDeadline).getTime() : null}
               maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
