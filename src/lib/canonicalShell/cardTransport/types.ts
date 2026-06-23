@@ -80,6 +80,14 @@ export interface CardTransportIntent {
    */
   handContextId?: string;
   /**
+   * Optional — Holm-only generation fence. Paired with `handContextId`,
+   * it lets DealRuntime / MobileGameTable reject stale settle callbacks
+   * after `runNewHandInit` has incremented the generation, even when
+   * the handContextId itself has not yet changed. Non-Holm games leave
+   * this undefined.
+   */
+  handGeneration?: number;
+  /**
    * Optional — recipient seat owner. Surfaces in DealRuntime as a
    * per-player settled count so destinations can clip their visible
    * cards by "how many of MY intents have already settled" during

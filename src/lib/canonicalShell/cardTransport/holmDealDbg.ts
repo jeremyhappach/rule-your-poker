@@ -36,8 +36,25 @@ export interface HolmRenderedCardDbg {
   rect?: { x: number; y: number; w: number; h: number } | null;
 }
 
+export type HolmHardViolationType =
+  | 'HOLM_CARD_RENDERED_BEFORE_SETTLE'
+  | 'HOLM_ALL_CARDS_VISIBLE_AT_DEAL_START'
+  | 'HAND_PRESENTATION_CONTEXT_NULL'
+  | 'HAND_PRESENTATION_LEAK_ACROSS_DEALER_SELECTION'
+  | 'HAND_RUNTIME_IDENTITY_BREACH'
+  | 'DISPATCH_WITHOUT_CURRENT_HAND_INTENT'
+  | 'SOLO_OR_CHUCKY_STARTED_BEFORE_TXN_READY';
+
+export type HolmObservationalEventType =
+  | 'HOLM_STALE_CALLBACK_REJECTED'
+  | 'HOLM_IDENTITY_ONLY_CHURN_IGNORED'
+  | 'HOLM_OUTCOME_TEARDOWN_COMPLETE'
+  | 'HOLM_NEW_HAND_INIT_COMPLETE'
+  | 'HOLM_OUTCOME_PRESENTATION_COMPLETE'
+  | 'VISUAL_CHUCKY_FLIP_COMPLETE';
+
 export interface HolmDealViolationDbg {
-  type: 'HOLM_CARD_RENDERED_BEFORE_SETTLE' | 'HOLM_ALL_CARDS_VISIBLE_AT_DEAL_START';
+  type: HolmHardViolationType;
   cardId?: string;
   endpoint?: string;
   renderer?: string;
@@ -47,6 +64,19 @@ export interface HolmDealViolationDbg {
   domMounted?: boolean;
   actualVisibleCards?: number;
   cardsSettled?: number;
+  handContextId?: string | null;
+  handGeneration?: number | null;
+  detail?: Record<string, unknown>;
+  at: number;
+}
+
+export interface HolmDealEventDbg {
+  type: HolmObservationalEventType;
+  handContextId?: string | null;
+  handGeneration?: number | null;
+  outcomeTxnKey?: string | null;
+  cardId?: string;
+  detail?: Record<string, unknown>;
   at: number;
 }
 
@@ -80,6 +110,17 @@ export interface HolmDealDbgMeta {
   wave: HolmDealWave | null;
   soloDeclared: boolean;
   expectedCards: HolmExpectedCardDbg[];
+  /** Holm v3 — current hand-boundary transaction state, surfaced to the HUD pill. */
+  handGeneration: number;
+  txnTeardownComplete: boolean;
+  txnNewHandInitComplete: boolean;
+  presentationHandContextId: string | null;
+  outcomeTxnKey: string | null;
+  visualChuckyFlipCommittedIds: string[];
+  hardViolationCounts: Partial<Record<HolmHardViolationType, number>>;
+  observationalCounts: Partial<Record<HolmObservationalEventType, number>>;
+  recentViolations: HolmDealViolationDbg[];
+  recentEvents: HolmDealEventDbg[];
   updatedAt: number;
 }
 
@@ -95,6 +136,8 @@ export interface HolmDealDbgSnapshot extends HolmDealDbgMeta {
 type W = typeof window & { __holmDealDbg?: HolmDealDbgSnapshot | HolmDealDbgMeta };
 
 const listeners = new Set<() => void>();
+
+const RECENT_LIMIT = 32;
 
 let meta: HolmDealDbgMeta = {
   handContextId: null,
@@ -126,6 +169,16 @@ let meta: HolmDealDbgMeta = {
   wave: null,
   soloDeclared: false,
   expectedCards: [],
+  handGeneration: 0,
+  txnTeardownComplete: false,
+  txnNewHandInitComplete: false,
+  presentationHandContextId: null,
+  outcomeTxnKey: null,
+  visualChuckyFlipCommittedIds: [],
+  hardViolationCounts: {},
+  observationalCounts: {},
+  recentViolations: [],
+  recentEvents: [],
   updatedAt: Date.now(),
 };
 
@@ -223,4 +276,37 @@ export function holmDbgEndpoint(ep: CardEndpoint): string {
 
 export function formatHolmDealDbgSnapshot(snapshot: HolmDealDbgSnapshot | HolmDealDbgMeta): string {
   return JSON.stringify(snapshot, null, 2);
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Holm v3 — hand-boundary transaction recorders.
+// All recorders are pure functions over the singleton `meta`. They are
+// surfaced to the existing HUD pill via subscribeHolmDealDbg listeners.
+// ──────────────────────────────────────────────────────────────────────
+
+export function holmDealDbgRecordViolation(v: Omit<HolmDealViolationDbg, 'at'> & { at?: number }): void {
+  const entry: HolmDealViolationDbg = { at: v.at ?? Date.now(), ...v };
+  const counts = { ...meta.hardViolationCounts };
+  counts[entry.type] = (counts[entry.type] ?? 0) + 1;
+  const recent = meta.recentViolations.concat(entry).slice(-RECENT_LIMIT);
+  holmDealDbgPatch({ hardViolationCounts: counts, recentViolations: recent });
+}
+
+export function holmDealDbgRecordEvent(e: Omit<HolmDealEventDbg, 'at'> & { at?: number }): void {
+  const entry: HolmDealEventDbg = { at: e.at ?? Date.now(), ...e };
+  const counts = { ...meta.observationalCounts };
+  counts[entry.type] = (counts[entry.type] ?? 0) + 1;
+  const recent = meta.recentEvents.concat(entry).slice(-RECENT_LIMIT);
+  holmDealDbgPatch({ observationalCounts: counts, recentEvents: recent });
+}
+
+export function holmDealDbgRecordTxn(patch: {
+  handGeneration?: number;
+  txnTeardownComplete?: boolean;
+  txnNewHandInitComplete?: boolean;
+  presentationHandContextId?: string | null;
+  outcomeTxnKey?: string | null;
+  visualChuckyFlipCommittedIds?: string[];
+}): void {
+  holmDealDbgPatch(patch);
 }

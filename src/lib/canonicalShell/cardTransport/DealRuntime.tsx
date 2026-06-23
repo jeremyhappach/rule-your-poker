@@ -36,9 +36,14 @@ import {
 import type { DealPhase } from './types';
 import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
-import { holmDealDbgRecordRuntime } from './holmDealDbg';
+import { holmDealDbgRecordRuntime, holmDealDbgRecordViolation } from './holmDealDbg';
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
+
+export interface HolmExpectedCardManifestEntry {
+  cardId: string;
+  handContextId: string;
+}
 
 interface DealContextValue {
   handContextId: string;
@@ -63,6 +68,32 @@ interface DealContextValue {
    */
   beginWave: (addedExpectedCount: number) => void;
   enterGameplay: () => void;
+  // ── Holm v3 hand-boundary transaction APIs (Holm-only consumers) ──
+  /** Holm-only — current ledger hand generation, incremented by resetForHand. */
+  holmHandGeneration: number;
+  /**
+   * Holm-only — replace the entire ledger with a fresh empty one keyed
+   * to (handContextId, handGeneration). Phase → PRE_DEAL. Does NOT set
+   * expectedCount. Drops any active intents whose handContextId differs.
+   */
+  resetForHand: (args: { handContextId: string; handGeneration: number }) => void;
+  /**
+   * Holm-only — begin DEALING for the active hand with an explicit
+   * manifest of expected cards. Validates every cardId carries the
+   * matching handContextId. Mismatch → records
+   * HAND_RUNTIME_IDENTITY_BREACH, leaves ledger reset, returns.
+   */
+  beginDealForHand: (args: {
+    handContextId: string;
+    handGeneration: number;
+    expectedCards: HolmExpectedCardManifestEntry[];
+  }) => void;
+  /** Holm-only — additive wave, same identity rules as beginDealForHand. */
+  beginWaveForHand: (args: {
+    handContextId: string;
+    handGeneration: number;
+    addedExpectedCards: HolmExpectedCardManifestEntry[];
+  }) => void;
 }
 
 const DealContext = createContext<DealContextValue | null>(null);
@@ -172,6 +203,110 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     });
   }, [handContextId]);
 
+  // ── Holm v3 hand-boundary transaction state ──
+  const [holmHandGeneration, setHolmHandGeneration] = useState(0);
+  const holmHandIdentityRef = useRef<{ handContextId: string; handGeneration: number } | null>(null);
+
+  const resetForHand = useCallback((args: { handContextId: string; handGeneration: number }) => {
+    holmHandIdentityRef.current = { handContextId: args.handContextId, handGeneration: args.handGeneration };
+    setHolmHandGeneration(args.handGeneration);
+    setExpectedCount(0);
+    expectedRef.current = 0;
+    setSettledCardIds(new Set());
+    setSettledByRecipient(new Map());
+    setSettledCardIdsByRecipient(new Map());
+    setPhase('PRE_DEAL');
+    if (ctx) {
+      try { ctx.dropIntentsNotMatchingHand(args.handContextId, 'holm_resetForHand'); } catch { /* noop */ }
+    }
+    dealDbgUpsert(handContextId, {
+      phase: 'PRE_DEAL',
+      expectedCount: 0,
+      cardsDispatched: 0,
+      cardsSettled: 0,
+      readyReleased: false,
+      dealSettled: false,
+      enterGameplayCalledAt: null,
+    });
+  }, [ctx, handContextId]);
+
+  const beginDealForHand = useCallback((args: {
+    handContextId: string;
+    handGeneration: number;
+    expectedCards: HolmExpectedCardManifestEntry[];
+  }) => {
+    // Identity validation: every expected cardId must carry the matching handContextId.
+    const breach = args.expectedCards.find((c) => c.handContextId !== args.handContextId);
+    if (breach) {
+      holmDealDbgRecordViolation({
+        type: 'HAND_RUNTIME_IDENTITY_BREACH',
+        cardId: breach.cardId,
+        handContextId: args.handContextId,
+        handGeneration: args.handGeneration,
+        phase: 'PRE_DEAL',
+        detail: { offendingHandContextId: breach.handContextId },
+      });
+      // Leave ledger reset; do not count anything dispatched.
+      return;
+    }
+    holmHandIdentityRef.current = { handContextId: args.handContextId, handGeneration: args.handGeneration };
+    if (ctx) {
+      try { ctx.dropIntentsNotMatchingHand(args.handContextId, 'holm_beginDealForHand'); } catch { /* noop */ }
+    }
+    const count = args.expectedCards.length;
+    setExpectedCount(count);
+    expectedRef.current = count;
+    setSettledCardIds(new Set());
+    setSettledByRecipient(new Map());
+    setSettledCardIdsByRecipient(new Map());
+    setPhase('DEALING');
+    dealDbgUpsert(handContextId, {
+      phase: 'DEALING',
+      expectedCount: count,
+      // Note: dispatched = 0 here. Increments only when CardTransportProvider
+      // accepts a current-hand intent — never just because expected.
+      cardsDispatched: 0,
+      cardsSettled: 0,
+      readyReleased: false,
+      dealSettled: false,
+      enterGameplayCalledAt: null,
+    });
+  }, [ctx, handContextId]);
+
+  const beginWaveForHand = useCallback((args: {
+    handContextId: string;
+    handGeneration: number;
+    addedExpectedCards: HolmExpectedCardManifestEntry[];
+  }) => {
+    const breach = args.addedExpectedCards.find((c) => c.handContextId !== args.handContextId);
+    if (breach) {
+      holmDealDbgRecordViolation({
+        type: 'HAND_RUNTIME_IDENTITY_BREACH',
+        cardId: breach.cardId,
+        handContextId: args.handContextId,
+        handGeneration: args.handGeneration,
+        phase,
+        detail: { offendingHandContextId: breach.handContextId, source: 'beginWaveForHand' },
+      });
+      return;
+    }
+    const added = args.addedExpectedCards.length;
+    setExpectedCount((prev) => {
+      const next = prev + added;
+      expectedRef.current = next;
+      return next;
+    });
+    setPhase('DEALING');
+    dealDbgUpsert(handContextId, {
+      phase: 'DEALING',
+      // dispatched = 0 added; transport accept events drive increments.
+      cardsDispatched: 0,
+      readyReleased: false,
+      dealSettled: false,
+      enterGameplayCalledAt: null,
+    });
+  }, [handContextId, phase]);
+
   const enterGameplay = useCallback(() => {
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     if (gameType === 'holm-game') {
@@ -243,8 +378,12 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       beginDeal,
       beginWave,
       enterGameplay,
+      holmHandGeneration,
+      resetForHand,
+      beginDealForHand,
+      beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
