@@ -7492,9 +7492,9 @@ export const MobileGameTable = ({
         )}
         
         {/* Holm Win Pot Animation (player beats Chucky - dramatic 5 second animation) */}
-        {holmWinPotTriggerId && (
+        {holmWinPotTriggerIdGated && (
           <HolmWinPotAnimation
-            triggerId={holmWinPotTriggerId}
+            triggerId={holmWinPotTriggerIdGated}
             amount={holmWinPotAmount}
             winnerPosition={holmWinWinnerPosition}
             winnerPositions={holmWinWinnerPositions}
