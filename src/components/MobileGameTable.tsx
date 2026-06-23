@@ -2476,12 +2476,29 @@ export const MobileGameTable = ({
   // animation render, winnerPlayerId derivation, winnerCards derivation,
   // dim/branch classification) all observe the gated value.
   {
+    // Gate must mirror the EXACT render-time source-of-truth that drives the
+    // inline Chucky card render (chuckyRevealedCountForRender /
+    // chuckyTotalVisibleForRender). The render falls back to the sticky
+    // stage cache when `cachedChuckyCards` has been cleared mid-phase, so
+    // the gate must consult the sticky too — otherwise serverRevealCount
+    // can authorize WIN_SEQUENCE_BRANCH while the visual stepper is still
+    // mid-flip (e.g. visualRevealCount=3 of 4).
+    const _stickyHandMatchesForGate =
+      !!chuckyStageStickyRef.current &&
+      (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
+    const _effectiveChuckyCardsLenForGate =
+      (cachedChuckyCards && cachedChuckyCards.length > 0)
+        ? cachedChuckyCards.length
+        : (_stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0);
+    const _effectiveChuckyRevealedForGate = Math.max(
+      cachedChuckyCardsRevealed,
+      _stickyHandMatchesForGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
+    );
     const _chuckyVisualRevealPendingForWinGate =
       gameType === 'holm-game' &&
       !!cachedChuckyActive &&
-      !!cachedChuckyCards &&
-      cachedChuckyCards.length > 0 &&
-      cachedChuckyCardsRevealed < cachedChuckyCards.length;
+      _effectiveChuckyCardsLenForGate > 0 &&
+      _effectiveChuckyRevealedForGate < _effectiveChuckyCardsLenForGate;
     holmWinPotTriggerIdGated =
       _chuckyVisualRevealPendingForWinGate && holmWinPotTriggerId
         ? null
