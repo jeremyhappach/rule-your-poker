@@ -208,6 +208,19 @@ function __chuckyAuditCardsHash(cards: CardType[] | null | undefined): string {
   return cards.map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join('|');
 }
 
+function __chuckyAuditDiffDeps(
+  prev: Record<string, unknown> | null | undefined,
+  next: Record<string, unknown> | null | undefined,
+): Record<string, { prev: unknown; next: unknown }> | null {
+  if (!prev || !next) return null;
+  const diff: Record<string, { prev: unknown; next: unknown }> = {};
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  keys.forEach((key) => {
+    if (!Object.is(prev[key], next[key])) diff[key] = { prev: prev[key], next: next[key] };
+  });
+  return Object.keys(diff).length > 0 ? diff : null;
+}
+
 function __chuckyAuditNow(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
