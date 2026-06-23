@@ -2992,18 +2992,77 @@ export const MobileGameTable = ({
       chuckyActive ||
       requiredRevealCount > 0
     );
+  // Holm v3 — subscribe to txn store so derivations recompute when commits land.
+  const holmTxnTick = useSyncExternalStore(
+    holmTxnSubscribe,
+    () => {
+      const t = holmTxnGetActiveTxn();
+      if (!t) return 0;
+      // Snapshot signature: generation + committed-set size + outcome key + released
+      const committed = holmTxnGetVisualRevealCommittedIds(t.handContextId, t.handGeneration);
+      return `${t.handGeneration}|${committed.size}|${t.outcomeTxnKey ?? ''}|${t.outcomeReleased ? 1 : 0}`;
+    },
+    () => 0,
+  );
+  void holmTxnTick;
+  const holmActiveTxn = holmTxnGetActiveTxn();
+  const visualChuckyFlipCommittedIds = (handContextId && holmActiveTxn && holmActiveTxn.handContextId === handContextId)
+    ? holmTxnGetVisualRevealCommittedIds(handContextId, holmActiveTxn.handGeneration)
+    : holmTxnGetVisualRevealCommittedIds(null, null);
+  // Holm v3 — reveal completion derived ONLY from renderer-committed card IDs.
+  // For non-Holm-Chucky paths, treat as complete (preserves prior behavior).
   const chuckyVisualRevealComplete =
-    !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+    !isHolmSoloChucky || (requiredRevealCount > 0 && visualChuckyFlipCommittedIds.size >= requiredRevealCount);
   chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
   const chuckyNormalRevealBranchLocked =
     isHolmSoloChucky &&
     requiredRevealCount > 0 &&
-    visualRevealCount < requiredRevealCount &&
+    visualChuckyFlipCommittedIds.size < requiredRevealCount &&
     !!cachedChuckyCards &&
     cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
-  const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
-  const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
+
+  // Holm v3 — outcome gating. Server completion (triggers) latches a pending
+  // outcome on the active txn. The trigger remains gated until BOTH:
+  //   (a) all required reveal IDs are committed via renderer rAF×2
+  //   (b) releaseOutcomePresentation has been called (sets outcomeReleased)
+  // The releaseOutcomePresentation call is dispatched by the effect below.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!isHolmSoloChucky) return;
+    if (!holmActiveTxn) return;
+    const ctx = holmActiveTxn.handContextId;
+    const gen = holmActiveTxn.handGeneration;
+    if (holmWinPotTriggerId) {
+      holmTxnTryLatchOutcomeTxn({
+        handContextId: ctx,
+        handGeneration: gen,
+        outcomeTxnKey: `${ctx}:win:${holmWinPotTriggerId}`,
+      });
+    } else if (chuckyLossTriggerId) {
+      holmTxnTryLatchOutcomeTxn({
+        handContextId: ctx,
+        handGeneration: gen,
+        outcomeTxnKey: `${ctx}:loss:${chuckyLossTriggerId}`,
+      });
+    }
+    // Release once all renderer commits land AND an outcome is latched.
+    if (
+      holmActiveTxn.outcomeTxnKey &&
+      !holmActiveTxn.outcomeReleased &&
+      requiredRevealCount > 0 &&
+      visualChuckyFlipCommittedIds.size >= requiredRevealCount
+    ) {
+      holmTxnReleaseOutcomePresentation({ handContextId: ctx, handGeneration: gen });
+    }
+  }, [
+    gameType, isHolmSoloChucky, holmActiveTxn, holmWinPotTriggerId, chuckyLossTriggerId,
+    requiredRevealCount, visualChuckyFlipCommittedIds,
+  ]);
+
+  const outcomeReleased = !!holmActiveTxn?.outcomeReleased;
+  const holmWinPotTriggerIdGated = (chuckyVisualRevealComplete && (!isHolmSoloChucky || outcomeReleased)) ? holmWinPotTriggerId : null;
+  const chuckyLossTriggerIdGated = (chuckyVisualRevealComplete && (!isHolmSoloChucky || outcomeReleased)) ? chuckyLossTriggerId : null;
 
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
