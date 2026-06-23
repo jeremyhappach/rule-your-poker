@@ -40,6 +40,11 @@ import { holmDealDbgRecordRuntime } from './holmDealDbg';
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
 
+export interface HolmExpectedCardManifestEntry {
+  cardId: string;
+  handContextId: string;
+}
+
 interface DealContextValue {
   handContextId: string;
   gameType: string | null;
@@ -63,6 +68,32 @@ interface DealContextValue {
    */
   beginWave: (addedExpectedCount: number) => void;
   enterGameplay: () => void;
+  // ── Holm v3 hand-boundary transaction APIs (Holm-only consumers) ──
+  /** Holm-only — current ledger hand generation, incremented by resetForHand. */
+  holmHandGeneration: number;
+  /**
+   * Holm-only — replace the entire ledger with a fresh empty one keyed
+   * to (handContextId, handGeneration). Phase → PRE_DEAL. Does NOT set
+   * expectedCount. Drops any active intents whose handContextId differs.
+   */
+  resetForHand: (args: { handContextId: string; handGeneration: number }) => void;
+  /**
+   * Holm-only — begin DEALING for the active hand with an explicit
+   * manifest of expected cards. Validates every cardId carries the
+   * matching handContextId. Mismatch → records
+   * HAND_RUNTIME_IDENTITY_BREACH, leaves ledger reset, returns.
+   */
+  beginDealForHand: (args: {
+    handContextId: string;
+    handGeneration: number;
+    expectedCards: HolmExpectedCardManifestEntry[];
+  }) => void;
+  /** Holm-only — additive wave, same identity rules as beginDealForHand. */
+  beginWaveForHand: (args: {
+    handContextId: string;
+    handGeneration: number;
+    addedExpectedCards: HolmExpectedCardManifestEntry[];
+  }) => void;
 }
 
 const DealContext = createContext<DealContextValue | null>(null);
