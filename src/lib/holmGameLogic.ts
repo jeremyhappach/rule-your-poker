@@ -291,13 +291,17 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
   // CRITICAL: Use atomic guard - only update if current_turn_position equals fromPosition
   // This ensures only the client whose player just decided can advance the turn
   const deadline = new Date(Date.now() + timerSeconds * 1000);
+  // ATOMIC ACTIONABILITY COMMIT: status='betting' + current_turn_position + decision_deadline
+  // stamped together so client gate cannot see a partial transition.
   const { data: updateResult, error: updateError } = await supabase
     .from('rounds')
     .update({ 
+      status: 'betting',
       current_turn_position: nextPosition,
       decision_deadline: deadline.toISOString()
     })
     .eq('id', round.id)
+    .eq('status', 'betting') // ATOMIC GUARD: round must still be in betting
     .eq('current_turn_position', fromPosition) // ATOMIC GUARD: only update if turn matches the player who just decided
     .select();
   
@@ -883,7 +887,7 @@ export async function endHolmRound(gameId: string) {
   
   const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
-    .update({ status: 'processing' })
+    .update({ status: 'processing', current_turn_position: null, decision_deadline: null })
     .eq('id', capturedRoundId)
     .eq('status', 'betting') // ATOMIC GUARD: Only succeeds if still in 'betting' status
     .select();
@@ -1035,7 +1039,24 @@ export async function endHolmRound(gameId: string) {
   const playersWithDecision = players.filter(p => p.current_decision === 'stay' || p.current_decision === 'fold');
   if (playersWithDecision.length === 0 && activePlayers.length > 0) {
     console.error('[HOLM END] ❌ PREMATURE CALL - no player decisions exist. Reverting round lock and resetting stale flags.');
-    await supabase.from('rounds').update({ status: 'betting' }).eq('id', capturedRoundId);
+    // Retry/recovery path: re-enter actionable state with a NEW full server deadline,
+    // stamped atomically together with status='betting' and the prior current_turn_position.
+    const { data: gd } = await supabase
+      .from('game_defaults')
+      .select('decision_timer_seconds')
+      .eq('game_type', 'holm-game')
+      .maybeSingle();
+    const retryTimerSeconds = gd?.decision_timer_seconds ?? 30;
+    const retryDeadline = new Date(Date.now() + retryTimerSeconds * 1000).toISOString();
+    const retryTurnPosition = (round as any).current_turn_position ?? null;
+    await supabase
+      .from('rounds')
+      .update({
+        status: 'betting',
+        current_turn_position: retryTurnPosition,
+        decision_deadline: retryTurnPosition != null ? retryDeadline : null,
+      })
+      .eq('id', capturedRoundId);
     await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
     return;
   }
@@ -1111,7 +1132,9 @@ export async function endHolmRound(gameId: string) {
       .from('rounds')
       .update({ 
         status: 'completed',
-        pot: newPot  // Also update round pot
+        pot: newPot,  // Also update round pot
+        current_turn_position: null,
+        decision_deadline: null
       })
       .eq('id', capturedRoundId);
     
@@ -1410,7 +1433,7 @@ export async function endHolmRound(gameId: string) {
       // CRITICAL: On error, mark round as completed AND set awaiting_next_round to allow progression
       await supabase
         .from('rounds')
-        .update({ status: 'completed', chucky_active: false })
+        .update({ status: 'completed', chucky_active: false, current_turn_position: null, decision_deadline: null })
         .eq('id', capturedRoundId);
       
       // Also update game to allow progression - this was missing and caused stuck games
@@ -1776,7 +1799,9 @@ async function handleChuckyShowdown(
       .from('rounds')
       .update({ 
         status: 'completed',
-        chucky_active: false
+        chucky_active: false,
+        current_turn_position: null,
+        decision_deadline: null
       })
       .eq('id', roundId);
     
@@ -1789,8 +1814,10 @@ async function handleChuckyShowdown(
   await supabase
     .from('rounds')
     .update({ 
-      status: 'completed'
+      status: 'completed',
       // Note: chucky_active stays true so cards remain visible during result announcement
+      current_turn_position: null,
+      decision_deadline: null
     })
     .eq('id', roundId);
 
@@ -2112,7 +2139,7 @@ async function handleMultiPlayerShowdown(
     // Mark round as completed to hide timer
     await supabase
       .from('rounds')
-      .update({ status: 'completed' })
+      .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
       .eq('id', roundId);
   } else if (losers.length > 0) {
     // PARTIAL TIE: Multiple winners but there are also losers
@@ -2223,7 +2250,7 @@ async function handleMultiPlayerShowdown(
     // Mark round as completed to hide timer
     await supabase
       .from('rounds')
-      .update({ status: 'completed' })
+      .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
       .eq('id', roundId);
   } else {
     // FULL TIE: ALL players tied - they must all face Chucky
@@ -2240,7 +2267,7 @@ async function handleMultiPlayerShowdown(
       // Mark round as completed and set awaiting_next_round to allow game to continue
       await supabase
         .from('rounds')
-        .update({ status: 'completed' })
+        .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
         .eq('id', roundId);
       
       await supabase
@@ -2525,7 +2552,9 @@ async function handleMultiPlayerShowdown(
         .from('rounds')
         .update({ 
           status: 'completed',
-          chucky_active: false
+          chucky_active: false,
+          current_turn_position: null,
+          decision_deadline: null
         })
         .eq('id', roundId);
       
@@ -2539,7 +2568,9 @@ async function handleMultiPlayerShowdown(
     .from('rounds')
     .update({ 
       status: 'completed',
-      chucky_active: false // Ensure Chucky is hidden
+      chucky_active: false, // Ensure Chucky is hidden
+      current_turn_position: null,
+      decision_deadline: null
     })
     .eq('id', roundId);
 }
@@ -2639,7 +2670,7 @@ export async function proceedToNextHolmRound(gameId: string) {
   console.log('[HOLM NEXT] Marking existing rounds as completed for dealer game:', currentDealerGameId?.slice(0, 8));
   const roundCleanupQuery = supabase
     .from('rounds')
-    .update({ status: 'completed' })
+    .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
     .eq('game_id', gameId)
     .neq('status', 'completed');
   if (currentDealerGameId) {
