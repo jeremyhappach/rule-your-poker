@@ -8873,7 +8873,11 @@ export const MobileGameTable = ({
               )}
 
               {/* holm.chuckyStage — devil avatar + Chucky cards in ONE stage */}
-              {chuckyVisible && (
+              {chuckyVisible && chuckyCardsForRender && (() => {
+                const chuckyHandIdForRender =
+                  handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
+                const chuckyTotalForRender = chuckyCardsForRender.length;
+                return (
                 <HolmAnchoredSlot
                   artifactId="holm.chuckyStage"
                   zIndex={10}
@@ -8881,10 +8885,10 @@ export const MobileGameTable = ({
                   <HolmSoloRootRegistrar
                     root="CHUCKY_TABLED"
                     mounted={true}
-                    cardIds={(cachedChuckyCards ?? []).map((c) => `${c.rank}${c.suit}`)}
-                    handContextId={handContextId ?? null}
+                    cardIds={chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`)}
+                    handContextId={chuckyHandIdForRender}
                     soloDeclared={!!isSoloVsChucky}
-                    phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                     caller="MobileGameTable.chuckyStage"
                   />
                   <div
@@ -8900,7 +8904,7 @@ export const MobileGameTable = ({
                     >
                       👿
                     </span>
-                    {cachedChuckyCards!.map((card, index) => {
+                    {chuckyCardsForRender.map((card, index) => {
                       const isRevealed = index < cachedChuckyCardsRevealed;
                       const isFourColor = deckColorMode === 'four_color';
                       const fourColorConfig = getFourColorSuit(card.suit);
@@ -8915,7 +8919,7 @@ export const MobileGameTable = ({
                       return (
                         <div
                           key={index}
-                          data-holm-card-id={`${handContextId}#chucky-${index}`}
+                          data-holm-card-id={`${chuckyHandIdForRender}#chucky-${index}`}
                           data-holm-renderer="MobileGameTable.holmChuckyStage"
                           data-holm-component="CHUCKY"
                           data-card-anchor={`chucky-${index}`}
@@ -8923,16 +8927,16 @@ export const MobileGameTable = ({
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
                           <ChuckyVisualCardInstrumenter
-                            handContextId={handContextId ?? null}
+                            handContextId={chuckyHandIdForRender}
                             index={index}
                             isRevealed={isRevealed}
                             renderer="MobileGameTable.holmChuckyStage"
                             owner="cachedChuckyCardsRevealed"
-                            phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                            phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                             cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
-                            cachedChuckyCardsCount={cachedChuckyCards?.length ?? 0}
+                            cachedChuckyCardsCount={chuckyTotalForRender}
                           />
-                          <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
+                          <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
                             {isRevealed ? (
                               <div
                                 className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
