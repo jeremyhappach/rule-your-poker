@@ -1,6 +1,8 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef } from "react";
+import { recordHolmFull, getHolmFullIdentity } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+
 
 interface ChuckyHandProps {
   cards: CardType[];
