@@ -207,6 +207,21 @@ export function CardTransportProvider({
     [fireCallbacks],
   );
 
+  const dropIntentsNotMatchingHand = useCallback(
+    (handContextId: string, reason: string) => {
+      let dropped = 0;
+      const stale = activeIntentsRef.current.filter(
+        (i) => (i.handContextId ?? null) !== handContextId,
+      );
+      for (const intent of stale) {
+        markDropped(intent, reason);
+        dropped += 1;
+      }
+      return dropped;
+    },
+    [markDropped],
+  );
+
   const onCardSettled = useCallback((handler: (cardId: string) => void) => {
     subscribersRef.current.add(handler);
     return () => { subscribersRef.current.delete(handler); };
