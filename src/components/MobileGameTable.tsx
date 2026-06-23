@@ -2988,9 +2988,13 @@ export const MobileGameTable = ({
       isGameOver
     );
 
+  // FAIL-CLOSED stickyIsCurrent: only read sticky when current HCI is
+  // non-null AND sticky.handContextId matches exactly. No "transient
+  // null" indulgence — a stale sticky never contributes to render.
   const stickyChuckyHandMatchesVisualGate =
     !!chuckyStageStickyRef.current &&
-    (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
+    handContextId != null &&
+    chuckyStageStickyRef.current.handContextId === handContextId;
   const visualRevealCount = Math.max(
     cachedChuckyCardsRevealed,
     stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
@@ -9034,15 +9038,29 @@ export const MobileGameTable = ({
             };
           }
 
+          // FAIL-CLOSED stickyIsCurrent for tabledSelfStickyRef AND
+          // lonePlayerStageSnapshotRef. Both refs are inert unless the
+          // current HCI is non-null and exactly matches the sticky's
+          // captured HCI. Stale sticky never contributes to render.
+          const tabledSelfStickyIsCurrent =
+            !!tabledSelfStickyRef.current &&
+            handContextId != null &&
+            tabledSelfStickyRef.current.handContextId === handContextId;
+          const loneStageIsCurrent =
+            !!lonePlayerStageSnapshotRef.current &&
+            handContextId != null &&
+            lonePlayerStageSnapshotRef.current.handContextId === handContextId;
+          // Clear stale refs immediately as hygiene (correctness already
+          // enforced above by the IsCurrent reads).
+          if (tabledSelfStickyRef.current && !tabledSelfStickyIsCurrent && handContextId != null) {
+            tabledSelfStickyRef.current = null;
+          }
+          if (lonePlayerStageSnapshotRef.current && !loneStageIsCurrent && handContextId != null) {
+            lonePlayerStageSnapshotRef.current = null;
+          }
           const activeSnap =
-            // Sticky snapshot survives transient handContextId nulls and
-            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
-            tabledSelfStickyRef.current ??
-            (lonePlayerStageSnapshotRef.current?.handContextId &&
-            (!handContextId ||
-              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
-              ? lonePlayerStageSnapshotRef.current
-              : null);
+            (tabledSelfStickyIsCurrent ? tabledSelfStickyRef.current : null) ??
+            (loneStageIsCurrent ? lonePlayerStageSnapshotRef.current : null);
 
           const loneSoloPlayer =
             liveLoneSoloPlayer ??
@@ -9121,7 +9139,8 @@ export const MobileGameTable = ({
           const stickyChuckySourceEligible =
             !!chuckyStageStickyRef.current &&
             !!stickyChuckyOriginHandContextId &&
-            (handContextId == null || stickyChuckyOriginHandContextId === handContextId);
+            handContextId != null &&
+            stickyChuckyOriginHandContextId === handContextId;
           if (
             (cachedChuckyCards && cachedChuckyCards.length > 0 && !cachedChuckySourceEligible) ||
             (chuckyStageStickyRef.current && !stickyChuckySourceEligible)
