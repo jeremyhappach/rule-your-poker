@@ -174,8 +174,11 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import {
+import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
+  ensureChuckyConfigLoaded,
+  getChuckyConfiguredStepperDelayMs,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealTimingDbg";
 import {
   recordSoloStateChange,
