@@ -41,7 +41,9 @@ import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
+import { recordHolmFull } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
+
 
 interface SeatEntry {
   playerId: string;
