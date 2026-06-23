@@ -4606,13 +4606,13 @@ export const MobileGameTable = ({
             ? winnerPlayerId === currentPlayer.id
             : currentPlayer.current_decision === 'stay')) ||
       // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
-      (holmWinPotTriggerId && winnerPlayerId === currentPlayer.id)
+      (holmWinPotTriggerIdGated && winnerPlayerId === currentPlayer.id)
     );
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerCards = useMemo(() => {
-    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerId;
+    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!winnerPlayerId || !shouldDeriveCards) return [];
     if (winnerPlayerId === currentPlayer?.id) {
       return currentPlayerCards;
@@ -4620,7 +4620,7 @@ export const MobileGameTable = ({
     // Find winner's cards from playerCards
     const winnerCardData = playerCards.find(pc => pc.player_id === winnerPlayerId);
     return winnerCardData?.cards || [];
-  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerId, currentPlayer?.id, currentPlayerCards, playerCards]);
+  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerIdGated, currentPlayer?.id, currentPlayerCards, playerCards]);
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
