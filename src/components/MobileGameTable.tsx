@@ -8803,6 +8803,31 @@ export const MobileGameTable = ({
                             cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
                             cachedChuckyCardsCount={chuckyTotalForRender}
                           />
+                          {(() => {
+                            try {
+                              recordChuckyRenderState({
+                                handContextId: chuckyHandIdForRender,
+                                cardIndex: index,
+                                card: { rank: card.rank, suit: card.suit },
+                                roundStatus: roundStatus ?? null,
+                                phase: cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
+                                isShowingAnnouncement: !!isShowingAnnouncement,
+                                holmWinPotTriggerActive: !!holmWinPotTriggerId,
+                                resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
+                                awaitingNextRound: !!awaitingNextRound,
+                                lastRoundResultPresent: !!lastRoundResult,
+                                serverRevealCount: typeof chuckyCardsRevealed === 'number' ? chuckyCardsRevealed : null,
+                                cachedChuckyCardsRevealed,
+                                requiredRevealCount: chuckyTotalForRender,
+                                cardsCameFromLive: !!(cachedChuckyCards && cachedChuckyCards.length > 0),
+                                cardsCameFromSticky: !(cachedChuckyCards && cachedChuckyCards.length > 0) && !!chuckyStageStickyRef.current,
+                                actualPropIsHidden: !isRevealed,
+                                actualPropFaceUp: isRevealed,
+                                reason: shouldDimChucky ? 'dim-during-announcement' : null,
+                              });
+                            } catch { /* read-only forensics */ }
+                            return null;
+                          })()}
                           <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
                             {isRevealed ? (
                               <div
