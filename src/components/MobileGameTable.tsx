@@ -2723,8 +2723,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('newGameCacheReset', 'new game detected (round drop or game-type change)');
     }
 
     prevRoundForCacheClearRef.current = currentRound;
@@ -2769,8 +2768,7 @@ export const MobileGameTable = ({
     setCachedChuckyCards(null, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'resetHandUiCaches', reason: 'hand-boundary reset' });
-    chuckyTargetRevealedRef.current = 0;
-    cachedChuckyHandContextRef.current = null;
+    clearChuckyRevealOwnership('resetHandUiCaches', 'hand-boundary reset');
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
@@ -2799,7 +2797,7 @@ export const MobileGameTable = ({
     if (externalCommunityCardsCache) {
       externalCommunityCardsCache.current = { cards: null, round: null, show: false };
     }
-  }, [currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
+  }, [currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache, clearChuckyRevealOwnership]);
 
   const shouldDeferHandReset = useCallback(() => {
     const isGameOverPhase = gameStatus === 'game_over' || !!isGameOver;
