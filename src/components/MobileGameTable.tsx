@@ -4268,17 +4268,11 @@ export const MobileGameTable = ({
   // Result announcement must wait for the Chucky VISUAL reveal to finish.
   // Otherwise the announcement can render before / during the flips, gating
   // observers and producing the "rapid reveal after announcement" artifact.
-  const chuckyVisualRevealPending =
-    gameType === 'holm-game' &&
-    !!cachedChuckyActive &&
-    !!cachedChuckyCards &&
-    cachedChuckyCards.length > 0 &&
-    cachedChuckyCardsRevealed < cachedChuckyCards.length;
   const isShowingAnnouncement =
     gameType === 'holm-game' &&
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
-    !chuckyVisualRevealPending;
+    chuckyVisualRevealComplete;
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
