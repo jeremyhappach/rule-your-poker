@@ -1696,6 +1696,23 @@ export const MobileGameTable = ({
     playerId: string;
     cards: CardType[];
   } | null>(null);
+
+  // Sticky persistence refs used by the TABLED_SELF / CHUCKY_TABLED render
+  // predicates only. They mirror the live state when it is good and are
+  // ONLY released when a NEW non-null handContextId arrives that differs
+  // from the captured one (NEXT_HAND PRE_DEAL). They are NOT wiped by
+  // intermediate lifecycle effects, so the stages persist through
+  // CHUCKY_REVEAL → RESULT_ANNOUNCEMENT → SHOWDOWN → WIN_SEQUENCE →
+  // PLAYER_TO_POT exactly per the ownership contract.
+  const tabledSelfStickyRef = useRef<{
+    handContextId: string;
+    playerId: string;
+    cards: CardType[];
+  } | null>(null);
+  const chuckyStageStickyRef = useRef<{
+    handContextId: string;
+    cards: CardType[];
+  } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
