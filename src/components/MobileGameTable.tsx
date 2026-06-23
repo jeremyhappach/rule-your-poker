@@ -2703,6 +2703,17 @@ export const MobileGameTable = ({
       currentRound,
       gameStatus,
     });
+    try {
+      recordHolmChuckyTeardownEvent({
+        event: 'resetHandUiCaches',
+        sourceFile: 'src/components/MobileGameTable.tsx',
+        functionLabel: 'resetHandUiCaches',
+        callsite: `MobileGameTable:resetHandUiCaches reason=${reason} from=${from} to=${to}`,
+        reason,
+        writer: 'resetHandUiCaches',
+        owner: 'MobileGameTable',
+      });
+    } catch { /* forensics-only */ }
 
     // Community UI cache
     setShowCommunityCards(false);
