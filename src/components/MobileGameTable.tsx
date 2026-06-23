@@ -77,7 +77,6 @@ import {
   getBucksForensics,
 } from "@/lib/canonicalShell/holmBucksOverlayForensics";
 import {
-  armBuckPresentationGate,
   releaseBuckPresentationGate,
 } from "@/lib/canonicalShell/holmBuckPresentationGate";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
@@ -1644,11 +1643,16 @@ export const MobileGameTable = ({
   // buckPosition existed AND differed AND the new-hand buckPosition === self.
   // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
   const [activeBuckPresentationId, setActiveBuckPresentationId] = useState<string | null>(null);
+  // Latched server-authored buck-transfer presentation waiting for the
+  // prior-hand teardown boundary before promoting to active (showing
+  // BucksOnYou). Cleared once promoted or once a newer event supersedes.
+  const [pendingBuckPresentation, setPendingBuckPresentation] =
+    useState<{ id: string; hci: string | null } | null>(null);
   // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
   // carry stable IDs; we render exactly once per ID for the receiving viewer.
   const buckOverlayFiredEventIdRef = useRef<string | null>(null);
-  // The active gated handContextId (set when we arm the local presentation gate
-  // for the receiving viewer; released on overlay completion).
+  // The active gated handContextId — retained as no-op for legacy gate
+  // release on overlay completion. Deal is NOT blocked by buck overlay.
   const buckOverlayGatedHciRef = useRef<string | null>(null);
   // Retained for legacy forensic shape; no longer used for show eligibility.
   const priorHandBuckRef = useRef<{ hci: string; buckPosition: number } | null>(null);
@@ -4887,27 +4891,39 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Authoritative: arm gate, latch, show.
+    // Authoritative: latch event id as PENDING. Promotion to active
+    // (visible overlay) waits for prior-hand teardown boundary.
     buckOverlayFiredEventIdRef.current = ev.id;
     recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
       eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
       selfPosition: selfPos, recipientIsSelf: true,
     });
 
-    if (handContextId) {
-      buckOverlayGatedHciRef.current = handContextId;
-      armBuckPresentationGate(handContextId);
-      recordBucksForensic('LATCH_SET', {
-        eventId: ev.id, handContextId, predicate: 'BUCKS_GATE_ARMED',
-      });
-    }
-
-    setActiveBuckPresentationId(ev.id);
-    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: ev.id });
-    recordBucksForensic('SHOW_GRANTED', {
-      eventId: ev.id, handContextId: handContextId ?? null, predicate: 'BUCKS_OVERLAY_SHOWN',
+    setPendingBuckPresentation({ id: ev.id, hci: handContextId ?? null });
+    recordBucksForensic('LATCH_SET', {
+      eventId: ev.id, handContextId: handContextId ?? null,
+      predicate: 'BUCKS_PENDING_AWAITING_TEARDOWN',
     });
   }, [buckTransferPresentation, gameType, currentPlayer, handContextId]);
+
+  // BUCK'S ON YOU — promote PENDING → ACTIVE once prior-hand teardown
+  // boundary is reached. Teardown = community cards no longer mounted
+  // AND no in-flight result announcement. Deal is NOT blocked.
+  useEffect(() => {
+    if (!pendingBuckPresentation) return;
+    if (showCommunityCards) return;
+    if (isShowingAnnouncement) return;
+    // Single-shot promotion.
+    const { id, hci } = pendingBuckPresentation;
+    setPendingBuckPresentation(null);
+    buckOverlayGatedHciRef.current = hci;
+    setActiveBuckPresentationId(id);
+    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: id });
+    recordBucksForensic('SHOW_GRANTED', {
+      eventId: id, handContextId: handContextId ?? null,
+      predicate: 'BUCKS_OVERLAY_SHOWN_AFTER_TEARDOWN',
+    });
+  }, [pendingBuckPresentation, showCommunityCards, isShowingAnnouncement, handContextId]);
 
 
 
