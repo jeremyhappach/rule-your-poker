@@ -7396,6 +7396,44 @@ export const MobileGameTable = ({
   };
 
 
+  // ── Holm hand admission: PENDING-HCI hard boundary ───────────────
+  // Synthesize structured payloads from the already-HCI-scoped Holm
+  // inputs so admission gates on physical hand-context match. Until
+  // `admitted === true`, the orchestrator receives `selfHand = null`
+  // (NOT `[]`) — the PENDING sentinel its effects branch on to skip
+  // resetForHand / beginDealForHand / beginWaveForHand / dispatch.
+  // The per-HCI latch in `useHolmHandAdmission` guarantees the
+  // admission edge fires exactly once per distinct HCI; same-HCI
+  // payload churn keeps `admitted` true.
+  const holmExpectedHandSize = 4;
+  const holmSelfHandPayload = (
+    gameType === 'holm-game' &&
+    handContextId &&
+    currentPlayerCards.length >= holmExpectedHandSize
+  ) ? {
+    roundId: handContextId,
+    handContextId,
+    sourceVersion: 0,
+    cards: currentPlayerCards,
+  } : null;
+  const holmCommunityPayload = (
+    gameType === 'holm-game' &&
+    handContextId &&
+    (communityCards?.length ?? 0) >= 4
+  ) ? {
+    roundId: handContextId,
+    handContextId,
+    sourceVersion: 0,
+    cards: communityCards ?? [],
+  } : null;
+  const holmAdmission = useHolmHandAdmission({
+    handContextId: gameType === 'holm-game' ? (handContextId ?? null) : null,
+    expectedHandSize: holmExpectedHandSize,
+    selfHandPayload: holmSelfHandPayload,
+    communityPayload: holmCommunityPayload,
+  });
+  const holmAdmittedSelfHand = holmAdmission.admitted ? currentPlayerCards : null;
+
   return <HolmDealRuntimeMaybe
     handContextId={gameType === 'holm-game' ? (handContextId ?? null) : null}
     gameType={gameType}
@@ -7409,8 +7447,8 @@ export const MobileGameTable = ({
           dealerPosition={dealerPosition}
           selfPlayerId={(currentPlayer as any).id}
           selfPosition={currentPlayer?.position ?? null}
-          cardsPerPlayer={4}
-          selfHand={currentPlayerCards}
+          cardsPerPlayer={holmExpectedHandSize}
+          selfHand={holmAdmittedSelfHand}
           communityCards={communityCards ?? []}
           soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
