@@ -772,6 +772,7 @@ export type Database = {
           ante_decision_timer_seconds: number
           awaiting_next_round: boolean | null
           buck_position: number | null
+          buck_transfer_presentation: Json | null
           buy_in: number
           chucky_cards: number | null
           config_complete: boolean
@@ -824,6 +825,7 @@ export type Database = {
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
           buck_position?: number | null
+          buck_transfer_presentation?: Json | null
           buy_in?: number
           chucky_cards?: number | null
           config_complete?: boolean
@@ -876,6 +878,7 @@ export type Database = {
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
           buck_position?: number | null
+          buck_transfer_presentation?: Json | null
           buy_in?: number
           chucky_cards?: number | null
           config_complete?: boolean
