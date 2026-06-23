@@ -484,6 +484,8 @@ export function HolmDealDbgPanel() {
           title="Copy Holm BUCK'S ON YOU overlay forensics (every render/mount/show/suppress/dismiss + violations)"
           style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
         >
+          COPY BUCKS FORENSICS
+        </button>
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
