@@ -4444,6 +4444,30 @@ export const MobileGameTable = ({
     return null;
   }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
 
+  // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
+  if (gameType === 'holm-game') {
+    try {
+      instrumentHolmPotRender({
+        handContextId: handContextId ?? null,
+        phase: String(holmDealPhaseForHand ?? 'unknown'),
+        roundStatus: (roundStatus as string | null) ?? null,
+        rawTriggerId: holmWinPotTriggerId ?? null,
+        gatedTriggerId: holmWinPotTriggerIdGated ?? null,
+        winnerPlayerId: winnerPlayerId ?? null,
+        potAmount: typeof holmWinPotAmount === 'number' ? holmWinPotAmount : null,
+        lastRoundResultHandContextId: null,
+        chuckyVisualRevealComplete,
+        isShowingAnnouncement: !!isShowingAnnouncement,
+        sessionPaused: !!isPaused,
+        consumedTriggerId: null,
+        callerFile: 'src/components/MobileGameTable.tsx',
+        callerFn: 'componentBody.potRender',
+      });
+    } catch { /* noop */ }
+  }
+
+
+
   // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
   // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
   const format357ShowdownAnnouncement = useMemo(() => {
