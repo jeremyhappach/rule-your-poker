@@ -68,6 +68,14 @@ function __mgtFlashPersist(row: { game_id: string; event_type: string; payload: 
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
+import {
+  recordBucksForensic,
+  recordBucksViolation,
+  evaluateBucksShowRequest,
+  notifyBucksShowGranted,
+  buildBucksForensicsText,
+  getBucksForensics,
+} from "@/lib/canonicalShell/holmBucksOverlayForensics";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -4837,39 +4845,131 @@ export const MobileGameTable = ({
   //     subsequent re-observations of the same hci cannot fire.
   //  5. No phase, roundStatus, dealer/caller, result, or announcement triggers.
   useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    if (!handContextId) return;
-    if (buckPosition === null || buckPosition === undefined) return;
-    if (!currentPlayer || typeof currentPlayer.position !== 'number') return;
+    // FORENSIC: every evaluation of the Buck overlay effect is recorded.
+    const _selfPosForensic = currentPlayer && typeof currentPlayer.position === 'number'
+      ? currentPlayer.position : null;
+    const _prior = priorHandBuckRef.current;
+    const _latch = buckOverlayFiredForHciRef.current;
+    const _eventId = (handContextId != null && buckPosition != null)
+      ? `buck@${handContextId}#pos${buckPosition}` : null;
+    const _baseEval = {
+      gameType,
+      handContextId: handContextId ?? null,
+      previousHandContextId: _prior?.hci ?? null,
+      previousBuckPosition: _prior?.buckPosition ?? null,
+      buckPosition: buckPosition ?? null,
+      selfPosition: _selfPosForensic,
+      currentRound: typeof currentRound === 'number' ? currentRound : null,
+      gameStatus: gameStatus ?? null,
+      roundStatus: roundStatus ?? null,
+      derivedEventId: _eventId,
+      derivedEventHci: handContextId ?? null,
+      eventHciEqualsCurrent: true,
+      eventSource: 'DERIVED',
+      latchForHci: _latch,
+      ownerFile: 'src/components/MobileGameTable.tsx',
+      ownerComponent: 'MobileGameTable',
+      ownerBranch: 'buckOverlayEffect@4839',
+    };
+    recordBucksForensic('EFFECT_EVAL', _baseEval);
+
+    if (gameType !== 'holm-game') {
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'gameType!=holm-game', boolean: false });
+      return;
+    }
+    if (!handContextId) {
+      recordBucksForensic('EVENT_MISSING', { ..._baseEval, reason: 'no handContextId' });
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: '!handContextId', boolean: false });
+      return;
+    }
+    if (buckPosition === null || buckPosition === undefined) {
+      recordBucksForensic('EVENT_MISSING', { ..._baseEval, reason: 'buckPosition null/undefined' });
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'buckPosition==null', boolean: false });
+      return;
+    }
+    if (!currentPlayer || typeof currentPlayer.position !== 'number') {
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'no currentPlayer position', boolean: false });
+      return;
+    }
 
     const self = currentPlayer.position;
     const prior = priorHandBuckRef.current;
 
-    // Same hci as last observed → no boundary event. Do not fire, do not mutate prior record.
-    if (prior && prior.hci === handContextId) return;
-
-    // Per-hci fire latch — already evaluated this hci once.
-    if (buckOverlayFiredForHciRef.current === handContextId) {
-      priorHandBuckRef.current = { hci: handContextId, buckPosition };
+    if (prior && prior.hci === handContextId) {
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'priorHciEqualsCurrent (no boundary)', boolean: true });
       return;
     }
 
-    // Authoritative pass event: prior hand existed, prior buck differs, and self is now buck.
-    const isAuthoritativePassToSelf =
-      prior !== null && prior.buckPosition !== buckPosition && buckPosition === self;
+    if (buckOverlayFiredForHciRef.current === handContextId) {
+      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'latchAlreadySetForHci', boolean: true });
+      priorHandBuckRef.current = { hci: handContextId, buckPosition };
+      recordBucksForensic('LATCH_SET', { ..._baseEval, latchKey: handContextId, reason: 'prior-record refresh after latch' });
+      return;
+    }
 
-    // Stamp latch BEFORE state mutation so any subsequent re-render with the same
-    // hci is inert even if priorHandBuckRef somehow gets re-evaluated.
+    const priorHadValue = prior !== null;
+    const priorBuckDiffers = prior !== null && prior.buckPosition !== buckPosition;
+    const selfIsBuck = buckPosition === self;
+    const isAuthoritativePassToSelf = priorHadValue && priorBuckDiffers && selfIsBuck;
+
+    recordBucksForensic('EVENT_RESOLVED', {
+      ..._baseEval,
+      predicates: {
+        priorHadValue,
+        priorBuckDiffers,
+        selfIsBuck,
+        isAuthoritativePassToSelf,
+      },
+    });
+
+    const latchKeyBefore = buckOverlayFiredForHciRef.current;
     buckOverlayFiredForHciRef.current = handContextId;
     priorHandBuckRef.current = { hci: handContextId, buckPosition };
+    recordBucksForensic('LATCH_SET', {
+      ..._baseEval,
+      latchKey: handContextId,
+      latchKeyBefore,
+      latchKeyAfter: handContextId,
+    });
 
     if (isAuthoritativePassToSelf) {
+      // SHOW_REQUESTED
+      const evalResult = evaluateBucksShowRequest({
+        currentHandContextId: handContextId,
+        authoritativeEventId: _eventId,
+        authoritativeEventHci: handContextId,
+        eventSource: 'DERIVED',
+        ownerFile: 'src/components/MobileGameTable.tsx',
+        ownerComponent: 'MobileGameTable',
+      });
+      recordBucksForensic('SHOW_REQUESTED', {
+        ..._baseEval,
+        authoritativeEventId: _eventId,
+        authoritativeEventSource: 'DERIVED',
+        evalResult,
+      });
+      for (const v of evalResult.violations) {
+        recordBucksViolation(v, { ..._baseEval, authoritativeEventId: _eventId });
+      }
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
       showdownHandContextRef.current = null;
       setShowBucksOnYou(true);
+      notifyBucksShowGranted({ currentHandContextId: handContextId, authoritativeEventId: _eventId });
+      recordBucksForensic('SHOW_GRANTED', {
+        ..._baseEval,
+        authoritativeEventId: _eventId,
+        setterCallsite: 'MobileGameTable.tsx:buckOverlayEffect setShowBucksOnYou(true)',
+      });
+    } else {
+      recordBucksForensic('SHOW_SUPPRESSED', {
+        ..._baseEval,
+        predicate: 'not authoritative pass-to-self',
+        predicates: { priorHadValue, priorBuckDiffers, selfIsBuck },
+        boolean: false,
+      });
     }
-  }, [handContextId, buckPosition, currentPlayer, gameType]);
+  }, [handContextId, buckPosition, currentPlayer, gameType, currentRound, gameStatus, roundStatus]);
 
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
@@ -7928,7 +8028,36 @@ export const MobileGameTable = ({
           />
         )}
         
-        <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
+        {(() => {
+          recordBucksForensic('OVERLAY_RENDERED', {
+            ownerFile: 'src/components/MobileGameTable.tsx',
+            ownerComponent: 'MobileGameTable',
+            ownerBranch: 'BucksOnYouAnimation@~8031',
+            show: showBucksOnYou,
+            handContextId: handContextId ?? null,
+            buckPosition: buckPosition ?? null,
+            currentRound: typeof currentRound === 'number' ? currentRound : null,
+            gameStatus: gameStatus ?? null,
+            roundStatus: roundStatus ?? null,
+            textSource: 'BUCKS_ON_YOU_EXPLICIT_ANIMATION_COMPONENT',
+            isGenericAnnouncement: false,
+          });
+          return null;
+        })()}
+        <BucksOnYouAnimation
+          show={showBucksOnYou}
+          onComplete={() => {
+            recordBucksForensic('DISMISSED', {
+              ownerFile: 'src/components/MobileGameTable.tsx',
+              ownerComponent: 'MobileGameTable',
+              ownerBranch: 'BucksOnYouAnimation.onComplete',
+              handContextId: handContextId ?? null,
+              setterCallsite: 'setShowBucksOnYou(false) from onComplete',
+            });
+            setShowBucksOnYou(false);
+          }}
+        />
+        
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
         {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (

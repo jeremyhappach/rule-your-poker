@@ -49,6 +49,10 @@ import {
   buildChuckyRenderStateForensicsText,
   getChuckyRenderStateForensics,
 } from './holmChuckyRenderStateForensics';
+import {
+  buildBucksForensicsText,
+  getBucksForensics,
+} from '@/lib/canonicalShell/holmBucksOverlayForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -463,6 +467,24 @@ export function HolmDealDbgPanel() {
           style={{ background: '#3a5f1e', color: '#fff', border: '1px solid #7bb84a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
         >
           COPY HOLM CHUCKY RENDER STATE FORENSICS
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildBucksForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmBucksForensics?: unknown }).__holmBucksForensics = getBucksForensics();
+            } catch { /* noop */ }
+          }}
+          title="Copy Holm BUCK'S ON YOU overlay forensics (every render/mount/show/suppress/dismiss + violations)"
+          style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY BUCKS FORENSICS
         </button>
       </div>
       {expanded ? (
