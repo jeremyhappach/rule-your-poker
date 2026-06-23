@@ -186,7 +186,7 @@ export function recordHolmTimerEvent(
     // Mirror into unified Holm full forensics buffer (window.__holmFullForensics).
     // Imported lazily to avoid any module-load ordering risk.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('./holmFullForensics') as typeof import('./holmFullForensics');
+    // using static import
     mod.recordHolmFull({
       category: 'TIMER_EVENT',
       event,
@@ -225,7 +225,7 @@ export function recordHolmTimerViolation(
   if (s && !s.violations.includes(type)) s.violations.push(type);
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('./holmFullForensics') as typeof import('./holmFullForensics');
+    // using static import
     mod.recordHolmFull({
       category: 'TIMER_VIOLATION',
       event: type,
