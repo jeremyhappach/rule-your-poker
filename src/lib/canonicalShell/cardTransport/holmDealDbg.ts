@@ -110,6 +110,17 @@ export interface HolmDealDbgMeta {
   wave: HolmDealWave | null;
   soloDeclared: boolean;
   expectedCards: HolmExpectedCardDbg[];
+  /** Holm v3 — current hand-boundary transaction state, surfaced to the HUD pill. */
+  handGeneration: number;
+  txnTeardownComplete: boolean;
+  txnNewHandInitComplete: boolean;
+  presentationHandContextId: string | null;
+  outcomeTxnKey: string | null;
+  visualChuckyFlipCommittedIds: string[];
+  hardViolationCounts: Partial<Record<HolmHardViolationType, number>>;
+  observationalCounts: Partial<Record<HolmObservationalEventType, number>>;
+  recentViolations: HolmDealViolationDbg[];
+  recentEvents: HolmDealEventDbg[];
   updatedAt: number;
 }
 
@@ -125,6 +136,8 @@ export interface HolmDealDbgSnapshot extends HolmDealDbgMeta {
 type W = typeof window & { __holmDealDbg?: HolmDealDbgSnapshot | HolmDealDbgMeta };
 
 const listeners = new Set<() => void>();
+
+const RECENT_LIMIT = 32;
 
 let meta: HolmDealDbgMeta = {
   handContextId: null,
@@ -156,6 +169,16 @@ let meta: HolmDealDbgMeta = {
   wave: null,
   soloDeclared: false,
   expectedCards: [],
+  handGeneration: 0,
+  txnTeardownComplete: false,
+  txnNewHandInitComplete: false,
+  presentationHandContextId: null,
+  outcomeTxnKey: null,
+  visualChuckyFlipCommittedIds: [],
+  hardViolationCounts: {},
+  observationalCounts: {},
+  recentViolations: [],
+  recentEvents: [],
   updatedAt: Date.now(),
 };
 
