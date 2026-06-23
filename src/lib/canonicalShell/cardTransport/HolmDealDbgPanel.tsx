@@ -468,6 +468,22 @@ export function HolmDealDbgPanel() {
         >
           COPY HOLM CHUCKY RENDER STATE FORENSICS
         </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildBucksForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmBucksForensics?: unknown }).__holmBucksForensics = getBucksForensics();
+            } catch { /* noop */ }
+          }}
+          title="Copy Holm BUCK'S ON YOU overlay forensics (every render/mount/show/suppress/dismiss + violations)"
+          style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
