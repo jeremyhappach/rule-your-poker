@@ -1132,7 +1132,9 @@ export async function endHolmRound(gameId: string) {
       .from('rounds')
       .update({ 
         status: 'completed',
-        pot: newPot  // Also update round pot
+        pot: newPot,  // Also update round pot
+        current_turn_position: null,
+        decision_deadline: null
       })
       .eq('id', capturedRoundId);
     
