@@ -4464,8 +4464,8 @@ export const MobileGameTable = ({
     }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
-    // Holm: gate until community card 4 finishes flipping.
-    if (gameType === 'holm-game' && !holmCommunityFullyRevealed) return;
+    // Holm: gate until community card 4 and solo-Chucky visual reveal finish flipping.
+    if (gameType === 'holm-game' && (!holmCommunityFullyRevealed || !chuckyVisualRevealComplete)) return;
 
     const isResultEligible =
       isGameOver ||
@@ -4473,7 +4473,7 @@ export const MobileGameTable = ({
       roundStatus === 'completed' ||
       roundStatus === 'showdown' ||
       allDecisionsIn ||
-      chuckyActive;
+      (gameType === 'holm-game' ? chuckyVisualRevealComplete && chuckyActive : chuckyActive);
     if (!isResultEligible) return;
 
     const projectedText =
@@ -4516,7 +4516,7 @@ export const MobileGameTable = ({
   }, [
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
-    allDecisionsIn, chuckyActive, format357ShowdownAnnouncement, gameId, handContextId,
+    allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
     currentRound, announcements,
   ]);
 
