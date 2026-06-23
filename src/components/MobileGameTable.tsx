@@ -68,6 +68,14 @@ function __mgtFlashPersist(row: { game_id: string; event_type: string; payload: 
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
+import {
+  recordBucksForensic,
+  recordBucksViolation,
+  evaluateBucksShowRequest,
+  notifyBucksShowGranted,
+  buildBucksForensicsText,
+  getBucksForensics,
+} from "@/lib/canonicalShell/holmBucksOverlayForensics";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
