@@ -2851,7 +2851,7 @@ export const MobileGameTable = ({
     cachedChuckyCards?.length ?? 0,
     stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0,
     chuckyCards?.length ?? 0,
-    holmDealMetaSnap.chuckyExpected ?? 0,
+    holmDealMetaSnap.handContextId === handContextId ? (holmDealMetaSnap.chuckyExpected ?? 0) : 0,
   );
   const isHolmSoloChucky =
     gameType === 'holm-game' &&
