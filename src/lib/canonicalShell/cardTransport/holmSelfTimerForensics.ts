@@ -109,6 +109,13 @@ const owners = new Map<number, HolmTimerOwnerSnapshot>();
 const segments = new Map<string, HolmTimerSegmentSummary>();
 let _seq = 0;
 
+// Cached snapshot arrays — refreshed only when data mutates so
+// useSyncExternalStore's reference-equality check stays stable.
+let _ownersSnap: HolmTimerOwnerSnapshot[] = [];
+let _segmentsSnap: HolmTimerSegmentSummary[] = [];
+function refreshOwnersSnap() { _ownersSnap = Array.from(owners.values()); }
+function refreshSegmentsSnap() { _segmentsSnap = Array.from(segments.values()); }
+
 const listeners = new Set<() => void>();
 function emit() { for (const l of listeners) { try { l(); } catch { /* */ } } }
 
@@ -119,8 +126,8 @@ export function subscribeHolmSelfTimer(cb: () => void): () => void {
 
 export function getHolmTimerEvents(): HolmTimerEvent[] { return events; }
 export function getHolmTimerViolations(): HolmTimerViolation[] { return violations; }
-export function getHolmTimerOwners(): HolmTimerOwnerSnapshot[] { return Array.from(owners.values()); }
-export function getHolmTimerSegments(): HolmTimerSegmentSummary[] { return Array.from(segments.values()); }
+export function getHolmTimerOwners(): HolmTimerOwnerSnapshot[] { return _ownersSnap; }
+export function getHolmTimerSegments(): HolmTimerSegmentSummary[] { return _segmentsSnap; }
 
 function now(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -408,14 +415,16 @@ export function endHolmTimerSegment(instanceId: number, segmentId: string | null
 // ─── Publication ──────────────────────────────────────────────────────────
 
 function publish() {
+  refreshOwnersSnap();
+  refreshSegmentsSnap();
   if (typeof window === 'undefined') return;
   const w = window as unknown as { __holmSelfTimerForensics?: Record<string, unknown> };
   if (!w.__holmSelfTimerForensics) w.__holmSelfTimerForensics = {};
   const d = w.__holmSelfTimerForensics;
   d.events = events;
   d.violations = violations;
-  d.owners = Array.from(owners.values());
-  d.segments = Array.from(segments.values());
+  d.owners = _ownersSnap;
+  d.segments = _segmentsSnap;
 }
 
 // ─── Text export ──────────────────────────────────────────────────────────
