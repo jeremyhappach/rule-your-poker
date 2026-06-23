@@ -2436,6 +2436,9 @@ export const MobileGameTable = ({
   const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
+  // Prime the configured reveal-cadence fetch as early as possible so the
+  // first stepper arm reads from game_defaults (not the in-flight fallback).
+  useEffect(() => { ensureChuckyConfigLoaded(); }, []);
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
