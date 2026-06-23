@@ -39,6 +39,14 @@ export interface ActivePlayerHUDProps {
   maxTime: number;
   /** True when this seat currently has the active turn HUD. */
   isActive: boolean;
+  /**
+   * Authoritative server `decision_deadline` as epoch ms (or null when
+   * no actionable deadline exists). Forwarded to MobilePlayerTimer so
+   * the segment seed binds to the server clock, not the client-derived
+   * `timeLeft`. Ensures the visible label is `ceil((deadlineMs-now)/1000)`
+   * — full under sub-second propagation, honest under longer propagation.
+   */
+  deadlineMs?: number | null;
   /** Outer ring size in px. Defaults to 48 (matches MobilePlayerTimer). */
   size?: number;
   /** Optional diagnostic identifiers — telemetry only, no behavior. */
@@ -60,6 +68,7 @@ export function ActivePlayerHUD({
   timeLeft,
   maxTime,
   isActive,
+  deadlineMs,
   size = 48,
   seatPosition,
   gameId,
@@ -110,15 +119,15 @@ export function ActivePlayerHUD({
   // turn timer is suppressed everywhere on this felt — cards are still
   // flying, GAMEPLAY hasn't begun. Once the runtime advances to
   // READY/GAMEPLAY (or no runtime is mounted) the timer resumes from
-  // the authoritative props. Applies to every game (Cribbage, Gin,
-  // 3-5-7) for consistency.
+  // the authoritative props. Holm runs through the SAME canonical
+  // eligibility path — the prior Holm bypass is removed. The Holm
+  // branch of getCanonicalTimerEligibility already requires
+  // dealSettled && readyReleased, which is the only Holm-specific
+  // visual/running condition. (Card actionability — canPlayerAct — is
+  // already AND-ed into `isActive` by the caller.)
   const deal = useDealRuntime();
-  // Holm bypasses DealRuntime timer gating entirely. Holm seat ring
-  // visibility is `isActive` (caller has already AND-ed with canAct).
-  // This bypass is TIMER-ONLY — Holm card render still uses
-  // DealRuntime settle gating elsewhere.
   const isHolm = gameType === 'holm-game';
-  const eligibility = (deal && !isHolm)
+  const eligibility = deal
     ? getCanonicalTimerEligibility({
         gameType,
         dealPhase: deal.phase,
@@ -203,6 +212,7 @@ export function ActivePlayerHUD({
       isActive={effectiveIsActive}
       size={size}
       activationKey={activationKey}
+      deadlineMs={effectiveIsActive ? (deadlineMs ?? null) : null}
     >
       {children}
     </MobilePlayerTimer>

@@ -76,8 +76,13 @@ export interface HolmDealOrchestratorProps {
   selfPosition?: number | null;
   /** Cards-per-player for this hand (Holm hand size). */
   cardsPerPlayer: number;
-  /** Authoritative viewer self-hand. */
-  selfHand: CardType[];
+  /**
+   * Authoritative viewer self-hand. `null` is the PENDING-HCI sentinel
+   * — until the active HCI is admitted, the orchestrator runs none of
+   * resetForHand / beginDealForHand / beginWaveForHand / dispatch.
+   * Caller MUST pass `null` (never `[]`) while pending.
+   */
+  selfHand: CardType[] | null;
   /** Authoritative community cards (length should reach 4 before community wave). */
   communityCards: CardType[];
   /** Solo-declared flag — drives whether chucky wave dispatches. */
