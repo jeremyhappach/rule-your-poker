@@ -1433,7 +1433,7 @@ export async function endHolmRound(gameId: string) {
       // CRITICAL: On error, mark round as completed AND set awaiting_next_round to allow progression
       await supabase
         .from('rounds')
-        .update({ status: 'completed', chucky_active: false })
+        .update({ status: 'completed', chucky_active: false, current_turn_position: null, decision_deadline: null })
         .eq('id', capturedRoundId);
       
       // Also update game to allow progression - this was missing and caused stuck games
