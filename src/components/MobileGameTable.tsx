@@ -4295,7 +4295,7 @@ export const MobileGameTable = ({
   // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerPlayerId = useMemo(() => {
     // Need announcement OR active holm win animation to determine winner
-    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerId;
+    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!shouldDeriveWinner || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
@@ -4319,7 +4319,7 @@ export const MobileGameTable = ({
       }
     }
     return null;
-  }, [isShowingAnnouncement, holmWinPotTriggerId, lastRoundResult, players]);
+  }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
 
   // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
   // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
