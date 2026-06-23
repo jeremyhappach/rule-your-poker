@@ -236,10 +236,11 @@ export const MobilePlayerTimer = ({
           stroke="hsl(var(--muted) / 0.3)"
           strokeWidth={strokeWidth}
         />
-        {/* Progress circle — gated on seedReady so a null-seed activation
-            does not paint a stale full-ring before the real timeLeft
-            commits the following frame. */}
-        {effectiveIsActive && seedReady && effectiveTimeLeft !== null && (
+        {/* Progress circle — paints immediately on activation snapped to
+            FULL (via displayProgressRef = 1). Subsequent ticks clamp to
+            non-increasing so a stale seed or late deadline rebase can
+            never produce a visible upward jump. */}
+        {effectiveIsActive && (
           <circle
             cx={size / 2}
             cy={size / 2}
