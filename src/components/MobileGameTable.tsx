@@ -2542,6 +2542,14 @@ export const MobileGameTable = ({
   useEffect(() => { handContextIdRef.current = handContextId ?? null; }, [handContextId]);
   const chuckyPhaseRef = useRef<string | null>(null);
   useEffect(() => { chuckyPhaseRef.current = roundStatus ?? null; }, [roundStatus]);
+  // Live refs so the reveal loop can read current values without listing
+  // them as effect deps (which would cause mount/unmount churn after every
+  // reveal). These are the SINGLE READER of mid-flight reveal state.
+  const cachedChuckyCardsRevealedRef = useRef<number>(0);
+  useEffect(() => { cachedChuckyCardsRevealedRef.current = cachedChuckyCardsRevealed; }, [cachedChuckyCardsRevealed]);
+  const cachedChuckyCardsLenRef = useRef<number>(0);
+  useEffect(() => { cachedChuckyCardsLenRef.current = cachedChuckyCards?.length ?? 0; }, [cachedChuckyCards]);
+
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
