@@ -291,13 +291,17 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
   // CRITICAL: Use atomic guard - only update if current_turn_position equals fromPosition
   // This ensures only the client whose player just decided can advance the turn
   const deadline = new Date(Date.now() + timerSeconds * 1000);
+  // ATOMIC ACTIONABILITY COMMIT: status='betting' + current_turn_position + decision_deadline
+  // stamped together so client gate cannot see a partial transition.
   const { data: updateResult, error: updateError } = await supabase
     .from('rounds')
     .update({ 
+      status: 'betting',
       current_turn_position: nextPosition,
       decision_deadline: deadline.toISOString()
     })
     .eq('id', round.id)
+    .eq('status', 'betting') // ATOMIC GUARD: round must still be in betting
     .eq('current_turn_position', fromPosition) // ATOMIC GUARD: only update if turn matches the player who just decided
     .select();
   
