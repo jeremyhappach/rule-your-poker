@@ -31,16 +31,30 @@ interface MobilePlayerTimerProps {
   maxTime: number;
   isActive: boolean;
   size?: number;
+  /**
+   * Canonical timer activation key. STABLE for the entire lifetime of
+   * one uninterrupted turn segment. Changes ONLY when canonical turn
+   * identity changes (new turn / new actor / new hand) or when an
+   * explicit pause-resume generation increments. When provided, the
+   * activation edge fires exactly once per distinct key — no rerenders,
+   * prop ticks, rAFs, or clock motion may refire it. Same key forbids
+   * rewriting deadline/duration/activation sequence. Null/undefined
+   * key falls back to legacy wasActiveRef behavior for non-Holm
+   * callers that have not been wired through ActivePlayerHUD yet.
+   */
+  activationKey?: string | null;
   children: React.ReactNode;
 }
 
-export const MobilePlayerTimer = ({ 
-  timeLeft, 
-  maxTime, 
-  isActive, 
+export const MobilePlayerTimer = ({
+  timeLeft,
+  maxTime,
+  isActive,
   size = 48,
-  children 
+  activationKey,
+  children
 }: MobilePlayerTimerProps) => {
+
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
