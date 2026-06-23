@@ -8815,10 +8815,45 @@ export const MobileGameTable = ({
           ) {
             chuckyStageStickyRef.current = null;
           }
-          if (
-            !!cachedChuckyActive &&
+          // ── Holm-only render eligibility guard ───────────────────────
+          // Every Chucky render source carries an immutable origin
+          // handContextId. A source contributes cards / reveal count
+          // ONLY when its origin matches the current handContextId.
+          // Otherwise it is rejected at render-time (no promotion,
+          // no copy, no re-stamp). This prevents H1's cached/sticky
+          // Chucky presentation from rendering inside H2.
+          const cachedChuckyOriginHandContextId = cachedChuckyHandContextRef.current;
+          const cachedChuckySourceEligible =
             !!cachedChuckyCards &&
             cachedChuckyCards.length > 0 &&
+            !!handContextId &&
+            cachedChuckyOriginHandContextId === handContextId;
+          const stickyChuckyOriginHandContextId =
+            chuckyStageStickyRef.current?.handContextId ?? null;
+          const stickyChuckySourceEligible =
+            !!chuckyStageStickyRef.current &&
+            !!handContextId &&
+            stickyChuckyOriginHandContextId === handContextId;
+          if (
+            (cachedChuckyCards && cachedChuckyCards.length > 0 && !cachedChuckySourceEligible) ||
+            (chuckyStageStickyRef.current && !stickyChuckySourceEligible)
+          ) {
+            try {
+              console.log('[HOLM_STALE_CHUCKY_RENDER_SOURCE_REJECTED]', {
+                currentHandContextId: handContextId,
+                cachedOriginHandContextId: cachedChuckyOriginHandContextId,
+                cachedLen: cachedChuckyCards?.length ?? 0,
+                cachedRevealed: cachedChuckyCardsRevealed,
+                stickyOriginHandContextId: stickyChuckyOriginHandContextId,
+                stickyLen: chuckyStageStickyRef.current?.cards?.length ?? 0,
+                stickyRevealed: chuckyStageStickyRef.current?.revealedCount ?? 0,
+              });
+            } catch { /* noop */ }
+          }
+          if (
+            !!cachedChuckyActive &&
+            cachedChuckySourceEligible &&
+            cachedChuckyCards &&
             handContextId
           ) {
             const previousStickyRevealCount =
@@ -8835,20 +8870,23 @@ export const MobileGameTable = ({
             };
           }
           const chuckyCardsForRender: CardType[] | null =
-            cachedChuckyCards && cachedChuckyCards.length > 0
+            cachedChuckySourceEligible && cachedChuckyCards
               ? cachedChuckyCards
-              : (chuckyStageStickyRef.current?.cards ?? null);
+              : stickyChuckySourceEligible
+                ? (chuckyStageStickyRef.current?.cards ?? null)
+                : null;
           const chuckyVisible =
-            (!!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0) ||
-            (!!chuckyStageStickyRef.current && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
+            (!!cachedChuckyActive && cachedChuckySourceEligible) ||
+            (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
           const chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
-          const chuckyStickyRevealCountForRender =
-            chuckyStageStickyRef.current?.handContextId === (handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null)
-              ? chuckyStageStickyRef.current?.revealedCount ?? 0
-              : 0;
+          const eligibleCachedRevealed = cachedChuckySourceEligible ? cachedChuckyCardsRevealed : 0;
+          const eligibleStickyRevealed = stickyChuckySourceEligible
+            ? (chuckyStageStickyRef.current?.revealedCount ?? 0)
+            : 0;
+          const chuckyStickyRevealCountForRender = eligibleStickyRevealed;
           const chuckyRevealedCountForRender = Math.min(
             chuckyTotalVisibleForRender,
-            Math.max(cachedChuckyCardsRevealed, chuckyStickyRevealCountForRender),
+            Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
