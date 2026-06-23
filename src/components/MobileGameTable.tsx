@@ -7424,7 +7424,7 @@ export const MobileGameTable = ({
           getClockwiseDistance={getClockwiseDistance}
           containerRef={tableContainerRef}
           gameType={gameType}
-          triggerId={chuckyLossTriggerId}
+          triggerId={chuckyLossTriggerIdGated}
           specificPlayerIds={chuckyLossPlayerIds}
            onAnimationStart={() => {
              // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
