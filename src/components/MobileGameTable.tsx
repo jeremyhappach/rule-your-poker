@@ -175,6 +175,14 @@ import {
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import { recordChuckyRenderState } from "@/lib/canonicalShell/cardTransport/holmChuckyRenderStateForensics";
 import {
+  instrumentHolmSelfStageRender,
+  instrumentHolmPotRender,
+  recordHolmPotConsumed,
+  recordHolmPotComplete,
+  recordHolmChuckyAdmission,
+} from "@/lib/canonicalShell/cardTransport/holmStageAndPotForensics";
+
+import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
   ensureChuckyConfigLoaded,
@@ -2968,6 +2976,9 @@ export const MobileGameTable = ({
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
+
+
+
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
       setSoloVsChuckyTableLocked(true);
@@ -4432,6 +4443,30 @@ export const MobileGameTable = ({
     }
     return null;
   }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
+
+  // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
+  if (gameType === 'holm-game') {
+    try {
+      instrumentHolmPotRender({
+        handContextId: handContextId ?? null,
+        phase: String(holmDealPhaseForHand ?? 'unknown'),
+        roundStatus: (roundStatus as string | null) ?? null,
+        rawTriggerId: holmWinPotTriggerId ?? null,
+        gatedTriggerId: holmWinPotTriggerIdGated ?? null,
+        winnerPlayerId: winnerPlayerId ?? null,
+        potAmount: typeof holmWinPotAmount === 'number' ? holmWinPotAmount : null,
+        lastRoundResultHandContextId: null,
+        chuckyVisualRevealComplete,
+        isShowingAnnouncement: !!isShowingAnnouncement,
+        sessionPaused: !!isPaused,
+        consumedTriggerId: null,
+        callerFile: 'src/components/MobileGameTable.tsx',
+        callerFn: 'componentBody.potRender',
+      });
+    } catch { /* noop */ }
+  }
+
+
 
   // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
   // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
@@ -7725,6 +7760,19 @@ export const MobileGameTable = ({
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
               console.log('[HOLM WIN] POT-OUT animation started, snapped pot was:', allDecisionsSnappedPotRef.current);
+              try {
+                recordHolmPotConsumed(
+                  {
+                    triggerId: holmWinPotTriggerIdGated ?? null,
+                    amount: holmWinPotAmount,
+                    winnerPosition: holmWinWinnerPosition,
+                    callerFile: 'src/components/MobileGameTable.tsx',
+                    callerFn: 'HolmWinPotAnimation.onAnimationStart',
+                  },
+                  handContextId ?? null,
+                );
+              } catch { /* noop */ }
+
               if (gameType === 'holm-game' && gameId) {
                 logResolutionGate(
                   {
@@ -7744,6 +7792,18 @@ export const MobileGameTable = ({
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false); // Clear POT-OUT flag
               onHolmWinPotAnimationComplete?.();
+              try {
+                recordHolmPotComplete(
+                  {
+                    triggerId: holmWinPotTriggerIdGated ?? null,
+                    amount: holmWinPotAmount,
+                    callerFile: 'src/components/MobileGameTable.tsx',
+                    callerFn: 'HolmWinPotAnimation.onAnimationComplete',
+                  },
+                  handContextId ?? null,
+                );
+              } catch { /* noop */ }
+
               if (gameType === 'holm-game' && gameId) {
                 logResolutionGate(
                   {
@@ -8807,6 +8867,40 @@ export const MobileGameTable = ({
           const lonePlayerVisible =
             hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
+          // ── Forensics: SELF_HAND / TABLED_SELF routing (read-only) ──
+          if (gameType === 'holm-game') {
+            try {
+              instrumentHolmSelfStageRender({
+                handContextId: handContextId ?? null,
+                phase: String(holmDealPhaseForHand ?? 'unknown'),
+                roundStatus: (roundStatus as string | null) ?? null,
+                lonePlayerVisible,
+                hasLiveLonePlayer,
+                activeSnapSource: tabledSelfStickyRef.current
+                  ? 'sticky'
+                  : (lonePlayerStageSnapshotRef.current ? 'stage' : 'none'),
+                activeSnapOriginHandContextId: activeSnap?.handContextId ?? null,
+                tabledSelfStickyOriginHandContextId:
+                  tabledSelfStickyRef.current?.handContextId ?? null,
+                lonePlayerStageSnapshotOriginHandContextId:
+                  lonePlayerStageSnapshotRef.current?.handContextId ?? null,
+                selfHandAnchorPresent: !lonePlayerVisible && !!currentPlayer,
+                tabledSelfStagePresent: lonePlayerVisible && !!loneSoloPlayer,
+                cachedChuckyRevealed: cachedChuckyCardsRevealed,
+                requiredRevealCount,
+                visualRevealCount,
+                chuckyVisualRevealComplete,
+                rawWinTriggerId: holmWinPotTriggerId ?? null,
+                gatedWinTriggerId: holmWinPotTriggerIdGated ?? null,
+                rawLossTriggerId: chuckyLossTriggerId ?? null,
+                gatedLossTriggerId: chuckyLossTriggerIdGated ?? null,
+                callerFile: 'src/components/MobileGameTable.tsx',
+                callerFn: 'gameplayRenderIIFE.selfStage',
+              });
+            } catch { /* noop */ }
+          }
+
+
           // ── CHUCKY_TABLED sticky predicate ────────────────────────────
           if (
             chuckyStageStickyRef.current &&
@@ -8888,6 +8982,29 @@ export const MobileGameTable = ({
             chuckyTotalVisibleForRender,
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
+
+          // ── Forensics: new-hand Chucky admission summary (read-only) ──
+          if (gameType === 'holm-game') {
+            try {
+              recordHolmChuckyAdmission({
+                handContextId: handContextId ?? null,
+                cachedChuckyOriginHandContextId: cachedChuckyOriginHandContextId ?? null,
+                cachedChuckySourceEligible,
+                stickyChuckyOriginHandContextId: stickyChuckyOriginHandContextId ?? null,
+                stickyChuckySourceEligible,
+                stickyChuckyRevealOriginHandContextId:
+                  chuckyStageStickyRef.current?.handContextId ?? null,
+                stickyChuckyRevealEligible:
+                  stickyChuckySourceEligible && chuckyStickyRevealCountForRender > 0,
+                renderedChuckyCount: chuckyTotalVisibleForRender,
+                renderedRevealCount: chuckyRevealedCountForRender,
+                serverRevealCount: cachedChuckyCardsRevealed,
+                callerFile: 'src/components/MobileGameTable.tsx',
+                callerFn: 'gameplayRenderIIFE.chuckyAdmission',
+              });
+            } catch { /* noop */ }
+          }
+
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
