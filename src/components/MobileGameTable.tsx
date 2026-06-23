@@ -2542,6 +2542,14 @@ export const MobileGameTable = ({
   useEffect(() => { handContextIdRef.current = handContextId ?? null; }, [handContextId]);
   const chuckyPhaseRef = useRef<string | null>(null);
   useEffect(() => { chuckyPhaseRef.current = roundStatus ?? null; }, [roundStatus]);
+  // Live refs so the reveal loop can read current values without listing
+  // them as effect deps (which would cause mount/unmount churn after every
+  // reveal). These are the SINGLE READER of mid-flight reveal state.
+  const cachedChuckyCardsRevealedRef = useRef<number>(0);
+  useEffect(() => { cachedChuckyCardsRevealedRef.current = cachedChuckyCardsRevealed; }, [cachedChuckyCardsRevealed]);
+  const cachedChuckyCardsLenRef = useRef<number>(0);
+  useEffect(() => { cachedChuckyCardsLenRef.current = cachedChuckyCards?.length ?? 0; }, [cachedChuckyCards]);
+
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
@@ -5149,271 +5157,129 @@ export const MobileGameTable = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ──────────────────────────────────────────────────────────────────
+  // CHUCKY REVEAL SCHEDULER — single owner, mount-once-per-hand
+  //
+  // Mounts once when (gameType==='holm-game' && handContextId && barrier
+  // open && totalLen>0) becomes true. Then self-reschedules until all
+  // cards are revealed. Deliberately DOES NOT depend on:
+  //   - cachedChuckyCardsRevealed          (would re-fire every reveal)
+  //   - cachedChuckyActive                 (split owner, flips mid-hand)
+  //   - isSoloVsChuckyRaw / chuckyActive / chuckyCardsRevealed (server churn)
+  // Those live values are read via refs at fire time.
+  //
+  // Cleanup runs ONLY when handContextId changes (new hand) OR barrier
+  // closes OR the cards array is cleared. The reveal sequence cannot be
+  // restarted within the same hand.
+  // ──────────────────────────────────────────────────────────────────
   const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
   const chuckyEffectTimeoutSeqRef = useRef(0);
+  const chuckyRevealLoopHandRef = useRef<string | null>(null);
+  const totalLenForReveal = cachedChuckyCards?.length ?? 0;
   useEffect(() => {
     if (gameType !== 'holm-game') return;
-    if (!cachedChuckyActive) return;
-    // BARRIER ONLY: All chucky cards must be settled (DealRuntime →
-    // GAMEPLAY → markHolmHandReady). Do NOT gate on community reveal —
-    // announcement is cosmetic and must not delay reveal sequencing.
     if (!chuckyBarrierOpen) return;
-    const total = cachedChuckyCards?.length ?? 0;
-    if (total <= 0) return;
-    // Override the server target — once barrier is open we reveal ALL.
-    if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
-    if (cachedChuckyCardsRevealed >= total) return;
+    if (!handContextId) return;
+    if (totalLenForReveal <= 0) return;
+    // Guard: never restart reveal loop within the same hand.
+    if (chuckyRevealLoopHandRef.current === handContextId) return;
+    chuckyRevealLoopHandRef.current = handContextId;
 
     const effectId = ++chuckyEffectIdRef.current;
     const mountAt = __chuckyAuditNow();
-    const newDeps: Record<string, unknown> = chuckyRevealDepSnapshot;
-    const oldDeps = chuckyEffectDepsRef.current;
-    const changed: Record<string, { from: unknown; to: unknown }> = {};
-    if (oldDeps) {
-      for (const k of Object.keys(newDeps)) {
-        if (oldDeps[k] !== newDeps[k]) changed[k] = { from: oldDeps[k], to: newDeps[k] };
-      }
-    }
-    chuckyEffectDepsRef.current = newDeps;
-
     const effectInstance = ++chuckyEffectInstanceRef.current;
     const instanceId = chuckyInstanceIdRef.current;
     const enterRenderSeq = chuckyRenderSeqRef.current;
 
-    // CALLGRAPH trail: every synchronous step inside the effect body.
-    const callgraph: Array<{ t: number; renderSeq: number; step: string; info?: Record<string, unknown> }> = [];
-    const step = (label: string, info?: Record<string, unknown>) => {
-      callgraph.push({
-        t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
-        renderSeq: chuckyRenderSeqRef.current,
-        step: label,
-        info,
-      });
-    };
-    step('EFFECT_BODY_ENTER', { changedDeps: oldDeps ? Object.keys(changed) : null });
+    if (chuckyTargetRevealedRef.current < totalLenForReveal) {
+      chuckyTargetRevealedRef.current = totalLenForReveal;
+    }
 
     recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
-      instanceId,
-      effectId,
-      effectInstance,
-      mountAt,
-      cleanupAt: null,
-      reason: 'MOUNT',
-      renderSeqAtMount: enterRenderSeq,
-      renderSeqAtCleanup: null,
-      timeoutId: null,
-      firedBeforeCleanup: null,
-    }, handContextId ?? null);
-
+      instanceId, effectId, effectInstance, mountAt, cleanupAt: null,
+      reason: 'MOUNT', renderSeqAtMount: enterRenderSeq,
+      renderSeqAtCleanup: null, timeoutId: null, firedBeforeCleanup: null,
+    }, handContextId);
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
-      instanceId,
-      effectId,
-      effectInstance,
-      mountAt,
-      renderSeq: enterRenderSeq,
-      handContextId: handContextId ?? null,
-      deps: newDeps,
-      changedSinceLastEnter: oldDeps ? changed : null,
-    }, handContextId ?? null);
-    step('recordHolmTimelineEvent(CHUCKY_EFFECT_ENTER)');
+      instanceId, effectId, effectInstance, mountAt,
+      renderSeq: enterRenderSeq, handContextId,
+      deps: { gameType, chuckyBarrierOpen, handContextId, totalLenForReveal },
+      changedSinceLastEnter: null,
+    }, handContextId);
 
+    chuckyVisualMarkRevealSequenceScheduled(handContextId);
 
-    chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
-    step('chuckyVisualMarkRevealSequenceScheduled');
-    const schedStack = captureStack();
-    recordChuckyVisualTrigger({
-      handContextId: handContextId ?? null,
-      source: 'stepper.schedule',
-      callsite: 'MobileGameTable:4720 setTimeout(setCachedChuckyCardsRevealed)',
-      stack: schedStack,
-      prevRevealed: cachedChuckyCardsRevealed,
-      nextRevealed: cachedChuckyCardsRevealed + 1,
-      total,
-      cachedChuckyCardsRevealed,
-      chuckyBarrierOpen,
-      revealSchedulerState: 'scheduled',
-      extra: {
-        chuckyCardsRevealedServer: chuckyCardsRevealed,
-        cachedChuckyActive,
-        chuckyActive: !!chuckyActive,
-        isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
-      },
-    });
-    step('recordChuckyVisualTrigger(scheduled)');
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    // Local monotonic counter — starts from whatever has already been
+    // revealed (in case of remount after a true new-hand boundary).
+    let idx = cachedChuckyCardsRevealedRef.current;
 
-    const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
-    let fired = false;
-    // SINGLE OWNER of reveal timing: game_defaults
-    // (chucky_second_to_last_delay_seconds / chucky_last_card_delay_seconds).
-    // The hardcoded 250ms placeholder was removed — we always source from
-    // the same Holm game defaults used elsewhere. Fallback (1500ms) only
-    // applies while the initial config fetch is still in flight; it matches
-    // the canonical default cadence so it does not trigger a config mismatch.
     const HOLM_REVEAL_FALLBACK_MS = 1500;
-    const cfgDelay = getChuckyConfiguredStepperDelayMs(cachedChuckyCardsRevealed, total);
-    const STEPPER_DELAY_MS = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
-    const STEPPER_DELAY_SOURCE: 'gameDefaults' | 'fallback' =
-      cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
-    recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
-      instanceId,
-      effectId,
-      effectInstance,
-      renderSeq: chuckyRenderSeqRef.current,
-      mountAt,
-      handContextId: handContextId ?? null,
-      timeoutId: timeoutSeq,
-      delay: STEPPER_DELAY_MS,
-      prev: cachedChuckyCardsRevealed,
-      total,
-    }, handContextId ?? null);
-    recordChuckyRevealTimerArm({
-      handContextId: handContextId ?? null,
-      delayMs: STEPPER_DELAY_MS,
-      index: cachedChuckyCardsRevealed,
-      total,
-      delaySource: STEPPER_DELAY_SOURCE,
-    });
-    step('setTimeout(armed)', { timeoutId: timeoutSeq });
 
-    const t = setTimeout(() => {
-      fired = true;
-      recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
-        instanceId,
-        effectId,
-        effectInstance,
-        renderSeq: chuckyRenderSeqRef.current,
-        armedAtRenderSeq: enterRenderSeq,
-        mountAt,
-        handContextId: handContextId ?? null,
-        timeoutId: timeoutSeq,
-        prev: cachedChuckyCardsRevealed,
-        next: cachedChuckyCardsRevealed + 1,
-      }, handContextId ?? null);
-      recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_FIRED', {
-        handContextId: handContextId ?? null,
-        prev: cachedChuckyCardsRevealed,
-        next: cachedChuckyCardsRevealed + 1,
-        total,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
-        cachedChuckyActive,
-        chuckyBarrierOpen,
-      }, handContextId ?? null);
-      recordChuckyRevealStep({
-        handContextId: handContextId ?? null,
-        index: cachedChuckyCardsRevealed,
-        total,
-        actualDelayUsedMs: STEPPER_DELAY_MS,
-        source: STEPPER_DELAY_SOURCE,
-      });
-      recordChuckyVisualTrigger({
-        handContextId: handContextId ?? null,
-        source: 'stepper.fire',
-        callsite: 'MobileGameTable:4721 setCachedChuckyCardsRevealed(prev=>prev+1)',
-        stack: captureStack(),
-        prevRevealed: cachedChuckyCardsRevealed,
-        nextRevealed: cachedChuckyCardsRevealed + 1,
-        total,
-        cachedChuckyCardsRevealed,
-        chuckyBarrierOpen,
-        revealSchedulerState: 'fired',
-      });
-      setCachedChuckyCardsRevealed(
-        (prev) => (prev < total ? prev + 1 : prev),
-        { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
-      );
-    }, STEPPER_DELAY_MS);
+    const tick = () => {
+      if (cancelled) return;
+      const total = cachedChuckyCardsLenRef.current || totalLenForReveal;
+      if (idx >= total) {
+        recordHolmTimelineEvent('CHUCKY_REVEAL_COMPLETE', {
+          instanceId, effectId, handContextId, total,
+        }, handContextId);
+        return;
+      }
+      const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
+      const delayMs = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
+      const source: 'gameDefaults' | 'fallback' =
+        cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
+      const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
 
+      recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
+        instanceId, effectId, effectInstance,
+        renderSeq: chuckyRenderSeqRef.current, mountAt, handContextId,
+        timeoutId: timeoutSeq, delay: delayMs, prev: idx, total,
+      }, handContextId);
+      recordChuckyRevealTimerArm({
+        handContextId, delayMs, index: idx, total, delaySource: source,
+      });
+
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        idx += 1;
+        recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
+          instanceId, effectId, effectInstance,
+          renderSeq: chuckyRenderSeqRef.current,
+          armedAtRenderSeq: enterRenderSeq, mountAt, handContextId,
+          timeoutId: timeoutSeq, prev: idx - 1, next: idx,
+        }, handContextId);
+        recordChuckyRevealStep({
+          handContextId, index: idx - 1, total,
+          actualDelayUsedMs: delayMs, source,
+        });
+        setCachedChuckyCardsRevealed(
+          (prev) => (prev < idx ? idx : prev),
+          { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
+        );
+        tick();
+      }, delayMs);
+    };
+    tick();
 
     return () => {
-      clearTimeout(t);
+      cancelled = true;
+      if (timer) clearTimeout(timer);
       const cleanupAt = __chuckyAuditNow();
-      const nextSnapshot = chuckyLatestRevealDepsRef.current ?? newDeps;
-      const diff: Record<string, { from: unknown; to: unknown }> = {};
-      for (const k of Array.from(new Set([...Object.keys(newDeps), ...Object.keys(nextSnapshot)]))) {
-        if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
-      }
-      const reasonKeys = Object.keys(diff);
-      const cleanupReason = chuckyComponentUnmountingRef.current
-        ? 'COMPONENT_UNMOUNT'
-        : reasonKeys.length === 0
-          ? 'NO_DEP_DIFF (identical re-run / StrictMode cleanup)'
-          : `DEP_DIFF:${reasonKeys.join(',')}`;
-      const componentStack = captureStack();
-      const ownerStack = __chuckyAuditOwnerStack();
-      recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
-        instanceId,
-        effectId,
-        effectInstance,
-        mountAt,
-        cleanupAt,
-        reason: cleanupReason,
-        renderSeqAtMount: enterRenderSeq,
-        renderSeqAtCleanup: chuckyRenderSeqRef.current,
-        timeoutId: timeoutSeq,
-        firedBeforeCleanup: fired,
-      }, handContextId ?? null);
-      recordHolmTimelineEvent('CHUCKY_EFFECT_DEP_DIFF', {
-        instanceId,
-        effectId,
-        effectInstance,
-        oldDeps: newDeps,
-        newDeps: nextSnapshot,
-        changedDeps: diff,
-        reason: cleanupReason,
-      }, handContextId ?? null);
-      recordHolmTimelineEvent('CHUCKY_UNMOUNT_STACK', {
-        instanceId,
-        effectId,
-        effectInstance,
-        componentStack,
-        ownerStack,
-        whyReactThinksCleanupOccurred: cleanupReason,
-        componentUnmounting: chuckyComponentUnmountingRef.current,
-        firedBeforeCleanup: fired,
-      }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
-        instanceId,
-        effectId,
-        effectInstance,
-        mountAt,
-        cleanupAt,
-        armedAtRenderSeq: enterRenderSeq,
-        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
-        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
-        handContextId: handContextId ?? null,
-        timeoutId: timeoutSeq,
-        firedBeforeCleanup: fired,
-        reason: cleanupReason,
-        cleanupReason,
-        changedDeps: diff,
-        oldDeps: newDeps,
-        newDeps: nextSnapshot,
-      }, handContextId ?? null);
-      // CALLGRAPH SUMMARY: ordered synchronous step list for this effect run.
-      recordHolmTimelineEvent('CHUCKY_EFFECT_CALLGRAPH', {
-        instanceId,
-        effectId,
-        effectInstance,
-        armedAtRenderSeq: enterRenderSeq,
-        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
-        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
-        firedBeforeCleanup: fired,
-        cleanupReason,
-        trail: callgraph,
-      }, handContextId ?? null);
-      recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
-        instanceId,
-        effectId,
-        effectInstance,
-        handContextId: handContextId ?? null,
-        prev: cachedChuckyCardsRevealed,
-        total,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
-        firedBeforeCleanup: fired,
-        reason: cleanupReason,
-      }, handContextId ?? null);
+        instanceId, effectId, effectInstance, mountAt, cleanupAt,
+        handContextId,
+        reason: 'LOOP_TEARDOWN (hand boundary or barrier close)',
+      }, handContextId);
+      // Allow a future hand to start a fresh loop.
+      if (chuckyRevealLoopHandRef.current === handContextId) {
+        chuckyRevealLoopHandRef.current = null;
+      }
     };
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive, setCachedChuckyCardsRevealed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameType, chuckyBarrierOpen, handContextId, totalLenForReveal]);
+
 
 
 
