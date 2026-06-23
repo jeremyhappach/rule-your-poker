@@ -2378,9 +2378,10 @@ async function handleMultiPlayerShowdown(
       );
       console.log('[HOLM TIE] Recorded pot match chip changes in game_results:', chipChanges);
       
-      // Use different message for tie vs actual loss
+      // Always include `$X added to pot` so the frontend player→pot transport
+      // producer (Game.tsx tieBreakMatch regex) fires for both branches.
       const resultMessage = allTiedWithChucky 
-        ? `Ya tie but ya lose!`
+        ? `Ya tie but ya lose! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`
         : `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`;
       
       await supabase
