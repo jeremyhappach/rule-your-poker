@@ -374,9 +374,13 @@ export const MobilePlayerTimer = ({
         instanceId: instanceIdRef.current,
         segmentId,
         stage,
-        logicalProgress: displayProgressRef.current,
+        logicalProgress: (() => {
+          const d = segmentDeadlineMsRef.current; const dur = segmentDurationMsRef.current;
+          if (d == null || dur == null || dur <= 0) return 1;
+          return Math.max(0, Math.min(1, (d - (typeof performance !== 'undefined' ? performance.now() : Date.now())) / dur));
+        })(),
         timeLeft: effectiveTimeLeft,
-        deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
+        deadline: segmentDeadlineMsRef.current,
         domSvgDashoffset: dom.dashoffset,
         domSvgCircumference: dom.circ,
         className: dom.className,
