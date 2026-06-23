@@ -2546,6 +2546,25 @@ export const MobileGameTable = ({
             prev,
           }, handCtx);
         }
+        // WAR-TIME monotonicity guard (no clamp — instrumentation only).
+        if (resolved < prev) {
+          try {
+            recordHolmChuckyTeardownViolation(
+              'HOLM_VISUAL_REVEAL_COUNT_REGRESSED',
+              `cachedChuckyCardsRevealed regressed ${prev}→${resolved}`,
+              {
+                writer: writerMeta?.writer ?? 'unknown',
+                reason: writerMeta?.reason ?? null,
+                sourceFile: 'src/components/MobileGameTable.tsx',
+                functionLabel: 'setCachedChuckyCardsRevealed',
+                callsite: 'MobileGameTable:setCachedChuckyCardsRevealed',
+                prev,
+                next: resolved,
+                handContextId: handCtx,
+              },
+            );
+          } catch { /* forensics-only */ }
+        }
         lastChuckyRevealedRef.current = resolved;
         return resolved;
       });
