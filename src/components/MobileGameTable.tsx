@@ -1041,6 +1041,19 @@ export const MobileGameTable = ({
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
+  // VISUAL-REVEAL GATE for Chucky:
+  // The server fires `holmWinPotTriggerIdRaw` as soon as it considers the
+  // hand resolved, but that can land WHILE the local Chucky reveal stepper
+  // is still flipping cards. Per HOLM render-state forensics, this caused
+  // WIN_SEQUENCE_BRANCH to render Chucky cards face-down at
+  // visualRevealCount=0/4. We mask the trigger to null until the local
+  // visual stepper finishes, so announcement / win eligibility is driven
+  // exclusively by VISUAL reveal completion.
+  //
+  // The actual mask is applied below (after cachedChuckyCards /
+  // cachedChuckyCardsRevealed / cachedChuckyActive are in scope). Until
+  // then we expose the raw value so early diagnostic consumers compile.
+  let holmWinPotTriggerId = holmWinPotTriggerIdRaw;
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
     gameId: gameId ?? null,
