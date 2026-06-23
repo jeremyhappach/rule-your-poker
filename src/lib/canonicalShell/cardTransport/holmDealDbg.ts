@@ -277,3 +277,36 @@ export function holmDbgEndpoint(ep: CardEndpoint): string {
 export function formatHolmDealDbgSnapshot(snapshot: HolmDealDbgSnapshot | HolmDealDbgMeta): string {
   return JSON.stringify(snapshot, null, 2);
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Holm v3 — hand-boundary transaction recorders.
+// All recorders are pure functions over the singleton `meta`. They are
+// surfaced to the existing HUD pill via subscribeHolmDealDbg listeners.
+// ──────────────────────────────────────────────────────────────────────
+
+export function holmDealDbgRecordViolation(v: Omit<HolmDealViolationDbg, 'at'> & { at?: number }): void {
+  const entry: HolmDealViolationDbg = { at: v.at ?? Date.now(), ...v };
+  const counts = { ...meta.hardViolationCounts };
+  counts[entry.type] = (counts[entry.type] ?? 0) + 1;
+  const recent = meta.recentViolations.concat(entry).slice(-RECENT_LIMIT);
+  holmDealDbgPatch({ hardViolationCounts: counts, recentViolations: recent });
+}
+
+export function holmDealDbgRecordEvent(e: Omit<HolmDealEventDbg, 'at'> & { at?: number }): void {
+  const entry: HolmDealEventDbg = { at: e.at ?? Date.now(), ...e };
+  const counts = { ...meta.observationalCounts };
+  counts[entry.type] = (counts[entry.type] ?? 0) + 1;
+  const recent = meta.recentEvents.concat(entry).slice(-RECENT_LIMIT);
+  holmDealDbgPatch({ observationalCounts: counts, recentEvents: recent });
+}
+
+export function holmDealDbgRecordTxn(patch: {
+  handGeneration?: number;
+  txnTeardownComplete?: boolean;
+  txnNewHandInitComplete?: boolean;
+  presentationHandContextId?: string | null;
+  outcomeTxnKey?: string | null;
+  visualChuckyFlipCommittedIds?: string[];
+}): void {
+  holmDealDbgPatch(patch);
+}
