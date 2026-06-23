@@ -4262,6 +4262,43 @@ export const MobileGameTable = ({
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
     !chuckyVisualRevealPending;
+  // ── WAR-TIME TOTAL FORENSICS — A: state snapshot + B: result gate eval ──
+  if (gameType === 'holm-game') {
+    try {
+      const _gateBase = {
+        handContextId: handContextId ?? null,
+        callsite: 'MobileGameTable.isShowingAnnouncement@4260',
+        phase: chuckyVisualRevealPending ? 'CHUCKY_REVEAL' : (isGameOver ? 'GAME_OVER' : 'RENDER'),
+        roundStatus: roundStatus ?? null,
+        cachedChuckyCardsRevealed,
+        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+        allowed: isShowingAnnouncement,
+        blockedReason: !isShowingAnnouncement
+          ? (chuckyVisualRevealPending ? 'chuckyVisualRevealPending' : (!lastRoundResult ? 'noResult' : 'notAwaiting'))
+          : null,
+      };
+      recordHolmResultGateEval(_gateBase);
+      recordHolmSoloChuckyStateSnapshot({
+        handContextId: handContextId ?? null,
+        phase: _gateBase.phase,
+        roundStatus: roundStatus ?? null,
+        isSoloVsChuckyRaw,
+        soloDeclared: !!isSoloVsChucky,
+        soloVsChuckyTableLocked,
+        soloVsChuckyPlayerIdLocked: soloVsChuckyPlayerIdLocked ?? null,
+        chuckyActive: !!chuckyActive,
+        cachedChuckyActive: !!cachedChuckyActive,
+        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+        cachedChuckyCardsRevealed,
+        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+        announcementShowing: isShowingAnnouncement,
+        winSequenceActive: !!holmWinPotTriggerId,
+        callsite: 'MobileGameTable.render@4260',
+      });
+    } catch { /* forensics-only */ }
+  }
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
