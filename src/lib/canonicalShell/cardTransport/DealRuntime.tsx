@@ -378,8 +378,12 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       beginDeal,
       beginWave,
       enterGameplay,
+      holmHandGeneration,
+      resetForHand,
+      beginDealForHand,
+      beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
