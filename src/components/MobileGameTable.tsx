@@ -4814,30 +4814,43 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType]);
 
-  // Detect buck passed to current player (Holm games only)
-  // Also clear showdown state when buck moves - new hand is starting
+  // Detect a real buck-pass event whose recipient is self.
+  // Required: previous canonical holder !== self, new canonical holder === self,
+  // and this specific (prev→new@hand) pass event has not yet been shown.
+  // Does NOT fire on initial assignment, on being dealer generically, or on
+  // any dealer-config transition.
   useEffect(() => {
-    if (
-      gameType === 'holm-game' && 
-      buckPosition !== null && 
-      buckPosition !== undefined && 
-      currentPlayer && 
-      buckPosition === currentPlayer.position && 
-      lastBuckPositionRef.current !== buckPosition && 
-      lastBuckPositionRef.current !== null && // Don't show on initial load
-      bucksOnYouShownForRoundRef.current !== currentRound // Only show once per round
-    ) {
-      // Clear showdown state - new hand starting
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-      showdownHandContextRef.current = null;
-      
-      // Mark this round as shown and trigger animation
-      bucksOnYouShownForRoundRef.current = currentRound;
-      setShowBucksOnYou(true);
-    }
+    if (gameType !== 'holm-game') return;
+    if (buckPosition === null || buckPosition === undefined) return;
+    if (!currentPlayer) return;
 
-    lastBuckPositionRef.current = buckPosition ?? null;
+    const prev = lastBuckPositionRef.current;
+    const next = buckPosition;
+    const self = currentPlayer.position;
+
+    // Always advance the last-seen tracker, even when we don't show the overlay.
+    const advance = () => { lastBuckPositionRef.current = next; };
+
+    // Not a transition? No pass event.
+    if (prev === next) { advance(); return; }
+    // No previous holder recorded? Initial assignment, never an overlay-worthy pass.
+    if (prev === null) { advance(); return; }
+    // Recipient is not self → not our overlay.
+    if (next !== self) { advance(); return; }
+    // Previous holder WAS self (buck stayed/returned with no real pass-away in between)
+    if (prev === self) { advance(); return; }
+
+    const passEventKey = `${prev}->${next}@hand${currentRound ?? 'na'}`;
+    if (lastShownBuckPassEventRef.current === passEventKey) { advance(); return; }
+    lastShownBuckPassEventRef.current = passEventKey;
+
+    // Clear showdown state - new hand starting
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
+
+    setShowBucksOnYou(true);
+    advance();
   }, [buckPosition, currentPlayer, gameType, currentRound]);
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
