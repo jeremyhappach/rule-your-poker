@@ -1942,6 +1942,7 @@ export const MobileGameTable = ({
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
+  const chuckyVisualRevealCompleteRef = useRef(false);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
@@ -1977,7 +1978,7 @@ export const MobileGameTable = ({
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
     // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
-    if (chuckyLossTriggerId && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
+    if (chuckyLossTriggerId && chuckyVisualRevealCompleteRef.current && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
       const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
       const postPot = pot;
       const prePot = Math.max(0, postPot - totalAmount);
