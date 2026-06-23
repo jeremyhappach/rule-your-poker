@@ -200,11 +200,6 @@ import {
   captureStack,
 } from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
-import {
-  setHolmChuckyTeardownContext,
-  recordHolmChuckyTeardownEvent,
-  recordHolmChuckyTeardownViolation,
-} from "@/lib/canonicalShell/cardTransport/holmChuckyTeardownForensics";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
 const __chuckyAuditRefIds = new WeakMap<object, string>();
@@ -2546,25 +2541,6 @@ export const MobileGameTable = ({
             prev,
           }, handCtx);
         }
-        // WAR-TIME monotonicity guard (no clamp — instrumentation only).
-        if (resolved < prev) {
-          try {
-            recordHolmChuckyTeardownViolation(
-              'HOLM_VISUAL_REVEAL_COUNT_REGRESSED',
-              `cachedChuckyCardsRevealed regressed ${prev}→${resolved}`,
-              {
-                writer: writerMeta?.writer ?? 'unknown',
-                reason: writerMeta?.reason ?? null,
-                sourceFile: 'src/components/MobileGameTable.tsx',
-                functionLabel: 'setCachedChuckyCardsRevealed',
-                callsite: 'MobileGameTable:setCachedChuckyCardsRevealed',
-                prev,
-                next: resolved,
-                handContextId: handCtx,
-              },
-            );
-          } catch { /* forensics-only */ }
-        }
         lastChuckyRevealedRef.current = resolved;
         return resolved;
       });
@@ -2703,17 +2679,6 @@ export const MobileGameTable = ({
       currentRound,
       gameStatus,
     });
-    try {
-      recordHolmChuckyTeardownEvent({
-        event: 'resetHandUiCaches',
-        sourceFile: 'src/components/MobileGameTable.tsx',
-        functionLabel: 'resetHandUiCaches',
-        callsite: `MobileGameTable:resetHandUiCaches reason=${reason} from=${from} to=${to}`,
-        reason,
-        writer: 'resetHandUiCaches',
-        owner: 'MobileGameTable',
-      });
-    } catch { /* forensics-only */ }
 
     // Community UI cache
     setShowCommunityCards(false);
@@ -2781,33 +2746,6 @@ export const MobileGameTable = ({
     const next = handContextId ?? null;
 
     if (prev === next) return;
-
-    try {
-      recordHolmChuckyTeardownEvent({
-        event: 'nextHandDetected',
-        sourceFile: 'src/components/MobileGameTable.tsx',
-        functionLabel: 'handContextChange effect',
-        callsite: `MobileGameTable:handContextChange prev=${prev} next=${next}`,
-        reason: next === null ? 'handContextId → null' : 'handContextId advanced',
-        writer: 'parent.handContextIdChange',
-        owner: 'MobileGameTable',
-        nextOverride: { handContextId: next },
-      });
-      if (next === null) {
-        recordHolmChuckyTeardownViolation(
-          'HOLM_HAND_CONTEXT_NULL_DURING_VISUAL_REVEAL',
-          'handContextId went null',
-          {
-            sourceFile: 'src/components/MobileGameTable.tsx',
-            functionLabel: 'handContextChange effect',
-            callsite: 'MobileGameTable:handContextChange',
-            writer: 'parent.handContextIdChange',
-            prev,
-          },
-        );
-      }
-    } catch { /* forensics-only */ }
-
 
     if (shouldDeferHandReset()) {
       pendingHandContextIdRef.current = next;
@@ -3053,17 +2991,6 @@ export const MobileGameTable = ({
     prevHandWasSoloRef.current = false;
     chuckyVisualResetForHand(next);
     if (!wasSolo) return;
-    try {
-      recordHolmChuckyTeardownEvent({
-        event: 'soloDestroyOnHandChange',
-        sourceFile: 'src/components/MobileGameTable.tsx',
-        functionLabel: 'soloDestroyOnHandChange effect',
-        callsite: `MobileGameTable:soloDestroyOnHandChange prev=${prev} next=${next}`,
-        reason: 'NEW_HAND_STARTED (was solo)',
-        writer: 'soloDestroyOnHandChange',
-        owner: 'MobileGameTable',
-      });
-    } catch { /* forensics-only */ }
     // Force-destroy regardless of deferral state.
     setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
@@ -4372,27 +4299,6 @@ export const MobileGameTable = ({
       });
     } catch { /* forensics-only */ }
   }
-  // ── WAR-TIME TEARDOWN FORENSICS — live context publisher ──
-  if (gameType === 'holm-game') {
-    try {
-      setHolmChuckyTeardownContext({
-        handContextId: handContextId ?? null,
-        phase: chuckyVisualRevealPending ? 'CHUCKY_REVEAL' : (isGameOver ? 'GAME_OVER' : (holmWinPotTriggerId ? 'WIN_SEQUENCE' : (isShowingAnnouncement ? 'ANNOUNCEMENT' : 'RENDER'))),
-        roundStatus: roundStatus ?? null,
-        chuckyActive: !!chuckyActive,
-        cachedChuckyActive: !!cachedChuckyActive,
-        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-        cachedChuckyCardsRevealed,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-        serverChuckyCardsRevealed: chuckyCardsRevealed ?? 0,
-        requiredRevealCount: cachedChuckyCards?.length ?? (chuckyCards?.length ?? 0),
-        announcementShowing: isShowingAnnouncement,
-        winSequenceActive: !!holmWinPotTriggerId,
-        gameType: gameType ?? null,
-        isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
-      });
-    } catch { /* forensics-only */ }
-  }
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4403,98 +4309,6 @@ export const MobileGameTable = ({
       setShowdownModeLocked(true);
     }
   }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
-
-  // ── WAR-TIME TEARDOWN FORENSICS — phase/round/announcement/win watchers ──
-  const _prevRoundStatusTearRef = useRef<string | null>(roundStatus ?? null);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const prev = _prevRoundStatusTearRef.current;
-    const next = roundStatus ?? null;
-    if (prev === next) return;
-    _prevRoundStatusTearRef.current = next;
-    if (chuckyVisualRevealPending && (next === 'completed' || next === null)) {
-      try {
-        recordHolmChuckyTeardownEvent({
-          event: 'roundCompleted',
-          sourceFile: 'src/components/MobileGameTable.tsx',
-          functionLabel: 'roundStatus watcher',
-          callsite: 'MobileGameTable:roundStatusWatcher',
-          reason: `roundStatus ${prev}→${next} while visual reveal incomplete`,
-          writer: 'parent.roundStatus',
-          owner: 'Game.tsx',
-        });
-      } catch { /* forensics-only */ }
-    }
-  }, [roundStatus, gameType, chuckyVisualRevealPending]);
-
-  const _prevAnnouncementTearRef = useRef<boolean>(false);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const prev = _prevAnnouncementTearRef.current;
-    const next = !!isShowingAnnouncement;
-    if (prev === next) return;
-    _prevAnnouncementTearRef.current = next;
-    if (next && chuckyVisualRevealPending) {
-      try {
-        recordHolmChuckyTeardownEvent({
-          event: 'announcementStarted',
-          sourceFile: 'src/components/MobileGameTable.tsx',
-          functionLabel: 'announcement watcher',
-          callsite: 'MobileGameTable:announcementWatcher',
-          reason: 'announcement rose while visual reveal incomplete',
-          writer: 'derived.isShowingAnnouncement',
-          owner: 'MobileGameTable',
-        });
-      } catch { /* forensics-only */ }
-    }
-  }, [isShowingAnnouncement, gameType, chuckyVisualRevealPending]);
-
-  const _prevWinTearRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const prev = _prevWinTearRef.current;
-    const next = holmWinPotTriggerId ?? null;
-    if (prev === next) return;
-    _prevWinTearRef.current = next;
-    if (next && chuckyVisualRevealPending) {
-      try {
-        recordHolmChuckyTeardownEvent({
-          event: 'winSequenceStarted',
-          sourceFile: 'src/components/MobileGameTable.tsx',
-          functionLabel: 'winSequence watcher',
-          callsite: 'MobileGameTable:winSequenceWatcher',
-          reason: 'holmWinPotTriggerId rose while visual reveal incomplete',
-          writer: 'parent.holmWinPotTriggerId',
-          owner: 'Game.tsx',
-        });
-      } catch { /* forensics-only */ }
-    }
-  }, [holmWinPotTriggerId, gameType, chuckyVisualRevealPending]);
-
-  // Server-reaches-4 while visual < 4
-  const _prevServerRevealForTearRef = useRef<number>(0);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const prevV = _prevServerRevealForTearRef.current;
-    const nextV = chuckyCardsRevealed ?? 0;
-    _prevServerRevealForTearRef.current = nextV;
-    if (nextV >= 4 && prevV < 4 && cachedChuckyCardsRevealed < 4) {
-      try {
-        recordHolmChuckyTeardownViolation(
-          'HOLM_SERVER_REVEAL_4_VISUAL_LT_4',
-          `server reached ${nextV} while visual=${cachedChuckyCardsRevealed}`,
-          {
-            sourceFile: 'src/components/MobileGameTable.tsx',
-            functionLabel: 'serverRevealLagWatcher',
-            callsite: 'MobileGameTable:serverRevealLagWatcher',
-            writer: 'parent.chuckyCardsRevealed',
-            visualRevealed: cachedChuckyCardsRevealed,
-            serverRevealed: nextV,
-          },
-        );
-      } catch { /* forensics-only */ }
-    }
-  }, [chuckyCardsRevealed, gameType, cachedChuckyCardsRevealed]);
 
   // ── WAR-TIME TOTAL FORENSICS — C/G watcher effects ──────────────────────
   // CHUCKY_SERVER_REVEAL_CHANGED
