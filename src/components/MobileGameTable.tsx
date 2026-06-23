@@ -1724,6 +1724,7 @@ export const MobileGameTable = ({
   const chuckyStageStickyRef = useRef<{
     handContextId: string;
     cards: CardType[];
+    revealedCount: number;
   } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
@@ -8607,7 +8608,18 @@ export const MobileGameTable = ({
             cachedChuckyCards.length > 0 &&
             handContextId
           ) {
-            chuckyStageStickyRef.current = { handContextId, cards: cachedChuckyCards };
+            const previousStickyRevealCount =
+              chuckyStageStickyRef.current?.handContextId === handContextId
+                ? chuckyStageStickyRef.current.revealedCount
+                : 0;
+            chuckyStageStickyRef.current = {
+              handContextId,
+              cards: cachedChuckyCards,
+              revealedCount: Math.min(
+                cachedChuckyCards.length,
+                Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed),
+              ),
+            };
           }
           const chuckyCardsForRender: CardType[] | null =
             cachedChuckyCards && cachedChuckyCards.length > 0
@@ -8616,6 +8628,15 @@ export const MobileGameTable = ({
           const chuckyVisible =
             (!!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0) ||
             (!!chuckyStageStickyRef.current && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
+          const chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
+          const chuckyStickyRevealCountForRender =
+            chuckyStageStickyRef.current?.handContextId === (handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null)
+              ? chuckyStageStickyRef.current?.revealedCount ?? 0
+              : 0;
+          const chuckyRevealedCountForRender = Math.min(
+            chuckyTotalVisibleForRender,
+            Math.max(cachedChuckyCardsRevealed, chuckyStickyRevealCountForRender),
+          );
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
@@ -8688,7 +8709,7 @@ export const MobileGameTable = ({
                       cardIds={loneSoloCards.map((c) => `${c.rank}${c.suit}`)}
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
-                      phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                      phase={chuckyVisible ? (chuckyRevealedCountForRender >= chuckyTotalVisibleForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
                       caller="MobileGameTable.lonePlayerTabledCardsStage"
                     />
                     <HolmLonePlayerFan
