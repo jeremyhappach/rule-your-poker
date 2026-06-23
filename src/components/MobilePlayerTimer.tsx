@@ -106,9 +106,27 @@ export const MobilePlayerTimer = ({
   // Detect activation edge during render so the very first paint of a
   // new active segment is already snapped to full. Capture the
   // immutable segment deadline ONCE here.
+  //
+  // KEY-DRIVEN ACTIVATION (canonical):
+  //   When the parent supplies a stable `activationKey`, the activation
+  //   edge fires exactly once per distinct key. This eliminates the
+  //   prior wasActiveRef-derived predicate which re-fired every render
+  //   for a single active segment (the proven upward-refill defect).
+  //
+  //   Same key → NO writes to segmentDeadlineMsRef, segmentDurationMsRef,
+  //   activationSeqRef, suppressTransition, or wasActiveRef. Hard
+  //   forensic violation if the activation branch is ever entered twice
+  //   for one key.
+  //
+  //   Null/absent key → legacy fallback (wasActiveRef edge) for callers
+  //   not yet threading a canonical key.
   const isHolmRender = deal?.gameType === 'holm-game';
   const activeSegmentIdRef = useRef<string | null>(null);
-  if (effectiveIsActive && !wasActiveRef.current) {
+  const lastActivationKeyRef = useRef<string | null>(null);
+  const usingKeyMode = activationKey != null;
+  const effectiveActivationKey = effectiveIsActive ? (activationKey ?? null) : null;
+
+  const runActivationCapture = (writerLabel: string, callsiteLine: string, segmentKey: string | null) => {
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const durationMs = Math.max(1, (maxTime || 0) * 1000);
     const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
@@ -120,24 +138,60 @@ export const MobilePlayerTimer = ({
     segmentDurationMsRef.current = durationMs;
     segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
     activationSeqRef.current += 1;
-    const newSegId = `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
+    const newSegId = segmentKey ?? `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
     activeSegmentIdRef.current = newSegId;
     if (isHolmRender) {
-      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:104', reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:105', reason: 'capture immutable deadline at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:106', reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: writerLabel, callsite: callsiteLine, reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: writerLabel, callsite: callsiteLine, reason: 'capture immutable deadline at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: writerLabel, callsite: callsiteLine, reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
     }
-  } else if (!effectiveIsActive) {
-    const priorDeadline = segmentDeadlineMsRef.current;
-    const priorDuration = segmentDurationMsRef.current;
-    const closingSeg = activeSegmentIdRef.current;
-    segmentDeadlineMsRef.current = null;
-    segmentDurationMsRef.current = null;
-    if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
-      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:111', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:112', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+  };
+
+  if (usingKeyMode) {
+    // KEY-DRIVEN mode (canonical Holm path via ActivePlayerHUD).
+    if (effectiveActivationKey && effectiveActivationKey !== lastActivationKeyRef.current) {
+      const priorKey = lastActivationKeyRef.current;
+      lastActivationKeyRef.current = effectiveActivationKey;
+      runActivationCapture('MobilePlayerTimer.activationEdge[keyed]', 'src/components/MobilePlayerTimer.tsx:keyed', effectiveActivationKey);
+      if (isHolmRender) {
+        recordHolmTimerWrite({ field: 'activationKey', prior: priorKey, next: effectiveActivationKey, writer: 'MobilePlayerTimer.activationEdge[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'canonical key transition (new segment)', kind: 'activation', segmentId: effectiveActivationKey, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      }
+    } else if (!effectiveActivationKey) {
+      // Inactive — clear refs and key.
+      const priorDeadline = segmentDeadlineMsRef.current;
+      const priorDuration = segmentDurationMsRef.current;
+      const closingSeg = activeSegmentIdRef.current;
+      const priorKey = lastActivationKeyRef.current;
+      segmentDeadlineMsRef.current = null;
+      segmentDurationMsRef.current = null;
+      if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
+        recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'effectiveActivationKey=null → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+        recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'effectiveActivationKey=null → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+        if (priorKey) {
+          recordHolmTimerWrite({ field: 'activationKey', prior: priorKey, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'canonical key cleared', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+        }
+      }
+      activeSegmentIdRef.current = null;
+      lastActivationKeyRef.current = null;
     }
-    activeSegmentIdRef.current = null;
+    // SAME-KEY active path: intentionally no-op. No deadline rewrite,
+    // no activation seq increment, no transition toggle.
+  } else {
+    // Legacy wasActiveRef fallback (non-keyed callers).
+    if (effectiveIsActive && !wasActiveRef.current) {
+      runActivationCapture('MobilePlayerTimer.activationEdge[legacy]', 'src/components/MobilePlayerTimer.tsx:legacy', null);
+    } else if (!effectiveIsActive) {
+      const priorDeadline = segmentDeadlineMsRef.current;
+      const priorDuration = segmentDurationMsRef.current;
+      const closingSeg = activeSegmentIdRef.current;
+      segmentDeadlineMsRef.current = null;
+      segmentDurationMsRef.current = null;
+      if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
+        recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation[legacy]', callsite: 'src/components/MobilePlayerTimer.tsx:legacy', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+        recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation[legacy]', callsite: 'src/components/MobilePlayerTimer.tsx:legacy', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      }
+      activeSegmentIdRef.current = null;
+    }
   }
 
   // Record every prop change while a segment is active. These are the
@@ -157,6 +211,7 @@ export const MobilePlayerTimer = ({
     }
   }
   lastPropsRef.current = { timeLeft, maxTime, isActive };
+
 
 
 
