@@ -188,23 +188,41 @@ export function HolmSoloRootRegistrar({
   const callerRef = useRef(caller);
   callerRef.current = caller;
 
+  // Track latest cardIds for the update effect / cleanup.
+  const cardIdsRef = useRef(cardIds);
+  cardIdsRef.current = cardIds;
+
+  // Update effect — keeps the ownership snapshot fresh without triggering
+  // mount/unmount churn. Deliberately has NO cleanup so it cannot emit
+  // spurious CHUCKY_STAGE_UNMOUNT / SOLO_SHOWDOWN_STAGE_DESTROYED events
+  // when props like phase / soloDeclared / cardIds change mid-reveal.
   useEffect(() => {
     recordHolmSoloRoot({ root, mounted, cardIds, handContextId, soloDeclared, phase });
+  }, [root, mounted, key, handContextId, soloDeclared, phase]);
+
+  // Lifecycle effect — true mount/unmount only. Deps are [root, mounted]
+  // so the effect does NOT re-run when phase / soloDeclared / cardIds /
+  // handContextId change while the stage is still rendered. This is what
+  // guarantees CHUCKY_TABLED persists across CHUCKY_DEAL → CHUCKY_REVEAL
+  // → RESULT_ANNOUNCEMENT → SHOWDOWN → WIN_SEQUENCE → PLAYER_TO_POT and
+  // is only destroyed when the parent actually unmounts the JSX (i.e. at
+  // NEXT_HAND PRE_DEAL when chuckyVisible flips false).
+  useEffect(() => {
     const mountEvt = stageEventName(root, true);
     if (mountEvt) {
       recordHolmTimelineEvent(
         mountEvt,
         {
-          handContextId,
-          phase,
+          handContextId: handContextRef.current,
+          phase: phaseRef.current,
           owner: root,
-          caller: caller ?? 'unknown',
+          caller: callerRef.current ?? 'unknown',
           reason: 'EFFECT_MOUNT',
-          cardIds,
+          cardIds: cardIdsRef.current,
           renderSeq: nextRenderSeq(),
-          soloDeclared,
+          soloDeclared: soloRef.current,
         },
-        handContextId,
+        handContextRef.current,
       );
     }
     return () => {
@@ -212,6 +230,7 @@ export function HolmSoloRootRegistrar({
       const liveHand = handContextRef.current;
       const liveSolo = soloRef.current;
       const liveCaller = callerRef.current;
+      const liveCardIds = cardIdsRef.current;
       clearHolmSoloRoot(root, liveHand);
       const unmountEvt = stageEventName(root, false);
       if (unmountEvt) {
@@ -223,16 +242,13 @@ export function HolmSoloRootRegistrar({
             owner: root,
             caller: liveCaller ?? 'unknown',
             reason: 'EFFECT_CLEANUP',
-            cardIds,
+            cardIds: liveCardIds,
             renderSeq: nextRenderSeq(),
             soloDeclared: liveSolo,
           },
           liveHand,
         );
       }
-      // SOLO_SHOWDOWN_STAGE_DESTROYED — TABLED_SELF / CHUCKY_TABLED must
-      // never disappear while in protected phases. COMMUNITY also persists
-      // through these phases; record but do not mark same violation.
       if (
         (root === 'TABLED_SELF' || root === 'CHUCKY_TABLED') &&
         PROTECTED_PHASES.has(livePhase) &&
@@ -256,7 +272,7 @@ export function HolmSoloRootRegistrar({
             handContextId: liveHand,
             caller: liveCaller ?? 'unknown',
             reason: 'unmount-in-protected-phase',
-            cardIds,
+            cardIds: liveCardIds,
             renderSeq: nextRenderSeq(),
           },
           liveHand,
@@ -264,6 +280,7 @@ export function HolmSoloRootRegistrar({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [root, mounted, key, handContextId, soloDeclared, phase]);
+  }, [root, mounted]);
   return null;
 }
+
