@@ -2267,7 +2267,7 @@ async function handleMultiPlayerShowdown(
       // Mark round as completed and set awaiting_next_round to allow game to continue
       await supabase
         .from('rounds')
-        .update({ status: 'completed' })
+        .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
         .eq('id', roundId);
       
       await supabase
