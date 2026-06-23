@@ -8900,7 +8900,7 @@ export const MobileGameTable = ({
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
         {/* SKIP if cards are already tabled via solo vs Chucky - they're already in position */}
-        {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
+        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div 
               className="flex"
