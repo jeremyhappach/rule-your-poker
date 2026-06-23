@@ -88,6 +88,15 @@ export async function sanitizePlayersForNewDealerGame(
       '[DEALER_BOUNDARY] sanitized players for new dealer game',
       { gameId, resetCount, unfoldCount }
     );
+    recordHolmTeardown({
+      outcomeId: null,
+      cacheName: 'players.transientGameplayFlags',
+      cleared: true,
+      reason: 'sanitizePlayersForNewDealerGame: clear current_decision/locks/ante + folded→active',
+      writer: 'sanitizePlayersForNewDealerGame',
+      callsite: 'src/lib/dealerGameBoundary.ts',
+      extra: { gameId, resetCount, unfoldCount },
+    });
 
     return { success: true, resetCount, unfoldCount };
   } catch (err: any) {
