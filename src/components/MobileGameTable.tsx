@@ -1643,7 +1643,7 @@ export const MobileGameTable = ({
   // SINGLE OWNER. Fires once per handContextId iff: the prior-hand observed
   // buckPosition existed AND differed AND the new-hand buckPosition === self.
   // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
-  const [showBucksOnYou, setShowBucksOnYou] = useState(false);
+  const [activeBuckPresentationId, setActiveBuckPresentationId] = useState<string | null>(null);
   // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
   // carry stable IDs; we render exactly once per ID for the receiving viewer.
   const buckOverlayFiredEventIdRef = useRef<string | null>(null);
