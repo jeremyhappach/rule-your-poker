@@ -3026,6 +3026,17 @@ export const MobileGameTable = ({
     prevHandWasSoloRef.current = false;
     chuckyVisualResetForHand(next);
     if (!wasSolo) return;
+    try {
+      recordHolmChuckyTeardownEvent({
+        event: 'soloDestroyOnHandChange',
+        sourceFile: 'src/components/MobileGameTable.tsx',
+        functionLabel: 'soloDestroyOnHandChange effect',
+        callsite: `MobileGameTable:soloDestroyOnHandChange prev=${prev} next=${next}`,
+        reason: 'NEW_HAND_STARTED (was solo)',
+        writer: 'soloDestroyOnHandChange',
+        owner: 'MobileGameTable',
+      });
+    } catch { /* forensics-only */ }
     // Force-destroy regardless of deferral state.
     setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
