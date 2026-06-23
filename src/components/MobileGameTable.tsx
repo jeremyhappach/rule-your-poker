@@ -9189,6 +9189,11 @@ export const MobileGameTable = ({
                             cachedChuckyCardsRevealed={chuckyRevealedCountForRender}
                             cachedChuckyCardsCount={chuckyTotalForRender}
                           />
+                          <HolmChuckyRevealCommitter
+                            cardId={`${chuckyHandIdForRender}#chucky-${index}`}
+                            isRevealed={isRevealed}
+                            handContextId={chuckyHandIdForRender}
+                          />
                           {(() => {
                             try {
                               recordChuckyRenderState({
