@@ -4892,27 +4892,39 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Authoritative: arm gate, latch, show.
+    // Authoritative: latch event id as PENDING. Promotion to active
+    // (visible overlay) waits for prior-hand teardown boundary.
     buckOverlayFiredEventIdRef.current = ev.id;
     recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
       eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
       selfPosition: selfPos, recipientIsSelf: true,
     });
 
-    if (handContextId) {
-      buckOverlayGatedHciRef.current = handContextId;
-      armBuckPresentationGate(handContextId);
-      recordBucksForensic('LATCH_SET', {
-        eventId: ev.id, handContextId, predicate: 'BUCKS_GATE_ARMED',
-      });
-    }
-
-    setActiveBuckPresentationId(ev.id);
-    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: ev.id });
-    recordBucksForensic('SHOW_GRANTED', {
-      eventId: ev.id, handContextId: handContextId ?? null, predicate: 'BUCKS_OVERLAY_SHOWN',
+    setPendingBuckPresentation({ id: ev.id, hci: handContextId ?? null });
+    recordBucksForensic('LATCH_SET', {
+      eventId: ev.id, handContextId: handContextId ?? null,
+      predicate: 'BUCKS_PENDING_AWAITING_TEARDOWN',
     });
   }, [buckTransferPresentation, gameType, currentPlayer, handContextId]);
+
+  // BUCK'S ON YOU — promote PENDING → ACTIVE once prior-hand teardown
+  // boundary is reached. Teardown = community cards no longer mounted
+  // AND no in-flight result announcement. Deal is NOT blocked.
+  useEffect(() => {
+    if (!pendingBuckPresentation) return;
+    if (showCommunityCards) return;
+    if (isShowingAnnouncement) return;
+    // Single-shot promotion.
+    const { id, hci } = pendingBuckPresentation;
+    setPendingBuckPresentation(null);
+    buckOverlayGatedHciRef.current = hci;
+    setActiveBuckPresentationId(id);
+    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: id });
+    recordBucksForensic('SHOW_GRANTED', {
+      eventId: id, handContextId: handContextId ?? null,
+      predicate: 'BUCKS_OVERLAY_SHOWN_AFTER_TEARDOWN',
+    });
+  }, [pendingBuckPresentation, showCommunityCards, isShowingAnnouncement, handContextId]);
 
 
 
