@@ -2139,7 +2139,7 @@ async function handleMultiPlayerShowdown(
     // Mark round as completed to hide timer
     await supabase
       .from('rounds')
-      .update({ status: 'completed' })
+      .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
       .eq('id', roundId);
   } else if (losers.length > 0) {
     // PARTIAL TIE: Multiple winners but there are also losers
