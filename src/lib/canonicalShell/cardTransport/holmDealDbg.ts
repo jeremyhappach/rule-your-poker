@@ -36,8 +36,25 @@ export interface HolmRenderedCardDbg {
   rect?: { x: number; y: number; w: number; h: number } | null;
 }
 
+export type HolmHardViolationType =
+  | 'HOLM_CARD_RENDERED_BEFORE_SETTLE'
+  | 'HOLM_ALL_CARDS_VISIBLE_AT_DEAL_START'
+  | 'HAND_PRESENTATION_CONTEXT_NULL'
+  | 'HAND_PRESENTATION_LEAK_ACROSS_DEALER_SELECTION'
+  | 'HAND_RUNTIME_IDENTITY_BREACH'
+  | 'DISPATCH_WITHOUT_CURRENT_HAND_INTENT'
+  | 'SOLO_OR_CHUCKY_STARTED_BEFORE_TXN_READY';
+
+export type HolmObservationalEventType =
+  | 'HOLM_STALE_CALLBACK_REJECTED'
+  | 'HOLM_IDENTITY_ONLY_CHURN_IGNORED'
+  | 'HOLM_OUTCOME_TEARDOWN_COMPLETE'
+  | 'HOLM_NEW_HAND_INIT_COMPLETE'
+  | 'HOLM_OUTCOME_PRESENTATION_COMPLETE'
+  | 'VISUAL_CHUCKY_FLIP_COMPLETE';
+
 export interface HolmDealViolationDbg {
-  type: 'HOLM_CARD_RENDERED_BEFORE_SETTLE' | 'HOLM_ALL_CARDS_VISIBLE_AT_DEAL_START';
+  type: HolmHardViolationType;
   cardId?: string;
   endpoint?: string;
   renderer?: string;
@@ -47,6 +64,19 @@ export interface HolmDealViolationDbg {
   domMounted?: boolean;
   actualVisibleCards?: number;
   cardsSettled?: number;
+  handContextId?: string | null;
+  handGeneration?: number | null;
+  detail?: Record<string, unknown>;
+  at: number;
+}
+
+export interface HolmDealEventDbg {
+  type: HolmObservationalEventType;
+  handContextId?: string | null;
+  handGeneration?: number | null;
+  outcomeTxnKey?: string | null;
+  cardId?: string;
+  detail?: Record<string, unknown>;
   at: number;
 }
 
