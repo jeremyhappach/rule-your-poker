@@ -6120,7 +6120,7 @@ export const MobileGameTable = ({
     const isInAnnouncementShowdown =
       isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
     const isShowdown = hasExposedCards || isInAnnouncementShowdown;
-    const isHolmWinWinner = !!holmWinPotTriggerId && winnerPlayerId === player.id;
+    const isHolmWinWinner = !!holmWinPotTriggerIdGated && winnerPlayerId === player.id;
     const soloLockedId = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayerForChip =
       isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
