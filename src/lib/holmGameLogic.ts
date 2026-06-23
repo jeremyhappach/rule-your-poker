@@ -887,7 +887,7 @@ export async function endHolmRound(gameId: string) {
   
   const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
-    .update({ status: 'processing' })
+    .update({ status: 'processing', current_turn_position: null, decision_deadline: null })
     .eq('id', capturedRoundId)
     .eq('status', 'betting') // ATOMIC GUARD: Only succeeds if still in 'betting' status
     .select();
