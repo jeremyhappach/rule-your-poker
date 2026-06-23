@@ -4826,39 +4826,55 @@ export const MobileGameTable = ({
   // and this specific (prev→new@hand) pass event has not yet been shown.
   // Does NOT fire on initial assignment, on being dealer generically, or on
   // any dealer-config transition.
+  // BUCK'S ON YOU — single owner, event-driven, scoped to handContextId.
+  //
+  // Rules (do not relax):
+  //  1. Requires authoritative handContextId AND numeric buckPosition AND self position.
+  //  2. The "buck pass to self" event is defined as: a NEW handContextId whose
+  //     buckPosition === self, AND the previously-observed handContextId had a
+  //     DIFFERENT buckPosition. The prior-hand observation is the authoritative
+  //     identity of the pass.
+  //  3. Per-hci fire latch (`buckOverlayFiredForHciRef`) ensures one fire per hand;
+  //     dismissal, announcement teardown, or re-renders cannot re-arm it.
+  //  4. A prior hand's state is invalidated the instant handContextId changes —
+  //     priorHandBuckRef is overwritten with the new (hci, buckPosition) pair so
+  //     subsequent re-observations of the same hci cannot fire.
+  //  5. No phase, roundStatus, dealer/caller, result, or announcement triggers.
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    if (!handContextId) return;
     if (buckPosition === null || buckPosition === undefined) return;
-    if (!currentPlayer) return;
+    if (!currentPlayer || typeof currentPlayer.position !== 'number') return;
 
-    const prev = lastBuckPositionRef.current;
-    const next = buckPosition;
     const self = currentPlayer.position;
+    const prior = priorHandBuckRef.current;
 
-    // Always advance the last-seen tracker, even when we don't show the overlay.
-    const advance = () => { lastBuckPositionRef.current = next; };
+    // Same hci as last observed → no boundary event. Do not fire, do not mutate prior record.
+    if (prior && prior.hci === handContextId) return;
 
-    // Not a transition? No pass event.
-    if (prev === next) { advance(); return; }
-    // No previous holder recorded? Initial assignment, never an overlay-worthy pass.
-    if (prev === null) { advance(); return; }
-    // Recipient is not self → not our overlay.
-    if (next !== self) { advance(); return; }
-    // Previous holder WAS self (buck stayed/returned with no real pass-away in between)
-    if (prev === self) { advance(); return; }
+    // Per-hci fire latch — already evaluated this hci once.
+    if (buckOverlayFiredForHciRef.current === handContextId) {
+      priorHandBuckRef.current = { hci: handContextId, buckPosition };
+      return;
+    }
 
-    const passEventKey = `${prev}->${next}@hand${currentRound ?? 'na'}`;
-    if (lastShownBuckPassEventRef.current === passEventKey) { advance(); return; }
-    lastShownBuckPassEventRef.current = passEventKey;
+    // Authoritative pass event: prior hand existed, prior buck differs, and self is now buck.
+    const isAuthoritativePassToSelf =
+      prior !== null && prior.buckPosition !== buckPosition && buckPosition === self;
 
-    // Clear showdown state - new hand starting
-    showdownRoundRef.current = null;
-    showdownCardsCache.current = new Map();
-    showdownHandContextRef.current = null;
+    // Stamp latch BEFORE state mutation so any subsequent re-render with the same
+    // hci is inert even if priorHandBuckRef somehow gets re-evaluated.
+    buckOverlayFiredForHciRef.current = handContextId;
+    priorHandBuckRef.current = { hci: handContextId, buckPosition };
 
-    setShowBucksOnYou(true);
-    advance();
-  }, [buckPosition, currentPlayer, gameType, currentRound]);
+    if (isAuthoritativePassToSelf) {
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+      showdownHandContextRef.current = null;
+      setShowBucksOnYou(true);
+    }
+  }, [handContextId, buckPosition, currentPlayer, gameType]);
+
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
   // currentRound is already a number (round_number), use it directly
