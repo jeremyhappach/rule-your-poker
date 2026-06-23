@@ -972,6 +972,7 @@ export const MobileGameTable = ({
   communityCards,
   communityCardsRevealed,
   buckPosition,
+  buckTransferPresentation,
   currentTurnPosition,
   chuckyCards,
   chuckyActive,
