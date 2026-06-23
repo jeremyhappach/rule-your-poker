@@ -4821,12 +4821,8 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType]);
 
-  // Detect a real buck-pass event whose recipient is self.
-  // Required: previous canonical holder !== self, new canonical holder === self,
-  // and this specific (prev→new@hand) pass event has not yet been shown.
-  // Does NOT fire on initial assignment, on being dealer generically, or on
-  // any dealer-config transition.
   // BUCK'S ON YOU — single owner, event-driven, scoped to handContextId.
+
   //
   // Rules (do not relax):
   //  1. Requires authoritative handContextId AND numeric buckPosition AND self position.
