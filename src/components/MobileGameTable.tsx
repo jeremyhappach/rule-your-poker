@@ -2782,6 +2782,33 @@ export const MobileGameTable = ({
 
     if (prev === next) return;
 
+    try {
+      recordHolmChuckyTeardownEvent({
+        event: 'nextHandDetected',
+        sourceFile: 'src/components/MobileGameTable.tsx',
+        functionLabel: 'handContextChange effect',
+        callsite: `MobileGameTable:handContextChange prev=${prev} next=${next}`,
+        reason: next === null ? 'handContextId → null' : 'handContextId advanced',
+        writer: 'parent.handContextIdChange',
+        owner: 'MobileGameTable',
+        nextOverride: { handContextId: next },
+      });
+      if (next === null) {
+        recordHolmChuckyTeardownViolation(
+          'HOLM_HAND_CONTEXT_NULL_DURING_VISUAL_REVEAL',
+          'handContextId went null',
+          {
+            sourceFile: 'src/components/MobileGameTable.tsx',
+            functionLabel: 'handContextChange effect',
+            callsite: 'MobileGameTable:handContextChange',
+            writer: 'parent.handContextIdChange',
+            prev,
+          },
+        );
+      }
+    } catch { /* forensics-only */ }
+
+
     if (shouldDeferHandReset()) {
       pendingHandContextIdRef.current = next;
       console.warn('[HAND_RESET][MOBILE] Deferring hand context reset until animations complete', {
