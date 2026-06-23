@@ -5223,8 +5223,17 @@ export const MobileGameTable = ({
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
-    const STEPPER_DELAY_MS = 250;
-    const STEPPER_DELAY_SOURCE: 'hardcoded' | 'gameDefaults' | 'fallback' = 'hardcoded';
+    // SINGLE OWNER of reveal timing: game_defaults
+    // (chucky_second_to_last_delay_seconds / chucky_last_card_delay_seconds).
+    // The hardcoded 250ms placeholder was removed — we always source from
+    // the same Holm game defaults used elsewhere. Fallback (1500ms) only
+    // applies while the initial config fetch is still in flight; it matches
+    // the canonical default cadence so it does not trigger a config mismatch.
+    const HOLM_REVEAL_FALLBACK_MS = 1500;
+    const cfgDelay = getChuckyConfiguredStepperDelayMs(cachedChuckyCardsRevealed, total);
+    const STEPPER_DELAY_MS = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
+    const STEPPER_DELAY_SOURCE: 'gameDefaults' | 'fallback' =
+      cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectId,
