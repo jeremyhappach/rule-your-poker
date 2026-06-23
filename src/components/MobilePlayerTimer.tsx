@@ -74,31 +74,46 @@ export const MobilePlayerTimer = ({
 
   // Track activation identity to suppress transition on first active frame.
   const wasActiveRef = useRef(false);
-  const [suppressTransition, setSuppressTransition] = useState(false);
+  const [suppressTransition, setSuppressTransition] = useState(true);
 
-  // Canonical timer initialization invariant:
-  //   - On a new actionable turn, snap to FULL before any visible countdown.
-  //   - Within one uninterrupted active-turn segment, displayed progress
-  //     is monotonic non-increasing (no upward jumps from a stale seed,
-  //     a delayed deadline rebase, or a CSS transition off a prior value).
-  //   - A fresh full refill is permitted across activation boundaries
-  //     (e.g. pause→resume), because `wasActiveRef` flips false→true.
-  const displayProgressRef = useRef(1);
+  // Canonical timer invariant:
+  //   For a given (non-paused) active-turn segment, capture an immutable
+  //   deadline + duration EXACTLY ONCE at activation. All subsequent
+  //   progress is derived purely from (deadline − now)/duration. No
+  //   render, effect, rAF, prop tick, or timeLeft update may rebase
+  //   the deadline. Pause→resume is a new segment (wasActive flips
+  //   false→true) and may intentionally re-capture.
+  const segmentDeadlineMsRef = useRef<number | null>(null);
+  const segmentDurationMsRef = useRef<number | null>(null);
   const activationSeqRef = useRef(0);
+  const [nowTickMs, setNowTickMs] = useState(() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
 
   // Detect activation edge during render so the very first paint of a
-  // new active segment is already snapped to full — the ring never has
-  // a chance to paint a stale lower value, so there is no upward
-  // transition to chase.
+  // new active segment is already snapped to full. Capture the
+  // immutable segment deadline ONCE here.
   if (effectiveIsActive && !wasActiveRef.current) {
-    displayProgressRef.current = 1;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const durationMs = Math.max(1, (maxTime || 0) * 1000);
+    const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
+      ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
+      : (maxTime || 0);
+    segmentDurationMsRef.current = durationMs;
+    segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
     activationSeqRef.current += 1;
+  } else if (!effectiveIsActive) {
+    segmentDeadlineMsRef.current = null;
+    segmentDurationMsRef.current = null;
   }
 
   useEffect(() => {
     if (effectiveIsActive && !wasActiveRef.current) {
+      // Suppress any CSS transition through two rAFs so the compositor
+      // paints the FULL ring before we re-enable the stroke transition.
       setSuppressTransition(true);
-      requestAnimationFrame(() => setSuppressTransition(false));
+      const r1 = requestAnimationFrame(() => {
+        const r2 = requestAnimationFrame(() => setSuppressTransition(false));
+        (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
+      });
       recordLifecycleEvent('timer.activate', {
         component: 'MobilePlayerTimer',
         instance_id: instanceIdRef.current,
@@ -106,33 +121,36 @@ export const MobilePlayerTimer = ({
         max_time: maxTime,
         timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
         snapped_full: true,
+        segment_deadline_ms: segmentDeadlineMsRef.current,
+        segment_duration_ms: segmentDurationMsRef.current,
       });
+      return () => cancelAnimationFrame(r1);
     }
     wasActiveRef.current = effectiveIsActive;
   }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
 
+  // Drive descent purely from clock vs fixed deadline. 100ms tick — no
+  // dependency on incoming prop ticks, so deadline can never rebase.
+  useEffect(() => {
+    if (!effectiveIsActive) return;
+    const id = window.setInterval(() => {
+      setNowTickMs(typeof performance !== 'undefined' ? performance.now() : Date.now());
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [effectiveIsActive, activationSeqRef.current]);
+
   const progress = useMemo(() => {
     if (!effectiveIsActive) return 0;
-    // First committed frame of a new active segment ALWAYS renders at
-    // 100%. We detect the activation frame at render time via
-    // `wasActiveRef` (still false until the post-paint effect commits
-    // it), so no stale seed, late deadline, or partial prop value can
-    // paint below full for even one frame. Subsequent ticks may only
-    // descend from this baseline.
-    const isActivationFrame = !wasActiveRef.current;
-    if (isActivationFrame) {
-      displayProgressRef.current = 1;
-      return 1;
-    }
-    if (effectiveTimeLeft === null || maxTime <= 0) {
-      return displayProgressRef.current;
-    }
-    const raw = Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
-    const next = Math.min(displayProgressRef.current, raw);
-    displayProgressRef.current = next;
-    return next;
+    const deadline = segmentDeadlineMsRef.current;
+    const duration = segmentDurationMsRef.current;
+    if (deadline == null || duration == null || duration <= 0) return 1;
+    // Activation edge: ref not yet committed → force full.
+    if (!wasActiveRef.current) return 1;
+    const remaining = deadline - nowTickMs;
+    return Math.max(0, Math.min(1, remaining / duration));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTimeLeft, maxTime, effectiveIsActive, activationSeqRef.current]);
+  }, [effectiveIsActive, nowTickMs, activationSeqRef.current]);
+
   
   const strokeDashoffset = circumference * (1 - progress);
   
@@ -297,7 +315,7 @@ export const MobilePlayerTimer = ({
         deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
         paused: false,
         authoritativeSource: 'MobilePlayerTimer props (timeLeft,maxTime,isActive)',
-        preCommitProgress: displayProgressRef.current,
+        preCommitProgress: 1,
         classNameFirstCommit: className,
         cssTransition,
         domSvgDashoffset: dashoffset,
@@ -356,9 +374,13 @@ export const MobilePlayerTimer = ({
         instanceId: instanceIdRef.current,
         segmentId,
         stage,
-        logicalProgress: displayProgressRef.current,
+        logicalProgress: (() => {
+          const d = segmentDeadlineMsRef.current; const dur = segmentDurationMsRef.current;
+          if (d == null || dur == null || dur <= 0) return 1;
+          return Math.max(0, Math.min(1, (d - (typeof performance !== 'undefined' ? performance.now() : Date.now())) / dur));
+        })(),
         timeLeft: effectiveTimeLeft,
-        deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
+        deadline: segmentDeadlineMsRef.current,
         domSvgDashoffset: dom.dashoffset,
         domSvgCircumference: dom.circ,
         className: dom.className,
@@ -453,7 +475,7 @@ export const MobilePlayerTimer = ({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={suppressTransition ? "" : "transition-all duration-1000 ease-linear"}
+            className={suppressTransition ? "" : "transition-[stroke-dashoffset] duration-1000 ease-linear"}
             style={{
               filter: isUrgent
                 ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))'
