@@ -128,11 +128,20 @@ export const MobilePlayerTimer = ({
 
   useEffect(() => {
     if (effectiveIsActive && !wasActiveRef.current) {
+      const segId = activeSegmentIdRef.current;
       // Suppress any CSS transition through two rAFs so the compositor
       // paints the FULL ring before we re-enable the stroke transition.
+      if (isHolmRender) {
+        recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:133', reason: 'pre-paint suppression on activation', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      }
       setSuppressTransition(true);
       const r1 = requestAnimationFrame(() => {
-        const r2 = requestAnimationFrame(() => setSuppressTransition(false));
+        const r2 = requestAnimationFrame(() => {
+          if (isHolmRender) {
+            recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:135', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+          }
+          setSuppressTransition(false);
+        });
         (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
       });
       recordLifecycleEvent('timer.activate', {
