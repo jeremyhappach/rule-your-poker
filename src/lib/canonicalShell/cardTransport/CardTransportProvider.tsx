@@ -240,13 +240,14 @@ export function CardTransportProvider({
       dispatchMany,
       onCardSettled,
       onCardSettledIntent,
+      dropIntentsNotMatchingHand,
       __activeIntents: activeIntents,
       __markSettled: markSettled,
       __markDropped: markDropped,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, onCardSettled, onCardSettledIntent, activeIntents, markSettled, markDropped, gameId, gameType],
+    [dispatch, dispatchMany, onCardSettled, onCardSettledIntent, dropIntentsNotMatchingHand, activeIntents, markSettled, markDropped, gameId, gameType],
   );
 
   return (
