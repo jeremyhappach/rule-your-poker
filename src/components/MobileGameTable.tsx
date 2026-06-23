@@ -2864,6 +2864,7 @@ export const MobileGameTable = ({
     );
   const chuckyVisualRevealComplete =
     !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+  chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
