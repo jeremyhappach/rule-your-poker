@@ -3089,14 +3089,28 @@ export const MobileGameTable = ({
     const wasSolo = prevHandWasSoloRef.current;
     prevHandContextForSoloDestroyRef.current = next;
     prevHandWasSoloRef.current = false;
-    chuckyVisualResetForHand(next);
+    if (!chuckyNormalRevealBranchLockedRef.current) {
+      chuckyVisualResetForHand(next);
+    } else {
+      recordHolmTimelineEvent('CHUCKY_NORMAL_REVEAL_BRANCH_EXIT_BLOCKED', {
+        instanceId: chuckyInstanceIdRef.current,
+        renderSeq: chuckyRenderSeqRef.current,
+        writer: 'soloDestroyOnHandChange',
+        reason: 'blocked chuckyVisualResetForHand while visual reveal incomplete',
+        attemptedClear: 'chuckyVisualResetForHand',
+        handContextId: prev,
+        nextHandContextId: next,
+        phase: chuckyPhaseRef.current ?? null,
+        cachedLen: cachedChuckyCardsLiveRef.current?.length ?? 0,
+        cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+      }, prev);
+    }
     if (!wasSolo) return;
     // Force-destroy regardless of deferral state.
     setCachedChuckyCards(null, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0, { writer: 'soloDestroyOnHandChange', reason: 'NEW_HAND_STARTED (was solo)' });
-    chuckyTargetRevealedRef.current = 0;
-    cachedChuckyHandContextRef.current = null;
+    clearChuckyRevealOwnership('soloDestroyOnHandChange', 'NEW_HAND_STARTED (was solo)');
     lonePlayerStageSnapshotRef.current = null;
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
@@ -3106,7 +3120,7 @@ export const MobileGameTable = ({
       prevHandContextId: prev,
       nextHandContextId: next,
     }, prev);
-  }, [gameType, handContextId]);
+  }, [gameType, handContextId, clearChuckyRevealOwnership]);
 
   // ── WAR-TIME: SOLO_STATE_CHANGED watcher ──
   // Pure instrumentation: fire on every observable transition of the
