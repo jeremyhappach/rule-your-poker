@@ -5125,6 +5125,37 @@ export const MobileGameTable = ({
           return;
         }
 
+        // Holm v3 narrow fix: forbid shrinking an established Chucky cache
+        // while the normal reveal is locked. A partial incoming payload of
+        // fewer cards than the established cached set would otherwise let
+        // the stepper terminate early (idx === incomingLen) and never arm
+        // the final card. Reject the write and preserve the larger array.
+        const existingCached = cachedChuckyCardsLiveRef.current;
+        const existingLen = existingCached?.length ?? 0;
+        if (
+          chuckyNormalRevealBranchLockedRef.current &&
+          existingLen > 0 &&
+          chuckyCards.length < existingLen
+        ) {
+          const existingHashLocal = existingCached
+            ? existingCached.map((c: any) => `${c?.rank}${c?.suit}`).join('|')
+            : '';
+          recordHolmTimelineEvent('HOLM_CHUCKY_CACHE_SHRINK_REJECTED', {
+            writer: 'cacheEffect.cachePath',
+            handContextId: handContextId ?? null,
+            existingLength: existingLen,
+            incomingLength: chuckyCards.length,
+            existingHash: existingHashLocal,
+            incomingHash,
+            visualRevealCount,
+            requiredRevealCount,
+          }, handContextId ?? null);
+          console.warn('[MOBILE_CHUCKY] Rejected cache shrink during locked reveal:', {
+            existingLen, incomingLen: chuckyCards.length,
+          });
+          return;
+        }
+
         recordHolmTimelineEvent('CHUCKY_CACHE_SET_CARDS', {
           renderSeq: chuckyRenderSeqRef.current,
           instanceId: chuckyInstanceIdRef.current,
@@ -5144,6 +5175,7 @@ export const MobileGameTable = ({
           chuckyTargetRevealedRef.current = newTarget;
         }
         cachedChuckyHandContextRef.current = handContextId ?? null;
+
       } else {
         console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
           cached: cachedChuckyHandContextRef.current,
@@ -5385,11 +5417,18 @@ export const MobileGameTable = ({
     // revealed (in case of remount after a true new-hand boundary).
     let idx = cachedChuckyCardsRevealedRef.current;
 
+    // Holm v3 narrow fix: snapshot the reveal total ONCE for this stepper
+    // session. tick() must NOT re-read mutable cachedChuckyCardsLenRef,
+    // because a partial cache rewrite could otherwise shrink `total` below
+    // the established reveal target and terminate the loop early (e.g.
+    // idx === 3, total === 3) without arming the final card.
+    const sessionRevealTotal = totalLenForReveal;
+
     const HOLM_REVEAL_FALLBACK_MS = 1500;
 
     const tick = () => {
       if (cancelled) return;
-      const total = cachedChuckyCardsLenRef.current || totalLenForReveal;
+      const total = sessionRevealTotal;
       if (idx >= total) {
         recordHolmTimelineEvent('CHUCKY_REVEAL_COMPLETE', {
           instanceId, effectId, handContextId, total,
