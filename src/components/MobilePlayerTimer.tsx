@@ -315,7 +315,7 @@ export const MobilePlayerTimer = ({
         deadline: effectiveTimeLeft != null ? performance.now() + effectiveTimeLeft * 1000 : null,
         paused: false,
         authoritativeSource: 'MobilePlayerTimer props (timeLeft,maxTime,isActive)',
-        preCommitProgress: displayProgressRef.current,
+        preCommitProgress: 1,
         classNameFirstCommit: className,
         cssTransition,
         domSvgDashoffset: dashoffset,
