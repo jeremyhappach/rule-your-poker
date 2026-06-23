@@ -7760,6 +7760,19 @@ export const MobileGameTable = ({
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
               console.log('[HOLM WIN] POT-OUT animation started, snapped pot was:', allDecisionsSnappedPotRef.current);
+              try {
+                recordHolmPotConsumed(
+                  {
+                    triggerId: holmWinPotTriggerIdGated ?? null,
+                    amount: holmWinPotAmount,
+                    winnerPosition: holmWinWinnerPosition,
+                    callerFile: 'src/components/MobileGameTable.tsx',
+                    callerFn: 'HolmWinPotAnimation.onAnimationStart',
+                  },
+                  handContextId ?? null,
+                );
+              } catch { /* noop */ }
+
               if (gameType === 'holm-game' && gameId) {
                 logResolutionGate(
                   {
