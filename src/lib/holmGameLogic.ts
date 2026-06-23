@@ -2568,7 +2568,9 @@ async function handleMultiPlayerShowdown(
     .from('rounds')
     .update({ 
       status: 'completed',
-      chucky_active: false // Ensure Chucky is hidden
+      chucky_active: false, // Ensure Chucky is hidden
+      current_turn_position: null,
+      decision_deadline: null
     })
     .eq('id', roundId);
 }
