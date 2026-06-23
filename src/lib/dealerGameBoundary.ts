@@ -27,6 +27,7 @@
 // It must NOT be invoked from inside individual startXRound paths.
 
 import { supabase } from '@/integrations/supabase/client';
+import { recordHolmTeardown } from '@/lib/canonicalShell/cardTransport/holmHandBoundaryForensics';
 
 export interface DealerGameBoundaryResetResult {
   success: boolean;
