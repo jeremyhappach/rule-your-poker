@@ -5278,7 +5278,7 @@ export const MobileGameTable = ({
         }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards], { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
-        setCachedChuckyActive(true);
+        setCachedChuckyActive(true, { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
         const newTarget = chuckyCardsRevealed || 0;
         if (newTarget > chuckyTargetRevealedRef.current) {
           chuckyTargetRevealedRef.current = newTarget;
