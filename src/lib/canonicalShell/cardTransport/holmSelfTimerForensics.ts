@@ -16,6 +16,9 @@
  *   window.__holmSelfTimerForensics.segments
  */
 
+import { recordHolmFull as _recordHolmFull } from './holmFullForensics';
+
+
 export type HolmTimerEventName =
   | 'HOLM_TIMER_SEGMENT_ACTIVATED'
   | 'HOLM_TIMER_RENDER_COMMIT_PREPAINT'
