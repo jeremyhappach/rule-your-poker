@@ -49,6 +49,10 @@ import {
   buildChuckyRenderStateForensicsText,
   getChuckyRenderStateForensics,
 } from './holmChuckyRenderStateForensics';
+import {
+  buildBucksForensicsText,
+  getBucksForensics,
+} from '@/lib/canonicalShell/holmBucksOverlayForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
