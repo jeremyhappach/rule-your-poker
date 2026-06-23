@@ -2470,6 +2470,25 @@ export const MobileGameTable = ({
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
   useEffect(() => { ensureChuckyConfigLoaded(); }, []);
+  // Apply the VISUAL-REVEAL GATE for Chucky win/announcement (see top of
+  // component for rationale). After this point in render flow,
+  // `holmWinPotTriggerId` is null until the visual stepper has reached
+  // the full Chucky card count. Consumers below this line (win pot
+  // animation render, winnerPlayerId derivation, winnerCards derivation,
+  // dim/branch classification) all observe the gated value.
+  {
+    const _chuckyVisualRevealPendingForWinGate =
+      gameType === 'holm-game' &&
+      !!cachedChuckyActive &&
+      !!cachedChuckyCards &&
+      cachedChuckyCards.length > 0 &&
+      cachedChuckyCardsRevealed < cachedChuckyCards.length;
+    if (_chuckyVisualRevealPendingForWinGate && holmWinPotTriggerIdRaw) {
+      holmWinPotTriggerId = null;
+    } else {
+      holmWinPotTriggerId = holmWinPotTriggerIdRaw;
+    }
+  }
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
