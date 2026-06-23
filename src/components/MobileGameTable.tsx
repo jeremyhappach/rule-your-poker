@@ -8991,6 +8991,30 @@ export const MobileGameTable = ({
                         : {};
                       const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
                       const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+                      // ── WAR-TIME TOTAL FORENSICS — E: per-card render eval ──
+                      try {
+                        recordChuckyCardRenderEval({
+                          handContextId: chuckyHandIdForRender,
+                          cardIndex: index,
+                          cardId: `${card.rank}${card.suit}`,
+                          owner: 'cachedChuckyCardsRevealed',
+                          cachedChuckyCardsRevealed,
+                          chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
+                          actualPropIsHidden: !isRevealed,
+                          actualPropFaceUp: isRevealed,
+                          actualRenderedFace: isRevealed ? 'UP' : 'DOWN',
+                          phase: holmWinPotTriggerId
+                            ? 'WIN_SEQUENCE'
+                            : isShowingAnnouncement
+                              ? 'RESULT_ANNOUNCEMENT'
+                              : 'CHUCKY_REVEAL',
+                          roundStatus: roundStatus ?? null,
+                          announcementShowing: isShowingAnnouncement,
+                          winSequenceActive: !!holmWinPotTriggerId,
+                          caller: 'MobileGameTable.chuckyStage.map',
+                          callsite: 'MobileGameTable.tsx@chuckyCardMap',
+                        });
+                      } catch { /* forensics-only */ }
                       return (
                         <div
                           key={index}
