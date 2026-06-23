@@ -1640,12 +1640,14 @@ export const MobileGameTable = ({
   // buckPosition existed AND differed AND the new-hand buckPosition === self.
   // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
-  // Authoritative prior-hand observation: { hci, buckPosition } captured at the
-  // moment we first saw a non-null buckPosition for that hci. Used solely to
-  // detect the cross-boundary pass event.
+  // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
+  // carry stable IDs; we render exactly once per ID for the receiving viewer.
+  const buckOverlayFiredEventIdRef = useRef<string | null>(null);
+  // The active gated handContextId (set when we arm the local presentation gate
+  // for the receiving viewer; released on overlay completion).
+  const buckOverlayGatedHciRef = useRef<string | null>(null);
+  // Retained for legacy forensic shape; no longer used for show eligibility.
   const priorHandBuckRef = useRef<{ hci: string; buckPosition: number } | null>(null);
-  // Per-handContextId fire latch. A handContextId that has fired (or has been
-  // observed and deemed not-a-pass-to-self) can never fire again.
   const buckOverlayFiredForHciRef = useRef<string | null>(null);
 
   
