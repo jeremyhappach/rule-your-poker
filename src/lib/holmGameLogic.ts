@@ -1753,10 +1753,12 @@ async function handleChuckyShowdown(
     );
     console.log('[HOLM SHOWDOWN] Recorded pot match chip change in game_results:', potMatchChipChanges);
 
-    // Use different message for tie vs actual loss
+    // Always include `. -$amount` suffix so the frontend player→pot
+    // transport producer (Game.tsx singleLossMatch regex) fires for both
+    // tie-and-lose and clean-loss branches.
     const resultMessage = isTie 
-      ? `Ya tie but ya lose!`
-      : `Chucky beat ${playerUsername} with ${chuckyHandDesc}`;
+      ? `Ya tie but ya lose! Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`
+      : `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`;
 
     const { error: gameUpdateError } = await supabase
       .from('games')
