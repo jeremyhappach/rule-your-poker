@@ -120,7 +120,7 @@ export function setHolmFullIdentity(patch: Partial<HolmFullIdentity>): void {
     const v = patch[k];
     if (v === undefined) continue;
     if (_identity[k] !== v) {
-      (_identity as Record<string, unknown>)[k] = v as unknown;
+      (_identity as unknown as Record<string, unknown>)[k] = v as unknown;
       changed = true;
     }
   }
