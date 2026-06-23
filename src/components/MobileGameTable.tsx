@@ -2728,7 +2728,7 @@ export const MobileGameTable = ({
 
     prevRoundForCacheClearRef.current = currentRound;
     prevGameTypeForCacheClearRef.current = gameType;
-  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache, communityCardsCache]);
+  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache, communityCardsCache, clearChuckyRevealOwnership]);
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
