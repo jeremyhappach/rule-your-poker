@@ -4902,7 +4902,7 @@ export const MobileGameTable = ({
       });
     }
 
-    setShowBucksOnYou(true);
+    setActiveBuckPresentationId(ev.id);
     notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: ev.id });
     recordBucksForensic('SHOW_GRANTED', {
       eventId: ev.id, handContextId: handContextId ?? null, predicate: 'BUCKS_OVERLAY_SHOWN',
