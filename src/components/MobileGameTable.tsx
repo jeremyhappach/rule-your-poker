@@ -1724,6 +1724,7 @@ export const MobileGameTable = ({
   const chuckyStageStickyRef = useRef<{
     handContextId: string;
     cards: CardType[];
+    revealedCount: number;
   } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
@@ -8607,7 +8608,18 @@ export const MobileGameTable = ({
             cachedChuckyCards.length > 0 &&
             handContextId
           ) {
-            chuckyStageStickyRef.current = { handContextId, cards: cachedChuckyCards };
+            const previousStickyRevealCount =
+              chuckyStageStickyRef.current?.handContextId === handContextId
+                ? chuckyStageStickyRef.current.revealedCount
+                : 0;
+            chuckyStageStickyRef.current = {
+              handContextId,
+              cards: cachedChuckyCards,
+              revealedCount: Math.min(
+                cachedChuckyCards.length,
+                Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed),
+              ),
+            };
           }
           const chuckyCardsForRender: CardType[] | null =
             cachedChuckyCards && cachedChuckyCards.length > 0
@@ -8616,6 +8628,15 @@ export const MobileGameTable = ({
           const chuckyVisible =
             (!!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0) ||
             (!!chuckyStageStickyRef.current && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
+          const chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
+          const chuckyStickyRevealCountForRender =
+            chuckyStageStickyRef.current?.handContextId === (handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null)
+              ? chuckyStageStickyRef.current?.revealedCount ?? 0
+              : 0;
+          const chuckyRevealedCountForRender = Math.min(
+            chuckyTotalVisibleForRender,
+            Math.max(cachedChuckyCardsRevealed, chuckyStickyRevealCountForRender),
+          );
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
@@ -8688,7 +8709,7 @@ export const MobileGameTable = ({
                       cardIds={loneSoloCards.map((c) => `${c.rank}${c.suit}`)}
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
-                      phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                      phase={chuckyVisible ? (chuckyRevealedCountForRender >= chuckyTotalVisibleForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
                       caller="MobileGameTable.lonePlayerTabledCardsStage"
                     />
                     <HolmLonePlayerFan
@@ -8784,7 +8805,7 @@ export const MobileGameTable = ({
                     cardIds={chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`)}
                     handContextId={chuckyHandIdForRender}
                     soloDeclared={!!isSoloVsChucky}
-                    phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    phase={chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                     caller="MobileGameTable.chuckyStage"
                   />
                   <div
@@ -8801,7 +8822,7 @@ export const MobileGameTable = ({
                       👿
                     </span>
                     {chuckyCardsForRender.map((card, index) => {
-                      const isRevealed = index < cachedChuckyCardsRevealed;
+                      const isRevealed = index < chuckyRevealedCountForRender;
                       const isFourColor = deckColorMode === 'four_color';
                       const fourColorConfig = getFourColorSuit(card.suit);
                       const cardBg = isRevealed
@@ -8828,8 +8849,8 @@ export const MobileGameTable = ({
                             isRevealed={isRevealed}
                             renderer="MobileGameTable.holmChuckyStage"
                             owner="cachedChuckyCardsRevealed"
-                            phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
-                            cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
+                            phase={chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                            cachedChuckyCardsRevealed={chuckyRevealedCountForRender}
                             cachedChuckyCardsCount={chuckyTotalForRender}
                           />
                           {(() => {
@@ -8839,14 +8860,14 @@ export const MobileGameTable = ({
                                 cardIndex: index,
                                 card: { rank: card.rank, suit: card.suit },
                                 roundStatus: roundStatus ?? null,
-                                phase: cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
+                                phase: chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
                                 isShowingAnnouncement: !!isShowingAnnouncement,
                                 holmWinPotTriggerActive: !!holmWinPotTriggerIdGated,
                                 resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
                                 awaitingNextRound: !!awaitingNextRound,
                                 lastRoundResultPresent: !!lastRoundResult,
                                 serverRevealCount: typeof chuckyCardsRevealed === 'number' ? chuckyCardsRevealed : null,
-                                cachedChuckyCardsRevealed,
+                                cachedChuckyCardsRevealed: chuckyRevealedCountForRender,
                                 requiredRevealCount: chuckyTotalForRender,
                                 cardsCameFromLive: !!(cachedChuckyCards && cachedChuckyCards.length > 0),
                                 cardsCameFromSticky: !(cachedChuckyCards && cachedChuckyCards.length > 0) && !!chuckyStageStickyRef.current,
