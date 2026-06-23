@@ -174,21 +174,6 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import {
-  recordHolmSoloChuckyStateSnapshot,
-  recordHolmResultGateEval,
-  recordHolmAnnouncementRequest,
-  recordHolmAnnouncementStart,
-  recordHolmWinSequenceRequest,
-  recordHolmWinSequenceStart,
-  recordHolmPlayerToPotStart,
-  recordHolmNextHandStart,
-  recordChuckyServerRevealChanged,
-  recordChuckyVisualRevealChanged,
-  recordChuckyCardRenderEval,
-  recordChuckyStageRenderInput,
-  recordHolmPhaseChanged,
-} from "@/lib/canonicalShell/cardTransport/holmChuckyTotalForensics";
-import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
   ensureChuckyConfigLoaded,
@@ -4262,43 +4247,6 @@ export const MobileGameTable = ({
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
     !chuckyVisualRevealPending;
-  // ── WAR-TIME TOTAL FORENSICS — A: state snapshot + B: result gate eval ──
-  if (gameType === 'holm-game') {
-    try {
-      const _gateBase = {
-        handContextId: handContextId ?? null,
-        callsite: 'MobileGameTable.isShowingAnnouncement@4260',
-        phase: chuckyVisualRevealPending ? 'CHUCKY_REVEAL' : (isGameOver ? 'GAME_OVER' : 'RENDER'),
-        roundStatus: roundStatus ?? null,
-        cachedChuckyCardsRevealed,
-        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-        allowed: isShowingAnnouncement,
-        blockedReason: !isShowingAnnouncement
-          ? (chuckyVisualRevealPending ? 'chuckyVisualRevealPending' : (!lastRoundResult ? 'noResult' : 'notAwaiting'))
-          : null,
-      };
-      recordHolmResultGateEval(_gateBase);
-      recordHolmSoloChuckyStateSnapshot({
-        handContextId: handContextId ?? null,
-        phase: _gateBase.phase,
-        roundStatus: roundStatus ?? null,
-        isSoloVsChuckyRaw,
-        soloDeclared: !!isSoloVsChucky,
-        soloVsChuckyTableLocked,
-        soloVsChuckyPlayerIdLocked: soloVsChuckyPlayerIdLocked ?? null,
-        chuckyActive: !!chuckyActive,
-        cachedChuckyActive: !!cachedChuckyActive,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-        cachedChuckyCardsRevealed,
-        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-        announcementShowing: isShowingAnnouncement,
-        winSequenceActive: !!holmWinPotTriggerId,
-        callsite: 'MobileGameTable.render@4260',
-      });
-    } catch { /* forensics-only */ }
-  }
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4309,131 +4257,6 @@ export const MobileGameTable = ({
       setShowdownModeLocked(true);
     }
   }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
-
-  // ── WAR-TIME TOTAL FORENSICS — C/G watcher effects ──────────────────────
-  // CHUCKY_SERVER_REVEAL_CHANGED
-  const _prevServerRevealRef = useRef<number>(0);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const newV = chuckyCardsRevealed ?? 0;
-    const oldV = _prevServerRevealRef.current;
-    if (newV === oldV) return;
-    recordChuckyServerRevealChanged({
-      handContextId: handContextId ?? null,
-      oldValue: oldV,
-      newValue: newV,
-      source: 'props.chuckyCardsRevealed',
-      writer: 'parent/Game.tsx',
-      callsite: 'MobileGameTable.serverRevealWatch',
-      cachedChuckyCardsRevealed,
-      chuckyCardsRevealedServer: newV,
-      roundStatus: roundStatus ?? null,
-      announcementShowing: isShowingAnnouncement,
-      winSequenceActive: !!holmWinPotTriggerId,
-    });
-    _prevServerRevealRef.current = newV;
-  }, [chuckyCardsRevealed, gameType, handContextId, cachedChuckyCardsRevealed, roundStatus, isShowingAnnouncement, holmWinPotTriggerId]);
-
-  // CHUCKY_VISUAL_REVEAL_CHANGED
-  const _prevVisualRevealRef = useRef<number>(0);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const newV = cachedChuckyCardsRevealed ?? 0;
-    const oldV = _prevVisualRevealRef.current;
-    if (newV === oldV) return;
-    recordChuckyVisualRevealChanged({
-      handContextId: handContextId ?? null,
-      oldValue: oldV,
-      newValue: newV,
-      source: 'state.cachedChuckyCardsRevealed',
-      writer: 'MobileGameTable.stepper',
-      callsite: 'MobileGameTable.visualRevealWatch',
-      cachedChuckyCardsRevealed: newV,
-      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-      roundStatus: roundStatus ?? null,
-      announcementShowing: isShowingAnnouncement,
-      winSequenceActive: !!holmWinPotTriggerId,
-    });
-    _prevVisualRevealRef.current = newV;
-  }, [cachedChuckyCardsRevealed, gameType, handContextId, chuckyCardsRevealed, roundStatus, isShowingAnnouncement, holmWinPotTriggerId]);
-
-  // HOLM_ANNOUNCEMENT_REQUEST / START on rising edge
-  const _prevAnnRef = useRef<boolean>(false);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    if (isShowingAnnouncement === _prevAnnRef.current) return;
-    const base = {
-      handContextId: handContextId ?? null,
-      callsite: 'MobileGameTable.announcementEdge',
-      caller: 'isShowingAnnouncement effect',
-      phase: isShowingAnnouncement ? 'RESULT_ANNOUNCEMENT' : 'IDLE',
-      roundStatus: roundStatus ?? null,
-      cachedChuckyCardsRevealed,
-      cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-      allowed: isShowingAnnouncement,
-    };
-    if (isShowingAnnouncement) {
-      recordHolmAnnouncementRequest(base);
-      recordHolmAnnouncementStart(base);
-    }
-    _prevAnnRef.current = isShowingAnnouncement;
-  }, [isShowingAnnouncement, gameType, handContextId, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed, roundStatus]);
-
-  // HOLM_WIN_SEQUENCE_REQUEST / START / PLAYER_TO_POT_START on holmWinPotTriggerId rising edge
-  const _prevWinTrigRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const cur = holmWinPotTriggerId ?? null;
-    const prev = _prevWinTrigRef.current;
-    if (cur === prev) return;
-    if (cur && !prev) {
-      const base = {
-        handContextId: handContextId ?? null,
-        callsite: 'MobileGameTable.holmWinPotEdge',
-        caller: 'holmWinPotTriggerId effect',
-        phase: 'WIN_SEQUENCE',
-        roundStatus: roundStatus ?? null,
-        cachedChuckyCardsRevealed,
-        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-        allowed: true,
-      };
-      recordHolmWinSequenceRequest(base);
-      recordHolmWinSequenceStart(base);
-      recordHolmPlayerToPotStart(base);
-    }
-    if (!cur && prev) {
-      recordHolmNextHandStart({
-        handContextId: handContextId ?? null,
-        callsite: 'MobileGameTable.holmWinPotEdge.fall',
-        phase: 'NEXT_HAND',
-        cachedChuckyCardsRevealed,
-        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-        chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-      });
-    }
-    _prevWinTrigRef.current = cur;
-  }, [holmWinPotTriggerId, gameType, handContextId, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed, roundStatus]);
-
-  // HOLM_PHASE_CHANGED — derived from chuckyVisualRevealPending / announcement / win
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const phase =
-      holmWinPotTriggerId ? 'WIN_SEQUENCE'
-      : isShowingAnnouncement ? 'RESULT_ANNOUNCEMENT'
-      : chuckyVisualRevealPending ? 'CHUCKY_REVEAL'
-      : (cachedChuckyActive ? 'CHUCKY_STAGE_IDLE' : 'GAMEPLAY');
-    recordHolmPhaseChanged({
-      handContextId: handContextId ?? null,
-      newPhase: phase,
-      cachedChuckyCardsRevealed,
-      cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
-      chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-      triggeredBy: 'derived-from-flags',
-      callsite: 'MobileGameTable.phaseWatch',
-    });
-  }, [gameType, handContextId, holmWinPotTriggerId, isShowingAnnouncement, chuckyVisualRevealPending, cachedChuckyActive, cachedChuckyCardsRevealed, cachedChuckyCards, chuckyCardsRevealed]);
   
   // Use locked state to prevent snap-back (cards stay narrow after announcement clears)
   const isAnyPlayerInShowdown = isAnyPlayerInShowdownRaw || showdownModeLocked;
@@ -8920,38 +8743,6 @@ export const MobileGameTable = ({
                 const chuckyHandIdForRender =
                   handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
                 const chuckyTotalForRender = chuckyCardsForRender.length;
-                // ── WAR-TIME TOTAL FORENSICS — F: stage render input ──
-                try {
-                  const isHiddenArr: boolean[] = [];
-                  const faceUpArr: boolean[] = [];
-                  for (let i = 0; i < chuckyTotalForRender; i++) {
-                    const up = i < cachedChuckyCardsRevealed;
-                    faceUpArr.push(up);
-                    isHiddenArr.push(!up);
-                  }
-                  recordChuckyStageRenderInput({
-                    handContextId: chuckyHandIdForRender,
-                    phase: holmWinPotTriggerId
-                      ? 'WIN_SEQUENCE'
-                      : isShowingAnnouncement
-                        ? 'RESULT_ANNOUNCEMENT'
-                        : cachedChuckyCardsRevealed >= chuckyTotalForRender
-                          ? 'SHOWDOWN'
-                          : 'CHUCKY_REVEAL',
-                    roundStatus: roundStatus ?? null,
-                    stageMounted: true,
-                    cardIds: chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`),
-                    cardsLen: chuckyTotalForRender,
-                    cachedChuckyCardsRevealed,
-                    chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-                    computedRevealCount: cachedChuckyCardsRevealed,
-                    computedRevealCountSource: 'cachedVisual',
-                    isHiddenArrayByIndex: isHiddenArr,
-                    faceUpArrayByIndex: faceUpArr,
-                    caller: 'MobileGameTable.chuckyStage',
-                    callsite: 'MobileGameTable.tsx@chuckyVisible',
-                  });
-                } catch { /* forensics-only */ }
                 return (
                 <HolmAnchoredSlot
                   artifactId="holm.chuckyStage"
@@ -8991,30 +8782,6 @@ export const MobileGameTable = ({
                         : {};
                       const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
                       const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-                      // ── WAR-TIME TOTAL FORENSICS — E: per-card render eval ──
-                      try {
-                        recordChuckyCardRenderEval({
-                          handContextId: chuckyHandIdForRender,
-                          cardIndex: index,
-                          cardId: `${card.rank}${card.suit}`,
-                          owner: 'cachedChuckyCardsRevealed',
-                          cachedChuckyCardsRevealed,
-                          chuckyCardsRevealedServer: chuckyCardsRevealed ?? 0,
-                          actualPropIsHidden: !isRevealed,
-                          actualPropFaceUp: isRevealed,
-                          actualRenderedFace: isRevealed ? 'UP' : 'DOWN',
-                          phase: holmWinPotTriggerId
-                            ? 'WIN_SEQUENCE'
-                            : isShowingAnnouncement
-                              ? 'RESULT_ANNOUNCEMENT'
-                              : 'CHUCKY_REVEAL',
-                          roundStatus: roundStatus ?? null,
-                          announcementShowing: isShowingAnnouncement,
-                          winSequenceActive: !!holmWinPotTriggerId,
-                          caller: 'MobileGameTable.chuckyStage.map',
-                          callsite: 'MobileGameTable.tsx@chuckyCardMap',
-                        });
-                      } catch { /* forensics-only */ }
                       return (
                         <div
                           key={index}
