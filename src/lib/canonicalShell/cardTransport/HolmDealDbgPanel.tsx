@@ -265,6 +265,10 @@ export function HolmDealDbgPanel() {
   // WAR-TIME ring buffers — MUST be called unconditionally before any early return
   const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
   const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
+  const selfTimerEvents = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerEvents, getHolmSelfTimerEvents);
+  const selfTimerViolations = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerViolations, getHolmSelfTimerViolations);
+  const selfTimerSegments = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerSegments, getHolmSelfTimerSegments);
+  const selfTimerOwners = useSyncExternalStore(subscribeHolmSelfTimer, getHolmSelfTimerOwners, getHolmSelfTimerOwners);
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sampleTick, tick] = useState(0);
