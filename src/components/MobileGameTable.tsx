@@ -8805,7 +8805,7 @@ export const MobileGameTable = ({
                     cardIds={chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`)}
                     handContextId={chuckyHandIdForRender}
                     soloDeclared={!!isSoloVsChucky}
-                    phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    phase={chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                     caller="MobileGameTable.chuckyStage"
                   />
                   <div
@@ -8822,7 +8822,7 @@ export const MobileGameTable = ({
                       👿
                     </span>
                     {chuckyCardsForRender.map((card, index) => {
-                      const isRevealed = index < cachedChuckyCardsRevealed;
+                      const isRevealed = index < chuckyRevealedCountForRender;
                       const isFourColor = deckColorMode === 'four_color';
                       const fourColorConfig = getFourColorSuit(card.suit);
                       const cardBg = isRevealed
@@ -8849,8 +8849,8 @@ export const MobileGameTable = ({
                             isRevealed={isRevealed}
                             renderer="MobileGameTable.holmChuckyStage"
                             owner="cachedChuckyCardsRevealed"
-                            phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
-                            cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
+                            phase={chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                            cachedChuckyCardsRevealed={chuckyRevealedCountForRender}
                             cachedChuckyCardsCount={chuckyTotalForRender}
                           />
                           {(() => {
@@ -8860,14 +8860,14 @@ export const MobileGameTable = ({
                                 cardIndex: index,
                                 card: { rank: card.rank, suit: card.suit },
                                 roundStatus: roundStatus ?? null,
-                                phase: cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
+                                phase: chuckyRevealedCountForRender >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
                                 isShowingAnnouncement: !!isShowingAnnouncement,
                                 holmWinPotTriggerActive: !!holmWinPotTriggerIdGated,
                                 resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
                                 awaitingNextRound: !!awaitingNextRound,
                                 lastRoundResultPresent: !!lastRoundResult,
                                 serverRevealCount: typeof chuckyCardsRevealed === 'number' ? chuckyCardsRevealed : null,
-                                cachedChuckyCardsRevealed,
+                                cachedChuckyCardsRevealed: chuckyRevealedCountForRender,
                                 requiredRevealCount: chuckyTotalForRender,
                                 cardsCameFromLive: !!(cachedChuckyCards && cachedChuckyCards.length > 0),
                                 cardsCameFromSticky: !(cachedChuckyCards && cachedChuckyCards.length > 0) && !!chuckyStageStickyRef.current,
