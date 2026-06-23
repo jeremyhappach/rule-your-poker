@@ -5308,8 +5308,13 @@ export const MobileGameTable = ({
   const chuckyEffectDepsRef = useRef<Record<string, unknown> | null>(null);
   const chuckyEffectTimeoutSeqRef = useRef(0);
   const chuckyRevealLoopHandRef = useRef<string | null>(null);
+  const chuckyRevealLoopCancelRef = useRef<((reason: string) => void) | null>(null);
   const totalLenForReveal = cachedChuckyCards?.length ?? 0;
   useEffect(() => {
+    if (chuckyRevealLoopHandRef.current && handContextId && chuckyRevealLoopHandRef.current !== handContextId) {
+      chuckyRevealLoopCancelRef.current?.('handContextId changed');
+    }
+
     if (gameType !== 'holm-game') return;
     if (!chuckyBarrierOpen) return;
     if (!handContextId) return;
@@ -5350,6 +5355,28 @@ export const MobileGameTable = ({
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const cancelLoop = (reason: string) => {
+      if (cancelled) return;
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      chuckyVisualStepperMountedRef.current = false;
+      chuckyVisualStepperTimeoutActiveRef.current = false;
+      const cleanupAt = __chuckyAuditNow();
+      chuckyVisualStepperLastCleanupReasonRef.current = reason;
+      recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
+        instanceId, effectId, effectInstance, mountAt, cleanupAt,
+        handContextId,
+        reason,
+        dependencyChange: chuckyVisualStepperLastDepChangeRef.current,
+      }, handContextId);
+      if (chuckyRevealLoopHandRef.current === handContextId) {
+        chuckyRevealLoopHandRef.current = null;
+      }
+      if (chuckyRevealLoopCancelRef.current === cancelLoop) {
+        chuckyRevealLoopCancelRef.current = null;
+      }
+    };
+    chuckyRevealLoopCancelRef.current = cancelLoop;
     // Local monotonic counter — starts from whatever has already been
     // revealed (in case of remount after a true new-hand boundary).
     let idx = cachedChuckyCardsRevealedRef.current;
@@ -5363,6 +5390,11 @@ export const MobileGameTable = ({
         recordHolmTimelineEvent('CHUCKY_REVEAL_COMPLETE', {
           instanceId, effectId, handContextId, total,
         }, handContextId);
+        chuckyVisualStepperMountedRef.current = false;
+        chuckyVisualStepperTimeoutActiveRef.current = false;
+        if (chuckyRevealLoopCancelRef.current === cancelLoop) {
+          chuckyRevealLoopCancelRef.current = null;
+        }
         return;
       }
       const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
@@ -5405,32 +5437,14 @@ export const MobileGameTable = ({
       }, delayMs);
     };
     tick();
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      chuckyVisualStepperMountedRef.current = false;
-      chuckyVisualStepperTimeoutActiveRef.current = false;
-      const cleanupAt = __chuckyAuditNow();
-      const cleanupReason = chuckyComponentUnmountingRef.current
-        ? 'component unmount'
-        : handContextIdRef.current !== handContextId
-          ? 'handContextId changed'
-          : 'effect dependency changed before visual reveal complete';
-      chuckyVisualStepperLastCleanupReasonRef.current = cleanupReason;
-      recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
-        instanceId, effectId, effectInstance, mountAt, cleanupAt,
-        handContextId,
-        reason: cleanupReason,
-        dependencyChange: chuckyVisualStepperLastDepChangeRef.current,
-      }, handContextId);
-      // Allow a future hand to start a fresh loop.
-      if (chuckyComponentUnmountingRef.current || handContextIdRef.current !== handContextId) {
-        chuckyRevealLoopHandRef.current = null;
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameType, chuckyBarrierOpen, handContextId, totalLenForReveal]);
+
+  useEffect(() => {
+    return () => {
+      chuckyRevealLoopCancelRef.current?.('component unmount');
+    };
+  }, []);
 
 
 
