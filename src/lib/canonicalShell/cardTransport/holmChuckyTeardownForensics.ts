@@ -18,7 +18,19 @@
  * via recordChuckyForensic('violation' | 'persistence' | ...).
  */
 
-import { recordHolmTimelineEvent, recordHolmWartimeViolation } from './holmWartimeForensics';
+import { recordHolmTimelineEvent } from './holmWartimeForensics';
+
+// No dedicated wartime violation recorder is exported; route violations
+// through recordHolmTimelineEvent with a VIOLATION_ prefix so they
+// surface in the wartime ring AND in the categorized full-forensics
+// 'violation' bucket (routed by name in holmChuckyFullForensics).
+function recordHolmWartimeViolation(
+  type: string,
+  payload: Record<string, unknown>,
+  handContextId: string | null,
+): void {
+  recordHolmTimelineEvent(type as never, payload, handContextId);
+}
 import { recordChuckyForensic, type ChuckyForensicCategory } from './holmChuckyFullForensics';
 
 export type TeardownViolationType =
