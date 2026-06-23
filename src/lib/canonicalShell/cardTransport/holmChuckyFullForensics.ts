@@ -251,6 +251,48 @@ const EXPLICIT_ROUTES: Record<string, ChuckyForensicCategory> = {
   MGT_SUBTREE_OWNER_CHANGE: 'render',
   CHUCKY_RENDER_TREE: 'render',
   CHUCKY_UNMOUNT_STACK: 'render',
+
+  // === TOTAL FORENSICS PASS ===
+  // A. State snapshot
+  HOLM_SOLO_CHUCKY_STATE_SNAPSHOT: 'soloState',
+
+  // B. Result / announcement / win gates
+  HOLM_RESULT_GATE_EVAL: 'announcement',
+  HOLM_ANNOUNCEMENT_REQUEST: 'announcement',
+  HOLM_ANNOUNCEMENT_START: 'announcement',
+  HOLM_ANNOUNCEMENT_RENDER: 'announcement',
+  HOLM_RESULT_BEFORE_VISUAL_CHUCKY_REVEAL_COMPLETE: 'violation',
+  ANNOUNCEMENT_USED_SERVER_REVEAL_NOT_VISUAL: 'violation',
+  HOLM_WIN_SEQUENCE_REQUEST: 'win',
+  HOLM_WIN_SEQUENCE_START: 'win',
+  HOLM_PLAYER_TO_POT_START: 'win',
+  HOLM_NEXT_HAND_START: 'win',
+
+  // C. Server vs visual reveal
+  CHUCKY_SERVER_REVEAL_READ: 'source',
+  CHUCKY_SERVER_REVEAL_CHANGED: 'source',
+  CHUCKY_VISUAL_REVEAL_READ: 'timer',
+  CHUCKY_VISUAL_REVEAL_CHANGED: 'timer',
+  SERVER_REVEAL_ADVANCED_BEFORE_VISUAL: 'violation',
+
+  // E. Per-card face
+  CHUCKY_CARD_RENDER_EVAL: 'visual',
+  CHUCKY_CARD_RENDERED_FACEUP: 'visual',
+  CHUCKY_CARD_RENDERED_FACEDOWN: 'visual',
+  CHUCKY_CARD_REHIDDEN_AFTER_REVEAL: 'violation',
+  CHUCKY_CARD_FACE_PROP_RESET_DURING_WIN: 'violation',
+  CHUCKY_CARD_RENDER_USES_SERVER_INSTEAD_OF_VISUAL: 'violation',
+
+  // F. Stage render input
+  CHUCKY_STAGE_RENDER_INPUT: 'stage',
+  CHUCKY_STAGE_REVEAL_COUNT_REGRESSED: 'violation',
+  CHUCKY_STAGE_REVEAL_COUNT_DEFAULTED_TO_ZERO: 'violation',
+
+  // G. Phase / status / lifecycle
+  HOLM_PHASE_CHANGED: 'render',
+  HOLM_ROUND_STATUS_CHANGED: 'render',
+  HOLM_LIFECYCLE_OWNER_CHANGED: 'render',
+  HOLM_PHASE_ADVANCED_BEFORE_VISUAL_REVEAL_COMPLETE: 'violation',
 };
 
 function routeEvent(name: string): ChuckyForensicCategory {
