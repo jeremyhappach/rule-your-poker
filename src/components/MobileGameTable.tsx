@@ -8939,10 +8939,15 @@ export const MobileGameTable = ({
             cachedChuckyOriginHandContextId === handContextId;
           const stickyChuckyOriginHandContextId =
             chuckyStageStickyRef.current?.handContextId ?? null;
+          // POST-ANNOUNCEMENT PERSISTENCE: sticky stays eligible whenever the
+          // current handContextId matches its origin OR handContextId is
+          // transiently null (announcement clear / win transition). The
+          // sticky is only forcibly cleared above when a DIFFERENT non-null
+          // handContextId arrives (next-hand PRE_DEAL boundary).
           const stickyChuckySourceEligible =
             !!chuckyStageStickyRef.current &&
-            !!handContextId &&
-            stickyChuckyOriginHandContextId === handContextId;
+            !!stickyChuckyOriginHandContextId &&
+            (handContextId == null || stickyChuckyOriginHandContextId === handContextId);
           if (
             (cachedChuckyCards && cachedChuckyCards.length > 0 && !cachedChuckySourceEligible) ||
             (chuckyStageStickyRef.current && !stickyChuckySourceEligible)
