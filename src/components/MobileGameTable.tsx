@@ -5125,6 +5125,37 @@ export const MobileGameTable = ({
           return;
         }
 
+        // Holm v3 narrow fix: forbid shrinking an established Chucky cache
+        // while the normal reveal is locked. A partial incoming payload of
+        // fewer cards than the established cached set would otherwise let
+        // the stepper terminate early (idx === incomingLen) and never arm
+        // the final card. Reject the write and preserve the larger array.
+        const existingCached = cachedChuckyCardsLiveRef.current;
+        const existingLen = existingCached?.length ?? 0;
+        if (
+          chuckyNormalRevealBranchLockedRef.current &&
+          existingLen > 0 &&
+          chuckyCards.length < existingLen
+        ) {
+          const existingHashLocal = existingCached
+            ? existingCached.map((c: any) => `${c?.rank}${c?.suit}`).join('|')
+            : '';
+          recordHolmTimelineEvent('HOLM_CHUCKY_CACHE_SHRINK_REJECTED', {
+            writer: 'cacheEffect.cachePath',
+            handContextId: handContextId ?? null,
+            existingLength: existingLen,
+            incomingLength: chuckyCards.length,
+            existingHash: existingHashLocal,
+            incomingHash,
+            visualRevealCount,
+            requiredRevealCount,
+          }, handContextId ?? null);
+          console.warn('[MOBILE_CHUCKY] Rejected cache shrink during locked reveal:', {
+            existingLen, incomingLen: chuckyCards.length,
+          });
+          return;
+        }
+
         recordHolmTimelineEvent('CHUCKY_CACHE_SET_CARDS', {
           renderSeq: chuckyRenderSeqRef.current,
           instanceId: chuckyInstanceIdRef.current,
@@ -5144,6 +5175,7 @@ export const MobileGameTable = ({
           chuckyTargetRevealedRef.current = newTarget;
         }
         cachedChuckyHandContextRef.current = handContextId ?? null;
+
       } else {
         console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
           cached: cachedChuckyHandContextRef.current,
