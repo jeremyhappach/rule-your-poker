@@ -415,14 +415,16 @@ export function endHolmTimerSegment(instanceId: number, segmentId: string | null
 // ─── Publication ──────────────────────────────────────────────────────────
 
 function publish() {
+  refreshOwnersSnap();
+  refreshSegmentsSnap();
   if (typeof window === 'undefined') return;
   const w = window as unknown as { __holmSelfTimerForensics?: Record<string, unknown> };
   if (!w.__holmSelfTimerForensics) w.__holmSelfTimerForensics = {};
   const d = w.__holmSelfTimerForensics;
   d.events = events;
   d.violations = violations;
-  d.owners = Array.from(owners.values());
-  d.segments = Array.from(segments.values());
+  d.owners = _ownersSnap;
+  d.segments = _segmentsSnap;
 }
 
 // ─── Text export ──────────────────────────────────────────────────────────
