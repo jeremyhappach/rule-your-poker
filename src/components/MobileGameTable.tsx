@@ -1041,6 +1041,17 @@ export const MobileGameTable = ({
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
+  // VISUAL-REVEAL GATE for Chucky:
+  // The server fires `holmWinPotTriggerId` as soon as it considers the
+  // hand resolved, but that can land WHILE the local Chucky reveal stepper
+  // is still flipping cards. Per HOLM render-state forensics, this caused
+  // WIN_SEQUENCE_BRANCH to render Chucky cards face-down at
+  // visualRevealCount=0/4. The derived `holmWinPotTriggerIdGated` (assigned
+  // below once cachedChucky* state is in scope) is null until the visual
+  // stepper has flipped every Chucky card. UI consumers that drive
+  // announcement / win presentation must read THIS, not the raw prop, so
+  // win eligibility is driven exclusively by VISUAL reveal completion.
+  let holmWinPotTriggerIdGated: string | null | undefined = holmWinPotTriggerId;
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
     gameId: gameId ?? null,
@@ -2457,6 +2468,24 @@ export const MobileGameTable = ({
   // Prime the configured reveal-cadence fetch as early as possible so the
   // first stepper arm reads from game_defaults (not the in-flight fallback).
   useEffect(() => { ensureChuckyConfigLoaded(); }, []);
+  // Apply the VISUAL-REVEAL GATE for Chucky win/announcement (see top of
+  // component for rationale). After this point in render flow,
+  // `holmWinPotTriggerId` is null until the visual stepper has reached
+  // the full Chucky card count. Consumers below this line (win pot
+  // animation render, winnerPlayerId derivation, winnerCards derivation,
+  // dim/branch classification) all observe the gated value.
+  {
+    const _chuckyVisualRevealPendingForWinGate =
+      gameType === 'holm-game' &&
+      !!cachedChuckyActive &&
+      !!cachedChuckyCards &&
+      cachedChuckyCards.length > 0 &&
+      cachedChuckyCardsRevealed < cachedChuckyCards.length;
+    holmWinPotTriggerIdGated =
+      _chuckyVisualRevealPendingForWinGate && holmWinPotTriggerId
+        ? null
+        : holmWinPotTriggerId;
+  }
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
@@ -4266,7 +4295,7 @@ export const MobileGameTable = ({
   // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerPlayerId = useMemo(() => {
     // Need announcement OR active holm win animation to determine winner
-    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerId;
+    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!shouldDeriveWinner || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
@@ -4290,7 +4319,7 @@ export const MobileGameTable = ({
       }
     }
     return null;
-  }, [isShowingAnnouncement, holmWinPotTriggerId, lastRoundResult, players]);
+  }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
 
   // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
   // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
@@ -4577,13 +4606,13 @@ export const MobileGameTable = ({
             ? winnerPlayerId === currentPlayer.id
             : currentPlayer.current_decision === 'stay')) ||
       // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
-      (holmWinPotTriggerId && winnerPlayerId === currentPlayer.id)
+      (holmWinPotTriggerIdGated && winnerPlayerId === currentPlayer.id)
     );
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerCards = useMemo(() => {
-    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerId;
+    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!winnerPlayerId || !shouldDeriveCards) return [];
     if (winnerPlayerId === currentPlayer?.id) {
       return currentPlayerCards;
@@ -4591,7 +4620,7 @@ export const MobileGameTable = ({
     // Find winner's cards from playerCards
     const winnerCardData = playerCards.find(pc => pc.player_id === winnerPlayerId);
     return winnerCardData?.cards || [];
-  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerId, currentPlayer?.id, currentPlayerCards, playerCards]);
+  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerIdGated, currentPlayer?.id, currentPlayerCards, playerCards]);
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
@@ -6091,7 +6120,7 @@ export const MobileGameTable = ({
     const isInAnnouncementShowdown =
       isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
     const isShowdown = hasExposedCards || isInAnnouncementShowdown;
-    const isHolmWinWinner = !!holmWinPotTriggerId && winnerPlayerId === player.id;
+    const isHolmWinWinner = !!holmWinPotTriggerIdGated && winnerPlayerId === player.id;
     const soloLockedId = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayerForChip =
       isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
@@ -7463,9 +7492,9 @@ export const MobileGameTable = ({
         )}
         
         {/* Holm Win Pot Animation (player beats Chucky - dramatic 5 second animation) */}
-        {holmWinPotTriggerId && (
+        {holmWinPotTriggerIdGated && (
           <HolmWinPotAnimation
-            triggerId={holmWinPotTriggerId}
+            triggerId={holmWinPotTriggerIdGated}
             amount={holmWinPotAmount}
             winnerPosition={holmWinWinnerPosition}
             winnerPositions={holmWinWinnerPositions}
@@ -8812,7 +8841,7 @@ export const MobileGameTable = ({
                                 roundStatus: roundStatus ?? null,
                                 phase: cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
                                 isShowingAnnouncement: !!isShowingAnnouncement,
-                                holmWinPotTriggerActive: !!holmWinPotTriggerId,
+                                holmWinPotTriggerActive: !!holmWinPotTriggerIdGated,
                                 resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
                                 awaitingNextRound: !!awaitingNextRound,
                                 lastRoundResultPresent: !!lastRoundResult,
@@ -8871,7 +8900,7 @@ export const MobileGameTable = ({
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
         {/* SKIP if cards are already tabled via solo vs Chucky - they're already in position */}
-        {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
+        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div 
               className="flex"
