@@ -55,17 +55,17 @@ const CARD_W = 44;
 const CARD_H = 66; // 2:3 aspect, matches CribbagePlayingCard md tokens proportionally
 
 /**
- * Inspect Mode is ON by default while we are actively diagnosing deal
- * behavior. Hardcoded 800ms spacing / 600ms duration gives a clean,
- * one-card-at-a-time visual that makes the dealer→destination flight
- * obvious. Set `window.__CARD_TRANSPORT_INSPECT_MODE = false` to fall
- * back to Geometry Lab Deal Timing values.
+ * Inspect Mode is OFF. Deal timing comes from Geometry Lab Deal Timing
+ * values exclusively. The opt-in escape hatch
+ * `window.__CARD_TRANSPORT_INSPECT_MODE = true` is preserved for
+ * one-off manual diagnosis but is no longer the default.
  */
 export function isCardTransportInspectMode(): boolean {
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   const w = window as unknown as { __CARD_TRANSPORT_INSPECT_MODE?: boolean };
-  return w.__CARD_TRANSPORT_INSPECT_MODE !== false;
+  return w.__CARD_TRANSPORT_INSPECT_MODE === true;
 }
+
 const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
 const NORMAL_EASING = 'ease-out';
 const launchProofByHand = new Map<string, Map<number, { start: number; delay: number }>>();
