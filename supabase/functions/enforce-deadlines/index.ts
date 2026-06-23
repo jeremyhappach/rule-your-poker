@@ -542,13 +542,19 @@ serve(async (req) => {
           const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
           const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
 
+          // CANONICAL ACTIONABILITY COMMIT (Holm recovery turn-advance).
+          // Atomically stamp status='betting' + new actor + fresh full
+          // deadline together. Guard on prior status='betting' AND prior
+          // current_turn_position to prevent split writes.
           const { data: turnAdvanceResult } = await supabase
             .from('rounds')
             .update({
+              status: 'betting',
               current_turn_position: nextPlayer.position,
               decision_deadline: newDeadline,
             })
             .eq('id', currentRound.id)
+            .eq('status', 'betting')
             .eq('current_turn_position', currentTurnPos)
             .select();
 
@@ -557,6 +563,7 @@ serve(async (req) => {
           } else {
             actionsTaken.push('Holm recovery: turn advance skipped - another client already advanced');
           }
+
 
           return new Response(JSON.stringify({
             success: true,
@@ -581,17 +588,30 @@ serve(async (req) => {
         const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
 
         if (!currentRound.decision_deadline) {
+          // CANONICAL ACTIONABILITY COMMIT (heal missing deadline).
+          // The round is asserted to be in status='betting' with a
+          // current_turn_position set by the surrounding flow; the
+          // missing piece is the deadline. Re-stamp all three together
+          // under atomic guards so we only heal when the actionable
+          // shape is fully present.
           const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
           const { data: healRes } = await supabase
             .from('rounds')
-            .update({ decision_deadline: healedDeadline })
+            .update({
+              status: 'betting',
+              current_turn_position: currentTurnPos,
+              decision_deadline: healedDeadline,
+            })
             .eq('id', currentRound.id)
+            .eq('status', 'betting')
+            .eq('current_turn_position', currentTurnPos)
             .is('decision_deadline', null)
             .select();
 
           if (healRes && healRes.length > 0) {
             actionsTaken.push(`Healed missing decision_deadline for position ${currentTurnPos}`);
           }
+
 
           return new Response(JSON.stringify({
             success: true,
@@ -738,13 +758,19 @@ serve(async (req) => {
 
           const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
 
+          // CANONICAL ACTIONABILITY COMMIT (Holm post-timeout turn-advance).
+          // Atomically stamp status='betting' + new actor + fresh full
+          // deadline together. Guard on prior status='betting' AND prior
+          // current_turn_position to prevent split writes.
           const { data: turnAdvanceResult } = await supabase
             .from('rounds')
             .update({
+              status: 'betting',
               current_turn_position: nextPlayer.position,
               decision_deadline: newDeadline,
             })
             .eq('id', currentRound.id)
+            .eq('status', 'betting')
             .eq('current_turn_position', currentTurnPos)
             .select();
 
@@ -753,6 +779,7 @@ serve(async (req) => {
           } else {
             actionsTaken.push('Turn advance skipped - another client already advanced');
           }
+
         } else {
           const { data: lockResult } = await supabase
             .from('games')

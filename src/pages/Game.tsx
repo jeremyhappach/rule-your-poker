@@ -1891,15 +1891,57 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId);
       
       if (currentRoundData?.id) {
-        const { error: roundError } = await supabase
+        // CANONICAL ACTIONABILITY COMMIT (resume-from-pause).
+        // Per the Holm timer contract: every actionability commit must
+        // atomically write { status='betting', current_turn_position,
+        // decision_deadline=now()+fullTurnDurationSeconds }. Resume is
+        // one such commit (the actor becomes actionable again with a
+        // fresh full segment). Re-stamp all three together — and only
+        // when the round is actually in an actionable shape.
+        //
+        // If the round is NOT in an actionable shape (showdown,
+        // processing, completed, no current turn), do NOT seed a new
+        // deadline — the non-actionable state is preserved by writing
+        // nothing here, and the client gate keeps the countdown off.
+        const { data: currentRoundFresh } = await supabase
           .from('rounds')
-          .update({ decision_deadline: newDeadline })
-          .eq('id', currentRoundData.id);
-        
-        if (roundError) {
-          console.error('[PAUSE] Error updating round deadline:', roundError);
+          .select('status, current_turn_position')
+          .eq('id', currentRoundData.id)
+          .maybeSingle();
+
+        const isActionable =
+          (currentRoundFresh as any)?.status === 'betting' &&
+          (currentRoundFresh as any)?.current_turn_position != null;
+
+        if (isActionable) {
+          const actor = (currentRoundFresh as any).current_turn_position as number;
+          const { error: roundError } = await supabase
+            .from('rounds')
+            .update({
+              status: 'betting',
+              current_turn_position: actor,
+              decision_deadline: newDeadline,
+            })
+            .eq('id', currentRoundData.id)
+            // Atomic guards: only commit if both fields still match the
+            // values we just read. Prevents a writer in another tab from
+            // racing us with a status flip or turn handoff between read
+            // and write.
+            .eq('status', 'betting')
+            .eq('current_turn_position', actor);
+
+          if (roundError) {
+            console.error('[PAUSE] Error updating round deadline (atomic resume):', roundError);
+          }
+        } else {
+          console.log('[PAUSE] Resume: round not actionable, skipping deadline seed', {
+            roundId: currentRoundData.id,
+            status: (currentRoundFresh as any)?.status,
+            current_turn_position: (currentRoundFresh as any)?.current_turn_position,
+          });
         }
       }
+
       
       if (gameError) {
         console.error('[PAUSE] Error resuming:', gameError);
