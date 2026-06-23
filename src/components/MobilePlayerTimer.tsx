@@ -399,12 +399,14 @@ export const MobilePlayerTimer = ({
 
   return (
     <div
+      ref={wrapperRef}
       data-mobile-player-timer=""
       data-forensics-component="MobilePlayerTimer"
       data-forensics-timer-owner-id={timerOwnerId}
       data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
       data-forensics-timer-running={effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0 ? '1' : '0'}
       data-forensics-timer-time-left={effectiveTimeLeft === null ? '' : String(effectiveTimeLeft)}
+      data-forensics-instance={instanceIdRef.current}
       className="relative inline-flex items-center justify-center"
     >
       {/* Content defines the cell's natural geometric center. */}
