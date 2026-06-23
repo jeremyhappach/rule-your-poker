@@ -521,6 +521,24 @@ export function HolmDealDbgPanel() {
         >
           TXT BUCKS FORENSICS
         </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildHolmSelfTimerForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmSelfTimerForensicsExport?: string }).__holmSelfTimerForensicsExport = text;
+            } catch { /* noop */ }
+          }}
+          title="Copy Holm SELF-TIMER forensics (every owner / segment / prepaint / rAF1 / rAF2 / 250ms / violation)"
+          style={{ background: '#1e5f3a', color: '#fff', border: '1px solid #4ab87b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY SELF-TIMER FORENSICS
+        </button>
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
