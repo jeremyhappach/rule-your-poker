@@ -268,6 +268,7 @@ export function HolmDealOrchestrator({
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated,
+    buckGated,
   ]);
 
   // ── 2. COMMUNITY WAVE (4 cards) ───────────────────────────────────
