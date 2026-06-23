@@ -1644,11 +1644,16 @@ export const MobileGameTable = ({
   // buckPosition existed AND differed AND the new-hand buckPosition === self.
   // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
   const [activeBuckPresentationId, setActiveBuckPresentationId] = useState<string | null>(null);
+  // Latched server-authored buck-transfer presentation waiting for the
+  // prior-hand teardown boundary before promoting to active (showing
+  // BucksOnYou). Cleared once promoted or once a newer event supersedes.
+  const [pendingBuckPresentation, setPendingBuckPresentation] =
+    useState<{ id: string; hci: string | null } | null>(null);
   // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
   // carry stable IDs; we render exactly once per ID for the receiving viewer.
   const buckOverlayFiredEventIdRef = useRef<string | null>(null);
-  // The active gated handContextId (set when we arm the local presentation gate
-  // for the receiving viewer; released on overlay completion).
+  // The active gated handContextId — retained as no-op for legacy gate
+  // release on overlay completion. Deal is NOT blocked by buck overlay.
   const buckOverlayGatedHciRef = useRef<string | null>(null);
   // Retained for legacy forensic shape; no longer used for show eligibility.
   const priorHandBuckRef = useRef<{ hci: string; buckPosition: number } | null>(null);
