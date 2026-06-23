@@ -105,17 +105,24 @@ export const MobilePlayerTimer = ({
 
   const progress = useMemo(() => {
     if (!effectiveIsActive) return 0;
+    // First committed frame of a new active segment ALWAYS renders at
+    // 100%. We detect the activation frame at render time via
+    // `wasActiveRef` (still false until the post-paint effect commits
+    // it), so no stale seed, late deadline, or partial prop value can
+    // paint below full for even one frame. Subsequent ticks may only
+    // descend from this baseline.
+    const isActivationFrame = !wasActiveRef.current;
+    if (isActivationFrame) {
+      displayProgressRef.current = 1;
+      return 1;
+    }
     if (effectiveTimeLeft === null || maxTime <= 0) {
-      // Hold the last displayed value (initialized to FULL at activation).
       return displayProgressRef.current;
     }
     const raw = Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
-    // Clamp to non-increasing within the current activation segment.
     const next = Math.min(displayProgressRef.current, raw);
     displayProgressRef.current = next;
     return next;
-    // activationSeqRef bump invalidates the memo whenever a fresh
-    // activation re-snaps `displayProgressRef` to 1.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTimeLeft, maxTime, effectiveIsActive, activationSeqRef.current]);
   
@@ -197,37 +204,50 @@ export const MobilePlayerTimer = ({
     return <>{children}</>;
   }
 
+  // Ring is mounted as an absolute overlay concentric with the
+  // children box. The children (chip disc) define the cell's natural
+  // size — the ring's center inherits the children's geometric center
+  // exactly via left-1/2 / top-1/2 / -translate-1/2. The ring may
+  // extend beyond the disc via its explicit `ringOuter` dimension; its
+  // center is mathematically identical to the disc center at every
+  // responsive size.
+  const ringOuter = size + 8;
+
   return (
-    <div 
+    <div
       data-mobile-player-timer=""
       data-forensics-component="MobilePlayerTimer"
       data-forensics-timer-owner-id={timerOwnerId}
       data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
       data-forensics-timer-running={effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0 ? '1' : '0'}
       data-forensics-timer-time-left={effectiveTimeLeft === null ? '' : String(effectiveTimeLeft)}
-      className="relative inline-flex items-center justify-center" 
-      style={{ width: size + 8, height: size + 8 }}
+      className="relative inline-flex items-center justify-center"
     >
-      {/* Flashing glow ring when active */}
+      {/* Content defines the cell's natural geometric center. */}
+      <div className="relative z-10 inline-flex items-center justify-center">
+        {children}
+      </div>
+
+      {/* Flashing glow ring — concentric overlay. */}
       {effectiveIsActive && effectiveTimeLeft !== null && (
-        <div 
-          className={`absolute inset-0 rounded-full border-3 ${isUrgent ? 'animate-pulse' : isWarning ? 'animate-pulse' : ''}`}
-          style={{ 
+        <div
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-3 pointer-events-none ${isUrgent ? 'animate-pulse' : isWarning ? 'animate-pulse' : ''}`}
+          style={{
+            width: ringOuter,
+            height: ringOuter,
             ...getGlowStyle(),
             borderWidth: isUrgent ? '4px' : '3px',
-            animation: isNormal ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+            animation: isNormal ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined,
           }}
         />
       )}
-      
-      {/* SVG Timer Ring */}
+
+      {/* SVG Timer Ring — concentric overlay. */}
       <svg
-        className="absolute -rotate-90"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none"
         width={size}
         height={size}
-        style={{ top: 4, left: 4 }}
       >
-        {/* Background circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -236,10 +256,6 @@ export const MobilePlayerTimer = ({
           stroke="hsl(var(--muted) / 0.3)"
           strokeWidth={strokeWidth}
         />
-        {/* Progress circle — paints immediately on activation snapped to
-            FULL (via displayProgressRef = 1). Subsequent ticks clamp to
-            non-increasing so a stale seed or late deadline rebase can
-            never produce a visible upward jump. */}
         {effectiveIsActive && (
           <circle
             cx={size / 2}
@@ -253,22 +269,17 @@ export const MobilePlayerTimer = ({
             strokeDashoffset={strokeDashoffset}
             className={suppressTransition ? "" : "transition-all duration-1000 ease-linear"}
             style={{
-              filter: isUrgent 
-                ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))' 
-                : isWarning 
-                  ? 'drop-shadow(0 0 6px hsl(45, 93%, 47%))' 
-                  : isNormal 
-                    ? 'drop-shadow(0 0 4px hsl(142, 76%, 36%))' 
-                    : undefined
+              filter: isUrgent
+                ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))'
+                : isWarning
+                  ? 'drop-shadow(0 0 6px hsl(45, 93%, 47%))'
+                  : isNormal
+                    ? 'drop-shadow(0 0 4px hsl(142, 76%, 36%))'
+                    : undefined,
             }}
           />
         )}
       </svg>
-      
-      {/* Content inside the ring */}
-      <div className="relative z-10">
-        {children}
-      </div>
     </div>
   );
 };
