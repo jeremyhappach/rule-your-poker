@@ -6407,6 +6407,7 @@ export const MobileGameTable = ({
                 seatPosition={player.position}
                 gameId={gameId}
                 gameType={gameType}
+                deadlineMs={decisionDeadlineMs}
               >
                 {chipElement}
               </ActivePlayerHUD>
@@ -6512,6 +6513,7 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
+        deadlineMs={decisionDeadlineMs}
       />
     );
 
@@ -7072,6 +7074,7 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
+        deadlineMs={decisionDeadlineMs}
       />
     );
 
@@ -7236,6 +7239,7 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
+        deadlineMs={decisionDeadlineMs}
       />
     );
 
