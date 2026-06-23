@@ -41,8 +41,8 @@ export function HolmBucksOverlayDbgPill() {
   if (!enabled) return null;
 
   const snap = getBucksForensics();
-  const eventCount = snap.events.length;
-  const violationCount = snap.violations.length;
+  const eventCount = snap.totalRecords ?? snap.records.length;
+  const violationCount = snap.totalViolations ?? snap.violations.length;
 
   return (
     <div
