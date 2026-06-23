@@ -8815,6 +8815,40 @@ export const MobileGameTable = ({
           const lonePlayerVisible =
             hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
+          // ── Forensics: SELF_HAND / TABLED_SELF routing (read-only) ──
+          if (gameType === 'holm-game') {
+            try {
+              instrumentHolmSelfStageRender({
+                handContextId: handContextId ?? null,
+                phase: String(holmDealPhaseForHand ?? 'unknown'),
+                roundStatus: (roundStatus as string | null) ?? null,
+                lonePlayerVisible,
+                hasLiveLonePlayer,
+                activeSnapSource: tabledSelfStickyRef.current
+                  ? 'sticky'
+                  : (lonePlayerStageSnapshotRef.current ? 'stage' : 'none'),
+                activeSnapOriginHandContextId: activeSnap?.handContextId ?? null,
+                tabledSelfStickyOriginHandContextId:
+                  tabledSelfStickyRef.current?.handContextId ?? null,
+                lonePlayerStageSnapshotOriginHandContextId:
+                  lonePlayerStageSnapshotRef.current?.handContextId ?? null,
+                selfHandAnchorPresent: !lonePlayerVisible && !!currentPlayer,
+                tabledSelfStagePresent: lonePlayerVisible && !!loneSoloPlayer,
+                cachedChuckyRevealed: cachedChuckyCardsRevealed,
+                requiredRevealCount,
+                visualRevealCount,
+                chuckyVisualRevealComplete,
+                rawWinTriggerId: holmWinPotTriggerId ?? null,
+                gatedWinTriggerId: holmWinPotTriggerIdGated ?? null,
+                rawLossTriggerId: chuckyLossTriggerId ?? null,
+                gatedLossTriggerId: chuckyLossTriggerIdGated ?? null,
+                callerFile: 'src/components/MobileGameTable.tsx',
+                callerFn: 'gameplayRenderIIFE.selfStage',
+              });
+            } catch { /* noop */ }
+          }
+
+
           // ── CHUCKY_TABLED sticky predicate ────────────────────────────
           if (
             chuckyStageStickyRef.current &&
