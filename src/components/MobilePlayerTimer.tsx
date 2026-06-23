@@ -105,17 +105,24 @@ export const MobilePlayerTimer = ({
 
   const progress = useMemo(() => {
     if (!effectiveIsActive) return 0;
+    // First committed frame of a new active segment ALWAYS renders at
+    // 100%. We detect the activation frame at render time via
+    // `wasActiveRef` (still false until the post-paint effect commits
+    // it), so no stale seed, late deadline, or partial prop value can
+    // paint below full for even one frame. Subsequent ticks may only
+    // descend from this baseline.
+    const isActivationFrame = !wasActiveRef.current;
+    if (isActivationFrame) {
+      displayProgressRef.current = 1;
+      return 1;
+    }
     if (effectiveTimeLeft === null || maxTime <= 0) {
-      // Hold the last displayed value (initialized to FULL at activation).
       return displayProgressRef.current;
     }
     const raw = Math.max(0, Math.min(1, effectiveTimeLeft / maxTime));
-    // Clamp to non-increasing within the current activation segment.
     const next = Math.min(displayProgressRef.current, raw);
     displayProgressRef.current = next;
     return next;
-    // activationSeqRef bump invalidates the memo whenever a fresh
-    // activation re-snaps `displayProgressRef` to 1.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTimeLeft, maxTime, effectiveIsActive, activationSeqRef.current]);
   
