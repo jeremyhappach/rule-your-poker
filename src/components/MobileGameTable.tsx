@@ -7799,7 +7799,7 @@ export const MobileGameTable = ({
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
         {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
         {(() => {
-          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerId || holmWinPotHiddenUntilReset ||
+          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
 
           // IMPORTANT: During the initial ante animation we must never briefly show a stale pre-ante pot
