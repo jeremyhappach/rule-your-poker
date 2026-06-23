@@ -16,6 +16,9 @@
  *   window.__holmSelfTimerForensics.segments
  */
 
+import { recordHolmFull as _recordHolmFull } from './holmFullForensics';
+
+
 export type HolmTimerEventName =
   | 'HOLM_TIMER_SEGMENT_ACTIVATED'
   | 'HOLM_TIMER_RENDER_COMMIT_PREPAINT'
@@ -182,6 +185,25 @@ export function recordHolmTimerEvent(
     payload,
   });
   while (events.length > RING) events.shift();
+  try {
+    // Mirror into unified Holm full forensics buffer (window.__holmFullForensics).
+    // Imported lazily to avoid any module-load ordering risk.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // using static import
+    _recordHolmFull({
+      category: 'TIMER_EVENT',
+      event,
+      source: 'holmSelfTimerForensics.recordHolmTimerEvent',
+      sourceCategory: event === 'HOLM_TIMER_FIRST_RAF' || event === 'HOLM_TIMER_SECOND_RAF' ? 'RAF'
+        : event === 'HOLM_TIMER_RENDER_COMMIT_PREPAINT' ? 'LAYOUT_EFFECT'
+        : event === 'HOLM_TIMER_WRITE' ? 'REF_WRITE'
+        : event === 'HOLM_TIMER_250MS' ? 'TIMEOUT'
+        : 'EFFECT',
+      instanceId,
+      segmentId,
+      payload: { segmentKind, ...payload },
+    });
+  } catch { /* never throw from instrumentation */ }
   publish();
   emit();
 }
@@ -204,9 +226,23 @@ export function recordHolmTimerViolation(
   while (violations.length > RING) violations.shift();
   const s = segmentId ? segments.get(segmentId) : null;
   if (s && !s.violations.includes(type)) s.violations.push(type);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // using static import
+    _recordHolmFull({
+      category: 'TIMER_VIOLATION',
+      event: type,
+      source: 'holmSelfTimerForensics.recordHolmTimerViolation',
+      sourceCategory: 'UNKNOWN',
+      instanceId,
+      segmentId,
+      payload,
+    });
+  } catch { /* noop */ }
   publish();
   emit();
 }
+
 
 // ─── Writer attribution ────────────────────────────────────────────────
 // Per-segment latches so we can detect every same-segment mutation.

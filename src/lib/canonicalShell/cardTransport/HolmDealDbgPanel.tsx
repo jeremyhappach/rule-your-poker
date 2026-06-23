@@ -532,6 +532,27 @@ export function HolmDealDbgPanel() {
                 title="Copy HAND-BOUNDARY forensics"
                 style={btn('#1e1e5f', '#4a4ab8')}
               >HBD</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  // eslint-disable-next-line @typescript-eslint/no-var-requires
+                  const mod = await import('./holmFullForensics');
+                  const text = mod.buildHolmFullForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try {
+                    (window as unknown as { __holmFullForensicsExport?: unknown }).__holmFullForensicsExport = {
+                      text,
+                      records: mod.getHolmFullRecords(),
+                      identity: mod.getHolmFullIdentity(),
+                      count: mod.getHolmFullCount(),
+                      dropped: mod.getHolmFullDropped(),
+                    };
+                  } catch { /* noop */ }
+                }}
+                title="Copy UNIFIED HOLM FULL forensics (10k records)"
+                style={btn('#5f5f1e', '#b8b84a')}
+              >FULL</button>
+
             </>
           );
         })()}

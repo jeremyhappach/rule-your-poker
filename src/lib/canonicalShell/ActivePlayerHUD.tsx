@@ -24,6 +24,7 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
+import { recordHolmFull, setHolmFullIdentity } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
@@ -150,6 +151,38 @@ export function ActivePlayerHUD({
     });
   }, [timerOwnerId, gameType, seatPosition, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, effectiveIsActive, effectiveTimeLeft, isActive, timeLeft, gameId]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
+
+  // ── HOLM FULL FORENSICS: parent-derivation per render ─────────────
+  // Records the exact authoritative inputs and derived MobilePlayerTimer
+  // props every commit. Pure instrumentation, Holm only, no behavior.
+  if (isHolm) {
+    try {
+      setHolmFullIdentity({
+        gameId: gameId ?? null,
+        gameType: gameType ?? null,
+        handContextId: deal?.handContextId ?? null,
+        activePlayerId: activePlayerId ?? null,
+      });
+      recordHolmFull({
+        category: 'TIMER_PROP_DERIVATION',
+        event: 'ACTIVE_PLAYER_HUD_RENDER',
+        source: 'ActivePlayerHUD',
+        sourceCategory: 'PARENT_DERIVATION',
+        callsite: 'src/lib/canonicalShell/ActivePlayerHUD.tsx',
+        commitId: renderCountRef.current,
+        payload: {
+          propsIn: { timeLeft, maxTime, isActive, size, seatPosition, activePlayerId },
+          dealRuntime: deal ? { phase: deal.phase, dealSettled: deal.dealSettled, readyReleased: deal.readyReleased, handContextId: deal.handContextId, gameType: deal.gameType } : null,
+          isHolmBypass: isHolm,
+          effectiveIsActive,
+          effectiveTimeLeft,
+          eligibility,
+          derivationFormula: 'Holm: effectiveIsActive=isActive; effectiveTimeLeft = isActive && timeLeft>0 ? timeLeft : null',
+        },
+      });
+    } catch { /* never throw from instrumentation */ }
+  }
+
 
   return (
     <MobilePlayerTimer
