@@ -2670,7 +2670,7 @@ export async function proceedToNextHolmRound(gameId: string) {
   console.log('[HOLM NEXT] Marking existing rounds as completed for dealer game:', currentDealerGameId?.slice(0, 8));
   const roundCleanupQuery = supabase
     .from('rounds')
-    .update({ status: 'completed' })
+    .update({ status: 'completed', current_turn_position: null, decision_deadline: null })
     .eq('game_id', gameId)
     .neq('status', 'completed');
   if (currentDealerGameId) {
