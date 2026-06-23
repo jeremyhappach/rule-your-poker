@@ -22,6 +22,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { recordHolmFull, getHolmFullIdentity } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+
 
 type Card = { rank: string; suit: string };
 
