@@ -8655,11 +8655,35 @@ export const MobileGameTable = ({
             }
           }
 
-          const activeSnap =
+          // ── TABLED_SELF sticky predicate ──────────────────────────────
+          // Release the sticky snapshot ONLY when a new non-null
+          // handContextId proves we are in NEXT_HAND PRE_DEAL.
+          if (
+            tabledSelfStickyRef.current &&
             handContextId &&
-            lonePlayerStageSnapshotRef.current?.handContextId === handContextId
+            tabledSelfStickyRef.current.handContextId !== handContextId
+          ) {
+            tabledSelfStickyRef.current = null;
+          }
+          // Capture / refresh the sticky snapshot whenever the live
+          // signal is good (mirrors lonePlayerStageSnapshotRef updates).
+          if (hasLiveLonePlayer && handContextId) {
+            tabledSelfStickyRef.current = {
+              handContextId,
+              playerId: liveLoneSoloPlayer!.id,
+              cards: liveLoneSoloCards,
+            };
+          }
+
+          const activeSnap =
+            // Sticky snapshot survives transient handContextId nulls and
+            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
+            tabledSelfStickyRef.current ??
+            (lonePlayerStageSnapshotRef.current?.handContextId &&
+            (!handContextId ||
+              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
               ? lonePlayerStageSnapshotRef.current
-              : null;
+              : null);
 
           const loneSoloPlayer =
             liveLoneSoloPlayer ??
@@ -8673,8 +8697,29 @@ export const MobileGameTable = ({
           const lonePlayerVisible =
             hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
+          // ── CHUCKY_TABLED sticky predicate ────────────────────────────
+          if (
+            chuckyStageStickyRef.current &&
+            handContextId &&
+            chuckyStageStickyRef.current.handContextId !== handContextId
+          ) {
+            chuckyStageStickyRef.current = null;
+          }
+          if (
+            !!cachedChuckyActive &&
+            !!cachedChuckyCards &&
+            cachedChuckyCards.length > 0 &&
+            handContextId
+          ) {
+            chuckyStageStickyRef.current = { handContextId, cards: cachedChuckyCards };
+          }
+          const chuckyCardsForRender: CardType[] | null =
+            cachedChuckyCards && cachedChuckyCards.length > 0
+              ? cachedChuckyCards
+              : (chuckyStageStickyRef.current?.cards ?? null);
           const chuckyVisible =
-            !!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0;
+            (!!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0) ||
+            (!!chuckyStageStickyRef.current && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
