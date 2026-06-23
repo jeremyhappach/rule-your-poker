@@ -1753,10 +1753,12 @@ async function handleChuckyShowdown(
     );
     console.log('[HOLM SHOWDOWN] Recorded pot match chip change in game_results:', potMatchChipChanges);
 
-    // Use different message for tie vs actual loss
+    // Always include `. -$amount` suffix so the frontend player→pot
+    // transport producer (Game.tsx singleLossMatch regex) fires for both
+    // tie-and-lose and clean-loss branches.
     const resultMessage = isTie 
-      ? `Ya tie but ya lose!`
-      : `Chucky beat ${playerUsername} with ${chuckyHandDesc}`;
+      ? `Ya tie but ya lose! Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`
+      : `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`;
 
     const { error: gameUpdateError } = await supabase
       .from('games')
@@ -2378,9 +2380,10 @@ async function handleMultiPlayerShowdown(
       );
       console.log('[HOLM TIE] Recorded pot match chip changes in game_results:', chipChanges);
       
-      // Use different message for tie vs actual loss
+      // Always include `$X added to pot` so the frontend player→pot transport
+      // producer (Game.tsx tieBreakMatch regex) fires for both branches.
       const resultMessage = allTiedWithChucky 
-        ? `Ya tie but ya lose!`
+        ? `Ya tie but ya lose! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`
         : `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`;
       
       await supabase

@@ -1616,10 +1616,12 @@ export const MobileGameTable = ({
   const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
   const feltBranchCountRef = useRef(0);
 
-  // Buck's on you animation state
+  // Buck's on you animation state — fires ONLY for a real buck-pass event
+  // whose recipient is self (previous holder is not self, new holder is
+  // self, and the (prev→new@hand) pass event has not already been shown).
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
-  const bucksOnYouShownForRoundRef = useRef<number | null>(null); // Track which round we showed animation for
+  const lastShownBuckPassEventRef = useRef<string | null>(null); // `${prev}->${new}@hand${currentRound}` dedupe
   
   // Holm showdown phase 2 trigger ref
   const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
@@ -4812,30 +4814,43 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType]);
 
-  // Detect buck passed to current player (Holm games only)
-  // Also clear showdown state when buck moves - new hand is starting
+  // Detect a real buck-pass event whose recipient is self.
+  // Required: previous canonical holder !== self, new canonical holder === self,
+  // and this specific (prev→new@hand) pass event has not yet been shown.
+  // Does NOT fire on initial assignment, on being dealer generically, or on
+  // any dealer-config transition.
   useEffect(() => {
-    if (
-      gameType === 'holm-game' && 
-      buckPosition !== null && 
-      buckPosition !== undefined && 
-      currentPlayer && 
-      buckPosition === currentPlayer.position && 
-      lastBuckPositionRef.current !== buckPosition && 
-      lastBuckPositionRef.current !== null && // Don't show on initial load
-      bucksOnYouShownForRoundRef.current !== currentRound // Only show once per round
-    ) {
-      // Clear showdown state - new hand starting
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-      showdownHandContextRef.current = null;
-      
-      // Mark this round as shown and trigger animation
-      bucksOnYouShownForRoundRef.current = currentRound;
-      setShowBucksOnYou(true);
-    }
+    if (gameType !== 'holm-game') return;
+    if (buckPosition === null || buckPosition === undefined) return;
+    if (!currentPlayer) return;
 
-    lastBuckPositionRef.current = buckPosition ?? null;
+    const prev = lastBuckPositionRef.current;
+    const next = buckPosition;
+    const self = currentPlayer.position;
+
+    // Always advance the last-seen tracker, even when we don't show the overlay.
+    const advance = () => { lastBuckPositionRef.current = next; };
+
+    // Not a transition? No pass event.
+    if (prev === next) { advance(); return; }
+    // No previous holder recorded? Initial assignment, never an overlay-worthy pass.
+    if (prev === null) { advance(); return; }
+    // Recipient is not self → not our overlay.
+    if (next !== self) { advance(); return; }
+    // Previous holder WAS self (buck stayed/returned with no real pass-away in between)
+    if (prev === self) { advance(); return; }
+
+    const passEventKey = `${prev}->${next}@hand${currentRound ?? 'na'}`;
+    if (lastShownBuckPassEventRef.current === passEventKey) { advance(); return; }
+    lastShownBuckPassEventRef.current = passEventKey;
+
+    // Clear showdown state - new hand starting
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
+
+    setShowBucksOnYou(true);
+    advance();
   }, [buckPosition, currentPlayer, gameType, currentRound]);
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
@@ -8944,8 +8959,13 @@ export const MobileGameTable = ({
               });
             } catch { /* noop */ }
           }
+          // CHUCKY_TABLED_PERSISTENCE — promote sticky whenever cached cards
+          // are eligible for the CURRENT HCI, regardless of cachedChuckyActive.
+          // Backend flips chucky_active=false at terminal SHOWDOWN; if we only
+          // captured sticky while active=true the snapshot can never reach
+          // revealedCount === required. Cards/HCI come from the same
+          // authoritative reveal source — NOT fabrication.
           if (
-            !!cachedChuckyActive &&
             cachedChuckySourceEligible &&
             cachedChuckyCards &&
             handContextId
@@ -8954,13 +8974,17 @@ export const MobileGameTable = ({
               chuckyStageStickyRef.current?.handContextId === handContextId
                 ? chuckyStageStickyRef.current.revealedCount
                 : 0;
+            // Once reveal completed on this hand, LOCK sticky at full count
+            // so it cannot regress through SHOWDOWN → announcement → win
+            // celebration. Cleared only at next-hand HCI boundary (above).
+            const lockedRevealed =
+              requiredRevealCount > 0 && visualRevealCount >= requiredRevealCount
+                ? cachedChuckyCards.length
+                : Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed);
             chuckyStageStickyRef.current = {
               handContextId,
               cards: cachedChuckyCards,
-              revealedCount: Math.min(
-                cachedChuckyCards.length,
-                Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed),
-              ),
+              revealedCount: Math.min(cachedChuckyCards.length, lockedRevealed),
             };
           }
           const chuckyCardsForRender: CardType[] | null =
@@ -8969,6 +8993,9 @@ export const MobileGameTable = ({
               : stickyChuckySourceEligible
                 ? (chuckyStageStickyRef.current?.cards ?? null)
                 : null;
+          // Sticky alone (HCI-matched, non-empty cards) keeps the stage
+          // mounted through celebration; do not additionally gate on
+          // cachedChuckyActive.
           const chuckyVisible =
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
             (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
