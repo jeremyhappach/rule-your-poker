@@ -687,6 +687,43 @@ export function HolmDealDbgPanel() {
               <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
             ))}
           </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Owners ({selfTimerOwners.length})</div>
+            {selfTimerOwners.length === 0 ? <div style={{ opacity: 0.6 }}>(none)</div> : selfTimerOwners.map((o) => (
+              <div key={o.instanceId} style={rowStyle}>
+                <span style={k}>inst{o.instanceId}</span>
+                <span style={v}>{o.mounted ? 'MOUNTED' : 'gone'} · seg={o.lastSegmentId ?? '—'} · renders={o.renderCount} · hand={o.handContextId ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Segments ({selfTimerSegments.length})</div>
+            {selfTimerSegments.slice(-12).map((s) => (
+              <div key={s.segmentId} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: s.violations.length ? '#ff6b6b' : '#cfd8e3' }}>
+                <div style={{ fontWeight: 700 }}>{s.segmentId}</div>
+                <div>preCommit={fmt(s.preCommitProgress)} rAF1={fmt(s.firstRafProgress)} rAF2={fmt(s.secondRafProgress)} 250ms={fmt(s.at250msProgress)} last={fmt(s.lastProgress)}</div>
+                <div>domVisualRatio(first)={fmt(s.domSvgFirstVisualRatio)} dashoff={fmt(s.domSvgFirstDashoffset)} circ={fmt(s.domSvgFirstCircumference)}</div>
+                <div style={{ opacity: 0.8 }}>cssTransition={s.cssTransition ?? '—'}</div>
+                <div style={{ opacity: 0.8 }}>className={s.classNameFirstCommit ?? '—'}</div>
+                {s.violations.length > 0 && <div style={bad}>violations: {s.violations.join(', ')}</div>}
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Events ({selfTimerEvents.length})</div>
+            {selfTimerEvents.slice(-40).map((e) => (
+              <div key={e.seq} style={rowStyle}>
+                <span style={k}>#{e.seq} +{e.t.toFixed(0)} {e.event}</span>
+                <span style={v}>inst{e.instanceId} {e.segmentKind} {JSON.stringify(e.payload).slice(0, 100)}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>SELF-TIMER Violations ({selfTimerViolations.length})</div>
+            {selfTimerViolations.length === 0 ? <div style={ok}>none</div> : selfTimerViolations.slice(-20).map((v2) => (
+              <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
