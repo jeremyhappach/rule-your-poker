@@ -41,8 +41,25 @@ interface MobilePlayerTimerProps {
    * rewriting deadline/duration/activation sequence. Null/undefined
    * key falls back to legacy wasActiveRef behavior for non-Holm
    * callers that have not been wired through ActivePlayerHUD yet.
+   *
+   * Canonical composition (Holm via ActivePlayerHUD):
+   *   { gameId, roundId, currentTurnPosition, decisionDeadlineMs }
+   * Any change to those fields = exactly one new segment, snapped to
+   * full at first paint, descending monotonically to the authoritative
+   * deadline.
    */
   activationKey?: string | null;
+  /**
+   * Authoritative segment deadline (epoch ms). When provided, the
+   * segment seeds its deadline from this value INSTEAD of deriving it
+   * from `timeLeft * 1000 + now`. This eliminates the client-owned
+   * "start at full" lie under longer server-to-client propagation:
+   * the first visible label is `ceil((deadlineMs - Date.now())/1000)`,
+   * which is full under sub-second propagation and honest otherwise.
+   * `timeLeft` remains the display-driving value; `deadlineMs` only
+   * fixes the segment seed.
+   */
+  deadlineMs?: number | null;
   children: React.ReactNode;
 }
 
@@ -52,8 +69,10 @@ export const MobilePlayerTimer = ({
   isActive,
   size = 48,
   activationKey,
+  deadlineMs,
   children
 }: MobilePlayerTimerProps) => {
+
 
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
@@ -129,23 +148,42 @@ export const MobilePlayerTimer = ({
   const runActivationCapture = (writerLabel: string, callsiteLine: string, segmentKey: string | null) => {
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const durationMs = Math.max(1, (maxTime || 0) * 1000);
-    const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
-      ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
-      : (maxTime || 0);
     const priorDeadline = segmentDeadlineMsRef.current;
     const priorDuration = segmentDurationMsRef.current;
     const priorSeq = activationSeqRef.current;
     segmentDurationMsRef.current = durationMs;
-    segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
+    // AUTHORITATIVE-DEADLINE seed (preferred). When the parent supplies
+    // `deadlineMs` (server epoch ms), bind the segment deadline to it
+    // directly rather than deriving it from `timeLeft`. This keeps the
+    // visible label honest under longer server→client propagation:
+    //   remaining = ceil((deadlineMs - Date.now())/1000)
+    // is full under sub-second propagation and accurate otherwise. The
+    // segment-duration ref still encodes the FULL turn duration so the
+    // ring progress (= remaining/duration) renders correctly.
+    if (typeof deadlineMs === 'number' && Number.isFinite(deadlineMs) && deadlineMs > 0) {
+      // performance.now() and Date.now() share monotonicity over short
+      // intervals; convert the wall-clock deadline into the perf-clock
+      // domain we drive the segment in.
+      const nowWall = Date.now();
+      const perfBias = nowMs - nowWall;
+      segmentDeadlineMsRef.current = deadlineMs + perfBias;
+    } else {
+      // Legacy fallback for callers not yet threading `deadlineMs`.
+      const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
+        ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
+        : (maxTime || 0);
+      segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
+    }
     activationSeqRef.current += 1;
     const newSegId = segmentKey ?? `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
     activeSegmentIdRef.current = newSegId;
     if (isHolmRender) {
       recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: writerLabel, callsite: callsiteLine, reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: writerLabel, callsite: callsiteLine, reason: 'capture immutable deadline at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: writerLabel, callsite: callsiteLine, reason: deadlineMs != null ? 'capture authoritative server deadline' : 'capture deadline at activation (legacy timeLeft seed)', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
       recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: writerLabel, callsite: callsiteLine, reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
     }
   };
+
 
   if (usingKeyMode) {
     // KEY-DRIVEN mode (canonical Holm path via ActivePlayerHUD).
