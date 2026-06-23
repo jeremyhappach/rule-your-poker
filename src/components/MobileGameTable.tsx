@@ -8841,7 +8841,7 @@ export const MobileGameTable = ({
                                 roundStatus: roundStatus ?? null,
                                 phase: cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL',
                                 isShowingAnnouncement: !!isShowingAnnouncement,
-                                holmWinPotTriggerActive: !!holmWinPotTriggerId,
+                                holmWinPotTriggerActive: !!holmWinPotTriggerIdGated,
                                 resultGateAllowed: !!(awaitingNextRound && lastRoundResult),
                                 awaitingNextRound: !!awaitingNextRound,
                                 lastRoundResultPresent: !!lastRoundResult,
