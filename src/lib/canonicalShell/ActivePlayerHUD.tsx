@@ -157,8 +157,6 @@ export function ActivePlayerHUD({
   // props every commit. Pure instrumentation, Holm only, no behavior.
   if (isHolm) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { recordHolmFull, setHolmFullIdentity } = require('@/lib/canonicalShell/cardTransport/holmFullForensics') as typeof import('@/lib/canonicalShell/cardTransport/holmFullForensics');
       setHolmFullIdentity({
         gameId: gameId ?? null,
         gameType: gameType ?? null,
