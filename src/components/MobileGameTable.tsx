@@ -1616,10 +1616,12 @@ export const MobileGameTable = ({
   const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
   const feltBranchCountRef = useRef(0);
 
-  // Buck's on you animation state
+  // Buck's on you animation state — fires ONLY for a real buck-pass event
+  // whose recipient is self (previous holder is not self, new holder is
+  // self, and the (prev→new@hand) pass event has not already been shown).
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
-  const bucksOnYouShownForRoundRef = useRef<number | null>(null); // Track which round we showed animation for
+  const lastShownBuckPassEventRef = useRef<string | null>(null); // `${prev}->${new}@hand${currentRound}` dedupe
   
   // Holm showdown phase 2 trigger ref
   const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
