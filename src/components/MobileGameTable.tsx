@@ -5044,8 +5044,7 @@ export const MobileGameTable = ({
         setCachedChuckyCards(null, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
-        chuckyTargetRevealedRef.current = 0;
-        cachedChuckyHandContextRef.current = null;
+        clearChuckyRevealOwnership('cacheEffect.dealerConfigPhase', 'dealer-config phase entered');
       }
       return;
     }
@@ -5063,8 +5062,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('cacheEffect.handContextChanged', 'handContextId changed (stale cache clear)');
       return;
     }
     
@@ -5074,8 +5072,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.buckPassed', reason: 'awaitingNextRound && !lastRoundResult' });
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
+      clearChuckyRevealOwnership('cacheEffect.buckPassed', 'awaitingNextRound && !lastRoundResult');
       return;
     }
     
@@ -5147,7 +5144,7 @@ export const MobileGameTable = ({
     ) {
       setCachedChuckyActive(false);
     }
-  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase, cachedChuckyActive, cachedChuckyCardsRevealed]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase, cachedChuckyActive, cachedChuckyCardsRevealed, clearChuckyRevealOwnership]);
 
   // Chucky reveal BARRIER: hold all reveals until every chucky card has
   // settled (DealRuntime enters GAMEPLAY → markHolmHandReady). Once the
