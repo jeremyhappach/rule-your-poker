@@ -486,6 +486,27 @@ export function HolmDealDbgPanel() {
         >
           COPY BUCKS FORENSICS
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              const text = buildBucksForensicsText();
+              const blob = new Blob([text], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `bucks-forensics-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch { /* noop */ }
+          }}
+          title="Download Holm BUCK'S ON YOU overlay forensics as a .txt file"
+          style={{ background: '#5f3a1e', color: '#fff', border: '1px solid #b87b4a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          TXT BUCKS FORENSICS
+        </button>
       </div>
       {expanded ? (
         <div style={{ maxHeight: 560, overflow: 'auto', padding: '2px 0 6px' }}>
