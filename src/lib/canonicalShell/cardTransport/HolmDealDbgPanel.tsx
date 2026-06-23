@@ -61,6 +61,12 @@ import {
   getHolmTimerSegments as getHolmSelfTimerSegments,
   subscribeHolmSelfTimer,
 } from './holmSelfTimerForensics';
+import {
+  buildHolmHandBoundaryForensicsText,
+  getHolmHbEvents,
+  getHolmHbViolations,
+  getHolmHbSources,
+} from './holmHandBoundaryForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
