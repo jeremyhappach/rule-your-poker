@@ -184,9 +184,17 @@ export function HolmDealOrchestrator({
     });
   };
 
+  // Subscribe to buck-presentation gate so this effect re-runs on release.
+  const buckGated = useSyncExternalStore(
+    subscribeBuckPresentationGate,
+    () => isBuckPresentationGated(handContextId),
+    () => false,
+  );
+
   // ── 1. HANDS WAVE — buck-first, clockwise ─────────────────────────
   useEffect(() => {
     if (!deal || handsDispatchedRef.current) return;
+    if (buckGated) return; // BUCKS overlay must complete before deal launch
     if (!dealTimingHydrated) return;
     if (!seats.length || cardsPerPlayer <= 0) return;
     if (!selfHand || selfHand.length < cardsPerPlayer) return;
