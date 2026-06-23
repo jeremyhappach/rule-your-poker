@@ -8931,6 +8931,29 @@ export const MobileGameTable = ({
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
 
+          // ── Forensics: new-hand Chucky admission summary (read-only) ──
+          if (gameType === 'holm-game') {
+            try {
+              recordHolmChuckyAdmission({
+                handContextId: handContextId ?? null,
+                cachedChuckyOriginHandContextId: cachedChuckyOriginHandContextId ?? null,
+                cachedChuckySourceEligible,
+                stickyChuckyOriginHandContextId: stickyChuckyOriginHandContextId ?? null,
+                stickyChuckySourceEligible,
+                stickyChuckyRevealOriginHandContextId:
+                  chuckyStageStickyRef.current?.handContextId ?? null,
+                stickyChuckyRevealEligible:
+                  stickyChuckySourceEligible && chuckyStickyRevealCountForRender > 0,
+                renderedChuckyCount: chuckyTotalVisibleForRender,
+                renderedRevealCount: chuckyRevealedCountForRender,
+                serverRevealCount: cachedChuckyCardsRevealed,
+                callerFile: 'src/components/MobileGameTable.tsx',
+                callerFn: 'gameplayRenderIIFE.chuckyAdmission',
+              });
+            } catch { /* noop */ }
+          }
+
+
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
             gameType,
