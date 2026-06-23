@@ -2839,6 +2839,33 @@ export const MobileGameTable = ({
       isGameOver
     );
 
+  const stickyChuckyHandMatchesVisualGate =
+    !!chuckyStageStickyRef.current &&
+    (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
+  const visualRevealCount = Math.max(
+    cachedChuckyCardsRevealed,
+    stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
+  );
+  const requiredRevealCount = Math.max(
+    cachedChuckyCards?.length ?? 0,
+    stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.cards?.length ?? 0) : 0,
+    chuckyCards?.length ?? 0,
+    holmDealMetaSnap.chuckyExpected ?? 0,
+  );
+  const isHolmSoloChucky =
+    gameType === 'holm-game' &&
+    (
+      isSoloVsChuckyRaw ||
+      soloVsChuckyTableLocked ||
+      cachedChuckyActive ||
+      chuckyActive ||
+      requiredRevealCount > 0
+    );
+  const chuckyVisualRevealComplete =
+    !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
+  const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
+  const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
+
   useEffect(() => {
     if (isSoloVsChuckyRaw) {
       setSoloVsChuckyTableLocked(true);
