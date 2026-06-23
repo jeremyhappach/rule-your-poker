@@ -4304,6 +4304,27 @@ export const MobileGameTable = ({
       });
     } catch { /* forensics-only */ }
   }
+  // ── WAR-TIME TEARDOWN FORENSICS — live context publisher ──
+  if (gameType === 'holm-game') {
+    try {
+      setHolmChuckyTeardownContext({
+        handContextId: handContextId ?? null,
+        phase: chuckyVisualRevealPending ? 'CHUCKY_REVEAL' : (isGameOver ? 'GAME_OVER' : (holmWinPotTriggerId ? 'WIN_SEQUENCE' : (isShowingAnnouncement ? 'ANNOUNCEMENT' : 'RENDER'))),
+        roundStatus: roundStatus ?? null,
+        chuckyActive: !!chuckyActive,
+        cachedChuckyActive: !!cachedChuckyActive,
+        cachedChuckyCardsLen: cachedChuckyCards?.length ?? 0,
+        cachedChuckyCardsRevealed,
+        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+        serverChuckyCardsRevealed: chuckyCardsRevealed ?? 0,
+        requiredRevealCount: cachedChuckyCards?.length ?? (chuckyCards?.length ?? 0),
+        announcementShowing: isShowingAnnouncement,
+        winSequenceActive: !!holmWinPotTriggerId,
+        gameType: gameType ?? null,
+        isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
+      });
+    } catch { /* forensics-only */ }
+  }
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
