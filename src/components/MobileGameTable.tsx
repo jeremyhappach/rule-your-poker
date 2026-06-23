@@ -4633,6 +4633,7 @@ export const MobileGameTable = ({
 
   // Detect Chucky chopped animation
   useEffect(() => {
+    if (gameType === 'holm-game' && !chuckyVisualRevealComplete) return;
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
       const currentUsername = currentPlayer?.profiles?.username || '';
       if (!currentUsername) return;
@@ -4643,7 +4644,7 @@ export const MobileGameTable = ({
         setShowChopped(true);
       }
     }
-  }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
+  }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyVisualRevealComplete]);
 
   // Detect 357 sweep animation (3-5-7 games only)
   useEffect(() => {
