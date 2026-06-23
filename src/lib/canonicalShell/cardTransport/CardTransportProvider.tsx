@@ -71,6 +71,8 @@ export function CardTransportProvider({
   children,
 }: CardTransportProviderProps) {
   const [activeIntents, setActiveIntents] = useState<ActiveCardIntent[]>([]);
+  const activeIntentsRef = useRef<ActiveCardIntent[]>([]);
+  activeIntentsRef.current = activeIntents;
   const seenRef = useRef<Set<string>>(new Set());
   const intentByIdRef = useRef<Map<string, CardTransportIntent>>(new Map());
   const seqRef = useRef(0);
