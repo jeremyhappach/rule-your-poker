@@ -714,6 +714,16 @@ interface MobileGameTableProps {
   communityCards?: CardType[];
   communityCardsRevealed?: number;
   buckPosition?: number | null;
+  /** Server-authored Buck-transfer presentation event (Holm). Latched by id. */
+  buckTransferPresentation?: {
+    id: string;
+    sessionId: string;
+    sequence: number;
+    fromPosition: number;
+    toPosition: number;
+    createdAt: string;
+    source: string;
+  } | null;
   currentTurnPosition?: number | null;
   chuckyCards?: CardType[];
   chuckyActive?: boolean;
