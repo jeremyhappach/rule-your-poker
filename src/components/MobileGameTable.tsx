@@ -8028,7 +8028,36 @@ export const MobileGameTable = ({
           />
         )}
         
-        <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
+        {(() => {
+          recordBucksForensic('OVERLAY_RENDERED', {
+            ownerFile: 'src/components/MobileGameTable.tsx',
+            ownerComponent: 'MobileGameTable',
+            ownerBranch: 'BucksOnYouAnimation@~8031',
+            show: showBucksOnYou,
+            handContextId: handContextId ?? null,
+            buckPosition: buckPosition ?? null,
+            currentRound: typeof currentRound === 'number' ? currentRound : null,
+            gameStatus: gameStatus ?? null,
+            roundStatus: roundStatus ?? null,
+            textSource: 'BUCKS_ON_YOU_EXPLICIT_ANIMATION_COMPONENT',
+            isGenericAnnouncement: false,
+          });
+          return null;
+        })()}
+        <BucksOnYouAnimation
+          show={showBucksOnYou}
+          onComplete={() => {
+            recordBucksForensic('DISMISSED', {
+              ownerFile: 'src/components/MobileGameTable.tsx',
+              ownerComponent: 'MobileGameTable',
+              ownerBranch: 'BucksOnYouAnimation.onComplete',
+              handContextId: handContextId ?? null,
+              setterCallsite: 'setShowBucksOnYou(false) from onComplete',
+            });
+            setShowBucksOnYou(false);
+          }}
+        />
+        
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
         {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
