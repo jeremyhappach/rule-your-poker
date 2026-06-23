@@ -126,6 +126,26 @@ export const MobilePlayerTimer = ({
     activeSegmentIdRef.current = null;
   }
 
+  // Record every prop change while a segment is active. These are the
+  // raw external inputs; any deadline mutation must originate from a
+  // prop change or an internal write — this gives the writer trail.
+  const lastPropsRef = useRef<{ timeLeft: number | null; maxTime: number; isActive: boolean }>({ timeLeft, maxTime, isActive });
+  if (isHolmRender && activeSegmentIdRef.current) {
+    const prev = lastPropsRef.current;
+    if (prev.timeLeft !== timeLeft) {
+      recordHolmTimerWrite({ field: 'timeLeftProp', prior: prev.timeLeft, next: timeLeft, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming timeLeft prop tick', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    if (prev.maxTime !== maxTime) {
+      recordHolmTimerWrite({ field: 'maxTimeProp', prior: prev.maxTime, next: maxTime, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming maxTime prop change', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    if (prev.isActive !== isActive) {
+      recordHolmTimerWrite({ field: 'isActiveProp', prior: prev.isActive, next: isActive, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming isActive prop change', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+  }
+  lastPropsRef.current = { timeLeft, maxTime, isActive };
+
+
+
   useEffect(() => {
     if (effectiveIsActive && !wasActiveRef.current) {
       const segId = activeSegmentIdRef.current;
