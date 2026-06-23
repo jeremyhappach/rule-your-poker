@@ -24,6 +24,9 @@
  *   window.__holmHandBoundaryForensics.sources
  */
 
+import { recordHolmFull as _recordHolmFull } from './holmFullForensics';
+
+
 export type HolmHbEventName =
   | 'HB_PRESENTATION_RENDER'
   | 'HB_PRESENTATION_UNMOUNT'
