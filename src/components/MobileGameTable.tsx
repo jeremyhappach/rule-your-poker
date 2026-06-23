@@ -2481,11 +2481,10 @@ export const MobileGameTable = ({
       !!cachedChuckyCards &&
       cachedChuckyCards.length > 0 &&
       cachedChuckyCardsRevealed < cachedChuckyCards.length;
-    if (_chuckyVisualRevealPendingForWinGate && holmWinPotTriggerIdRaw) {
-      holmWinPotTriggerId = null;
-    } else {
-      holmWinPotTriggerId = holmWinPotTriggerIdRaw;
-    }
+    holmWinPotTriggerIdGated =
+      _chuckyVisualRevealPendingForWinGate && holmWinPotTriggerId
+        ? null
+        : holmWinPotTriggerId;
   }
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
