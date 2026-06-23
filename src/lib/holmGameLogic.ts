@@ -1799,7 +1799,9 @@ async function handleChuckyShowdown(
       .from('rounds')
       .update({ 
         status: 'completed',
-        chucky_active: false
+        chucky_active: false,
+        current_turn_position: null,
+        decision_deadline: null
       })
       .eq('id', roundId);
     
@@ -1812,8 +1814,10 @@ async function handleChuckyShowdown(
   await supabase
     .from('rounds')
     .update({ 
-      status: 'completed'
+      status: 'completed',
       // Note: chucky_active stays true so cards remain visible during result announcement
+      current_turn_position: null,
+      decision_deadline: null
     })
     .eq('id', roundId);
 
