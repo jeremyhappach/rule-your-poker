@@ -4890,7 +4890,7 @@ export const MobileGameTable = ({
     } | null = null;
 
     if (!authoritativeEvent) {
-      recordBucksViolation('HOLM_BUCKS_OVERLAY_SHOWN_WITHOUT_EVENT' as never, {
+      recordBucksViolation('HOLM_BUCKS_OVERLAY_SHOWN_WITHOUT_EVENT', {
         ..._baseEval,
         code: 'HOLM_BUCKS_OVERLAY_SHOW_BLOCKED_NO_AUTHORITATIVE_EVENT',
         blocked: true,
