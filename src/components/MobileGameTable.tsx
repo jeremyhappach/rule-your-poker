@@ -975,7 +975,7 @@ export const MobileGameTable = ({
   onHolmShowdownPotToWinnerEnded,
   onHolmShowdownLosersStarted,
   onHolmShowdownLosersEnded,
-  holmWinPotTriggerId,
+  holmWinPotTriggerId: holmWinPotTriggerIdRaw,
   holmWinPotAmount = 0,
   holmWinWinnerPosition = 1,
   holmWinWinnerPositions = [],
