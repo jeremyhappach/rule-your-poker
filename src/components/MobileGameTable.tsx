@@ -5446,6 +5446,41 @@ export const MobileGameTable = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!handContextId) return;
+    if (visualRevealCount >= requiredRevealCount) return;
+    if (!chuckyVisualStepperMountedRef.current) return;
+    const deadline = chuckyVisualStepperLastDeadlineRef.current;
+    if (deadline == null) return;
+
+    const fireAt = deadline + 250;
+    const waitMs = Math.max(0, fireAt - __chuckyAuditNow());
+    const handle = window.setTimeout(() => {
+      if (visualRevealCount >= requiredRevealCount) return;
+      if (!chuckyVisualStepperMountedRef.current) return;
+      if (__chuckyAuditNow() < fireAt) return;
+      const stallKey = `${handContextId}|${visualRevealCount}|${requiredRevealCount}|${Math.round(deadline)}`;
+      if (chuckyVisualStepperStallKeyRef.current === stallKey) return;
+      chuckyVisualStepperStallKeyRef.current = stallKey;
+      recordHolmTimelineEvent('HOLM_CHUCKY_VISUAL_STEPPER_STALLED', {
+        handContextId,
+        visualRevealCount,
+        requiredRevealCount,
+        roundStatus: roundStatus ?? null,
+        serverRevealCount: chuckyCardsRevealed ?? 0,
+        stepperMounted: chuckyVisualStepperMountedRef.current,
+        timeoutActive: chuckyVisualStepperTimeoutActiveRef.current,
+        rafActive: false,
+        lastScheduledDeadline: deadline,
+        cleanupReason: chuckyVisualStepperLastCleanupReasonRef.current,
+        effectDependencyChangeThatCanceledOrRestartedIt: chuckyVisualStepperLastDepChangeRef.current,
+      }, handContextId);
+    }, waitMs);
+
+    return () => window.clearTimeout(handle);
+  }, [gameType, handContextId, visualRevealCount, requiredRevealCount, roundStatus, chuckyCardsRevealed]);
+
 
 
 
