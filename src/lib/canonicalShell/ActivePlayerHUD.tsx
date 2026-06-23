@@ -184,14 +184,28 @@ export function ActivePlayerHUD({
   }
 
 
+  // Canonical timer activation key. STABLE for one uninterrupted turn
+  // segment. Composed of canonical turn identity tokens:
+  //   handContextId (turn-of-hand identity)
+  //   activePlayerId (turn-actor identity)
+  //   gameId (cross-dealer-game disambiguator)
+  // No clock, no rAF, no timeLeft, no render counter. Pause-resume
+  // generation reserved for future explicit pause semantics; absent
+  // today.
+  const activationKey = effectiveIsActive
+    ? `gid:${gameId ?? '∅'}|hci:${deal?.handContextId ?? '∅'}|actor:${activePlayerId ?? `seat${seatPosition ?? '?'}`}|gen:0`
+    : null;
+
   return (
     <MobilePlayerTimer
       timeLeft={effectiveTimeLeft}
       maxTime={maxTime}
       isActive={effectiveIsActive}
       size={size}
+      activationKey={activationKey}
     >
       {children}
     </MobilePlayerTimer>
   );
 }
+

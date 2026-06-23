@@ -1,6 +1,8 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef } from "react";
+import { recordHolmFull, getHolmFullIdentity } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+
 
 interface ChuckyHandProps {
   cards: CardType[];
@@ -19,9 +21,47 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
   const cardsIdentityRef = useRef<string>('');
   // Max revealed count - only increases, never decreases (prevents flicker from prop fluctuations)
   const maxRevealedRef = useRef(revealed);
-  
+
   // Compute cards identity to detect new hands
   const currentCardsIdentity = cards.map(c => `${c.rank}${c.suit}`).join('|');
+
+  // ── RUN-BACK FORENSICS: stale-source render snapshot ─────────────
+  const chuckyRenderCountRef = useRef(0);
+  chuckyRenderCountRef.current += 1;
+  const chuckyOriginHciRef = useRef<string | null>(null);
+  const chuckyOriginIdentityRef = useRef<string | null>(null);
+  try {
+    const id = getHolmFullIdentity();
+    if (chuckyOriginHciRef.current == null && currentCardsIdentity) {
+      chuckyOriginHciRef.current = id.handContextId ?? null;
+      chuckyOriginIdentityRef.current = currentCardsIdentity;
+    }
+    const originHci = chuckyOriginHciRef.current;
+    const activeHci = id.handContextId ?? null;
+    recordHolmFull({
+      category: 'HB_PRESENTATION',
+      event: 'CHUCKY_HAND_RENDER',
+      source: 'ChuckyHand',
+      sourceCategory: 'RENDER_DERIVATION',
+      callsite: 'src/components/ChuckyHand.tsx:render',
+      commitId: chuckyRenderCountRef.current,
+      payload: {
+        surface: 'chucky',
+        show,
+        cardCount: cards.length,
+        revealed,
+        maxRevealed: maxRevealedRef.current,
+        payloadHash: currentCardsIdentity,
+        originIdentity: chuckyOriginIdentityRef.current,
+        identityChanged: chuckyOriginIdentityRef.current != null && chuckyOriginIdentityRef.current !== currentCardsIdentity,
+        originHci,
+        activeHci,
+        staleOrigin: !!originHci && !!activeHci && originHci !== activeHci,
+        eligibility: show ? 'show=true' : 'show=false',
+      },
+    });
+  } catch { /* */ }
+
   
   // Reset when cards actually change (new hand) - detected by cards identity, not length
   useEffect(() => {
