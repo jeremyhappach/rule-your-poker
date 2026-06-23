@@ -8944,8 +8944,13 @@ export const MobileGameTable = ({
               });
             } catch { /* noop */ }
           }
+          // CHUCKY_TABLED_PERSISTENCE — promote sticky whenever cached cards
+          // are eligible for the CURRENT HCI, regardless of cachedChuckyActive.
+          // Backend flips chucky_active=false at terminal SHOWDOWN; if we only
+          // captured sticky while active=true the snapshot can never reach
+          // revealedCount === required. Cards/HCI come from the same
+          // authoritative reveal source — NOT fabrication.
           if (
-            !!cachedChuckyActive &&
             cachedChuckySourceEligible &&
             cachedChuckyCards &&
             handContextId
@@ -8954,13 +8959,17 @@ export const MobileGameTable = ({
               chuckyStageStickyRef.current?.handContextId === handContextId
                 ? chuckyStageStickyRef.current.revealedCount
                 : 0;
+            // Once reveal completed on this hand, LOCK sticky at full count
+            // so it cannot regress through SHOWDOWN → announcement → win
+            // celebration. Cleared only at next-hand HCI boundary (above).
+            const lockedRevealed =
+              requiredRevealCount > 0 && visualRevealCount >= requiredRevealCount
+                ? cachedChuckyCards.length
+                : Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed);
             chuckyStageStickyRef.current = {
               handContextId,
               cards: cachedChuckyCards,
-              revealedCount: Math.min(
-                cachedChuckyCards.length,
-                Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed),
-              ),
+              revealedCount: Math.min(cachedChuckyCards.length, lockedRevealed),
             };
           }
           const chuckyCardsForRender: CardType[] | null =
@@ -8969,6 +8978,9 @@ export const MobileGameTable = ({
               : stickyChuckySourceEligible
                 ? (chuckyStageStickyRef.current?.cards ?? null)
                 : null;
+          // Sticky alone (HCI-matched, non-empty cards) keeps the stage
+          // mounted through celebration; do not additionally gate on
+          // cachedChuckyActive.
           const chuckyVisible =
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
             (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
