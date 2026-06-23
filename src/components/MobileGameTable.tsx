@@ -5311,6 +5311,13 @@ export const MobileGameTable = ({
   const chuckyRevealLoopCancelRef = useRef<((reason: string) => void) | null>(null);
   const totalLenForReveal = cachedChuckyCards?.length ?? 0;
   useEffect(() => {
+    const enterDeps = { gameType, chuckyBarrierOpen, handContextId, totalLenForReveal };
+    const changedSinceLastEnter = __chuckyAuditDiffDeps(chuckyEffectDepsRef.current, enterDeps);
+    if (changedSinceLastEnter) {
+      chuckyVisualStepperLastDepChangeRef.current = changedSinceLastEnter;
+    }
+    chuckyEffectDepsRef.current = enterDeps;
+
     if (chuckyRevealLoopHandRef.current && handContextId && chuckyRevealLoopHandRef.current !== handContextId) {
       chuckyRevealLoopCancelRef.current?.('handContextId changed');
     }
@@ -5328,9 +5335,6 @@ export const MobileGameTable = ({
     const effectInstance = ++chuckyEffectInstanceRef.current;
     const instanceId = chuckyInstanceIdRef.current;
     const enterRenderSeq = chuckyRenderSeqRef.current;
-    const enterDeps = { gameType, chuckyBarrierOpen, handContextId, totalLenForReveal };
-    const changedSinceLastEnter = __chuckyAuditDiffDeps(chuckyEffectDepsRef.current, enterDeps);
-    chuckyEffectDepsRef.current = enterDeps;
     chuckyVisualStepperMountedRef.current = true;
     chuckyVisualStepperLastCleanupReasonRef.current = null;
     chuckyVisualStepperLastDepChangeRef.current = changedSinceLastEnter;
