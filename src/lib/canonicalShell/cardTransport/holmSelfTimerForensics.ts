@@ -26,7 +26,33 @@ export type HolmTimerEventName =
   | 'HOLM_TIMER_PROGRESS_DESCENT'
   | 'HOLM_TIMER_DEACTIVATED'
   | 'HOLM_TIMER_OWNER_MOUNT'
-  | 'HOLM_TIMER_OWNER_UNMOUNT';
+  | 'HOLM_TIMER_OWNER_UNMOUNT'
+  | 'HOLM_TIMER_WRITE';
+
+export type HolmTimerWriteField =
+  | 'segmentDeadlineMsRef'
+  | 'segmentDurationMsRef'
+  | 'activationSeqRef'
+  | 'suppressTransition'
+  | 'nowTickMs'
+  | 'wasActiveRef'
+  | 'timeLeftProp'
+  | 'maxTimeProp'
+  | 'isActiveProp'
+  | 'svgStrokeDashoffset'
+  | 'svgClassNameTransition';
+
+export type HolmTimerWriteKind =
+  | 'render-derivation'
+  | 'effect'
+  | 'layout-effect'
+  | 'raf'
+  | 'interval'
+  | 'timeout'
+  | 'prop-update'
+  | 'activation'
+  | 'pause-resume'
+  | 'unknown';
 
 export type HolmTimerViolationType =
   | 'HOLM_TIMER_FIRST_COMMIT_BELOW_FULL'
@@ -36,7 +62,12 @@ export type HolmTimerViolationType =
   | 'HOLM_TIMER_STALE_SEGMENT_WRITE'
   | 'HOLM_TIMER_MULTIPLE_VISIBLE_OWNERS'
   | 'HOLM_TIMER_LOGICAL_DOM_DIVERGENCE'
-  | 'HOLM_TIMER_CSS_TRANSITION_FROM_STALE_VALUE';
+  | 'HOLM_TIMER_CSS_TRANSITION_FROM_STALE_VALUE'
+  | 'HOLM_TIMER_DEADLINE_MUTATED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_BASELINE_RESTARTED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_TRANSITION_REENABLED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_DUPLICATE_FIRST_RAF'
+  | 'HOLM_TIMER_DUPLICATE_SECOND_RAF';
 
 export interface HolmTimerEvent {
   seq: number;
