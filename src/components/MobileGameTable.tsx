@@ -4846,134 +4846,69 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType]);
 
-  // BUCK'S ON YOU — single owner, FAIL-CLOSED eligibility gate.
-  //
-  // The overlay may only be shown in response to an EXPLICIT server-backed
-  // Buck-pass event payload carrying:
-  //   - stable event ID
-  //   - event.handContextId === current handContextId
-  //   - recipient position === self
-  //   - source === 'SERVER'
-  //
-  // No derivation from handContextId / buckPosition / selfPosition / phase /
-  // roundStatus / dealer state / "position changed" inference is permitted.
-  // If no such authoritative event exists, showBucksOnYou stays false.
+  // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
+  // `buckTransferPresentation` event written in the same DB transaction
+  // that mutates `games.buck_position`. No HCI/phase/position derivation.
+  // Latched on event.id. Stale sessions, duplicate IDs, non-server source,
+  // and recipient!=self are rejected silently (no violation spam).
   useEffect(() => {
-    const _selfPosForensic = currentPlayer && typeof currentPlayer.position === 'number'
+    if (gameType !== 'holm-game') return;
+    const ev = buckTransferPresentation;
+    if (!ev || !ev.id) return;
+
+    const selfPos = currentPlayer && typeof currentPlayer.position === 'number'
       ? currentPlayer.position : null;
-    const _prior = priorHandBuckRef.current;
-    const _latch = buckOverlayFiredForHciRef.current;
-    const _baseEval = {
-      gameType,
-      handContextId: handContextId ?? null,
-      previousHandContextId: _prior?.hci ?? null,
-      previousBuckPosition: _prior?.buckPosition ?? null,
-      buckPosition: buckPosition ?? null,
-      selfPosition: _selfPosForensic,
-      currentRound: typeof currentRound === 'number' ? currentRound : null,
-      gameStatus: gameStatus ?? null,
-      roundStatus: roundStatus ?? null,
-      derivedEventId: null,
-      derivedEventHci: null,
-      eventHciEqualsCurrent: false,
-      eventSource: 'NONE',
-      latchForHci: _latch,
-      ownerFile: 'src/components/MobileGameTable.tsx',
-      ownerComponent: 'MobileGameTable',
-      ownerBranch: 'buckOverlayEffect@4839',
-    };
-    recordBucksForensic('EFFECT_EVAL', _baseEval);
+    const sessionId = (currentPlayer as { game_id?: string } | null | undefined)?.game_id ?? null;
 
-    // Maintain hand-boundary bookkeeping (no display side-effects).
-    if (gameType === 'holm-game' && handContextId && buckPosition != null) {
-      if (!_prior || _prior.hci !== handContextId) {
-        priorHandBuckRef.current = { hci: handContextId, buckPosition };
-      }
-    }
-
-    if (gameType !== 'holm-game') {
-      recordBucksForensic('SHOW_SUPPRESSED', { ..._baseEval, predicate: 'gameType!=holm-game', boolean: false });
-      return;
-    }
-
-    // Fail-closed: there is no authoritative server-backed Buck-pass event
-    // wired into props/state today. Without it, the overlay must never show.
-    // The derived `buck@${hci}#pos${pos}` path has been deleted.
-    const authoritativeEvent: {
-      id: string;
-      handContextId: string;
-      recipientPosition: number;
-      source: 'SERVER';
-    } | null = null;
-
-    if (!authoritativeEvent) {
-      recordBucksViolation('HOLM_BUCKS_OVERLAY_SHOWN_WITHOUT_EVENT', {
-        ..._baseEval,
-        code: 'HOLM_BUCKS_OVERLAY_SHOW_BLOCKED_NO_AUTHORITATIVE_EVENT',
-        blocked: true,
-      });
+    // Session scope
+    if (sessionId && ev.sessionId && ev.sessionId !== sessionId) {
       recordBucksForensic('SHOW_SUPPRESSED', {
-        ..._baseEval,
-        predicate: 'fail-closed: no authoritative server event',
-        boolean: false,
+        predicate: 'session-mismatch', eventId: ev.id, evSession: ev.sessionId, selfSession: sessionId,
+      });
+      return;
+    }
+    // Source authority
+    if (ev.source !== 'SERVER_BUCK_TRANSFER') {
+      recordBucksViolation('HOLM_BUCKS_OVERLAY_EVENT_SOURCE_NOT_SERVER', {
+        eventId: ev.id, source: ev.source,
+      });
+      return;
+    }
+    // Duplicate latch
+    if (buckOverlayFiredEventIdRef.current === ev.id) {
+      return;
+    }
+    // Recipient must be self
+    if (selfPos == null || ev.toPosition !== selfPos) {
+      recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
+        eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
+        selfPosition: selfPos, recipientIsSelf: false,
       });
       return;
     }
 
-    // The branches below are unreachable until an authoritative event source
-    // is wired in. They are kept to document the hard guards required at the
-    // moment of `setShowBucksOnYou(true)`. ESLint/TS will treat them as dead
-    // code while authoritativeEvent is statically null.
-    // eslint-disable-next-line @typescript-eslint/no-unreachable
-    {
-      const ev = authoritativeEvent as {
-        id: string; handContextId: string; recipientPosition: number; source: string;
-      };
-      const selfPos = _selfPosForensic;
-      if (ev.source !== 'SERVER') {
-        recordBucksViolation('HOLM_BUCKS_OVERLAY_EVENT_SOURCE_NOT_SERVER', {
-          ..._baseEval, code: 'HOLM_BUCKS_OVERLAY_SHOW_BLOCKED_NONSERVER', authoritativeEventId: ev.id, blocked: true,
-        });
-        return;
-      }
-      if (ev.handContextId !== handContextId) {
-        recordBucksViolation('HOLM_BUCKS_OVERLAY_EVENT_HCI_MISMATCH', {
-          ..._baseEval, code: 'HOLM_BUCKS_OVERLAY_SHOW_BLOCKED_HCI_MISMATCH', authoritativeEventId: ev.id, blocked: true,
-        });
-        return;
-      }
-      if (selfPos == null || ev.recipientPosition !== selfPos) {
-        recordBucksForensic('SHOW_SUPPRESSED', {
-          ..._baseEval, predicate: 'recipient!=self', authoritativeEventId: ev.id, boolean: false,
-        });
-        return;
-      }
-      if (buckOverlayFiredForHciRef.current === handContextId) {
-        recordBucksForensic('SHOW_SUPPRESSED', {
-          ..._baseEval, predicate: 'latchAlreadySetForHci', authoritativeEventId: ev.id, boolean: true,
-        });
-        return;
-      }
-      buckOverlayFiredForHciRef.current = handContextId;
-      const evalResult = evaluateBucksShowRequest({
-        currentHandContextId: handContextId,
-        authoritativeEventId: ev.id,
-        authoritativeEventHci: ev.handContextId,
-        eventSource: 'SERVER',
-        ownerFile: 'src/components/MobileGameTable.tsx',
-        ownerComponent: 'MobileGameTable',
-      });
-      for (const v of evalResult.violations) {
-        recordBucksViolation(v, { ..._baseEval, authoritativeEventId: ev.id });
-      }
-      setShowBucksOnYou(true);
-      notifyBucksShowGranted({ currentHandContextId: handContextId, authoritativeEventId: ev.id });
-      recordBucksForensic('SHOW_GRANTED', {
-        ..._baseEval, authoritativeEventId: ev.id,
-        setterCallsite: 'MobileGameTable.tsx:buckOverlayEffect setShowBucksOnYou(true)',
+    // Authoritative: arm gate, latch, show.
+    buckOverlayFiredEventIdRef.current = ev.id;
+    recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
+      eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
+      selfPosition: selfPos, recipientIsSelf: true,
+    });
+
+    if (handContextId) {
+      buckOverlayGatedHciRef.current = handContextId;
+      armBuckPresentationGate(handContextId);
+      recordBucksForensic('LATCH_SET', {
+        eventId: ev.id, handContextId, predicate: 'BUCKS_GATE_ARMED',
       });
     }
-  }, [handContextId, buckPosition, currentPlayer, gameType, currentRound, gameStatus, roundStatus]);
+
+    setShowBucksOnYou(true);
+    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: ev.id });
+    recordBucksForensic('SHOW_GRANTED', {
+      eventId: ev.id, handContextId: handContextId ?? null, predicate: 'BUCKS_OVERLAY_SHOWN',
+    });
+  }, [buckTransferPresentation, gameType, currentPlayer, handContextId]);
+
 
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
