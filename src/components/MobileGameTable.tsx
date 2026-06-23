@@ -704,6 +704,13 @@ interface MobileGameTableProps {
   allDecisionsIn: boolean;
   playerCards: PlayerCards[];
   timeLeft: number | null;
+  /**
+   * Authoritative server `decision_deadline` projected to epoch ms (or
+   * null when no actionable deadline exists). Forwarded to every
+   * ActivePlayerHUD instance on this felt so segment seeding binds to
+   * the server clock.
+   */
+  decisionDeadlineMs?: number | null;
   maxTime?: number;
   lastRoundResult: string | null;
   dealerPosition: number | null;
@@ -962,6 +969,7 @@ export const MobileGameTable = ({
   allDecisionsIn,
   playerCards,
   timeLeft,
+  decisionDeadlineMs = null,
   maxTime = 10,
   lastRoundResult,
   dealerPosition,
