@@ -515,6 +515,23 @@ export function HolmDealDbgPanel() {
                 title="Copy SELF-TIMER forensics"
                 style={btn('#1e5f3a', '#4ab87b')}
               >TMR</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildHolmHandBoundaryForensicsText();
+                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
+                  try {
+                    (window as unknown as { __holmHandBoundaryForensicsExport?: unknown }).__holmHandBoundaryForensicsExport = {
+                      text,
+                      events: getHolmHbEvents(),
+                      violations: getHolmHbViolations(),
+                      sources: getHolmHbSources(),
+                    };
+                  } catch { /* noop */ }
+                }}
+                title="Copy HAND-BOUNDARY forensics"
+                style={btn('#1e1e5f', '#4a4ab8')}
+              >HBD</button>
             </>
           );
         })()}
