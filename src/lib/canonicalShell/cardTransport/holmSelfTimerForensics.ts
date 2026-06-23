@@ -26,7 +26,33 @@ export type HolmTimerEventName =
   | 'HOLM_TIMER_PROGRESS_DESCENT'
   | 'HOLM_TIMER_DEACTIVATED'
   | 'HOLM_TIMER_OWNER_MOUNT'
-  | 'HOLM_TIMER_OWNER_UNMOUNT';
+  | 'HOLM_TIMER_OWNER_UNMOUNT'
+  | 'HOLM_TIMER_WRITE';
+
+export type HolmTimerWriteField =
+  | 'segmentDeadlineMsRef'
+  | 'segmentDurationMsRef'
+  | 'activationSeqRef'
+  | 'suppressTransition'
+  | 'nowTickMs'
+  | 'wasActiveRef'
+  | 'timeLeftProp'
+  | 'maxTimeProp'
+  | 'isActiveProp'
+  | 'svgStrokeDashoffset'
+  | 'svgClassNameTransition';
+
+export type HolmTimerWriteKind =
+  | 'render-derivation'
+  | 'effect'
+  | 'layout-effect'
+  | 'raf'
+  | 'interval'
+  | 'timeout'
+  | 'prop-update'
+  | 'activation'
+  | 'pause-resume'
+  | 'unknown';
 
 export type HolmTimerViolationType =
   | 'HOLM_TIMER_FIRST_COMMIT_BELOW_FULL'
@@ -36,7 +62,12 @@ export type HolmTimerViolationType =
   | 'HOLM_TIMER_STALE_SEGMENT_WRITE'
   | 'HOLM_TIMER_MULTIPLE_VISIBLE_OWNERS'
   | 'HOLM_TIMER_LOGICAL_DOM_DIVERGENCE'
-  | 'HOLM_TIMER_CSS_TRANSITION_FROM_STALE_VALUE';
+  | 'HOLM_TIMER_CSS_TRANSITION_FROM_STALE_VALUE'
+  | 'HOLM_TIMER_DEADLINE_MUTATED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_BASELINE_RESTARTED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_TRANSITION_REENABLED_WITHIN_SEGMENT'
+  | 'HOLM_TIMER_DUPLICATE_FIRST_RAF'
+  | 'HOLM_TIMER_DUPLICATE_SECOND_RAF';
 
 export interface HolmTimerEvent {
   seq: number;
@@ -175,6 +206,103 @@ export function recordHolmTimerViolation(
   if (s && !s.violations.includes(type)) s.violations.push(type);
   publish();
   emit();
+}
+
+// ─── Writer attribution ────────────────────────────────────────────────
+// Per-segment latches so we can detect every same-segment mutation.
+interface SegmentRuntimeState {
+  firstRafFired: boolean;
+  secondRafFired: boolean;
+  deadlineWritesAfterActivation: number;
+  durationWritesAfterActivation: number;
+  transitionEnableWritesAfterActivation: number;
+  lastDeadline: number | null;
+  lastDuration: number | null;
+}
+const segmentRuntime = new Map<string, SegmentRuntimeState>();
+
+export interface HolmTimerWriteRecord {
+  field: HolmTimerWriteField;
+  prior: unknown;
+  next: unknown;
+  writer: string;             // e.g. "MobilePlayerTimer.activationEdge"
+  callsite: string;           // file:line
+  reason: string;
+  kind: HolmTimerWriteKind;
+  segmentId: string | null;
+  instanceId: number;
+  commitId: number | null;    // render commit / activation seq
+}
+
+export function recordHolmTimerWrite(rec: HolmTimerWriteRecord): void {
+  recordHolmTimerEvent('HOLM_TIMER_WRITE', rec.instanceId, rec.segmentId, 'SAME_SEGMENT_UPDATE', {
+    field: rec.field,
+    prior: rec.prior,
+    next: rec.next,
+    writer: rec.writer,
+    callsite: rec.callsite,
+    reason: rec.reason,
+    kind: rec.kind,
+    commitId: rec.commitId,
+  });
+
+  if (!rec.segmentId) return;
+  let rt = segmentRuntime.get(rec.segmentId);
+  if (!rt) {
+    rt = {
+      firstRafFired: false,
+      secondRafFired: false,
+      deadlineWritesAfterActivation: 0,
+      durationWritesAfterActivation: 0,
+      transitionEnableWritesAfterActivation: 0,
+      lastDeadline: null,
+      lastDuration: null,
+    };
+    segmentRuntime.set(rec.segmentId, rt);
+  }
+
+  // Detect within-segment mutations of authoritative deadline/baseline.
+  if (rec.field === 'segmentDeadlineMsRef' && rec.kind !== 'activation' && rec.kind !== 'pause-resume') {
+    if (rec.prior !== rec.next && rec.next != null) {
+      rt.deadlineWritesAfterActivation += 1;
+      recordHolmTimerViolation('HOLM_TIMER_DEADLINE_MUTATED_WITHIN_SEGMENT', rec.instanceId, rec.segmentId, {
+        prior: rec.prior, next: rec.next, writer: rec.writer, callsite: rec.callsite,
+        reason: rec.reason, kind: rec.kind, commitId: rec.commitId,
+      });
+    }
+  }
+  if (rec.field === 'segmentDurationMsRef' && rec.kind !== 'activation' && rec.kind !== 'pause-resume') {
+    if (rec.prior !== rec.next && rec.next != null) {
+      rt.durationWritesAfterActivation += 1;
+      recordHolmTimerViolation('HOLM_TIMER_BASELINE_RESTARTED_WITHIN_SEGMENT', rec.instanceId, rec.segmentId, {
+        prior: rec.prior, next: rec.next, writer: rec.writer, callsite: rec.callsite,
+        reason: rec.reason, kind: rec.kind, commitId: rec.commitId,
+      });
+    }
+  }
+  if (rec.field === 'suppressTransition' && rec.prior === true && rec.next === false) {
+    rt.transitionEnableWritesAfterActivation += 1;
+    if (rt.transitionEnableWritesAfterActivation > 1) {
+      recordHolmTimerViolation('HOLM_TIMER_TRANSITION_REENABLED_WITHIN_SEGMENT', rec.instanceId, rec.segmentId, {
+        count: rt.transitionEnableWritesAfterActivation, writer: rec.writer, callsite: rec.callsite,
+        reason: rec.reason, kind: rec.kind,
+      });
+    }
+  }
+}
+
+function segmentRuntimeFor(segmentId: string): SegmentRuntimeState {
+  let rt = segmentRuntime.get(segmentId);
+  if (!rt) {
+    rt = {
+      firstRafFired: false, secondRafFired: false,
+      deadlineWritesAfterActivation: 0, durationWritesAfterActivation: 0,
+      transitionEnableWritesAfterActivation: 0,
+      lastDeadline: null, lastDuration: null,
+    };
+    segmentRuntime.set(segmentId, rt);
+  }
+  return rt;
 }
 
 export function registerHolmTimerOwner(snap: HolmTimerOwnerSnapshot): void {
@@ -342,15 +470,29 @@ export function recordHolmTimerSample(s: HolmTimerSamplePoint): void {
     cssTransition: s.cssTransition,
     visibleOwnerCount: s.visibleOwnerCount,
   };
+  const rt = segmentRuntimeFor(s.segmentId);
   if (s.stage === 'FIRST_RAF') {
-    seg.firstRafProgress = s.logicalProgress;
-    recordHolmTimerEvent('HOLM_TIMER_FIRST_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
-    if (s.logicalProgress < 0.999) {
-      recordHolmTimerViolation('HOLM_TIMER_FIRST_RAF_BELOW_FULL', s.instanceId, s.segmentId, payload);
+    if (rt.firstRafFired) {
+      // Subsequent rAF1 attempts are TICKs — flag the duplicate and degrade.
+      recordHolmTimerViolation('HOLM_TIMER_DUPLICATE_FIRST_RAF', s.instanceId, s.segmentId, payload);
+      recordHolmTimerEvent('HOLM_TIMER_RENDER_SAME_SEGMENT', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', { ...payload, demotedFrom: 'FIRST_RAF' });
+    } else {
+      rt.firstRafFired = true;
+      seg.firstRafProgress = s.logicalProgress;
+      recordHolmTimerEvent('HOLM_TIMER_FIRST_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+      if (s.logicalProgress < 0.999) {
+        recordHolmTimerViolation('HOLM_TIMER_FIRST_RAF_BELOW_FULL', s.instanceId, s.segmentId, payload);
+      }
     }
   } else if (s.stage === 'SECOND_RAF') {
-    seg.secondRafProgress = s.logicalProgress;
-    recordHolmTimerEvent('HOLM_TIMER_SECOND_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+    if (rt.secondRafFired) {
+      recordHolmTimerViolation('HOLM_TIMER_DUPLICATE_SECOND_RAF', s.instanceId, s.segmentId, payload);
+      recordHolmTimerEvent('HOLM_TIMER_RENDER_SAME_SEGMENT', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', { ...payload, demotedFrom: 'SECOND_RAF' });
+    } else {
+      rt.secondRafFired = true;
+      seg.secondRafProgress = s.logicalProgress;
+      recordHolmTimerEvent('HOLM_TIMER_SECOND_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+    }
   } else if (s.stage === '250MS') {
     seg.at250msProgress = s.logicalProgress;
     recordHolmTimerEvent('HOLM_TIMER_250MS', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);

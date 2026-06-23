@@ -17,6 +17,7 @@ import {
   beginHolmTimerSegment,
   recordHolmTimerSample,
   endHolmTimerSegment,
+  recordHolmTimerWrite,
 } from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
 
 // Monotonically increasing instance counter so we can distinguish a
@@ -91,27 +92,76 @@ export const MobilePlayerTimer = ({
   // Detect activation edge during render so the very first paint of a
   // new active segment is already snapped to full. Capture the
   // immutable segment deadline ONCE here.
+  const isHolmRender = deal?.gameType === 'holm-game';
+  const activeSegmentIdRef = useRef<string | null>(null);
   if (effectiveIsActive && !wasActiveRef.current) {
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const durationMs = Math.max(1, (maxTime || 0) * 1000);
     const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
       ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
       : (maxTime || 0);
+    const priorDeadline = segmentDeadlineMsRef.current;
+    const priorDuration = segmentDurationMsRef.current;
+    const priorSeq = activationSeqRef.current;
     segmentDurationMsRef.current = durationMs;
     segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
     activationSeqRef.current += 1;
+    const newSegId = `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
+    activeSegmentIdRef.current = newSegId;
+    if (isHolmRender) {
+      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:104', reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:105', reason: 'capture immutable deadline at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:106', reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
   } else if (!effectiveIsActive) {
+    const priorDeadline = segmentDeadlineMsRef.current;
+    const priorDuration = segmentDurationMsRef.current;
+    const closingSeg = activeSegmentIdRef.current;
     segmentDeadlineMsRef.current = null;
     segmentDurationMsRef.current = null;
+    if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:111', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:112', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    activeSegmentIdRef.current = null;
   }
+
+  // Record every prop change while a segment is active. These are the
+  // raw external inputs; any deadline mutation must originate from a
+  // prop change or an internal write — this gives the writer trail.
+  const lastPropsRef = useRef<{ timeLeft: number | null; maxTime: number; isActive: boolean }>({ timeLeft, maxTime, isActive });
+  if (isHolmRender && activeSegmentIdRef.current) {
+    const prev = lastPropsRef.current;
+    if (prev.timeLeft !== timeLeft) {
+      recordHolmTimerWrite({ field: 'timeLeftProp', prior: prev.timeLeft, next: timeLeft, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming timeLeft prop tick', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    if (prev.maxTime !== maxTime) {
+      recordHolmTimerWrite({ field: 'maxTimeProp', prior: prev.maxTime, next: maxTime, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming maxTime prop change', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    if (prev.isActive !== isActive) {
+      recordHolmTimerWrite({ field: 'isActiveProp', prior: prev.isActive, next: isActive, writer: 'MobilePlayerTimer.props', callsite: 'src/components/MobilePlayerTimer.tsx:props', reason: 'incoming isActive prop change', kind: 'prop-update', segmentId: activeSegmentIdRef.current, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+  }
+  lastPropsRef.current = { timeLeft, maxTime, isActive };
+
+
 
   useEffect(() => {
     if (effectiveIsActive && !wasActiveRef.current) {
+      const segId = activeSegmentIdRef.current;
       // Suppress any CSS transition through two rAFs so the compositor
       // paints the FULL ring before we re-enable the stroke transition.
+      if (isHolmRender) {
+        recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:133', reason: 'pre-paint suppression on activation', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      }
       setSuppressTransition(true);
       const r1 = requestAnimationFrame(() => {
-        const r2 = requestAnimationFrame(() => setSuppressTransition(false));
+        const r2 = requestAnimationFrame(() => {
+          if (isHolmRender) {
+            recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:135', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+          }
+          setSuppressTransition(false);
+        });
         (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
       });
       recordLifecycleEvent('timer.activate', {
