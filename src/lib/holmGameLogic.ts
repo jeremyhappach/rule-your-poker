@@ -2552,7 +2552,9 @@ async function handleMultiPlayerShowdown(
         .from('rounds')
         .update({ 
           status: 'completed',
-          chucky_active: false
+          chucky_active: false,
+          current_turn_position: null,
+          decision_deadline: null
         })
         .eq('id', roundId);
       
