@@ -176,6 +176,8 @@ import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holm
 import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
+  ensureChuckyConfigLoaded,
+  getChuckyConfiguredStepperDelayMs,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealTimingDbg";
 import {
   recordSoloStateChange,
@@ -1694,6 +1696,23 @@ export const MobileGameTable = ({
     playerId: string;
     cards: CardType[];
   } | null>(null);
+
+  // Sticky persistence refs used by the TABLED_SELF / CHUCKY_TABLED render
+  // predicates only. They mirror the live state when it is good and are
+  // ONLY released when a NEW non-null handContextId arrives that differs
+  // from the captured one (NEXT_HAND PRE_DEAL). They are NOT wiped by
+  // intermediate lifecycle effects, so the stages persist through
+  // CHUCKY_REVEAL → RESULT_ANNOUNCEMENT → SHOWDOWN → WIN_SEQUENCE →
+  // PLAYER_TO_POT exactly per the ownership contract.
+  const tabledSelfStickyRef = useRef<{
+    handContextId: string;
+    playerId: string;
+    cards: CardType[];
+  } | null>(null);
+  const chuckyStageStickyRef = useRef<{
+    handContextId: string;
+    cards: CardType[];
+  } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
@@ -2434,6 +2453,9 @@ export const MobileGameTable = ({
   const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
+  // Prime the configured reveal-cadence fetch as early as possible so the
+  // first stepper arm reads from game_defaults (not the in-flight fallback).
+  useEffect(() => { ensureChuckyConfigLoaded(); }, []);
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
@@ -5221,8 +5243,17 @@ export const MobileGameTable = ({
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
-    const STEPPER_DELAY_MS = 250;
-    const STEPPER_DELAY_SOURCE: 'hardcoded' | 'gameDefaults' | 'fallback' = 'hardcoded';
+    // SINGLE OWNER of reveal timing: game_defaults
+    // (chucky_second_to_last_delay_seconds / chucky_last_card_delay_seconds).
+    // The hardcoded 250ms placeholder was removed — we always source from
+    // the same Holm game defaults used elsewhere. Fallback (1500ms) only
+    // applies while the initial config fetch is still in flight; it matches
+    // the canonical default cadence so it does not trigger a config mismatch.
+    const HOLM_REVEAL_FALLBACK_MS = 1500;
+    const cfgDelay = getChuckyConfiguredStepperDelayMs(cachedChuckyCardsRevealed, total);
+    const STEPPER_DELAY_MS = cfgDelay.ms ?? HOLM_REVEAL_FALLBACK_MS;
+    const STEPPER_DELAY_SOURCE: 'gameDefaults' | 'fallback' =
+      cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectId,
@@ -8624,11 +8655,35 @@ export const MobileGameTable = ({
             }
           }
 
-          const activeSnap =
+          // ── TABLED_SELF sticky predicate ──────────────────────────────
+          // Release the sticky snapshot ONLY when a new non-null
+          // handContextId proves we are in NEXT_HAND PRE_DEAL.
+          if (
+            tabledSelfStickyRef.current &&
             handContextId &&
-            lonePlayerStageSnapshotRef.current?.handContextId === handContextId
+            tabledSelfStickyRef.current.handContextId !== handContextId
+          ) {
+            tabledSelfStickyRef.current = null;
+          }
+          // Capture / refresh the sticky snapshot whenever the live
+          // signal is good (mirrors lonePlayerStageSnapshotRef updates).
+          if (hasLiveLonePlayer && handContextId) {
+            tabledSelfStickyRef.current = {
+              handContextId,
+              playerId: liveLoneSoloPlayer!.id,
+              cards: liveLoneSoloCards,
+            };
+          }
+
+          const activeSnap =
+            // Sticky snapshot survives transient handContextId nulls and
+            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
+            tabledSelfStickyRef.current ??
+            (lonePlayerStageSnapshotRef.current?.handContextId &&
+            (!handContextId ||
+              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
               ? lonePlayerStageSnapshotRef.current
-              : null;
+              : null);
 
           const loneSoloPlayer =
             liveLoneSoloPlayer ??
@@ -8642,8 +8697,29 @@ export const MobileGameTable = ({
           const lonePlayerVisible =
             hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
+          // ── CHUCKY_TABLED sticky predicate ────────────────────────────
+          if (
+            chuckyStageStickyRef.current &&
+            handContextId &&
+            chuckyStageStickyRef.current.handContextId !== handContextId
+          ) {
+            chuckyStageStickyRef.current = null;
+          }
+          if (
+            !!cachedChuckyActive &&
+            !!cachedChuckyCards &&
+            cachedChuckyCards.length > 0 &&
+            handContextId
+          ) {
+            chuckyStageStickyRef.current = { handContextId, cards: cachedChuckyCards };
+          }
+          const chuckyCardsForRender: CardType[] | null =
+            cachedChuckyCards && cachedChuckyCards.length > 0
+              ? cachedChuckyCards
+              : (chuckyStageStickyRef.current?.cards ?? null);
           const chuckyVisible =
-            !!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0;
+            (!!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0) ||
+            (!!chuckyStageStickyRef.current && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
 
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow: communityShouldShow,
@@ -8797,7 +8873,11 @@ export const MobileGameTable = ({
               )}
 
               {/* holm.chuckyStage — devil avatar + Chucky cards in ONE stage */}
-              {chuckyVisible && (
+              {chuckyVisible && chuckyCardsForRender && (() => {
+                const chuckyHandIdForRender =
+                  handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
+                const chuckyTotalForRender = chuckyCardsForRender.length;
+                return (
                 <HolmAnchoredSlot
                   artifactId="holm.chuckyStage"
                   zIndex={10}
@@ -8805,10 +8885,10 @@ export const MobileGameTable = ({
                   <HolmSoloRootRegistrar
                     root="CHUCKY_TABLED"
                     mounted={true}
-                    cardIds={(cachedChuckyCards ?? []).map((c) => `${c.rank}${c.suit}`)}
-                    handContextId={handContextId ?? null}
+                    cardIds={chuckyCardsForRender.map((c) => `${c.rank}${c.suit}`)}
+                    handContextId={chuckyHandIdForRender}
                     soloDeclared={!!isSoloVsChucky}
-                    phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                     caller="MobileGameTable.chuckyStage"
                   />
                   <div
@@ -8824,7 +8904,7 @@ export const MobileGameTable = ({
                     >
                       👿
                     </span>
-                    {cachedChuckyCards!.map((card, index) => {
+                    {chuckyCardsForRender.map((card, index) => {
                       const isRevealed = index < cachedChuckyCardsRevealed;
                       const isFourColor = deckColorMode === 'four_color';
                       const fourColorConfig = getFourColorSuit(card.suit);
@@ -8839,7 +8919,7 @@ export const MobileGameTable = ({
                       return (
                         <div
                           key={index}
-                          data-holm-card-id={`${handContextId}#chucky-${index}`}
+                          data-holm-card-id={`${chuckyHandIdForRender}#chucky-${index}`}
                           data-holm-renderer="MobileGameTable.holmChuckyStage"
                           data-holm-component="CHUCKY"
                           data-card-anchor={`chucky-${index}`}
@@ -8847,16 +8927,16 @@ export const MobileGameTable = ({
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
                           <ChuckyVisualCardInstrumenter
-                            handContextId={handContextId ?? null}
+                            handContextId={chuckyHandIdForRender}
                             index={index}
                             isRevealed={isRevealed}
                             renderer="MobileGameTable.holmChuckyStage"
                             owner="cachedChuckyCardsRevealed"
-                            phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                            phase={cachedChuckyCardsRevealed >= chuckyTotalForRender ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
                             cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
-                            cachedChuckyCardsCount={cachedChuckyCards?.length ?? 0}
+                            cachedChuckyCardsCount={chuckyTotalForRender}
                           />
-                          <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
+                          <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
                             {isRevealed ? (
                               <div
                                 className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
@@ -8888,7 +8968,8 @@ export const MobileGameTable = ({
                     })}
                   </div>
                 </HolmAnchoredSlot>
-              )}
+                );
+              })()}
             </HolmGameplayGeometryProvider>
           );
         })()}
