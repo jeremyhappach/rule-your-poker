@@ -1616,12 +1616,19 @@ export const MobileGameTable = ({
   const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
   const feltBranchCountRef = useRef(0);
 
-  // Buck's on you animation state — fires ONLY for a real buck-pass event
-  // whose recipient is self (previous holder is not self, new holder is
-  // self, and the (prev→new@hand) pass event has not already been shown).
+  // Buck's on you overlay — event-driven, strictly scoped to handContextId.
+  // SINGLE OWNER. Fires once per handContextId iff: the prior-hand observed
+  // buckPosition existed AND differed AND the new-hand buckPosition === self.
+  // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
-  const lastBuckPositionRef = useRef<number | null>(null);
-  const lastShownBuckPassEventRef = useRef<string | null>(null); // `${prev}->${new}@hand${currentRound}` dedupe
+  // Authoritative prior-hand observation: { hci, buckPosition } captured at the
+  // moment we first saw a non-null buckPosition for that hci. Used solely to
+  // detect the cross-boundary pass event.
+  const priorHandBuckRef = useRef<{ hci: string; buckPosition: number } | null>(null);
+  // Per-handContextId fire latch. A handContextId that has fired (or has been
+  // observed and deemed not-a-pass-to-self) can never fire again.
+  const buckOverlayFiredForHciRef = useRef<string | null>(null);
+
   
   // Holm showdown phase 2 trigger ref
   const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
