@@ -4404,6 +4404,98 @@ export const MobileGameTable = ({
     }
   }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
 
+  // ── WAR-TIME TEARDOWN FORENSICS — phase/round/announcement/win watchers ──
+  const _prevRoundStatusTearRef = useRef<string | null>(roundStatus ?? null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prev = _prevRoundStatusTearRef.current;
+    const next = roundStatus ?? null;
+    if (prev === next) return;
+    _prevRoundStatusTearRef.current = next;
+    if (chuckyVisualRevealPending && (next === 'completed' || next === null)) {
+      try {
+        recordHolmChuckyTeardownEvent({
+          event: 'roundCompleted',
+          sourceFile: 'src/components/MobileGameTable.tsx',
+          functionLabel: 'roundStatus watcher',
+          callsite: 'MobileGameTable:roundStatusWatcher',
+          reason: `roundStatus ${prev}→${next} while visual reveal incomplete`,
+          writer: 'parent.roundStatus',
+          owner: 'Game.tsx',
+        });
+      } catch { /* forensics-only */ }
+    }
+  }, [roundStatus, gameType, chuckyVisualRevealPending]);
+
+  const _prevAnnouncementTearRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prev = _prevAnnouncementTearRef.current;
+    const next = !!isShowingAnnouncement;
+    if (prev === next) return;
+    _prevAnnouncementTearRef.current = next;
+    if (next && chuckyVisualRevealPending) {
+      try {
+        recordHolmChuckyTeardownEvent({
+          event: 'announcementStarted',
+          sourceFile: 'src/components/MobileGameTable.tsx',
+          functionLabel: 'announcement watcher',
+          callsite: 'MobileGameTable:announcementWatcher',
+          reason: 'announcement rose while visual reveal incomplete',
+          writer: 'derived.isShowingAnnouncement',
+          owner: 'MobileGameTable',
+        });
+      } catch { /* forensics-only */ }
+    }
+  }, [isShowingAnnouncement, gameType, chuckyVisualRevealPending]);
+
+  const _prevWinTearRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prev = _prevWinTearRef.current;
+    const next = holmWinPotTriggerId ?? null;
+    if (prev === next) return;
+    _prevWinTearRef.current = next;
+    if (next && chuckyVisualRevealPending) {
+      try {
+        recordHolmChuckyTeardownEvent({
+          event: 'winSequenceStarted',
+          sourceFile: 'src/components/MobileGameTable.tsx',
+          functionLabel: 'winSequence watcher',
+          callsite: 'MobileGameTable:winSequenceWatcher',
+          reason: 'holmWinPotTriggerId rose while visual reveal incomplete',
+          writer: 'parent.holmWinPotTriggerId',
+          owner: 'Game.tsx',
+        });
+      } catch { /* forensics-only */ }
+    }
+  }, [holmWinPotTriggerId, gameType, chuckyVisualRevealPending]);
+
+  // Server-reaches-4 while visual < 4
+  const _prevServerRevealForTearRef = useRef<number>(0);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prevV = _prevServerRevealForTearRef.current;
+    const nextV = chuckyCardsRevealed ?? 0;
+    _prevServerRevealForTearRef.current = nextV;
+    if (nextV >= 4 && prevV < 4 && cachedChuckyCardsRevealed < 4) {
+      try {
+        recordHolmChuckyTeardownViolation(
+          'HOLM_SERVER_REVEAL_4_VISUAL_LT_4',
+          `server reached ${nextV} while visual=${cachedChuckyCardsRevealed}`,
+          {
+            sourceFile: 'src/components/MobileGameTable.tsx',
+            functionLabel: 'serverRevealLagWatcher',
+            callsite: 'MobileGameTable:serverRevealLagWatcher',
+            writer: 'parent.chuckyCardsRevealed',
+            visualRevealed: cachedChuckyCardsRevealed,
+            serverRevealed: nextV,
+          },
+        );
+      } catch { /* forensics-only */ }
+    }
+  }, [chuckyCardsRevealed, gameType, cachedChuckyCardsRevealed]);
+
   // ── WAR-TIME TOTAL FORENSICS — C/G watcher effects ──────────────────────
   // CHUCKY_SERVER_REVEAL_CHANGED
   const _prevServerRevealRef = useRef<number>(0);
