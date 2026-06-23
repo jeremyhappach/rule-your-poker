@@ -2997,12 +2997,11 @@ export const MobileGameTable = ({
     holmTxnSubscribe,
     () => {
       const t = holmTxnGetActiveTxn();
-      if (!t) return 0;
-      // Snapshot signature: generation + committed-set size + outcome key + released
+      if (!t) return '';
       const committed = holmTxnGetVisualRevealCommittedIds(t.handContextId, t.handGeneration);
       return `${t.handGeneration}|${committed.size}|${t.outcomeTxnKey ?? ''}|${t.outcomeReleased ? 1 : 0}`;
     },
-    () => 0,
+    () => '',
   );
   void holmTxnTick;
   const holmActiveTxn = holmTxnGetActiveTxn();
