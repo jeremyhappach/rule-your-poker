@@ -45,6 +45,10 @@ import {
   buildChuckyFullForensicsText,
   getChuckyFullForensics,
 } from './holmChuckyFullForensics';
+import {
+  buildHolmChuckyTeardownForensicsText,
+  getHolmChuckyTeardownForensics,
+} from './holmChuckyTeardownForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -441,6 +445,24 @@ export function HolmDealDbgPanel() {
           style={{ background: '#5f1e3a', color: '#fff', border: '1px solid #b84a7b', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
         >
           COPY CHUCKY FORENSICS
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const text = buildHolmChuckyTeardownForensicsText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch { /* noop */ }
+            try {
+              (window as unknown as { __holmChuckyTeardownForensics?: unknown }).__holmChuckyTeardownForensics = getHolmChuckyTeardownForensics();
+            } catch { /* noop */ }
+          }}
+          title="Copy Holm solo-Chucky teardown forensics (writers + violations for visual-reveal destruction)"
+          style={{ background: '#3a5f1e', color: '#fff', border: '1px solid #7bb84a', borderRadius: 3, padding: '2px 8px', marginLeft: 4, fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+        >
+          COPY HOLM CHUCKY TEARDOWN FORENSICS
         </button>
       </div>
       {expanded ? (
