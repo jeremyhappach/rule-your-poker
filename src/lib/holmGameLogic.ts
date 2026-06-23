@@ -1039,7 +1039,24 @@ export async function endHolmRound(gameId: string) {
   const playersWithDecision = players.filter(p => p.current_decision === 'stay' || p.current_decision === 'fold');
   if (playersWithDecision.length === 0 && activePlayers.length > 0) {
     console.error('[HOLM END] ❌ PREMATURE CALL - no player decisions exist. Reverting round lock and resetting stale flags.');
-    await supabase.from('rounds').update({ status: 'betting' }).eq('id', capturedRoundId);
+    // Retry/recovery path: re-enter actionable state with a NEW full server deadline,
+    // stamped atomically together with status='betting' and the prior current_turn_position.
+    const { data: gd } = await supabase
+      .from('game_defaults')
+      .select('decision_timer_seconds')
+      .eq('game_type', 'holm-game')
+      .maybeSingle();
+    const retryTimerSeconds = gd?.decision_timer_seconds ?? 30;
+    const retryDeadline = new Date(Date.now() + retryTimerSeconds * 1000).toISOString();
+    const retryTurnPosition = (round as any).current_turn_position ?? null;
+    await supabase
+      .from('rounds')
+      .update({
+        status: 'betting',
+        current_turn_position: retryTurnPosition,
+        decision_deadline: retryTurnPosition != null ? retryDeadline : null,
+      })
+      .eq('id', capturedRoundId);
     await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
     return;
   }
