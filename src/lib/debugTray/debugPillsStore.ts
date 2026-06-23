@@ -40,7 +40,8 @@ export type DebugPillKey =
   | 'cardBackDbg'
   | 'threeFiveSevenDealDiag'
   | 'threeFiveSevenForensics'
-  | 'holmDealDbg';
+  | 'holmDealDbg'
+  | 'bucksOverlay';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -76,6 +77,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'threeFiveSevenDealDiag', abbreviation: '357 DEAL DIAG', fullName: '3-5-7 Deal Diagnostics', description: 'Canonical staged-deal diagnostics: self hand ownership, round transitions (last 50), timer ownership, and the card-0 lifecycle timeline. Always-on for staged-deal games (Holm, 3-5-7, future).' },
   { key: 'threeFiveSevenForensics', abbreviation: '357 FORENSICS', fullName: '3-5-7 Forensics (nuclear)', description: 'Full per-render forensic capture for 3-5-7: deal runtime, complete DOM timer inventory, self/opponent hand counts vs ownership math, card-0 per-frame autopsy, DOM inventory of timers/hands/card-backs/flying-cards/runtimes/anchors, and an append-on-change transition log. 250-sample ring buffer.' },
   { key: 'holmDealDbg', abbreviation: 'HOLM DEAL DBG', fullName: 'Holm Deal Debug', description: 'Holm canonical deal forensics: DealRuntime, hands/community/Chucky dispatch/settle, DOM visibility, and pre-settle render violations.' },
+  { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
 
 ];
 
