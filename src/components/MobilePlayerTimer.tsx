@@ -17,6 +17,7 @@ import {
   beginHolmTimerSegment,
   recordHolmTimerSample,
   endHolmTimerSegment,
+  recordHolmTimerWrite,
 } from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
 
 // Monotonically increasing instance counter so we can distinguish a
