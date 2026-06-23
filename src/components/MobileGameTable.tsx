@@ -4969,7 +4969,7 @@ export const MobileGameTable = ({
         boolean: false,
       });
     }
-  }, [handContextId, buckPosition, currentPlayer, gameType, currentRound, phase, roundStatus]);
+  }, [handContextId, buckPosition, currentPlayer, gameType, currentRound, gameStatus, roundStatus]);
 
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
