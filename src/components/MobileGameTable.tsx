@@ -8968,7 +8968,8 @@ export const MobileGameTable = ({
                     })}
                   </div>
                 </HolmAnchoredSlot>
-              )}
+                );
+              })()}
             </HolmGameplayGeometryProvider>
           );
         })()}
