@@ -24,6 +24,7 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
+import { recordHolmFull, setHolmFullIdentity } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
