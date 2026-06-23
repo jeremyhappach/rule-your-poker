@@ -3,6 +3,7 @@
 // src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
 // as-is until its consumer migrates in a later wave.
 import { useEffect, useState } from "react";
+import { recordBucksForensic } from "@/lib/canonicalShell/holmBucksOverlayForensics";
 
 interface BucksOnYouAnimationProps {
   show: boolean;
@@ -14,17 +15,37 @@ export const BucksOnYouAnimation = ({ show, onComplete }: BucksOnYouAnimationPro
 
   useEffect(() => {
     if (show) {
+      recordBucksForensic('OVERLAY_MOUNTED', {
+        ownerFile: 'src/components/BucksOnYouAnimation.tsx',
+        ownerComponent: 'BucksOnYouAnimation',
+        ownerBranch: 'show=true → setVisible(true)',
+        show,
+      });
       setVisible(true);
       const timer = setTimeout(() => {
+        recordBucksForensic('OVERLAY_UNMOUNTED', {
+          ownerFile: 'src/components/BucksOnYouAnimation.tsx',
+          ownerComponent: 'BucksOnYouAnimation',
+          ownerBranch: 'auto-timeout 1500ms → setVisible(false) + onComplete',
+        });
         setVisible(false);
         onComplete?.();
       }, 1500);
       return () => clearTimeout(timer);
     } else {
       // Immediately hide if show becomes false
+      if (visible) {
+        recordBucksForensic('OVERLAY_UNMOUNTED', {
+          ownerFile: 'src/components/BucksOnYouAnimation.tsx',
+          ownerComponent: 'BucksOnYouAnimation',
+          ownerBranch: 'show=false → setVisible(false)',
+        });
+      }
       setVisible(false);
     }
+     
   }, [show, onComplete]);
+
 
   if (!visible) return null;
 
