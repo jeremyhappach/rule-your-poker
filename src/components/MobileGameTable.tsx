@@ -936,6 +936,51 @@ const DealerSelectionVisibilityTracker = ({
 };
 
 
+// ──────────────────────────────────────────────────────────────────────
+// Holm v3 — renderer paint-commit acknowledger for an inline Chucky card.
+//
+// Once `isRevealed` flips true, schedule a double-rAF (paint barrier) and
+// then record the visual reveal against the active Holm txn. Generation-
+// fenced inside holmTxnRecordVisualReveal and deduped by exact cardId.
+// ──────────────────────────────────────────────────────────────────────
+const HolmChuckyRevealCommitter: React.FC<{
+  cardId: string;
+  isRevealed: boolean;
+  handContextId: string | null;
+}> = ({ cardId, isRevealed, handContextId }) => {
+  const committedRef = useRef(false);
+  useEffect(() => {
+    if (!isRevealed) return;
+    if (!handContextId) return;
+    if (committedRef.current) return;
+    let cancelled = false;
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const raf2 = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const txn = holmTxnGetActiveTxn();
+        if (!txn) return;
+        if (txn.handContextId !== handContextId) return;
+        if (committedRef.current) return;
+        committedRef.current = true;
+        holmTxnRecordVisualReveal({
+          cardId,
+          handContextId,
+          handGeneration: txn.handGeneration,
+        });
+      });
+      // best-effort cleanup of inner raf if outer cancels later
+      void raf2;
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+    };
+  }, [cardId, isRevealed, handContextId]);
+  return null;
+};
+
+
 export const MobileGameTable = ({
   gameId,
   players,
