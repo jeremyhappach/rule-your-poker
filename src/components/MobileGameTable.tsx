@@ -174,6 +174,21 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import {
+  recordHolmSoloChuckyStateSnapshot,
+  recordHolmResultGateEval,
+  recordHolmAnnouncementRequest,
+  recordHolmAnnouncementStart,
+  recordHolmWinSequenceRequest,
+  recordHolmWinSequenceStart,
+  recordHolmPlayerToPotStart,
+  recordHolmNextHandStart,
+  recordChuckyServerRevealChanged,
+  recordChuckyVisualRevealChanged,
+  recordChuckyCardRenderEval,
+  recordChuckyStageRenderInput,
+  recordHolmPhaseChanged,
+} from "@/lib/canonicalShell/cardTransport/holmChuckyTotalForensics";
+import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
   ensureChuckyConfigLoaded,
