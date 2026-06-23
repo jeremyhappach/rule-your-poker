@@ -190,7 +190,7 @@ export function recordHolmTimerEvent(
     // Imported lazily to avoid any module-load ordering risk.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     // using static import
-    mod.recordHolmFull({
+    _recordHolmFull({
       category: 'TIMER_EVENT',
       event,
       source: 'holmSelfTimerForensics.recordHolmTimerEvent',
@@ -229,7 +229,7 @@ export function recordHolmTimerViolation(
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     // using static import
-    mod.recordHolmFull({
+    _recordHolmFull({
       category: 'TIMER_VIOLATION',
       event: type,
       source: 'holmSelfTimerForensics.recordHolmTimerViolation',
