@@ -475,7 +475,7 @@ export const MobilePlayerTimer = ({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={suppressTransition ? "" : "transition-all duration-1000 ease-linear"}
+            className={suppressTransition ? "" : "transition-[stroke-dashoffset] duration-1000 ease-linear"}
             style={{
               filter: isUrgent
                 ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))'
