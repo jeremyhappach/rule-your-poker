@@ -175,6 +175,14 @@ import {
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import { recordChuckyRenderState } from "@/lib/canonicalShell/cardTransport/holmChuckyRenderStateForensics";
 import {
+  instrumentHolmSelfStageRender,
+  instrumentHolmPotRender,
+  recordHolmPotConsumed,
+  recordHolmPotComplete,
+  recordHolmChuckyAdmission,
+} from "@/lib/canonicalShell/cardTransport/holmStageAndPotForensics";
+
+import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
   ensureChuckyConfigLoaded,
