@@ -76,6 +76,10 @@ import {
   buildBucksForensicsText,
   getBucksForensics,
 } from "@/lib/canonicalShell/holmBucksOverlayForensics";
+import {
+  armBuckPresentationGate,
+  releaseBuckPresentationGate,
+} from "@/lib/canonicalShell/holmBuckPresentationGate";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
