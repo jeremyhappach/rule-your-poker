@@ -251,6 +251,28 @@ const EXPLICIT_ROUTES: Record<string, ChuckyForensicCategory> = {
   MGT_SUBTREE_OWNER_CHANGE: 'render',
   CHUCKY_RENDER_TREE: 'render',
   CHUCKY_UNMOUNT_STACK: 'render',
+
+  // SELF_HAND / TABLED_SELF routing (holmStageAndPotForensics)
+  HOLM_SELF_STAGE_ROUTE: 'persistence',
+  HOLM_SELF_STAGE_CHANGED: 'persistence',
+  HOLM_SELF_HAND_MOUNTED: 'persistence',
+  HOLM_SELF_HAND_UNMOUNTED: 'persistence',
+  HOLM_TABLED_SELF_MOUNTED: 'persistence',
+  HOLM_TABLED_SELF_UNMOUNTED: 'persistence',
+  HOLM_SELF_STAGE_CHANGED_DURING_CHUCKY_REVEAL: 'violation',
+
+  // Pot-transfer lifecycle (holmStageAndPotForensics)
+  HOLM_POT_TRIGGER_RAW: 'win',
+  HOLM_POT_TRIGGER_GATED: 'win',
+  HOLM_POT_ANIMATION_MOUNTED: 'win',
+  HOLM_POT_ANIMATION_SKIPPED: 'win',
+  HOLM_POT_ANIMATION_CONSUMED: 'win',
+  HOLM_POT_ANIMATION_COMPLETE: 'win',
+  HOLM_POT_ANIMATION_EXPECTED_NOT_MOUNTED: 'violation',
+
+  // New-hand Chucky admission summary
+  HOLM_CHUCKY_ADMISSION: 'persistence',
+
 };
 
 function routeEvent(name: string): ChuckyForensicCategory {
