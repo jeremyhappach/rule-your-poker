@@ -187,6 +187,18 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
+import {
+  beginNewHand as holmTxnBeginNewHand,
+  markNewHandInitComplete as holmTxnMarkNewHandInitComplete,
+  tryLatchOutcomeTxn as holmTxnTryLatchOutcomeTxn,
+  releaseOutcomePresentation as holmTxnReleaseOutcomePresentation,
+  recordVisualChuckyRevealCommitted as holmTxnRecordVisualReveal,
+  getVisualChuckyRevealCommittedIds as holmTxnGetVisualRevealCommittedIds,
+  isHolmChuckyWriteAllowed as holmTxnIsWriteAllowed,
+  recordSequencerEvent as holmTxnRecordSequencerEvent,
+  getActiveTxn as holmTxnGetActiveTxn,
+  subscribeHolmTxn as holmTxnSubscribe,
+} from "@/lib/canonicalShell/cardTransport/holmTxnState";
 
 const __chuckyAuditRefIds = new WeakMap<object, string>();
 let __chuckyAuditRefSeq = 0;
