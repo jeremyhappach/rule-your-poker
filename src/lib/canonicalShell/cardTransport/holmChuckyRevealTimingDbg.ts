@@ -244,3 +244,31 @@ export function resetChuckyRevealTimingForHand(handContextId: string | null): vo
 export function __debugGetChuckyTimingConfig(): ChuckyTimingConfig | null {
   return STATE.config;
 }
+
+/** Kick off the config fetch (idempotent). Safe to call from a mount effect. */
+export function ensureChuckyConfigLoaded(): void {
+  ensureFetch();
+}
+
+/**
+ * Synchronous accessor used by the reveal stepper.
+ * Picks the correct configured delay for this step:
+ *   index === total - 1 → lastCardDelayMs
+ *   otherwise           → secondToLastDelayMs (step cadence)
+ *
+ * Returns ms=null when the fetch hasn't completed or the row is missing,
+ * so the caller can fall back to a sensible default while reporting source.
+ */
+export function getChuckyConfiguredStepperDelayMs(
+  index: number,
+  total: number,
+): { ms: number | null; source: 'gameDefaults' | 'pending' | 'fetch-failed' | 'fallback' } {
+  ensureFetch();
+  const cfg = STATE.config;
+  if (!cfg || cfg.source !== 'gameDefaults') {
+    return { ms: null, source: cfg?.source ?? 'pending' };
+  }
+  const isLast = index === total - 1;
+  const ms = isLast ? cfg.lastCardDelayMs : cfg.secondToLastDelayMs;
+  return { ms: ms ?? null, source: 'gameDefaults' };
+}
