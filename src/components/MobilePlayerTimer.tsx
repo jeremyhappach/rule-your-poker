@@ -215,38 +215,53 @@ export const MobilePlayerTimer = ({
 
 
 
+  // Pre-paint suppression: fire ONCE per activation seq increment.
+  // Drives the two-rAF snap-to-full + transition re-enable. Gated on
+  // activationSeqRef change (not the wasActiveRef edge) so it cooperates
+  // with keyed mode where wasActiveRef is no longer the source of truth.
+  const lastSuppressActivationSeqRef = useRef(0);
   useEffect(() => {
-    if (effectiveIsActive && !wasActiveRef.current) {
-      const segId = activeSegmentIdRef.current;
-      // Suppress any CSS transition through two rAFs so the compositor
-      // paints the FULL ring before we re-enable the stroke transition.
-      if (isHolmRender) {
-        recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:133', reason: 'pre-paint suppression on activation', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      }
-      setSuppressTransition(true);
-      const r1 = requestAnimationFrame(() => {
-        const r2 = requestAnimationFrame(() => {
-          if (isHolmRender) {
-            recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:135', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-          }
-          setSuppressTransition(false);
-        });
-        (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
-      });
-      recordLifecycleEvent('timer.activate', {
-        component: 'MobilePlayerTimer',
-        instance_id: instanceIdRef.current,
-        time_left_seed: effectiveTimeLeft,
-        max_time: maxTime,
-        timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
-        snapped_full: true,
-        segment_deadline_ms: segmentDeadlineMsRef.current,
-        segment_duration_ms: segmentDurationMsRef.current,
-      });
-      return () => cancelAnimationFrame(r1);
+    if (!effectiveIsActive) {
+      wasActiveRef.current = false;
+      return;
     }
-    wasActiveRef.current = effectiveIsActive;
-  }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
+    if (lastSuppressActivationSeqRef.current === activationSeqRef.current) {
+      // Same activation segment; do not re-arm suppression. This is the
+      // primary fix for the upward-refill defect: prior code re-fired
+      // this effect on every render of an active turn.
+      return;
+    }
+    lastSuppressActivationSeqRef.current = activationSeqRef.current;
+    wasActiveRef.current = true;
+    const segId = activeSegmentIdRef.current;
+    if (isHolmRender) {
+      recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:suppress', reason: 'pre-paint suppression on activation seq increment', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+    }
+    setSuppressTransition(true);
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => {
+        if (isHolmRender) {
+          recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:rAF2', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+        }
+        setSuppressTransition(false);
+      });
+      (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
+    });
+    recordLifecycleEvent('timer.activate', {
+      component: 'MobilePlayerTimer',
+      instance_id: instanceIdRef.current,
+      time_left_seed: effectiveTimeLeft,
+      max_time: maxTime,
+      timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
+      snapped_full: true,
+      segment_deadline_ms: segmentDeadlineMsRef.current,
+      segment_duration_ms: segmentDurationMsRef.current,
+      activation_key: lastActivationKeyRef.current,
+    });
+    return () => cancelAnimationFrame(r1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveIsActive, activationSeqRef.current]);
+
 
   // Drive descent purely from clock vs fixed deadline. 100ms tick — no
   // dependency on incoming prop ticks, so deadline can never rebase.
