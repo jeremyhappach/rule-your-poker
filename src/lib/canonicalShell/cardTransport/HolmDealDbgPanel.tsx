@@ -53,6 +53,14 @@ import {
   buildBucksForensicsText,
   getBucksForensics,
 } from '@/lib/canonicalShell/holmBucksOverlayForensics';
+import {
+  buildHolmSelfTimerForensicsText,
+  getHolmTimerEvents as getHolmSelfTimerEvents,
+  getHolmTimerViolations as getHolmSelfTimerViolations,
+  getHolmTimerOwners as getHolmSelfTimerOwners,
+  getHolmTimerSegments as getHolmSelfTimerSegments,
+  subscribeHolmSelfTimer,
+} from './holmSelfTimerForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
