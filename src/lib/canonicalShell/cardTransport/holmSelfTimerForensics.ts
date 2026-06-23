@@ -470,15 +470,29 @@ export function recordHolmTimerSample(s: HolmTimerSamplePoint): void {
     cssTransition: s.cssTransition,
     visibleOwnerCount: s.visibleOwnerCount,
   };
+  const rt = segmentRuntimeFor(s.segmentId);
   if (s.stage === 'FIRST_RAF') {
-    seg.firstRafProgress = s.logicalProgress;
-    recordHolmTimerEvent('HOLM_TIMER_FIRST_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
-    if (s.logicalProgress < 0.999) {
-      recordHolmTimerViolation('HOLM_TIMER_FIRST_RAF_BELOW_FULL', s.instanceId, s.segmentId, payload);
+    if (rt.firstRafFired) {
+      // Subsequent rAF1 attempts are TICKs — flag the duplicate and degrade.
+      recordHolmTimerViolation('HOLM_TIMER_DUPLICATE_FIRST_RAF', s.instanceId, s.segmentId, payload);
+      recordHolmTimerEvent('HOLM_TIMER_RENDER_SAME_SEGMENT', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', { ...payload, demotedFrom: 'FIRST_RAF' });
+    } else {
+      rt.firstRafFired = true;
+      seg.firstRafProgress = s.logicalProgress;
+      recordHolmTimerEvent('HOLM_TIMER_FIRST_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+      if (s.logicalProgress < 0.999) {
+        recordHolmTimerViolation('HOLM_TIMER_FIRST_RAF_BELOW_FULL', s.instanceId, s.segmentId, payload);
+      }
     }
   } else if (s.stage === 'SECOND_RAF') {
-    seg.secondRafProgress = s.logicalProgress;
-    recordHolmTimerEvent('HOLM_TIMER_SECOND_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+    if (rt.secondRafFired) {
+      recordHolmTimerViolation('HOLM_TIMER_DUPLICATE_SECOND_RAF', s.instanceId, s.segmentId, payload);
+      recordHolmTimerEvent('HOLM_TIMER_RENDER_SAME_SEGMENT', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', { ...payload, demotedFrom: 'SECOND_RAF' });
+    } else {
+      rt.secondRafFired = true;
+      seg.secondRafProgress = s.logicalProgress;
+      recordHolmTimerEvent('HOLM_TIMER_SECOND_RAF', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
+    }
   } else if (s.stage === '250MS') {
     seg.at250msProgress = s.logicalProgress;
     recordHolmTimerEvent('HOLM_TIMER_250MS', s.instanceId, s.segmentId, 'SAME_SEGMENT_UPDATE', payload);
