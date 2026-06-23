@@ -29,7 +29,11 @@ export type BucksForensicAction =
   | 'EVENT_RESOLVED'
   | 'EVENT_MISSING'
   | 'EFFECT_EVAL'
-  | 'VIOLATION';
+  | 'VIOLATION'
+  | 'SERVER_BUCK_TRANSFER_RECEIVED'
+  | 'BUCKS_GATE_ARMED'
+  | 'BUCKS_OVERLAY_SHOWN'
+  | 'BUCKS_GATE_RELEASED';
 
 export type BucksViolationCode =
   | 'HOLM_BUCKS_OVERLAY_SHOWN_WITHOUT_EVENT'
