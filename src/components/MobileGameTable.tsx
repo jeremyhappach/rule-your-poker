@@ -1643,7 +1643,7 @@ export const MobileGameTable = ({
   // SINGLE OWNER. Fires once per handContextId iff: the prior-hand observed
   // buckPosition existed AND differed AND the new-hand buckPosition === self.
   // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
-  const [showBucksOnYou, setShowBucksOnYou] = useState(false);
+  const [activeBuckPresentationId, setActiveBuckPresentationId] = useState<string | null>(null);
   // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
   // carry stable IDs; we render exactly once per ID for the receiving viewer.
   const buckOverlayFiredEventIdRef = useRef<string | null>(null);
@@ -4902,7 +4902,7 @@ export const MobileGameTable = ({
       });
     }
 
-    setShowBucksOnYou(true);
+    setActiveBuckPresentationId(ev.id);
     notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: ev.id });
     recordBucksForensic('SHOW_GRANTED', {
       eventId: ev.id, handContextId: handContextId ?? null, predicate: 'BUCKS_OVERLAY_SHOWN',
@@ -7972,7 +7972,7 @@ export const MobileGameTable = ({
             ownerFile: 'src/components/MobileGameTable.tsx',
             ownerComponent: 'MobileGameTable',
             ownerBranch: 'BucksOnYouAnimation@~8031',
-            show: showBucksOnYou,
+            activeBuckPresentationId,
             handContextId: handContextId ?? null,
             buckPosition: buckPosition ?? null,
             currentRound: typeof currentRound === 'number' ? currentRound : null,
@@ -7984,8 +7984,18 @@ export const MobileGameTable = ({
           return null;
         })()}
         <BucksOnYouAnimation
-          show={showBucksOnYou}
-          onComplete={() => {
+          presentationId={activeBuckPresentationId}
+          onComplete={(completedId) => {
+            // Accept completion only when it matches the currently-active
+            // presentation. Stale completions from older IDs are ignored.
+            if (completedId !== activeBuckPresentationId) {
+              recordBucksForensic('SHOW_SUPPRESSED', {
+                predicate: 'stale-completion-ignored',
+                completedId,
+                activeBuckPresentationId,
+              });
+              return;
+            }
             const gatedHci = buckOverlayGatedHciRef.current;
             recordBucksForensic('DISMISSED', {
               ownerFile: 'src/components/MobileGameTable.tsx',
@@ -7993,8 +8003,10 @@ export const MobileGameTable = ({
               ownerBranch: 'BucksOnYouAnimation.onComplete',
               handContextId: handContextId ?? null,
               gatedHci,
+              completedId,
             });
-            setShowBucksOnYou(false);
+            // Single state transition: clear active id + release gate.
+            setActiveBuckPresentationId(null);
             if (gatedHci) {
               releaseBuckPresentationGate(gatedHci);
               buckOverlayGatedHciRef.current = null;
@@ -8004,6 +8016,7 @@ export const MobileGameTable = ({
             }
           }}
         />
+
         
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
