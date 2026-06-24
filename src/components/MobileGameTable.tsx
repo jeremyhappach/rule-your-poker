@@ -1804,6 +1804,8 @@ export const MobileGameTable = ({
     winnerPlayerId: string | null;
     winnerCardIndices: number[];
     winnerCommunityIndices: number[];
+    kickerPlayerIndices: number[];
+    kickerCommunityIndices: number[];
     soloVsChucky: boolean;
   };
   const [holmTerminalPresentation, setHolmTerminalPresentation] =
@@ -3812,6 +3814,14 @@ export const MobileGameTable = ({
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
+    // TERMINAL LATCH (consumer wiring): while the Holm terminal-presentation
+    // latch is held, the normal active-self-hand source must NOT feed any
+    // ordinary PlayerHand path. The terminal renderers (tabled fan,
+    // winnerCards, highlights) consume the latch snapshot directly.
+    if (terminalPresentationActive) {
+      __mgtCurrentPlayerCardsSourceRef.current = 'terminal-latch-blocked';
+      return [];
+    }
     let chosen: { source: string; cards: CardType[] };
 
     // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
@@ -3946,7 +3956,7 @@ export const MobileGameTable = ({
       });
     }
     return chosen.cards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id, terminalPresentationActive]);
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
@@ -4931,6 +4941,28 @@ export const MobileGameTable = ({
     const result = getWinningCardIndices(_rawWinnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
   }, [_rawIsShowingAnnouncement, _rawWinnerCards, communityCards, _rawWinnerPlayerId]);
+  // Last-known non-empty raw highlight payload. Captured so the terminal
+  // latch can snapshot the EXACT visible highlight data at result lock,
+  // even if `_rawWinningCardHighlights` momentarily collapses to empty
+  // by the time the acquire effect runs.
+  const lastNonEmptyRawHighlightsRef = useRef<{
+    playerIndices: number[];
+    communityIndices: number[];
+    kickerPlayerIndices: number[];
+    kickerCommunityIndices: number[];
+    hasHighlights: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (_rawWinningCardHighlights.hasHighlights) {
+      lastNonEmptyRawHighlightsRef.current = {
+        playerIndices: [..._rawWinningCardHighlights.playerIndices],
+        communityIndices: [..._rawWinningCardHighlights.communityIndices],
+        kickerPlayerIndices: [..._rawWinningCardHighlights.kickerPlayerIndices],
+        kickerCommunityIndices: [..._rawWinningCardHighlights.kickerCommunityIndices],
+        hasHighlights: true,
+      };
+    }
+  }, [_rawWinningCardHighlights]);
   // Terminal-presentation latch: while held, highlights derive from
   // the snapshot's captured winner card indices.
   const winningCardHighlights =
@@ -4938,8 +4970,8 @@ export const MobileGameTable = ({
       ? {
           playerIndices: holmTerminalPresentation.winnerCardIndices,
           communityIndices: holmTerminalPresentation.winnerCommunityIndices,
-          kickerPlayerIndices: [] as number[],
-          kickerCommunityIndices: [] as number[],
+          kickerPlayerIndices: holmTerminalPresentation.kickerPlayerIndices,
+          kickerCommunityIndices: holmTerminalPresentation.kickerCommunityIndices,
           hasHighlights:
             holmTerminalPresentation.winnerCardIndices.length > 0 ||
             holmTerminalPresentation.winnerCommunityIndices.length > 0,
@@ -5049,6 +5081,15 @@ export const MobileGameTable = ({
     ];
     const communitySource =
       approvedCommunityCards && approvedCommunityCards.length > 0 ? 'approvedCommunityCards' : 'communityCards';
+    // Prefer the most recent NON-EMPTY raw highlight payload (captured
+    // by lastNonEmptyRawHighlightsRef). _rawWinningCardHighlights can
+    // collapse to empty by the time this acquire effect runs (community
+    // unmount race, currentPlayerCards override, etc.). The latch must
+    // preserve the exact final visible highlight set.
+    const highlightsSnap =
+      lastNonEmptyRawHighlightsRef.current && lastNonEmptyRawHighlightsRef.current.hasHighlights
+        ? lastNonEmptyRawHighlightsRef.current
+        : _rawWinningCardHighlights;
     const snap: HolmTerminalPresentation = {
       outcomeKey: `${terminalHandContextId}:${_rawWinnerPlayerId}`,
       handContextId: terminalHandContextId,
@@ -5057,8 +5098,10 @@ export const MobileGameTable = ({
       chuckyCards: chuckyCardsSnap,
       communityCards: communitySnap,
       winnerPlayerId: _rawWinnerPlayerId,
-      winnerCardIndices: _rawWinningCardHighlights.playerIndices,
-      winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
+      winnerCardIndices: [...highlightsSnap.playerIndices],
+      winnerCommunityIndices: [...highlightsSnap.communityIndices],
+      kickerPlayerIndices: [...highlightsSnap.kickerPlayerIndices],
+      kickerCommunityIndices: [...highlightsSnap.kickerCommunityIndices],
       soloVsChucky: true,
     };
     ffRecord({
@@ -9482,11 +9525,26 @@ export const MobileGameTable = ({
                 holm.chuckyStage
               Stages own geometry; cards derive size from assignedRect.height. */}
         {gameType === 'holm-game' && (() => {
-          const communityShouldShow =
+          let communityShouldShow =
             !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&
             !!showCommunityCards &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
+          // ── TERMINAL LATCH (consumer wiring): community presence ───
+          // While the terminal-presentation latch is held, community
+          // remains visible from the latch snapshot regardless of
+          // approvedCommunityCards / currentRound transitions.
+          let communityCardsForRender: CardType[] | null = approvedCommunityCards ?? null;
+          let communityHciForRender: string | null = handContextId ?? null;
+          if (
+            terminalPresentationActive &&
+            holmTerminalPresentation &&
+            holmTerminalPresentation.communityCards.length > 0
+          ) {
+            communityShouldShow = true;
+            communityCardsForRender = holmTerminalPresentation.communityCards;
+            communityHciForRender = holmTerminalPresentation.handContextId;
+          }
 
           const liveLoneSoloPlayerId =
             isSoloVsChucky
@@ -9612,25 +9670,46 @@ export const MobileGameTable = ({
               lonePlayerStageSnapshotRef.current.handContextId,
             );
 
-          const activeSnap =
+          let activeSnap =
             (stickyEligibleByAdmission ? tabledSelfStickyRef.current : null) ??
             (stageEligibleByAdmission ? lonePlayerStageSnapshotRef.current : null);
-          const activeSnapSourceTag: 'sticky' | 'persistence' | 'none' =
+          let activeSnapSourceTag: 'sticky' | 'persistence' | 'none' | 'terminal-latch' =
             stickyEligibleByAdmission ? 'sticky'
             : (activeSnap ? 'persistence' : 'none');
 
-          const loneSoloPlayer =
+          let loneSoloPlayer =
             liveLoneSoloPlayer ??
             (activeSnap
               ? players.find(p => p.id === activeSnap.playerId) || null
               : null);
-          const loneSoloCards =
+          let loneSoloCards =
             liveLoneSoloCards.length > 0
               ? liveLoneSoloCards
               : (activeSnap?.cards ?? []);
-          const loneSoloCardsSourceTag: 'liveLoneSoloCards' | 'activeSnap.cards' | 'empty' =
+          let loneSoloCardsSourceTag: 'liveLoneSoloCards' | 'activeSnap.cards' | 'empty' | 'terminal-latch' =
             liveLoneSoloCards.length > 0 ? 'liveLoneSoloCards'
             : (activeSnap?.cards && activeSnap.cards.length > 0 ? 'activeSnap.cards' : 'empty');
+
+          // ── TERMINAL LATCH (consumer wiring): tabled-fan owner ─────
+          // While the Holm terminal-presentation latch is held, the
+          // tabled fan must render from the latch snapshot regardless
+          // of live / sticky / persistence sources clearing.
+          if (terminalPresentationActive && holmTerminalPresentation) {
+            const latchPlayerId = holmTerminalPresentation.winnerPlayerId;
+            const latchedPlayer = latchPlayerId
+              ? (players.find(p => p.id === latchPlayerId) ?? loneSoloPlayer)
+              : loneSoloPlayer;
+            activeSnap = {
+              handContextId: holmTerminalPresentation.handContextId,
+              dealerGameId: holmTerminalPresentation.dealerGameId,
+              playerId: latchPlayerId ?? (latchedPlayer?.id ?? ''),
+              cards: holmTerminalPresentation.selfCards,
+            };
+            activeSnapSourceTag = 'terminal-latch';
+            loneSoloPlayer = latchedPlayer;
+            loneSoloCards = holmTerminalPresentation.selfCards;
+            loneSoloCardsSourceTag = 'terminal-latch';
+          }
 
           ffRecord({
             writerId: 'MobileGameTable.tsx:loneSoloDerivation:L8961',
@@ -9807,7 +9886,7 @@ export const MobileGameTable = ({
               revealedCount: Math.min(cachedChuckyCards.length, lockedRevealed),
             };
           }
-          const chuckyCardsForRender: CardType[] | null =
+          let chuckyCardsForRender: CardType[] | null =
             cachedChuckySourceEligible && cachedChuckyCards
               ? cachedChuckyCards
               : stickyChuckySourceEligible
@@ -9816,19 +9895,33 @@ export const MobileGameTable = ({
           // Sticky alone (HCI-matched, non-empty cards) keeps the stage
           // mounted through celebration; do not additionally gate on
           // cachedChuckyActive.
-          const chuckyVisible =
+          let chuckyVisible =
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
             (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
-          const chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
+          let chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
           const eligibleCachedRevealed = cachedChuckySourceEligible ? cachedChuckyCardsRevealed : 0;
           const eligibleStickyRevealed = stickyChuckySourceEligible
             ? (chuckyStageStickyRef.current?.revealedCount ?? 0)
             : 0;
           const chuckyStickyRevealCountForRender = eligibleStickyRevealed;
-          const chuckyRevealedCountForRender = Math.min(
+          let chuckyRevealedCountForRender = Math.min(
             chuckyTotalVisibleForRender,
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
+
+          // ── TERMINAL LATCH (consumer wiring): Chucky stage owner ───
+          // While the Holm terminal-presentation latch is held, Chucky
+          // stage must render from the latch snapshot at full reveal.
+          if (
+            terminalPresentationActive &&
+            holmTerminalPresentation &&
+            holmTerminalPresentation.chuckyCards.length > 0
+          ) {
+            chuckyCardsForRender = holmTerminalPresentation.chuckyCards;
+            chuckyTotalVisibleForRender = chuckyCardsForRender.length;
+            chuckyRevealedCountForRender = chuckyCardsForRender.length;
+            chuckyVisible = true;
+          }
 
           // ── Forensics: new-hand Chucky admission summary (read-only) ──
           if (gameType === 'holm-game') {
@@ -9958,8 +10051,8 @@ export const MobileGameTable = ({
                     <HolmSoloRootRegistrar
                       root="COMMUNITY"
                       mounted={true}
-                      cardIds={(approvedCommunityCards ?? []).map((c) => `${c.rank}${c.suit}`)}
-                      handContextId={handContextId ?? null}
+                      cardIds={(communityCardsForRender ?? []).map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={communityHciForRender}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
                       caller="MobileGameTable.communityCardsStage"
@@ -9978,12 +10071,14 @@ export const MobileGameTable = ({
                           highlight pipeline.
                     */}
                     <CommunityStageHolmSwitch
-                      handContextId={handContextId!}
-                      cards={approvedCommunityCards!}
+                      handContextId={communityHciForRender!}
+                      cards={communityCardsForRender!}
                       revealed={
-                        isDelayingCommunityCards
-                          ? staggeredCardCount
-                          : (communityCardsRevealed || 2)
+                        terminalPresentationActive
+                          ? (communityCardsForRender?.length ?? 0)
+                          : (isDelayingCommunityCards
+                              ? staggeredCardCount
+                              : (communityCardsRevealed || 2))
                       }
                       highlightedIndices={winningCardHighlights.communityIndices}
                       kickerIndices={winningCardHighlights.kickerCommunityIndices}
