@@ -111,9 +111,25 @@ export interface PlayfieldSlotControllerProps {
   neutralParticipants?: import('./NeutralInterstitial').InterstitialParticipant[];
   neutralCurrentUserId?: string | null;
   neutralParticipantGameType?: string | null;
+  /**
+   * Authoritative session-end handoff flag. Derived in Game.tsx from
+   * the SAME game snapshot that clears current_game_uuid:
+   *   game_type === 'holm-game' && status === 'game_over' && current_game_uuid == null
+   *
+   * When true AND persistentChildrenKey is set, PSC renders ONLY
+   * NeutralInterstitial in the same React commit — no persistent
+   * gameplay children, no pre-game overlay. This eliminates the
+   * frame where MobileGameTable could fall back to frozen
+   * active-hand/rabbit derivation after terminal clearing.
+   *
+   * Exits automatically the moment the prop becomes false (e.g.
+   * status flips to game_selection).
+   */
+  isTerminalSessionEndHandoff?: boolean;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
+
 
 type SlotPhase = 'cold' | 'active' | 'neutral';
 
