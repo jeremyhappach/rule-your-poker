@@ -42,6 +42,7 @@ import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/typ
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
+import { recordCommunityTransport } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
 
 interface SeatEntry {
@@ -440,6 +441,21 @@ export function HolmDealOrchestrator({
     });
     const dispatchAtC = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'community', holmDbgEndpoint(intent.to), dispatchAtC);
+    intents.forEach((intent, i) => {
+      recordCommunityTransport({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:perIntentDispatch',
+        handContextId,
+        slotIndex: i,
+        cardId: intent.cardId,
+        intentId: (intent as { id?: string }).id ?? null,
+        sourceEndpoint: 'dealer-seat',
+        destEndpoint: holmDbgEndpoint(intent.to),
+        launchAt: dispatchAtC,
+        dealPhase: 'DEALING',
+        waveStatus: 'dispatched',
+        slotRenderEligible: true,
+      });
+    });
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 

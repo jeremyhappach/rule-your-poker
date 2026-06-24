@@ -45,6 +45,7 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
+import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
 import { Wave5GridOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5GridOverlay";
 import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay";
@@ -140,6 +141,7 @@ const App = () => {
                 <ThreeFiveSevenForensicsPanel />
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
+                <HolmCommunityLandingPill />
 
 
                 <CardBackDbgPanel />

@@ -40,6 +40,10 @@ import { holmDealDbgRecordRuntime, holmDealDbgRecordViolation } from './holmDeal
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
 import { ffRecord } from './holmFullForensics';
+import {
+  notifyCommunitySettleToSampler,
+  recordCommunitySettle,
+} from './holmCommunityLandingForensics';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -168,6 +172,22 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     const off = ctx.onCardSettledIntent((intent) => {
       const cardId = intent.cardId;
       if (gameType === 'holm-game') holmTimelineRecordSettle(cardId, performance.now());
+      if (gameType === 'holm-game' && cardId.includes('#community-')) {
+        const slotMatch = cardId.match(/#community-(\d+)$/);
+        const slotIndex = slotMatch ? Number(slotMatch[1]) : -1;
+        recordCommunitySettle({
+          writerId: 'DealRuntime.tsx:onCardSettledIntent',
+          handContextId,
+          slotIndex,
+          cardId,
+          arrivalAt: performance.now(),
+          markSettledSource: 'CardTransport.onCardSettledIntent',
+          dealPhase: 'DEALING/READY',
+          waveStatus: 'settled',
+          slotRenderEligible: true,
+        });
+        notifyCommunitySettleToSampler(handContextId);
+      }
       setSettledCardIds((prev) => {
         if (prev.has(cardId)) return prev;
         const next = new Set(prev);

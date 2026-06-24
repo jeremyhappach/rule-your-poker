@@ -21,6 +21,11 @@ import type { Card as CardType } from '@/lib/cardUtils';
 import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import {
+  armCommunityLandingSampler,
+  recordCommunityDomLifecycle,
+  recordCommunityPresentationState,
+} from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import { resolveCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 
@@ -55,6 +60,35 @@ export function HolmCanonicalCommunityRow({
     return () => ro.disconnect();
   }, []);
 
+  // Arm bounded community landing sampler once per hand identity.
+  useEffect(() => {
+    armCommunityLandingSampler({ handContextId, expectedCount: 4 });
+  }, [handContextId]);
+
+  // Per-slot mount/unmount lifecycle.
+  useEffect(() => {
+    for (let i = 0; i < 4; i++) {
+      recordCommunityDomLifecycle({
+        writerId: 'HolmCanonicalCommunityRow.tsx:mountEffect',
+        handContextId,
+        slotIndex: i,
+        cardId: `${handContextId}#community-${i}`,
+        event: 'mount',
+      });
+    }
+    return () => {
+      for (let i = 0; i < 4; i++) {
+        recordCommunityDomLifecycle({
+          writerId: 'HolmCanonicalCommunityRow.tsx:unmountEffect',
+          handContextId,
+          slotIndex: i,
+          cardId: `${handContextId}#community-${i}`,
+          event: 'unmount',
+        });
+      }
+    };
+  }, [handContextId]);
+
   const count = 4;
   const layout =
     size.w > 0 && size.h > 0
@@ -69,6 +103,33 @@ export function HolmCanonicalCommunityRow({
           preferredOverlapRatio: tightOverlap ? 0.08 : 0.03,
         })
       : null;
+
+  // Aggregate presentation-state for this render pass (single emit per change).
+  {
+    const cardIds: string[] = [];
+    const faceUpMask: boolean[] = [];
+    const renderedAs: string[] = [];
+    const renderKeys: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const cardId = `${handContextId}#community-${i}`;
+      const settled = deal ? deal.isSettled(cardId) : false;
+      const showFace = i < 2;
+      const card = cards[i];
+      cardIds.push(cardId);
+      faceUpMask.push(showFace);
+      renderedAs.push(settled && showFace && card ? 'face' : settled ? 'back' : 'empty-anchor');
+      renderKeys.push(String(i));
+    }
+    recordCommunityPresentationState({
+      writerId: 'HolmCanonicalCommunityRow.tsx:presentationAggregate',
+      handContextId,
+      sourceBranch: 'HolmCanonicalCommunityRow',
+      cardIds,
+      faceUpMask,
+      renderedAs,
+      renderKeys,
+    });
+  }
 
   return (
     <div
