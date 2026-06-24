@@ -5081,6 +5081,15 @@ export const MobileGameTable = ({
     ];
     const communitySource =
       approvedCommunityCards && approvedCommunityCards.length > 0 ? 'approvedCommunityCards' : 'communityCards';
+    // Prefer the most recent NON-EMPTY raw highlight payload (captured
+    // by lastNonEmptyRawHighlightsRef). _rawWinningCardHighlights can
+    // collapse to empty by the time this acquire effect runs (community
+    // unmount race, currentPlayerCards override, etc.). The latch must
+    // preserve the exact final visible highlight set.
+    const highlightsSnap =
+      lastNonEmptyRawHighlightsRef.current && lastNonEmptyRawHighlightsRef.current.hasHighlights
+        ? lastNonEmptyRawHighlightsRef.current
+        : _rawWinningCardHighlights;
     const snap: HolmTerminalPresentation = {
       outcomeKey: `${terminalHandContextId}:${_rawWinnerPlayerId}`,
       handContextId: terminalHandContextId,
@@ -5089,8 +5098,10 @@ export const MobileGameTable = ({
       chuckyCards: chuckyCardsSnap,
       communityCards: communitySnap,
       winnerPlayerId: _rawWinnerPlayerId,
-      winnerCardIndices: _rawWinningCardHighlights.playerIndices,
-      winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
+      winnerCardIndices: [...highlightsSnap.playerIndices],
+      winnerCommunityIndices: [...highlightsSnap.communityIndices],
+      kickerPlayerIndices: [...highlightsSnap.kickerPlayerIndices],
+      kickerCommunityIndices: [...highlightsSnap.kickerCommunityIndices],
       soloVsChucky: true,
     };
     ffRecord({
