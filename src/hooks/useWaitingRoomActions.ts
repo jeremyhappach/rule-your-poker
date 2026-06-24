@@ -58,7 +58,7 @@ export interface UseWaitingRoomActionsArgs {
   players: WaitingRoomActor[];
   currentUserId: string | undefined;
   realMoney?: boolean;
-  onGameStart: () => void;
+  onGameStart: () => void | Promise<unknown>;
   onBotAdded?: () => void;
   onRejoinRequested?: () => void;
 }
