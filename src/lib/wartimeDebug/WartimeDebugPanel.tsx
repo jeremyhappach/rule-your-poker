@@ -25,6 +25,7 @@ import {
   type WartimeCategory,
 } from './core';
 import { attachWartimeBridges } from './bridges';
+import { downloadHolmPostWinHandoffTxt } from './holmPostWinHandoff';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
@@ -250,6 +251,14 @@ export function WartimeDebugPanel() {
               onClick={() => download(buildWartimeExportJson(exportOpts), 'wartime', 'json', 'application/json')}
             >
               JSON
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-amber-700/40 px-2 py-1 text-[10px]"
+              title="HOLM POST-WIN HANDOFF — derived filtered .txt export from the wartime ring (±250 events around handoff anchors)."
+              onClick={() => downloadHolmPostWinHandoffTxt()}
+            >
+              HANDOFF.TXT
             </button>
             <label
               className="flex shrink-0 items-center gap-1 rounded border border-border bg-muted px-1.5 py-1 text-[9px]"
