@@ -552,7 +552,24 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] Creating round with round_number=1 (always), hand_number:', handNumber, 'for dealer_game:', dealerGameId);
 
   // Deal fresh cards
-  const deadline = new Date(Date.now() + timerSeconds * 1000);
+  // H4 NOTE — actionability contract:
+  // Initial-deal round creation is NO LONGER an actionability commit.
+  // The round is born in the non-actionable `dealing` state with NO
+  // live turn slot and NO server decision deadline. The server-elected
+  // first actor is persisted in `pending_turn_position`, gated by a
+  // one-time `presentation_generation` token. The host promotes the
+  // round to `betting` exactly once via
+  // `activate_holm_round_after_deal_presentation` after its local
+  // deal-presentation settle predicate is true.
+  // If the elected host disconnects before acknowledgement,
+  // `enforce-deadlines` may promote the round after
+  // `presentation_fallback_at` using the same atomic RPC with the
+  // service role (`_from_fallback = true`). The fallback window is the
+  // canonical Holm deal-presentation duration plus an explicit safety
+  // margin — see holmActionabilityContract.ts.
+  const presentationFallbackAt = new Date(
+    Date.now() + HOLM_DEAL_PRESENTATION_FALLBACK_TOTAL_MS
+  );
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
@@ -592,22 +609,28 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .eq('id', gameId);
 
   // Always create a new round for each hand - unique round_id prevents stale card fetching
+  // H4: pre-actionability commit. status='dealing', no live turn, no
+  // live deadline; pending actor and fallback timestamp are stamped
+  // atomically with the row.
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
       game_id: gameId,
       round_number: nextRoundNumber,
       cards_dealt: 4,
-      status: 'betting',
+      status: 'dealing',
       pot: potForRound,
-      decision_deadline: deadline.toISOString(),
+      decision_deadline: null,
       community_cards_revealed: 2,
       community_cards: communityCards as any,
       chucky_active: false,
-      current_turn_position: buckPosition,
+      current_turn_position: null,
+      pending_turn_position: buckPosition,
+      presentation_generation: 0,
+      presentation_fallback_at: presentationFallbackAt.toISOString(),
       hand_number: handNumber,
       dealer_game_id: dealerGameId
-    })
+    } as any)
     .select()
     .single();
 
