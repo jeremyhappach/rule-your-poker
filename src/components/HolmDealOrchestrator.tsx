@@ -562,30 +562,105 @@ export function HolmDealPhaseHost({
   handContextId,
   soloDeclared,
   chuckyCount,
+  isPresentationHost,
+  roundStatus,
 }: {
   handContextId: string;
   soloDeclared: boolean;
   chuckyCount: number;
+  /**
+   * True iff the local viewer is the elected session presentation host
+   * for this game (mirrors `isCreator` from Game.tsx, which itself
+   * resolves to `games.current_host` or the canonical fallback).
+   * Non-host clients NEVER submit the promotion RPC; they only
+   * observe `rounds.status='betting'` via realtime and then release
+   * local gameplay presentation via `enterGameplay()`.
+   */
+  isPresentationHost: boolean;
+  /**
+   * Authoritative round status from realtime. The host gates the
+   * single promotion submission on `'dealing'`; all clients gate the
+   * release of local gameplay on `'betting'`.
+   */
+  roundStatus: string | null | undefined;
 }) {
   const deal = useDealRuntime();
-  const firedRef = useRef(false);
-  useEffect(() => {
-    if (!deal || firedRef.current) return;
-    if (!deal.dealSettled) return;
-    if (deal.phase !== 'READY') return;
+  // Host-side promotion latch: keyed on `${handContextId}#promote` so
+  // rerenders cannot duplicate the request. Reconnect/remount of the
+  // same HCI naturally re-arms this latch and the RPC is idempotent.
+  const promoteFiredRef = useRef<string | null>(null);
+  // Local enterGameplay latch: fires exactly once per HCI when the
+  // authoritative `rounds.status` transitions to `'betting'` AND the
+  // host-visible settle predicate is true. Independent of host role.
+  const gameplayReleasedRef = useRef<string | null>(null);
 
+  // Host visible deal-settled predicate for THIS hci.
+  const settlePredicateMet = (() => {
+    if (!deal) return false;
+    if (!deal.dealSettled) return false;
+    if (deal.phase !== 'READY') return false;
     if (soloDeclared) {
-      if (chuckyCount <= 0) return;
+      if (chuckyCount <= 0) return false;
       const lastChucky = `${handContextId}#chucky-${chuckyCount - 1}`;
-      if (!deal.isSettled(lastChucky)) return;
-    } else {
-      const lastCommunity = `${handContextId}#community-3`;
-      if (!deal.isSettled(lastCommunity)) return;
+      return deal.isSettled(lastChucky);
     }
+    const lastCommunity = `${handContextId}#community-3`;
+    return deal.isSettled(lastCommunity);
+  })();
 
-    firedRef.current = true;
+  // (1) Host promotion submission — exactly once per HCI per page life.
+  // The RPC is idempotent on the server side; same-HCI repeat returns
+  // `already_active` after the first success.
+  useEffect(() => {
+    if (!isPresentationHost) return;
+    if (!handContextId) return;
+    if (!settlePredicateMet) return;
+    if (roundStatus !== 'dealing') return; // Already promoted; nothing to do.
+    if (promoteFiredRef.current === handContextId) return;
+    promoteFiredRef.current = handContextId;
+
+    (async () => {
+      try {
+        // Read the current generation token so the RPC's CAS matches.
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: roundRow } = await supabase
+          .from('rounds')
+          .select('presentation_generation, status')
+          .eq('id', handContextId)
+          .maybeSingle();
+        const generation = (roundRow as any)?.presentation_generation;
+        if (typeof generation !== 'number') return;
+        if ((roundRow as any)?.status !== 'dealing') return;
+        await supabase.rpc(
+          'activate_holm_round_after_deal_presentation' as any,
+          {
+            _round_id: handContextId,
+            _hand_context_id: handContextId,
+            _presentation_generation: generation,
+            _from_fallback: false,
+          } as any,
+        );
+      } catch {
+        // Fail-safe: server fallback will promote after
+        // presentation_fallback_at. We do NOT clear the latch — the
+        // host is not the source of truth for this round any more.
+      }
+    })();
+  }, [isPresentationHost, handContextId, settlePredicateMet, roundStatus]);
+
+  // (2) Local gameplay release — every client (host AND non-host).
+  // Waits for authoritative `roundStatus === 'betting'` realtime AND
+  // the local settle predicate. Calls enterGameplay() once per HCI.
+  useEffect(() => {
+    if (!deal) return;
+    if (!handContextId) return;
+    if (gameplayReleasedRef.current === handContextId) return;
+    if (roundStatus !== 'betting') return;
+    if (!settlePredicateMet) return;
+    gameplayReleasedRef.current = handContextId;
     deal.enterGameplay();
-  }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.phase]);
+  }, [deal, handContextId, roundStatus, settlePredicateMet]);
+
   return null;
 }
 
