@@ -216,15 +216,9 @@ export function NeutralInterstitial({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Publish neutral-interstitial commit signal for the lifetime of
-  // this mount, scoped to gameId. Consumers (e.g. MobileGameTable's
-  // Holm terminal-presentation latch) release terminal frame state
-  // only when this signal flips true. NOT instrumentation — this is
-  // the shell→surface boundary signal.
-  useEffect(() => {
-    setNeutralInterstitialCommitted(gameId ?? null, true);
-    return () => setNeutralInterstitialCommitted(gameId ?? null, false);
-  }, [gameId]);
+  // (Holm terminal-presentation latch retired — shell now owns the
+  // session-end exclusive handoff via PlayfieldSlotController.)
+
 
   // ── Waiting-table flight recorder (instrumentation only) ────────
   useWaitingMount('NeutralInterstitial', {
