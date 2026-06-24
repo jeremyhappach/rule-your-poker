@@ -297,6 +297,21 @@ export function HolmDealOrchestrator({
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
     const beginAt = performance.now();
+    ffRecord({
+      writerId: 'HolmDealOrchestrator.tsx:handsWave:L300',
+      source: 'HOLM_DEAL_ORCHESTRATOR',
+      marker: 'HOLM_HANDS_WAVE_DISPATCH',
+      identity: { segmentId: handContextId, playerId: selfPlayerId },
+      payload: {
+        wave: 'hands',
+        intentCount: intents.length,
+        buckPosition,
+        dealerPosition,
+        ringPositions: ring.map((s) => s.position),
+        beginAt,
+        cardIds: intents.map((i) => i.cardId),
+      },
+    });
     holmTimelineResetForHand(handContextId);
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
@@ -330,10 +345,53 @@ export function HolmDealOrchestrator({
 
   // ── 2. COMMUNITY WAVE (4 cards) ───────────────────────────────────
   useEffect(() => {
-    if (!deal || communityDispatchedRef.current) return;
-    if (!handsDispatchedRef.current) return;
-    if (!deal.dealSettled) return; // hands wave must fully settle first
-    if (!communityCards || communityCards.length < 4) return;
+    const guard = {
+      hasDeal: !!deal,
+      alreadyDispatched: communityDispatchedRef.current,
+      handsDispatched: handsDispatchedRef.current,
+      dealSettled: !!deal?.dealSettled,
+      communityCardsLength: communityCards?.length ?? 0,
+    };
+    if (!deal || communityDispatchedRef.current) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:L349',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_COMMUNITY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: !deal ? 'no-deal-runtime' : 'already-dispatched', guard },
+      });
+      return;
+    }
+    if (!handsDispatchedRef.current) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:L360',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_COMMUNITY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'hands-wave-not-dispatched', guard },
+      });
+      return;
+    }
+    if (!deal.dealSettled) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:L370',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_COMMUNITY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'hands-wave-not-settled', guard },
+      });
+      return;
+    }
+    if (!communityCards || communityCards.length < 4) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:L380',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_COMMUNITY_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'community-cards-insufficient', guard },
+      });
+      return;
+    }
 
     const specs: Parameters<typeof buildIntents>[0] = [];
     for (let i = 0; i < 4; i++) {
@@ -351,6 +409,13 @@ export function HolmDealOrchestrator({
     const intents = buildIntents(specs);
     communityDispatchedRef.current = true;
     const beginAt = performance.now();
+    ffRecord({
+      writerId: 'HolmDealOrchestrator.tsx:communityWave:L405',
+      source: 'HOLM_DEAL_ORCHESTRATOR',
+      marker: 'HOLM_COMMUNITY_WAVE_DISPATCH',
+      identity: { segmentId: handContextId, playerId: selfPlayerId },
+      payload: { wave: 'community', intentCount: intents.length, beginAt, cardIds: intents.map((i) => i.cardId) },
+    });
     deal.beginWave(intents.length);
     holmDealDbgRecordWave({
       handContextId,
