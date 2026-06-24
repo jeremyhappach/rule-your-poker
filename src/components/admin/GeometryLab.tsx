@@ -368,7 +368,7 @@ function CollapsibleSection({
 function ShellGlobalSections() {
   return (
     <div className="space-y-3">
-      <CollapsibleSection title="Layout Tuning" defaultOpen>
+      <CollapsibleSection title="Layout Tuning">
         <LayoutTuningAdminSection />
       </CollapsibleSection>
       <CollapsibleSection title="Deal Timing">
@@ -437,7 +437,7 @@ function GameSections(props: GameSectionsProps) {
 
   return (
     <div className="space-y-3">
-      <CollapsibleSection title="Gameplay Artifacts" defaultOpen>
+      <CollapsibleSection title="Gameplay Artifacts">
         <div className="space-y-1">
           <Label>Artifact</Label>
           <Select value={artifactId} onValueChange={setArtifactId}>

@@ -106,24 +106,23 @@ function loadState(): ShowdownRulesState {
 
 function CollapsibleSection({
   title,
-  defaultOpen = false,
   children,
 }: {
   title: string;
-  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="border rounded-md group">
+    <details className="border rounded-md group/section">
       <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-sm flex items-center justify-between">
         <span>{title}</span>
-        <span className="text-xs text-muted-foreground group-open:hidden">expand</span>
-        <span className="text-xs text-muted-foreground hidden group-open:inline">collapse</span>
+        <span className="text-base leading-none text-muted-foreground group-open/section:hidden">+</span>
+        <span className="text-base leading-none text-muted-foreground hidden group-open/section:inline">−</span>
       </summary>
       <div className="px-3 pb-3 pt-1 space-y-3">{children}</div>
     </details>
   );
 }
+
 
 function NumInput({
   value,
