@@ -302,7 +302,7 @@ function resolveIrrelevant(
     scale: cfg.scale,
     opacity: cfg.opacity,
     grayscalePct: cfg.grayscalePct,
-    interRowGapPx: cfg.interRowGapPx,
+    
     widthPx: isSm ? cfg.size.smWidthPx : cfg.size.mobileWidthPx,
     heightPx: isSm ? cfg.size.smHeightPx : cfg.size.mobileHeightPx,
     overlapPx: isSm ? cfg.overlap.smPx : cfg.overlap.mobilePx,
