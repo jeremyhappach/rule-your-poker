@@ -43,6 +43,31 @@ interface SurfaceSnapshot {
   topmostMatchesSelf: boolean | null;
 }
 
+// Per-element ancestry record returned from elementsFromPoint at a probe point.
+export interface StackElementInfo {
+  tag: string;
+  className: string;
+  dataAttrs: Record<string, string>;
+  zIndex: string;
+  position: string;
+  opacity: string;
+  pointerEvents: string;
+  closestNeutral: boolean;
+  closestActiveHand: boolean;
+  closestLoneFan: boolean;
+  closestCardAnchor: string | null;
+}
+
+export type TopmostOwner = 'neutral' | 'old-holm' | 'other' | 'none';
+
+export interface PointProbe {
+  label: 'neutral' | 'active-hand' | 'lone-fan' | 'chucky-card' | 'community-card';
+  x: number | null;
+  y: number | null;
+  stack: StackElementInfo[];
+  topmostOwner: TopmostOwner;
+}
+
 export interface HandoffProbeResult {
   identity: HandoffProbeIdentity;
   neutral: SurfaceSnapshot;
@@ -53,8 +78,11 @@ export interface HandoffProbeResult {
     communityStage: SurfaceSnapshot;
     rabbitLabel: SurfaceSnapshot;
   };
+  points: PointProbe[];
   neutralVisuallyPainted: boolean;
   oldHolmVisuallyExposed: boolean;
+  neutralOwnsEveryVisibleOldArtifact: boolean;
+  perArtifactTopmostOwner: Record<string, TopmostOwner>;
   exclusive: boolean;
 }
 
@@ -74,8 +102,6 @@ function snapshotSurface(selector: string): SurfaceSnapshot {
       topmostMatchesSelf: null,
     };
   }
-  // Use first node for primary snapshot; aggregate visibility/hit-test
-  // across all matched nodes.
   const first = nodes[0];
   const cs = window.getComputedStyle(first);
   const rect = first.getBoundingClientRect();
@@ -97,17 +123,13 @@ function snapshotSurface(selector: string): SurfaceSnapshot {
       anyHit = true;
       break;
     }
-    // Hit-visible if any ancestor of the topmost element is one of our nodes
     if (Array.from(nodes).some((n) => n === top || n.contains(top))) {
       topmostMatchesSelf = true;
       anyHit = true;
       break;
     }
   }
-  if (!anyHit) {
-    // Mark as not topmost but still record DOM presence.
-    topmostMatchesSelf = false;
-  }
+  if (!anyHit) topmostMatchesSelf = false;
   return {
     selector,
     found: true,
@@ -122,19 +144,75 @@ function snapshotSurface(selector: string): SurfaceSnapshot {
   };
 }
 
-function isVisuallyExposed(s: SurfaceSnapshot): boolean {
-  if (!s.found) return false;
-  if (s.display === 'none' || s.visibility === 'hidden') return false;
-  if (s.opacity != null && parseFloat(s.opacity) <= 0.01) return false;
-  if (!s.rect || s.rect.w <= 0 || s.rect.h <= 0) return false;
-  // Visually exposed if its center is in the hit-test stack.
-  return s.topmostMatchesSelf === true;
-}
-
 function isPainted(s: SurfaceSnapshot): boolean {
   return s.found && s.rect != null && s.rect.w > 0 && s.rect.h > 0 &&
     s.display !== 'none' && s.visibility !== 'hidden' &&
     (s.opacity == null || parseFloat(s.opacity) > 0.01);
+}
+
+// Collect data-* attrs into a plain object for serialization.
+function collectDataAttrs(el: Element): Record<string, string> {
+  const out: Record<string, string> = {};
+  const attrs = el.attributes;
+  for (let i = 0; i < attrs.length; i += 1) {
+    const a = attrs.item(i);
+    if (a && a.name.startsWith('data-')) out[a.name] = a.value;
+  }
+  return out;
+}
+
+function describeElement(el: Element): StackElementInfo {
+  const cs = typeof window !== 'undefined' ? window.getComputedStyle(el as HTMLElement) : null;
+  const cardAnchor = (el as HTMLElement).closest?.('[data-card-anchor]') as HTMLElement | null;
+  return {
+    tag: el.tagName.toLowerCase(),
+    className: typeof (el as HTMLElement).className === 'string' ? (el as HTMLElement).className : '',
+    dataAttrs: collectDataAttrs(el),
+    zIndex: cs?.zIndex ?? '',
+    position: cs?.position ?? '',
+    opacity: cs?.opacity ?? '',
+    pointerEvents: cs?.pointerEvents ?? '',
+    closestNeutral: !!(el as HTMLElement).closest?.('[data-canonical-shell-neutral]'),
+    closestActiveHand: !!(el as HTMLElement).closest?.('[data-holm-active-hand-region]'),
+    closestLoneFan: !!(el as HTMLElement).closest?.('[data-holm-lone-player-fan]'),
+    closestCardAnchor: cardAnchor?.getAttribute('data-card-anchor') ?? null,
+  };
+}
+
+function ownerOf(info: StackElementInfo | undefined): TopmostOwner {
+  if (!info) return 'none';
+  if (info.closestNeutral) return 'neutral';
+  if (info.closestActiveHand || info.closestLoneFan) return 'old-holm';
+  const ca = info.closestCardAnchor ?? '';
+  if (ca.startsWith('chucky-') || ca.startsWith('community-')) return 'old-holm';
+  return 'other';
+}
+
+function probePoint(
+  label: PointProbe['label'],
+  el: HTMLElement | null,
+): PointProbe {
+  if (!el || typeof document === 'undefined') {
+    return { label, x: null, y: null, stack: [], topmostOwner: 'none' };
+  }
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) {
+    return { label, x: null, y: null, stack: [], topmostOwner: 'none' };
+  }
+  const x = r.left + r.width / 2;
+  const y = r.top + r.height / 2;
+  if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) {
+    return { label, x: Math.round(x), y: Math.round(y), stack: [], topmostOwner: 'none' };
+  }
+  const raw = document.elementsFromPoint(x, y);
+  const stack = raw.slice(0, 12).map(describeElement);
+  return {
+    label,
+    x: Math.round(x),
+    y: Math.round(y),
+    stack,
+    topmostOwner: ownerOf(stack[0]),
+  };
 }
 
 export const HANDOFF_SELECTORS = {
@@ -146,6 +224,11 @@ export const HANDOFF_SELECTORS = {
   rabbitLabel: '[data-rabbit-hunt-label]',
 } as const;
 
+function firstEl(selector: string): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  return document.querySelector<HTMLElement>(selector);
+}
+
 export function probeHolmPostWinHandoff(
   identity: HandoffProbeIdentity,
 ): HandoffProbeResult {
@@ -156,23 +239,59 @@ export function probeHolmPostWinHandoff(
   const communityStage = snapshotSurface(HANDOFF_SELECTORS.communityStage);
   const rabbitLabel = snapshotSurface(HANDOFF_SELECTORS.rabbitLabel);
 
+  const points: PointProbe[] = [
+    probePoint('neutral', firstEl(HANDOFF_SELECTORS.neutral)),
+    probePoint('active-hand', firstEl(HANDOFF_SELECTORS.activeHand)),
+    probePoint('lone-fan', firstEl(HANDOFF_SELECTORS.loneFan)),
+    probePoint('chucky-card', firstEl(HANDOFF_SELECTORS.chuckyStage)),
+    probePoint('community-card', firstEl(HANDOFF_SELECTORS.communityStage)),
+  ];
+
+  const perArtifactTopmostOwner: Record<string, TopmostOwner> = {};
+  for (const p of points) perArtifactTopmostOwner[p.label] = p.topmostOwner;
+
+  // Visible old artifacts = those still painted in DOM (display/visibility/opacity/rect ok).
+  const visibleOld: Array<{ label: PointProbe['label']; painted: boolean }> = [
+    { label: 'active-hand', painted: isPainted(activeHand) },
+    { label: 'lone-fan', painted: isPainted(loneFan) },
+    { label: 'chucky-card', painted: isPainted(chuckyStage) },
+    { label: 'community-card', painted: isPainted(communityStage) },
+  ];
+  const stillVisibleOld = visibleOld.filter((v) => v.painted);
+
+  // For each still-visible old artifact, the topmost element at its center
+  // must belong to neutral. If any has topmostOwner !== 'neutral' → exposed.
+  let neutralOwnsEveryVisibleOldArtifact = stillVisibleOld.length > 0;
+  let oldArtifactVisuallyExposed = false;
+  for (const v of stillVisibleOld) {
+    const owner = perArtifactTopmostOwner[v.label];
+    if (owner !== 'neutral') {
+      neutralOwnsEveryVisibleOldArtifact = false;
+      oldArtifactVisuallyExposed = true;
+    }
+  }
+  // Degenerate case: no old artifacts visible at all → trivially exclusive (no exposure).
+  if (stillVisibleOld.length === 0) {
+    neutralOwnsEveryVisibleOldArtifact = true;
+    oldArtifactVisuallyExposed = false;
+  }
+
   const neutralVisuallyPainted = isPainted(neutral);
-  const oldHolmVisuallyExposed =
-    isVisuallyExposed(activeHand) ||
-    isVisuallyExposed(loneFan) ||
-    isVisuallyExposed(chuckyStage) ||
-    isVisuallyExposed(communityStage) ||
-    isVisuallyExposed(rabbitLabel);
+  const exclusive = neutralVisuallyPainted && neutralOwnsEveryVisibleOldArtifact;
 
   return {
     identity,
     neutral,
     oldHolm: { activeHand, loneFan, chuckyStage, communityStage, rabbitLabel },
+    points,
     neutralVisuallyPainted,
-    oldHolmVisuallyExposed,
-    exclusive: neutralVisuallyPainted && !oldHolmVisuallyExposed,
+    oldHolmVisuallyExposed: oldArtifactVisuallyExposed,
+    neutralOwnsEveryVisibleOldArtifact,
+    perArtifactTopmostOwner,
+    exclusive,
   };
 }
+
 
 // ---------------------------------------------------------------------
 // Derived export — filtered slice of the wartime ring
