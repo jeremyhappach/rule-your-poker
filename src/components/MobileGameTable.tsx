@@ -9525,11 +9525,26 @@ export const MobileGameTable = ({
                 holm.chuckyStage
               Stages own geometry; cards derive size from assignedRect.height. */}
         {gameType === 'holm-game' && (() => {
-          const communityShouldShow =
+          let communityShouldShow =
             !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&
             !!showCommunityCards &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
+          // ── TERMINAL LATCH (consumer wiring): community presence ───
+          // While the terminal-presentation latch is held, community
+          // remains visible from the latch snapshot regardless of
+          // approvedCommunityCards / currentRound transitions.
+          let communityCardsForRender: CardType[] | null = approvedCommunityCards ?? null;
+          let communityHciForRender: string | null = handContextId ?? null;
+          if (
+            terminalPresentationActive &&
+            holmTerminalPresentation &&
+            holmTerminalPresentation.communityCards.length > 0
+          ) {
+            communityShouldShow = true;
+            communityCardsForRender = holmTerminalPresentation.communityCards;
+            communityHciForRender = holmTerminalPresentation.handContextId;
+          }
 
           const liveLoneSoloPlayerId =
             isSoloVsChucky
