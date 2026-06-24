@@ -13,7 +13,7 @@ import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDeb
 import { persistTransition } from "./persistSyncDebugEvent";
 import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
 import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugOverrides";
-import { HOLM_DEAL_PRESENTATION_FALLBACK_TOTAL_MS } from "./canonicalShell/cardTransport/holmActionabilityContract";
+
 
 /**
  * Check if all players have decided in a Holm game round
@@ -333,59 +333,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
 
-  // ATOMIC FIRST-HAND STARTUP (P0-A): the initial Holm hand is created by
-  // a single transactional RPC so ante collection, pot update, round
-  // insert, card deal, and status flip either all succeed together or
-  // all roll back. This eliminates the prior partial-start failure mode
-  // where antes were charged and the round insert was rejected.
-  if (isFirstHand) {
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        'start_holm_initial_hand' as any,
-        { _game_id: gameId, _skip_ante_collection: false } as any,
-      );
-      if (rpcError) {
-        console.error('[HOLM] start_holm_initial_hand RPC error:', rpcError);
-        return;
-      }
-      const outcome = (rpcData as any)?.outcome;
-      if (outcome === 'started') {
-        console.log('[HOLM] ✅ Atomic first-hand startup succeeded:', rpcData);
-        return;
-      }
-      const reason = (rpcData as any)?.reason;
-      // Recovery: another caller already consumed the first-hand lock but
-      // the round wasn't created (legacy partial-start signature). Retry
-      // once with skip_ante_collection so we don't double-charge.
-      if (outcome === 'rejected' && reason === 'first-hand-lock-already-consumed') {
-        const { data: guardGame } = await supabase
-          .from('games')
-          .select('status, pot')
-          .eq('id', gameId)
-          .maybeSingle();
-        const pot = typeof guardGame?.pot === 'number' ? guardGame.pot : 0;
-        if (guardGame?.status === 'ante_decision' && pot > 0) {
-          console.warn('[HOLM] First-hand lock already consumed but pot is populated; invoking atomic recovery start');
-          const { data: recoverData, error: recoverError } = await supabase.rpc(
-            'start_holm_initial_hand' as any,
-            { _game_id: gameId, _skip_ante_collection: true } as any,
-          );
-          if (recoverError) {
-            console.error('[HOLM] start_holm_initial_hand recovery RPC error:', recoverError);
-            return;
-          }
-          console.log('[HOLM] Recovery start result:', recoverData);
-          return;
-        }
-      }
-      // Idempotent / benign rejection — another writer already started the hand.
-      console.log('[HOLM] start_holm_initial_hand non-started outcome:', rpcData);
-      return;
-    } catch (e) {
-      console.error('[HOLM] start_holm_initial_hand threw:', e);
-      return;
-    }
-  }
 
 
   // The caller may pass isFirstHand=true, but older stuck states can have is_first_hand already consumed.
@@ -608,24 +555,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] Creating round with round_number=1 (always), hand_number:', handNumber, 'for dealer_game:', dealerGameId);
 
   // Deal fresh cards
-  // H4 NOTE — actionability contract:
-  // Initial-deal round creation is NO LONGER an actionability commit.
-  // The round is born in the non-actionable `dealing` state with NO
-  // live turn slot and NO server decision deadline. The server-elected
-  // first actor is persisted in `pending_turn_position`, gated by a
-  // one-time `presentation_generation` token. The host promotes the
-  // round to `betting` exactly once via
-  // `activate_holm_round_after_deal_presentation` after its local
-  // deal-presentation settle predicate is true.
-  // If the elected host disconnects before acknowledgement,
-  // `enforce-deadlines` may promote the round after
-  // `presentation_fallback_at` using the same atomic RPC with the
-  // service role (`_from_fallback = true`). The fallback window is the
-  // canonical Holm deal-presentation duration plus an explicit safety
-  // margin — see holmActionabilityContract.ts.
-  const presentationFallbackAt = new Date(
-    Date.now() + HOLM_DEAL_PRESENTATION_FALLBACK_TOTAL_MS
-  );
+  const deadline = new Date(Date.now() + timerSeconds * 1000);
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
@@ -665,28 +595,22 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .eq('id', gameId);
 
   // Always create a new round for each hand - unique round_id prevents stale card fetching
-  // H4: pre-actionability commit. status='dealing', no live turn, no
-  // live deadline; pending actor and fallback timestamp are stamped
-  // atomically with the row.
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
       game_id: gameId,
       round_number: nextRoundNumber,
       cards_dealt: 4,
-      status: 'dealing',
+      status: 'betting',
       pot: potForRound,
-      decision_deadline: null,
+      decision_deadline: deadline.toISOString(),
       community_cards_revealed: 2,
       community_cards: communityCards as any,
       chucky_active: false,
-      current_turn_position: null,
-      pending_turn_position: buckPosition,
-      presentation_generation: 0,
-      presentation_fallback_at: presentationFallbackAt.toISOString(),
+      current_turn_position: buckPosition,
       hand_number: handNumber,
       dealer_game_id: dealerGameId
-    } as any)
+    })
     .select()
     .single();
 

@@ -150,15 +150,28 @@ export function ShellTimerRail() {
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
-  // Snap-to-mount: enable CSS width transitions only after the first
-  // paint (so the bar appears at its correct width without animating
-  // up from zero). Also re-snap when the identityKey changes so a
-  // turn handoff resets without animating across actor boundaries.
-  const [mounted, setMounted] = useState(false);
+  // ── Local timer-bar fix ──────────────────────────────────────────
+  // First committed paint per identityKey MUST be width = 100% with
+  // transitions disabled. On the next controlled rAF, switch to the
+  // true remaining fraction with the width transition enabled so the
+  // bar descends from 100% to the real value. Within the same
+  // identityKey, the bar progress may never increase (timeLeft is
+  // text-only; never re-seeds the bar).
+  const [snappedFull, setSnappedFull] = useState(true);
   const identityKey = state?.identityKey ?? null;
+  const lastPctRef = useRef<number>(100);
+  const lastIdentityRef = useRef<string | null>(null);
+  if (lastIdentityRef.current !== identityKey) {
+    lastIdentityRef.current = identityKey;
+    lastPctRef.current = 100;
+  }
   useEffect(() => {
-    setMounted(false);
-    const id = requestAnimationFrame(() => setMounted(true));
+    setSnappedFull(true);
+    const id = requestAnimationFrame(() => {
+      // Second rAF ensures the 100% paint has actually committed
+      // before we enable the descending transition.
+      requestAnimationFrame(() => setSnappedFull(false));
+    });
     return () => cancelAnimationFrame(id);
   }, [identityKey]);
 
@@ -180,7 +193,16 @@ export function ShellTimerRail() {
   const total = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
   const seconds = Math.max(0, Math.round(state?.secondsRemaining ?? 0));
   const effectivePaused = paused || !eligibility.running;
-  const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
+  const truePct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
+  // First paint per identity = full bar. Subsequent paints descend to
+  // true fraction; never allowed to increase within the same identity.
+  let pct: number;
+  if (snappedFull) {
+    pct = 100;
+  } else {
+    pct = Math.min(truePct, lastPctRef.current);
+    lastPctRef.current = pct;
+  }
 
   const fillClass = effectivePaused
     ? 'bg-muted-foreground/40'
@@ -255,7 +277,7 @@ export function ShellTimerRail() {
     >
       <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
         <div
-          className={`h-full ${mounted ? 'transition-[width] duration-1000 ease-linear' : ''} ${fillClass}`}
+          className={`h-full ${snappedFull ? '' : 'transition-[width] duration-1000 ease-linear'} ${fillClass}`}
           style={{ width: `${pct}%` }}
         />
       </div>
