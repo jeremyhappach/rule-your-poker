@@ -168,6 +168,18 @@ export function CardTransportProvider({
 
   const dispatchMany = useCallback(
     (intents: CardTransportIntent[], opts?: CardDispatchManyOptions) => {
+      ffRecord({
+        writerId: 'CardTransportProvider.tsx:dispatchMany:L170',
+        source: 'CARD_TRANSPORT',
+        marker: 'CT_DISPATCH_MANY_INIT',
+        identity: { gameId, ownerInstanceId: 'CardTransportProvider' },
+        payload: {
+          incoming: intents.length,
+          ids: intents.map((i) => i.id),
+          handContextIds: Array.from(new Set(intents.map((i) => i.handContextId ?? null))),
+          priorActiveCount: activeIntentsRef.current.length,
+        },
+      });
       let accepted = 0;
       const expected = intents.length;
       let settledCount = 0;
@@ -180,9 +192,21 @@ export function CardTransportProvider({
         if (acceptOne(i, { onSettled: tick })) accepted += 1;
         else tick(i.cardId);
       }
+      ffRecord({
+        writerId: 'CardTransportProvider.tsx:dispatchMany:L194',
+        source: 'CARD_TRANSPORT',
+        marker: 'CT_DISPATCH_MANY_DONE',
+        identity: { gameId, ownerInstanceId: 'CardTransportProvider' },
+        payload: {
+          incoming: intents.length,
+          accepted,
+          rejectedAsDuplicateOrEmpty: intents.length - accepted,
+          nextActiveCount: activeIntentsRef.current.length,
+        },
+      });
       return accepted;
     },
-    [acceptOne],
+    [acceptOne, gameId],
   );
 
   const fireCallbacks = useCallback((intentId: string, cardId: string) => {
@@ -207,16 +231,27 @@ export function CardTransportProvider({
   }, []);
 
   const markSettled = useCallback((intentId: string, cardId: string, source = 'flight_complete') => {
-    // PRESENTATION-LAYER CONTRACT (357 deal forensics fix):
-    //   1. Fire ownership callbacks FIRST. This bumps DealRuntime's
-    //      `settledByRecipient`, causing the destination consumer
-    //      (e.g. Use357SelfHand) to grow effectiveCards and mount the
-    //      static card.
-    //   2. Defer removal of the flying intent (which unmounts the
-    //      transient FlyingCard node) by TWO requestAnimationFrame
-    //      passes so the static card is painted before the transport
-    //      node is destroyed. Eliminates the inter-mount paint gap that
-    //      caused card-0 r1 flash and inter-round disappearances.
+    const intent = intentByIdRef.current.get(intentId);
+    ffRecord({
+      writerId: 'CardTransportProvider.tsx:markSettled:L235',
+      source: 'CARD_TRANSPORT',
+      marker: 'CT_INTENT_SETTLED',
+      identity: {
+        gameId,
+        ownerInstanceId: 'CardTransportProvider',
+        segmentId: intent?.handContextId ?? null,
+      },
+      payload: {
+        intentId,
+        cardId,
+        source,
+        priorActiveCount: activeIntentsRef.current.length,
+        nextActiveCount: Math.max(0, activeIntentsRef.current.length - 1),
+        from: intent ? describeCardEndpoint(intent.from) : null,
+        to: intent ? describeCardEndpoint(intent.to) : null,
+        handContextId: intent?.handContextId ?? null,
+      },
+    });
     fireCallbacks(intentId, cardId);
     cardTransportDbgUpsert(intentId, {
       cardId,
@@ -234,11 +269,30 @@ export function CardTransportProvider({
     } else {
       setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
     }
-  }, [fireCallbacks]);
+  }, [fireCallbacks, gameId]);
 
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
       const now = performance.now();
+      ffRecord({
+        writerId: 'CardTransportProvider.tsx:markDropped:L278',
+        source: 'CARD_TRANSPORT',
+        marker: 'CT_INTENT_DROPPED',
+        identity: {
+          gameId,
+          ownerInstanceId: 'CardTransportProvider',
+          segmentId: intent.handContextId ?? null,
+        },
+        payload: {
+          intentId: intent.id,
+          cardId: intent.cardId,
+          reason,
+          from: describeCardEndpoint(intent.from),
+          to: describeCardEndpoint(intent.to),
+          handContextId: intent.handContextId ?? null,
+          priorActiveCount: activeIntentsRef.current.length,
+        },
+      });
       setActiveIntents((prev) => prev.filter((i) => i.id !== intent.id));
       // eslint-disable-next-line no-console
       console.warn(
@@ -246,7 +300,6 @@ export function CardTransportProvider({
           `from=${describeCardEndpoint(intent.from)} to=${describeCardEndpoint(intent.to)} ` +
           `reason=${reason}`,
       );
-      // Honor settle waiters so deal phase never hangs.
       cardTransportDbgUpsert(intent.id, {
         cardId: intent.cardId,
         droppedAt: now,
@@ -258,23 +311,38 @@ export function CardTransportProvider({
       });
       fireCallbacks(intent.id, intent.cardId);
     },
-    [fireCallbacks],
+    [fireCallbacks, gameId],
   );
 
   const dropIntentsNotMatchingHand = useCallback(
     (handContextId: string, reason: string) => {
-      let dropped = 0;
       const stale = activeIntentsRef.current.filter(
         (i) => (i.handContextId ?? null) !== handContextId,
       );
+      ffRecord({
+        writerId: 'CardTransportProvider.tsx:dropIntentsNotMatchingHand:L321',
+        source: 'CARD_TRANSPORT',
+        marker: 'CT_HAND_MISMATCH_SWEEP',
+        identity: { gameId, ownerInstanceId: 'CardTransportProvider', segmentId: handContextId },
+        payload: {
+          reason,
+          targetHandContextId: handContextId,
+          priorActiveCount: activeIntentsRef.current.length,
+          staleCount: stale.length,
+          staleIds: stale.map((i) => i.id),
+          staleHandContextIds: Array.from(new Set(stale.map((i) => i.handContextId ?? null))),
+        },
+      });
+      let dropped = 0;
       for (const intent of stale) {
         markDropped(intent, reason);
         dropped += 1;
       }
       return dropped;
     },
-    [markDropped],
+    [markDropped, gameId],
   );
+
 
   const onCardSettled = useCallback((handler: (cardId: string) => void) => {
     subscribersRef.current.add(handler);
