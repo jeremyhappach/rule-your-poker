@@ -3798,42 +3798,56 @@ export const MobileGameTable = ({
         };
       }
       chosen = { source: 'frozen-trigger-active', cards: holmWinPotFrozenCardsRef.current.cards };
-    } else if (
-      holmWinPotFrozenCardsRef.current.triggerId !== null &&
-      holmWinPotFrozenCardsRef.current.handContextId !== (handContextId ?? null)
-    ) {
-      // Hand advanced — release snapshot.
-      holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [], handContextId: null };
-      chosen = { source: 'frozen-released-hand-advanced', cards: [] };
-    } else if (
-      holmWinPotFrozenCardsRef.current.triggerId !== null &&
-      holmWinPotFrozenCardsRef.current.cards.length > 0 &&
-      handContextId != null &&
-      holmWinPotFrozenCardsRef.current.handContextId === handContextId
-    ) {
-      chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
-    } else if (isHandTransitioning && !(__is357GameType(gameType) && (currentRound ?? 0) > 1)) {
-      // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
-      chosen = { source: 'empty-hand-transitioning', cards: [] };
-    } else if (gameType === 'holm-game' && roundStatus === 'completed') {
-      // HOLM COMPLETED GUARD: Keep cards visible for the remainder of the same hand
-      // (covers chip-award animation window). Only hide once handContextId actually
-      // advances to the next hand.
-      const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
-      const cachedCards = currentPlayerCardsRef.current.cards;
-      const sameHand = handContextId != null && handContextId === cachedHandContextId;
-
-      if (sameHand && rawCurrentPlayerCards.length > 0) {
-        chosen = { source: 'holm-completed-raw-same-hand', cards: rawCurrentPlayerCards };
-      } else if (sameHand && cachedCards.length > 0) {
-        chosen = { source: 'holm-completed-cached-same-hand', cards: cachedCards };
-      } else if (rawCurrentPlayerCards.length > 0 && cachedHandContextId == null) {
-        // First render after completion before cache seeded — accept raw.
-        chosen = { source: 'holm-completed-raw-uncached', cards: rawCurrentPlayerCards };
-      } else {
-        chosen = { source: 'empty-holm-completed', cards: [] };
-      }
     } else {
+      // If the prior win-pot frozen snapshot belongs to an old hand,
+      // release it as a side-effect — but DO NOT short-circuit to empty.
+      // Selection must continue so a valid raw new-hand can win.
+      if (
+        holmWinPotFrozenCardsRef.current.triggerId !== null &&
+        holmWinPotFrozenCardsRef.current.handContextId !== (handContextId ?? null)
+      ) {
+        holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [], handContextId: null };
+      }
+
+      // PRIORITY 1 (selector-priority correction): a valid raw current-hand
+      // for the active HCI always wins, regardless of any stale cache /
+      // released-snapshot state. Prevents `frozen-released-hand-advanced`
+      // (and any other cache branch) from discarding a fresh raw hand.
+      const rawBelongsToActiveHand =
+        handContextId != null && rawCurrentPlayerCards.length > 0;
+
+      if (rawBelongsToActiveHand) {
+        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId };
+        chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
+      } else if (
+        holmWinPotFrozenCardsRef.current.triggerId !== null &&
+        holmWinPotFrozenCardsRef.current.cards.length > 0 &&
+        handContextId != null &&
+        holmWinPotFrozenCardsRef.current.handContextId === handContextId
+      ) {
+        chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
+      } else if (isHandTransitioning && !(__is357GameType(gameType) && (currentRound ?? 0) > 1)) {
+        // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
+        chosen = { source: 'empty-hand-transitioning', cards: [] };
+      } else if (gameType === 'holm-game' && roundStatus === 'completed') {
+        // HOLM COMPLETED GUARD: Keep cards visible for the remainder of the same hand
+        // (covers chip-award animation window). Only hide once handContextId actually
+        // advances to the next hand.
+        const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
+        const cachedCards = currentPlayerCardsRef.current.cards;
+        const sameHand = handContextId != null && handContextId === cachedHandContextId;
+
+        if (sameHand && rawCurrentPlayerCards.length > 0) {
+          chosen = { source: 'holm-completed-raw-same-hand', cards: rawCurrentPlayerCards };
+        } else if (sameHand && cachedCards.length > 0) {
+          chosen = { source: 'holm-completed-cached-same-hand', cards: cachedCards };
+        } else if (rawCurrentPlayerCards.length > 0 && cachedHandContextId == null) {
+          // First render after completion before cache seeded — accept raw.
+          chosen = { source: 'holm-completed-raw-uncached', cards: rawCurrentPlayerCards };
+        } else {
+          chosen = { source: 'empty-holm-completed', cards: [] };
+        }
+      } else {
       const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
       const cachedCards = currentPlayerCardsRef.current.cards;
 
@@ -3870,6 +3884,9 @@ export const MobileGameTable = ({
         chosen = { source: 'cached-same-hand-no-raw', cards: cachedCards };
       }
     }
+    }
+
+
 
     __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
     if (gameType === 'holm-game') {
