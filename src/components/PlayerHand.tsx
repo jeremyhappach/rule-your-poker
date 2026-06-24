@@ -568,10 +568,6 @@ export const PlayerHand = ({
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
       return;
     }
-    if (false) { /* no-op: snapback ingest removed */ }
-
-      return;
-    }
     const auditValue = {
       instanceKey: forensicsId,
       timestamp: new Date().toISOString(),
@@ -606,11 +602,10 @@ export const PlayerHand = ({
       },
     };
     publishThreeFiveSevenR1OwnershipAudit(forensicsId, auditValue);
-    ingestR1OwnershipAuditForSnapback(auditValue);
     return () => {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
-      ingestR1OwnershipAuditForSnapback(null);
     };
+
   }, [
     is357R1ShowdownPath,
     forensicsId,
