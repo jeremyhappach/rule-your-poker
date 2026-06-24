@@ -4957,13 +4957,46 @@ export const MobileGameTable = ({
     if (holmTerminalPresentation) return;
     const triggered = !!_rawIsShowingAnnouncement || !!holmWinPotTriggerId;
     if (!triggered) return;
-    if (!handContextId) return;
     if (!_rawWinnerPlayerId) return;
-    const selfCards = [...currentPlayerCards];
+
+    // Resolve terminal identity from already-valid terminal presentation
+    // owners — NOT from live handContextId/activeHandContextId, which are
+    // null in the completed-round terminal frame.
+    const stageSnap = lonePlayerStageSnapshotRef.current;
+    const stickyTabled = tabledSelfStickyRef.current;
+    const stickyChucky = chuckyStageStickyRef.current;
+    const cachedSelfHandCtxId = currentPlayerCardsRef.current.handContextId;
+
+    const terminalHandContextId =
+      stageSnap?.handContextId ??
+      stickyTabled?.handContextId ??
+      stickyChucky?.handContextId ??
+      cachedChuckyHandContextRef.current ??
+      cachedSelfHandCtxId ??
+      null;
+
+    const terminalDealerGameId =
+      stageSnap?.dealerGameId ??
+      stickyTabled?.dealerGameId ??
+      stickyChucky?.dealerGameId ??
+      holmDealerGameId ??
+      null;
+
+    if (!terminalHandContextId) return;
+    if (!terminalDealerGameId) return;
+
+    const selfCards =
+      stageSnap?.cards && stageSnap.cards.length > 0
+        ? [...stageSnap.cards]
+        : stickyTabled?.cards && stickyTabled.cards.length > 0
+          ? [...stickyTabled.cards]
+          : [...currentPlayerCards];
     const chuckyCardsSnap = [
-      ...(cachedChuckyCards && cachedChuckyCards.length > 0
-        ? cachedChuckyCards
-        : (chuckyCards ?? [])),
+      ...(stickyChucky?.cards && stickyChucky.cards.length > 0
+        ? stickyChucky.cards
+        : cachedChuckyCards && cachedChuckyCards.length > 0
+          ? cachedChuckyCards
+          : (chuckyCards ?? [])),
     ];
     const communitySnap = [
       ...(approvedCommunityCards && approvedCommunityCards.length > 0
@@ -4971,16 +5004,16 @@ export const MobileGameTable = ({
         : (communityCards ?? [])),
     ];
     const snap: HolmTerminalPresentation = {
-      outcomeKey: `${handContextId}:${_rawWinnerPlayerId}`,
-      handContextId,
-      dealerGameId: holmDealerGameId ?? '',
+      outcomeKey: `${terminalHandContextId}:${_rawWinnerPlayerId}`,
+      handContextId: terminalHandContextId,
+      dealerGameId: terminalDealerGameId,
       selfCards,
       chuckyCards: chuckyCardsSnap,
       communityCards: communitySnap,
       winnerPlayerId: _rawWinnerPlayerId,
       winnerCardIndices: _rawWinningCardHighlights.playerIndices,
       winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
-      soloVsChucky: _rawIsCurrentPlayerSoloVsChucky,
+      soloVsChucky: true,
     };
     setHolmTerminalPresentation(snap);
   }, [
@@ -4988,10 +5021,8 @@ export const MobileGameTable = ({
     holmTerminalPresentation,
     _rawIsShowingAnnouncement,
     holmWinPotTriggerId,
-    handContextId,
     _rawWinnerPlayerId,
     _rawWinningCardHighlights,
-    _rawIsCurrentPlayerSoloVsChucky,
     currentPlayerCards,
     cachedChuckyCards,
     chuckyCards,
