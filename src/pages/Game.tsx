@@ -17,6 +17,7 @@ import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/Se
 // AnnouncementRailSlot is mounted by the active gameplay surface
 // (e.g. CribbageMobileGameTable), not at the Game.tsx shell level.
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
