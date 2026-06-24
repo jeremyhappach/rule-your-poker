@@ -22,6 +22,7 @@ import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { resolveCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 
 interface HolmCanonicalCommunityRowProps {
   handContextId: string;
