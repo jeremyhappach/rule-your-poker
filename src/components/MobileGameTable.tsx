@@ -9519,19 +9519,9 @@ export const MobileGameTable = ({
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
 
-          // ── TERMINAL LATCH (consumer wiring): Chucky stage owner ───
-          // While the Holm terminal-presentation latch is held, Chucky
-          // stage must render from the latch snapshot at full reveal.
-          if (
-            terminalPresentationActive &&
-            holmTerminalPresentation &&
-            holmTerminalPresentation.chuckyCards.length > 0
-          ) {
-            chuckyCardsForRender = holmTerminalPresentation.chuckyCards;
-            chuckyTotalVisibleForRender = chuckyCardsForRender.length;
-            chuckyRevealedCountForRender = chuckyCardsForRender.length;
-            chuckyVisible = true;
-          }
+          // (Holm terminal-latch Chucky stage override removed —
+          // shell owns session-end exclusive handoff.)
+
 
           // ── Forensics: new-hand Chucky admission summary (read-only) ──
           if (gameType === 'holm-game') {
