@@ -366,34 +366,18 @@ function CommunityStageHolmSwitch({
   hasHighlights: boolean;
   tightOverlap: boolean;
 }) {
-  const deal = useDealRuntime();
-  // HARD LATCH: once we have ever rendered the legacy CommunityCards
-  // renderer for this handContextId (i.e. DealRuntime reached GAMEPLAY,
-  // OR no DealRuntime is mounted), we MUST NOT revert to the canonical
-  // per-slot row. Subsequent waves (e.g. Chucky) call beginWave() which
-  // sets phase back to DEALING — without this latch, already-revealed
-  // community cards would regress to face-down backs mid-hand.
-  const handedOffRef = useRef<string | null>(null);
-  const inCanonicalDealRaw =
-    !!deal && deal.gameType === 'holm-game' && deal.phase !== 'GAMEPLAY';
-  const latchedForThisHand = handedOffRef.current === handContextId;
-  if (!inCanonicalDealRaw && !latchedForThisHand) {
-    handedOffRef.current = handContextId;
-  }
-  const inCanonicalDeal = inCanonicalDealRaw && !latchedForThisHand;
-  if (inCanonicalDeal) {
-    return (
-      <HolmCanonicalCommunityRow
-        handContextId={handContextId}
-        cards={cards}
-        tightOverlap={tightOverlap}
-      />
-    );
-  }
+  // Single component instance for the entire hand. The deal-phase
+  // boundary (DEALING → READY → GAMEPLAY, plus additive waves) is
+  // expressed as per-slot presentation transitions inside the row;
+  // we MUST NOT swap component types here. Swapping causes React to
+  // unmount all four community card subtrees and remount them under
+  // a different component type — the structural blink observed in
+  // the wartime forensics export (nodeIds 1→5, 2→6, 3→7, 4→8 at
+  // READY→GAMEPLAY).
   return (
-    <CommunityCards
+    <HolmCanonicalCommunityRow
+      handContextId={handContextId}
       cards={cards}
-      holmHandContextId={handContextId}
       revealed={revealed}
       highlightedIndices={highlightedIndices}
       kickerIndices={kickerIndices}
