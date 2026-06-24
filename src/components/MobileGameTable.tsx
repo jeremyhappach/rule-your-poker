@@ -4940,18 +4940,8 @@ export const MobileGameTable = ({
   }, [_rawWinningCardHighlights]);
   // Terminal-presentation latch: while held, highlights derive from
   // the snapshot's captured winner card indices.
-  const winningCardHighlights =
-    terminalPresentationActive && holmTerminalPresentation
-      ? {
-          playerIndices: holmTerminalPresentation.winnerCardIndices,
-          communityIndices: holmTerminalPresentation.winnerCommunityIndices,
-          kickerPlayerIndices: holmTerminalPresentation.kickerPlayerIndices,
-          kickerCommunityIndices: holmTerminalPresentation.kickerCommunityIndices,
-          hasHighlights:
-            holmTerminalPresentation.winnerCardIndices.length > 0 ||
-            holmTerminalPresentation.winnerCommunityIndices.length > 0,
-        }
-      : _rawWinningCardHighlights;
+  const winningCardHighlights = _rawWinningCardHighlights;
+
 
   // (Holm terminal latch acquire/release/state/consumer-diff and
   // post-win handoff probe effects have been retired. The shell
