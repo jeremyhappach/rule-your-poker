@@ -40,6 +40,7 @@ import {
   prevWaveCountFor357,
   totalAfterWaveFor357,
 } from "./ThreeFiveSevenDealOrchestrator";
+import { ThreeFiveSevenOpponentShowdownGapAdapter } from "@/lib/threeFiveSeven/ThreeFiveSevenOpponentShowdownGapAdapter";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
