@@ -288,22 +288,13 @@ export function ShellTimerRail() {
     });
   }, [blocked357TimerAttempt, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, seconds]);
 
-  if (!eligibility.visible || blocked357TimerAttempt) return null;
-
-  // ROOT-CAUSE FIX (helper-text clipping under timer):
-  // The timer row's fixed height (`--hud-h-timer`) clips any text rendered
-  // below the bar. Per the canonical contract, the timer row owns the bar
-  // ONLY — actor identity belongs to the identity row, and any auxiliary
-  // "helper" copy belongs to the active content pane. The bar's length and
-  // color already encode seconds-remaining and urgency. We therefore drop
-  // the caption entirely instead of leaving a half-clipped line under the
-  // bar. `paused` state is conveyed by the muted fill color.
+  // Hooks must run unconditionally — railRef + sampler effect live ABOVE
+  // the eligibility early return to preserve hook order across renders.
   const railRef = useRef<HTMLDivElement | null>(null);
+  const samplerVisible = eligibility.visible && !blocked357TimerAttempt;
   useEffect(() => {
     if (!railRef.current) return;
-    if (!eligibility.visible) return;
-    // Arms once per rail DOM node. New identityKey resets via parent
-    // re-effect (above). Sampler runs for 3s capturing CSS/DOM/WAAPI/RAF.
+    if (!samplerVisible) return;
     try {
       ffArmTimerBarSampler(railRef.current, {
         gameId: deal?.handContextId?.split('#')[0] ?? null,
@@ -322,7 +313,10 @@ export function ShellTimerRail() {
       });
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityKey, eligibility.visible]);
+  }, [identityKey, samplerVisible]);
+
+  if (!eligibility.visible || blocked357TimerAttempt) return null;
+
 
   return (
     <div
