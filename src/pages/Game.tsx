@@ -6059,6 +6059,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
           roundData = data;
+          ffRecord({
+            writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
+            source: 'HOLM_SELF_HAND_LINEAGE',
+            marker: 'HOLM_SELF_HAND_FETCH_ROUND_SELECTED',
+            identity: {
+              gameId,
+              roundId: roundData?.id ?? null,
+              segmentId: gameData.current_game_uuid ?? null,
+            },
+            payload: {
+              trigger: 'fetchPlayers',
+              dealerGameIdFilter: gameData.current_game_uuid ?? null,
+              orderBy: ['hand_number desc', 'round_number desc'],
+              selectedRoundId: roundData?.id ?? null,
+              selectedRoundNumber: roundData?.round_number ?? null,
+              selectedCardsDealt: roundData?.cards_dealt ?? null,
+              gameStatus: gameData.status,
+              gameCurrentRound: gameData.current_round,
+              gameTotalHands: gameData.total_hands,
+              awaitingNextRound: gameData.awaiting_next_round,
+              hasLastRoundResult: !!gameData.last_round_result,
+            },
+          });
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
