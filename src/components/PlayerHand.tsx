@@ -126,7 +126,15 @@ export const PlayerHand = ({
   
   // Determine wild rank for 3-5-7 games
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
+  // 3-5-7 showdown geometry — Geometry Lab v2 resolved values. Always
+  // call the hooks (rules of hooks); the resolved values are only
+  // consumed by the 3-5-7 showdown branches below, so non-357 PlayerHand
+  // renders remain behaviorally unchanged.
+  const showdownCfg = useThreeFiveSevenShowdownConfig();
+  const isSmBp = useIsSmBreakpoint();
+  const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
   const isHolmGame = gameType === 'holm-game';
+
   // Boundary guard applies to any canonical-deal game during DEALING.
   const isCanonicalDealGuarded = is357Game || isHolmGame;
   const claimedSet = new Set(claimedCardIds ?? []);
