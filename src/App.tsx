@@ -46,6 +46,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
+import { ThreeFiveSevenR1SnapbackPill } from "@/lib/threeFiveSeven/ThreeFiveSevenR1SnapbackPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
 import { Wave5GridOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5GridOverlay";
 import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay";
@@ -142,6 +143,7 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
+                <ThreeFiveSevenR1SnapbackPill />
 
 
                 <CardBackDbgPanel />

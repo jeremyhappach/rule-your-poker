@@ -10,6 +10,10 @@ import {
   type ResolvedRoundRow,
   type ThreeFiveSevenR1SizeBranch,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  ingestR1OwnershipAuditForSnapback,
+  registerR1SnapbackHost,
+} from "@/lib/threeFiveSeven/r1SnapbackForensics";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
@@ -553,9 +557,10 @@ export const PlayerHand = ({
   useEffect(() => {
     if (!is357R1ShowdownPath) {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
       return;
     }
-    publishThreeFiveSevenR1OwnershipAudit(forensicsId, {
+    const auditValue = {
       instanceKey: forensicsId,
       timestamp: new Date().toISOString(),
       is357Game,
@@ -587,8 +592,13 @@ export const PlayerHand = ({
         availableWidthPx: availableWidthPx ?? null,
         wrapperScale: safeWrapperScale,
       },
-    });
-    return () => publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+    };
+    publishThreeFiveSevenR1OwnershipAudit(forensicsId, auditValue);
+    ingestR1OwnershipAuditForSnapback(auditValue);
+    return () => {
+      publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
+    };
   }, [
     is357R1ShowdownPath,
     forensicsId,
@@ -875,8 +885,17 @@ export const PlayerHand = ({
     is357Game && currentRound === 1 && displayCardCount === 3
       ? resolved357.three.fanStepDeg
       : 2;
+  const isR1OpponentShowdownHost = is357R1ShowdownPath && !forceHiddenFaces;
   return (
-    <div className="flex" ref={is357Game ? measureRef : undefined}>
+    <div
+      className="flex"
+      ref={(el) => {
+        if (is357Game) measureRef.current = el;
+        if (isR1OpponentShowdownHost) registerR1SnapbackHost(el);
+        else if (!isR1OpponentShowdownHost) registerR1SnapbackHost(null);
+      }}
+      data-357-r1-snapback-host={isR1OpponentShowdownHost ? '' : undefined}
+    >
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);

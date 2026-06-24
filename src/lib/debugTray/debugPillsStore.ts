@@ -42,7 +42,8 @@ export type DebugPillKey =
   | 'threeFiveSevenForensics'
   | 'holmDealDbg'
   | 'bucksOverlay'
-  | 'communityExport';
+  | 'communityExport'
+  | 'threeFiveSevenR1Snapback';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -80,6 +81,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'holmDealDbg', abbreviation: 'HOLM DEAL DBG', fullName: 'Holm Deal Debug', description: 'Holm canonical deal forensics: DealRuntime, hands/community/Chucky dispatch/settle, DOM visibility, and pre-settle render violations.' },
   { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
   { key: 'communityExport', abbreviation: 'COMM EXPORT', fullName: 'Community Export', description: 'Holm community-card landing export pill (one-tap download of the retained wartime buffer slice).' },
+  { key: 'threeFiveSevenR1Snapback', abbreviation: '357 R1 SNAP', fullName: 'R1 Snapback Export Pill', description: '3-5-7 R1 static-snapback forensic capture pill. When ON, captures the edit→render→snapback window (rAF samples + MutationObserver) and exposes a gameplay pill that downloads 357-r1-static-snapback-<timestamp>.txt. Off = zero overhead.' },
 
 ];
 
