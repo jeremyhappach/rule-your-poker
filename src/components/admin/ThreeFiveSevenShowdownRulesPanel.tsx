@@ -109,9 +109,9 @@ function loadState(): ShowdownRulesState {
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw);
     return {
-      three: { ...DEFAULT_STATE.three, ...(parsed.three ?? {}) },
-      five: { ...DEFAULT_STATE.five, ...(parsed.five ?? {}) },
-      seven: { ...DEFAULT_STATE.seven, ...(parsed.seven ?? {}) },
+      three: recompute({ ...DEFAULT_STATE.three, ...(parsed.three ?? {}) }),
+      five: recompute({ ...DEFAULT_STATE.five, ...(parsed.five ?? {}) }),
+      seven: recompute({ ...DEFAULT_STATE.seven, ...(parsed.seven ?? {}) }),
       sevenIrrelevant: {
         ...DEFAULT_STATE.sevenIrrelevant,
         ...(parsed.sevenIrrelevant ?? {}),
