@@ -6843,7 +6843,23 @@ export const MobileGameTable = ({
     })();
 
 
-    const cardsNode = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
+    const showdownPlayerHand = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
+      <PlayerHand
+        cards={cards}
+        isHidden={false}
+        highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
+        kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
+        hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+        gameType={gameType}
+        currentRound={currentRound}
+        showSeparated={false}
+        tightOverlap={isHolmMultiPlayerShowdown}
+        unusedCardsBelow={false}
+        isRightSide={isRightSideSlot}
+        isBottomPosition={isBottomPosition}
+      />
+    ) : null;
+    const cardsNode = showdownPlayerHand ? (
       <div
         className={cn(
           'flex scale-100 origin-top relative z-40',
@@ -6851,20 +6867,13 @@ export const MobileGameTable = ({
           showNameBelowCards && isUpperCorner && '-mb-2',
         )}
       >
-        <PlayerHand
-          cards={cards}
-          isHidden={false}
-          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
-          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
-          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
-          gameType={gameType}
-          currentRound={currentRound}
-          showSeparated={false}
-          tightOverlap={isHolmMultiPlayerShowdown}
-          unusedCardsBelow={false}
-          isRightSide={isRightSideSlot}
-          isBottomPosition={isBottomPosition}
-        />
+        {__is357GameType(gameType) ? (
+          <ThreeFiveSevenOpponentShowdownGapAdapter>
+            {showdownPlayerHand}
+          </ThreeFiveSevenOpponentShowdownGapAdapter>
+        ) : (
+          showdownPlayerHand
+        )}
       </div>
     ) : (
       !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
