@@ -111,9 +111,25 @@ export interface PlayfieldSlotControllerProps {
   neutralParticipants?: import('./NeutralInterstitial').InterstitialParticipant[];
   neutralCurrentUserId?: string | null;
   neutralParticipantGameType?: string | null;
+  /**
+   * Authoritative session-end handoff flag. Derived in Game.tsx from
+   * the SAME game snapshot that clears current_game_uuid:
+   *   game_type === 'holm-game' && status === 'game_over' && current_game_uuid == null
+   *
+   * When true AND persistentChildrenKey is set, PSC renders ONLY
+   * NeutralInterstitial in the same React commit — no persistent
+   * gameplay children, no pre-game overlay. This eliminates the
+   * frame where MobileGameTable could fall back to frozen
+   * active-hand/rabbit derivation after terminal clearing.
+   *
+   * Exits automatically the moment the prop becomes false (e.g.
+   * status flips to game_selection).
+   */
+  isTerminalSessionEndHandoff?: boolean;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
+
 
 type SlotPhase = 'cold' | 'active' | 'neutral';
 
@@ -132,7 +148,9 @@ export function PlayfieldSlotController({
   neutralParticipants,
   neutralCurrentUserId,
   neutralParticipantGameType,
+  isTerminalSessionEndHandoff = false,
   children,
+
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
@@ -478,8 +496,14 @@ export function PlayfieldSlotController({
   //       instance across the entire poker-shell lifecycle"
   //       contract from the persistent-poker-shell refactor.
   if (persistentChildrenKey) {
-    const sessionEndExclusive =
-      mountedIdentity === null && neutralReason === 'session-end';
+    // Authoritative session-end exclusivity — driven by the SAME
+    // game snapshot that clears current_game_uuid (passed in via
+    // `isTerminalSessionEndHandoff`). Not gated on mountedIdentity
+    // or neutralReason, so it activates in the SAME React commit
+    // that clears current_game_uuid (no frozen-state flash) AND
+    // exits the instant authoritative state moves past game_over
+    // (e.g. status → game_selection).
+    const sessionEndExclusive = isTerminalSessionEndHandoff;
     recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral+persistent-children' : 'gameplay+persistent-children', {
       mode: 'persistent-children',
       persistentChildrenKey,
@@ -487,16 +511,8 @@ export function PlayfieldSlotController({
       desiredIdentity: describeSlotIdentity(desiredIdentity),
       phase, readyToMount, surfaceReady, readyToMountProp, neutralReason,
       sessionEndExclusive,
+      isTerminalSessionEndHandoff,
     });
-    // ── SESSION-END EXCLUSIVE HANDOFF ────────────────────────────
-    // Once the controller has committed neutral with reason
-    // 'session-end' (active→null transition), the persistent
-    // gameplay children must no longer render visibly or own
-    // paint/layout. NeutralInterstitial becomes the sole playfield
-    // owner in a single atomic React commit — no opacity fade, no
-    // timeout, no surface-local latch. This eliminates the
-    // post-win frame where NeutralInterstitial sat behind a still-
-    // mounted MobileGameTable subtree.
     if (sessionEndExclusive) {
       return (
         <div
@@ -510,16 +526,20 @@ export function PlayfieldSlotController({
           <div className="absolute inset-0 flex flex-col z-0">
             <NeutralInterstitial
               gameId={gameId ?? null}
-              reason={`poker-shell-pregame:${neutralReason}`}
+              reason="poker-shell-session-end-exclusive"
               gameKind={neutralGameKind}
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
+              participants={neutralParticipants}
+              currentUserId={neutralCurrentUserId}
+              participantGameType={neutralParticipantGameType}
             />
           </div>
         </div>
       );
     }
+
     return (
       <div
         data-canonical-shell-slot=""
