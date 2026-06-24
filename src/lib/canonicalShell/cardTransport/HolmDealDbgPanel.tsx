@@ -541,7 +541,7 @@ export function HolmDealDbgPanel() {
                 type="button"
                 onClick={async () => {
                   // Mark a Run Back episode start so events from this click forward are pinned.
-                  try { ffStartRunbackEpisode({ reason: 'manual-FF-click' as unknown as string } as never, 'manual-FF-click'); } catch { /* noop */ }
+                  try { ffStartRunbackEpisode({}, 'manual-FF-click'); } catch { /* noop */ }
                   const text = buildHolmFullForensicsText();
                   try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
                   try { (window as unknown as { __holmFullForensicsExport?: unknown }).__holmFullForensicsExport = { text, data: getHolmFullForensics() }; } catch { /* noop */ }
