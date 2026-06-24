@@ -3884,6 +3884,9 @@ export const MobileGameTable = ({
         chosen = { source: 'cached-same-hand-no-raw', cards: cachedCards };
       }
     }
+    }
+
+
 
     __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
     if (gameType === 'holm-game') {
