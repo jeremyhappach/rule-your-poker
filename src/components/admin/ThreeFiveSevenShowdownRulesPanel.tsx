@@ -107,6 +107,8 @@ import {
 import {
   DEFAULT_SHOWDOWN_RULES,
   LIVE_BASELINE,
+  SEAT_BELOW_STATIC_GAP_PX,
+  useRendererConsumedBelowChipGapPx,
   SHOWDOWN_RULES_STORAGE_KEY,
   loadShowdownRules,
   resolveShowdownRules,
