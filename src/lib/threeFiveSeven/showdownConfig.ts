@@ -265,7 +265,7 @@ export interface ResolvedIrrelevant {
   scale: number;
   opacity: number;
   grayscalePct: number;
-  interRowGapPx: number;
+  
   widthPx: number;
   heightPx: number;
   overlapPx: number;
