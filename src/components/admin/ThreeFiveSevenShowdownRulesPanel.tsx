@@ -547,17 +547,167 @@ function AnchorControls({
   );
 }
 
+// ─── Parity Audit ─────────────────────────────────────────────────────────
+//
+// Temporary collapsible panel: compares the frozen LIVE_BASELINE against
+// the currently-resolved Lab values at the active breakpoint. Lives in
+// the Geometry Lab only — never on the game table.
+
+interface ParityRow {
+  field: string;
+  live: string | number | boolean;
+  lab: string | number | boolean;
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Math.abs(a - b) < 1e-6;
+  }
+  return a === b;
+}
+
+function buildRoundParityRows(
+  prefix: string,
+  liveResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
+  labResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
+): ParityRow[] {
+  const rows: ParityRow[] = [
+    { field: `${prefix}.widthPx`,    live: liveResolved.widthPx,    lab: labResolved.widthPx },
+    { field: `${prefix}.heightPx`,   live: liveResolved.heightPx,   lab: labResolved.heightPx },
+    { field: `${prefix}.overlapPx`,  live: liveResolved.overlapPx,  lab: labResolved.overlapPx },
+    { field: `${prefix}.fanStepDeg`, live: liveResolved.fanStepDeg, lab: labResolved.fanStepDeg },
+  ];
+  if (prefix === 'three') {
+    rows.push(
+      { field: `${prefix}.dyn.enabled`,               live: liveResolved.dyn.enabled,               lab: labResolved.dyn.enabled },
+      { field: `${prefix}.dyn.aspect`,                live: liveResolved.dyn.aspect,                lab: labResolved.dyn.aspect },
+      { field: `${prefix}.dyn.minCardWidth`,          live: liveResolved.dyn.minCardWidth,          lab: labResolved.dyn.minCardWidth },
+      { field: `${prefix}.dyn.maxCardWidth`,          live: liveResolved.dyn.maxCardWidth,          lab: labResolved.dyn.maxCardWidth },
+      { field: `${prefix}.dyn.maxOverlapRatio`,       live: liveResolved.dyn.maxOverlapRatio,       lab: labResolved.dyn.maxOverlapRatio },
+      { field: `${prefix}.dyn.preferredOverlapRatio`, live: liveResolved.dyn.preferredOverlapRatio, lab: labResolved.dyn.preferredOverlapRatio },
+    );
+  }
+  return rows;
+}
+
+function ParityAuditPanel() {
+  const lab = useThreeFiveSevenShowdownConfig();
+  const isSm = useIsSmBreakpoint();
+  const live = useMemo(() => resolveShowdownRules(LIVE_BASELINE, isSm), [isSm]);
+  const resolved = useMemo(() => resolveShowdownRules(lab, isSm), [lab, isSm]);
+  const [copied, setCopied] = useState(false);
+
+  const sections: { title: string; rows: ParityRow[] }[] = useMemo(() => {
+    const anchorRows: ParityRow[] = [
+      { field: 'anchor.kind',           live: live.anchor.kind,           lab: resolved.anchor.kind },
+      { field: 'anchor.belowChipGapPx', live: live.anchor.belowChipGapPx, lab: resolved.anchor.belowChipGapPx },
+    ];
+    const irr = live.sevenIrrelevant;
+    const irrLab = resolved.sevenIrrelevant;
+    const irrelevantRows: ParityRow[] = [
+      { field: 'sevenIrrelevant.visible',        live: irr.visible,        lab: irrLab.visible },
+      { field: 'sevenIrrelevant.dimmed',         live: irr.dimmed,         lab: irrLab.dimmed },
+      { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
+      { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
+      { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
+      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
+      { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
+      { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
+      { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },
+      { field: 'sevenIrrelevant.positionMode',   live: irr.positionMode,   lab: irrLab.positionMode },
+    ];
+    return [
+      { title: 'Anchor (shared)',    rows: anchorRows },
+      { title: '3-card round',       rows: buildRoundParityRows('three', live.three, resolved.three) },
+      { title: '5-card round',       rows: buildRoundParityRows('five',  live.five,  resolved.five)  },
+      { title: '7-card main row',    rows: buildRoundParityRows('seven', live.seven, resolved.seven) },
+      { title: '7-card irrelevant pair', rows: irrelevantRows },
+    ];
+  }, [live, resolved]);
+
+  const buildReport = (): string => {
+    const lines: string[] = [];
+    lines.push('=== 3-5-7 Showdown Geometry — Parity Report ===');
+    lines.push(`active breakpoint: ${resolved.breakpoint}`);
+    lines.push(`viewport: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'unknown'}`);
+    lines.push(`timestamp: ${new Date().toISOString()}`);
+    lines.push('');
+    for (const s of sections) {
+      lines.push(`-- ${s.title} --`);
+      for (const r of s.rows) {
+        const match = valuesEqual(r.live, r.lab) ? 'MATCH' : 'MISMATCH';
+        lines.push(`  ${r.field.padEnd(40)} live=${String(r.live).padEnd(10)} lab=${String(r.lab).padEnd(10)} ${match}`);
+      }
+    }
+    return lines.join('\n');
+  };
+
+  const handleCopy = async () => {
+    const txt = buildReport();
+    try {
+      await navigator.clipboard.writeText(txt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      try { window.prompt('Copy parity report:', txt); } catch { /* */ }
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Compares the frozen pre-migration LIVE_BASELINE against the
+        currently-resolved Lab values at the active Tailwind breakpoint
+        (<code>{resolved.breakpoint}</code>). All rows should read MATCH
+        at default values. Keep this panel in place until baseline parity
+        is smoke-confirmed.
+      </p>
+      <div>
+        <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
+          {copied ? 'COPIED ✓' : 'COPY PARITY REPORT'}
+        </Button>
+      </div>
+      {sections.map((s) => (
+        <div key={s.title} className="rounded-md border p-2 space-y-1">
+          <div className="font-semibold text-xs">{s.title}</div>
+          <table className="w-full text-[11px] font-mono">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-left font-normal">field</th>
+                <th className="text-left font-normal">live baseline</th>
+                <th className="text-left font-normal">lab resolved</th>
+                <th className="text-left font-normal">result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.rows.map((r) => {
+                const match = valuesEqual(r.live, r.lab);
+                return (
+                  <tr key={r.field}>
+                    <td>{r.field}</td>
+                    <td>{String(r.live)}</td>
+                    <td>{String(r.lab)}</td>
+                    <td className={match ? 'text-green-600' : 'text-red-600 font-semibold'}>
+                      {match ? 'MATCH' : 'MISMATCH'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Panel ────────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
   const [state, setState] = useState<ShowdownRulesState>(() => loadState());
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      /* ignore */
-    }
+    saveShowdownRules(state);
   }, [state]);
 
   const setRow =
@@ -570,8 +720,11 @@ export function ThreeFiveSevenShowdownRulesPanel() {
         Controls exposed opponent cards during 3-5-7 showdown near the
         opponent seat cluster. Schema mirrors the live renderer
         (per-breakpoint px size, deg/card fan, dyn357 resolver for R1,
-        seat-derived irrelevant-pair stacking). Live rendering is NOT
-        yet wired to these values — migration is a separate step.
+        seat-derived irrelevant-pair stacking). Live rendering is wired
+        to these values via{" "}
+        <code>src/lib/threeFiveSeven/showdownConfig.ts</code>. The
+        Parity Audit section below should read MATCH on every row when
+        defaults are untouched.
       </p>
 
       <CollapsibleSection title="Anchor (shared)">
@@ -613,7 +766,12 @@ export function ThreeFiveSevenShowdownRulesPanel() {
             />
           </CollapsibleSection>
         </CollapsibleSection>
+
+        <CollapsibleSection title="Parity Audit (LIVE vs LAB)">
+          <ParityAuditPanel />
+        </CollapsibleSection>
       </CollapsibleSection>
     </div>
   );
 }
+
