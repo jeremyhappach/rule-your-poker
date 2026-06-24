@@ -557,9 +557,10 @@ export const PlayerHand = ({
   useEffect(() => {
     if (!is357R1ShowdownPath) {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
       return;
     }
-    publishThreeFiveSevenR1OwnershipAudit(forensicsId, {
+    const auditValue = {
       instanceKey: forensicsId,
       timestamp: new Date().toISOString(),
       is357Game,
