@@ -334,7 +334,7 @@ export function ThreeFiveSevenShowdownRulesPanel() {
         wired to these values.
       </p>
 
-      <CollapsibleSection title="Opponent Exposed Cards" defaultOpen>
+      <CollapsibleSection title="Opponent Exposed Cards">
         <CollapsibleSection title="3-card round">
           <RoundRowControls cfg={state.three} onChange={setRow("three")} />
         </CollapsibleSection>
