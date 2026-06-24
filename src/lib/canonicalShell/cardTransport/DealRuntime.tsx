@@ -157,7 +157,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         phase,
         expectedCount,
         settledSize: settledCardIds.size,
-        holmHandGeneration,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
