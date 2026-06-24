@@ -592,8 +592,13 @@ export const PlayerHand = ({
         availableWidthPx: availableWidthPx ?? null,
         wrapperScale: safeWrapperScale,
       },
-    });
-    return () => publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+    };
+    publishThreeFiveSevenR1OwnershipAudit(forensicsId, auditValue);
+    ingestR1OwnershipAuditForSnapback(auditValue);
+    return () => {
+      publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
+    };
   }, [
     is357R1ShowdownPath,
     forensicsId,
