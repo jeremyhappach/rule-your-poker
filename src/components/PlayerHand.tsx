@@ -455,16 +455,21 @@ export const PlayerHand = ({
       ? Math.max(20, rawEffectiveHeight)
       : undefined;
 
+  // dyn357 resolver params. For R1 (3-cards) the Geometry Lab v2 config
+  // (`resolved357.three.dyn`) drives the parameters. For non-R1 357 hands
+  // and non-357 callers, the original hardcoded params are preserved so
+  // baseline behavior is identical at default values.
+  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && resolved357.three.dyn.enabled;
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
-    aspect: 0.71,
-    minCardWidth: 28,
+    aspect: useLabDynForR1 ? resolved357.three.dyn.aspect : 0.71,
+    minCardWidth: useLabDynForR1 ? resolved357.three.dyn.minCardWidth : 28,
     // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
     // MobileGameTable, this caps the rendered card width at ~160–220 px.
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
+    maxCardWidth: useLabDynForR1 ? resolved357.three.dyn.maxCardWidth : 80,
+    maxOverlapRatio: useLabDynForR1 ? resolved357.three.dyn.maxOverlapRatio : 0.6,
   });
   const dyn357Style: CSSProperties | null =
     is357Game && dyn357
@@ -478,16 +483,47 @@ export const PlayerHand = ({
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
-  const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
-  const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
-  const composeStyle = (base?: CSSProperties, includeOverlap = true): CSSProperties | undefined => {
-    if (!dynActive) return base;
-    return {
-      ...(base || {}),
-      ...(dyn357Style || {}),
-      ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
-    };
+  // Static 3-5-7 R1 size override (Lab-driven). Applied only when dyn is
+  // not active and we're in the R1 branch. At default Lab values this
+  // yields the same px footprint as the previous `w-10 h-16
+  // sm:w-11 sm:h-[4.25rem]` Tailwind tier.
+  const static357R1Style: CSSProperties | null =
+    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
+      ? {
+          width: `${resolved357.three.widthPx}px`,
+          height: `${resolved357.three.heightPx}px`,
+        }
+      : null;
+  const static357R1OverlapPx: number | null =
+    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
+      ? resolved357.three.overlapPx
+      : null;
+  const effectiveOverlapClass = dynActive
+    ? 'first:ml-0'
+    : static357R1OverlapPx !== null
+      ? 'first:ml-0'
+      : overlapClass;
+  const effectiveRound1Class = dynActive || static357R1Style ? '' : round1NarrowTallClass;
+  const composeStyle = (base?: CSSProperties, includeOverlap = true, displayIndex?: number): CSSProperties | undefined => {
+    if (dynActive) {
+      return {
+        ...(base || {}),
+        ...(dyn357Style || {}),
+        ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
+      };
+    }
+    if (static357R1Style && static357R1OverlapPx !== null) {
+      const ml = displayIndex === 0 ? 0 : -static357R1OverlapPx;
+      return {
+        ...(base || {}),
+        ...static357R1Style,
+        ...(includeOverlap ? { marginLeft: `${ml}px` } : {}),
+      };
+    }
+    return base;
   };
+
+
 
   // ─── Wave 2A measurement probe ────────────────────────────────────────────
   // Persists resolver output vs. actual rendered DOM size to debug_events.
