@@ -33,12 +33,28 @@ interface HolmCanonicalCommunityRowProps {
   handContextId: string;
   cards: CardType[];
   tightOverlap?: boolean;
+  /**
+   * Number of community cards currently revealed face-up for the late-hand
+   * reveal pipeline. Slots 0 and 1 are always face-up by Holm rules; slots
+   * 2 and 3 flip face-up once `revealed` advances past them.
+   *
+   * When DealRuntime is in DEALING and the card is not yet settled, the
+   * slot still renders as an empty anchor regardless of `revealed`.
+   */
+  revealed?: number;
+  highlightedIndices?: number[];
+  kickerIndices?: number[];
+  hasHighlights?: boolean;
 }
 
 export function HolmCanonicalCommunityRow({
   handContextId,
   cards,
   tightOverlap = false,
+  revealed = 0,
+  highlightedIndices = [],
+  kickerIndices = [],
+  hasHighlights = false,
 }: HolmCanonicalCommunityRowProps) {
   const deal = useDealRuntime();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
