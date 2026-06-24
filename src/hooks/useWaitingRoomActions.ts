@@ -339,11 +339,45 @@ export function useWaitingRoomActions({
     }
     gameStartTriggeredRef.current = true;
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
+
+    // Authoritative-postcondition watchdog: if a successful start happens,
+    // this surface unmounts and the timeout never fires. If the mutation
+    // succeeds but the authoritative game-status flip never lands, clear
+    // the trigger so the host can retry. Tuned generously (15s) so it
+    // never races a legitimate slow startup chain.
+    const watchdog = window.setTimeout(() => {
+      if (gameStartTriggeredRef.current) {
+        gameStartTriggeredRef.current = false;
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          'handleStartGame:watchdog cleared trigger (no authoritative postcondition)'
+        );
+      }
+    }, 15_000);
+
     setTimeout(() => {
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:fire');
-      onGameStart();
+      try {
+        const maybePromise = onGameStart();
+        if (maybePromise && typeof (maybePromise as Promise<unknown>).then === 'function') {
+          (maybePromise as Promise<unknown>).catch((err) => {
+            window.clearTimeout(watchdog);
+            gameStartTriggeredRef.current = false;
+            recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:rejected', {
+              error: String((err as any)?.message ?? err),
+            });
+          });
+        }
+      } catch (err) {
+        window.clearTimeout(watchdog);
+        gameStartTriggeredRef.current = false;
+        recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:threw', {
+          error: String((err as any)?.message ?? err),
+        });
+      }
     }, 500);
   }, [hasEnoughPlayers, onGameStart]);
+
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;
