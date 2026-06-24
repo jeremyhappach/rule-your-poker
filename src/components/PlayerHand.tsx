@@ -10,6 +10,10 @@ import {
   type ResolvedRoundRow,
   type ThreeFiveSevenR1SizeBranch,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  ingestR1OwnershipAuditForSnapback,
+  registerR1SnapbackHost,
+} from "@/lib/threeFiveSeven/r1SnapbackForensics";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
