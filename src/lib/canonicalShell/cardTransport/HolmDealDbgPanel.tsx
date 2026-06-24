@@ -69,6 +69,7 @@ import {
 } from './holmHandBoundaryForensics';
 import { buildHolmFullForensicsText } from './holmFullForensics';
 import { buildWartimeExportText } from '@/lib/wartimeDebug/core';
+import { downloadHolmPostWinHandoffTxt } from '@/lib/wartimeDebug/holmPostWinHandoff';
 
 
 function fmt(v: unknown): string {
@@ -560,6 +561,12 @@ export function HolmDealDbgPanel() {
                 title="Download FULL Holm forensics (coverage map + up to 25k wartime events) as .txt"
                 style={btn('#5f1e1e', '#b84a4a')}
               >FULL↓</button>
+              <button
+                type="button"
+                onClick={() => { try { downloadHolmPostWinHandoffTxt(); } catch { /* noop */ } }}
+                title="Download HOLM POST-WIN HANDOFF (derived filtered .txt from wartime ring, ±250 events around handoff anchors)"
+                style={btn('#5f4a1e', '#b8a04a')}
+              >HANDOFF↓</button>
             </>
           );
         })()}
