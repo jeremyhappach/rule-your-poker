@@ -4541,9 +4541,9 @@ export const MobileGameTable = ({
 
   // Determine winner from lastRoundResult for dimming logic
   // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
-  const winnerPlayerId = useMemo(() => {
+  const _rawWinnerPlayerId = useMemo(() => {
     // Need announcement OR active holm win animation to determine winner
-    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerIdGated;
+    const shouldDeriveWinner = _rawIsShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!shouldDeriveWinner || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
@@ -4567,7 +4567,14 @@ export const MobileGameTable = ({
       }
     }
     return null;
-  }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
+  }, [_rawIsShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
+  // Terminal-presentation latch: while held, winnerPlayerId derives
+  // from the captured snapshot so highlight/tabling targets survive
+  // lastRoundResult clearing.
+  const winnerPlayerId =
+    terminalPresentationActive && holmTerminalPresentation
+      ? holmTerminalPresentation.winnerPlayerId
+      : _rawWinnerPlayerId;
 
   // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
   if (gameType === 'holm-game') {
