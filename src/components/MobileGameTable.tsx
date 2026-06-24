@@ -4970,8 +4970,8 @@ export const MobileGameTable = ({
       ? {
           playerIndices: holmTerminalPresentation.winnerCardIndices,
           communityIndices: holmTerminalPresentation.winnerCommunityIndices,
-          kickerPlayerIndices: [] as number[],
-          kickerCommunityIndices: [] as number[],
+          kickerPlayerIndices: holmTerminalPresentation.kickerPlayerIndices,
+          kickerCommunityIndices: holmTerminalPresentation.kickerCommunityIndices,
           hasHighlights:
             holmTerminalPresentation.winnerCardIndices.length > 0 ||
             holmTerminalPresentation.winnerCommunityIndices.length > 0,
