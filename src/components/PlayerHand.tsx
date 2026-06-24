@@ -3,10 +3,12 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import {
+  publishThreeFiveSevenR1OwnershipAudit,
   resolveShowdownRules,
   useIsSmBreakpoint,
   useThreeFiveSevenShowdownConfig,
   type ResolvedRoundRow,
+  type ThreeFiveSevenR1SizeBranch,
 } from "@/lib/threeFiveSeven/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -459,7 +461,8 @@ export const PlayerHand = ({
   // (`resolved357.three.dyn`) drives the parameters. For non-R1 357 hands
   // and non-357 callers, the original hardcoded params are preserved so
   // baseline behavior is identical at default values.
-  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && resolved357.three.dyn.enabled;
+  const is357R1ShowdownPath = is357Game && currentRound === 1 && displayCardCount === 3;
+  const useLabDynForR1 = is357R1ShowdownPath && resolved357.three.dyn.enabled;
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
@@ -472,14 +475,14 @@ export const PlayerHand = ({
     maxOverlapRatio: useLabDynForR1 ? resolved357.three.dyn.maxOverlapRatio : 0.6,
   });
   const dyn357Style: CSSProperties | null =
-    is357Game && dyn357
+    is357Game && useLabDynForR1 && dyn357
       ? {
           width: `${dyn357.cardWidth}px`,
           height: `${dyn357.cardHeight}px`,
         }
       : null;
   const dyn357OverlapStyle: CSSProperties | null =
-    is357Game && dyn357
+    is357Game && useLabDynForR1 && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
@@ -522,6 +525,95 @@ export const PlayerHand = ({
     }
     return base;
   };
+
+  const r1RenderedBranch: ThreeFiveSevenR1SizeBranch =
+    is357R1ShowdownPath && dynActive
+      ? 'dynamic'
+      : is357R1ShowdownPath && static357R1Style && static357R1OverlapPx !== null
+        ? 'static'
+        : 'fallback';
+  const r1ResolvedWidth =
+    r1RenderedBranch === 'dynamic'
+      ? dyn357?.cardWidth ?? null
+      : r1RenderedBranch === 'static'
+        ? resolved357.three.widthPx
+        : null;
+  const r1ResolvedHeight =
+    r1RenderedBranch === 'dynamic'
+      ? dyn357?.cardHeight ?? null
+      : r1RenderedBranch === 'static'
+        ? resolved357.three.heightPx
+        : null;
+  const r1ResolvedOverlap =
+    r1RenderedBranch === 'dynamic'
+      ? dyn357?.overlapPx ?? null
+      : r1RenderedBranch === 'static'
+        ? resolved357.three.overlapPx
+        : null;
+  useEffect(() => {
+    if (!is357R1ShowdownPath) {
+      publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      return;
+    }
+    publishThreeFiveSevenR1OwnershipAudit(forensicsId, {
+      instanceKey: forensicsId,
+      timestamp: new Date().toISOString(),
+      is357Game,
+      currentRound,
+      displayCardCount,
+      dynEnabledFromLiveLabState: resolved357.three.dyn.enabled,
+      renderedBranch: r1RenderedBranch,
+      resolvedWidthPx: r1ResolvedWidth,
+      resolvedHeightPx: r1ResolvedHeight,
+      resolvedOverlapPx: r1ResolvedOverlap,
+      resolvedFanStepDeg: resolved357.three.fanStepDeg,
+      parentClientWidthUsedByDynPx: r1RenderedBranch === 'dynamic' ? effectiveAvailableWidth : null,
+      predicates: {
+        is357R1ShowdownPath,
+        is357Game,
+        currentRound,
+        displayCardCount,
+        labDynEnabled: resolved357.three.dyn.enabled,
+        useLabDynForR1,
+        dynResolverReturnedLayout: !!dyn357,
+        dyn357StylePresent: !!dyn357Style,
+        dynActive,
+        staticStylePresent: !!static357R1Style,
+        staticOverlapPresent: static357R1OverlapPx !== null,
+        effectiveAvailableWidth,
+        effectiveAvailableHeight: effectiveAvailableHeight ?? null,
+        measuredPaneWidth,
+        measuredParentWidth,
+        availableWidthPx: availableWidthPx ?? null,
+        wrapperScale: safeWrapperScale,
+      },
+    });
+    return () => publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+  }, [
+    is357R1ShowdownPath,
+    forensicsId,
+    is357Game,
+    currentRound,
+    displayCardCount,
+    resolved357.three.dyn.enabled,
+    resolved357.three.fanStepDeg,
+    r1RenderedBranch,
+    r1ResolvedWidth,
+    r1ResolvedHeight,
+    r1ResolvedOverlap,
+    effectiveAvailableWidth,
+    effectiveAvailableHeight,
+    useLabDynForR1,
+    dyn357,
+    dyn357Style,
+    dynActive,
+    static357R1Style,
+    static357R1OverlapPx,
+    measuredPaneWidth,
+    measuredParentWidth,
+    availableWidthPx,
+    safeWrapperScale,
+  ]);
 
 
 

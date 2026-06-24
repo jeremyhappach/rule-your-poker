@@ -362,3 +362,62 @@ export function useRendererConsumedBelowChipGapPx(): number | null {
   }, []);
   return v;
 }
+
+// ─── R1 runtime ownership audit ───────────────────────────────────────────
+//
+// Geometry Lab-only live readout for the exact 3-card 3-5-7 opponent
+// showdown PlayerHand branch. This is intentionally in-memory only: no
+// console logs, no table overlay, no persistent recorder/debug_events write.
+
+export type ThreeFiveSevenR1SizeBranch = 'dynamic' | 'static' | 'fallback';
+
+export interface ThreeFiveSevenR1OwnershipAudit {
+  instanceKey: string;
+  timestamp: string;
+  is357Game: boolean;
+  currentRound: number;
+  displayCardCount: number;
+  dynEnabledFromLiveLabState: boolean;
+  renderedBranch: ThreeFiveSevenR1SizeBranch;
+  resolvedWidthPx: number | null;
+  resolvedHeightPx: number | null;
+  resolvedOverlapPx: number | null;
+  resolvedFanStepDeg: number | null;
+  parentClientWidthUsedByDynPx: number | null;
+  predicates: Record<string, boolean | number | string | null>;
+}
+
+type R1AuditListener = (value: ThreeFiveSevenR1OwnershipAudit | null) => void;
+const _r1OwnershipAudits = new Map<string, ThreeFiveSevenR1OwnershipAudit>();
+const _r1OwnershipListeners = new Set<R1AuditListener>();
+
+export function getThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAudit | null {
+  let latest: ThreeFiveSevenR1OwnershipAudit | null = null;
+  for (const audit of _r1OwnershipAudits.values()) {
+    if (!latest || audit.timestamp > latest.timestamp) latest = audit;
+  }
+  return latest;
+}
+
+export function publishThreeFiveSevenR1OwnershipAudit(
+  instanceKey: string,
+  value: ThreeFiveSevenR1OwnershipAudit | null,
+): void {
+  if (value) _r1OwnershipAudits.set(instanceKey, value);
+  else _r1OwnershipAudits.delete(instanceKey);
+  const latest = getThreeFiveSevenR1OwnershipAudit();
+  for (const l of _r1OwnershipListeners) {
+    try { l(latest); } catch { /* */ }
+  }
+}
+
+export function useThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAudit | null {
+  const [v, setV] = useState<ThreeFiveSevenR1OwnershipAudit | null>(() => getThreeFiveSevenR1OwnershipAudit());
+  useEffect(() => {
+    const cb: R1AuditListener = (val) => setV(val);
+    _r1OwnershipListeners.add(cb);
+    setV(getThreeFiveSevenR1OwnershipAudit());
+    return () => { _r1OwnershipListeners.delete(cb); };
+  }, []);
+  return v;
+}
