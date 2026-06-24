@@ -148,7 +148,9 @@ export function PlayfieldSlotController({
   neutralParticipants,
   neutralCurrentUserId,
   neutralParticipantGameType,
+  isTerminalSessionEndHandoff = false,
   children,
+
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
