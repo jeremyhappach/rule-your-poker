@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
@@ -554,6 +554,15 @@ export const PlayerHand = ({
       : r1RenderedBranch === 'static'
         ? resolved357.three.overlapPx
         : null;
+  // Audit publish — driven by PRIMITIVE deps only. Object refs like
+  // `dyn357`, `dyn357Style`, `static357R1Style` change identity every
+  // render even when values are unchanged; including them here caused an
+  // effect-per-render loop. We pull just the primitives that actually
+  // describe the resolved branch, and stringify nested objects via the
+  // primitives that compose them.
+  const dyn357CardWidth = dyn357?.cardWidth ?? null;
+  const dyn357CardHeight = dyn357?.cardHeight ?? null;
+  const dyn357OverlapPx = dyn357?.overlapPx ?? null;
   useEffect(() => {
     if (!is357R1ShowdownPath) {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
@@ -580,10 +589,10 @@ export const PlayerHand = ({
         displayCardCount,
         labDynEnabled: resolved357.three.dyn.enabled,
         useLabDynForR1,
-        dynResolverReturnedLayout: !!dyn357,
-        dyn357StylePresent: !!dyn357Style,
+        dynResolverReturnedLayout: dyn357CardWidth !== null,
+        dyn357StylePresent: dynActive,
         dynActive,
-        staticStylePresent: !!static357R1Style,
+        staticStylePresent: r1RenderedBranch === 'static',
         staticOverlapPresent: static357R1OverlapPx !== null,
         effectiveAvailableWidth,
         effectiveAvailableHeight: effectiveAvailableHeight ?? null,
@@ -614,16 +623,17 @@ export const PlayerHand = ({
     effectiveAvailableWidth,
     effectiveAvailableHeight,
     useLabDynForR1,
-    dyn357,
-    dyn357Style,
+    dyn357CardWidth,
+    dyn357CardHeight,
+    dyn357OverlapPx,
     dynActive,
-    static357R1Style,
     static357R1OverlapPx,
     measuredPaneWidth,
     measuredParentWidth,
     availableWidthPx,
     safeWrapperScale,
   ]);
+
 
 
 
@@ -886,16 +896,23 @@ export const PlayerHand = ({
       ? resolved357.three.fanStepDeg
       : 2;
   const isR1OpponentShowdownHost = is357R1ShowdownPath && !forceHiddenFaces;
+  const handRootRef = useRef<HTMLDivElement | null>(null);
+  const setHandRootRef = useCallback((el: HTMLDivElement | null) => {
+    handRootRef.current = el;
+    if (is357Game) measureRef.current = el;
+  }, [is357Game]);
+  useEffect(() => {
+    if (isR1OpponentShowdownHost) registerR1SnapbackHost(handRootRef.current);
+    else registerR1SnapbackHost(null);
+    return () => { registerR1SnapbackHost(null); };
+  }, [isR1OpponentShowdownHost]);
   return (
     <div
       className="flex"
-      ref={(el) => {
-        if (is357Game) measureRef.current = el;
-        if (isR1OpponentShowdownHost) registerR1SnapbackHost(el);
-        else if (!isR1OpponentShowdownHost) registerR1SnapbackHost(null);
-      }}
+      ref={setHandRootRef}
       data-357-r1-snapback-host={isR1OpponentShowdownHost ? '' : undefined}
     >
+
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
