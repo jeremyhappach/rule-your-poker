@@ -5967,6 +5967,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // ── HARD DEALER-GAME ADMISSION BOUNDARY ─────────────────────────────
+    // Reject any hydrated round whose dealer_game_id does not match the
+    // active dealer game. A new dealer game in ante_decision with no first
+    // round must hydrate as rounds:[], NOT as the prior dealer game's row.
+    // No historical fallback. Applied before any state write / current-round
+    // derivation / shadow-sync feed.
+    {
+      const activeDealerGameId = (gameData as any).current_game_uuid ?? null;
+      const incomingRounds: any[] = Array.isArray((gameData as any).rounds)
+        ? (gameData as any).rounds
+        : [];
+      (gameData as any).rounds = activeDealerGameId
+        ? incomingRounds.filter((r: any) => r?.dealer_game_id === activeDealerGameId)
+        : [];
+    }
+
     if (!isStale()) {
       setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
     }
