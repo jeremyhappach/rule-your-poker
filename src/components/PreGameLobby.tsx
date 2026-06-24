@@ -10,7 +10,6 @@ interface Player {
   position: number;
   status: string;
   is_bot: boolean;
-  created_at?: string | null;
   profiles?: {
     username: string;
   };
@@ -33,8 +32,6 @@ export const PreGameLobby = ({
 }: PreGameLobbyProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const isCreator = currentPlayer?.position === 1;
-
-
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-8">

@@ -24,9 +24,6 @@
  *   window.__holmHandBoundaryForensics.sources
  */
 
-import { recordHolmFull as _recordHolmFull } from './holmFullForensics';
-
-
 export type HolmHbEventName =
   | 'HB_PRESENTATION_RENDER'
   | 'HB_PRESENTATION_UNMOUNT'
@@ -163,45 +160,12 @@ function pushEvent(event: HolmHbEventName, source: string, originHci: string | n
     payload,
   });
   while (events.length > RING) events.shift();
-  try {
-    const isPresentation = event === 'HB_PRESENTATION_RENDER' || event === 'HB_PRESENTATION_UNMOUNT';
-    const isRuntime = event.startsWith('HB_RUNTIME_') || event === 'HB_MANIFEST_ARRIVED' ||
-      event.startsWith('HB_TRANSPORT_') || event === 'HB_MUTATION_EXPECTED' ||
-      event === 'HB_MUTATION_DISPATCHED' || event === 'HB_MUTATION_SETTLED' ||
-      event === 'HB_ACTIVE_INTENT_COUNT' || event === 'HB_READINESS_RELEASE' ||
-      event === 'HB_PHASE_CHANGE';
-    _recordHolmFull({
-      category: isPresentation ? 'HB_PRESENTATION' : isRuntime ? 'RUNTIME_WRITE' : 'HB_EVENT',
-      event,
-      source,
-      sourceCategory: 'EFFECT',
-      identityOverrides: {
-        handContextId: _activeHandContextId,
-        dealerGameId: _activeDealerGameId,
-      },
-      payload: { originHci, originGen, ...payload },
-    });
-  } catch { /* noop */ }
 }
 
 function pushViolation(type: HolmHbViolationType, source: string, payload: Record<string, unknown>): void {
   violations.push({ seq: ++_seq, t: now(), wall: new Date().toISOString(), type, source, payload });
   while (violations.length > RING) violations.shift();
-  try {
-    _recordHolmFull({
-      category: 'HB_VIOLATION',
-      event: type,
-      source,
-      sourceCategory: 'UNKNOWN',
-      identityOverrides: {
-        handContextId: _activeHandContextId,
-        dealerGameId: _activeDealerGameId,
-      },
-      payload,
-    });
-  } catch { /* noop */ }
 }
-
 
 export interface RecordPresentationInput {
   sourceName: string;

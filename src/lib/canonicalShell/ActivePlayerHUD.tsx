@@ -24,7 +24,6 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
-import { recordHolmFull, setHolmFullIdentity } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
@@ -39,14 +38,6 @@ export interface ActivePlayerHUDProps {
   maxTime: number;
   /** True when this seat currently has the active turn HUD. */
   isActive: boolean;
-  /**
-   * Authoritative server `decision_deadline` as epoch ms (or null when
-   * no actionable deadline exists). Forwarded to MobilePlayerTimer so
-   * the segment seed binds to the server clock, not the client-derived
-   * `timeLeft`. Ensures the visible label is `ceil((deadlineMs-now)/1000)`
-   * — full under sub-second propagation, honest under longer propagation.
-   */
-  deadlineMs?: number | null;
   /** Outer ring size in px. Defaults to 48 (matches MobilePlayerTimer). */
   size?: number;
   /** Optional diagnostic identifiers — telemetry only, no behavior. */
@@ -68,7 +59,6 @@ export function ActivePlayerHUD({
   timeLeft,
   maxTime,
   isActive,
-  deadlineMs,
   size = 48,
   seatPosition,
   gameId,
@@ -119,15 +109,15 @@ export function ActivePlayerHUD({
   // turn timer is suppressed everywhere on this felt — cards are still
   // flying, GAMEPLAY hasn't begun. Once the runtime advances to
   // READY/GAMEPLAY (or no runtime is mounted) the timer resumes from
-  // the authoritative props. Holm runs through the SAME canonical
-  // eligibility path — the prior Holm bypass is removed. The Holm
-  // branch of getCanonicalTimerEligibility already requires
-  // dealSettled && readyReleased, which is the only Holm-specific
-  // visual/running condition. (Card actionability — canPlayerAct — is
-  // already AND-ed into `isActive` by the caller.)
+  // the authoritative props. Applies to every game (Cribbage, Gin,
+  // 3-5-7) for consistency.
   const deal = useDealRuntime();
+  // Holm bypasses DealRuntime timer gating entirely. Holm seat ring
+  // visibility is `isActive` (caller has already AND-ed with canAct).
+  // This bypass is TIMER-ONLY — Holm card render still uses
+  // DealRuntime settle gating elsewhere.
   const isHolm = gameType === 'holm-game';
-  const eligibility = deal
+  const eligibility = (deal && !isHolm)
     ? getCanonicalTimerEligibility({
         gameType,
         dealPhase: deal.phase,
@@ -161,61 +151,14 @@ export function ActivePlayerHUD({
   }, [timerOwnerId, gameType, seatPosition, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, effectiveIsActive, effectiveTimeLeft, isActive, timeLeft, gameId]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
 
-  // ── HOLM FULL FORENSICS: parent-derivation per render ─────────────
-  // Records the exact authoritative inputs and derived MobilePlayerTimer
-  // props every commit. Pure instrumentation, Holm only, no behavior.
-  if (isHolm) {
-    try {
-      setHolmFullIdentity({
-        gameId: gameId ?? null,
-        gameType: gameType ?? null,
-        handContextId: deal?.handContextId ?? null,
-        activePlayerId: activePlayerId ?? null,
-      });
-      recordHolmFull({
-        category: 'TIMER_PROP_DERIVATION',
-        event: 'ACTIVE_PLAYER_HUD_RENDER',
-        source: 'ActivePlayerHUD',
-        sourceCategory: 'PARENT_DERIVATION',
-        callsite: 'src/lib/canonicalShell/ActivePlayerHUD.tsx',
-        commitId: renderCountRef.current,
-        payload: {
-          propsIn: { timeLeft, maxTime, isActive, size, seatPosition, activePlayerId },
-          dealRuntime: deal ? { phase: deal.phase, dealSettled: deal.dealSettled, readyReleased: deal.readyReleased, handContextId: deal.handContextId, gameType: deal.gameType } : null,
-          isHolmBypass: isHolm,
-          effectiveIsActive,
-          effectiveTimeLeft,
-          eligibility,
-          derivationFormula: 'Holm: effectiveIsActive=isActive; effectiveTimeLeft = isActive && timeLeft>0 ? timeLeft : null',
-        },
-      });
-    } catch { /* never throw from instrumentation */ }
-  }
-
-
-  // Canonical timer activation key. STABLE for one uninterrupted turn
-  // segment. Composed of canonical turn identity tokens:
-  //   handContextId (turn-of-hand identity)
-  //   activePlayerId (turn-actor identity)
-  //   gameId (cross-dealer-game disambiguator)
-  // No clock, no rAF, no timeLeft, no render counter. Pause-resume
-  // generation reserved for future explicit pause semantics; absent
-  // today.
-  const activationKey = effectiveIsActive
-    ? `gid:${gameId ?? '∅'}|hci:${deal?.handContextId ?? '∅'}|actor:${activePlayerId ?? `seat${seatPosition ?? '?'}`}|gen:0`
-    : null;
-
   return (
     <MobilePlayerTimer
       timeLeft={effectiveTimeLeft}
       maxTime={maxTime}
       isActive={effectiveIsActive}
       size={size}
-      activationKey={activationKey}
-      deadlineMs={effectiveIsActive ? (deadlineMs ?? null) : null}
     >
       {children}
     </MobilePlayerTimer>
   );
 }
-

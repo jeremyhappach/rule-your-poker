@@ -1891,57 +1891,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId);
       
       if (currentRoundData?.id) {
-        // CANONICAL ACTIONABILITY COMMIT (resume-from-pause).
-        // Per the Holm timer contract: every actionability commit must
-        // atomically write { status='betting', current_turn_position,
-        // decision_deadline=now()+fullTurnDurationSeconds }. Resume is
-        // one such commit (the actor becomes actionable again with a
-        // fresh full segment). Re-stamp all three together — and only
-        // when the round is actually in an actionable shape.
-        //
-        // If the round is NOT in an actionable shape (showdown,
-        // processing, completed, no current turn), do NOT seed a new
-        // deadline — the non-actionable state is preserved by writing
-        // nothing here, and the client gate keeps the countdown off.
-        const { data: currentRoundFresh } = await supabase
+        const { error: roundError } = await supabase
           .from('rounds')
-          .select('status, current_turn_position')
-          .eq('id', currentRoundData.id)
-          .maybeSingle();
-
-        const isActionable =
-          (currentRoundFresh as any)?.status === 'betting' &&
-          (currentRoundFresh as any)?.current_turn_position != null;
-
-        if (isActionable) {
-          const actor = (currentRoundFresh as any).current_turn_position as number;
-          const { error: roundError } = await supabase
-            .from('rounds')
-            .update({
-              status: 'betting',
-              current_turn_position: actor,
-              decision_deadline: newDeadline,
-            })
-            .eq('id', currentRoundData.id)
-            // Atomic guards: only commit if both fields still match the
-            // values we just read. Prevents a writer in another tab from
-            // racing us with a status flip or turn handoff between read
-            // and write.
-            .eq('status', 'betting')
-            .eq('current_turn_position', actor);
-
-          if (roundError) {
-            console.error('[PAUSE] Error updating round deadline (atomic resume):', roundError);
-          }
-        } else {
-          console.log('[PAUSE] Resume: round not actionable, skipping deadline seed', {
-            roundId: currentRoundData.id,
-            status: (currentRoundFresh as any)?.status,
-            current_turn_position: (currentRoundFresh as any)?.current_turn_position,
-          });
+          .update({ decision_deadline: newDeadline })
+          .eq('id', currentRoundData.id);
+        
+        if (roundError) {
+          console.error('[PAUSE] Error updating round deadline:', roundError);
         }
       }
-
       
       if (gameError) {
         console.error('[PAUSE] Error resuming:', gameError);
@@ -3244,36 +3202,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setTimeLeft(null);
       return;
     }
-    // CANONICAL gate: countdown projection runs ONLY when all three
-    // authoritative server fields prove actionability:
-    //   round.status === 'betting' AND current_turn_position != null
-    //   AND decision_deadline != null
-    // No DealRuntime observation here. No client-owned grace. If any
-    // of these fail (PRE_DEAL, DEALING, pause, recovery, awaiting next
-    // round, all-decisions-in), suppress the timer.
-    const roundIsBetting = currentRound?.status === 'betting';
-    const turnPositionPresent = currentRound?.current_turn_position != null;
-    if (
-      !decisionDeadline ||
-      !roundIsBetting ||
-      !turnPositionPresent ||
-      game?.awaiting_next_round ||
-      game?.last_round_result ||
-      isAllDecisionsInFor(game, currentRound?.id)
-    ) {
-      console.log('[TIMER COUNTDOWN] Not starting - conditions not met', {
-        decisionDeadline,
-        roundStatus: currentRound?.status,
-        currentTurnPosition: currentRound?.current_turn_position,
-        awaiting: game?.awaiting_next_round,
-        result: game?.last_round_result,
+    // Don't start timer if no deadline or game conditions prevent it
+    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
+      console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
+        decisionDeadline, 
+        awaiting: game?.awaiting_next_round, 
+        result: game?.last_round_result, 
         allDecisionsIn: isAllDecisionsInFor(game, currentRound?.id),
         rawAllDecisionsIn: game?.all_decisions_in,
         allDecisionsInRoundId: game?.all_decisions_in_round_id ?? null,
       });
       decisionMaxTimeDeadlineRef.current = null;
       setDecisionMaxTime(null);
-      setTimeLeft(null);
       return;
     }
 
@@ -3291,14 +3231,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // Calculate time from server deadline. CEILING projection so the
-    // first visible label is full under sub-second propagation and
-    // honest under longer propagation — never invents client-owned
-    // grace, never floors away a partial second.
+    // Calculate time from server deadline
     const calculateRemaining = () => {
       const deadline = new Date(decisionDeadline).getTime();
       const now = Date.now();
-      return Math.max(0, Math.ceil((deadline - now) / 1000));
+      return Math.max(0, Math.floor((deadline - now) / 1000));
     };
 
     // Set real backend-derived time immediately — no fake seeding.
@@ -11325,7 +11262,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 allDecisionsIn={isDiceTerminalPresentation}
                 playerCards={[]}
                 timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
-                decisionDeadlineMs={isInProgress && decisionDeadline ? new Date(decisionDeadline).getTime() : null}
                 maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
                 lastRoundResult={(isInProgress || isDiceTerminalPresentation) ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
@@ -11456,7 +11392,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : timeLeft) : (isAnteDecision ? anteTimeLeft : null)}
-              decisionDeadlineMs={isInProgress && decisionDeadline && !(is357GameType && !dealTimerAllowed357) ? new Date(decisionDeadline).getTime() : null}
               maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}

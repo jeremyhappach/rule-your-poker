@@ -345,8 +345,6 @@ export function useWaitingRoomActions({
     }, 500);
   }, [hasEnoughPlayers, onGameStart]);
 
-
-
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;
     navigator.clipboard

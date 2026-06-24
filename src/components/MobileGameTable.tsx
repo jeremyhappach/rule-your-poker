@@ -125,7 +125,6 @@ import {
   HolmSettledGate,
   useHolmSettledIds,
 } from "./HolmDealOrchestrator";
-import { useHolmHandAdmission } from "@/lib/canonicalShell/cardTransport/holmHandAdmission";
 import { ThreeFiveSevenGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/ThreeFiveSevenGameplayGeometryProvider";
 import { ThreeFiveSevenAnchoredSlot } from "./ThreeFiveSevenAnchoredSlot";
 import {
@@ -705,13 +704,6 @@ interface MobileGameTableProps {
   allDecisionsIn: boolean;
   playerCards: PlayerCards[];
   timeLeft: number | null;
-  /**
-   * Authoritative server `decision_deadline` projected to epoch ms (or
-   * null when no actionable deadline exists). Forwarded to every
-   * ActivePlayerHUD instance on this felt so segment seeding binds to
-   * the server clock.
-   */
-  decisionDeadlineMs?: number | null;
   maxTime?: number;
   lastRoundResult: string | null;
   dealerPosition: number | null;
@@ -970,7 +962,6 @@ export const MobileGameTable = ({
   allDecisionsIn,
   playerCards,
   timeLeft,
-  decisionDeadlineMs = null,
   maxTime = 10,
   lastRoundResult,
   dealerPosition,
@@ -1838,13 +1829,6 @@ export const MobileGameTable = ({
       cachedWinningResultRef.current = null;
       cachedFeltBlockNodeRef.current = null;
       turnSnapshotTakenRef.current = false;
-      // Run-Back hygiene: dealer-game boundary always wipes Holm sticky
-      // self-stage caches. Correctness is already enforced by the
-      // fail-closed IsCurrent checks at render sites; this is belt-
-      // and-braces so a stale ref can never even be inspected.
-      tabledSelfStickyRef.current = null;
-      lonePlayerStageSnapshotRef.current = null;
-      chuckyStageStickyRef.current = null;
       prevHorsesDealerGameIdRef.current = horsesDealerGameId;
     }
 
@@ -1865,15 +1849,7 @@ export const MobileGameTable = ({
 
       // Clear render trace fingerprints for new hand boundary
       resetHolmRenderTrace(handContextId);
-
-      // Run-Back hygiene: hand boundary wipes prior-HCI Holm sticky
-      // self-stage / lone-player caches. The fail-closed IsCurrent
-      // checks already gate these reads, but the explicit wipe makes
-      // PENDING-HCI inspectable as "no prior-hand artifact remains".
-      tabledSelfStickyRef.current = null;
-      lonePlayerStageSnapshotRef.current = null;
-      chuckyStageStickyRef.current = null;
-
+      
       prevHandContextRef.current = handContextId;
     }
     
@@ -3003,13 +2979,9 @@ export const MobileGameTable = ({
       isGameOver
     );
 
-  // FAIL-CLOSED stickyIsCurrent: only read sticky when current HCI is
-  // non-null AND sticky.handContextId matches exactly. No "transient
-  // null" indulgence — a stale sticky never contributes to render.
   const stickyChuckyHandMatchesVisualGate =
     !!chuckyStageStickyRef.current &&
-    handContextId != null &&
-    chuckyStageStickyRef.current.handContextId === handContextId;
+    (handContextId == null || chuckyStageStickyRef.current.handContextId === handContextId);
   const visualRevealCount = Math.max(
     cachedChuckyCardsRevealed,
     stickyChuckyHandMatchesVisualGate ? (chuckyStageStickyRef.current?.revealedCount ?? 0) : 0,
@@ -6427,7 +6399,6 @@ export const MobileGameTable = ({
                 seatPosition={player.position}
                 gameId={gameId}
                 gameType={gameType}
-                deadlineMs={decisionDeadlineMs}
               >
                 {chipElement}
               </ActivePlayerHUD>
@@ -6533,7 +6504,6 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
-        deadlineMs={decisionDeadlineMs}
       />
     );
 
@@ -7094,7 +7064,6 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
-        deadlineMs={decisionDeadlineMs}
       />
     );
 
@@ -7259,7 +7228,6 @@ export const MobileGameTable = ({
         seatPosition={player.position}
         gameId={gameId}
         gameType={gameType}
-        deadlineMs={decisionDeadlineMs}
       />
     );
 
@@ -7415,44 +7383,6 @@ export const MobileGameTable = ({
   };
 
 
-  // ── Holm hand admission: PENDING-HCI hard boundary ───────────────
-  // Synthesize structured payloads from the already-HCI-scoped Holm
-  // inputs so admission gates on physical hand-context match. Until
-  // `admitted === true`, the orchestrator receives `selfHand = null`
-  // (NOT `[]`) — the PENDING sentinel its effects branch on to skip
-  // resetForHand / beginDealForHand / beginWaveForHand / dispatch.
-  // The per-HCI latch in `useHolmHandAdmission` guarantees the
-  // admission edge fires exactly once per distinct HCI; same-HCI
-  // payload churn keeps `admitted` true.
-  const holmExpectedHandSize = 4;
-  const holmSelfHandPayload = (
-    gameType === 'holm-game' &&
-    handContextId &&
-    currentPlayerCards.length >= holmExpectedHandSize
-  ) ? {
-    roundId: handContextId,
-    handContextId,
-    sourceVersion: 0,
-    cards: currentPlayerCards,
-  } : null;
-  const holmCommunityPayload = (
-    gameType === 'holm-game' &&
-    handContextId &&
-    (communityCards?.length ?? 0) >= 4
-  ) ? {
-    roundId: handContextId,
-    handContextId,
-    sourceVersion: 0,
-    cards: communityCards ?? [],
-  } : null;
-  const holmAdmission = useHolmHandAdmission({
-    handContextId: gameType === 'holm-game' ? (handContextId ?? null) : null,
-    expectedHandSize: holmExpectedHandSize,
-    selfHandPayload: holmSelfHandPayload,
-    communityPayload: holmCommunityPayload,
-  });
-  const holmAdmittedSelfHand = holmAdmission.admitted ? currentPlayerCards : null;
-
   return <HolmDealRuntimeMaybe
     handContextId={gameType === 'holm-game' ? (handContextId ?? null) : null}
     gameType={gameType}
@@ -7466,8 +7396,8 @@ export const MobileGameTable = ({
           dealerPosition={dealerPosition}
           selfPlayerId={(currentPlayer as any).id}
           selfPosition={currentPlayer?.position ?? null}
-          cardsPerPlayer={holmExpectedHandSize}
-          selfHand={holmAdmittedSelfHand}
+          cardsPerPlayer={4}
+          selfHand={currentPlayerCards}
           communityCards={communityCards ?? []}
           soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
@@ -9053,29 +8983,15 @@ export const MobileGameTable = ({
             };
           }
 
-          // FAIL-CLOSED stickyIsCurrent for tabledSelfStickyRef AND
-          // lonePlayerStageSnapshotRef. Both refs are inert unless the
-          // current HCI is non-null and exactly matches the sticky's
-          // captured HCI. Stale sticky never contributes to render.
-          const tabledSelfStickyIsCurrent =
-            !!tabledSelfStickyRef.current &&
-            handContextId != null &&
-            tabledSelfStickyRef.current.handContextId === handContextId;
-          const loneStageIsCurrent =
-            !!lonePlayerStageSnapshotRef.current &&
-            handContextId != null &&
-            lonePlayerStageSnapshotRef.current.handContextId === handContextId;
-          // Clear stale refs immediately as hygiene (correctness already
-          // enforced above by the IsCurrent reads).
-          if (tabledSelfStickyRef.current && !tabledSelfStickyIsCurrent && handContextId != null) {
-            tabledSelfStickyRef.current = null;
-          }
-          if (lonePlayerStageSnapshotRef.current && !loneStageIsCurrent && handContextId != null) {
-            lonePlayerStageSnapshotRef.current = null;
-          }
           const activeSnap =
-            (tabledSelfStickyIsCurrent ? tabledSelfStickyRef.current : null) ??
-            (loneStageIsCurrent ? lonePlayerStageSnapshotRef.current : null);
+            // Sticky snapshot survives transient handContextId nulls and
+            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
+            tabledSelfStickyRef.current ??
+            (lonePlayerStageSnapshotRef.current?.handContextId &&
+            (!handContextId ||
+              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
+              ? lonePlayerStageSnapshotRef.current
+              : null);
 
           const loneSoloPlayer =
             liveLoneSoloPlayer ??
@@ -9154,8 +9070,7 @@ export const MobileGameTable = ({
           const stickyChuckySourceEligible =
             !!chuckyStageStickyRef.current &&
             !!stickyChuckyOriginHandContextId &&
-            handContextId != null &&
-            stickyChuckyOriginHandContextId === handContextId;
+            (handContextId == null || stickyChuckyOriginHandContextId === handContextId);
           if (
             (cachedChuckyCards && cachedChuckyCards.length > 0 && !cachedChuckySourceEligible) ||
             (chuckyStageStickyRef.current && !stickyChuckySourceEligible)

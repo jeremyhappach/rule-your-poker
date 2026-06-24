@@ -31,49 +31,16 @@ interface MobilePlayerTimerProps {
   maxTime: number;
   isActive: boolean;
   size?: number;
-  /**
-   * Canonical timer activation key. STABLE for the entire lifetime of
-   * one uninterrupted turn segment. Changes ONLY when canonical turn
-   * identity changes (new turn / new actor / new hand) or when an
-   * explicit pause-resume generation increments. When provided, the
-   * activation edge fires exactly once per distinct key — no rerenders,
-   * prop ticks, rAFs, or clock motion may refire it. Same key forbids
-   * rewriting deadline/duration/activation sequence. Null/undefined
-   * key falls back to legacy wasActiveRef behavior for non-Holm
-   * callers that have not been wired through ActivePlayerHUD yet.
-   *
-   * Canonical composition (Holm via ActivePlayerHUD):
-   *   { gameId, roundId, currentTurnPosition, decisionDeadlineMs }
-   * Any change to those fields = exactly one new segment, snapped to
-   * full at first paint, descending monotonically to the authoritative
-   * deadline.
-   */
-  activationKey?: string | null;
-  /**
-   * Authoritative segment deadline (epoch ms). When provided, the
-   * segment seeds its deadline from this value INSTEAD of deriving it
-   * from `timeLeft * 1000 + now`. This eliminates the client-owned
-   * "start at full" lie under longer server-to-client propagation:
-   * the first visible label is `ceil((deadlineMs - Date.now())/1000)`,
-   * which is full under sub-second propagation and honest otherwise.
-   * `timeLeft` remains the display-driving value; `deadlineMs` only
-   * fixes the segment seed.
-   */
-  deadlineMs?: number | null;
   children: React.ReactNode;
 }
 
-export const MobilePlayerTimer = ({
-  timeLeft,
-  maxTime,
-  isActive,
+export const MobilePlayerTimer = ({ 
+  timeLeft, 
+  maxTime, 
+  isActive, 
   size = 48,
-  activationKey,
-  deadlineMs,
-  children
+  children 
 }: MobilePlayerTimerProps) => {
-
-
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -125,111 +92,38 @@ export const MobilePlayerTimer = ({
   // Detect activation edge during render so the very first paint of a
   // new active segment is already snapped to full. Capture the
   // immutable segment deadline ONCE here.
-  //
-  // KEY-DRIVEN ACTIVATION (canonical):
-  //   When the parent supplies a stable `activationKey`, the activation
-  //   edge fires exactly once per distinct key. This eliminates the
-  //   prior wasActiveRef-derived predicate which re-fired every render
-  //   for a single active segment (the proven upward-refill defect).
-  //
-  //   Same key → NO writes to segmentDeadlineMsRef, segmentDurationMsRef,
-  //   activationSeqRef, suppressTransition, or wasActiveRef. Hard
-  //   forensic violation if the activation branch is ever entered twice
-  //   for one key.
-  //
-  //   Null/absent key → legacy fallback (wasActiveRef edge) for callers
-  //   not yet threading a canonical key.
   const isHolmRender = deal?.gameType === 'holm-game';
   const activeSegmentIdRef = useRef<string | null>(null);
-  const lastActivationKeyRef = useRef<string | null>(null);
-  const usingKeyMode = activationKey != null;
-  const effectiveActivationKey = effectiveIsActive ? (activationKey ?? null) : null;
-
-  const runActivationCapture = (writerLabel: string, callsiteLine: string, segmentKey: string | null) => {
+  if (effectiveIsActive && !wasActiveRef.current) {
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const durationMs = Math.max(1, (maxTime || 0) * 1000);
+    const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
+      ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
+      : (maxTime || 0);
     const priorDeadline = segmentDeadlineMsRef.current;
     const priorDuration = segmentDurationMsRef.current;
     const priorSeq = activationSeqRef.current;
     segmentDurationMsRef.current = durationMs;
-    // AUTHORITATIVE-DEADLINE seed (preferred). When the parent supplies
-    // `deadlineMs` (server epoch ms), bind the segment deadline to it
-    // directly rather than deriving it from `timeLeft`. This keeps the
-    // visible label honest under longer server→client propagation:
-    //   remaining = ceil((deadlineMs - Date.now())/1000)
-    // is full under sub-second propagation and accurate otherwise. The
-    // segment-duration ref still encodes the FULL turn duration so the
-    // ring progress (= remaining/duration) renders correctly.
-    if (typeof deadlineMs === 'number' && Number.isFinite(deadlineMs) && deadlineMs > 0) {
-      // performance.now() and Date.now() share monotonicity over short
-      // intervals; convert the wall-clock deadline into the perf-clock
-      // domain we drive the segment in.
-      const nowWall = Date.now();
-      const perfBias = nowMs - nowWall;
-      segmentDeadlineMsRef.current = deadlineMs + perfBias;
-    } else {
-      // Legacy fallback for callers not yet threading `deadlineMs`.
-      const seedSecs = effectiveTimeLeft != null && effectiveTimeLeft > 0
-        ? Math.min(effectiveTimeLeft, maxTime || effectiveTimeLeft)
-        : (maxTime || 0);
-      segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
-    }
+    segmentDeadlineMsRef.current = nowMs + seedSecs * 1000;
     activationSeqRef.current += 1;
-    const newSegId = segmentKey ?? `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
+    const newSegId = `inst${instanceIdRef.current}#seg${activationSeqRef.current}@${deal?.handContextId ?? 'nohand'}`;
     activeSegmentIdRef.current = newSegId;
     if (isHolmRender) {
-      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: writerLabel, callsite: callsiteLine, reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: writerLabel, callsite: callsiteLine, reason: deadlineMs != null ? 'capture authoritative server deadline' : 'capture deadline at activation (legacy timeLeft seed)', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: writerLabel, callsite: callsiteLine, reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: durationMs, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:104', reason: 'capture immutable duration at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: segmentDeadlineMsRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:105', reason: 'capture immutable deadline at activation', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'activationSeqRef', prior: priorSeq, next: activationSeqRef.current, writer: 'MobilePlayerTimer.activationEdge', callsite: 'src/components/MobilePlayerTimer.tsx:106', reason: 'activation increment', kind: 'activation', segmentId: newSegId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
     }
-  };
-
-
-  if (usingKeyMode) {
-    // KEY-DRIVEN mode (canonical Holm path via ActivePlayerHUD).
-    if (effectiveActivationKey && effectiveActivationKey !== lastActivationKeyRef.current) {
-      const priorKey = lastActivationKeyRef.current;
-      lastActivationKeyRef.current = effectiveActivationKey;
-      runActivationCapture('MobilePlayerTimer.activationEdge[keyed]', 'src/components/MobilePlayerTimer.tsx:keyed', effectiveActivationKey);
-      if (isHolmRender) {
-        recordHolmTimerWrite({ field: 'activationKey', prior: priorKey, next: effectiveActivationKey, writer: 'MobilePlayerTimer.activationEdge[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'canonical key transition (new segment)', kind: 'activation', segmentId: effectiveActivationKey, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      }
-    } else if (!effectiveActivationKey) {
-      // Inactive — clear refs and key.
-      const priorDeadline = segmentDeadlineMsRef.current;
-      const priorDuration = segmentDurationMsRef.current;
-      const closingSeg = activeSegmentIdRef.current;
-      const priorKey = lastActivationKeyRef.current;
-      segmentDeadlineMsRef.current = null;
-      segmentDurationMsRef.current = null;
-      if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
-        recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'effectiveActivationKey=null → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-        recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'effectiveActivationKey=null → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-        if (priorKey) {
-          recordHolmTimerWrite({ field: 'activationKey', prior: priorKey, next: null, writer: 'MobilePlayerTimer.deactivation[keyed]', callsite: 'src/components/MobilePlayerTimer.tsx:keyed', reason: 'canonical key cleared', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-        }
-      }
-      activeSegmentIdRef.current = null;
-      lastActivationKeyRef.current = null;
+  } else if (!effectiveIsActive) {
+    const priorDeadline = segmentDeadlineMsRef.current;
+    const priorDuration = segmentDurationMsRef.current;
+    const closingSeg = activeSegmentIdRef.current;
+    segmentDeadlineMsRef.current = null;
+    segmentDurationMsRef.current = null;
+    if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
+      recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:111', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation', callsite: 'src/components/MobilePlayerTimer.tsx:112', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
     }
-    // SAME-KEY active path: intentionally no-op. No deadline rewrite,
-    // no activation seq increment, no transition toggle.
-  } else {
-    // Legacy wasActiveRef fallback (non-keyed callers).
-    if (effectiveIsActive && !wasActiveRef.current) {
-      runActivationCapture('MobilePlayerTimer.activationEdge[legacy]', 'src/components/MobilePlayerTimer.tsx:legacy', null);
-    } else if (!effectiveIsActive) {
-      const priorDeadline = segmentDeadlineMsRef.current;
-      const priorDuration = segmentDurationMsRef.current;
-      const closingSeg = activeSegmentIdRef.current;
-      segmentDeadlineMsRef.current = null;
-      segmentDurationMsRef.current = null;
-      if (isHolmRender && closingSeg && (priorDeadline != null || priorDuration != null)) {
-        recordHolmTimerWrite({ field: 'segmentDeadlineMsRef', prior: priorDeadline, next: null, writer: 'MobilePlayerTimer.deactivation[legacy]', callsite: 'src/components/MobilePlayerTimer.tsx:legacy', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-        recordHolmTimerWrite({ field: 'segmentDurationMsRef', prior: priorDuration, next: null, writer: 'MobilePlayerTimer.deactivation[legacy]', callsite: 'src/components/MobilePlayerTimer.tsx:legacy', reason: 'effectiveIsActive=false → clear', kind: 'render-derivation', segmentId: closingSeg, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-      }
-      activeSegmentIdRef.current = null;
-    }
+    activeSegmentIdRef.current = null;
   }
 
   // Record every prop change while a segment is active. These are the
@@ -252,54 +146,38 @@ export const MobilePlayerTimer = ({
 
 
 
-
-  // Pre-paint suppression: fire ONCE per activation seq increment.
-  // Drives the two-rAF snap-to-full + transition re-enable. Gated on
-  // activationSeqRef change (not the wasActiveRef edge) so it cooperates
-  // with keyed mode where wasActiveRef is no longer the source of truth.
-  const lastSuppressActivationSeqRef = useRef(0);
   useEffect(() => {
-    if (!effectiveIsActive) {
-      wasActiveRef.current = false;
-      return;
-    }
-    if (lastSuppressActivationSeqRef.current === activationSeqRef.current) {
-      // Same activation segment; do not re-arm suppression. This is the
-      // primary fix for the upward-refill defect: prior code re-fired
-      // this effect on every render of an active turn.
-      return;
-    }
-    lastSuppressActivationSeqRef.current = activationSeqRef.current;
-    wasActiveRef.current = true;
-    const segId = activeSegmentIdRef.current;
-    if (isHolmRender) {
-      recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:suppress', reason: 'pre-paint suppression on activation seq increment', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-    }
-    setSuppressTransition(true);
-    const r1 = requestAnimationFrame(() => {
-      const r2 = requestAnimationFrame(() => {
-        if (isHolmRender) {
-          recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:rAF2', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
-        }
-        setSuppressTransition(false);
+    if (effectiveIsActive && !wasActiveRef.current) {
+      const segId = activeSegmentIdRef.current;
+      // Suppress any CSS transition through two rAFs so the compositor
+      // paints the FULL ring before we re-enable the stroke transition.
+      if (isHolmRender) {
+        recordHolmTimerWrite({ field: 'suppressTransition', prior: suppressTransition, next: true, writer: 'MobilePlayerTimer.activateEffect.suppress', callsite: 'src/components/MobilePlayerTimer.tsx:133', reason: 'pre-paint suppression on activation', kind: 'effect', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+      }
+      setSuppressTransition(true);
+      const r1 = requestAnimationFrame(() => {
+        const r2 = requestAnimationFrame(() => {
+          if (isHolmRender) {
+            recordHolmTimerWrite({ field: 'suppressTransition', prior: true, next: false, writer: 'MobilePlayerTimer.activateEffect.rAF2', callsite: 'src/components/MobilePlayerTimer.tsx:135', reason: 'two-rAF transition re-enable', kind: 'raf', segmentId: segId, instanceId: instanceIdRef.current, commitId: activationSeqRef.current });
+          }
+          setSuppressTransition(false);
+        });
+        (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
       });
-      (setSuppressTransition as unknown as { __r2?: number }).__r2 = r2;
-    });
-    recordLifecycleEvent('timer.activate', {
-      component: 'MobilePlayerTimer',
-      instance_id: instanceIdRef.current,
-      time_left_seed: effectiveTimeLeft,
-      max_time: maxTime,
-      timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
-      snapped_full: true,
-      segment_deadline_ms: segmentDeadlineMsRef.current,
-      segment_duration_ms: segmentDurationMsRef.current,
-      activation_key: lastActivationKeyRef.current,
-    });
-    return () => cancelAnimationFrame(r1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveIsActive, activationSeqRef.current]);
-
+      recordLifecycleEvent('timer.activate', {
+        component: 'MobilePlayerTimer',
+        instance_id: instanceIdRef.current,
+        time_left_seed: effectiveTimeLeft,
+        max_time: maxTime,
+        timer_seed_source: effectiveTimeLeft === null ? 'null-seed' : 'prop-seed',
+        snapped_full: true,
+        segment_deadline_ms: segmentDeadlineMsRef.current,
+        segment_duration_ms: segmentDurationMsRef.current,
+      });
+      return () => cancelAnimationFrame(r1);
+    }
+    wasActiveRef.current = effectiveIsActive;
+  }, [effectiveIsActive, effectiveTimeLeft, maxTime]);
 
   // Drive descent purely from clock vs fixed deadline. 100ms tick — no
   // dependency on incoming prop ticks, so deadline can never rebase.

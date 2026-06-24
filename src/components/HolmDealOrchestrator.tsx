@@ -41,9 +41,7 @@ import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
-import { recordHolmFull } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
-
 
 interface SeatEntry {
   playerId: string;
@@ -76,13 +74,8 @@ export interface HolmDealOrchestratorProps {
   selfPosition?: number | null;
   /** Cards-per-player for this hand (Holm hand size). */
   cardsPerPlayer: number;
-  /**
-   * Authoritative viewer self-hand. `null` is the PENDING-HCI sentinel
-   * — until the active HCI is admitted, the orchestrator runs none of
-   * resetForHand / beginDealForHand / beginWaveForHand / dispatch.
-   * Caller MUST pass `null` (never `[]`) while pending.
-   */
-  selfHand: CardType[] | null;
+  /** Authoritative viewer self-hand. */
+  selfHand: CardType[];
   /** Authoritative community cards (length should reach 4 before community wave). */
   communityCards: CardType[];
   /** Solo-declared flag — drives whether chucky wave dispatches. */
@@ -125,105 +118,6 @@ export function HolmDealOrchestrator({
   const handsDispatchedRef = useRef(false);
   const communityDispatchedRef = useRef(false);
   const chuckyDispatchedRef = useRef(false);
-  const orchestratorRenderCountRef = useRef(0);
-  orchestratorRenderCountRef.current += 1;
-
-  // ── RUN-BACK FORENSICS: render-time snapshot of every gate, manifest
-  // state, runtime ledger, and dispatch eligibility. Pure
-  // instrumentation. Fires every render while DealRuntime phase is
-  // PRE_DEAL so the export can identify the exact first failing guard.
-  try {
-    const selfHandHash = (selfHand ?? []).map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join(',');
-    const communityHash = (communityCards ?? []).map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join(',');
-    const chuckyHash = (chuckyCards ?? []).map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join(',');
-    const seatHash = seats.map((s) => `${s.position}:${s.playerId}`).join('|');
-
-    // Hands gate evaluation (mirror of useEffect predicates).
-    const handsGates = {
-      dealMounted: !!deal,
-      handsAlreadyDispatched: handsDispatchedRef.current,
-      dealTimingHydrated,
-      seatsNonEmpty: seats.length > 0,
-      cardsPerPlayerPositive: cardsPerPlayer > 0,
-      selfHandPresent: !!selfHand,
-      selfHandSized: (selfHand?.length ?? 0) >= cardsPerPlayer,
-      buckSeatInRing: seats.some((s) => s.position === buckPosition),
-    };
-    const handsFirstFailing = (() => {
-      if (!handsGates.dealMounted) return 'NO_DEAL_RUNTIME';
-      if (handsGates.handsAlreadyDispatched) return 'HANDS_ALREADY_DISPATCHED';
-      if (!handsGates.dealTimingHydrated) return 'DEAL_TIMING_NOT_HYDRATED';
-      if (!handsGates.seatsNonEmpty) return 'SEATS_EMPTY';
-      if (!handsGates.cardsPerPlayerPositive) return 'CARDS_PER_PLAYER_LE_ZERO';
-      if (!handsGates.selfHandPresent) return 'SELF_HAND_NULL';
-      if (!handsGates.selfHandSized) return 'SELF_HAND_UNDERSIZED';
-      if (!handsGates.buckSeatInRing) return 'BUCK_SEAT_NOT_IN_RING';
-      return 'NONE_PROCEED';
-    })();
-
-    const communityGates = {
-      dealMounted: !!deal,
-      communityAlreadyDispatched: communityDispatchedRef.current,
-      handsDispatched: handsDispatchedRef.current,
-      dealSettled: !!deal?.dealSettled,
-      communityFour: (communityCards?.length ?? 0) >= 4,
-    };
-    const chuckyGates = {
-      dealMounted: !!deal,
-      chuckyAlreadyDispatched: chuckyDispatchedRef.current,
-      soloDeclared,
-      communityDispatched: communityDispatchedRef.current,
-      dealSettled: !!deal?.dealSettled,
-      chuckyNonEmpty: (chuckyCards?.length ?? 0) > 0,
-    };
-
-    if (deal?.phase === 'PRE_DEAL' || deal?.phase === 'DEALING') {
-      recordHolmFull({
-        category: 'RUNTIME_WRITE',
-        event: 'HOLM_ORCHESTRATOR_RENDER_SNAPSHOT',
-        source: 'HolmDealOrchestrator',
-        sourceCategory: 'RENDER_DERIVATION',
-        callsite: 'src/components/HolmDealOrchestrator.tsx:render',
-        commitId: orchestratorRenderCountRef.current,
-        identityOverrides: { handContextId },
-        payload: {
-          handContextId,
-          phase: deal?.phase ?? null,
-          dealSettled: deal?.dealSettled ?? null,
-          readyReleased: deal?.readyReleased ?? null,
-          dealerPosition,
-          buckPosition,
-          selfPlayerId,
-          selfPosition,
-          cardsPerPlayer,
-          selfHand: { count: selfHand?.length ?? 0, hash: selfHandHash },
-          communityCards: { count: communityCards?.length ?? 0, hash: communityHash },
-          chuckyCards: { count: chuckyCards?.length ?? 0, hash: chuckyHash },
-          soloDeclared,
-          seats: { count: seats.length, hash: seatHash },
-          dispatchedRefs: {
-            hands: handsDispatchedRef.current,
-            community: communityDispatchedRef.current,
-            chucky: chuckyDispatchedRef.current,
-          },
-          dealRuntime: deal ? {
-            phase: deal.phase,
-            gameType: deal.gameType,
-            handContextId: deal.handContextId,
-            dealSettled: deal.dealSettled,
-            readyReleased: deal.readyReleased,
-            timerAllowed: deal.timerAllowed,
-          } : null,
-          handsGates,
-          handsFirstFailingGate: handsFirstFailing,
-          communityGates,
-          chuckyGates,
-          dealTimingHydrated,
-        },
-      });
-    }
-  } catch { /* never throw from instrumentation */ }
-
 
   // Helper to build an intent with shared timing metadata.
   const buildIntents = (
@@ -339,7 +233,6 @@ export function HolmDealOrchestrator({
     handsDispatchedRef.current = true;
     const beginAt = performance.now();
     holmTimelineResetForHand(handContextId);
-    try { recordHolmFull({ category: 'RUNTIME_WRITE', event: 'HOLM_BEGIN_DEAL_FOR_HAND', source: 'HolmDealOrchestrator.handsEffect', sourceCategory: 'EFFECT', callsite: 'src/components/HolmDealOrchestrator.tsx:337', identityOverrides: { handContextId }, payload: { wave: 'hands', intentCount: intents.length, beginAt, dealPhase: deal.phase } }); } catch { /* */ }
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
       handContextId,
@@ -364,9 +257,7 @@ export function HolmDealOrchestrator({
     });
     const dispatchAt = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'hands', holmDbgEndpoint(intent.to), dispatchAt);
-    try { recordHolmFull({ category: 'TRANSPORT', event: 'HOLM_DISPATCH_MANY', source: 'HolmDealOrchestrator.handsEffect', sourceCategory: 'EFFECT', callsite: 'src/components/HolmDealOrchestrator.tsx:361', identityOverrides: { handContextId }, payload: { wave: 'hands', intentCount: intents.length, dispatchAt } }); } catch { /* */ }
     ct.dispatchMany(intents);
-
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated,
@@ -586,7 +477,6 @@ export function HolmDealPhaseHost({
     firedRef.current = true;
     deal.enterGameplay();
   }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.phase]);
-
   return null;
 }
 

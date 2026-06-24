@@ -22,8 +22,6 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
-import { recordHolmFull, getHolmFullIdentity } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
-
 
 type Card = { rank: string; suit: string };
 
@@ -54,39 +52,6 @@ export function HolmLonePlayerFan({
 }: HolmLonePlayerFanProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-  const originHciRef = useRef<string | null>(null);
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-
-  try {
-    const id = getHolmFullIdentity();
-    const payloadHash = sortedCards.map((c) => `${c.card.rank}${c.card.suit}`).join(',');
-    if (originHciRef.current == null) originHciRef.current = id.handContextId ?? null;
-    const originHci = originHciRef.current;
-    const activeHci = id.handContextId ?? null;
-    recordHolmFull({
-      category: 'HB_PRESENTATION',
-      event: 'HOLM_LONE_PLAYER_FAN_RENDER',
-      source: 'HolmLonePlayerFan',
-      sourceCategory: 'RENDER_DERIVATION',
-      callsite: 'src/components/HolmLonePlayerFan.tsx:render',
-      commitId: renderCountRef.current,
-      payload: {
-        surface: 'tabled-self',
-        count: sortedCards.length,
-        payloadHash,
-        animate,
-        isSoloPlayerWinner,
-        hasHighlights,
-        originHci,
-        activeHci,
-        eligibility: 'unconditional-mount (caller-gated)',
-        staleOrigin: !!originHci && !!activeHci && originHci !== activeHci,
-      },
-    });
-  } catch { /* */ }
-
-
 
   useEffect(() => {
     const el = wrapperRef.current;
