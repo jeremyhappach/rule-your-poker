@@ -118,7 +118,25 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
       assignedRect.height,
     ]);
 
-    if (!placement || !placement.visible || vminInPx <= 0) return null;
+    const renderEligible = !!placement && !!placement.visible && vminInPx > 0;
+    ffRecord({
+      writerId: 'HolmAnchoredSlot.tsx:render:L120',
+      source: 'HOLM_ANCHORED_SLOT',
+      marker: renderEligible ? 'HOLM_SLOT_RENDER' : 'HOLM_SLOT_RENDER_SUPPRESSED',
+      identity: { ownerInstanceId: `HolmAnchoredSlot:${artifactId}` },
+      payload: {
+        artifactId,
+        hasCurrent: !!current,
+        currentVisible: !!current?.visible,
+        hasLastValid: !!lastValid,
+        usedPlacementSource: current && current.visible ? 'current' : (lastValid ? 'lastValid' : 'none'),
+        vminInPx,
+        faultsCount: faults.length,
+        renderEligible,
+        assignedRect,
+      },
+    });
+    if (!renderEligible) return null;
 
     const x = toVmin(placement.rect.x, vminInPx);
     const y = toVmin(placement.rect.y, vminInPx);
