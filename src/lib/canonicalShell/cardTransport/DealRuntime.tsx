@@ -39,6 +39,7 @@ import { useCardTransportInternal } from './CardTransportProvider';
 import { holmDealDbgRecordRuntime, holmDealDbgRecordViolation } from './holmDealDbg';
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
+import { ffRecord } from './holmFullForensics';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -126,6 +127,41 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   const expectedRef = useRef(0);
   expectedRef.current = expectedCount;
+
+  useEffect(() => {
+    ffRecord({
+      writerId: 'DealRuntime:mount',
+      source: 'DEAL_RUNTIME',
+      marker: 'DEAL_RUNTIME_MOUNT',
+      identity: { hci: handContextId },
+      payload: { gameType },
+    });
+    return () => {
+      ffRecord({
+        writerId: 'DealRuntime:unmount',
+        source: 'DEAL_RUNTIME',
+        marker: 'DEAL_RUNTIME_UNMOUNT',
+        identity: { hci: handContextId },
+        payload: { gameType },
+      });
+    };
+  }, [handContextId, gameType]);
+
+  useEffect(() => {
+    ffRecord({
+      writerId: 'DealRuntime:phaseEffect',
+      source: 'DEAL_RUNTIME',
+      marker: 'DEAL_RUNTIME_SETPHASE',
+      identity: { hci: handContextId },
+      payload: {
+        phase,
+        expectedCount,
+        settledSize: settledCardIds.size,
+        holmHandGeneration,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, handContextId]);
 
   // Subscribe to card-transport settle events with full intent metadata.
   useEffect(() => {
