@@ -40,6 +40,10 @@ import { holmDealDbgRecordRuntime, holmDealDbgRecordViolation } from './holmDeal
 import { holmTimelineRecordSettle } from './holmCardTimeline';
 import { markHolmHandReady, clearHolmHandReady } from './holmDealBarrier';
 import { ffRecord } from './holmFullForensics';
+import {
+  notifyCommunitySettleToSampler,
+  recordCommunitySettle,
+} from './holmCommunityLandingForensics';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
