@@ -10,10 +10,10 @@ import {
   type ResolvedRoundRow,
   type ThreeFiveSevenR1SizeBranch,
 } from "@/lib/threeFiveSeven/showdownConfig";
-import {
-  ingestR1OwnershipAuditForSnapback,
-  registerR1SnapbackHost,
-} from "@/lib/threeFiveSeven/r1SnapbackForensics";
+// (r1SnapbackForensics is no longer driven from PlayerHand — it is
+// inert until the ARM pill is clicked, which reads the host via DOM
+// query and the ownership audit via publishThreeFiveSevenR1OwnershipAudit.)
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
