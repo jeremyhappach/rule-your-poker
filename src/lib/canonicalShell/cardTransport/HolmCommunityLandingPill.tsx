@@ -9,11 +9,14 @@
 
 import { useState } from 'react';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 import { downloadHolmCommunityLandingExport } from './holmCommunityLandingForensics';
 
 export function HolmCommunityLandingPill() {
   const inTray = useInDebugTray();
+  const enabled = useDebugPillEnabled('communityExport');
   const [busy, setBusy] = useState(false);
+  if (!enabled) return null;
 
   const onClick = () => {
     setBusy(true);
