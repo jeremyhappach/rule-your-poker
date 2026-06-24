@@ -496,8 +496,14 @@ export function PlayfieldSlotController({
   //       instance across the entire poker-shell lifecycle"
   //       contract from the persistent-poker-shell refactor.
   if (persistentChildrenKey) {
-    const sessionEndExclusive =
-      mountedIdentity === null && neutralReason === 'session-end';
+    // Authoritative session-end exclusivity — driven by the SAME
+    // game snapshot that clears current_game_uuid (passed in via
+    // `isTerminalSessionEndHandoff`). Not gated on mountedIdentity
+    // or neutralReason, so it activates in the SAME React commit
+    // that clears current_game_uuid (no frozen-state flash) AND
+    // exits the instant authoritative state moves past game_over
+    // (e.g. status → game_selection).
+    const sessionEndExclusive = isTerminalSessionEndHandoff;
     recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral+persistent-children' : 'gameplay+persistent-children', {
       mode: 'persistent-children',
       persistentChildrenKey,
@@ -505,16 +511,8 @@ export function PlayfieldSlotController({
       desiredIdentity: describeSlotIdentity(desiredIdentity),
       phase, readyToMount, surfaceReady, readyToMountProp, neutralReason,
       sessionEndExclusive,
+      isTerminalSessionEndHandoff,
     });
-    // ── SESSION-END EXCLUSIVE HANDOFF ────────────────────────────
-    // Once the controller has committed neutral with reason
-    // 'session-end' (active→null transition), the persistent
-    // gameplay children must no longer render visibly or own
-    // paint/layout. NeutralInterstitial becomes the sole playfield
-    // owner in a single atomic React commit — no opacity fade, no
-    // timeout, no surface-local latch. This eliminates the
-    // post-win frame where NeutralInterstitial sat behind a still-
-    // mounted MobileGameTable subtree.
     if (sessionEndExclusive) {
       return (
         <div
@@ -528,16 +526,20 @@ export function PlayfieldSlotController({
           <div className="absolute inset-0 flex flex-col z-0">
             <NeutralInterstitial
               gameId={gameId ?? null}
-              reason={`poker-shell-pregame:${neutralReason}`}
+              reason="poker-shell-session-end-exclusive"
               gameKind={neutralGameKind}
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
+              participants={neutralParticipants}
+              currentUserId={neutralCurrentUserId}
+              participantGameType={neutralParticipantGameType}
             />
           </div>
         </div>
       );
     }
+
     return (
       <div
         data-canonical-shell-slot=""
