@@ -8989,6 +8989,7 @@ export const MobileGameTable = ({
             if (!sameHand || !sameId) {
               lonePlayerStageSnapshotRef.current = {
                 handContextId,
+                dealerGameId: holmDealerGameId ?? null,
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
@@ -8999,6 +9000,7 @@ export const MobileGameTable = ({
             ) {
               lonePlayerStageSnapshotRef.current = {
                 handContextId,
+                dealerGameId: holmDealerGameId ?? null,
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
@@ -9024,23 +9026,49 @@ export const MobileGameTable = ({
           if (hasLiveLonePlayer && handContextId) {
             tabledSelfStickyRef.current = {
               handContextId,
+              dealerGameId: holmDealerGameId ?? null,
               playerId: liveLoneSoloPlayer!.id,
               cards: liveLoneSoloCards,
             };
             stickyWriteReason = 'live-good';
           }
 
+          // ── HARD HOLM PRESENTATION ADMISSION GATE ────────────────────
+          // A held snapshot (sticky / persistence) may render ONLY when
+          // either it matches the current active hand, OR the game is in
+          // terminal game_over for the SAME dealer game it originated in.
+          // No fallback. No cross-dealer-game sticky resurrection.
+          const mayAdmitSnap = (
+            snapDealerGameId: string | null,
+            snapHandContextId: string,
+          ): boolean => {
+            const currentActiveHand =
+              handContextId != null && snapHandContextId === handContextId;
+            const terminalSameDealerGame =
+              gameStatus === 'game_over' &&
+              snapDealerGameId != null &&
+              snapDealerGameId === (holmDealerGameId ?? null);
+            return currentActiveHand || terminalSameDealerGame;
+          };
+
+          const stickyEligibleByAdmission =
+            !!tabledSelfStickyRef.current &&
+            mayAdmitSnap(
+              tabledSelfStickyRef.current.dealerGameId,
+              tabledSelfStickyRef.current.handContextId,
+            );
+          const stageEligibleByAdmission =
+            !!lonePlayerStageSnapshotRef.current &&
+            mayAdmitSnap(
+              lonePlayerStageSnapshotRef.current.dealerGameId,
+              lonePlayerStageSnapshotRef.current.handContextId,
+            );
+
           const activeSnap =
-            // Sticky snapshot survives transient handContextId nulls and
-            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
-            tabledSelfStickyRef.current ??
-            (lonePlayerStageSnapshotRef.current?.handContextId &&
-            (!handContextId ||
-              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
-              ? lonePlayerStageSnapshotRef.current
-              : null);
+            (stickyEligibleByAdmission ? tabledSelfStickyRef.current : null) ??
+            (stageEligibleByAdmission ? lonePlayerStageSnapshotRef.current : null);
           const activeSnapSourceTag: 'sticky' | 'persistence' | 'none' =
-            tabledSelfStickyRef.current ? 'sticky'
+            stickyEligibleByAdmission ? 'sticky'
             : (activeSnap ? 'persistence' : 'none');
 
           const loneSoloPlayer =
