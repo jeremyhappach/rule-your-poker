@@ -742,16 +742,18 @@ export const PlayerHand = ({
   if (isRound3With7Cards && !unusedCardsBelow) {
     // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
-    
+    const fanStep = resolved357.seven.fanStepDeg;
+    const n = allCardsOrdered.length;
+    const irrOpacity = resolved357.sevenIrrelevant.opacity;
+
     return (
       <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
-          const usedDisplayIndex = isUnused ? 0 : displayIndex - unusedCards.length;
           const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
           const isKicker = !isUnused && kickerIndices.includes(originalIndex);
           const isDimmed = isUnused || (hasHighlights && !isHighlighted && !isKicker);
-          
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
           return (
             <PlayingCard
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
@@ -764,9 +766,9 @@ export const PlayerHand = ({
               faceFillPx={dynActive && !isUnused ? dyn357!.cardWidth : undefined}
               className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
               style={composeStyle({
-                transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
-                opacity: isUnused ? 0.4 : 1,
-              })}
+                transform: `rotate(${rotationDeg}deg)`,
+                opacity: isUnused ? irrOpacity : 1,
+              }, true, displayIndex)}
             />
           );
         })}
@@ -774,6 +776,13 @@ export const PlayerHand = ({
     );
   }
 
+  // Default branch (also the 3-5-7 R1 showdown path).
+  // For 3-5-7 R1 (3 cards), fan step is sourced from resolved357.three.
+  // For all other callers, fan step remains 2°/card (historical default).
+  const defaultFanStep =
+    is357Game && currentRound === 1 && displayCardCount === 3
+      ? resolved357.three.fanStepDeg
+      : 2;
   return (
     <div className="flex" ref={is357Game ? measureRef : undefined}>
 
@@ -781,7 +790,9 @@ export const PlayerHand = ({
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-        
+        const n = sortedCardsWithIndices.length;
+        const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+
         return (
           <PlayingCard
             key={`${card.rank}-${card.suit}-${originalIndex}`}
@@ -795,11 +806,12 @@ export const PlayerHand = ({
             faceFillPx={dynActive ? dyn357!.cardWidth : undefined}
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
-              transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
-            })}
+              transform: `rotate(${rotationDeg}deg)`,
+            }, true, displayIndex)}
           />
         );
       })}
     </div>
   );
 };
+
