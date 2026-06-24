@@ -22,6 +22,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useHolmGameplayGeometry } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 export interface HolmAnchoredSlotProps {
   artifactId: string;
