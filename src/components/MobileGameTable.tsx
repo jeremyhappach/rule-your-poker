@@ -3807,7 +3807,9 @@ export const MobileGameTable = ({
       chosen = { source: 'frozen-released-hand-advanced', cards: [] };
     } else if (
       holmWinPotFrozenCardsRef.current.triggerId !== null &&
-      holmWinPotFrozenCardsRef.current.cards.length > 0
+      holmWinPotFrozenCardsRef.current.cards.length > 0 &&
+      handContextId != null &&
+      holmWinPotFrozenCardsRef.current.handContextId === handContextId
     ) {
       chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
     } else if (isHandTransitioning && !(__is357GameType(gameType) && (currentRound ?? 0) > 1)) {
