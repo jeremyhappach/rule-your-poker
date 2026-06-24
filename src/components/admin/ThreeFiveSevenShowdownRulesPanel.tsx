@@ -613,7 +613,7 @@ function ParityAuditPanel() {
       { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
       { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
       { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
-      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
+      
       { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
       { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
       { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },
