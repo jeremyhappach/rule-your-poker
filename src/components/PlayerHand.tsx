@@ -587,18 +587,6 @@ export const PlayerHand = ({
         availableWidthPx: availableWidthPx ?? null,
         wrapperScale: safeWrapperScale,
       },
-      intended: {
-        overlapClass: effectiveOverlapClass,
-        round1Class: effectiveRound1Class,
-        staticStyle: static357R1Style ? { ...(static357R1Style as object) } as Record<string, unknown> : null,
-        dynStyle: dyn357Style ? { ...(dyn357Style as object) } as Record<string, unknown> : null,
-        dyn357OverlapStyle: dyn357OverlapStyle ? { ...(dyn357OverlapStyle as object) } as Record<string, unknown> : null,
-        keyPattern: '{rank}-{suit}-{originalIndex}',
-        finalStylePerIndex: [0, 1, 2].map((i) => {
-          const s = composeStyle({ transform: 'rotate(0deg)' }, true, i);
-          return s ? ({ ...(s as object) } as Record<string, unknown>) : null;
-        }),
-      },
     });
     return () => publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
   }, [
@@ -888,11 +876,7 @@ export const PlayerHand = ({
       ? resolved357.three.fanStepDeg
       : 2;
   return (
-    <div
-      className="flex"
-      ref={is357Game ? measureRef : undefined}
-      data-357-r1-host={is357R1ShowdownPath && displayCardCount === 3 ? forensicsId : undefined}
-    >
+    <div className="flex" ref={is357Game ? measureRef : undefined}>
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);

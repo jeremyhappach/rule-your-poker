@@ -385,16 +385,6 @@ export interface ThreeFiveSevenR1OwnershipAudit {
   resolvedFanStepDeg: number | null;
   parentClientWidthUsedByDynPx: number | null;
   predicates: Record<string, boolean | number | string | null>;
-  /** Renderer's pre-DOM "intended" snapshot (R1 only). */
-  intended?: {
-    overlapClass: string;
-    round1Class: string;
-    staticStyle: Record<string, unknown> | null;
-    dynStyle: Record<string, unknown> | null;
-    dyn357OverlapStyle: Record<string, unknown> | null;
-    keyPattern: string;
-    finalStylePerIndex: Array<Record<string, unknown> | null>;
-  };
 }
 
 type R1AuditListener = (value: ThreeFiveSevenR1OwnershipAudit | null) => void;
@@ -430,45 +420,4 @@ export function useThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAu
     return () => { _r1OwnershipListeners.delete(cb); };
   }, []);
   return v;
-}
-
-/** Subscribe to every audit publish — receives the full per-instance map snapshot. */
-export type R1AuditMapListener = (snapshot: ReadonlyMap<string, ThreeFiveSevenR1OwnershipAudit>) => void;
-const _r1AuditMapListeners = new Set<R1AuditMapListener>();
-export function subscribeAllR1OwnershipAudits(cb: R1AuditMapListener): () => void {
-  _r1AuditMapListeners.add(cb);
-  cb(new Map(_r1OwnershipAudits));
-  return () => { _r1AuditMapListeners.delete(cb); };
-}
-export function getAllR1OwnershipAudits(): ReadonlyMap<string, ThreeFiveSevenR1OwnershipAudit> {
-  return new Map(_r1OwnershipAudits);
-}
-
-// Wire map-listener emit into the existing publish call. We monkey-extend
-// by wrapping with a small notifier triggered after every publish.
-const _origPublish = publishThreeFiveSevenR1OwnershipAudit;
-// Override the export indirectly through a side-effect: keep the same fn
-// reference but extend it via a sibling notifier. Consumers call publish
-// then the listeners fire; the map snapshot is built here.
-function _notifyMapListeners() {
-  const snap: ReadonlyMap<string, ThreeFiveSevenR1OwnershipAudit> = new Map(_r1OwnershipAudits);
-  for (const l of _r1AuditMapListeners) { try { l(snap); } catch { /* */ } }
-}
-// Hook map notify into latest-listener channel (fires on every publish).
-_r1OwnershipListeners.add(() => _notifyMapListeners());
-void _origPublish;
-
-/** Subscribe to showdown-rules config update events (storage + same-tab). */
-export function subscribeShowdownRulesUpdates(cb: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
-  const onCustom = () => cb();
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === SHOWDOWN_RULES_STORAGE_KEY) cb();
-  };
-  window.addEventListener(SHOWDOWN_RULES_UPDATE_EVENT, onCustom);
-  window.addEventListener('storage', onStorage);
-  return () => {
-    window.removeEventListener(SHOWDOWN_RULES_UPDATE_EVENT, onCustom);
-    window.removeEventListener('storage', onStorage);
-  };
 }
