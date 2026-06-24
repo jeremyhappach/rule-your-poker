@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import {
+  resolveShowdownRules,
+  useIsSmBreakpoint,
+  useThreeFiveSevenShowdownConfig,
+  type ResolvedRoundRow,
+} from "@/lib/threeFiveSeven/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
@@ -13,6 +19,7 @@ import {
   record357CardOwnership,
   record357DiagnosticViolation,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
+
 
 let __playerHandForensicsSeq = 0;
 
