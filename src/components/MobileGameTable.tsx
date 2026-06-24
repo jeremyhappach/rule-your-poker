@@ -7476,8 +7476,6 @@ export const MobileGameTable = ({
           handContextId={handContextId}
           soloDeclared={!!isSoloVsChucky}
           chuckyCount={(chuckyCards ?? []).length}
-          isPresentationHost={!!isHost}
-          roundStatus={roundStatus ?? null}
         />
       </>
     )}
