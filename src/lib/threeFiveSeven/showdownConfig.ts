@@ -60,7 +60,6 @@ export interface IrrelevantPairConfig {
   scale: number;
   opacity: number;
   grayscalePct: number;
-  interRowGapPx: number;
   size: CardSizePx;
   overlap: OverlapPx;
   positionMode: 'auto' | 'above' | 'below';
