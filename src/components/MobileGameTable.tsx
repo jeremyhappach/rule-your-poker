@@ -1795,7 +1795,7 @@ export const MobileGameTable = ({
   // state behind the NeutralInterstitial. The surface-local terminal
   // latch and its neutral-interstitial commit signal consumer have
   // been removed; all derivations below fall back to raw state.
-  const terminalPresentationActive = false as const;
+  
 
   
   // HOLM: Gate announcement display until community card 4 flip animation completes.
