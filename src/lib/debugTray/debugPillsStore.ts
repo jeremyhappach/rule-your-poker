@@ -79,6 +79,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'threeFiveSevenForensics', abbreviation: '357 FORENSICS', fullName: '3-5-7 Forensics (nuclear)', description: 'Full per-render forensic capture for 3-5-7: deal runtime, complete DOM timer inventory, self/opponent hand counts vs ownership math, card-0 per-frame autopsy, DOM inventory of timers/hands/card-backs/flying-cards/runtimes/anchors, and an append-on-change transition log. 250-sample ring buffer.' },
   { key: 'holmDealDbg', abbreviation: 'HOLM DEAL DBG', fullName: 'Holm Deal Debug', description: 'Holm canonical deal forensics: DealRuntime, hands/community/Chucky dispatch/settle, DOM visibility, and pre-settle render violations.' },
   { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
+  { key: 'communityExport', abbreviation: 'COMM EXPORT', fullName: 'Community Export', description: 'Holm community-card landing export pill (one-tap download of the retained wartime buffer slice).' },
 
 ];
 
