@@ -3795,14 +3795,9 @@ export const MobileGameTable = ({
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
-    // TERMINAL LATCH (consumer wiring): while the Holm terminal-presentation
-    // latch is held, the normal active-self-hand source must NOT feed any
-    // ordinary PlayerHand path. The terminal renderers (tabled fan,
-    // winnerCards, highlights) consume the latch snapshot directly.
-    if (terminalPresentationActive) {
-      __mgtCurrentPlayerCardsSourceRef.current = 'terminal-latch-blocked';
-      return [];
-    }
+    // (Terminal-latch self-hand blocker removed — shell owns
+    // session-end exclusive handoff.)
+
     let chosen: { source: string; cards: CardType[] };
 
     // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
