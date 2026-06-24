@@ -738,6 +738,8 @@ interface MobileGameTableProps {
   horsesState?: HorsesStateFromDB | null;
   /** Dealer-game (session) UUID for the dice game framework identity feed. */
   horsesDealerGameId?: string | null;
+  /** Active dealer-game (session) UUID for Holm presentation admission gating. */
+  holmDealerGameId?: string | null;
   /** Authoritative hand_number of the current round (drives progress vector). */
   horsesHandNumber?: number | null;
   pendingDecision?: 'stay' | 'fold' | null;
@@ -985,6 +987,7 @@ export const MobileGameTable = ({
   horsesRoundId,
   horsesState,
   horsesDealerGameId,
+  holmDealerGameId,
   horsesHandNumber,
   pendingDecision,
   isPaused,
@@ -1754,6 +1757,7 @@ export const MobileGameTable = ({
   // / player_cards momentarily flicker false.
   const lonePlayerStageSnapshotRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     playerId: string;
     cards: CardType[];
   } | null>(null);
@@ -1767,11 +1771,13 @@ export const MobileGameTable = ({
   // PLAYER_TO_POT exactly per the ownership contract.
   const tabledSelfStickyRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     playerId: string;
     cards: CardType[];
   } | null>(null);
   const chuckyStageStickyRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     cards: CardType[];
     revealedCount: number;
   } | null>(null);
@@ -3801,7 +3807,9 @@ export const MobileGameTable = ({
       chosen = { source: 'frozen-released-hand-advanced', cards: [] };
     } else if (
       holmWinPotFrozenCardsRef.current.triggerId !== null &&
-      holmWinPotFrozenCardsRef.current.cards.length > 0
+      holmWinPotFrozenCardsRef.current.cards.length > 0 &&
+      handContextId != null &&
+      holmWinPotFrozenCardsRef.current.handContextId === handContextId
     ) {
       chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
     } else if (isHandTransitioning && !(__is357GameType(gameType) && (currentRound ?? 0) > 1)) {
@@ -8981,6 +8989,7 @@ export const MobileGameTable = ({
             if (!sameHand || !sameId) {
               lonePlayerStageSnapshotRef.current = {
                 handContextId,
+                dealerGameId: holmDealerGameId ?? null,
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
@@ -8991,6 +9000,7 @@ export const MobileGameTable = ({
             ) {
               lonePlayerStageSnapshotRef.current = {
                 handContextId,
+                dealerGameId: holmDealerGameId ?? null,
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
@@ -9016,23 +9026,49 @@ export const MobileGameTable = ({
           if (hasLiveLonePlayer && handContextId) {
             tabledSelfStickyRef.current = {
               handContextId,
+              dealerGameId: holmDealerGameId ?? null,
               playerId: liveLoneSoloPlayer!.id,
               cards: liveLoneSoloCards,
             };
             stickyWriteReason = 'live-good';
           }
 
+          // ── HARD HOLM PRESENTATION ADMISSION GATE ────────────────────
+          // A held snapshot (sticky / persistence) may render ONLY when
+          // either it matches the current active hand, OR the game is in
+          // terminal game_over for the SAME dealer game it originated in.
+          // No fallback. No cross-dealer-game sticky resurrection.
+          const mayAdmitSnap = (
+            snapDealerGameId: string | null,
+            snapHandContextId: string,
+          ): boolean => {
+            const currentActiveHand =
+              handContextId != null && snapHandContextId === handContextId;
+            const terminalSameDealerGame =
+              gameStatus === 'game_over' &&
+              snapDealerGameId != null &&
+              snapDealerGameId === (holmDealerGameId ?? null);
+            return currentActiveHand || terminalSameDealerGame;
+          };
+
+          const stickyEligibleByAdmission =
+            !!tabledSelfStickyRef.current &&
+            mayAdmitSnap(
+              tabledSelfStickyRef.current.dealerGameId,
+              tabledSelfStickyRef.current.handContextId,
+            );
+          const stageEligibleByAdmission =
+            !!lonePlayerStageSnapshotRef.current &&
+            mayAdmitSnap(
+              lonePlayerStageSnapshotRef.current.dealerGameId,
+              lonePlayerStageSnapshotRef.current.handContextId,
+            );
+
           const activeSnap =
-            // Sticky snapshot survives transient handContextId nulls and
-            // any intermediate lifecycle wipes of lonePlayerStageSnapshotRef.
-            tabledSelfStickyRef.current ??
-            (lonePlayerStageSnapshotRef.current?.handContextId &&
-            (!handContextId ||
-              lonePlayerStageSnapshotRef.current.handContextId === handContextId)
-              ? lonePlayerStageSnapshotRef.current
-              : null);
+            (stickyEligibleByAdmission ? tabledSelfStickyRef.current : null) ??
+            (stageEligibleByAdmission ? lonePlayerStageSnapshotRef.current : null);
           const activeSnapSourceTag: 'sticky' | 'persistence' | 'none' =
-            tabledSelfStickyRef.current ? 'sticky'
+            stickyEligibleByAdmission ? 'sticky'
             : (activeSnap ? 'persistence' : 'none');
 
           const loneSoloPlayer =
@@ -9159,15 +9195,24 @@ export const MobileGameTable = ({
             cachedChuckyOriginHandContextId === handContextId;
           const stickyChuckyOriginHandContextId =
             chuckyStageStickyRef.current?.handContextId ?? null;
-          // POST-ANNOUNCEMENT PERSISTENCE: sticky stays eligible whenever the
-          // current handContextId matches its origin OR handContextId is
-          // transiently null (announcement clear / win transition). The
-          // sticky is only forcibly cleared above when a DIFFERENT non-null
-          // handContextId arrives (next-hand PRE_DEAL boundary).
+          const stickyChuckyOriginDealerGameId =
+            chuckyStageStickyRef.current?.dealerGameId ?? null;
+          // HARD ADMISSION: Chucky sticky may render ONLY when its origin
+          // matches the current active hand, OR when game is in terminal
+          // game_over for the SAME dealer game it originated in. No
+          // cross-dealer-game sticky resurrection during ante_decision /
+          // game_selection / a different dealer game.
+          const chuckyCurrentActiveHand =
+            !!stickyChuckyOriginHandContextId &&
+            handContextId != null &&
+            stickyChuckyOriginHandContextId === handContextId;
+          const chuckyTerminalSameDealerGame =
+            gameStatus === 'game_over' &&
+            stickyChuckyOriginDealerGameId != null &&
+            stickyChuckyOriginDealerGameId === (holmDealerGameId ?? null);
           const stickyChuckySourceEligible =
             !!chuckyStageStickyRef.current &&
-            !!stickyChuckyOriginHandContextId &&
-            (handContextId == null || stickyChuckyOriginHandContextId === handContextId);
+            (chuckyCurrentActiveHand || chuckyTerminalSameDealerGame);
           if (
             (cachedChuckyCards && cachedChuckyCards.length > 0 && !cachedChuckySourceEligible) ||
             (chuckyStageStickyRef.current && !stickyChuckySourceEligible)
@@ -9179,6 +9224,7 @@ export const MobileGameTable = ({
                 cachedLen: cachedChuckyCards?.length ?? 0,
                 cachedRevealed: cachedChuckyCardsRevealed,
                 stickyOriginHandContextId: stickyChuckyOriginHandContextId,
+                stickyOriginDealerGameId: stickyChuckyOriginDealerGameId,
                 stickyLen: chuckyStageStickyRef.current?.cards?.length ?? 0,
                 stickyRevealed: chuckyStageStickyRef.current?.revealedCount ?? 0,
               });
@@ -9208,6 +9254,7 @@ export const MobileGameTable = ({
                 : Math.max(previousStickyRevealCount, cachedChuckyCardsRevealed);
             chuckyStageStickyRef.current = {
               handContextId,
+              dealerGameId: holmDealerGameId ?? null,
               cards: cachedChuckyCards,
               revealedCount: Math.min(cachedChuckyCards.length, lockedRevealed),
             };

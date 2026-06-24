@@ -5967,6 +5967,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // ── HARD DEALER-GAME ADMISSION BOUNDARY ─────────────────────────────
+    // Reject any hydrated round whose dealer_game_id does not match the
+    // active dealer game. A new dealer game in ante_decision with no first
+    // round must hydrate as rounds:[], NOT as the prior dealer game's row.
+    // No historical fallback. Applied before any state write / current-round
+    // derivation / shadow-sync feed.
+    {
+      const activeDealerGameId = (gameData as any).current_game_uuid ?? null;
+      const incomingRounds: any[] = Array.isArray((gameData as any).rounds)
+        ? (gameData as any).rounds
+        : [];
+      (gameData as any).rounds = activeDealerGameId
+        ? incomingRounds.filter((r: any) => r?.dealer_game_id === activeDealerGameId)
+        : [];
+    }
+
     if (!isStale()) {
       setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
     }
@@ -6038,50 +6054,74 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
         
         if (isHolmGame) {
-          // HOLM: Round selection MUST be scoped to the active dealer_game_id.
-          // round_number can reset to 1 when transitioning 3-5-7 -> Holm, so ordering by round_number
-          // across the whole session will pick the wrong round and show the wrong card count.
-          const base = supabase
-            .from('rounds')
-            .select('id, round_number, cards_dealt')
-            .eq('game_id', gameId);
+          // HOLM HARD GATE: round selection is scoped to the active
+          // dealer_game_id. If no active dealer game, do NOT run any
+          // cross-session "latest historical round" fallback — that
+          // is exactly the dealer-game boundary leak.
+          if (!gameData.current_game_uuid) {
+            // Invalidate any in-flight card request and clear stale cards
+            // so an old response cannot repopulate raw card state when the
+            // active dealer game has cleared.
+            cardFetchTokenRef.current = (cardFetchTokenRef.current ?? 0) + 1;
+            if (!isStale()) {
+              setPlayerCards([]);
+            }
+            roundData = null;
+            ffRecord({
+              writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_FETCH_ROUND_SELECTED',
+              identity: { gameId, roundId: null, segmentId: null },
+              payload: {
+                trigger: 'fetchPlayers',
+                dealerGameIdFilter: null,
+                skipReason: 'no-active-dealer-game',
+                gameStatus: gameData.status,
+                gameCurrentRound: gameData.current_round,
+                gameTotalHands: gameData.total_hands,
+                awaitingNextRound: gameData.awaiting_next_round,
+                hasLastRoundResult: !!gameData.last_round_result,
+                clearedPlayerCards: true,
+                bumpedFetchToken: cardFetchTokenRef.current,
+              },
+            });
+          } else {
+            const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
+              supabase
+                .from('rounds')
+                .select('id, round_number, cards_dealt')
+                .eq('game_id', gameId)
+                .eq('dealer_game_id', gameData.current_game_uuid)
+                .order('hand_number', { ascending: false })
+                .order('round_number', { ascending: false })
+                .limit(1)
+                .maybeSingle());
 
-          const query = gameData.current_game_uuid
-            ? base.eq('dealer_game_id', gameData.current_game_uuid)
-            : base;
-
-          const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
-            query
-              .order('hand_number', { ascending: false })
-              .order('round_number', { ascending: false })
-              .limit(1)
-              .maybeSingle());
-
-
-          roundData = data;
-          ffRecord({
-            writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
-            source: 'HOLM_SELF_HAND_LINEAGE',
-            marker: 'HOLM_SELF_HAND_FETCH_ROUND_SELECTED',
-            identity: {
-              gameId,
-              roundId: roundData?.id ?? null,
-              segmentId: gameData.current_game_uuid ?? null,
-            },
-            payload: {
-              trigger: 'fetchPlayers',
-              dealerGameIdFilter: gameData.current_game_uuid ?? null,
-              orderBy: ['hand_number desc', 'round_number desc'],
-              selectedRoundId: roundData?.id ?? null,
-              selectedRoundNumber: roundData?.round_number ?? null,
-              selectedCardsDealt: roundData?.cards_dealt ?? null,
-              gameStatus: gameData.status,
-              gameCurrentRound: gameData.current_round,
-              gameTotalHands: gameData.total_hands,
-              awaitingNextRound: gameData.awaiting_next_round,
-              hasLastRoundResult: !!gameData.last_round_result,
-            },
-          });
+            roundData = data;
+            ffRecord({
+              writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_FETCH_ROUND_SELECTED',
+              identity: {
+                gameId,
+                roundId: roundData?.id ?? null,
+                segmentId: gameData.current_game_uuid,
+              },
+              payload: {
+                trigger: 'fetchPlayers',
+                dealerGameIdFilter: gameData.current_game_uuid,
+                orderBy: ['hand_number desc', 'round_number desc'],
+                selectedRoundId: roundData?.id ?? null,
+                selectedRoundNumber: roundData?.round_number ?? null,
+                selectedCardsDealt: roundData?.cards_dealt ?? null,
+                gameStatus: gameData.status,
+                gameCurrentRound: gameData.current_round,
+                gameTotalHands: gameData.total_hands,
+                awaitingNextRound: gameData.awaiting_next_round,
+                hasLastRoundResult: !!gameData.last_round_result,
+              },
+            });
+          }
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
@@ -11556,6 +11596,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
+              holmDealerGameId={(game as any).current_game_uuid ?? null}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
