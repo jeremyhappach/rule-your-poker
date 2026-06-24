@@ -4564,10 +4564,8 @@ export const MobileGameTable = ({
   // Terminal-presentation latch: while held, winnerPlayerId derives
   // from the captured snapshot so highlight/tabling targets survive
   // lastRoundResult clearing.
-  const winnerPlayerId =
-    terminalPresentationActive && holmTerminalPresentation
-      ? holmTerminalPresentation.winnerPlayerId
-      : _rawWinnerPlayerId;
+  const winnerPlayerId = _rawWinnerPlayerId;
+
 
   // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
   if (gameType === 'holm-game') {
