@@ -5365,12 +5365,34 @@ export const MobileGameTable = ({
             neutralInterstitialCommittedForGame,
             neutralVisuallyPainted: probe.neutralVisuallyPainted,
             oldHolmVisuallyExposed: probe.oldHolmVisuallyExposed,
+            neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
+            perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
             exclusive: probe.exclusive,
             neutral: probe.neutral,
             oldHolm: probe.oldHolm,
+            points: probe.points,
           },
         });
-        if (probe.exclusive && __holmHandoffExclusiveEmittedRef.current !== armKey) {
+        ffRecord({
+          writerId: 'MobileGameTable:holmPostWinHandoffProbe',
+          source: 'HOLM_POST_WIN_HANDOFF',
+          marker: 'HOLM_POST_WIN_NEUTRAL_STACK_VERDICT',
+          identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
+          payload: {
+            frame,
+            elapsedMs: Math.round(elapsed),
+            neutralVisuallyPainted: probe.neutralVisuallyPainted,
+            neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
+            oldArtifactVisuallyExposed: probe.oldHolmVisuallyExposed,
+            perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
+            points: probe.points,
+          },
+        });
+        if (
+          probe.exclusive &&
+          probe.neutralOwnsEveryVisibleOldArtifact &&
+          __holmHandoffExclusiveEmittedRef.current !== armKey
+        ) {
           __holmHandoffExclusiveEmittedRef.current = armKey;
           ffRecord({
             writerId: 'MobileGameTable:holmPostWinHandoffProbe',
@@ -5383,12 +5405,16 @@ export const MobileGameTable = ({
               armKey,
               terminalPresentationActive,
               neutralInterstitialCommittedForGame,
+              neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
+              perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
               neutral: probe.neutral,
               oldHolm: probe.oldHolm,
+              points: probe.points,
             },
           });
         }
       }
+
       if (elapsed > 6000) return;
       requestAnimationFrame(tick);
     };
