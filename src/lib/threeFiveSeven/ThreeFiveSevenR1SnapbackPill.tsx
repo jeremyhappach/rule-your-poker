@@ -30,11 +30,15 @@ import {
   subscribeR1Snapback,
 } from './r1SnapbackForensics';
 
+let cachedSnapshot = { has: false, active: false };
 function getSnapshot() {
-  return {
-    has: !!getLastR1SnapbackCapture(),
-    active: isR1SnapbackCaptureActive(),
-  };
+  const has = !!getLastR1SnapbackCapture();
+  const active = isR1SnapbackCaptureActive();
+  if (cachedSnapshot.has === has && cachedSnapshot.active === active) {
+    return cachedSnapshot;
+  }
+  cachedSnapshot = { has, active };
+  return cachedSnapshot;
 }
 const initialSnapshot = { has: false, active: false };
 function getServerSnapshot() { return initialSnapshot; }
