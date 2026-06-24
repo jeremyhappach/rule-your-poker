@@ -1785,6 +1785,33 @@ export const MobileGameTable = ({
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
+
+  // ── HOLM TERMINAL PRESENTATION LATCH ──────────────────────────────
+  // Captured on result lock (isShowingAnnouncement || holmWinPotTriggerId
+  // rises). Released ONLY when the canonical NeutralInterstitial commits
+  // for this gameId. While active, the renderer derives self/Chucky/
+  // community cards, winner highlights, soloVsChucky, and rabbit-hunt
+  // state from the snapshot — NOT from live state. This holds the
+  // terminal frame across match_win TTL expiry, current_game_uuid
+  // clearing, and raw player-card clearing.
+  type HolmTerminalPresentation = {
+    outcomeKey: string;
+    handContextId: string;
+    dealerGameId: string;
+    selfCards: CardType[];
+    chuckyCards: CardType[];
+    communityCards: CardType[];
+    winnerPlayerId: string | null;
+    winnerCardIndices: number[];
+    winnerCommunityIndices: number[];
+    soloVsChucky: boolean;
+  };
+  const [holmTerminalPresentation, setHolmTerminalPresentation] =
+    useState<HolmTerminalPresentation | null>(null);
+  const neutralInterstitialCommittedForGame =
+    useNeutralInterstitialCommitted(gameId ?? null);
+  const terminalPresentationActive =
+    !!holmTerminalPresentation && !neutralInterstitialCommittedForGame;
   
   // HOLM: Gate announcement display until community card 4 flip animation completes.
   // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
