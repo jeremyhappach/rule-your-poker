@@ -277,7 +277,7 @@ export function ShellTimerRail() {
     >
       <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
         <div
-          className={`h-full ${mounted ? 'transition-[width] duration-1000 ease-linear' : ''} ${fillClass}`}
+          className={`h-full ${snappedFull ? '' : 'transition-[width] duration-1000 ease-linear'} ${fillClass}`}
           style={{ width: `${pct}%` }}
         />
       </div>
