@@ -435,6 +435,47 @@ serve(async (req) => {
     if (game.status === 'in_progress' || game.status === 'betting') {
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
+        // ── HOLM ACTIONABILITY FALLBACK ────────────────────────────
+        // If a `dealing` Holm round exists with an expired
+        // `presentation_fallback_at`, the elected presentation host
+        // must have failed to acknowledge. Promote it via the
+        // canonical RPC with `_from_fallback=true`. The RPC requires
+        // `auth.uid() IS NULL`, so we use a service-role client with
+        // NO forwarded Authorization header.
+        try {
+          if (serviceRoleKey) {
+            const svc = createClient(supabaseUrl, serviceRoleKey);
+            const { data: stuckDealingRounds } = await svc
+              .from('rounds')
+              .select('id, presentation_generation, presentation_fallback_at, hand_number')
+              .eq('game_id', gameId)
+              .eq('status', 'dealing')
+              .lt('presentation_fallback_at', nowIso)
+              .limit(4);
+            for (const stuck of stuckDealingRounds ?? []) {
+              const { data: promoteResult, error: promoteErr } = await svc.rpc(
+                'activate_holm_round_after_deal_presentation' as any,
+                {
+                  _round_id: (stuck as any).id,
+                  _hand_context_id: (stuck as any).id,
+                  _presentation_generation: (stuck as any).presentation_generation ?? 0,
+                  _from_fallback: true,
+                } as any,
+              );
+              actionsTaken.push({
+                action: 'holm_dealing_fallback_promotion',
+                roundId: (stuck as any).id,
+                handNumber: (stuck as any).hand_number,
+                outcome: (promoteResult as any)?.outcome ?? null,
+                error: promoteErr?.message ?? null,
+              } as any);
+            }
+          }
+        } catch (fallbackErr) {
+          console.error('[ENFORCE] Holm dealing fallback error:', fallbackErr);
+        }
+
+
         // IMPORTANT: Determine the active Holm round by dealer_game_id + (hand_number, round_number), never by created_at.
         const baseRoundQuery = supabase
           .from('rounds')
