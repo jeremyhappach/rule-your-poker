@@ -89,6 +89,21 @@ export function HolmLonePlayerFan({
         })
       : null;
 
+  ffRecord({
+    writerId: 'HolmLonePlayerFan.tsx:render:L91',
+    source: 'HOLM_LONE_PLAYER_FAN',
+    marker: layout ? 'HOLM_LONE_FAN_RENDER' : 'HOLM_LONE_FAN_RENDER_SUPPRESSED',
+    payload: {
+      cardCount: count,
+      hasLayout: !!layout,
+      wrapperW: size.w,
+      wrapperH: size.h,
+      animate,
+      isSoloPlayerWinner,
+      hasHighlights,
+    },
+  });
+
   return (
     <div
       ref={wrapperRef}
