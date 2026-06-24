@@ -41,7 +41,7 @@ import {
 } from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
-import { useNeutralInterstitialCommitted } from "@/lib/canonicalShell/neutralInterstitialCommitSignal";
+
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { useHolmLifecycleTrace } from "@/lib/holm/holmLifecycleTrace";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
