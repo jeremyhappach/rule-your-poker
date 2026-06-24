@@ -20,6 +20,7 @@ import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+import { setNeutralInterstitialCommitted } from './neutralInterstitialCommitSignal';
 
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
