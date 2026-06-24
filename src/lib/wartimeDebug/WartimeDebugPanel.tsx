@@ -259,6 +259,7 @@ export function WartimeDebugPanel() {
               onClick={() => downloadHolmPostWinHandoffTxt()}
             >
               HANDOFF.TXT
+            </button>
             <label
               className="flex shrink-0 items-center gap-1 rounded border border-border bg-muted px-1.5 py-1 text-[9px]"
               title="When OFF, exports include the FULL retained ring buffer regardless of filter chips/text. When ON, exports only what the panel currently shows."
