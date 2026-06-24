@@ -403,6 +403,15 @@ function RoundRowControls({
   showDyn: boolean;
   onChange: (next: RoundRowConfig) => void;
 }) {
+  // R1 contract: dynamic resolver and explicit static px sizing are
+  // mutually exclusive. When dyn is enabled the static size/overlap
+  // inputs are inactive; editing any static value auto-disables dyn so
+  // the user's explicit values persist through mount/resize/showdown.
+  const dynActive = showDyn && cfg.dyn.enabled;
+  const disableDynIfActive = (next: RoundRowConfig): RoundRowConfig =>
+    showDyn && next.dyn.enabled
+      ? { ...next, dyn: { ...next.dyn, enabled: false } }
+      : next;
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -414,11 +423,13 @@ function RoundRowControls({
       </p>
       <CardSizeControls
         cfg={cfg.size}
-        onChange={(size) => onChange({ ...cfg, size })}
+        disabled={dynActive}
+        onChange={(size) => onChange(disableDynIfActive({ ...cfg, size }))}
       />
       <OverlapControls
         cfg={cfg.overlap}
-        onChange={(overlap) => onChange({ ...cfg, overlap })}
+        disabled={dynActive}
+        onChange={(overlap) => onChange(disableDynIfActive({ ...cfg, overlap }))}
       />
       <FanControls cfg={cfg.fan} onChange={(fan) => onChange({ ...cfg, fan })} />
       {showDyn && (
