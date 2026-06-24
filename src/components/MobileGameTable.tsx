@@ -1804,6 +1804,8 @@ export const MobileGameTable = ({
     winnerPlayerId: string | null;
     winnerCardIndices: number[];
     winnerCommunityIndices: number[];
+    kickerPlayerIndices: number[];
+    kickerCommunityIndices: number[];
     soloVsChucky: boolean;
   };
   const [holmTerminalPresentation, setHolmTerminalPresentation] =
