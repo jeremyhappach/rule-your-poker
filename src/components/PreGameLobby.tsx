@@ -85,9 +85,10 @@ export const PreGameLobby = ({
                     <p className="text-amber-100 font-semibold">
                       {player.profiles?.username || `Player ${player.position}`}
                     </p>
-                    {player.position === 1 && (
+                    {hostPlayer?.id === player.id && (
                       <Crown className="w-4 h-4 text-amber-400" />
                     )}
+
                     {player.user_id === currentUserId && (
                       <Badge variant="secondary" className="text-xs bg-amber-500 text-black border-0 font-bold">
                         You
