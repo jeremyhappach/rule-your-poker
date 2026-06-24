@@ -83,8 +83,37 @@ export function CardTransportProvider({
 
   const acceptOne = useCallback(
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
-      if (!intent || !intent.id) return false;
-      if (seenRef.current.has(intent.id)) return false;
+      if (!intent || !intent.id) {
+        ffRecord({
+          writerId: 'CardTransportProvider.tsx:acceptOne:L86',
+          source: 'CARD_TRANSPORT',
+          marker: 'CT_INTENT_REJECTED',
+          identity: { gameId, ownerInstanceId: 'CardTransportProvider' },
+          payload: {
+            reason: 'missing-id',
+            intentIdPresent: !!intent?.id,
+            intentPresent: !!intent,
+            activeCount: activeIntentsRef.current.length,
+          },
+        });
+        return false;
+      }
+      if (seenRef.current.has(intent.id)) {
+        ffRecord({
+          writerId: 'CardTransportProvider.tsx:acceptOne:L99',
+          source: 'CARD_TRANSPORT',
+          marker: 'CT_INTENT_REJECTED',
+          identity: { gameId, ownerInstanceId: 'CardTransportProvider' },
+          payload: {
+            reason: 'duplicate-id',
+            intentId: intent.id,
+            cardId: intent.cardId,
+            handContextId: intent.handContextId ?? null,
+            activeCount: activeIntentsRef.current.length,
+          },
+        });
+        return false;
+      }
       const now = performance.now();
       seenRef.current.add(intent.id);
       intentByIdRef.current.set(intent.id, intent);
@@ -101,13 +130,35 @@ export function CardTransportProvider({
         lifecycleState: 'active_visible',
         droppedReason: null,
       });
+      ffRecord({
+        writerId: 'CardTransportProvider.tsx:acceptOne:L119',
+        source: 'CARD_TRANSPORT',
+        marker: 'CT_INTENT_ACCEPTED',
+        identity: {
+          gameId,
+          ownerInstanceId: 'CardTransportProvider',
+          segmentId: intent.handContextId ?? null,
+        },
+        payload: {
+          intentId: intent.id,
+          cardId: intent.cardId,
+          face: intent.face,
+          from: describeCardEndpoint(intent.from),
+          to: describeCardEndpoint(intent.to),
+          handContextId: intent.handContextId ?? null,
+          enqueueSeq,
+          enqueuedAt: now,
+          priorActiveCount: activeIntentsRef.current.length,
+          nextActiveCount: activeIntentsRef.current.length + 1,
+        },
+      });
       setActiveIntents((prev) => [
         ...prev,
         { ...intent, enqueueSeq, enqueuedAt: now },
       ]);
       return true;
     },
-    [],
+    [gameId],
   );
 
   const dispatch = useCallback(
