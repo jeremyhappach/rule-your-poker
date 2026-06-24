@@ -307,6 +307,7 @@ const ANCHOR_PATTERNS: RegExp[] = [
   /HOLM_TERMINAL_LATCH_CONSUMER_DIFF/,
   /HOLM_POST_WIN_HANDOFF_PROBE/,
   /HOLM_POST_WIN_NEUTRAL_EXCLUSIVE/,
+  /HOLM_POST_WIN_NEUTRAL_STACK_VERDICT/,
   /slot-entered-neutral/,
   /slot-left-neutral/,
   /NeutralInterstitial/i,
