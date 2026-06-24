@@ -587,20 +587,33 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     })
     .eq('id', gameId);
 
-  // Always create a new round for each hand - unique round_id prevents stale card fetching
+  // ATOMIC INITIAL HAND PROVISIONING (P0 Run-Back contract item #3).
+  // The round MUST NOT be exposed as playable ('betting') until matching
+  // player_cards rows exist for every active seat. Sequence:
+  //   1. INSERT round at status='dealing' (pre-actionability; orchestrators
+  //      do not dispatch hands waves or arm timers).
+  //   2. BATCH INSERT player_cards for all active seats.
+  //   3. Verify card-row count equals active-seat count.
+  //   4. UPDATE round → status='betting' and set current_turn_position.
+  // Rollback (delete cards + round) on any failure so clients never observe
+  // a betting round with an incomplete card set — the exact Run-Back deadlock.
+  const fallbackAt = new Date(Date.now() + 20_000);
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
       game_id: gameId,
       round_number: nextRoundNumber,
       cards_dealt: 4,
-      status: 'betting',
+      status: 'dealing',
       pot: potForRound,
-      decision_deadline: deadline.toISOString(),
+      decision_deadline: null,
       community_cards_revealed: 2,
       community_cards: communityCards as any,
       chucky_active: false,
-      current_turn_position: buckPosition,
+      current_turn_position: null,
+      pending_turn_position: buckPosition,
+      presentation_generation: 0,
+      presentation_fallback_at: fallbackAt.toISOString(),
       hand_number: handNumber,
       dealer_game_id: dealerGameId
     })
@@ -619,12 +632,12 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
     throw new Error(`Failed to create round: ${roundError?.message}`);
   }
-  
+
   const roundId = round.id;
 
   // BATCH: Deal 4 cards to each player in a single insert
   const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
-  
+
   for (const player of players) {
     const playerCards = [
       deck[cardIndex++],
@@ -639,18 +652,61 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       cards: playerCards as any
     });
   }
-  
-  // Single batch insert for all player cards
+
   if (playerCardInserts.length > 0) {
     const { error: cardsError } = await supabase
       .from('player_cards')
       .insert(playerCardInserts);
-    
+
     if (cardsError) {
-      console.error('[HOLM] Error batch inserting cards:', cardsError);
+      console.error('[HOLM] Error batch inserting cards; rolling back round:', cardsError);
+      await supabase.from('player_cards').delete().eq('round_id', roundId);
+      await supabase.from('rounds').delete().eq('id', roundId);
       throw new Error(`Failed to deal cards: ${cardsError.message}`);
     }
-    console.log('[HOLM] Batch dealt cards to', playerCardInserts.length, 'players');
+
+    // Verify card-row count matches active-seat count BEFORE promoting to
+    // 'betting'. A short count means we'd expose a playable round with a
+    // missing self-hand.
+    const { count: verifiedCount, error: verifyError } = await supabase
+      .from('player_cards')
+      .select('player_id', { count: 'exact', head: true })
+      .eq('round_id', roundId);
+
+    if (verifyError || (verifiedCount ?? 0) !== playerCardInserts.length) {
+      console.error('[HOLM] Card-row verification failed; rolling back round', {
+        roundId,
+        expected: playerCardInserts.length,
+        actual: verifiedCount ?? 0,
+        verifyError: verifyError?.message,
+      });
+      await supabase.from('player_cards').delete().eq('round_id', roundId);
+      await supabase.from('rounds').delete().eq('id', roundId);
+      throw new Error('Card provisioning verification failed; rolled back');
+    }
+
+    console.log('[HOLM] Batch dealt + verified cards for', playerCardInserts.length, 'players');
+  }
+
+  // Promote round to actionability ONLY after cards are verified present.
+  const { error: promoteError } = await supabase
+    .from('rounds')
+    .update({
+      status: 'betting',
+      current_turn_position: buckPosition,
+      pending_turn_position: null,
+      decision_deadline: deadline.toISOString(),
+      presentation_fallback_at: null,
+      presentation_generation: 1,
+    })
+    .eq('id', roundId)
+    .eq('status', 'dealing');
+
+  if (promoteError) {
+    console.error('[HOLM] ERROR promoting round to betting; rolling back:', promoteError);
+    await supabase.from('player_cards').delete().eq('round_id', roundId);
+    await supabase.from('rounds').delete().eq('id', roundId);
+    throw new Error(`Failed to promote round: ${promoteError.message}`);
   }
 
   // Update game status AND current_round for Holm games
