@@ -1340,7 +1340,7 @@ export const MobileGameTable = ({
     pot,
     anteAmount,
     dealerPosition: dealerPosition ?? 1,
-    currentRoundId: horsesRoundId ?? null,
+    currentRound: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
     isPaused: isPaused ?? false,
@@ -1556,7 +1556,7 @@ export const MobileGameTable = ({
       cachedDealerGameId: cachedWinningResultRef.current.dealerGameId?.slice(0, 8) ?? null,
       currentDealerGameId: horsesDealerGameScope?.slice(0, 8) ?? null,
       cachedRoundId: cachedWinningResultRef.current.roundId?.slice(0, 8) ?? null,
-      currentRoundId: horsesRoundScope?.slice(0, 8) ?? null,
+      currentRound: horsesRoundScope?.slice(0, 8) ?? null,
       source: cachedWinningResultRef.current.source,
       description: cachedWinningResultRef.current.description,
     });
@@ -4869,6 +4869,128 @@ export const MobileGameTable = ({
     const result = getWinningCardIndices(winnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
   }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
+
+  // ──────────────────────────────────────────────────────────────────
+  // POST-WIN HOLM INTERVAL FORENSICS (narrow ownership-transition only)
+  // Window opens on result lock (isShowingAnnouncement || holmWinPotTriggerId).
+  // Window closes after both clear AND handContextId advances past the
+  // hand the window opened on. While open, every transition of the
+  // signals that own terminal presentation is recorded with prev → next.
+  // No periodic emit, no generic render spam.
+  // ──────────────────────────────────────────────────────────────────
+  const __postWinIntervalRef = useRef<{
+    open: boolean;
+    openedHci: string | null;
+    openedDealerGameId: string | null;
+    openedRoundId: string | null;
+    prev: Record<string, unknown>;
+  }>({ open: false, openedHci: null, openedDealerGameId: null, openedRoundId: null, prev: {} });
+  if (gameType === 'holm-game') {
+    try {
+      const stickyChucky = chuckyStageStickyRef.current;
+      const stickyTabled = tabledSelfStickyRef.current;
+      const stageSnap = lonePlayerStageSnapshotRef.current;
+      const winnerCardsFp = winnerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const selfFp = currentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const selectorSource = __mgtCurrentPlayerCardsSourceRef.current;
+      const renderBranch =
+        stickyTabled && (handContextId == null || stickyTabled.handContextId === handContextId) ? 'sticky' :
+        stageSnap && (handContextId == null || stageSnap.handContextId === handContextId) ? 'tabled' :
+        rawCurrentPlayerCards.length > 0 ? 'raw-active-hand' :
+        holmWinPotFrozenCardsRef.current.cards.length > 0 ? 'frozen-hand' :
+        'none';
+      const next: Record<string, unknown> = {
+        isShowingAnnouncement: !!isShowingAnnouncement,
+        holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        holmWinPotTriggerIdGated: holmWinPotTriggerIdGated ?? null,
+        winnerPlayerId: winnerPlayerId ?? null,
+        winnerCardsLen: winnerCards.length,
+        winnerCardsFp,
+        highlightsActive: winningCardHighlights.hasHighlights,
+        highlightsPlayerIdx: winningCardHighlights.playerIndices.join(','),
+        highlightsCommunityIdx: winningCardHighlights.communityIndices.join(','),
+        isCurrentPlayerSoloVsChucky,
+        shouldShowRabbitHuntLabel,
+        rabbitHuntLabelTopNotNull: rabbitHuntLabelTop !== null,
+        chuckyStickyHci: stickyChucky?.handContextId ?? null,
+        chuckyStickyCount: stickyChucky?.cards?.length ?? 0,
+        tabledStickyHci: stickyTabled?.handContextId ?? null,
+        tabledStickyCount: stickyTabled?.cards?.length ?? 0,
+        tabledStickyDealerGameId: stickyTabled?.dealerGameId ?? null,
+        stageSnapHci: stageSnap?.handContextId ?? null,
+        stageSnapCount: stageSnap?.cards?.length ?? 0,
+        stageSnapDealerGameId: stageSnap?.dealerGameId ?? null,
+        frozenTriggerId: holmWinPotFrozenCardsRef.current.triggerId,
+        frozenLen: holmWinPotFrozenCardsRef.current.cards.length,
+        frozenHci: holmWinPotFrozenCardsRef.current.handContextId,
+        selectorSource,
+        renderBranch,
+        selfLen: currentPlayerCards.length,
+        selfFp,
+        rawLen: rawCurrentPlayerCards.length,
+        rawFp,
+        handContextId: handContextId ?? null,
+        roundStatus,
+        chuckyVisualRevealComplete,
+        showdownModeLocked,
+        soloVsChuckyTableLocked,
+      };
+      const w = __postWinIntervalRef.current;
+      const shouldOpen = !w.open && (!!isShowingAnnouncement || !!holmWinPotTriggerId);
+      if (shouldOpen) {
+        w.open = true;
+        w.openedHci = handContextId ?? null;
+        w.openedDealerGameId = holmDealerGameId ?? null;
+        w.openedRoundId = currentRound ?? null;
+        w.prev = {};
+        ffRecord({
+          writerId: 'MobileGameTable.tsx:postWinIntervalForensics:OPEN',
+          source: 'HOLM_POST_WIN_INTERVAL',
+          marker: 'POST_WIN_INTERVAL_OPEN',
+          identity: { hci: w.openedHci, roundId: w.openedRoundId, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null },
+          payload: { reason: isShowingAnnouncement ? 'announcement' : 'winPotTrigger', snapshot: next },
+        });
+      }
+      if (w.open) {
+        const diff: Record<string, { prev: unknown; next: unknown }> = {};
+        for (const k of Object.keys(next)) {
+          if (w.prev[k] !== next[k]) diff[k] = { prev: w.prev[k] ?? null, next: next[k] };
+        }
+        if (Object.keys(diff).length > 0) {
+          ffRecord({
+            writerId: 'MobileGameTable.tsx:postWinIntervalForensics:DIFF',
+            source: 'HOLM_POST_WIN_INTERVAL',
+            marker: 'POST_WIN_INTERVAL_TRANSITION',
+            identity: {
+              hci: handContextId ?? null,
+              roundId: currentRound ?? null,
+              gameId: gameId ?? null,
+              playerId: currentPlayer?.id ?? null,
+              segmentId: w.openedHci,
+            },
+            payload: { diff, openedHci: w.openedHci, openedDealerGameId: w.openedDealerGameId },
+          });
+        }
+        w.prev = next;
+        // Close: both signals clear AND HCI advanced past the open HCI.
+        const bothClear = !isShowingAnnouncement && !holmWinPotTriggerId;
+        const hciAdvanced = w.openedHci != null && handContextId != null && handContextId !== w.openedHci;
+        if (bothClear && hciAdvanced) {
+          ffRecord({
+            writerId: 'MobileGameTable.tsx:postWinIntervalForensics:CLOSE',
+            source: 'HOLM_POST_WIN_INTERVAL',
+            marker: 'POST_WIN_INTERVAL_CLOSE',
+            identity: { hci: handContextId ?? null, roundId: currentRound ?? null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
+            payload: { reason: 'both-clear-and-hci-advanced', openedHci: w.openedHci, closedHci: handContextId ?? null },
+          });
+          w.open = false; w.openedHci = null; w.openedDealerGameId = null; w.openedRoundId = null; w.prev = {};
+        }
+      }
+    } catch { /* noop */ }
+  }
+
+
 
   // Detect Chucky chopped animation
   useEffect(() => {
@@ -8572,13 +8694,13 @@ export const MobileGameTable = ({
              const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
              const currentTurnId = horsesController.currentTurnPlayerId ?? null;
              const currentDealerGameId = horsesDealerGameId ?? null;
-             const currentRoundId = horsesRoundId ?? null;
+             const currentRound = horsesRoundId ?? null;
              // Only reuse cached node if we're still on the same turn.
              // If the current turn is briefly null during a transition, do NOT reuse the old node;
              // it can display the previous player's final dice.
              const sameTurn = currentTurnId !== null && currentTurnId === cached.turnPlayerId;
               const sameDealerGame = currentDealerGameId !== null && currentDealerGameId === cached.dealerGameId;
-              const sameRound = currentRoundId !== null && currentRoundId === cached.roundId;
+              const sameRound = currentRound !== null && currentRound === cached.roundId;
 
               return withinGrace && sameDealerGame && sameRound && sameTurn ? cached.node : null;
           };
