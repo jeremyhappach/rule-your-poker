@@ -139,7 +139,13 @@ All colors MUST be HSL.
        felt visibly narrower than the announcement rail on mobile, clipping
        the table perimeter on both edges. */
     --shell-felt-w:   min(100vw, 720px);
-    --shell-felt-h:   min(var(--shell-play-h-base), calc(var(--shell-felt-w) / 1.09));
+    /* Felt height derives from felt width through ONE canonical aspect
+       ratio (1.09). Do NOT cap by --shell-play-h-base — that produced
+       a flattened/distorted oval after the width fix because height was
+       still pinned to the old viewport-derived play region. The shell
+       play region remains the layout container; the felt is the ellipse
+       inside it and must keep its proportion at every width. */
+    --shell-felt-h:   calc(var(--shell-felt-w) / 1.09);
 
     /* Seat-safe clearance inside the play region. */
     --shell-seat-safe-bottom: max(8px, calc(var(--shell-play-h) * 0.04));
