@@ -896,16 +896,23 @@ export const PlayerHand = ({
       ? resolved357.three.fanStepDeg
       : 2;
   const isR1OpponentShowdownHost = is357R1ShowdownPath && !forceHiddenFaces;
+  const handRootRef = useRef<HTMLDivElement | null>(null);
+  const setHandRootRef = useCallback((el: HTMLDivElement | null) => {
+    handRootRef.current = el;
+    if (is357Game) measureRef.current = el;
+  }, [is357Game]);
+  useEffect(() => {
+    if (isR1OpponentShowdownHost) registerR1SnapbackHost(handRootRef.current);
+    else registerR1SnapbackHost(null);
+    return () => { registerR1SnapbackHost(null); };
+  }, [isR1OpponentShowdownHost]);
   return (
     <div
       className="flex"
-      ref={(el) => {
-        if (is357Game) measureRef.current = el;
-        if (isR1OpponentShowdownHost) registerR1SnapbackHost(el);
-        else if (!isR1OpponentShowdownHost) registerR1SnapbackHost(null);
-      }}
+      ref={setHandRootRef}
       data-357-r1-snapback-host={isR1OpponentShowdownHost ? '' : undefined}
     >
+
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
