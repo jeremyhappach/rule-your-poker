@@ -1377,7 +1377,10 @@ export type Database = {
           hand_number: number | null
           horses_state: Json | null
           id: string
+          pending_turn_position: number | null
           pot: number | null
+          presentation_fallback_at: string | null
+          presentation_generation: number
           round_number: number
           status: string
           yahtzee_state: Json | null
@@ -1400,7 +1403,10 @@ export type Database = {
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
+          pending_turn_position?: number | null
           pot?: number | null
+          presentation_fallback_at?: string | null
+          presentation_generation?: number
           round_number: number
           status?: string
           yahtzee_state?: Json | null
@@ -1423,7 +1429,10 @@ export type Database = {
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
+          pending_turn_position?: number | null
           pot?: number | null
+          presentation_fallback_at?: string | null
+          presentation_generation?: number
           round_number?: number
           status?: string
           yahtzee_state?: Json | null
@@ -1760,6 +1769,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_holm_round_after_deal_presentation: {
+        Args: {
+          _from_fallback?: boolean
+          _hand_context_id: string
+          _presentation_generation: number
+          _round_id: string
+        }
+        Returns: Json
+      }
       claim_horses_bot_controller: {
         Args: { _round_id: string }
         Returns: Json
