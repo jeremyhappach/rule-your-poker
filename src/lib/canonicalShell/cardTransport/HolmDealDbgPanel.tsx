@@ -69,6 +69,7 @@ import {
 } from './holmHandBoundaryForensics';
 import { buildHolmFullForensicsText } from './holmFullForensics';
 import { buildWartimeExportText } from '@/lib/wartimeDebug/core';
+import { downloadHolmPostWinHandoffTxt } from '@/lib/wartimeDebug/holmPostWinHandoff';
 
 
 function fmt(v: unknown): string {
