@@ -470,15 +470,8 @@ function IrrelevantPairControls({
             onChange={(v) => patch({ grayscalePct: v })}
           />
         </div>
-        <div className="space-y-1">
-          <Label>Inter-row gap (px)</Label>
-          <NumInput
-            value={cfg.interRowGapPx}
-            min={0}
-            onChange={(v) => patch({ interRowGapPx: v })}
-          />
-        </div>
       </div>
+
       <div className="space-y-1">
         <Label>Position mode</Label>
         <Select
