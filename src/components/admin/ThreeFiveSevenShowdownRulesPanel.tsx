@@ -107,6 +107,8 @@ import {
 import {
   DEFAULT_SHOWDOWN_RULES,
   LIVE_BASELINE,
+  SEAT_BELOW_STATIC_GAP_PX,
+  useRendererConsumedBelowChipGapPx,
   SHOWDOWN_RULES_STORAGE_KEY,
   loadShowdownRules,
   resolveShowdownRules,
@@ -595,12 +597,20 @@ function ParityAuditPanel() {
   const isSm = useIsSmBreakpoint();
   const live = useMemo(() => resolveShowdownRules(LIVE_BASELINE, isSm), [isSm]);
   const resolved = useMemo(() => resolveShowdownRules(lab, isSm), [lab, isSm]);
+  const rendererConsumedGap = useRendererConsumedBelowChipGapPx();
   const [copied, setCopied] = useState(false);
 
   const sections: { title: string; rows: ParityRow[] }[] = useMemo(() => {
+    // Renderer-consumed anchor gap. Reflects the EFFECTIVE gap the
+    // 3-5-7 opponent-showdown adapter actually applied to the DOM
+    // (seat-below static 2 px + adapter translateY delta). When no
+    // showdown adapter is currently mounted this falls back to the
+    // resolved Lab value, which is what the next mount will apply.
+    const rcGap = rendererConsumedGap ?? resolved.anchor.belowChipGapPx;
     const anchorRows: ParityRow[] = [
       { field: 'anchor.kind',           live: live.anchor.kind,           lab: resolved.anchor.kind },
-      { field: 'anchor.belowChipGapPx', live: live.anchor.belowChipGapPx, lab: resolved.anchor.belowChipGapPx },
+      { field: 'anchor.belowChipGapPx (config)',           live: live.anchor.belowChipGapPx, lab: resolved.anchor.belowChipGapPx },
+      { field: 'anchor.belowChipGapPx (renderer-consumed)', live: SEAT_BELOW_STATIC_GAP_PX, lab: rcGap },
     ];
     const irr = live.sevenIrrelevant;
     const irrLab = resolved.sevenIrrelevant;
@@ -623,7 +633,7 @@ function ParityAuditPanel() {
       { title: '7-card main row',    rows: buildRoundParityRows('seven', live.seven, resolved.seven) },
       { title: '7-card irrelevant pair', rows: irrelevantRows },
     ];
-  }, [live, resolved]);
+  }, [live, resolved, rendererConsumedGap]);
 
   const buildReport = (): string => {
     const lines: string[] = [];

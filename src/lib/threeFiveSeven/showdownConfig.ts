@@ -325,3 +325,42 @@ export function resolveShowdownRules(
     breakpoint: isSm ? 'sm' : 'mobile',
   };
 }
+
+// ─── Seat-below baseline & renderer-consumed reporter ─────────────────────
+//
+// CanonicalSeatCluster's `data-canonical-seat-below` wrapper hard-codes a
+// `mt-[2px]` gap from the chip cell. The 3-5-7 exposed-opponent showdown
+// adapter (ThreeFiveSevenOpponentShowdownGapAdapter) layers a translateY
+// of (gap - SEAT_BELOW_STATIC_GAP_PX) on top of that so the EFFECTIVE
+// renderer-consumed gap equals `resolved.anchor.belowChipGapPx`. At the
+// default value (2) the delta is 0 — pixel parity with the pre-migration
+// baseline. No other game's seat-below behavior changes.
+
+export const SEAT_BELOW_STATIC_GAP_PX = 2;
+
+type Listener = (value: number | null) => void;
+let _rendererConsumedBelowChipGapPx: number | null = null;
+const _listeners = new Set<Listener>();
+
+export function publishRendererConsumedBelowChipGapPx(value: number | null): void {
+  if (_rendererConsumedBelowChipGapPx === value) return;
+  _rendererConsumedBelowChipGapPx = value;
+  for (const l of _listeners) {
+    try { l(value); } catch { /* */ }
+  }
+}
+
+export function getRendererConsumedBelowChipGapPx(): number | null {
+  return _rendererConsumedBelowChipGapPx;
+}
+
+export function useRendererConsumedBelowChipGapPx(): number | null {
+  const [v, setV] = useState<number | null>(_rendererConsumedBelowChipGapPx);
+  useEffect(() => {
+    const cb: Listener = (val) => setV(val);
+    _listeners.add(cb);
+    setV(_rendererConsumedBelowChipGapPx);
+    return () => { _listeners.delete(cb); };
+  }, []);
+  return v;
+}
