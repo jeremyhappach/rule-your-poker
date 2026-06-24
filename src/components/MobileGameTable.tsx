@@ -3864,8 +3864,32 @@ export const MobileGameTable = ({
     }
 
     __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
+    if (gameType === 'holm-game') {
+      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const chosenFp = chosen.cards.map(c => `${c.rank}${c.suit}`).join('|');
+      const cachedRef = currentPlayerCardsRef.current;
+      ffRecord({
+        writerId: 'MobileGameTable.tsx:currentPlayerCardsMemo:L3866',
+        source: 'HOLM_SELF_HAND_LINEAGE',
+        marker: 'HOLM_SELF_HAND_SELECTOR_DECISION',
+        identity: { segmentId: handContextId ?? null, playerId: currentPlayer?.id ?? null },
+        payload: {
+          chosenSource: chosen.source,
+          chosenLength: chosen.cards.length,
+          chosenFingerprint: chosenFp,
+          rawLength: rawCurrentPlayerCards.length,
+          rawFingerprint: rawFp,
+          cachedLength: cachedRef.cards.length,
+          cachedHandContextId: cachedRef.handContextId,
+          activeHandContextId: handContextId ?? null,
+          isHandTransitioning,
+          roundStatus,
+          holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        },
+      });
+    }
     return chosen.cards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id]);
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
