@@ -52,6 +52,7 @@ import {
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
+import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -701,10 +702,14 @@ function GameSections(props: GameSectionsProps) {
       </CollapsibleSection>
 
       <CollapsibleSection title="Showdown Rules">
-        <p className="text-xs text-muted-foreground">
-          Future Geometry Lab work: showdown card ownership, placement,
-          visibility, and projection rules.
-        </p>
+        {props.game === "threeFiveSeven" ? (
+          <ThreeFiveSevenShowdownRulesPanel />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Future Geometry Lab work: showdown card ownership, placement,
+            visibility, and projection rules.
+          </p>
+        )}
       </CollapsibleSection>
     </div>
   );
