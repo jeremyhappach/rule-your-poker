@@ -161,17 +161,20 @@ function NumInput({
   value,
   step = 1,
   min,
+  disabled,
   onChange,
 }: {
   value: number;
   step?: number;
   min?: number;
+  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   return (
     <Input
       type="number"
       step={step}
+      disabled={disabled}
       value={Number.isFinite(value) ? Number(value.toFixed(6)) : 0}
       onChange={(e) => {
         const n = Number(e.target.value);
