@@ -10,6 +10,7 @@ interface Player {
   position: number;
   status: string;
   is_bot: boolean;
+  created_at?: string | null;
   profiles?: {
     username: string;
   };
@@ -31,7 +32,19 @@ export const PreGameLobby = ({
   canStart 
 }: PreGameLobbyProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  const isCreator = currentPlayer?.position === 1;
+  // Canonical host predicate (single source of truth, shared with
+  // useWaitingRoomActions): the earliest-joined human player is the host.
+  // Previously this component used `position === 1`, which silently
+  // diverged from the canonical hook and could hide Add Bot / Start Game
+  // for the real host whenever they were not seated at position 1.
+  const humanPlayers = players.filter(p => !p.is_bot);
+  const sortedHumans = [...humanPlayers].sort((a, b) => {
+    if (!a.created_at || !b.created_at) return 0;
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+  const hostPlayer = sortedHumans[0];
+  const isCreator = !!currentPlayer && hostPlayer?.user_id === currentUserId;
+
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-8">
@@ -72,9 +85,10 @@ export const PreGameLobby = ({
                     <p className="text-amber-100 font-semibold">
                       {player.profiles?.username || `Player ${player.position}`}
                     </p>
-                    {player.position === 1 && (
+                    {hostPlayer?.id === player.id && (
                       <Crown className="w-4 h-4 text-amber-400" />
                     )}
+
                     {player.user_id === currentUserId && (
                       <Badge variant="secondary" className="text-xs bg-amber-500 text-black border-0 font-bold">
                         You

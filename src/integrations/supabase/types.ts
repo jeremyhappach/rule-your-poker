@@ -1814,6 +1814,10 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      start_holm_initial_hand: {
+        Args: { _game_id: string; _skip_ante_collection?: boolean }
+        Returns: Json
+      }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
     }
