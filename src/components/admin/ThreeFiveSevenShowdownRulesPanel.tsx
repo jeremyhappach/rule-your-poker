@@ -633,7 +633,7 @@ function ParityAuditPanel() {
       { title: '7-card main row',    rows: buildRoundParityRows('seven', live.seven, resolved.seven) },
       { title: '7-card irrelevant pair', rows: irrelevantRows },
     ];
-  }, [live, resolved]);
+  }, [live, resolved, rendererConsumedGap]);
 
   const buildReport = (): string => {
     const lines: string[] = [];
