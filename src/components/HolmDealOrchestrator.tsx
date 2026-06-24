@@ -441,6 +441,21 @@ export function HolmDealOrchestrator({
     });
     const dispatchAtC = performance.now();
     for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'community', holmDbgEndpoint(intent.to), dispatchAtC);
+    intents.forEach((intent, i) => {
+      recordCommunityTransport({
+        writerId: 'HolmDealOrchestrator.tsx:communityWave:perIntentDispatch',
+        handContextId,
+        slotIndex: i,
+        cardId: intent.cardId,
+        intentId: (intent as { id?: string }).id ?? null,
+        sourceEndpoint: 'dealer-seat',
+        destEndpoint: holmDbgEndpoint(intent.to),
+        launchAt: dispatchAtC,
+        dealPhase: 'DEALING',
+        waveStatus: 'dispatched',
+        slotRenderEligible: true,
+      });
+    });
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, communityCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
