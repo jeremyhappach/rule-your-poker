@@ -36,7 +36,42 @@
  *                                      episode; cite source-level reason
  */
 
-import { recordWartime } from '@/lib/wartimeDebug/core';
+import {
+  recordWartime,
+  isWartimeEnabled,
+  setWartimeEnabled,
+  isWartimeRecording,
+  startWartimeRecording,
+  buildWartimeExportText,
+} from '@/lib/wartimeDebug/core';
+
+// ---------------------------------------------------------------------
+// Auto-arm bridge: Full Holm Forensics owns its activation.
+// Installing this module immediately enables + starts the single
+// wartime recorder and keeps it armed across app/route/table/dealer-game
+// /HCI/component boundaries. No manual toggle, no panel button, no
+// separate buffer. Idempotent: re-arms if anything stops recording.
+// ---------------------------------------------------------------------
+let _ffArmedOnce = false;
+let _ffArmReason: string = 'pending';
+
+export function ensureFullHolmForensicsArmed(reason: string = 'module-init'): void {
+  try {
+    if (!isWartimeEnabled()) setWartimeEnabled(true);
+    if (!isWartimeRecording()) {
+      startWartimeRecording();
+      _ffArmReason = reason;
+    }
+    _ffArmedOnce = true;
+  } catch { /* noop */ }
+}
+
+// Arm at module load. Any import of ffRecord / ffArmTimerBarSampler /
+// ffStartEpisode pulls this side-effect in.
+if (typeof window !== 'undefined') {
+  ensureFullHolmForensicsArmed('module-init');
+}
+
 
 // ---------------------------------------------------------------------
 // Wartime adapter
@@ -67,6 +102,11 @@ export interface FfRecordArgs {
  */
 export function ffRecord(args: FfRecordArgs): void {
   try {
+    // Self-heal: if anything (HMR, manual stop, disable on storage event)
+    // stopped recording, re-arm before writing.
+    if (!isWartimeEnabled() || !isWartimeRecording()) {
+      ensureFullHolmForensicsArmed('ffRecord-self-heal');
+    }
     recordWartime('GAMEPLAY', args.marker, {
       writerId: args.writerId,
       source: args.source,
@@ -392,7 +432,33 @@ function buildCoverageMapText(): string {
 }
 
 export function buildHolmFullForensicsText(): string {
-  return buildCoverageMapText() + '\n\n(Chronological event chain lives in the Wartime Debug Panel export — single source of truth.)\n';
+  // Hard gate: if FHF could not arm the unified recorder, do not emit a
+  // coverage map + empty event stream. Surface the exact reason instead.
+  const enabled = isWartimeEnabled();
+  const recording = isWartimeRecording();
+  if (!_ffArmedOnce || !enabled || !recording) {
+    const reason = !_ffArmedOnce
+      ? 'ensureFullHolmForensicsArmed() never ran (module not imported on this client / SSR-only context).'
+      : !enabled
+        ? 'wartime recorder is disabled (_enabled=false) — auto-arm failed or was overridden by another tab via storage event.'
+        : 'wartime recorder enabled but not recording (_recording=false) — startWartimeRecording() did not take.';
+    return [
+      'FULL_FORENSICS_NOT_ARMED',
+      `reason: ${reason}`,
+      `state: armedOnce=${_ffArmedOnce} enabled=${enabled} recording=${recording} lastArmReason=${_ffArmReason}`,
+      '',
+      '(Coverage map and event stream withheld — export would be misleading.)',
+    ].join('\n');
+  }
+  // Armed: include coverage map AND the live wartime event stream so the
+  // FHF export is self-contained. No second buffer; this just re-formats
+  // the single recordWartime ring.
+  return (
+    buildCoverageMapText() +
+    `\n\nFULL_FORENSICS_ARMED (armReason=${_ffArmReason})\n\n` +
+    '--- WARTIME EVENT STREAM (single recordWartime ring, up to 25k) ---\n' +
+    buildWartimeExportText()
+  );
 }
 
 /** Back-compat shim. Returns coverage map + empty events (events live in wartime). */
