@@ -134,7 +134,11 @@ All colors MUST be HSL.
        chip anchors, spotlight, and descriptor geometry pixel-
        identical across every safe-area value.
        ───────────────────────────────────────────────────────────── */
-    --shell-felt-w:   min(94vw, 720px);
+    /* Felt width MUST match the shell HUD width (which uses 100% of the
+       shell column / viewport). Previously capped at 94vw, which made the
+       felt visibly narrower than the announcement rail on mobile, clipping
+       the table perimeter on both edges. */
+    --shell-felt-w:   min(100vw, 720px);
     --shell-felt-h:   min(var(--shell-play-h-base), calc(var(--shell-felt-w) / 1.09));
 
     /* Seat-safe clearance inside the play region. */
