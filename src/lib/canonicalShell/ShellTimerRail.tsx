@@ -72,6 +72,8 @@ export function ShellTimerProvider({ children }: { children: React.ReactNode }) 
   const [state, setState] = useState<ShellTimerState | null>(null);
   const registrationsRef = useRef<Map<number, ShellTimerState>>(new Map());
   const register = useCallback<ShellTimerRegister>((registrationId, next) => {
+    const sizeBefore = registrationsRef.current.size;
+    const hadId = registrationsRef.current.has(registrationId);
     if (next) {
       registrationsRef.current.delete(registrationId);
       registrationsRef.current.set(registrationId, next);
@@ -79,7 +81,29 @@ export function ShellTimerProvider({ children }: { children: React.ReactNode }) 
       registrationsRef.current.delete(registrationId);
     }
     const registrations = Array.from(registrationsRef.current.values());
-    setState(registrations[registrations.length - 1] ?? null);
+    const resolved = registrations[registrations.length - 1] ?? null;
+    ffRecord({
+      writerId: 'ShellTimerProvider:register',
+      source: 'TIMER_PROVIDER',
+      marker: next
+        ? (hadId ? 'SHELL_TIMER_PROVIDER_REGISTER_UPDATE' : 'SHELL_TIMER_PROVIDER_REGISTER')
+        : 'SHELL_TIMER_PROVIDER_UNREGISTER',
+      identity: { ownerInstanceId: `reg:${registrationId}` },
+      payload: {
+        registrationId,
+        sizeBefore,
+        sizeAfter: registrationsRef.current.size,
+        duplicateRegistration: hadId && !!next,
+        nextState: next ? {
+          secondsRemaining: next.secondsRemaining,
+          totalSeconds: next.totalSeconds,
+          paused: !!next.paused,
+          identityKey: next.identityKey ?? null,
+        } : null,
+        resolvedRegistrationId: resolved ? Array.from(registrationsRef.current.keys()).slice(-1)[0] : null,
+      },
+    });
+    setState(resolved);
   }, []);
   return (
     <ShellTimerRegisterContext.Provider value={register}>
@@ -117,9 +141,34 @@ export function useShellTimer(state: ShellTimerState | null): void {
   useEffect(() => {
     if (!register) return;
     if (!effectiveState) {
+      ffRecord({
+        writerId: 'useShellTimer:effect',
+        source: 'TIMER_HOOK',
+        marker: 'SHELL_TIMER_HOOK_CLEAR',
+        identity: { ownerInstanceId: `reg:${registrationIdRef.current}` },
+        payload: { signature, blocked357State, dealPhase: deal?.phase ?? null },
+      });
       register(registrationIdRef.current!, null);
       return;
     }
+    ffRecord({
+      writerId: 'useShellTimer:effect',
+      source: 'TIMER_HOOK',
+      marker: 'SHELL_TIMER_HOOK_CALL',
+      identity: {
+        ownerInstanceId: `reg:${registrationIdRef.current}`,
+        reactKey: effectiveState.identityKey ?? null,
+        playerId: effectiveState.activePlayerId ?? null,
+      },
+      payload: {
+        signature,
+        secondsRemaining: effectiveState.secondsRemaining,
+        totalSeconds: effectiveState.totalSeconds,
+        paused: !!effectiveState.paused,
+        dealPhase: deal?.phase ?? null,
+        blocked357State,
+      },
+    });
     register(registrationIdRef.current!, effectiveState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register, signature]);
@@ -139,6 +188,13 @@ export function useShellTimer(state: ShellTimerState | null): void {
   }, [blocked357State, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, state]);
   useEffect(() => {
     return () => {
+      ffRecord({
+        writerId: 'useShellTimer:unmount',
+        source: 'TIMER_HOOK',
+        marker: 'SHELL_TIMER_HOOK_UNREGISTER',
+        identity: { ownerInstanceId: `reg:${registrationIdRef.current}` },
+        payload: {},
+      });
       register?.(registrationIdRef.current!, null);
     };
   }, [register]);
