@@ -4901,10 +4901,8 @@ export const MobileGameTable = ({
   // from the snapshot's selfCards (the tabled winner cards captured
   // at result lock). This is the source the highlight + tabled-stage
   // renderers consume.
-  const winnerCards =
-    terminalPresentationActive && holmTerminalPresentation
-      ? holmTerminalPresentation.selfCards
-      : _rawWinnerCards;
+  const winnerCards = _rawWinnerCards;
+
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
