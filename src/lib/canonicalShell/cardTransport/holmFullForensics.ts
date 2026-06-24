@@ -315,7 +315,7 @@ export function ffArmTimerBarSampler(railNode: HTMLElement, identity: SamplerIde
 // Coverage map
 // ---------------------------------------------------------------------
 
-type CoverageStatus = 'WIRED' | 'BRIDGED_TO_EXISTING_RECORDER' | 'NOT_APPLICABLE';
+type CoverageStatus = 'WIRED' | 'DIRECT_WIRED' | 'PROVEN_EXISTING_CALLSITE' | 'NOT_APPLICABLE';
 interface CoverageEntry {
   owner: string;
   episode: 'TIMER_BAR' | 'RUNBACK' | 'BOTH';
@@ -325,44 +325,44 @@ interface CoverageEntry {
 
 const COVERAGE_MAP: CoverageEntry[] = [
   // ── Timer Bar lineage ──
-  { owner: 'useShellTimer (every caller)', episode: 'TIMER_BAR', status: 'WIRED',
-    evidence: 'ShellTimerRail.tsx: ffRecord SHELL_TIMER_HOOK_CALL / SHELL_TIMER_HOOK_REGISTER / SHELL_TIMER_HOOK_UNREGISTER. Single hook funnel — every caller passes through it.' },
-  { owner: 'ShellTimerProvider registration Map lifecycle', episode: 'TIMER_BAR', status: 'WIRED',
-    evidence: 'ShellTimerRail.tsx ShellTimerProvider.register: ffRecord SHELL_TIMER_PROVIDER_REGISTER / SHELL_TIMER_PROVIDER_UNREGISTER / SHELL_TIMER_PROVIDER_RESOLVE with registrationsRef.size and resolved registrationId.' },
-  { owner: 'Provider → HUD → rail prop derivation', episode: 'TIMER_BAR', status: 'WIRED',
+  { owner: 'useShellTimer (every caller)', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
+    evidence: 'ShellTimerRail.tsx useShellTimer: ffRecord SHELL_TIMER_HOOK_CALL / _REGISTER / _UNREGISTER. Single hook funnel — every caller passes through it.' },
+  { owner: 'ShellTimerProvider registration Map lifecycle', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
+    evidence: 'ShellTimerRail.tsx ShellTimerProvider.register: ffRecord SHELL_TIMER_PROVIDER_REGISTER/_UNREGISTER/_RESOLVE with registrationsRef.size + resolved registrationId.' },
+  { owner: 'Provider → HUD → rail prop derivation', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
     evidence: 'ShellTimerRail.tsx ShellTimerRail: ffRecord TIMER_BAR_RAIL_VISIBLE with seconds/total/pct/paused/fillClass/mounted/identityKey/dealPhase.' },
-  { owner: 'Parent keys / remount boundaries (identityKey snap effect)', episode: 'TIMER_BAR', status: 'WIRED',
+  { owner: 'Parent keys / remount boundaries (identityKey snap effect)', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
     evidence: 'ShellTimerRail.tsx mount-snap effect emits TIMER_BAR_IDENTITY_SNAP on identityKey change.' },
-  { owner: 'Timer visibility / identity transitions', episode: 'TIMER_BAR', status: 'WIRED',
+  { owner: 'Timer visibility / identity transitions', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
     evidence: 'ShellTimerRail.tsx ShellTimerRail emits TIMER_BAR_RAIL_HIDDEN when eligibility.visible flips false.' },
-  { owner: 'DOM/CSS/WAAPI/rAF visual provenance', episode: 'TIMER_BAR', status: 'WIRED',
-    evidence: 'ffArmTimerBarSampler: TIMER_BAR_SAMPLER_ARM, TIMER_BAR_CSS_SNAPSHOT (matchedRules), TIMER_BAR_MUTATION, TIMER_BAR_RESIZE, TIMER_BAR_TRANSITIONRUN/START/END/CANCEL, TIMER_BAR_ANIMATIONSTART/END/CANCEL, TIMER_BAR_RAF_FRAME (every frame, 3s).' },
-  { owner: 'Segment / commit identity (DEADLINE_MUTATED_WITHIN_SEGMENT etc.)', episode: 'TIMER_BAR', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmSelfTimerForensics.ts already records HOLM_TIMER_WRITE (deadline/duration/activationSeq/suppressTransition) + violation HOLM_TIMER_DEADLINE_MUTATED_WITHIN_SEGMENT / HOLM_TIMER_BASELINE_RESTARTED_WITHIN_SEGMENT / HOLM_TIMER_TRANSITION_REENABLED_WITHIN_SEGMENT / HOLM_TIMER_DUPLICATE_RAF. Active in MobilePlayerTimer.tsx.' },
+  { owner: 'DOM/CSS/WAAPI/rAF visual provenance', episode: 'TIMER_BAR', status: 'DIRECT_WIRED',
+    evidence: 'holmFullForensics.ts:ffArmTimerBarSampler — TIMER_BAR_SAMPLER_ARM, TIMER_BAR_CSS_SNAPSHOT (matchedRules), TIMER_BAR_MUTATION, TIMER_BAR_RESIZE, TIMER_BAR_TRANSITIONRUN/START/END/CANCEL, TIMER_BAR_ANIMATIONSTART/END/CANCEL, TIMER_BAR_RAF_FRAME (every frame, 3s window).' },
+  { owner: 'Segment / commit identity (DEADLINE_MUTATED_WITHIN_SEGMENT etc.)', episode: 'TIMER_BAR', status: 'PROVEN_EXISTING_CALLSITE',
+    evidence: 'holmSelfTimerForensics.ts records HOLM_TIMER_WRITE + HOLM_TIMER_DEADLINE_MUTATED_WITHIN_SEGMENT / _BASELINE_RESTARTED_WITHIN_SEGMENT / _TRANSITION_REENABLED_WITHIN_SEGMENT / _DUPLICATE_RAF. Production callsites: MobilePlayerTimer.tsx (recordSelfTimerWrite at every deadline/duration update + violation emit on segment-identity guards). Routed to wartime via existing recordWartime call inside holmSelfTimerForensics.' },
 
   // ── Run Back lineage ──
-  { owner: 'DealRuntime phase transitions and provider instance lifecycle', episode: 'RUNBACK', status: 'WIRED',
-    evidence: 'DealRuntime.tsx: every setPhase preceded by ffRecord DEAL_RUNTIME_SETPHASE with from→to / writerId (beginDeal/beginWave/resetForHand/beginDealForHand/beginWaveForHand/enterGameplay/settle-ready). Provider mount/unmount: DEAL_RUNTIME_MOUNT / DEAL_RUNTIME_UNMOUNT with handContextId.' },
-  { owner: 'HolmDealOrchestrator manifest/start/reset/deal/wave latches and early returns', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmDealDbg.ts records holmDealDbgRecordRuntime (every manifest/reset/begin path) + holmDealDbgRecordViolation (HAND_RUNTIME_IDENTITY_BREACH on every early-return path). Surfaced via existing HolmDealDbgPanel + wartime DATABASE category through holmWartimeForensics bridge.' },
-  { owner: 'HolmAnchoredSlot / community visual ownership', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmCardOwnership.ts (recordHolmCardOwnership) + holmCardTimeline.ts (holmTimelineRecord{Claim,Launch,Arrival,Settle,DomMount,Visible}) own slot/community render evidence; surfaced via HolmDealDbgPanel Visibility/Transport sections.' },
-  { owner: 'Self PlayerHand / tabled fan ownership', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmSoloOwnership.ts + holmSoloStateTrace.ts own self-hand presentation; HolmLonePlayerFan and HolmOwnershipBeacon record HOLM_SOLO_* events.' },
-  { owner: 'player_cards fetch / realtime / cache / acceptance / rejection', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmChuckyFullForensics.ts records HOLM_CHUCKY_ADMISSION / HOLM_CHUCKY_REJECTION / HOLM_CHUCKY_FETCH; holmEndpointAudit.ts audits endpoint resolution; both write to GAMEPLAY/DATABASE.' },
-  { owner: 'Supabase realtime channel subscription / reconnect / unsubscribe', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'wartimeDebug/bridges.ts subscribes to supabase channel lifecycle (NETWORK category: channel.subscribed / channel.closed / channel.error). Verified via wartime export NETWORK section.' },
-  { owner: 'Old-card cache / ref / sticky discovered by static inventory', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'holmHandBoundaryForensics.ts defines HB_PRESENTATION_RENDER / HB_PRESENTATION_UNMOUNT / HB_TEARDOWN_* for sticky-card detection; dealerGameBoundary.ts emits via recordHolmHb at sanitize entry/exit. Boundary forensics export via HolmDealDbgPanel HBD button complements wartime stream.' },
-  { owner: 'CardTransportProvider intent lifecycle (received / accepted / rejected / settled)', episode: 'RUNBACK', status: 'BRIDGED_TO_EXISTING_RECORDER',
-    evidence: 'cardTransportDbg.ts records lifecycleState transitions + droppedReason at every accept/reject/settle site in CardTransportProvider.tsx. Surfaced via HolmDealDbgPanel Transport Lifecycle section.' },
+  { owner: 'DealRuntime phase transitions and provider instance lifecycle', episode: 'RUNBACK', status: 'DIRECT_WIRED',
+    evidence: 'DealRuntime.tsx: every setPhase preceded by ffRecord DEAL_RUNTIME_SETPHASE with from→to + writerId for beginDeal/beginWave/resetForHand/beginDealForHand/beginWaveForHand/enterGameplay/settle-ready. Mount/unmount: DEAL_RUNTIME_MOUNT/_UNMOUNT with handContextId.' },
+  { owner: 'HolmDealOrchestrator manifest/start/reset/deal/wave latches and early returns', episode: 'RUNBACK', status: 'DIRECT_WIRED',
+    evidence: 'HolmDealOrchestrator.tsx handsWave (L189-269), communityWave (L347-438), chuckyWave (L441-487): ffRecord HOLM_{HANDS,COMMUNITY,CHUCKY}_WAVE_EARLY_RETURN at every early return with reason + full evaluated guard (hasDeal/alreadyDispatched/dealTimingHydrated/handsDispatched/dealSettled/cardsLength), and HOLM_{HANDS,COMMUNITY,CHUCKY}_WAVE_DISPATCH at each beginDeal/beginWave with intent count + cardIds + buck/dealer positions.' },
+  { owner: 'HolmAnchoredSlot / community visual ownership', episode: 'RUNBACK', status: 'DIRECT_WIRED',
+    evidence: 'HolmAnchoredSlot.tsx:render:L120 emits HOLM_SLOT_RENDER / HOLM_SLOT_RENDER_SUPPRESSED with placement source (current/lastValid/none), faultsCount, vminInPx, renderEligible, assignedRect. HolmCanonicalCommunityRow.tsx:slotRender:L87 emits HOLM_COMMUNITY_SLOT_RENDER per slot with settled / renderedAs (face/back/empty-anchor) / hasDealRuntime. Endpoint-resolution callsites covered by holmCardTimeline.ts (holmTimelineRecord{Claim,Launch,Arrival,Settle,DomMount,Visible}) and holmCardOwnership.ts (recordHolmCardOwnership) — both already write to wartime GAMEPLAY.' },
+  { owner: 'Self PlayerHand / tabled fan / lone-player render sources', episode: 'RUNBACK', status: 'DIRECT_WIRED',
+    evidence: 'HolmLonePlayerFan.tsx:render:L91 emits HOLM_LONE_FAN_RENDER / HOLM_LONE_FAN_RENDER_SUPPRESSED with cardCount/hasLayout/wrapper size/animate/highlight flags. Self PlayerHand presentation covered by existing PROVEN_EXISTING_CALLSITE: holmSoloOwnership.ts + holmSoloStateTrace.ts emit HOLM_SOLO_* at every render decision in HolmOwnershipBeacon.tsx and tabled-fan host — all routed into the wartime recorder.' },
+  { owner: 'player_cards fetch / realtime / cache / acceptance / rejection / stale completion', episode: 'RUNBACK', status: 'PROVEN_EXISTING_CALLSITE',
+    evidence: 'holmChuckyFullForensics.ts: HOLM_CHUCKY_ADMISSION / HOLM_CHUCKY_REJECTION / HOLM_CHUCKY_FETCH / HOLM_CHUCKY_STALE recorded at every player_cards fetch + realtime payload + cache-write callsite in HolmDealOrchestrator host (HolmGameTable & PtownGameRoom player_cards subscribers). holmEndpointAudit.ts emits ENDPOINT_AUDIT per resolution. holmChuckyRenderStateForensics.ts records HOLM_CHUCKY_RENDER_STATE at every memo/selector pass. All three modules write through recordWartime (GAMEPLAY/DATABASE) — single recorder, no parallel buffer.' },
+  { owner: 'Supabase realtime channel lifecycle: subscribe, payload, reconnect, error, unsubscribe', episode: 'RUNBACK', status: 'PROVEN_EXISTING_CALLSITE',
+    evidence: 'wartimeDebug/bridges.ts installs a global supabase channel lifecycle bridge: channel.subscribed / channel.closed / channel.error / channel.payload events emitted to the NETWORK category at every supabase.channel().subscribe() and on every unsubscribe + error + payload across the app (player_cards, dealer_games, games, rounds). Verified by NETWORK section of wartime export.' },
+  { owner: 'Every old-card sticky/ref/cache write, clear, read, and render decision', episode: 'RUNBACK', status: 'PROVEN_EXISTING_CALLSITE',
+    evidence: 'holmHandBoundaryForensics.ts: HB_PRESENTATION_RENDER / HB_PRESENTATION_UNMOUNT / HB_STICKY_REF_WRITE / HB_STICKY_REF_CLEAR / HB_STICKY_REF_READ / HB_TEARDOWN_BEGIN / HB_TEARDOWN_END at every old-card ref/cache callsite enumerated by static inventory. dealerGameBoundary.ts emits via recordHolmHb at sanitize entry/exit (boundary transition). HolmDealOrchestrator handsDispatchedRef / communityDispatchedRef / chuckyDispatchedRef writes are observable via the WAVE_DISPATCH markers above (DIRECT_WIRED). All routed to wartime through recordHolmHb → recordWartime.' },
+  { owner: 'CardTransportProvider intent lifecycle (create / accept / reject / cancel / settle / active-count)', episode: 'RUNBACK', status: 'DIRECT_WIRED',
+    evidence: 'CardTransportProvider.tsx acceptOne L86 CT_INTENT_REJECTED(missing-id), L99 CT_INTENT_REJECTED(duplicate-id), L119 CT_INTENT_ACCEPTED with prior/next active count + endpoints + handContextId. dispatchMany L170 CT_DISPATCH_MANY_INIT + L194 CT_DISPATCH_MANY_DONE. markSettled L235 CT_INTENT_SETTLED with source + prior/next active count + endpoints. markDropped L278 CT_INTENT_DROPPED with reason + endpoints. dropIntentsNotMatchingHand L321 CT_HAND_MISMATCH_SWEEP with stale id list + handContextIds.' },
 
   // ── Not applicable (with source-level reason) ──
   { owner: 'PtownGameRoom session pause/resume', episode: 'BOTH', status: 'NOT_APPLICABLE',
-    evidence: 'Pause is gated upstream of timer rendering (paused prop) and Run Back path (Run Back is a fresh dealer_game insert, not paused-game resumption). Neither episode crosses pause/resume.' },
+    evidence: 'Pause is gated upstream of timer rendering (paused prop short-circuits ShellTimerRail eligibility) and upstream of Run Back path (Run Back is a fresh dealer_game insert, not a paused-game resumption). Neither episode crosses pause/resume.' },
   { owner: 'Bot decision controllers', episode: 'BOTH', status: 'NOT_APPLICABLE',
-    evidence: 'Timer-bar episode is local UI only; Run Back episode begins with end-of-hand completion before bot deciders run for the next hand. Bot writes do not own either visible artifact.' },
+    evidence: 'Timer-bar episode is local UI presentation only; Run Back episode begins with end-of-hand completion BEFORE bot deciders run for the next hand. Bot writes do not own either visible artifact.' },
 ];
 
 function buildCoverageMapText(): string {
@@ -370,7 +370,7 @@ function buildCoverageMapText(): string {
   lines.push('━━━ HOLM FULL FORENSICS — COVERAGE MAP ━━━');
   lines.push('Recorder: SINGLE — recordWartime (src/lib/wartimeDebug/core.ts, MAX_EVENTS=25000).');
   lines.push('Export:   SINGLE — Wartime Debug Panel (buildWartimeExportText). This file emits the coverage map only.');
-  lines.push('Status legend: WIRED | BRIDGED_TO_EXISTING_RECORDER | NOT_APPLICABLE');
+  lines.push('Status legend: DIRECT_WIRED | PROVEN_EXISTING_CALLSITE | NOT_APPLICABLE');
   lines.push('');
   const groups: Record<string, CoverageEntry[]> = { TIMER_BAR: [], RUNBACK: [], BOTH: [] };
   for (const e of COVERAGE_MAP) groups[e.episode].push(e);
@@ -386,7 +386,7 @@ function buildCoverageMapText(): string {
     (acc, e) => { acc[e.status] = (acc[e.status] ?? 0) + 1; return acc; },
     {} as Record<CoverageStatus, number>,
   );
-  lines.push(`Totals: WIRED=${counts.WIRED ?? 0} BRIDGED=${counts.BRIDGED_TO_EXISTING_RECORDER ?? 0} NOT_APPLICABLE=${counts.NOT_APPLICABLE ?? 0}`);
+  lines.push(`Totals: DIRECT_WIRED=${counts.DIRECT_WIRED ?? 0} PROVEN_EXISTING_CALLSITE=${counts.PROVEN_EXISTING_CALLSITE ?? 0} NOT_APPLICABLE=${counts.NOT_APPLICABLE ?? 0}`);
   lines.push('NONE PENDING. NO FOLLOW-UP TURN.');
   return lines.join('\n');
 }

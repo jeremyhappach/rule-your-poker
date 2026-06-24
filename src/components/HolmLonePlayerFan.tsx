@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 type Card = { rank: string; suit: string };
 
@@ -87,6 +88,21 @@ export function HolmLonePlayerFan({
           preferredOverlapRatio: count <= 3 ? 0 : 0.18,
         })
       : null;
+
+  ffRecord({
+    writerId: 'HolmLonePlayerFan.tsx:render:L91',
+    source: 'HOLM_LONE_PLAYER_FAN',
+    marker: layout ? 'HOLM_LONE_FAN_RENDER' : 'HOLM_LONE_FAN_RENDER_SUPPRESSED',
+    payload: {
+      cardCount: count,
+      hasLayout: !!layout,
+      wrapperW: size.w,
+      wrapperH: size.h,
+      animate,
+      isSoloPlayerWinner,
+      hasHighlights,
+    },
+  });
 
   return (
     <div

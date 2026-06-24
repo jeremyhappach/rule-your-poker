@@ -22,6 +22,7 @@ import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { resolveCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 
 interface HolmCanonicalCommunityRowProps {
   handContextId: string;
@@ -83,6 +84,21 @@ export function HolmCanonicalCommunityRow({
             const settled = deal ? deal.isSettled(cardId) : false;
             const showFace = i < 2;
             const card = cards[i];
+            ffRecord({
+              writerId: 'HolmCanonicalCommunityRow.tsx:slotRender:L87',
+              source: 'HOLM_COMMUNITY_ROW',
+              marker: 'HOLM_COMMUNITY_SLOT_RENDER',
+              identity: { segmentId: handContextId },
+              payload: {
+                slotIndex: i,
+                cardId,
+                settled,
+                showFace,
+                hasCard: !!card,
+                renderedAs: settled && showFace && card ? 'face' : settled ? 'back' : 'empty-anchor',
+                hasDealRuntime: !!deal,
+              },
+            });
             return (
               <div
                 key={i}
