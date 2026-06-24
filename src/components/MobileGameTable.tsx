@@ -3509,7 +3509,7 @@ export const MobileGameTable = ({
 
   // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
   // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
-  const shouldShowRabbitHuntLabel =
+  const _rawShouldShowRabbitHuntLabel =
     shouldShowHolmCommunityCards &&
     rabbitHunt &&
     stayedPlayersCount === 0 &&
@@ -3517,6 +3517,10 @@ export const MobileGameTable = ({
     !isSoloVsChucky &&
     revealedForRabbitUi > 2 &&
     !hasWinResult;
+  // Terminal-presentation latch: while held, rabbit-hunt UI must
+  // remain suppressed regardless of live state.
+  const shouldShowRabbitHuntLabel =
+    terminalPresentationActive ? false : _rawShouldShowRabbitHuntLabel;
 
   useLayoutEffect(() => {
     if (!shouldShowRabbitHuntLabel) {
