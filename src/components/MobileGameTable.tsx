@@ -1757,6 +1757,7 @@ export const MobileGameTable = ({
   // / player_cards momentarily flicker false.
   const lonePlayerStageSnapshotRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     playerId: string;
     cards: CardType[];
   } | null>(null);
@@ -1770,11 +1771,13 @@ export const MobileGameTable = ({
   // PLAYER_TO_POT exactly per the ownership contract.
   const tabledSelfStickyRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     playerId: string;
     cards: CardType[];
   } | null>(null);
   const chuckyStageStickyRef = useRef<{
     handContextId: string;
+    dealerGameId: string | null;
     cards: CardType[];
     revealedCount: number;
   } | null>(null);
