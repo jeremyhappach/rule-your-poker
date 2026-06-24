@@ -5322,6 +5322,82 @@ export const MobileGameTable = ({
     });
   });
 
+  // ── HOLM POST-WIN HANDOFF VISUAL PROBE ────────────────────────────
+  // Runs an rAF visual probe while the terminal latch is active OR the
+  // neutral interstitial commit signal is held. Emits HOLM_POST_WIN_
+  // HANDOFF_PROBE on every frame and exactly one HOLM_POST_WIN_NEUTRAL_
+  // EXCLUSIVE when neutral is visibly painted AND no old-Holm artifact
+  // is hit-test exposed. Capped at 6s per arm; re-arms on next latch.
+  const __holmHandoffExclusiveEmittedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!terminalPresentationActive && !neutralInterstitialCommittedForGame) return;
+    const armKey = `${gameId ?? ''}|${holmTerminalPresentation?.handContextId ?? ''}|${holmTerminalPresentation?.outcomeKey ?? ''}`;
+    if (__holmHandoffExclusiveEmittedRef.current !== armKey) {
+      // Reset exclusive latch on new arm.
+      __holmHandoffExclusiveEmittedRef.current = null;
+    }
+    let cancelled = false;
+    const start = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    let frame = 0;
+    const tick = () => {
+      if (cancelled) return;
+      frame += 1;
+      const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - start;
+      let probe: ReturnType<typeof probeHolmPostWinHandoff> | null = null;
+      try {
+        probe = probeHolmPostWinHandoff({
+          gameId: gameId ?? null,
+          handContextId: holmTerminalPresentation?.handContextId ?? null,
+        });
+      } catch { /* noop */ }
+      if (probe) {
+        ffRecord({
+          writerId: 'MobileGameTable:holmPostWinHandoffProbe',
+          source: 'HOLM_POST_WIN_HANDOFF',
+          marker: 'HOLM_POST_WIN_HANDOFF_PROBE',
+          identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
+          payload: {
+            frame,
+            elapsedMs: Math.round(elapsed),
+            terminalPresentationActive,
+            neutralInterstitialCommittedForGame,
+            neutralVisuallyPainted: probe.neutralVisuallyPainted,
+            oldHolmVisuallyExposed: probe.oldHolmVisuallyExposed,
+            exclusive: probe.exclusive,
+            neutral: probe.neutral,
+            oldHolm: probe.oldHolm,
+          },
+        });
+        if (probe.exclusive && __holmHandoffExclusiveEmittedRef.current !== armKey) {
+          __holmHandoffExclusiveEmittedRef.current = armKey;
+          ffRecord({
+            writerId: 'MobileGameTable:holmPostWinHandoffProbe',
+            source: 'HOLM_POST_WIN_HANDOFF',
+            marker: 'HOLM_POST_WIN_NEUTRAL_EXCLUSIVE',
+            identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
+            payload: {
+              frame,
+              elapsedMs: Math.round(elapsed),
+              armKey,
+              terminalPresentationActive,
+              neutralInterstitialCommittedForGame,
+              neutral: probe.neutral,
+              oldHolm: probe.oldHolm,
+            },
+          });
+        }
+      }
+      if (elapsed > 6000) return;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameType, terminalPresentationActive, neutralInterstitialCommittedForGame, gameId, holmTerminalPresentation?.outcomeKey]);
+
+
+
   // ──────────────────────────────────────────────────────────────────
   // POST-WIN HOLM INTERVAL FORENSICS (narrow ownership-transition only)
   // Window opens on result lock (isShowingAnnouncement || holmWinPotTriggerId).
