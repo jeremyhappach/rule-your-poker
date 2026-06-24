@@ -1120,28 +1120,34 @@ export type Database = {
         Row: {
           cards: Json
           created_at: string
+          hand_context_id: string | null
           id: string
           is_public: boolean
           player_id: string
           round_id: string
+          source_version: number
           visible_to_user_ids: string[] | null
         }
         Insert: {
           cards?: Json
           created_at?: string
+          hand_context_id?: string | null
           id?: string
           is_public?: boolean
           player_id: string
           round_id: string
+          source_version?: number
           visible_to_user_ids?: string[] | null
         }
         Update: {
           cards?: Json
           created_at?: string
+          hand_context_id?: string | null
           id?: string
           is_public?: boolean
           player_id?: string
           round_id?: string
+          source_version?: number
           visible_to_user_ids?: string[] | null
         }
         Relationships: [
@@ -1371,7 +1377,10 @@ export type Database = {
           hand_number: number | null
           horses_state: Json | null
           id: string
+          pending_turn_position: number | null
           pot: number | null
+          presentation_fallback_at: string | null
+          presentation_generation: number
           round_number: number
           status: string
           yahtzee_state: Json | null
@@ -1394,7 +1403,10 @@ export type Database = {
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
+          pending_turn_position?: number | null
           pot?: number | null
+          presentation_fallback_at?: string | null
+          presentation_generation?: number
           round_number: number
           status?: string
           yahtzee_state?: Json | null
@@ -1417,7 +1429,10 @@ export type Database = {
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
+          pending_turn_position?: number | null
           pot?: number | null
+          presentation_fallback_at?: string | null
+          presentation_generation?: number
           round_number?: number
           status?: string
           yahtzee_state?: Json | null
@@ -1754,6 +1769,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_holm_round_after_deal_presentation: {
+        Args: {
+          _from_fallback?: boolean
+          _hand_context_id: string
+          _presentation_generation: number
+          _round_id: string
+        }
+        Returns: Json
+      }
       claim_horses_bot_controller: {
         Args: { _round_id: string }
         Returns: Json
@@ -1790,6 +1814,10 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      start_holm_initial_hand: {
+        Args: { _game_id: string; _skip_ante_collection?: boolean }
+        Returns: Json
+      }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
     }
