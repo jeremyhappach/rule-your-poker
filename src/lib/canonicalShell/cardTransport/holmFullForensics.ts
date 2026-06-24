@@ -386,7 +386,7 @@ function buildCoverageMapText(): string {
     (acc, e) => { acc[e.status] = (acc[e.status] ?? 0) + 1; return acc; },
     {} as Record<CoverageStatus, number>,
   );
-  lines.push(`Totals: WIRED=${counts.WIRED ?? 0} BRIDGED=${counts.BRIDGED_TO_EXISTING_RECORDER ?? 0} NOT_APPLICABLE=${counts.NOT_APPLICABLE ?? 0}`);
+  lines.push(`Totals: DIRECT_WIRED=${counts.DIRECT_WIRED ?? 0} PROVEN_EXISTING_CALLSITE=${counts.PROVEN_EXISTING_CALLSITE ?? 0} NOT_APPLICABLE=${counts.NOT_APPLICABLE ?? 0}`);
   lines.push('NONE PENDING. NO FOLLOW-UP TURN.');
   return lines.join('\n');
 }
