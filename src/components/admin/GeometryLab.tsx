@@ -82,10 +82,14 @@ function stringifyOptional(v: number | undefined): string {
   return v == null ? "" : String(v);
 }
 
+type LabSelection = "__shell__" | GameKey;
+
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
 
-  const [game, setGame] = useState<GameKey>(GAME_KEYS[0]);
+  const [selection, setSelection] = useState<LabSelection>("__shell__");
+  const isShell = selection === "__shell__";
+  const game: GameKey = (isShell ? GAME_KEYS[0] : selection) as GameKey;
 
   // Enumerate anchored descriptors for the selected game directly from the
   // descriptor factories — no parallel defaults table.
