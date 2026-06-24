@@ -4948,7 +4948,7 @@ export const MobileGameTable = ({
           writerId: 'MobileGameTable.tsx:postWinIntervalForensics:OPEN',
           source: 'HOLM_POST_WIN_INTERVAL',
           marker: 'POST_WIN_INTERVAL_OPEN',
-          identity: { hci: w.openedHci, roundId: w.openedRoundId, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null },
+          identity: { hci: w.openedHci, roundId: w.openedRoundId != null ? String(w.openedRoundId) : null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null },
           payload: { reason: isShowingAnnouncement ? 'announcement' : 'winPotTrigger', snapshot: next },
         });
       }
