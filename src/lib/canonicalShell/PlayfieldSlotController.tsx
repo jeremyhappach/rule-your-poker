@@ -478,13 +478,48 @@ export function PlayfieldSlotController({
   //       instance across the entire poker-shell lifecycle"
   //       contract from the persistent-poker-shell refactor.
   if (persistentChildrenKey) {
+    const sessionEndExclusive =
+      mountedIdentity === null && neutralReason === 'session-end';
     recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral+persistent-children' : 'gameplay+persistent-children', {
       mode: 'persistent-children',
       persistentChildrenKey,
       mountedIdentity: describeSlotIdentity(mountedIdentity),
       desiredIdentity: describeSlotIdentity(desiredIdentity),
       phase, readyToMount, surfaceReady, readyToMountProp, neutralReason,
+      sessionEndExclusive,
     });
+    // ── SESSION-END EXCLUSIVE HANDOFF ────────────────────────────
+    // Once the controller has committed neutral with reason
+    // 'session-end' (active→null transition), the persistent
+    // gameplay children must no longer render visibly or own
+    // paint/layout. NeutralInterstitial becomes the sole playfield
+    // owner in a single atomic React commit — no opacity fade, no
+    // timeout, no surface-local latch. This eliminates the
+    // post-win frame where NeutralInterstitial sat behind a still-
+    // mounted MobileGameTable subtree.
+    if (sessionEndExclusive) {
+      return (
+        <div
+          data-canonical-shell-slot=""
+          data-slot-phase={phase}
+          data-slot-identity={describeSlotIdentity(mountedIdentity)}
+          data-slot-mode="persistent-children"
+          data-slot-session-end-exclusive=""
+          className="w-full h-full min-h-0 flex flex-col relative"
+        >
+          <div className="absolute inset-0 flex flex-col z-0">
+            <NeutralInterstitial
+              gameId={gameId ?? null}
+              reason={`poker-shell-pregame:${neutralReason}`}
+              gameKind={neutralGameKind}
+              anteAmount={neutralAnteAmount}
+              activeTab={neutralActiveTab}
+              onActiveTabChange={onNeutralActiveTabChange}
+            />
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         data-canonical-shell-slot=""
@@ -493,23 +528,6 @@ export function PlayfieldSlotController({
         data-slot-mode="persistent-children"
         className="w-full h-full min-h-0 flex flex-col relative"
       >
-        {/* Felt continuity during pre-game: when no active gameplay
-            surface is mounted (mountedIdentity===null), the persistent
-            children render nothing for poker-variant families whose
-            gameType is still null. Without a felt publisher, the shell
-            background is blank. Mount NeutralInterstitial as the BASE
-            layer so its canonical felt (local) OR its
-            usePublishShellFelt call (shell-owned) paints the felt
-            beneath the pre-game overlay. It unmounts the moment the
-            slot becomes active, at which point the gameplay tree owns
-            the felt directly. */}
-        {/* PR-B.2: in persistent-children mode, the underlying
-            MobileGameTable (children below) is the canonical seat
-            renderer and stays mounted across pre-game / interstitial.
-            If we ALSO feed participants here, NeutralInterstitial
-            mounts a SECOND CanonicalSeatCluster layer at the same
-            anchors → two chipstacks render simultaneously. Suppress
-            the interstitial seat layer when children own seats. */}
         {mountedIdentity === null && (
           <div className="absolute inset-0 flex flex-col z-0">
             <NeutralInterstitial
@@ -541,6 +559,7 @@ export function PlayfieldSlotController({
       </div>
     );
   }
+
 
   recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral' : 'gameplay', {
     mode: 'legacy',
