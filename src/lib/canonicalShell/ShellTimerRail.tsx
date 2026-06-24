@@ -36,6 +36,7 @@ import {
   useState,
 } from 'react';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { ffArmTimerBarSampler, ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { getCanonicalTimerEligibility } from '@/lib/canonicalShell/timerEligibility';
 import {
   recordThreeFiveSevenTimerOwner,
@@ -241,8 +242,35 @@ export function ShellTimerRail() {
   // color already encode seconds-remaining and urgency. We therefore drop
   // the caption entirely instead of leaving a half-clipped line under the
   // bar. `paused` state is conveyed by the muted fill color.
+  const railRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!railRef.current) return;
+    if (!eligibility.visible) return;
+    // Arms once per rail DOM node. New identityKey resets via parent
+    // re-effect (above). Sampler runs for 3s capturing CSS/DOM/WAAPI/RAF.
+    try {
+      ffArmTimerBarSampler(railRef.current, {
+        gameId: deal?.handContextId?.split('#')[0] ?? null,
+        roundId: deal?.handContextId ?? null,
+        hci: deal?.handContextId ?? null,
+        ownerInstanceId: ownerId,
+        reactKey: identityKey,
+        playerId: state?.activePlayerId ?? null,
+      });
+      ffRecord({
+        writerId: 'ShellTimerRail:render',
+        source: 'RAIL_RENDER',
+        marker: 'TIMER_BAR_RAIL_VISIBLE',
+        identity: { ownerInstanceId: ownerId, reactKey: identityKey, playerId: state?.activePlayerId ?? null },
+        payload: { seconds, total, pct, paused: effectivePaused, fillClass, mounted, identityKey, dealPhase: deal?.phase ?? null },
+      });
+    } catch { /* noop */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityKey, eligibility.visible]);
+
   return (
     <div
+      ref={railRef}
       data-canonical-shell-timer-rail=""
       data-shell-timer-paused={effectivePaused ? '1' : '0'}
       data-forensics-component="ShellTimerRail"
