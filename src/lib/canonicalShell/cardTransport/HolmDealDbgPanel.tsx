@@ -67,8 +67,9 @@ import {
   getHolmHbViolations,
   getHolmHbSources,
 } from './holmHandBoundaryForensics';
-// holmFullForensics is folded into the wartime recorder — no panel button.
-// Export the coverage map via the Wartime Debug Panel.
+import { buildHolmFullForensicsText } from './holmFullForensics';
+import { buildWartimeExportText } from '@/lib/wartimeDebug/core';
+
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -534,7 +535,31 @@ export function HolmDealDbgPanel() {
                 title="Copy HAND-BOUNDARY forensics"
                 style={btn('#1e1e5f', '#4a4ab8')}
               >HBD</button>
-              {/* FF button removed — single recorder, single export via Wartime Debug Panel. */}
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const coverage = buildHolmFullForensicsText();
+                    const wartime = buildWartimeExportText();
+                    const text =
+                      '# HOLM FULL FORENSICS (coverage map + wartime events, up to 25k)\n\n' +
+                      coverage +
+                      '\n\n--- WARTIME EVENT STREAM ---\n' +
+                      wartime;
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `holm-full-forensics-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch { /* noop */ }
+                }}
+                title="Download FULL Holm forensics (coverage map + up to 25k wartime events) as .txt"
+                style={btn('#5f1e1e', '#b84a4a')}
+              >FULL↓</button>
             </>
           );
         })()}
