@@ -1,4 +1,5 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { subscribeHolmDealDbg, getHolmDealDbgMeta } from "@/lib/canonicalShell/cardTransport/holmDealDbg";
@@ -3863,8 +3864,32 @@ export const MobileGameTable = ({
     }
 
     __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
+    if (gameType === 'holm-game') {
+      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const chosenFp = chosen.cards.map(c => `${c.rank}${c.suit}`).join('|');
+      const cachedRef = currentPlayerCardsRef.current;
+      ffRecord({
+        writerId: 'MobileGameTable.tsx:currentPlayerCardsMemo:L3866',
+        source: 'HOLM_SELF_HAND_LINEAGE',
+        marker: 'HOLM_SELF_HAND_SELECTOR_DECISION',
+        identity: { segmentId: handContextId ?? null, playerId: currentPlayer?.id ?? null },
+        payload: {
+          chosenSource: chosen.source,
+          chosenLength: chosen.cards.length,
+          chosenFingerprint: chosenFp,
+          rawLength: rawCurrentPlayerCards.length,
+          rawFingerprint: rawFp,
+          cachedLength: cachedRef.cards.length,
+          cachedHandContextId: cachedRef.handContextId,
+          activeHandContextId: handContextId ?? null,
+          isHandTransitioning,
+          roundStatus,
+          holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        },
+      });
+    }
     return chosen.cards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id]);
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
@@ -8939,6 +8964,14 @@ export const MobileGameTable = ({
           // player_cards through the win sequence. Cleared at the
           // hand-boundary reset effects.
           const snap = lonePlayerStageSnapshotRef.current;
+          const fpOf = (arr: Array<{rank:string;suit:string}>) => arr.map(c => `${c.rank}${c.suit}`).join('|');
+          const prevSnapBefore = snap
+            ? { handContextId: snap.handContextId, playerId: snap.playerId, count: snap.cards.length, fp: fpOf(snap.cards) }
+            : null;
+          const prevStickyBefore = tabledSelfStickyRef.current
+            ? { handContextId: tabledSelfStickyRef.current.handContextId, playerId: tabledSelfStickyRef.current.playerId, count: tabledSelfStickyRef.current.cards.length, fp: fpOf(tabledSelfStickyRef.current.cards) }
+            : null;
+          let snapshotWriteReason: string | null = null;
           if (hasLiveLonePlayer && handContextId) {
             const sameHand = snap?.handContextId === handContextId;
             const sameId = sameHand && snap?.playerId === liveLoneSoloPlayer!.id;
@@ -8951,6 +8984,7 @@ export const MobileGameTable = ({
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
+              snapshotWriteReason = !sameHand ? 'new-hand' : 'new-player-id';
             } else if (
               liveLoneSoloCards.length > 0 &&
               liveLoneSoloCards.length >= (snap?.cards.length ?? 0)
@@ -8960,17 +8994,21 @@ export const MobileGameTable = ({
                 playerId: liveLoneSoloPlayer!.id,
                 cards: liveLoneSoloCards,
               };
+              snapshotWriteReason = 'refresh-cards-monotonic';
             }
           }
 
           // ── TABLED_SELF sticky predicate ──────────────────────────────
           // Release the sticky snapshot ONLY when a new non-null
           // handContextId proves we are in NEXT_HAND PRE_DEAL.
+          let stickyClearReason: string | null = null;
+          let stickyWriteReason: string | null = null;
           if (
             tabledSelfStickyRef.current &&
             handContextId &&
             tabledSelfStickyRef.current.handContextId !== handContextId
           ) {
+            stickyClearReason = 'new-handContextId';
             tabledSelfStickyRef.current = null;
           }
           // Capture / refresh the sticky snapshot whenever the live
@@ -8981,6 +9019,7 @@ export const MobileGameTable = ({
               playerId: liveLoneSoloPlayer!.id,
               cards: liveLoneSoloCards,
             };
+            stickyWriteReason = 'live-good';
           }
 
           const activeSnap =
@@ -8992,6 +9031,9 @@ export const MobileGameTable = ({
               lonePlayerStageSnapshotRef.current.handContextId === handContextId)
               ? lonePlayerStageSnapshotRef.current
               : null);
+          const activeSnapSourceTag: 'sticky' | 'persistence' | 'none' =
+            tabledSelfStickyRef.current ? 'sticky'
+            : (activeSnap ? 'persistence' : 'none');
 
           const loneSoloPlayer =
             liveLoneSoloPlayer ??
@@ -9002,6 +9044,61 @@ export const MobileGameTable = ({
             liveLoneSoloCards.length > 0
               ? liveLoneSoloCards
               : (activeSnap?.cards ?? []);
+          const loneSoloCardsSourceTag: 'liveLoneSoloCards' | 'activeSnap.cards' | 'empty' =
+            liveLoneSoloCards.length > 0 ? 'liveLoneSoloCards'
+            : (activeSnap?.cards && activeSnap.cards.length > 0 ? 'activeSnap.cards' : 'empty');
+
+          ffRecord({
+            writerId: 'MobileGameTable.tsx:loneSoloDerivation:L8961',
+            source: 'HOLM_OLD_CARD_LINEAGE',
+            marker: 'HOLM_OLD_CARD_LONE_SOLO_DERIVATION',
+            identity: {
+              segmentId: handContextId ?? null,
+              playerId: loneSoloPlayer?.id ?? null,
+            },
+            payload: {
+              activeHandContextId: handContextId ?? null,
+              isSoloVsChucky: !!isSoloVsChucky,
+              soloVsChuckyPlayerIdLocked: soloVsChuckyPlayerIdLocked ?? null,
+              soloVsChuckyLockHand: soloVsChuckyLockHandRef.current ?? null,
+              liveLoneSoloPlayerId,
+              liveLoneSoloCount: liveLoneSoloCards.length,
+              liveLoneSoloFingerprint: fpOf(liveLoneSoloCards as any),
+              liveLockMatchesHand,
+              hasLiveLonePlayer,
+              holmDealNotReady,
+              prevSnapBefore,
+              prevStickyBefore,
+              snapshotWriteReason,
+              stickyClearReason,
+              stickyWriteReason,
+              snapAfter: lonePlayerStageSnapshotRef.current
+                ? {
+                    handContextId: lonePlayerStageSnapshotRef.current.handContextId,
+                    playerId: lonePlayerStageSnapshotRef.current.playerId,
+                    count: lonePlayerStageSnapshotRef.current.cards.length,
+                    fp: fpOf(lonePlayerStageSnapshotRef.current.cards as any),
+                  }
+                : null,
+              stickyAfter: tabledSelfStickyRef.current
+                ? {
+                    handContextId: tabledSelfStickyRef.current.handContextId,
+                    playerId: tabledSelfStickyRef.current.playerId,
+                    count: tabledSelfStickyRef.current.cards.length,
+                    fp: fpOf(tabledSelfStickyRef.current.cards as any),
+                  }
+                : null,
+              activeSnapSource: activeSnapSourceTag,
+              loneSoloCardsSource: loneSoloCardsSourceTag,
+              loneSoloCardsCount: loneSoloCards.length,
+              loneSoloCardsFingerprint: fpOf(loneSoloCards as any),
+              loneSoloOriginHandContextId:
+                loneSoloCardsSourceTag === 'liveLoneSoloCards'
+                  ? (handContextId ?? null)
+                  : (activeSnap?.handContextId ?? null),
+              loneSoloPlayerResolved: loneSoloPlayer?.id ?? null,
+            },
+          });
           const lonePlayerVisible =
             hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 

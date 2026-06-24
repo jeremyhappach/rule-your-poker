@@ -17,6 +17,7 @@ import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/Se
 // AnnouncementRailSlot is mounted by the active gameplay surface
 // (e.g. CribbageMobileGameTable), not at the Game.tsx shell level.
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
@@ -6058,6 +6059,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
           roundData = data;
+          ffRecord({
+            writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
+            source: 'HOLM_SELF_HAND_LINEAGE',
+            marker: 'HOLM_SELF_HAND_FETCH_ROUND_SELECTED',
+            identity: {
+              gameId,
+              roundId: roundData?.id ?? null,
+              segmentId: gameData.current_game_uuid ?? null,
+            },
+            payload: {
+              trigger: 'fetchPlayers',
+              dealerGameIdFilter: gameData.current_game_uuid ?? null,
+              orderBy: ['hand_number desc', 'round_number desc'],
+              selectedRoundId: roundData?.id ?? null,
+              selectedRoundNumber: roundData?.round_number ?? null,
+              selectedCardsDealt: roundData?.cards_dealt ?? null,
+              gameStatus: gameData.status,
+              gameCurrentRound: gameData.current_round,
+              gameTotalHands: gameData.total_hands,
+              awaitingNextRound: gameData.awaiting_next_round,
+              hasLastRoundResult: !!gameData.last_round_result,
+            },
+          });
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
@@ -6139,6 +6163,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[FETCH] Setting card state context:', newCardContext);
           setCardStateContext(newCardContext);
 
+          ffRecord({
+            writerId: 'Game.tsx:fetchPlayers.cardContextSet:L6164',
+            source: 'HOLM_SELF_HAND_LINEAGE',
+            marker: 'HOLM_SELF_HAND_CARD_CONTEXT_SET',
+            identity: {
+              gameId,
+              roundId: targetRoundId,
+              segmentId: gameData.current_game_uuid ?? null,
+            },
+            payload: {
+              fetchToken,
+              prevPlayerCardsRoundId,
+              targetRoundId,
+              roundNumber: roundData.round_number,
+              cardsDealt: roundData.cards_dealt,
+              cardFetchTokenRefBefore: fetchToken - 1,
+              cardFetchTokenRefAfter: fetchToken,
+            },
+          });
+
           // Log card-fetch-start
           persistSyncDebugEvent({
             gameId: gameId!,
@@ -6165,10 +6209,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerIds: cardsData?.map(c => c.player_id)
           });
 
+          // Provenance: per-row identity & card-count/hash of returned rows.
+          const rowSummaries = (cardsData ?? []).map((r) => {
+            const arr = (r.cards ?? []) as Array<{ rank?: string; suit?: string }>;
+            const fp = arr.map((c) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`).join('|');
+            return { playerId: r.player_id, cardCount: arr.length, fingerprint: fp };
+          });
+          ffRecord({
+            writerId: 'Game.tsx:fetchPlayers.playerCardsResponse:L6182',
+            source: 'HOLM_SELF_HAND_LINEAGE',
+            marker: 'HOLM_SELF_HAND_PLAYER_CARDS_RESPONSE',
+            identity: {
+              gameId,
+              roundId: targetRoundId,
+              segmentId: gameData.current_game_uuid ?? null,
+            },
+            payload: {
+              fetchToken,
+              requestedRoundId: targetRoundId,
+              filters: { round_id: targetRoundId },
+              rowCount: cardsData?.length ?? 0,
+              hasError: !!cardsError,
+              errorMessage: cardsError?.message ?? null,
+              rowSummaries,
+              currentTokenAtResponse: cardFetchTokenRef.current,
+              tokenSuperseded: fetchToken !== cardFetchTokenRef.current,
+            },
+          });
+
           // FIX 1: REMOVED broken roundIdStillCurrent guard.
           // FIX 3: Use ONLY fetchToken + isStale() for staleness.
           if (isStale()) {
             console.log('[FETCH] Ignoring stale card fetch (fetchSeq advanced)', { targetRoundId });
+            ffRecord({
+              writerId: 'Game.tsx:fetchPlayers.dropStale:L6195',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_FETCH_DROPPED',
+              identity: { gameId, roundId: targetRoundId },
+              payload: { fetchToken, reason: 'isStale-fetchSeq-advanced', rowCount: cardsData?.length ?? 0 },
+            });
           } else if (fetchToken !== cardFetchTokenRef.current) {
             // A newer fetch was dispatched while we were awaiting — drop this one
             console.warn('[FETCH] ⚠️ Dropping card fetch — fetchToken superseded', {
@@ -6185,6 +6264,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               severity: 'warn',
               eventName: 'card-fetch-drop-stale',
               payload: { fetchToken, currentToken: cardFetchTokenRef.current, fetchRoundId },
+            });
+            ffRecord({
+              writerId: 'Game.tsx:fetchPlayers.dropTokenSuperseded:L6201',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_FETCH_DROPPED',
+              identity: { gameId, roundId: targetRoundId },
+              payload: {
+                fetchToken,
+                currentToken: cardFetchTokenRef.current,
+                reason: 'token-superseded',
+                rowCount: cardsData?.length ?? 0,
+                rowSummaries,
+              },
             });
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
@@ -6204,8 +6296,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 cards: cd.cards as unknown as CardType[],
               }))
             );
+            ffRecord({
+              writerId: 'Game.tsx:fetchPlayers.setPlayerCardsApply:L6230',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_WRITE_ACCEPTED',
+              identity: { gameId, roundId: targetRoundId },
+              payload: {
+                fetchToken,
+                rowCount: cardsData.length,
+                rowSummaries,
+                prevPlayerCardsRoundId,
+                action: 'setPlayerCards(rows)',
+              },
+            });
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
+            ffRecord({
+              writerId: 'Game.tsx:fetchPlayers.fetchError:L6232',
+              source: 'HOLM_SELF_HAND_LINEAGE',
+              marker: 'HOLM_SELF_HAND_FETCH_ERROR',
+              identity: { gameId, roundId: targetRoundId },
+              payload: { fetchToken, errorMessage: cardsError.message },
+            });
           } else {
             // If the round id changed but the new round has no cards yet,
             // clear local cards to avoid rendering previous hand.
@@ -6215,8 +6327,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 nextRoundId: targetRoundId,
               });
               setPlayerCards([]);
+              ffRecord({
+                writerId: 'Game.tsx:fetchPlayers.clearStaleRound:L6241',
+                source: 'HOLM_SELF_HAND_LINEAGE',
+                marker: 'HOLM_SELF_HAND_CLEAR_STALE_ROUND',
+                identity: { gameId, roundId: targetRoundId },
+                payload: {
+                  fetchToken,
+                  prevPlayerCardsRoundId,
+                  nextRoundId: targetRoundId,
+                  reason: 'new-round-no-cards-yet',
+                  action: 'setPlayerCards([])',
+                },
+              });
             } else {
               console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
+              ffRecord({
+                writerId: 'Game.tsx:fetchPlayers.emptySameRound:L6243',
+                source: 'HOLM_SELF_HAND_LINEAGE',
+                marker: 'HOLM_SELF_HAND_RESPONSE_EMPTY_SAME_ROUND',
+                identity: { gameId, roundId: targetRoundId },
+                payload: {
+                  fetchToken,
+                  prevPlayerCardsRoundId,
+                  targetRoundId,
+                  reason: 'same-round-no-cards-keeping-existing',
+                },
+              });
             }
           }
         }
