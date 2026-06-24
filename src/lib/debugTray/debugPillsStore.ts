@@ -42,7 +42,8 @@ export type DebugPillKey =
   | 'threeFiveSevenForensics'
   | 'holmDealDbg'
   | 'bucksOverlay'
-  | 'communityExport';
+  | 'communityExport'
+  | 'r1Snapback';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -80,6 +81,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'holmDealDbg', abbreviation: 'HOLM DEAL DBG', fullName: 'Holm Deal Debug', description: 'Holm canonical deal forensics: DealRuntime, hands/community/Chucky dispatch/settle, DOM visibility, and pre-settle render violations.' },
   { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
   { key: 'communityExport', abbreviation: 'COMM EXPORT', fullName: 'Community Export', description: 'Holm community-card landing export pill (one-tap download of the retained wartime buffer slice).' },
+  { key: 'r1Snapback', abbreviation: 'R1 SNAP', fullName: 'R1 Snapback Export', description: '3-5-7 R1 (3-card) opponent showdown forensics: captures config edits, ownership audit, DOM mutations, and verdict on the first edited-large → standard-size reversion. Pill only renders during an active 3-5-7 multiplayer showdown with a 3-card exposed opponent row; click to download .txt.' },
 
 ];
 
