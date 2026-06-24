@@ -141,6 +141,7 @@ const App = () => {
                 <ThreeFiveSevenForensicsPanel />
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
+                <HolmCommunityLandingPill />
 
 
                 <CardBackDbgPanel />
