@@ -10051,8 +10051,8 @@ export const MobileGameTable = ({
                     <HolmSoloRootRegistrar
                       root="COMMUNITY"
                       mounted={true}
-                      cardIds={(approvedCommunityCards ?? []).map((c) => `${c.rank}${c.suit}`)}
-                      handContextId={handContextId ?? null}
+                      cardIds={(communityCardsForRender ?? []).map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={communityHciForRender}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
                       caller="MobileGameTable.communityCardsStage"
@@ -10071,12 +10071,14 @@ export const MobileGameTable = ({
                           highlight pipeline.
                     */}
                     <CommunityStageHolmSwitch
-                      handContextId={handContextId!}
-                      cards={approvedCommunityCards!}
+                      handContextId={communityHciForRender!}
+                      cards={communityCardsForRender!}
                       revealed={
-                        isDelayingCommunityCards
-                          ? staggeredCardCount
-                          : (communityCardsRevealed || 2)
+                        terminalPresentationActive
+                          ? (communityCardsForRender?.length ?? 0)
+                          : (isDelayingCommunityCards
+                              ? staggeredCardCount
+                              : (communityCardsRevealed || 2))
                       }
                       highlightedIndices={winningCardHighlights.communityIndices}
                       kickerIndices={winningCardHighlights.kickerCommunityIndices}
