@@ -4506,11 +4506,8 @@ export const MobileGameTable = ({
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
     chuckyVisualRevealComplete;
-  // Terminal-presentation latch: while held, isShowingAnnouncement
-  // is forced true so all downstream presentation/highlighting
-  // remains in announcement mode through the post-celebration gap.
-  const isShowingAnnouncement =
-    terminalPresentationActive || _rawIsShowingAnnouncement;
+  const isShowingAnnouncement = _rawIsShowingAnnouncement;
+
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
