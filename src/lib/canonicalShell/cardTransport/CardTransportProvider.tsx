@@ -21,6 +21,7 @@ import {
 import type { CardTransportIntent } from './types';
 import { describeCardEndpoint } from './types';
 import { cardTransportDbgUpsert } from './cardTransportDbg';
+import { ffRecord } from './holmFullForensics';
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;
