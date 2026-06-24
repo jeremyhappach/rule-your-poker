@@ -4939,6 +4939,28 @@ export const MobileGameTable = ({
     const result = getWinningCardIndices(_rawWinnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
   }, [_rawIsShowingAnnouncement, _rawWinnerCards, communityCards, _rawWinnerPlayerId]);
+  // Last-known non-empty raw highlight payload. Captured so the terminal
+  // latch can snapshot the EXACT visible highlight data at result lock,
+  // even if `_rawWinningCardHighlights` momentarily collapses to empty
+  // by the time the acquire effect runs.
+  const lastNonEmptyRawHighlightsRef = useRef<{
+    playerIndices: number[];
+    communityIndices: number[];
+    kickerPlayerIndices: number[];
+    kickerCommunityIndices: number[];
+    hasHighlights: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (_rawWinningCardHighlights.hasHighlights) {
+      lastNonEmptyRawHighlightsRef.current = {
+        playerIndices: [..._rawWinningCardHighlights.playerIndices],
+        communityIndices: [..._rawWinningCardHighlights.communityIndices],
+        kickerPlayerIndices: [..._rawWinningCardHighlights.kickerPlayerIndices],
+        kickerCommunityIndices: [..._rawWinningCardHighlights.kickerCommunityIndices],
+        hasHighlights: true,
+      };
+    }
+  }, [_rawWinningCardHighlights]);
   // Terminal-presentation latch: while held, highlights derive from
   // the snapshot's captured winner card indices.
   const winningCardHighlights =
