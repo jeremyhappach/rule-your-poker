@@ -56,7 +56,7 @@ export interface WartimeEvent {
   payload?: Record<string, unknown>;
 }
 
-const MAX_EVENTS = 10000;
+const MAX_EVENTS = 25000;
 const ENABLED_KEY = 'ptp_wartime_debug_enabled';
 
 let _enabled = false;

@@ -67,11 +67,8 @@ import {
   getHolmHbViolations,
   getHolmHbSources,
 } from './holmHandBoundaryForensics';
-import {
-  buildHolmFullForensicsText,
-  getHolmFullForensics,
-  ffStartRunbackEpisode,
-} from './holmFullForensics';
+// holmFullForensics is folded into the wartime recorder — no panel button.
+// Export the coverage map via the Wartime Debug Panel.
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -537,18 +534,7 @@ export function HolmDealDbgPanel() {
                 title="Copy HAND-BOUNDARY forensics"
                 style={btn('#1e1e5f', '#4a4ab8')}
               >HBD</button>
-              <button
-                type="button"
-                onClick={async () => {
-                  // Mark a Run Back episode start so events from this click forward are pinned.
-                  try { ffStartRunbackEpisode({}, 'manual-FF-click'); } catch { /* noop */ }
-                  const text = buildHolmFullForensicsText();
-                  try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
-                  try { (window as unknown as { __holmFullForensicsExport?: unknown }).__holmFullForensicsExport = { text, data: getHolmFullForensics() }; } catch { /* noop */ }
-                }}
-                title="Copy FULL Holm forensics (recorder + coverage map + episodes + records)"
-                style={btn('#5f5f1e', '#b8b84a')}
-              >FF</button>
+              {/* FF button removed — single recorder, single export via Wartime Debug Panel. */}
             </>
           );
         })()}
