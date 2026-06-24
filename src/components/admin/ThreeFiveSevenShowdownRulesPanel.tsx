@@ -30,6 +30,7 @@ import {
 
 type ExposureDirection = "inward" | "outward" | "upward" | "downward";
 type IrrelevantPosition = "above" | "below" | "left" | "right";
+type DerivedValue = "width" | "height" | "aspectRatio";
 
 interface RoundRowConfig {
   xOffset: number;
@@ -38,6 +39,7 @@ interface RoundRowConfig {
   widthPct: number;
   heightPct: number;
   aspectRatio: number;
+  derivedValue: DerivedValue;
   fanPct: number;
   exposure: ExposureDirection;
 }
@@ -57,16 +59,32 @@ interface ShowdownRulesState {
   sevenIrrelevant: IrrelevantPairConfig;
 }
 
-const DEFAULT_ROW: RoundRowConfig = {
+const MIN_DIM = 0.0001;
+
+function recompute(cfg: RoundRowConfig): RoundRowConfig {
+  const w = Math.max(MIN_DIM, cfg.widthPct);
+  const h = Math.max(MIN_DIM, cfg.heightPct);
+  const a = Math.max(MIN_DIM, cfg.aspectRatio);
+  if (cfg.derivedValue === "height") {
+    return { ...cfg, widthPct: w, aspectRatio: a, heightPct: w / a };
+  }
+  if (cfg.derivedValue === "width") {
+    return { ...cfg, heightPct: h, aspectRatio: a, widthPct: h * a };
+  }
+  return { ...cfg, widthPct: w, heightPct: h, aspectRatio: w / h };
+}
+
+const DEFAULT_ROW: RoundRowConfig = recompute({
   xOffset: 0,
   yOffset: 0,
   sizeBase: 1,
   widthPct: 0.12,
   heightPct: 0.16,
   aspectRatio: 0.72,
+  derivedValue: "height",
   fanPct: 0.5,
   exposure: "outward",
-};
+});
 
 const DEFAULT_STATE: ShowdownRulesState = {
   three: { ...DEFAULT_ROW },
