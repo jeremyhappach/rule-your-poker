@@ -10,10 +10,10 @@ import {
   type ResolvedRoundRow,
   type ThreeFiveSevenR1SizeBranch,
 } from "@/lib/threeFiveSeven/showdownConfig";
-// (r1SnapbackForensics is no longer driven from PlayerHand — it is
-// inert until the ARM pill is clicked, which reads the host via DOM
-// query and the ownership audit via publishThreeFiveSevenR1OwnershipAudit.)
-
+import {
+  ingestR1OwnershipAuditForSnapback,
+  registerR1SnapbackHost,
+} from "@/lib/threeFiveSeven/r1SnapbackForensics";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
@@ -566,6 +566,7 @@ export const PlayerHand = ({
   useEffect(() => {
     if (!is357R1ShowdownPath) {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
       return;
     }
     const auditValue = {
@@ -602,10 +603,11 @@ export const PlayerHand = ({
       },
     };
     publishThreeFiveSevenR1OwnershipAudit(forensicsId, auditValue);
+    ingestR1OwnershipAuditForSnapback(auditValue);
     return () => {
       publishThreeFiveSevenR1OwnershipAudit(forensicsId, null);
+      ingestR1OwnershipAuditForSnapback(null);
     };
-
   }, [
     is357R1ShowdownPath,
     forensicsId,
@@ -899,10 +901,11 @@ export const PlayerHand = ({
     handRootRef.current = el;
     if (is357Game) measureRef.current = el;
   }, [is357Game]);
-  // Note: no host registration side-effect. The snapback module reads
-  // this host via DOM query (`[data-357-r1-snapback-host]`) only when
-  // the ARM pill is clicked. Nothing runs here at render time.
-
+  useEffect(() => {
+    if (isR1OpponentShowdownHost) registerR1SnapbackHost(handRootRef.current);
+    else registerR1SnapbackHost(null);
+    return () => { registerR1SnapbackHost(null); };
+  }, [isR1OpponentShowdownHost]);
   return (
     <div
       className="flex"
