@@ -30,6 +30,7 @@ import {
 
 type ExposureDirection = "inward" | "outward" | "upward" | "downward";
 type IrrelevantPosition = "above" | "below" | "left" | "right";
+type DerivedValue = "width" | "height" | "aspectRatio";
 
 interface RoundRowConfig {
   xOffset: number;
@@ -38,6 +39,7 @@ interface RoundRowConfig {
   widthPct: number;
   heightPct: number;
   aspectRatio: number;
+  derivedValue: DerivedValue;
   fanPct: number;
   exposure: ExposureDirection;
 }
@@ -57,16 +59,32 @@ interface ShowdownRulesState {
   sevenIrrelevant: IrrelevantPairConfig;
 }
 
-const DEFAULT_ROW: RoundRowConfig = {
+const MIN_DIM = 0.0001;
+
+function recompute(cfg: RoundRowConfig): RoundRowConfig {
+  const w = Math.max(MIN_DIM, cfg.widthPct);
+  const h = Math.max(MIN_DIM, cfg.heightPct);
+  const a = Math.max(MIN_DIM, cfg.aspectRatio);
+  if (cfg.derivedValue === "height") {
+    return { ...cfg, widthPct: w, aspectRatio: a, heightPct: w / a };
+  }
+  if (cfg.derivedValue === "width") {
+    return { ...cfg, heightPct: h, aspectRatio: a, widthPct: h * a };
+  }
+  return { ...cfg, widthPct: w, heightPct: h, aspectRatio: w / h };
+}
+
+const DEFAULT_ROW: RoundRowConfig = recompute({
   xOffset: 0,
   yOffset: 0,
   sizeBase: 1,
   widthPct: 0.12,
   heightPct: 0.16,
   aspectRatio: 0.72,
+  derivedValue: "height",
   fanPct: 0.5,
   exposure: "outward",
-};
+});
 
 const DEFAULT_STATE: ShowdownRulesState = {
   three: { ...DEFAULT_ROW },
@@ -91,9 +109,9 @@ function loadState(): ShowdownRulesState {
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw);
     return {
-      three: { ...DEFAULT_STATE.three, ...(parsed.three ?? {}) },
-      five: { ...DEFAULT_STATE.five, ...(parsed.five ?? {}) },
-      seven: { ...DEFAULT_STATE.seven, ...(parsed.seven ?? {}) },
+      three: recompute({ ...DEFAULT_STATE.three, ...(parsed.three ?? {}) }),
+      five: recompute({ ...DEFAULT_STATE.five, ...(parsed.five ?? {}) }),
+      seven: recompute({ ...DEFAULT_STATE.seven, ...(parsed.seven ?? {}) }),
       sevenIrrelevant: {
         ...DEFAULT_STATE.sevenIrrelevant,
         ...(parsed.sevenIrrelevant ?? {}),
@@ -127,17 +145,21 @@ function CollapsibleSection({
 function NumInput({
   value,
   step = 0.01,
+  disabled = false,
   onChange,
 }: {
   value: number;
   step?: number;
+  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   return (
     <Input
       type="number"
       step={step}
-      value={Number.isFinite(value) ? value : 0}
+      disabled={disabled}
+      readOnly={disabled}
+      value={Number.isFinite(value) ? Number(value.toFixed(6)) : 0}
       onChange={(e) => {
         const n = Number(e.target.value);
         onChange(Number.isFinite(n) ? n : 0);
@@ -153,7 +175,22 @@ function RoundRowControls({
   cfg: RoundRowConfig;
   onChange: (next: RoundRowConfig) => void;
 }) {
-  const patch = (p: Partial<RoundRowConfig>) => onChange({ ...cfg, ...p });
+  const patch = (p: Partial<RoundRowConfig>) => onChange(recompute({ ...cfg, ...p }));
+
+  const handleDerivedChange = (next: DerivedValue) => {
+    // Preserve the two currently editable values; recompute the newly derived one.
+    onChange(recompute({ ...cfg, derivedValue: next }));
+  };
+
+  const setDim = (key: "widthPct" | "heightPct" | "aspectRatio", v: number) => {
+    // Disallow zero/negative dimensions and aspect ratios.
+    if (!Number.isFinite(v) || v <= 0) return;
+    patch({ [key]: v } as Partial<RoundRowConfig>);
+  };
+
+  const label = (base: string, derivedKey: DerivedValue) =>
+    cfg.derivedValue === derivedKey ? `${base} (derived)` : base;
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -179,22 +216,57 @@ function RoundRowControls({
           <Label>Fan %</Label>
           <NumInput value={cfg.fanPct} onChange={(v) => patch({ fanPct: v })} />
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-md border p-2">
+        <p className="text-xs text-muted-foreground">
+          Size is constrained: pick which value is <em>derived</em>; the other
+          two are editable. Zero/negative values are rejected.
+        </p>
         <div className="space-y-1">
-          <Label>Width</Label>
-          <NumInput value={cfg.widthPct} onChange={(v) => patch({ widthPct: v })} />
+          <Label>Derived value</Label>
+          <Select
+            value={cfg.derivedValue}
+            onValueChange={(v) => handleDerivedChange(v as DerivedValue)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="height">Height</SelectItem>
+              <SelectItem value="width">Width</SelectItem>
+              <SelectItem value="aspectRatio">Aspect ratio</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="space-y-1">
-          <Label>Height</Label>
-          <NumInput value={cfg.heightPct} onChange={(v) => patch({ heightPct: v })} />
-        </div>
-        <div className="space-y-1 col-span-2">
-          <Label>Aspect ratio</Label>
-          <NumInput
-            value={cfg.aspectRatio}
-            onChange={(v) => patch({ aspectRatio: v })}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label>{label("Width", "width")}</Label>
+            <NumInput
+              value={cfg.widthPct}
+              disabled={cfg.derivedValue === "width"}
+              onChange={(v) => setDim("widthPct", v)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>{label("Height", "height")}</Label>
+            <NumInput
+              value={cfg.heightPct}
+              disabled={cfg.derivedValue === "height"}
+              onChange={(v) => setDim("heightPct", v)}
+            />
+          </div>
+          <div className="space-y-1 col-span-2">
+            <Label>{label("Aspect ratio", "aspectRatio")}</Label>
+            <NumInput
+              value={cfg.aspectRatio}
+              disabled={cfg.derivedValue === "aspectRatio"}
+              onChange={(v) => setDim("aspectRatio", v)}
+            />
+          </div>
         </div>
       </div>
+
       <div className="space-y-1">
         <Label>Exposure direction</Label>
         <Select
