@@ -1340,7 +1340,7 @@ export const MobileGameTable = ({
     pot,
     anteAmount,
     dealerPosition: dealerPosition ?? 1,
-    currentRound: horsesRoundId ?? null,
+    currentRoundId: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
     isPaused: isPaused ?? false,
@@ -4882,7 +4882,7 @@ export const MobileGameTable = ({
     open: boolean;
     openedHci: string | null;
     openedDealerGameId: string | null;
-    openedRoundId: string | null;
+    openedRoundId: number | null;
     prev: Record<string, unknown>;
   }>({ open: false, openedHci: null, openedDealerGameId: null, openedRoundId: null, prev: {} });
   if (gameType === 'holm-game') {
@@ -4964,7 +4964,7 @@ export const MobileGameTable = ({
             marker: 'POST_WIN_INTERVAL_TRANSITION',
             identity: {
               hci: handContextId ?? null,
-              roundId: currentRound ?? null,
+              roundId: currentRound != null ? String(currentRound) : null,
               gameId: gameId ?? null,
               playerId: currentPlayer?.id ?? null,
               segmentId: w.openedHci,
@@ -4981,7 +4981,7 @@ export const MobileGameTable = ({
             writerId: 'MobileGameTable.tsx:postWinIntervalForensics:CLOSE',
             source: 'HOLM_POST_WIN_INTERVAL',
             marker: 'POST_WIN_INTERVAL_CLOSE',
-            identity: { hci: handContextId ?? null, roundId: currentRound ?? null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
+            identity: { hci: handContextId ?? null, roundId: currentRound != null ? String(currentRound) : null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
             payload: { reason: 'both-clear-and-hci-advanced', openedHci: w.openedHci, closedHci: handContextId ?? null },
           });
           w.open = false; w.openedHci = null; w.openedDealerGameId = null; w.openedRoundId = null; w.prev = {};
