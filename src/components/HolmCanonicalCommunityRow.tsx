@@ -104,6 +104,33 @@ export function HolmCanonicalCommunityRow({
         })
       : null;
 
+  // Aggregate presentation-state for this render pass (single emit per change).
+  {
+    const cardIds: string[] = [];
+    const faceUpMask: boolean[] = [];
+    const renderedAs: string[] = [];
+    const renderKeys: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const cardId = `${handContextId}#community-${i}`;
+      const settled = deal ? deal.isSettled(cardId) : false;
+      const showFace = i < 2;
+      const card = cards[i];
+      cardIds.push(cardId);
+      faceUpMask.push(showFace);
+      renderedAs.push(settled && showFace && card ? 'face' : settled ? 'back' : 'empty-anchor');
+      renderKeys.push(String(i));
+    }
+    recordCommunityPresentationState({
+      writerId: 'HolmCanonicalCommunityRow.tsx:presentationAggregate',
+      handContextId,
+      sourceBranch: 'HolmCanonicalCommunityRow',
+      cardIds,
+      faceUpMask,
+      renderedAs,
+      renderKeys,
+    });
+  }
+
   return (
     <div
       ref={wrapperRef}
