@@ -333,59 +333,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
 
-  // ATOMIC FIRST-HAND STARTUP (P0-A): the initial Holm hand is created by
-  // a single transactional RPC so ante collection, pot update, round
-  // insert, card deal, and status flip either all succeed together or
-  // all roll back. This eliminates the prior partial-start failure mode
-  // where antes were charged and the round insert was rejected.
-  if (isFirstHand) {
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        'start_holm_initial_hand' as any,
-        { _game_id: gameId, _skip_ante_collection: false } as any,
-      );
-      if (rpcError) {
-        console.error('[HOLM] start_holm_initial_hand RPC error:', rpcError);
-        return;
-      }
-      const outcome = (rpcData as any)?.outcome;
-      if (outcome === 'started') {
-        console.log('[HOLM] ✅ Atomic first-hand startup succeeded:', rpcData);
-        return;
-      }
-      const reason = (rpcData as any)?.reason;
-      // Recovery: another caller already consumed the first-hand lock but
-      // the round wasn't created (legacy partial-start signature). Retry
-      // once with skip_ante_collection so we don't double-charge.
-      if (outcome === 'rejected' && reason === 'first-hand-lock-already-consumed') {
-        const { data: guardGame } = await supabase
-          .from('games')
-          .select('status, pot')
-          .eq('id', gameId)
-          .maybeSingle();
-        const pot = typeof guardGame?.pot === 'number' ? guardGame.pot : 0;
-        if (guardGame?.status === 'ante_decision' && pot > 0) {
-          console.warn('[HOLM] First-hand lock already consumed but pot is populated; invoking atomic recovery start');
-          const { data: recoverData, error: recoverError } = await supabase.rpc(
-            'start_holm_initial_hand' as any,
-            { _game_id: gameId, _skip_ante_collection: true } as any,
-          );
-          if (recoverError) {
-            console.error('[HOLM] start_holm_initial_hand recovery RPC error:', recoverError);
-            return;
-          }
-          console.log('[HOLM] Recovery start result:', recoverData);
-          return;
-        }
-      }
-      // Idempotent / benign rejection — another writer already started the hand.
-      console.log('[HOLM] start_holm_initial_hand non-started outcome:', rpcData);
-      return;
-    } catch (e) {
-      console.error('[HOLM] start_holm_initial_hand threw:', e);
-      return;
-    }
-  }
 
 
   // The caller may pass isFirstHand=true, but older stuck states can have is_first_hand already consumed.
