@@ -11596,6 +11596,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
+              holmDealerGameId={(game as any).current_game_uuid ?? null}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
