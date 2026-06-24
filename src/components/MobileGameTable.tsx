@@ -14,7 +14,8 @@ import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
-import { CommunityCards } from "./CommunityCards";
+// CommunityCards retired from MobileGameTable: HolmCanonicalCommunityRow
+// is now the single stable instance across DEALING → READY → GAMEPLAY.
 import { HolmCanonicalCommunityRow } from "./HolmCanonicalCommunityRow";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
