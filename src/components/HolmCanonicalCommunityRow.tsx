@@ -60,6 +60,35 @@ export function HolmCanonicalCommunityRow({
     return () => ro.disconnect();
   }, []);
 
+  // Arm bounded community landing sampler once per hand identity.
+  useEffect(() => {
+    armCommunityLandingSampler({ handContextId, expectedCount: 4 });
+  }, [handContextId]);
+
+  // Per-slot mount/unmount lifecycle.
+  useEffect(() => {
+    for (let i = 0; i < 4; i++) {
+      recordCommunityDomLifecycle({
+        writerId: 'HolmCanonicalCommunityRow.tsx:mountEffect',
+        handContextId,
+        slotIndex: i,
+        cardId: `${handContextId}#community-${i}`,
+        event: 'mount',
+      });
+    }
+    return () => {
+      for (let i = 0; i < 4; i++) {
+        recordCommunityDomLifecycle({
+          writerId: 'HolmCanonicalCommunityRow.tsx:unmountEffect',
+          handContextId,
+          slotIndex: i,
+          cardId: `${handContextId}#community-${i}`,
+          event: 'unmount',
+        });
+      }
+    };
+  }, [handContextId]);
+
   const count = 4;
   const layout =
     size.w > 0 && size.h > 0
