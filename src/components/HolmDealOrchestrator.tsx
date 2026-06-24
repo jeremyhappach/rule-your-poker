@@ -188,22 +188,86 @@ export function HolmDealOrchestrator({
 
   // ── 1. HANDS WAVE — buck-first, clockwise ─────────────────────────
   useEffect(() => {
-    if (!deal || handsDispatchedRef.current) return;
-    if (!dealTimingHydrated) return;
-    if (!seats.length || cardsPerPlayer <= 0) return;
-    if (!selfHand || selfHand.length < cardsPerPlayer) return;
+    const guard = {
+      hasDeal: !!deal,
+      alreadyDispatched: handsDispatchedRef.current,
+      dealTimingHydrated,
+      seatsLength: seats.length,
+      cardsPerPlayer,
+      selfHandLength: selfHand?.length ?? 0,
+      buckPosition,
+      dealerPosition,
+    };
+    if (!deal || handsDispatchedRef.current) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:L190',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: !deal ? 'no-deal-runtime' : 'already-dispatched', guard },
+      });
+      return;
+    }
+    if (!dealTimingHydrated) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:L201',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'deal-timing-not-hydrated', guard },
+      });
+      return;
+    }
+    if (!seats.length || cardsPerPlayer <= 0) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:L211',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'seats-or-cards-empty', guard },
+      });
+      return;
+    }
+    if (!selfHand || selfHand.length < cardsPerPlayer) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:L221',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'self-hand-not-ready', guard },
+      });
+      return;
+    }
 
     // CLOCKWISE from buck (poker convention: nearest LOWER position w/ wrap).
     // seatRing.nextClockwise is the canonical ring traversal — do NOT
     // iterate the ascending-sorted seat array directly.
     const positions = seats.map(s => s.position);
     const byPos = new Map(seats.map(s => [s.position, s]));
-    if (!byPos.has(buckPosition)) return;
+    if (!byPos.has(buckPosition)) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:L238',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'buck-position-not-in-seats', guard, positions },
+      });
+      return;
+    }
     const ring: SeatEntry[] = [];
     let cur = buckPosition;
     for (let i = 0; i < seats.length; i++) {
       const seat = byPos.get(cur);
-      if (!seat) return;
+      if (!seat) {
+        ffRecord({
+          writerId: 'HolmDealOrchestrator.tsx:handsWave:L252',
+          source: 'HOLM_DEAL_ORCHESTRATOR',
+          marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+          identity: { segmentId: handContextId, playerId: selfPlayerId },
+          payload: { reason: 'ring-traversal-missing-seat', guard, atPosition: cur, ringSoFar: ring.map(r => r.position) },
+        });
+        return;
+      }
       ring.push(seat);
       if (i < seats.length - 1) cur = nextClockwise(cur, positions);
     }
