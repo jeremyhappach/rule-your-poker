@@ -899,11 +899,10 @@ export const PlayerHand = ({
     handRootRef.current = el;
     if (is357Game) measureRef.current = el;
   }, [is357Game]);
-  useEffect(() => {
-    if (isR1OpponentShowdownHost) registerR1SnapbackHost(handRootRef.current);
-    else registerR1SnapbackHost(null);
-    return () => { registerR1SnapbackHost(null); };
-  }, [isR1OpponentShowdownHost]);
+  // Note: no host registration side-effect. The snapback module reads
+  // this host via DOM query (`[data-357-r1-snapback-host]`) only when
+  // the ARM pill is clicked. Nothing runs here at render time.
+
   return (
     <div
       className="flex"
