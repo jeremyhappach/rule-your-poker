@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 type Card = { rank: string; suit: string };
 
