@@ -1,25 +1,24 @@
 /**
- * 3-5-7 R1 SNAPBACK FORENSICS
+ * 3-5-7 R1 SNAPBACK FORENSICS — manually-armed, fully inert by default.
  *
- * Bounded capture window for diagnosing the "edit R1 static width/height/
- * overlap → cards render large → snap back to standard" regression.
- *
- * Capture lifecycle:
- *   - ARMED when the user enables the pill via Admin Debug Tools.
- *   - START a fresh capture when (a) any 3-5-7 `three.size`/`three.overlap`
- *     value changes in the persisted config OR (b) `three.dyn.enabled`
- *     flips, AND a R1 exposed-opponent showdown host (`[data-357-r1-
- *     snapback-host]`) is currently mounted.
- *   - SAMPLE per frame: ownership-audit snapshots, persisted-config
- *     snapshots, computed DOM state for each of the 3 cards.
- *   - END 3000ms after the last DOM mutation affecting those 3 cards.
- *   - RETAIN the most recent completed capture for one-click .txt download.
- *
- * No console logs, no admin overlay, no persistent recorder writes.
+ * Hard contract:
+ *   - This module attaches ZERO global listeners, observers, timers, or
+ *     storage hooks at import time.
+ *   - Nothing runs until `armR1SnapbackCapture()` is called by the
+ *     gameplay ARM pill.
+ *   - Once armed, the capture window terminates automatically after:
+ *       (a) 1000 ms of DOM quiet on the watched R1 host, OR
+ *       (b) 8000 ms after arming,
+ *     whichever happens first.
+ *   - On end, the completed capture is retained for one-tap export by
+ *     the EXPORT pill; arming again replaces it.
+ *   - No capture state ever flows back into React render trees beyond
+ *     the dedicated pill subscription. No game/lifecycle writes.
+ *   - No console logging.
  */
 
 import {
-  SHOWDOWN_RULES_STORAGE_KEY,
+  getThreeFiveSevenR1OwnershipAudit,
   loadShowdownRules,
   type ShowdownRulesState,
   type ThreeFiveSevenR1OwnershipAudit,
@@ -28,22 +27,18 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────
 
 export type SnapbackEventKind =
-  | 'capture-start'
-  | 'config-change'
-  | 'ownership-audit'
-  | 'host-mount'
-  | 'host-unmount'
-  | 'card-mount'
-  | 'card-unmount'
+  | 'arm'
+  | 'host-snapshot'
+  | 'config-snapshot'
   | 'card-mutation'
   | 'card-style-sample'
+  | 'host-resize'
   | 'breakpoint-change'
-  | 'resize'
   | 'verdict'
   | 'capture-end';
 
 export interface SnapbackEvent {
-  t: number; // ms since capture start
+  t: number; // ms since arm
   kind: SnapbackEventKind;
   data: Record<string, unknown>;
 }
@@ -51,43 +46,44 @@ export interface SnapbackEvent {
 export interface CompletedCapture {
   startedAt: string;
   endedAt: string;
-  trigger: { field: string; before: unknown; after: unknown };
+  endReason: 'quiet' | 'max-window' | 'rearmed';
   startConfig: ShowdownRulesState;
   endConfig: ShowdownRulesState;
+  startAudit: ThreeFiveSevenR1OwnershipAudit | null;
+  endAudit: ThreeFiveSevenR1OwnershipAudit | null;
   events: SnapbackEvent[];
   verdict: SnapbackEvent | null;
 }
 
-// ─── State ────────────────────────────────────────────────────────────────
+// ─── State (all module-local; nothing initialized until arm) ──────────────
 
-let _captureEnabled = false;
-let _hostEl: HTMLElement | null = null;
-let _cardEls: HTMLElement[] = [];
-let _cardObservers: MutationObserver[] = [];
-let _hostObserver: MutationObserver | null = null;
-let _resizeRO: ResizeObserver | null = null;
-let _mqList: MediaQueryList | null = null;
-let _mqHandler: ((e: MediaQueryListEvent) => void) | null = null;
+const MAX_WINDOW_MS = 8000;
+const QUIET_MS = 1000;
+const SAMPLE_INTERVAL_MS = 50;
 
-let _active: {
+interface ActiveCapture {
   startMs: number;
   startedAt: string;
-  trigger: { field: string; before: unknown; after: unknown };
   startConfig: ShowdownRulesState;
+  startAudit: ThreeFiveSevenR1OwnershipAudit | null;
   events: SnapbackEvent[];
-  lastMutationMs: number;
-  endTimer: ReturnType<typeof setTimeout> | null;
-  rafHandle: number | null;
+  hostEl: HTMLElement | null;
+  cardEls: HTMLElement[];
+  hostObserver: MutationObserver | null;
+  cardObservers: MutationObserver[];
+  resizeRO: ResizeObserver | null;
+  sampleHandle: number | null;
+  quietHandle: number | null;
+  maxHandle: number | null;
+  mqList: MediaQueryList | null;
+  mqHandler: ((e: MediaQueryListEvent) => void) | null;
   lastSampleSig: Map<HTMLElement, string>;
-  lastOwnership: ThreeFiveSevenR1OwnershipAudit | null;
+  lastMutationMs: number;
   verdictEmitted: boolean;
-} | null = null;
+}
 
+let _active: ActiveCapture | null = null;
 let _last: CompletedCapture | null = null;
-let _prevConfig: ShowdownRulesState | null = null;
-
-const END_QUIET_MS = 3000;
-const SAMPLE_INTERVAL_MS = 50;
 
 const listeners = new Set<() => void>();
 function emit() { listeners.forEach((l) => { try { l(); } catch { /* */ } }); }
@@ -105,182 +101,125 @@ export function isR1SnapbackCaptureActive(): boolean {
   return _active !== null;
 }
 
-// ─── Pill enable / lifecycle ──────────────────────────────────────────────
+// ─── ARM ──────────────────────────────────────────────────────────────────
 
-export function setR1SnapbackCaptureEnabled(enabled: boolean): void {
-  if (_captureEnabled === enabled) return;
-  _captureEnabled = enabled;
-  if (enabled) {
-    _prevConfig = loadShowdownRules();
-    window.addEventListener('storage', _onStorage);
-    window.addEventListener('ptp:357showdownRules:updated', _onConfigEvent);
-    window.addEventListener('resize', _onResize);
-    _mqList = window.matchMedia('(min-width: 640px)');
-    _mqHandler = (e) => _push('breakpoint-change', { matches: e.matches });
-    _mqList.addEventListener('change', _mqHandler);
-  } else {
-    window.removeEventListener('storage', _onStorage);
-    window.removeEventListener('ptp:357showdownRules:updated', _onConfigEvent);
-    window.removeEventListener('resize', _onResize);
-    if (_mqList && _mqHandler) _mqList.removeEventListener('change', _mqHandler);
-    _mqList = null; _mqHandler = null;
-    _endCapture('disabled');
-    _detachHost();
+export function armR1SnapbackCapture(): boolean {
+  if (typeof window === 'undefined') return false;
+  // Replace any in-flight capture (manual rearm).
+  if (_active) _endCapture('rearmed');
+
+  const hostEl = document.querySelector<HTMLElement>('[data-357-r1-snapback-host]');
+  if (!hostEl) {
+    // Not in a live R1 showdown — refuse to arm.
+    return false;
   }
-  emit();
-}
 
-export function isR1SnapbackCaptureEnabled(): boolean {
-  return _captureEnabled;
-}
+  const startConfig = loadShowdownRules();
+  const startAudit = getThreeFiveSevenR1OwnershipAudit();
+  const startMs = performance.now();
 
-// ─── DOM host registration (called from PlayerHand) ───────────────────────
+  const active: ActiveCapture = {
+    startMs,
+    startedAt: new Date().toISOString(),
+    startConfig,
+    startAudit,
+    events: [],
+    hostEl,
+    cardEls: [],
+    hostObserver: null,
+    cardObservers: [],
+    resizeRO: null,
+    sampleHandle: null,
+    quietHandle: null,
+    maxHandle: null,
+    mqList: null,
+    mqHandler: null,
+    lastSampleSig: new Map(),
+    lastMutationMs: startMs,
+    verdictEmitted: false,
+  };
+  _active = active;
 
-export function registerR1SnapbackHost(el: HTMLElement | null): void {
-  if (!_captureEnabled) return;
-  if (el === _hostEl) return;
-  _detachHost();
-  if (!el) return;
-  _hostEl = el;
-  _push('host-mount', { tag: el.tagName, className: el.className });
+  _push('arm', {
+    href: window.location.pathname,
+    startConfig: { anchor: startConfig.anchor, three: startConfig.three },
+    startAudit: startAudit as unknown as Record<string, unknown> | null,
+  });
+  _push('host-snapshot', _snapshotHost(hostEl));
+  _push('config-snapshot', { three: startConfig.three, anchor: startConfig.anchor });
+
   _rescanCards();
-  _hostObserver = new MutationObserver(() => _rescanCards());
-  _hostObserver.observe(el, { childList: true, subtree: false });
+
+  // Watch host for child changes.
   try {
-    _resizeRO = new ResizeObserver((entries) => {
+    active.hostObserver = new MutationObserver(() => {
+      if (!_active) return;
+      _rescanCards();
+      _active.lastMutationMs = performance.now();
+    });
+    active.hostObserver.observe(hostEl, { childList: true, subtree: false });
+  } catch { /* */ }
+
+  // Resize observer on host.
+  try {
+    active.resizeRO = new ResizeObserver((entries) => {
+      if (!_active) return;
       for (const e of entries) {
         const r = e.contentRect;
-        _push('resize', { w: Math.round(r.width), h: Math.round(r.height) });
+        _push('host-resize', { w: Math.round(r.width), h: Math.round(r.height) });
       }
+      _active.lastMutationMs = performance.now();
     });
-    _resizeRO.observe(el);
+    active.resizeRO.observe(hostEl);
   } catch { /* */ }
-}
 
-function _detachHost() {
-  if (_hostObserver) { _hostObserver.disconnect(); _hostObserver = null; }
-  if (_resizeRO) { try { _resizeRO.disconnect(); } catch { /* */ } _resizeRO = null; }
-  for (const o of _cardObservers) o.disconnect();
-  _cardObservers = [];
-  if (_hostEl) _push('host-unmount', {});
-  _hostEl = null;
-  _cardEls = [];
+  // Breakpoint changes.
+  try {
+    active.mqList = window.matchMedia('(min-width: 640px)');
+    active.mqHandler = (e) => {
+      if (!_active) return;
+      _push('breakpoint-change', { matches: e.matches });
+      _active.lastMutationMs = performance.now();
+    };
+    active.mqList.addEventListener('change', active.mqHandler);
+  } catch { /* */ }
+
+  _scheduleSample();
+  _scheduleQuietCheck();
+  active.maxHandle = window.setTimeout(() => _endCapture('max-window'), MAX_WINDOW_MS);
+
+  emit();
+  return true;
 }
 
 function _rescanCards() {
-  if (!_hostEl) return;
-  for (const o of _cardObservers) o.disconnect();
-  _cardObservers = [];
-  const next = Array.from(_hostEl.querySelectorAll<HTMLElement>(':scope > *'));
+  if (!_active || !_active.hostEl) return;
+  for (const o of _active.cardObservers) { try { o.disconnect(); } catch { /* */ } }
+  _active.cardObservers = [];
+  const next = Array.from(_active.hostEl.querySelectorAll<HTMLElement>(':scope > *'));
+  _active.cardEls = next;
   for (let i = 0; i < next.length; i++) {
     const el = next[i];
-    if (!_cardEls.includes(el)) {
-      _push('card-mount', { index: i, ..._snapshotCard(el, i) });
-    }
-  }
-  for (const prev of _cardEls) {
-    if (!next.includes(prev)) {
-      _push('card-unmount', _snapshotCard(prev, -1));
-    }
-  }
-  _cardEls = next;
-  for (let i = 0; i < _cardEls.length; i++) {
-    const el = _cardEls[i];
     const idx = i;
-    const mo = new MutationObserver((muts) => {
-      const attrs = muts.filter((m) => m.type === 'attributes').map((m) => m.attributeName);
-      _push('card-mutation', { index: idx, attrs, ..._snapshotCard(el, idx) });
-      if (_active) _active.lastMutationMs = performance.now();
-      _scheduleEndTimer();
-    });
-    mo.observe(el, { attributes: true, attributeOldValue: true, childList: true, subtree: true });
-    _cardObservers.push(mo);
+    try {
+      const mo = new MutationObserver((muts) => {
+        if (!_active) return;
+        const attrs = muts.filter((m) => m.type === 'attributes').map((m) => m.attributeName);
+        _push('card-mutation', { index: idx, attrs, ..._snapshotCard(el, idx) });
+        _active.lastMutationMs = performance.now();
+      });
+      mo.observe(el, { attributes: true, attributeOldValue: true, childList: true, subtree: true });
+      _active.cardObservers.push(mo);
+    } catch { /* */ }
   }
-}
-
-// ─── Ownership audit ingestion (called from PlayerHand publisher) ─────────
-
-export function ingestR1OwnershipAuditForSnapback(audit: ThreeFiveSevenR1OwnershipAudit | null): void {
-  if (!_captureEnabled || !_active) return;
-  _active.lastOwnership = audit;
-  _push('ownership-audit', { audit: audit as unknown as Record<string, unknown> | null });
-  _evaluateVerdict();
-}
-
-// ─── Config-change → capture start ────────────────────────────────────────
-
-function _onStorage(e: StorageEvent) {
-  if (e.key !== SHOWDOWN_RULES_STORAGE_KEY) return;
-  _handleConfigUpdate();
-}
-function _onConfigEvent() { _handleConfigUpdate(); }
-function _onResize() {
-  if (_active) _push('resize', { w: window.innerWidth, h: window.innerHeight });
-}
-
-function _handleConfigUpdate() {
-  const next = loadShowdownRules();
-  const prev = _prevConfig ?? next;
-  const diff = _diffR1(prev, next);
-  _prevConfig = next;
-  if (!diff) return;
-  if (_active) {
-    _push('config-change', diff);
-    _active.lastMutationMs = performance.now();
-    _scheduleEndTimer();
-    return;
-  }
-  // Start a new capture only if a host is mounted (i.e. R1 showdown live).
-  if (!_hostEl) return;
-  _startCapture(diff, next);
-}
-
-function _diffR1(a: ShowdownRulesState, b: ShowdownRulesState): { field: string; before: unknown; after: unknown } | null {
-  const ka = JSON.stringify(a.three.size);
-  const kb = JSON.stringify(b.three.size);
-  if (ka !== kb) return { field: 'three.size', before: a.three.size, after: b.three.size };
-  const oa = JSON.stringify(a.three.overlap);
-  const ob = JSON.stringify(b.three.overlap);
-  if (oa !== ob) return { field: 'three.overlap', before: a.three.overlap, after: b.three.overlap };
-  if (a.three.dyn.enabled !== b.three.dyn.enabled) {
-    return { field: 'three.dyn.enabled', before: a.three.dyn.enabled, after: b.three.dyn.enabled };
-  }
-  return null;
-}
-
-function _startCapture(trigger: { field: string; before: unknown; after: unknown }, startConfig: ShowdownRulesState) {
-  // Replace any in-flight capture.
-  if (_active) _endCapture('superseded');
-  _active = {
-    startMs: performance.now(),
-    startedAt: new Date().toISOString(),
-    trigger,
-    startConfig,
-    events: [],
-    lastMutationMs: performance.now(),
-    endTimer: null,
-    rafHandle: null,
-    lastSampleSig: new Map(),
-    lastOwnership: null,
-    verdictEmitted: false,
-  };
-  _push('capture-start', { trigger });
-  // Sample current cards immediately.
-  if (_hostEl) {
-    for (let i = 0; i < _cardEls.length; i++) {
-      _push('card-style-sample', { index: i, ..._snapshotCard(_cardEls[i], i) });
-    }
-  }
-  _scheduleSample();
-  _scheduleEndTimer();
 }
 
 function _scheduleSample() {
   if (!_active) return;
-  _active.rafHandle = window.setTimeout(() => {
+  _active.sampleHandle = window.setTimeout(() => {
     if (!_active) return;
-    for (let i = 0; i < _cardEls.length; i++) {
-      const el = _cardEls[i];
+    for (let i = 0; i < _active.cardEls.length; i++) {
+      const el = _active.cardEls[i];
       const snap = _snapshotCard(el, i);
       const sig = `${snap.cw}|${snap.ch}|${snap.ml}|${snap.tr}|${snap.op}|${snap.cls}|${snap.style}`;
       if (_active.lastSampleSig.get(el) !== sig) {
@@ -294,32 +233,43 @@ function _scheduleSample() {
   }, SAMPLE_INTERVAL_MS);
 }
 
-function _scheduleEndTimer() {
+function _scheduleQuietCheck() {
   if (!_active) return;
-  if (_active.endTimer) clearTimeout(_active.endTimer);
-  _active.endTimer = setTimeout(() => {
+  _active.quietHandle = window.setTimeout(() => {
     if (!_active) return;
     const quiet = performance.now() - _active.lastMutationMs;
-    if (quiet >= END_QUIET_MS - 10) {
+    if (quiet >= QUIET_MS) {
       _endCapture('quiet');
     } else {
-      _scheduleEndTimer();
+      _scheduleQuietCheck();
     }
-  }, Math.max(50, END_QUIET_MS - (performance.now() - _active.lastMutationMs)));
+  }, Math.max(50, QUIET_MS - (performance.now() - _active.lastMutationMs)));
 }
 
-function _endCapture(reason: string) {
+function _endCapture(reason: CompletedCapture['endReason']) {
   if (!_active) return;
-  if (_active.endTimer) clearTimeout(_active.endTimer);
-  if (_active.rafHandle != null) clearTimeout(_active.rafHandle);
+  if (_active.sampleHandle != null) { try { clearTimeout(_active.sampleHandle); } catch { /* */ } }
+  if (_active.quietHandle != null) { try { clearTimeout(_active.quietHandle); } catch { /* */ } }
+  if (_active.maxHandle != null) { try { clearTimeout(_active.maxHandle); } catch { /* */ } }
+  if (_active.hostObserver) { try { _active.hostObserver.disconnect(); } catch { /* */ } }
+  for (const o of _active.cardObservers) { try { o.disconnect(); } catch { /* */ } }
+  if (_active.resizeRO) { try { _active.resizeRO.disconnect(); } catch { /* */ } }
+  if (_active.mqList && _active.mqHandler) {
+    try { _active.mqList.removeEventListener('change', _active.mqHandler); } catch { /* */ }
+  }
+
   _push('capture-end', { reason });
   const endConfig = loadShowdownRules();
+  const endAudit = getThreeFiveSevenR1OwnershipAudit();
+
   _last = {
     startedAt: _active.startedAt,
     endedAt: new Date().toISOString(),
-    trigger: _active.trigger,
+    endReason: reason,
     startConfig: _active.startConfig,
     endConfig,
+    startAudit: _active.startAudit,
+    endAudit,
     events: _active.events.slice(),
     verdict: _active.events.find((e) => e.kind === 'verdict') ?? null,
   };
@@ -331,18 +281,14 @@ function _endCapture(reason: string) {
 
 function _evaluateVerdict() {
   if (!_active || _active.verdictEmitted) return;
-  // Identify "edited large" target width from current persisted three.size.
   const cur = loadShowdownRules();
   const targetW = cur.three.size.mobileWidthPx;
-  // After the edit raised width past baseline (40), any sample whose
-  // measured width returns to ~40 px counts as snapback.
   if (targetW <= 40) return;
   for (let i = _active.events.length - 1; i >= 0; i--) {
     const e = _active.events[i];
     if (e.kind !== 'card-style-sample' && e.kind !== 'card-mutation') continue;
     const w = Number(e.data.cw ?? 0);
     if (w > 0 && w <= 42) {
-      // Find the prior sample showing the larger size for the same card.
       const idx = e.data.index;
       let prior: SnapbackEvent | null = null;
       for (let j = i - 1; j >= 0; j--) {
@@ -353,7 +299,7 @@ function _evaluateVerdict() {
         }
       }
       if (!prior) continue;
-      const ownership = _active.lastOwnership;
+      const ownership = getThreeFiveSevenR1OwnershipAudit();
       _push('verdict', {
         firstChangedProp: 'width',
         oldValue: prior.data.cw,
@@ -381,7 +327,22 @@ function _evaluateVerdict() {
   }
 }
 
-// ─── DOM snapshot helper ──────────────────────────────────────────────────
+// ─── DOM snapshot helpers ─────────────────────────────────────────────────
+
+function _snapshotHost(el: HTMLElement): Record<string, unknown> {
+  let cs: CSSStyleDeclaration | null = null;
+  try { cs = window.getComputedStyle(el); } catch { cs = null; }
+  let rect: DOMRect | null = null;
+  try { rect = el.getBoundingClientRect(); } catch { rect = null; }
+  return {
+    tag: el.tagName,
+    cls: el.className,
+    style: el.getAttribute('style') ?? '',
+    cw: cs ? Math.round(parseFloat(cs.width) || 0) : null,
+    ch: cs ? Math.round(parseFloat(cs.height) || 0) : null,
+    rect: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) } : null,
+  };
+}
 
 function _snapshotCard(el: HTMLElement, index: number): Record<string, unknown> {
   let cs: CSSStyleDeclaration | null = null;
@@ -414,9 +375,13 @@ export function buildR1SnapbackTxt(cap: CompletedCapture): string {
   lines.push('# 3-5-7 R1 STATIC SNAPBACK FORENSIC CAPTURE');
   lines.push(`startedAt: ${cap.startedAt}`);
   lines.push(`endedAt:   ${cap.endedAt}`);
-  lines.push(`trigger:   ${cap.trigger.field}`);
-  lines.push(`  before:  ${JSON.stringify(cap.trigger.before)}`);
-  lines.push(`  after:   ${JSON.stringify(cap.trigger.after)}`);
+  lines.push(`endReason: ${cap.endReason}`);
+  lines.push('');
+  lines.push('## START AUDIT (R1 ownership at arm)');
+  lines.push(JSON.stringify(cap.startAudit, null, 2));
+  lines.push('');
+  lines.push('## END AUDIT (R1 ownership at end)');
+  lines.push(JSON.stringify(cap.endAudit, null, 2));
   lines.push('');
   lines.push('## START CONFIG (three / anchor)');
   lines.push(JSON.stringify({ anchor: cap.startConfig.anchor, three: cap.startConfig.three }, null, 2));
