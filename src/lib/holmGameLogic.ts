@@ -13,7 +13,7 @@ import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDeb
 import { persistTransition } from "./persistSyncDebugEvent";
 import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
 import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugOverrides";
-import { HOLM_DEAL_PRESENTATION_FALLBACK_TOTAL_MS } from "./canonicalShell/cardTransport/holmActionabilityContract";
+
 
 /**
  * Check if all players have decided in a Holm game round
