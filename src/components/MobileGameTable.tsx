@@ -9871,7 +9871,7 @@ export const MobileGameTable = ({
               revealedCount: Math.min(cachedChuckyCards.length, lockedRevealed),
             };
           }
-          const chuckyCardsForRender: CardType[] | null =
+          let chuckyCardsForRender: CardType[] | null =
             cachedChuckySourceEligible && cachedChuckyCards
               ? cachedChuckyCards
               : stickyChuckySourceEligible
@@ -9880,19 +9880,33 @@ export const MobileGameTable = ({
           // Sticky alone (HCI-matched, non-empty cards) keeps the stage
           // mounted through celebration; do not additionally gate on
           // cachedChuckyActive.
-          const chuckyVisible =
+          let chuckyVisible =
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
             (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
-          const chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
+          let chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
           const eligibleCachedRevealed = cachedChuckySourceEligible ? cachedChuckyCardsRevealed : 0;
           const eligibleStickyRevealed = stickyChuckySourceEligible
             ? (chuckyStageStickyRef.current?.revealedCount ?? 0)
             : 0;
           const chuckyStickyRevealCountForRender = eligibleStickyRevealed;
-          const chuckyRevealedCountForRender = Math.min(
+          let chuckyRevealedCountForRender = Math.min(
             chuckyTotalVisibleForRender,
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
+
+          // ── TERMINAL LATCH (consumer wiring): Chucky stage owner ───
+          // While the Holm terminal-presentation latch is held, Chucky
+          // stage must render from the latch snapshot at full reveal.
+          if (
+            terminalPresentationActive &&
+            holmTerminalPresentation &&
+            holmTerminalPresentation.chuckyCards.length > 0
+          ) {
+            chuckyCardsForRender = holmTerminalPresentation.chuckyCards;
+            chuckyTotalVisibleForRender = chuckyCardsForRender.length;
+            chuckyRevealedCountForRender = chuckyCardsForRender.length;
+            chuckyVisible = true;
+          }
 
           // ── Forensics: new-hand Chucky admission summary (read-only) ──
           if (gameType === 'holm-game') {
