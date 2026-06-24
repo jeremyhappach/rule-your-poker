@@ -4882,12 +4882,8 @@ export const MobileGameTable = ({
   // solo-vs-Chucky bool for the viewer ONLY when the viewer is the
   // captured winner. Prevents the bottom active-hand path from
   // re-mounting the frozen terminal cards while celebration ends.
-  const isCurrentPlayerSoloVsChucky =
-    terminalPresentationActive && holmTerminalPresentation
-      ? (holmTerminalPresentation.soloVsChucky &&
-         holmTerminalPresentation.winnerPlayerId === currentPlayer?.id)
-        || _rawIsCurrentPlayerSoloVsChucky
-      : _rawIsCurrentPlayerSoloVsChucky;
+  const isCurrentPlayerSoloVsChucky = _rawIsCurrentPlayerSoloVsChucky;
+
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
