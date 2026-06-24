@@ -645,37 +645,55 @@ export const PlayerHand = ({
 
   // 3-5-7 showdown display with unused cards in separate row (on outer edge)
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
-    const usedCardSize: CardSize = 'lg'; // Larger size for used cards during showdown
-    const unusedCardSize: CardSize = 'sm'; // Small size for dimmed unused cards
-    
+    const usedCardSize: CardSize = 'lg'; // Tailwind tier (overridden by inline style below).
+    const unusedCardSize: CardSize = 'sm';
+    // Geometry Lab v2 resolved values for this branch.
+    const mainRow: ResolvedRoundRow = isRound3WithUnusedBelow
+      ? resolved357.seven
+      : resolved357.five;
+    const irr = resolved357.sevenIrrelevant;
+    // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
+    const interRowGap = irr.interRowGapPx;
+    // Position-mode resolution. `auto` mirrors the historical seat-driven
+    // behavior (bottom seats stack unused ABOVE main; others stack unused
+    // BELOW main). `above`/`below` are explicit Lab overrides.
+    const unusedAbove =
+      irr.positionMode === 'auto'
+        ? isBottomPosition
+        : irr.positionMode === 'above';
+
     // Unused cards element
-    const unusedCardsElement = unusedCards.length > 0 && (
+    const unusedCardsElement = irr.visible && unusedCards.length > 0 && (
       <div className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}>
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
-            isDimmed={true}
+            isDimmed={irr.dimmed}
             isWild={false}
-            className="-ml-2 first:ml-0"
-            style={{ 
-              opacity: 0.4,
-              transform: 'scale(0.85)',
+            style={{
+              width: `${irr.widthPx}px`,
+              height: `${irr.heightPx}px`,
+              marginLeft: displayIndex === 0 ? 0 : `-${irr.overlapPx}px`,
+              opacity: irr.opacity,
+              transform: `scale(${irr.scale})`,
             }}
           />
         ))}
       </div>
     );
-    
+
     // Used cards element
+    const fanStep = mainRow.fanStepDeg;
+    const n = usedCards.length;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isHighlighted = highlightedIndices.includes(originalIndex);
           const isKicker = kickerIndices.includes(originalIndex);
           const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-          
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2; // = fanStep * i - fanStep * (n-1)/2
           return (
             <PlayingCard
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
@@ -685,20 +703,25 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={isWild}
-              className="-ml-3 first:ml-0"
-              style={{ 
-                transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
+              style={{
+                width: `${mainRow.widthPx}px`,
+                height: `${mainRow.heightPx}px`,
+                marginLeft: displayIndex === 0 ? 0 : `-${mainRow.overlapPx}px`,
+                transform: `rotate(${rotationDeg}deg)`,
               }}
             />
           );
         })}
       </div>
     );
-    
+
     return (
-      <div className="flex flex-col gap-0.5" ref={is357Game ? measureRef : undefined}>
-        {/* For bottom positions: unused above, used below. For others: used above, unused below */}
-        {isBottomPosition ? (
+      <div
+        className="flex flex-col"
+        style={{ gap: `${interRowGap}px` }}
+        ref={is357Game ? measureRef : undefined}
+      >
+        {unusedAbove ? (
           <>
             {unusedCardsElement}
             {usedCardsElement}
@@ -712,6 +735,8 @@ export const PlayerHand = ({
       </div>
     );
   }
+
+
 
   // Special round 3 display with unused cards dimmed but all together (old inline style)
   if (isRound3With7Cards && !unusedCardsBelow) {
