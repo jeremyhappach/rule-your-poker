@@ -1,6 +1,6 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
-import { probeHolmPostWinHandoff } from "@/lib/wartimeDebug/holmPostWinHandoff";
+
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { subscribeHolmDealDbg, getHolmDealDbgMeta } from "@/lib/canonicalShell/cardTransport/holmDealDbg";
@@ -41,7 +41,7 @@ import {
 } from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
-import { useNeutralInterstitialCommitted } from "@/lib/canonicalShell/neutralInterstitialCommitSignal";
+
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { useHolmLifecycleTrace } from "@/lib/holm/holmLifecycleTrace";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
@@ -1787,34 +1787,16 @@ export const MobileGameTable = ({
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
 
-  // ── HOLM TERMINAL PRESENTATION LATCH ──────────────────────────────
-  // Captured on result lock (isShowingAnnouncement || holmWinPotTriggerId
-  // rises). Released ONLY when the canonical NeutralInterstitial commits
-  // for this gameId. While active, the renderer derives self/Chucky/
-  // community cards, winner highlights, soloVsChucky, and rabbit-hunt
-  // state from the snapshot — NOT from live state. This holds the
-  // terminal frame across match_win TTL expiry, current_game_uuid
-  // clearing, and raw player-card clearing.
-  type HolmTerminalPresentation = {
-    outcomeKey: string;
-    handContextId: string;
-    dealerGameId: string;
-    selfCards: CardType[];
-    chuckyCards: CardType[];
-    communityCards: CardType[];
-    winnerPlayerId: string | null;
-    winnerCardIndices: number[];
-    winnerCommunityIndices: number[];
-    kickerPlayerIndices: number[];
-    kickerCommunityIndices: number[];
-    soloVsChucky: boolean;
-  };
-  const [holmTerminalPresentation, setHolmTerminalPresentation] =
-    useState<HolmTerminalPresentation | null>(null);
-  const neutralInterstitialCommittedForGame =
-    useNeutralInterstitialCommitted(gameId ?? null);
-  const terminalPresentationActive =
-    !!holmTerminalPresentation && !neutralInterstitialCommittedForGame;
+  // ── HOLM TERMINAL PRESENTATION LATCH (RETIRED) ────────────────────
+  // The shell (PlayfieldSlotController) now performs an atomic
+  // session-end exclusive handoff: when mountedIdentity flips to null
+  // for reason 'session-end', the persistent gameplay subtree is no
+  // longer rendered, so MobileGameTable cannot leak terminal frame
+  // state behind the NeutralInterstitial. The surface-local terminal
+  // latch and its neutral-interstitial commit signal consumer have
+  // been removed; all derivations below fall back to raw state.
+  
+
   
   // HOLM: Gate announcement display until community card 4 flip animation completes.
   // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
@@ -3520,10 +3502,8 @@ export const MobileGameTable = ({
     !isSoloVsChucky &&
     revealedForRabbitUi > 2 &&
     !hasWinResult;
-  // Terminal-presentation latch: while held, rabbit-hunt UI must
-  // remain suppressed regardless of live state.
-  const shouldShowRabbitHuntLabel =
-    terminalPresentationActive ? false : _rawShouldShowRabbitHuntLabel;
+  const shouldShowRabbitHuntLabel = _rawShouldShowRabbitHuntLabel;
+
 
   useLayoutEffect(() => {
     if (!shouldShowRabbitHuntLabel) {
@@ -3815,14 +3795,9 @@ export const MobileGameTable = ({
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
-    // TERMINAL LATCH (consumer wiring): while the Holm terminal-presentation
-    // latch is held, the normal active-self-hand source must NOT feed any
-    // ordinary PlayerHand path. The terminal renderers (tabled fan,
-    // winnerCards, highlights) consume the latch snapshot directly.
-    if (terminalPresentationActive) {
-      __mgtCurrentPlayerCardsSourceRef.current = 'terminal-latch-blocked';
-      return [];
-    }
+    // (Terminal-latch self-hand blocker removed — shell owns
+    // session-end exclusive handoff.)
+
     let chosen: { source: string; cards: CardType[] };
 
     // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
@@ -3957,7 +3932,7 @@ export const MobileGameTable = ({
       });
     }
     return chosen.cards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id, terminalPresentationActive]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id]);
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
@@ -4531,11 +4506,8 @@ export const MobileGameTable = ({
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
     chuckyVisualRevealComplete;
-  // Terminal-presentation latch: while held, isShowingAnnouncement
-  // is forced true so all downstream presentation/highlighting
-  // remains in announcement mode through the post-celebration gap.
-  const isShowingAnnouncement =
-    terminalPresentationActive || _rawIsShowingAnnouncement;
+  const isShowingAnnouncement = _rawIsShowingAnnouncement;
+
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4582,10 +4554,8 @@ export const MobileGameTable = ({
   // Terminal-presentation latch: while held, winnerPlayerId derives
   // from the captured snapshot so highlight/tabling targets survive
   // lastRoundResult clearing.
-  const winnerPlayerId =
-    terminalPresentationActive && holmTerminalPresentation
-      ? holmTerminalPresentation.winnerPlayerId
-      : _rawWinnerPlayerId;
+  const winnerPlayerId = _rawWinnerPlayerId;
+
 
   // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
   if (gameType === 'holm-game') {
@@ -4902,12 +4872,8 @@ export const MobileGameTable = ({
   // solo-vs-Chucky bool for the viewer ONLY when the viewer is the
   // captured winner. Prevents the bottom active-hand path from
   // re-mounting the frozen terminal cards while celebration ends.
-  const isCurrentPlayerSoloVsChucky =
-    terminalPresentationActive && holmTerminalPresentation
-      ? (holmTerminalPresentation.soloVsChucky &&
-         holmTerminalPresentation.winnerPlayerId === currentPlayer?.id)
-        || _rawIsCurrentPlayerSoloVsChucky
-      : _rawIsCurrentPlayerSoloVsChucky;
+  const isCurrentPlayerSoloVsChucky = _rawIsCurrentPlayerSoloVsChucky;
+
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
@@ -4925,10 +4891,8 @@ export const MobileGameTable = ({
   // from the snapshot's selfCards (the tabled winner cards captured
   // at result lock). This is the source the highlight + tabled-stage
   // renderers consume.
-  const winnerCards =
-    terminalPresentationActive && holmTerminalPresentation
-      ? holmTerminalPresentation.selfCards
-      : _rawWinnerCards;
+  const winnerCards = _rawWinnerCards;
+
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
@@ -4966,462 +4930,18 @@ export const MobileGameTable = ({
   }, [_rawWinningCardHighlights]);
   // Terminal-presentation latch: while held, highlights derive from
   // the snapshot's captured winner card indices.
-  const winningCardHighlights =
-    terminalPresentationActive && holmTerminalPresentation
-      ? {
-          playerIndices: holmTerminalPresentation.winnerCardIndices,
-          communityIndices: holmTerminalPresentation.winnerCommunityIndices,
-          kickerPlayerIndices: holmTerminalPresentation.kickerPlayerIndices,
-          kickerCommunityIndices: holmTerminalPresentation.kickerCommunityIndices,
-          hasHighlights:
-            holmTerminalPresentation.winnerCardIndices.length > 0 ||
-            holmTerminalPresentation.winnerCommunityIndices.length > 0,
-        }
-      : _rawWinningCardHighlights;
+  const winningCardHighlights = _rawWinningCardHighlights;
 
-  // ── HOLM TERMINAL LATCH: acquire on result lock ───────────────────
-  // Captures the terminal frame the moment the celebration commits
-  // (isShowingAnnouncement rises OR holmWinPotTriggerId is set) and
-  // the winner has been resolved. Released ONLY by the neutral
-  // interstitial commit signal — see release effect below. Does NOT
-  // re-acquire while already latched.
-  useEffect(() => {
-    // ── HOLM_TERMINAL_LATCH_ACQUIRE_EVAL (forensics) ─────────────
-    const stageSnap = lonePlayerStageSnapshotRef.current;
-    const stickyTabled = tabledSelfStickyRef.current;
-    const stickyChucky = chuckyStageStickyRef.current;
-    const cachedSelfHandCtxId = currentPlayerCardsRef.current.handContextId;
 
-    const terminalHandContextId =
-      stageSnap?.handContextId ??
-      stickyTabled?.handContextId ??
-      stickyChucky?.handContextId ??
-      cachedChuckyHandContextRef.current ??
-      cachedSelfHandCtxId ??
-      null;
-    const terminalHciSource =
-      stageSnap?.handContextId ? 'stageSnap'
-      : stickyTabled?.handContextId ? 'stickyTabled'
-      : stickyChucky?.handContextId ? 'stickyChucky'
-      : cachedChuckyHandContextRef.current ? 'cachedChuckyHandCtxRef'
-      : cachedSelfHandCtxId ? 'cachedSelfHandCtxId'
-      : 'none';
+  // (Holm terminal latch acquire/release/state/consumer-diff and
+  // post-win handoff probe effects have been retired. The shell
+  // performs an atomic session-end exclusive handoff in
+  // PlayfieldSlotController — the persistent gameplay subtree is
+  // unmounted in the same commit NeutralInterstitial takes over,
+  // so MobileGameTable no longer needs to latch terminal frame
+  // state to bridge a "neutral behind gameplay" window.)
 
-    const terminalDealerGameId =
-      stageSnap?.dealerGameId ??
-      stickyTabled?.dealerGameId ??
-      stickyChucky?.dealerGameId ??
-      holmDealerGameId ??
-      null;
-    const terminalDgSource =
-      stageSnap?.dealerGameId ? 'stageSnap'
-      : stickyTabled?.dealerGameId ? 'stickyTabled'
-      : stickyChucky?.dealerGameId ? 'stickyChucky'
-      : holmDealerGameId ? 'holmDealerGameId'
-      : 'none';
 
-    const triggered = !!_rawIsShowingAnnouncement || !!holmWinPotTriggerId;
-    let returnReason: string | null = null;
-    if (gameType !== 'holm-game') returnReason = 'not-holm';
-    else if (holmTerminalPresentation) returnReason = 'already-latched';
-    else if (!triggered) returnReason = 'not-triggered';
-    else if (!_rawWinnerPlayerId) returnReason = 'no-winner';
-    else if (!terminalHandContextId) returnReason = 'no-terminal-hci';
-    else if (!terminalDealerGameId) returnReason = 'no-terminal-dg';
-
-    ffRecord({
-      writerId: 'MobileGameTable:holmTerminalLatchAcquireEffect',
-      source: 'HOLM_TERMINAL_LATCH',
-      marker: 'HOLM_TERMINAL_LATCH_ACQUIRE_EVAL',
-      identity: { gameId: gameId ?? null, hci: terminalHandContextId },
-      payload: {
-        gameType,
-        triggered,
-        _rawIsShowingAnnouncement: !!_rawIsShowingAnnouncement,
-        holmWinPotTriggerId: holmWinPotTriggerId ?? null,
-        _rawWinnerPlayerId,
-        alreadyLatched: !!holmTerminalPresentation,
-        terminalHandContextId,
-        terminalHciSource,
-        terminalDealerGameId,
-        terminalDgSource,
-        stageSnapPresent: !!stageSnap,
-        stickyTabledPresent: !!stickyTabled,
-        stickyChuckyPresent: !!stickyChucky,
-        willExecute: returnReason === null,
-        returnReason,
-      },
-    });
-    if (returnReason !== null) return;
-
-    const selfCards =
-      stageSnap?.cards && stageSnap.cards.length > 0
-        ? [...stageSnap.cards]
-        : stickyTabled?.cards && stickyTabled.cards.length > 0
-          ? [...stickyTabled.cards]
-          : [...currentPlayerCards];
-    const selfSource =
-      stageSnap?.cards && stageSnap.cards.length > 0 ? 'stageSnap'
-      : stickyTabled?.cards && stickyTabled.cards.length > 0 ? 'stickyTabled'
-      : 'currentPlayerCards';
-    const chuckyCardsSnap = [
-      ...(stickyChucky?.cards && stickyChucky.cards.length > 0
-        ? stickyChucky.cards
-        : cachedChuckyCards && cachedChuckyCards.length > 0
-          ? cachedChuckyCards
-          : (chuckyCards ?? [])),
-    ];
-    const chuckySource =
-      stickyChucky?.cards && stickyChucky.cards.length > 0 ? 'stickyChucky'
-      : cachedChuckyCards && cachedChuckyCards.length > 0 ? 'cachedChuckyCards'
-      : 'chuckyCards';
-    const communitySnap = [
-      ...(approvedCommunityCards && approvedCommunityCards.length > 0
-        ? approvedCommunityCards
-        : (communityCards ?? [])),
-    ];
-    const communitySource =
-      approvedCommunityCards && approvedCommunityCards.length > 0 ? 'approvedCommunityCards' : 'communityCards';
-    // Prefer the most recent NON-EMPTY raw highlight payload (captured
-    // by lastNonEmptyRawHighlightsRef). _rawWinningCardHighlights can
-    // collapse to empty by the time this acquire effect runs (community
-    // unmount race, currentPlayerCards override, etc.). The latch must
-    // preserve the exact final visible highlight set.
-    const highlightsSnap =
-      lastNonEmptyRawHighlightsRef.current && lastNonEmptyRawHighlightsRef.current.hasHighlights
-        ? lastNonEmptyRawHighlightsRef.current
-        : _rawWinningCardHighlights;
-    const snap: HolmTerminalPresentation = {
-      outcomeKey: `${terminalHandContextId}:${_rawWinnerPlayerId}`,
-      handContextId: terminalHandContextId,
-      dealerGameId: terminalDealerGameId,
-      selfCards,
-      chuckyCards: chuckyCardsSnap,
-      communityCards: communitySnap,
-      winnerPlayerId: _rawWinnerPlayerId,
-      winnerCardIndices: [...highlightsSnap.playerIndices],
-      winnerCommunityIndices: [...highlightsSnap.communityIndices],
-      kickerPlayerIndices: [...highlightsSnap.kickerPlayerIndices],
-      kickerCommunityIndices: [...highlightsSnap.kickerCommunityIndices],
-      soloVsChucky: true,
-    };
-    ffRecord({
-      writerId: 'MobileGameTable:holmTerminalLatchAcquireEffect',
-      source: 'HOLM_TERMINAL_LATCH',
-      marker: 'HOLM_TERMINAL_LATCH_ACQUIRED',
-      identity: { gameId: gameId ?? null, hci: terminalHandContextId, playerId: _rawWinnerPlayerId ?? null },
-      payload: {
-        outcomeKey: snap.outcomeKey,
-        terminalHandContextId,
-        terminalHciSource,
-        terminalDealerGameId,
-        terminalDgSource,
-        winnerPlayerId: _rawWinnerPlayerId,
-        selfCount: selfCards.length,
-        selfSource,
-        chuckyCount: chuckyCardsSnap.length,
-        chuckySource,
-        communityCount: communitySnap.length,
-        communitySource,
-        winnerCardIndices: _rawWinningCardHighlights.playerIndices,
-        winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
-        hasHighlights: _rawWinningCardHighlights.hasHighlights,
-        acquireTrigger: _rawIsShowingAnnouncement ? 'announcement' : 'holmWinPotTrigger',
-      },
-    });
-    setHolmTerminalPresentation(snap);
-  }, [
-    gameType,
-    holmTerminalPresentation,
-    _rawIsShowingAnnouncement,
-    holmWinPotTriggerId,
-    _rawWinnerPlayerId,
-    _rawWinningCardHighlights,
-    currentPlayerCards,
-    cachedChuckyCards,
-    chuckyCards,
-    approvedCommunityCards,
-    communityCards,
-    holmDealerGameId,
-    gameId,
-  ]);
-
-  // ── HOLM TERMINAL LATCH: release on neutral-interstitial commit ───
-  // The ONLY release signal. Not tied to TTLs, game.status,
-  // current_game_uuid, or raw card state — the latch holds terminal
-  // presentation in place until the shell has actually swapped to
-  // the neutral interstitial.
-  useEffect(() => {
-    const willRelease = !!holmTerminalPresentation && neutralInterstitialCommittedForGame;
-    ffRecord({
-      writerId: 'MobileGameTable:holmTerminalLatchReleaseEffect',
-      source: 'HOLM_TERMINAL_LATCH',
-      marker: 'HOLM_TERMINAL_LATCH_RELEASE_EVAL',
-      identity: {
-        gameId: gameId ?? null,
-        hci: holmTerminalPresentation?.handContextId ?? null,
-        playerId: holmTerminalPresentation?.winnerPlayerId ?? null,
-      },
-      payload: {
-        latched: !!holmTerminalPresentation,
-        neutralInterstitialCommittedForGame,
-        willRelease,
-        outcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
-      },
-    });
-    if (willRelease) {
-      ffRecord({
-        writerId: 'MobileGameTable:holmTerminalLatchReleaseEffect',
-        source: 'HOLM_TERMINAL_LATCH',
-        marker: 'HOLM_TERMINAL_LATCH_RELEASED',
-        identity: {
-          gameId: gameId ?? null,
-          hci: holmTerminalPresentation?.handContextId ?? null,
-          playerId: holmTerminalPresentation?.winnerPlayerId ?? null,
-        },
-        payload: {
-          reason: 'neutral-interstitial-committed',
-          priorOutcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
-          priorHci: holmTerminalPresentation?.handContextId ?? null,
-          priorDealerGameId: holmTerminalPresentation?.dealerGameId ?? null,
-          priorSelfCount: holmTerminalPresentation?.selfCards.length ?? 0,
-          priorChuckyCount: holmTerminalPresentation?.chuckyCards.length ?? 0,
-          priorCommunityCount: holmTerminalPresentation?.communityCards.length ?? 0,
-        },
-      });
-      setHolmTerminalPresentation(null);
-    }
-  }, [holmTerminalPresentation, neutralInterstitialCommittedForGame, gameId]);
-
-  // ── HOLM_TERMINAL_LATCH_STATE: emit on any change ────────────────
-  const __holmLatchStateRef = useRef<string>('');
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const snapshot = {
-      latchPresent: !!holmTerminalPresentation,
-      terminalPresentationActive,
-      neutralInterstitialCommittedForGame,
-      outcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
-      handContextId: holmTerminalPresentation?.handContextId ?? null,
-      dealerGameId: holmTerminalPresentation?.dealerGameId ?? null,
-      winnerPlayerId: holmTerminalPresentation?.winnerPlayerId ?? null,
-      selfCount: holmTerminalPresentation?.selfCards.length ?? 0,
-      chuckyCount: holmTerminalPresentation?.chuckyCards.length ?? 0,
-      communityCount: holmTerminalPresentation?.communityCards.length ?? 0,
-    };
-    const key = JSON.stringify(snapshot);
-    if (key === __holmLatchStateRef.current) return;
-    __holmLatchStateRef.current = key;
-    ffRecord({
-      writerId: 'MobileGameTable:holmTerminalLatchStateEffect',
-      source: 'HOLM_TERMINAL_LATCH',
-      marker: 'HOLM_TERMINAL_LATCH_STATE',
-      identity: { gameId: gameId ?? null, hci: snapshot.handContextId },
-      payload: snapshot,
-    });
-  });
-
-  // ── HOLM_TERMINAL_LATCH_CONSUMER_DIFF: emit when any final consumer
-  //    diverges from raw (proves override is reaching the renderer).
-  const __holmLatchConsumerRef = useRef<string>('');
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    const consumers: Array<{
-      consumerName: string;
-      owner: string;
-      rawValue: unknown;
-      overrideValue: unknown;
-      finalValue: unknown;
-    }> = [
-      {
-        consumerName: 'isShowingAnnouncement',
-        owner: 'MobileGameTable.tsx:isShowingAnnouncement (~L4526)',
-        rawValue: !!_rawIsShowingAnnouncement,
-        overrideValue: terminalPresentationActive ? true : null,
-        finalValue: isShowingAnnouncement,
-      },
-      {
-        consumerName: 'winnerPlayerId',
-        owner: 'MobileGameTable.tsx:winnerPlayerId (~L4574)',
-        rawValue: _rawWinnerPlayerId,
-        overrideValue:
-          terminalPresentationActive && holmTerminalPresentation
-            ? holmTerminalPresentation.winnerPlayerId
-            : null,
-        finalValue: winnerPlayerId,
-      },
-      {
-        consumerName: 'isCurrentPlayerSoloVsChucky',
-        owner: 'MobileGameTable.tsx:isCurrentPlayerSoloVsChucky (~L4894)',
-        rawValue: _rawIsCurrentPlayerSoloVsChucky,
-        overrideValue:
-          terminalPresentationActive && holmTerminalPresentation
-            ? holmTerminalPresentation.soloVsChucky &&
-              holmTerminalPresentation.winnerPlayerId === currentPlayer?.id
-            : null,
-        finalValue: isCurrentPlayerSoloVsChucky,
-      },
-      {
-        consumerName: 'winnerCards.count',
-        owner: 'MobileGameTable.tsx:winnerCards (~L4917)',
-        rawValue: _rawWinnerCards.length,
-        overrideValue:
-          terminalPresentationActive && holmTerminalPresentation
-            ? holmTerminalPresentation.selfCards.length
-            : null,
-        finalValue: winnerCards.length,
-      },
-      {
-        consumerName: 'winningCardHighlights.hasHighlights',
-        owner: 'MobileGameTable.tsx:winningCardHighlights (~L4936)',
-        rawValue: _rawWinningCardHighlights.hasHighlights,
-        overrideValue:
-          terminalPresentationActive && holmTerminalPresentation
-            ? holmTerminalPresentation.winnerCardIndices.length > 0 ||
-              holmTerminalPresentation.winnerCommunityIndices.length > 0
-            : null,
-        finalValue: winningCardHighlights.hasHighlights,
-      },
-      {
-        consumerName: 'shouldShowRabbitHuntLabel',
-        owner: 'MobileGameTable.tsx:shouldShowRabbitHuntLabel (~L3522)',
-        rawValue: _rawShouldShowRabbitHuntLabel,
-        overrideValue: terminalPresentationActive ? false : null,
-        finalValue: shouldShowRabbitHuntLabel,
-      },
-    ];
-    const diffs = consumers.filter(
-      (c) => JSON.stringify(c.rawValue) !== JSON.stringify(c.finalValue),
-    );
-    const summary = {
-      terminalPresentationActive,
-      diffNames: diffs.map((d) => d.consumerName),
-      consumers: consumers.map((c) => ({
-        consumerName: c.consumerName,
-        rawValue: c.rawValue,
-        finalValue: c.finalValue,
-      })),
-    };
-    const key = JSON.stringify(summary);
-    if (key === __holmLatchConsumerRef.current) return;
-    __holmLatchConsumerRef.current = key;
-    if (diffs.length === 0 && !terminalPresentationActive) return;
-    ffRecord({
-      writerId: 'MobileGameTable:holmTerminalLatchConsumerDiffEffect',
-      source: 'HOLM_TERMINAL_LATCH',
-      marker: 'HOLM_TERMINAL_LATCH_CONSUMER_DIFF',
-      identity: {
-        gameId: gameId ?? null,
-        hci: holmTerminalPresentation?.handContextId ?? null,
-      },
-      payload: {
-        terminalPresentationActive,
-        diffCount: diffs.length,
-        diffs,
-        allConsumers: consumers,
-      },
-    });
-  });
-
-  // ── HOLM POST-WIN HANDOFF VISUAL PROBE ────────────────────────────
-  // Runs an rAF visual probe while the terminal latch is active OR the
-  // neutral interstitial commit signal is held. Emits HOLM_POST_WIN_
-  // HANDOFF_PROBE on every frame and exactly one HOLM_POST_WIN_NEUTRAL_
-  // EXCLUSIVE when neutral is visibly painted AND no old-Holm artifact
-  // is hit-test exposed. Capped at 6s per arm; re-arms on next latch.
-  const __holmHandoffExclusiveEmittedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    if (!terminalPresentationActive && !neutralInterstitialCommittedForGame) return;
-    const armKey = `${gameId ?? ''}|${holmTerminalPresentation?.handContextId ?? ''}|${holmTerminalPresentation?.outcomeKey ?? ''}`;
-    if (__holmHandoffExclusiveEmittedRef.current !== armKey) {
-      // Reset exclusive latch on new arm.
-      __holmHandoffExclusiveEmittedRef.current = null;
-    }
-    let cancelled = false;
-    const start = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    let frame = 0;
-    const tick = () => {
-      if (cancelled) return;
-      frame += 1;
-      const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - start;
-      let probe: ReturnType<typeof probeHolmPostWinHandoff> | null = null;
-      try {
-        probe = probeHolmPostWinHandoff({
-          gameId: gameId ?? null,
-          handContextId: holmTerminalPresentation?.handContextId ?? null,
-        });
-      } catch { /* noop */ }
-      if (probe) {
-        ffRecord({
-          writerId: 'MobileGameTable:holmPostWinHandoffProbe',
-          source: 'HOLM_POST_WIN_HANDOFF',
-          marker: 'HOLM_POST_WIN_HANDOFF_PROBE',
-          identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
-          payload: {
-            frame,
-            elapsedMs: Math.round(elapsed),
-            terminalPresentationActive,
-            neutralInterstitialCommittedForGame,
-            neutralVisuallyPainted: probe.neutralVisuallyPainted,
-            oldHolmVisuallyExposed: probe.oldHolmVisuallyExposed,
-            neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
-            perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
-            exclusive: probe.exclusive,
-            neutral: probe.neutral,
-            oldHolm: probe.oldHolm,
-            points: probe.points,
-          },
-        });
-        ffRecord({
-          writerId: 'MobileGameTable:holmPostWinHandoffProbe',
-          source: 'HOLM_POST_WIN_HANDOFF',
-          marker: 'HOLM_POST_WIN_NEUTRAL_STACK_VERDICT',
-          identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
-          payload: {
-            frame,
-            elapsedMs: Math.round(elapsed),
-            neutralVisuallyPainted: probe.neutralVisuallyPainted,
-            neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
-            oldArtifactVisuallyExposed: probe.oldHolmVisuallyExposed,
-            perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
-            points: probe.points,
-          },
-        });
-        if (
-          probe.exclusive &&
-          probe.neutralOwnsEveryVisibleOldArtifact &&
-          __holmHandoffExclusiveEmittedRef.current !== armKey
-        ) {
-          __holmHandoffExclusiveEmittedRef.current = armKey;
-          ffRecord({
-            writerId: 'MobileGameTable:holmPostWinHandoffProbe',
-            source: 'HOLM_POST_WIN_HANDOFF',
-            marker: 'HOLM_POST_WIN_NEUTRAL_EXCLUSIVE',
-            identity: { gameId: gameId ?? null, hci: holmTerminalPresentation?.handContextId ?? null },
-            payload: {
-              frame,
-              elapsedMs: Math.round(elapsed),
-              armKey,
-              terminalPresentationActive,
-              neutralInterstitialCommittedForGame,
-              neutralOwnsEveryVisibleOldArtifact: probe.neutralOwnsEveryVisibleOldArtifact,
-              perArtifactTopmostOwner: probe.perArtifactTopmostOwner,
-              neutral: probe.neutral,
-              oldHolm: probe.oldHolm,
-              points: probe.points,
-            },
-          });
-        }
-      }
-
-      if (elapsed > 6000) return;
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameType, terminalPresentationActive, neutralInterstitialCommittedForGame, gameId, holmTerminalPresentation?.outcomeKey]);
 
 
 
@@ -9639,15 +9159,9 @@ export const MobileGameTable = ({
           // approvedCommunityCards / currentRound transitions.
           let communityCardsForRender: CardType[] | null = approvedCommunityCards ?? null;
           let communityHciForRender: string | null = handContextId ?? null;
-          if (
-            terminalPresentationActive &&
-            holmTerminalPresentation &&
-            holmTerminalPresentation.communityCards.length > 0
-          ) {
-            communityShouldShow = true;
-            communityCardsForRender = holmTerminalPresentation.communityCards;
-            communityHciForRender = holmTerminalPresentation.handContextId;
-          }
+          // (Holm terminal-latch community override removed — shell
+          // owns session-end exclusive handoff.)
+
 
           const liveLoneSoloPlayerId =
             isSoloVsChucky
@@ -9793,26 +9307,9 @@ export const MobileGameTable = ({
             liveLoneSoloCards.length > 0 ? 'liveLoneSoloCards'
             : (activeSnap?.cards && activeSnap.cards.length > 0 ? 'activeSnap.cards' : 'empty');
 
-          // ── TERMINAL LATCH (consumer wiring): tabled-fan owner ─────
-          // While the Holm terminal-presentation latch is held, the
-          // tabled fan must render from the latch snapshot regardless
-          // of live / sticky / persistence sources clearing.
-          if (terminalPresentationActive && holmTerminalPresentation) {
-            const latchPlayerId = holmTerminalPresentation.winnerPlayerId;
-            const latchedPlayer = latchPlayerId
-              ? (players.find(p => p.id === latchPlayerId) ?? loneSoloPlayer)
-              : loneSoloPlayer;
-            activeSnap = {
-              handContextId: holmTerminalPresentation.handContextId,
-              dealerGameId: holmTerminalPresentation.dealerGameId,
-              playerId: latchPlayerId ?? (latchedPlayer?.id ?? ''),
-              cards: holmTerminalPresentation.selfCards,
-            };
-            activeSnapSourceTag = 'terminal-latch';
-            loneSoloPlayer = latchedPlayer;
-            loneSoloCards = holmTerminalPresentation.selfCards;
-            loneSoloCardsSourceTag = 'terminal-latch';
-          }
+          // (Holm terminal-latch tabled-fan override removed — shell
+          // owns session-end exclusive handoff.)
+
 
           ffRecord({
             writerId: 'MobileGameTable.tsx:loneSoloDerivation:L8961',
@@ -10012,19 +9509,9 @@ export const MobileGameTable = ({
             Math.max(eligibleCachedRevealed, eligibleStickyRevealed),
           );
 
-          // ── TERMINAL LATCH (consumer wiring): Chucky stage owner ───
-          // While the Holm terminal-presentation latch is held, Chucky
-          // stage must render from the latch snapshot at full reveal.
-          if (
-            terminalPresentationActive &&
-            holmTerminalPresentation &&
-            holmTerminalPresentation.chuckyCards.length > 0
-          ) {
-            chuckyCardsForRender = holmTerminalPresentation.chuckyCards;
-            chuckyTotalVisibleForRender = chuckyCardsForRender.length;
-            chuckyRevealedCountForRender = chuckyCardsForRender.length;
-            chuckyVisible = true;
-          }
+          // (Holm terminal-latch Chucky stage override removed —
+          // shell owns session-end exclusive handoff.)
+
 
           // ── Forensics: new-hand Chucky admission summary (read-only) ──
           if (gameType === 'holm-game') {
@@ -10177,12 +9664,11 @@ export const MobileGameTable = ({
                       handContextId={communityHciForRender!}
                       cards={communityCardsForRender!}
                       revealed={
-                        terminalPresentationActive
-                          ? (communityCardsForRender?.length ?? 0)
-                          : (isDelayingCommunityCards
-                              ? staggeredCardCount
-                              : (communityCardsRevealed || 2))
+                        isDelayingCommunityCards
+                          ? staggeredCardCount
+                          : (communityCardsRevealed || 2)
                       }
+
                       highlightedIndices={winningCardHighlights.communityIndices}
                       kickerIndices={winningCardHighlights.kickerCommunityIndices}
                       hasHighlights={winningCardHighlights.hasHighlights}
