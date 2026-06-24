@@ -3502,10 +3502,8 @@ export const MobileGameTable = ({
     !isSoloVsChucky &&
     revealedForRabbitUi > 2 &&
     !hasWinResult;
-  // Terminal-presentation latch: while held, rabbit-hunt UI must
-  // remain suppressed regardless of live state.
-  const shouldShowRabbitHuntLabel =
-    terminalPresentationActive ? false : _rawShouldShowRabbitHuntLabel;
+  const shouldShowRabbitHuntLabel = _rawShouldShowRabbitHuntLabel;
+
 
   useLayoutEffect(() => {
     if (!shouldShowRabbitHuntLabel) {
