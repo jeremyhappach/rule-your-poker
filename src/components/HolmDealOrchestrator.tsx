@@ -188,6 +188,9 @@ export function HolmDealOrchestrator({
 
   // ── 1. HANDS WAVE — buck-first, clockwise ─────────────────────────
   useEffect(() => {
+    const selfHandFingerprint = (selfHand ?? [])
+      .map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`)
+      .join('|');
     const guard = {
       hasDeal: !!deal,
       alreadyDispatched: handsDispatchedRef.current,
@@ -195,6 +198,9 @@ export function HolmDealOrchestrator({
       seatsLength: seats.length,
       cardsPerPlayer,
       selfHandLength: selfHand?.length ?? 0,
+      selfHandFingerprint,
+      selfPlayerId,
+      handContextId,
       buckPosition,
       dealerPosition,
     };
