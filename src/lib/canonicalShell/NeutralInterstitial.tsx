@@ -20,6 +20,7 @@ import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+import { setNeutralInterstitialCommitted } from './neutralInterstitialCommitSignal';
 
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
@@ -214,6 +215,16 @@ export function NeutralInterstitial({
     // Single mount/unmount lifecycle — telemetry must not churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Publish neutral-interstitial commit signal for the lifetime of
+  // this mount, scoped to gameId. Consumers (e.g. MobileGameTable's
+  // Holm terminal-presentation latch) release terminal frame state
+  // only when this signal flips true. NOT instrumentation — this is
+  // the shell→surface boundary signal.
+  useEffect(() => {
+    setNeutralInterstitialCommitted(gameId ?? null, true);
+    return () => setNeutralInterstitialCommitted(gameId ?? null, false);
+  }, [gameId]);
 
   // ── Waiting-table flight recorder (instrumentation only) ────────
   useWaitingMount('NeutralInterstitial', {

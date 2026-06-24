@@ -40,6 +40,7 @@ import {
 } from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { useNeutralInterstitialCommitted } from "@/lib/canonicalShell/neutralInterstitialCommitSignal";
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { useHolmLifecycleTrace } from "@/lib/holm/holmLifecycleTrace";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
@@ -1340,7 +1341,7 @@ export const MobileGameTable = ({
     pot,
     anteAmount,
     dealerPosition: dealerPosition ?? 1,
-    currentRound: horsesRoundId ?? null,
+    currentRoundId: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
     isPaused: isPaused ?? false,
@@ -1784,6 +1785,33 @@ export const MobileGameTable = ({
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
+
+  // ── HOLM TERMINAL PRESENTATION LATCH ──────────────────────────────
+  // Captured on result lock (isShowingAnnouncement || holmWinPotTriggerId
+  // rises). Released ONLY when the canonical NeutralInterstitial commits
+  // for this gameId. While active, the renderer derives self/Chucky/
+  // community cards, winner highlights, soloVsChucky, and rabbit-hunt
+  // state from the snapshot — NOT from live state. This holds the
+  // terminal frame across match_win TTL expiry, current_game_uuid
+  // clearing, and raw player-card clearing.
+  type HolmTerminalPresentation = {
+    outcomeKey: string;
+    handContextId: string;
+    dealerGameId: string;
+    selfCards: CardType[];
+    chuckyCards: CardType[];
+    communityCards: CardType[];
+    winnerPlayerId: string | null;
+    winnerCardIndices: number[];
+    winnerCommunityIndices: number[];
+    soloVsChucky: boolean;
+  };
+  const [holmTerminalPresentation, setHolmTerminalPresentation] =
+    useState<HolmTerminalPresentation | null>(null);
+  const neutralInterstitialCommittedForGame =
+    useNeutralInterstitialCommitted(gameId ?? null);
+  const terminalPresentationActive =
+    !!holmTerminalPresentation && !neutralInterstitialCommittedForGame;
   
   // HOLM: Gate announcement display until community card 4 flip animation completes.
   // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
@@ -3481,7 +3509,7 @@ export const MobileGameTable = ({
 
   // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
   // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
-  const shouldShowRabbitHuntLabel =
+  const _rawShouldShowRabbitHuntLabel =
     shouldShowHolmCommunityCards &&
     rabbitHunt &&
     stayedPlayersCount === 0 &&
@@ -3489,6 +3517,10 @@ export const MobileGameTable = ({
     !isSoloVsChucky &&
     revealedForRabbitUi > 2 &&
     !hasWinResult;
+  // Terminal-presentation latch: while held, rabbit-hunt UI must
+  // remain suppressed regardless of live state.
+  const shouldShowRabbitHuntLabel =
+    terminalPresentationActive ? false : _rawShouldShowRabbitHuntLabel;
 
   useLayoutEffect(() => {
     if (!shouldShowRabbitHuntLabel) {
@@ -4483,11 +4515,16 @@ export const MobileGameTable = ({
   // Result announcement must wait for the Chucky VISUAL reveal to finish.
   // Otherwise the announcement can render before / during the flips, gating
   // observers and producing the "rapid reveal after announcement" artifact.
-  const isShowingAnnouncement =
+  const _rawIsShowingAnnouncement =
     gameType === 'holm-game' &&
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
     chuckyVisualRevealComplete;
+  // Terminal-presentation latch: while held, isShowingAnnouncement
+  // is forced true so all downstream presentation/highlighting
+  // remains in announcement mode through the post-celebration gap.
+  const isShowingAnnouncement =
+    terminalPresentationActive || _rawIsShowingAnnouncement;
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4504,9 +4541,9 @@ export const MobileGameTable = ({
 
   // Determine winner from lastRoundResult for dimming logic
   // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
-  const winnerPlayerId = useMemo(() => {
+  const _rawWinnerPlayerId = useMemo(() => {
     // Need announcement OR active holm win animation to determine winner
-    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerIdGated;
+    const shouldDeriveWinner = _rawIsShowingAnnouncement || holmWinPotTriggerIdGated;
     if (!shouldDeriveWinner || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
@@ -4530,7 +4567,14 @@ export const MobileGameTable = ({
       }
     }
     return null;
-  }, [isShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
+  }, [_rawIsShowingAnnouncement, holmWinPotTriggerIdGated, lastRoundResult, players]);
+  // Terminal-presentation latch: while held, winnerPlayerId derives
+  // from the captured snapshot so highlight/tabling targets survive
+  // lastRoundResult clearing.
+  const winnerPlayerId =
+    terminalPresentationActive && holmTerminalPresentation
+      ? holmTerminalPresentation.winnerPlayerId
+      : _rawWinnerPlayerId;
 
   // ── Forensics: Holm pot-transfer lifecycle (read-only) ──
   if (gameType === 'holm-game') {
@@ -4829,7 +4873,7 @@ export const MobileGameTable = ({
   // through the win/payout sequence (hide from bottom section to prevent the "snap back" effect).
   // CRITICAL: Also check holmWinPotTriggerId - if pot animation is active, keep cards tabled for the winner
   // to prevent brief re-population during win celebration.
-  const isCurrentPlayerSoloVsChucky =
+  const _rawIsCurrentPlayerSoloVsChucky =
     gameType === 'holm-game' &&
     !!currentPlayer &&
     (
@@ -4837,38 +4881,135 @@ export const MobileGameTable = ({
       (isSoloVsChucky &&
         (soloVsChuckyPlayerIdLocked
           ? soloVsChuckyPlayerIdLocked === currentPlayer.id
-          : winnerPlayerId
-            ? winnerPlayerId === currentPlayer.id
+          : _rawWinnerPlayerId
+            ? _rawWinnerPlayerId === currentPlayer.id
             : currentPlayer.current_decision === 'stay')) ||
       // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
-      (holmWinPotTriggerIdGated && winnerPlayerId === currentPlayer.id)
+      (holmWinPotTriggerIdGated && _rawWinnerPlayerId === currentPlayer.id)
     );
+  // Terminal-presentation latch: while held, force the snapshot's
+  // solo-vs-Chucky bool for the viewer ONLY when the viewer is the
+  // captured winner. Prevents the bottom active-hand path from
+  // re-mounting the frozen terminal cards while celebration ends.
+  const isCurrentPlayerSoloVsChucky =
+    terminalPresentationActive && holmTerminalPresentation
+      ? (holmTerminalPresentation.soloVsChucky &&
+         holmTerminalPresentation.winnerPlayerId === currentPlayer?.id)
+        || _rawIsCurrentPlayerSoloVsChucky
+      : _rawIsCurrentPlayerSoloVsChucky;
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
-  const winnerCards = useMemo(() => {
-    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerIdGated;
-    if (!winnerPlayerId || !shouldDeriveCards) return [];
-    if (winnerPlayerId === currentPlayer?.id) {
+  const _rawWinnerCards = useMemo(() => {
+    const shouldDeriveCards = _rawIsShowingAnnouncement || holmWinPotTriggerIdGated;
+    if (!_rawWinnerPlayerId || !shouldDeriveCards) return [];
+    if (_rawWinnerPlayerId === currentPlayer?.id) {
       return currentPlayerCards;
     }
     // Find winner's cards from playerCards
-    const winnerCardData = playerCards.find(pc => pc.player_id === winnerPlayerId);
+    const winnerCardData = playerCards.find(pc => pc.player_id === _rawWinnerPlayerId);
     return winnerCardData?.cards || [];
-  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerIdGated, currentPlayer?.id, currentPlayerCards, playerCards]);
+  }, [_rawWinnerPlayerId, _rawIsShowingAnnouncement, holmWinPotTriggerIdGated, currentPlayer?.id, currentPlayerCards, playerCards]);
+  // Terminal-presentation latch: while held, winnerCards derives
+  // from the snapshot's selfCards (the tabled winner cards captured
+  // at result lock). This is the source the highlight + tabled-stage
+  // renderers consume.
+  const winnerCards =
+    terminalPresentationActive && holmTerminalPresentation
+      ? holmTerminalPresentation.selfCards
+      : _rawWinnerCards;
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
   // NOTE: Do NOT check isDelayingCommunityCards here - that's for new round startup delay,
   // we still want highlights to persist during the post-win delay before next hand
-  const winningCardHighlights = useMemo(() => {
+  const _rawWinningCardHighlights = useMemo(() => {
     // Only highlight during announcement phase with winner determined
-    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId) {
+    if (!_rawIsShowingAnnouncement || !_rawWinnerCards.length || !communityCards?.length || !_rawWinnerPlayerId) {
       return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
     }
-    const result = getWinningCardIndices(winnerCards, communityCards, false);
+    const result = getWinningCardIndices(_rawWinnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
-  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
+  }, [_rawIsShowingAnnouncement, _rawWinnerCards, communityCards, _rawWinnerPlayerId]);
+  // Terminal-presentation latch: while held, highlights derive from
+  // the snapshot's captured winner card indices.
+  const winningCardHighlights =
+    terminalPresentationActive && holmTerminalPresentation
+      ? {
+          playerIndices: holmTerminalPresentation.winnerCardIndices,
+          communityIndices: holmTerminalPresentation.winnerCommunityIndices,
+          kickerPlayerIndices: [] as number[],
+          kickerCommunityIndices: [] as number[],
+          hasHighlights:
+            holmTerminalPresentation.winnerCardIndices.length > 0 ||
+            holmTerminalPresentation.winnerCommunityIndices.length > 0,
+        }
+      : _rawWinningCardHighlights;
+
+  // ── HOLM TERMINAL LATCH: acquire on result lock ───────────────────
+  // Captures the terminal frame the moment the celebration commits
+  // (isShowingAnnouncement rises OR holmWinPotTriggerId is set) and
+  // the winner has been resolved. Released ONLY by the neutral
+  // interstitial commit signal — see release effect below. Does NOT
+  // re-acquire while already latched.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (holmTerminalPresentation) return;
+    const triggered = !!_rawIsShowingAnnouncement || !!holmWinPotTriggerId;
+    if (!triggered) return;
+    if (!handContextId) return;
+    if (!_rawWinnerPlayerId) return;
+    const selfCards = [...currentPlayerCards];
+    const chuckyCardsSnap = [
+      ...(cachedChuckyCards && cachedChuckyCards.length > 0
+        ? cachedChuckyCards
+        : (chuckyCards ?? [])),
+    ];
+    const communitySnap = [
+      ...(approvedCommunityCards && approvedCommunityCards.length > 0
+        ? approvedCommunityCards
+        : (communityCards ?? [])),
+    ];
+    const snap: HolmTerminalPresentation = {
+      outcomeKey: `${handContextId}:${_rawWinnerPlayerId}`,
+      handContextId,
+      dealerGameId: holmDealerGameId ?? '',
+      selfCards,
+      chuckyCards: chuckyCardsSnap,
+      communityCards: communitySnap,
+      winnerPlayerId: _rawWinnerPlayerId,
+      winnerCardIndices: _rawWinningCardHighlights.playerIndices,
+      winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
+      soloVsChucky: _rawIsCurrentPlayerSoloVsChucky,
+    };
+    setHolmTerminalPresentation(snap);
+  }, [
+    gameType,
+    holmTerminalPresentation,
+    _rawIsShowingAnnouncement,
+    holmWinPotTriggerId,
+    handContextId,
+    _rawWinnerPlayerId,
+    _rawWinningCardHighlights,
+    _rawIsCurrentPlayerSoloVsChucky,
+    currentPlayerCards,
+    cachedChuckyCards,
+    chuckyCards,
+    approvedCommunityCards,
+    communityCards,
+    holmDealerGameId,
+  ]);
+
+  // ── HOLM TERMINAL LATCH: release on neutral-interstitial commit ───
+  // The ONLY release signal. Not tied to TTLs, game.status,
+  // current_game_uuid, or raw card state — the latch holds terminal
+  // presentation in place until the shell has actually swapped to
+  // the neutral interstitial.
+  useEffect(() => {
+    if (holmTerminalPresentation && neutralInterstitialCommittedForGame) {
+      setHolmTerminalPresentation(null);
+    }
+  }, [holmTerminalPresentation, neutralInterstitialCommittedForGame]);
 
   // ──────────────────────────────────────────────────────────────────
   // POST-WIN HOLM INTERVAL FORENSICS (narrow ownership-transition only)
@@ -4882,7 +5023,7 @@ export const MobileGameTable = ({
     open: boolean;
     openedHci: string | null;
     openedDealerGameId: string | null;
-    openedRoundId: string | null;
+    openedRoundId: number | null;
     prev: Record<string, unknown>;
   }>({ open: false, openedHci: null, openedDealerGameId: null, openedRoundId: null, prev: {} });
   if (gameType === 'holm-game') {
@@ -4948,7 +5089,7 @@ export const MobileGameTable = ({
           writerId: 'MobileGameTable.tsx:postWinIntervalForensics:OPEN',
           source: 'HOLM_POST_WIN_INTERVAL',
           marker: 'POST_WIN_INTERVAL_OPEN',
-          identity: { hci: w.openedHci, roundId: w.openedRoundId, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null },
+          identity: { hci: w.openedHci, roundId: w.openedRoundId != null ? String(w.openedRoundId) : null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null },
           payload: { reason: isShowingAnnouncement ? 'announcement' : 'winPotTrigger', snapshot: next },
         });
       }
@@ -4964,7 +5105,7 @@ export const MobileGameTable = ({
             marker: 'POST_WIN_INTERVAL_TRANSITION',
             identity: {
               hci: handContextId ?? null,
-              roundId: currentRound ?? null,
+              roundId: currentRound != null ? String(currentRound) : null,
               gameId: gameId ?? null,
               playerId: currentPlayer?.id ?? null,
               segmentId: w.openedHci,
@@ -4981,7 +5122,7 @@ export const MobileGameTable = ({
             writerId: 'MobileGameTable.tsx:postWinIntervalForensics:CLOSE',
             source: 'HOLM_POST_WIN_INTERVAL',
             marker: 'POST_WIN_INTERVAL_CLOSE',
-            identity: { hci: handContextId ?? null, roundId: currentRound ?? null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
+            identity: { hci: handContextId ?? null, roundId: currentRound != null ? String(currentRound) : null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
             payload: { reason: 'both-clear-and-hci-advanced', openedHci: w.openedHci, closedHci: handContextId ?? null },
           });
           w.open = false; w.openedHci = null; w.openedDealerGameId = null; w.openedRoundId = null; w.prev = {};
