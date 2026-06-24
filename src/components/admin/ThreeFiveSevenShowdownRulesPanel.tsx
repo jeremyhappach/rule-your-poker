@@ -161,17 +161,20 @@ function NumInput({
   value,
   step = 1,
   min,
+  disabled,
   onChange,
 }: {
   value: number;
   step?: number;
   min?: number;
+  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   return (
     <Input
       type="number"
       step={step}
+      disabled={disabled}
       value={Number.isFinite(value) ? Number(value.toFixed(6)) : 0}
       onChange={(e) => {
         const n = Number(e.target.value);
@@ -210,9 +213,11 @@ function BoolSelect({
 
 function CardSizeControls({
   cfg,
+  disabled,
   onChange,
 }: {
   cfg: CardSizePx;
+  disabled?: boolean;
   onChange: (next: CardSizePx) => void;
 }) {
   const patch = (p: Partial<CardSizePx>) => onChange({ ...cfg, ...p });
@@ -221,6 +226,11 @@ function CardSizeControls({
       <p className="text-xs text-muted-foreground">
         Per-breakpoint px sizing. Mirrors Tailwind tiers like{" "}
         <code>w-8 h-12 sm:w-9 sm:h-14</code>.
+        {disabled && (
+          <span className="ml-1 italic">
+            Inactive — dynamic resolver is enabled.
+          </span>
+        )}
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -228,6 +238,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileWidthPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ mobileWidthPx: v })}
           />
         </div>
@@ -236,6 +247,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileHeightPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ mobileHeightPx: v })}
           />
         </div>
@@ -244,6 +256,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.smWidthPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ smWidthPx: v })}
           />
         </div>
@@ -252,6 +265,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.smHeightPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ smHeightPx: v })}
           />
         </div>
@@ -262,9 +276,11 @@ function CardSizeControls({
 
 function OverlapControls({
   cfg,
+  disabled,
   onChange,
 }: {
   cfg: OverlapPx;
+  disabled?: boolean;
   onChange: (next: OverlapPx) => void;
 }) {
   const patch = (p: Partial<OverlapPx>) => onChange({ ...cfg, ...p });
@@ -275,12 +291,13 @@ function OverlapControls({
         <NumInput
           value={cfg.mobilePx}
           min={0}
+          disabled={disabled}
           onChange={(v) => patch({ mobilePx: v })}
         />
       </div>
       <div className="space-y-1">
         <Label>Overlap sm (px)</Label>
-        <NumInput value={cfg.smPx} min={0} onChange={(v) => patch({ smPx: v })} />
+        <NumInput value={cfg.smPx} min={0} disabled={disabled} onChange={(v) => patch({ smPx: v })} />
       </div>
     </div>
   );
@@ -386,6 +403,15 @@ function RoundRowControls({
   showDyn: boolean;
   onChange: (next: RoundRowConfig) => void;
 }) {
+  // R1 contract: dynamic resolver and explicit static px sizing are
+  // mutually exclusive. When dyn is enabled the static size/overlap
+  // inputs are inactive; editing any static value auto-disables dyn so
+  // the user's explicit values persist through mount/resize/showdown.
+  const dynActive = showDyn && cfg.dyn.enabled;
+  const disableDynIfActive = (next: RoundRowConfig): RoundRowConfig =>
+    showDyn && next.dyn.enabled
+      ? { ...next, dyn: { ...next.dyn, enabled: false } }
+      : next;
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -397,11 +423,13 @@ function RoundRowControls({
       </p>
       <CardSizeControls
         cfg={cfg.size}
-        onChange={(size) => onChange({ ...cfg, size })}
+        disabled={dynActive}
+        onChange={(size) => onChange(disableDynIfActive({ ...cfg, size }))}
       />
       <OverlapControls
         cfg={cfg.overlap}
-        onChange={(overlap) => onChange({ ...cfg, overlap })}
+        disabled={dynActive}
+        onChange={(overlap) => onChange(disableDynIfActive({ ...cfg, overlap }))}
       />
       <FanControls cfg={cfg.fan} onChange={(fan) => onChange({ ...cfg, fan })} />
       {showDyn && (
@@ -470,15 +498,8 @@ function IrrelevantPairControls({
             onChange={(v) => patch({ grayscalePct: v })}
           />
         </div>
-        <div className="space-y-1">
-          <Label>Inter-row gap (px)</Label>
-          <NumInput
-            value={cfg.interRowGapPx}
-            min={0}
-            onChange={(v) => patch({ interRowGapPx: v })}
-          />
-        </div>
       </div>
+
       <div className="space-y-1">
         <Label>Position mode</Label>
         <Select
@@ -620,7 +641,7 @@ function ParityAuditPanel() {
       { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
       { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
       { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
-      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
+      
       { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
       { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
       { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },

@@ -60,7 +60,6 @@ export interface IrrelevantPairConfig {
   scale: number;
   opacity: number;
   grayscalePct: number;
-  interRowGapPx: number;
   size: CardSizePx;
   overlap: OverlapPx;
   positionMode: 'auto' | 'above' | 'below';
@@ -125,7 +124,6 @@ const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
   scale: 0.85,
   opacity: 0.4,
   grayscalePct: 30,
-  interRowGapPx: 2,
   size: { mobileWidthPx: 24, mobileHeightPx: 36, smWidthPx: 28, smHeightPx: 40 },
   overlap: { mobilePx: 8, smPx: 8 },
   positionMode: 'auto',
@@ -267,7 +265,7 @@ export interface ResolvedIrrelevant {
   scale: number;
   opacity: number;
   grayscalePct: number;
-  interRowGapPx: number;
+  
   widthPx: number;
   heightPx: number;
   overlapPx: number;
@@ -304,7 +302,7 @@ function resolveIrrelevant(
     scale: cfg.scale,
     opacity: cfg.opacity,
     grayscalePct: cfg.grayscalePct,
-    interRowGapPx: cfg.interRowGapPx,
+    
     widthPx: isSm ? cfg.size.smWidthPx : cfg.size.mobileWidthPx,
     heightPx: isSm ? cfg.size.smHeightPx : cfg.size.mobileHeightPx,
     overlapPx: isSm ? cfg.overlap.smPx : cfg.overlap.mobilePx,

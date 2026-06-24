@@ -652,8 +652,8 @@ export const PlayerHand = ({
       ? resolved357.seven
       : resolved357.five;
     const irr = resolved357.sevenIrrelevant;
-    // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
-    const interRowGap = irr.interRowGapPx;
+    // Inter-row gap: fixed 2 px (matches the legacy Tailwind `gap-0.5`).
+    const interRowGap = 2;
     // Position-mode resolution. `auto` mirrors the historical seat-driven
     // behavior (bottom seats stack unused ABOVE main; others stack unused
     // BELOW main). `above`/`below` are explicit Lab overrides.
