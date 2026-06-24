@@ -252,6 +252,13 @@ export function WartimeDebugPanel() {
             >
               JSON
             </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-amber-700/40 px-2 py-1 text-[10px]"
+              title="HOLM POST-WIN HANDOFF — derived filtered .txt export from the wartime ring (±250 events around handoff anchors)."
+              onClick={() => downloadHolmPostWinHandoffTxt()}
+            >
+              HANDOFF.TXT
             <label
               className="flex shrink-0 items-center gap-1 rounded border border-border bg-muted px-1.5 py-1 text-[9px]"
               title="When OFF, exports include the FULL retained ring buffer regardless of filter chips/text. When ON, exports only what the panel currently shows."
