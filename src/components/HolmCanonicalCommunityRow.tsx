@@ -21,6 +21,11 @@ import type { Card as CardType } from '@/lib/cardUtils';
 import { PlayingCard } from './PlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import {
+  armCommunityLandingSampler,
+  recordCommunityDomLifecycle,
+  recordCommunityPresentationState,
+} from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import { resolveCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 
