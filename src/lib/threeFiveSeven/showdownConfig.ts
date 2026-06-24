@@ -124,7 +124,6 @@ const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
   scale: 0.85,
   opacity: 0.4,
   grayscalePct: 30,
-  interRowGapPx: 2,
   size: { mobileWidthPx: 24, mobileHeightPx: 36, smWidthPx: 28, smHeightPx: 40 },
   overlap: { mobilePx: 8, smPx: 8 },
   positionMode: 'auto',
