@@ -9169,15 +9169,9 @@ export const MobileGameTable = ({
           // approvedCommunityCards / currentRound transitions.
           let communityCardsForRender: CardType[] | null = approvedCommunityCards ?? null;
           let communityHciForRender: string | null = handContextId ?? null;
-          if (
-            terminalPresentationActive &&
-            holmTerminalPresentation &&
-            holmTerminalPresentation.communityCards.length > 0
-          ) {
-            communityShouldShow = true;
-            communityCardsForRender = holmTerminalPresentation.communityCards;
-            communityHciForRender = holmTerminalPresentation.handContextId;
-          }
+          // (Holm terminal-latch community override removed — shell
+          // owns session-end exclusive handoff.)
+
 
           const liveLoneSoloPlayerId =
             isSoloVsChucky
