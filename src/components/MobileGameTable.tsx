@@ -1838,6 +1838,13 @@ export const MobileGameTable = ({
       cachedWinningResultRef.current = null;
       cachedFeltBlockNodeRef.current = null;
       turnSnapshotTakenRef.current = false;
+      // Run-Back hygiene: dealer-game boundary always wipes Holm sticky
+      // self-stage caches. Correctness is already enforced by the
+      // fail-closed IsCurrent checks at render sites; this is belt-
+      // and-braces so a stale ref can never even be inspected.
+      tabledSelfStickyRef.current = null;
+      lonePlayerStageSnapshotRef.current = null;
+      chuckyStageStickyRef.current = null;
       prevHorsesDealerGameIdRef.current = horsesDealerGameId;
     }
 
@@ -1858,7 +1865,15 @@ export const MobileGameTable = ({
 
       // Clear render trace fingerprints for new hand boundary
       resetHolmRenderTrace(handContextId);
-      
+
+      // Run-Back hygiene: hand boundary wipes prior-HCI Holm sticky
+      // self-stage / lone-player caches. The fail-closed IsCurrent
+      // checks already gate these reads, but the explicit wipe makes
+      // PENDING-HCI inspectable as "no prior-hand artifact remains".
+      tabledSelfStickyRef.current = null;
+      lonePlayerStageSnapshotRef.current = null;
+      chuckyStageStickyRef.current = null;
+
       prevHandContextRef.current = handContextId;
     }
     
