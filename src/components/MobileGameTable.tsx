@@ -9664,12 +9664,11 @@ export const MobileGameTable = ({
                       handContextId={communityHciForRender!}
                       cards={communityCardsForRender!}
                       revealed={
-                        terminalPresentationActive
-                          ? (communityCardsForRender?.length ?? 0)
-                          : (isDelayingCommunityCards
-                              ? staggeredCardCount
-                              : (communityCardsRevealed || 2))
+                        isDelayingCommunityCards
+                          ? staggeredCardCount
+                          : (communityCardsRevealed || 2)
                       }
+
                       highlightedIndices={winningCardHighlights.communityIndices}
                       kickerIndices={winningCardHighlights.kickerCommunityIndices}
                       hasHighlights={winningCardHighlights.hasHighlights}
