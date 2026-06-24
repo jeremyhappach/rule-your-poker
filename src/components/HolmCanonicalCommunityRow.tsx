@@ -33,12 +33,28 @@ interface HolmCanonicalCommunityRowProps {
   handContextId: string;
   cards: CardType[];
   tightOverlap?: boolean;
+  /**
+   * Number of community cards currently revealed face-up for the late-hand
+   * reveal pipeline. Slots 0 and 1 are always face-up by Holm rules; slots
+   * 2 and 3 flip face-up once `revealed` advances past them.
+   *
+   * When DealRuntime is in DEALING and the card is not yet settled, the
+   * slot still renders as an empty anchor regardless of `revealed`.
+   */
+  revealed?: number;
+  highlightedIndices?: number[];
+  kickerIndices?: number[];
+  hasHighlights?: boolean;
 }
 
 export function HolmCanonicalCommunityRow({
   handContextId,
   cards,
   tightOverlap = false,
+  revealed = 0,
+  highlightedIndices = [],
+  kickerIndices = [],
+  hasHighlights = false,
 }: HolmCanonicalCommunityRowProps) {
   const deal = useDealRuntime();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -104,32 +120,41 @@ export function HolmCanonicalCommunityRow({
         })
       : null;
 
-  // Aggregate presentation-state for this render pass (single emit per change).
-  {
-    const cardIds: string[] = [];
-    const faceUpMask: boolean[] = [];
-    const renderedAs: string[] = [];
-    const renderKeys: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const cardId = `${handContextId}#community-${i}`;
-      const settled = deal ? deal.isSettled(cardId) : false;
-      const showFace = i < 2;
-      const card = cards[i];
-      cardIds.push(cardId);
-      faceUpMask.push(showFace);
-      renderedAs.push(settled && showFace && card ? 'face' : settled ? 'back' : 'empty-anchor');
-      renderKeys.push(String(i));
-    }
-    recordCommunityPresentationState({
-      writerId: 'HolmCanonicalCommunityRow.tsx:presentationAggregate',
-      handContextId,
-      sourceBranch: 'HolmCanonicalCommunityRow',
-      cardIds,
-      faceUpMask,
-      renderedAs,
-      renderKeys,
-    });
+  // Per-slot presentation rule (stable across DealRuntime READY→GAMEPLAY):
+  //   - If DealRuntime is mounted and the slot's cardId is NOT settled,
+  //     render an empty anchor (no card content) regardless of `revealed`.
+  //   - Otherwise (settled OR no DealRuntime ancestor / post-deal path):
+  //       i < 2          → face-up
+  //       i >= 2         → face-up iff revealed > i, else card back
+  //   The slot <div> node and its stable key=cardId DO NOT change across
+  //   the deal-phase boundary; only the inner card content transitions
+  //   in place. This is the invariant required to eliminate the
+  //   READY→GAMEPLAY structural remount blink.
+  const slotRenderedAs: Array<'face' | 'back' | 'empty-anchor'> = [];
+  const slotFaceUpMask: boolean[] = [];
+  const cardIdsForRecord: string[] = [];
+  const renderKeysForRecord: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const cardId = `${handContextId}#community-${i}`;
+    const settled = deal ? deal.isSettled(cardId) : true;
+    const card = cards[i];
+    const faceUp = settled && !!card && (i < 2 || revealed > i);
+    const showBack = settled && !faceUp;
+    slotFaceUpMask.push(faceUp);
+    slotRenderedAs.push(faceUp ? 'face' : showBack ? 'back' : 'empty-anchor');
+    cardIdsForRecord.push(cardId);
+    renderKeysForRecord.push(cardId);
   }
+
+  recordCommunityPresentationState({
+    writerId: 'HolmCanonicalCommunityRow.tsx:presentationAggregate',
+    handContextId,
+    sourceBranch: 'HolmCanonicalCommunityRow',
+    cardIds: cardIdsForRecord,
+    faceUpMask: slotFaceUpMask,
+    renderedAs: slotRenderedAs,
+    renderKeys: renderKeysForRecord,
+  });
 
   return (
     <div
@@ -142,8 +167,8 @@ export function HolmCanonicalCommunityRow({
         <div className="flex items-center" style={{ height: layout.cardHeight }}>
           {Array.from({ length: count }, (_, i) => {
             const cardId = `${handContextId}#community-${i}`;
-            const settled = deal ? deal.isSettled(cardId) : false;
-            const showFace = i < 2;
+            const renderedAs = slotRenderedAs[i];
+            const faceUp = slotFaceUpMask[i];
             const card = cards[i];
             ffRecord({
               writerId: 'HolmCanonicalCommunityRow.tsx:slotRender:L87',
@@ -153,21 +178,21 @@ export function HolmCanonicalCommunityRow({
               payload: {
                 slotIndex: i,
                 cardId,
-                settled,
-                showFace,
+                settled: renderedAs !== 'empty-anchor',
+                showFace: faceUp,
                 hasCard: !!card,
-                renderedAs: settled && showFace && card ? 'face' : settled ? 'back' : 'empty-anchor',
+                renderedAs,
                 hasDealRuntime: !!deal,
               },
             });
             return (
               <div
-                key={i}
+                key={cardId}
                 data-card-anchor={`community-${i}`}
                 data-anchor-owner="HolmCanonicalCommunityRow"
                 data-holm-component="COMMUNITY"
-                data-holm-card-id={settled ? cardId : undefined}
-                data-holm-renderer={settled ? 'HolmCanonicalCommunityRow' : undefined}
+                data-holm-card-id={cardId}
+                data-holm-renderer="HolmCanonicalCommunityRow"
                 style={{
                   position: 'relative',
                   width: layout.cardWidth,
@@ -175,13 +200,20 @@ export function HolmCanonicalCommunityRow({
                   marginLeft: i > 0 ? `-${layout.overlapPx}px` : '0',
                 }}
               >
-                {settled && showFace && card ? (
+                {renderedAs === 'face' && card ? (
                   <PlayingCard
                     card={card}
                     style={{ width: layout.cardWidth, height: layout.cardHeight }}
                     faceFillPx={layout.cardWidth}
+                    isHighlighted={highlightedIndices.includes(i)}
+                    isKicker={kickerIndices.includes(i)}
+                    isDimmed={
+                      hasHighlights &&
+                      !highlightedIndices.includes(i) &&
+                      !kickerIndices.includes(i)
+                    }
                   />
-                ) : settled ? (
+                ) : renderedAs === 'back' ? (
                   <CanonicalCardBack
                     widthPx={layout.cardWidth}
                     heightPx={layout.cardHeight}
