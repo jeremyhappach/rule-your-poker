@@ -1340,7 +1340,7 @@ export const MobileGameTable = ({
     pot,
     anteAmount,
     dealerPosition: dealerPosition ?? 1,
-    currentRoundId: horsesRoundId ?? null,
+    currentRound: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
     isPaused: isPaused ?? false,
@@ -1556,7 +1556,7 @@ export const MobileGameTable = ({
       cachedDealerGameId: cachedWinningResultRef.current.dealerGameId?.slice(0, 8) ?? null,
       currentDealerGameId: horsesDealerGameScope?.slice(0, 8) ?? null,
       cachedRoundId: cachedWinningResultRef.current.roundId?.slice(0, 8) ?? null,
-      currentRoundId: horsesRoundScope?.slice(0, 8) ?? null,
+      currentRound: horsesRoundScope?.slice(0, 8) ?? null,
       source: cachedWinningResultRef.current.source,
       description: cachedWinningResultRef.current.description,
     });
@@ -4942,7 +4942,7 @@ export const MobileGameTable = ({
         w.open = true;
         w.openedHci = handContextId ?? null;
         w.openedDealerGameId = holmDealerGameId ?? null;
-        w.openedRoundId = currentRoundId ?? null;
+        w.openedRoundId = currentRound ?? null;
         w.prev = {};
         ffRecord({
           writerId: 'MobileGameTable.tsx:postWinIntervalForensics:OPEN',
@@ -4964,7 +4964,7 @@ export const MobileGameTable = ({
             marker: 'POST_WIN_INTERVAL_TRANSITION',
             identity: {
               hci: handContextId ?? null,
-              roundId: currentRoundId ?? null,
+              roundId: currentRound ?? null,
               gameId: gameId ?? null,
               playerId: currentPlayer?.id ?? null,
               segmentId: w.openedHci,
@@ -4981,7 +4981,7 @@ export const MobileGameTable = ({
             writerId: 'MobileGameTable.tsx:postWinIntervalForensics:CLOSE',
             source: 'HOLM_POST_WIN_INTERVAL',
             marker: 'POST_WIN_INTERVAL_CLOSE',
-            identity: { hci: handContextId ?? null, roundId: currentRoundId ?? null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
+            identity: { hci: handContextId ?? null, roundId: currentRound ?? null, gameId: gameId ?? null, playerId: currentPlayer?.id ?? null, segmentId: w.openedHci },
             payload: { reason: 'both-clear-and-hci-advanced', openedHci: w.openedHci, closedHci: handContextId ?? null },
           });
           w.open = false; w.openedHci = null; w.openedDealerGameId = null; w.openedRoundId = null; w.prev = {};
@@ -8694,13 +8694,13 @@ export const MobileGameTable = ({
              const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
              const currentTurnId = horsesController.currentTurnPlayerId ?? null;
              const currentDealerGameId = horsesDealerGameId ?? null;
-             const currentRoundId = horsesRoundId ?? null;
+             const currentRound = horsesRoundId ?? null;
              // Only reuse cached node if we're still on the same turn.
              // If the current turn is briefly null during a transition, do NOT reuse the old node;
              // it can display the previous player's final dice.
              const sameTurn = currentTurnId !== null && currentTurnId === cached.turnPlayerId;
               const sameDealerGame = currentDealerGameId !== null && currentDealerGameId === cached.dealerGameId;
-              const sameRound = currentRoundId !== null && currentRoundId === cached.roundId;
+              const sameRound = currentRound !== null && currentRound === cached.roundId;
 
               return withinGrace && sameDealerGame && sameRound && sameTurn ? cached.node : null;
           };
