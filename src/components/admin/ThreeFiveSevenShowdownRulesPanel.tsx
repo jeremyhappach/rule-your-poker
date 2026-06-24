@@ -114,6 +114,7 @@ import {
   resolveShowdownRules,
   saveShowdownRules,
   useIsSmBreakpoint,
+  useThreeFiveSevenR1OwnershipAudit,
   useThreeFiveSevenShowdownConfig,
   type AnchorConfig,
   type AnchorKind,
@@ -732,6 +733,97 @@ function ParityAuditPanel() {
   );
 }
 
+function R1RuntimeOwnershipAuditPanel() {
+  const audit = useThreeFiveSevenR1OwnershipAudit();
+  const [copied, setCopied] = useState(false);
+
+  const rows: { field: string; value: string | number | boolean | null }[] = audit
+    ? [
+        { field: 'is357Game', value: audit.is357Game },
+        { field: 'currentRound', value: audit.currentRound },
+        { field: 'displayCardCount', value: audit.displayCardCount },
+        { field: 'dyn.enabled from live Lab state', value: audit.dynEnabledFromLiveLabState },
+        { field: 'which size branch actually rendered', value: audit.renderedBranch },
+        { field: 'resolved width', value: audit.resolvedWidthPx },
+        { field: 'resolved height', value: audit.resolvedHeightPx },
+        { field: 'resolved overlap', value: audit.resolvedOverlapPx },
+        { field: 'resolved fan step', value: audit.resolvedFanStepDeg },
+        { field: 'parent clientWidth used by dyn resolver', value: audit.parentClientWidthUsedByDynPx },
+        ...Object.entries(audit.predicates).map(([field, value]) => ({
+          field: `predicate.${field}`,
+          value,
+        })),
+      ]
+    : [];
+
+  const buildReport = (): string => {
+    const lines: string[] = [];
+    lines.push('=== 3-5-7 Showdown Geometry — R1 Runtime Ownership Audit ===');
+    lines.push(`timestamp: ${new Date().toISOString()}`);
+    if (!audit) {
+      lines.push('status: no mounted R1 3-5-7 opponent-showdown PlayerHand audit yet');
+      return lines.join('\n');
+    }
+    lines.push(`audit timestamp: ${audit.timestamp}`);
+    lines.push(`instance: ${audit.instanceKey}`);
+    lines.push('');
+    rows.forEach((row) => {
+      lines.push(`${row.field}: ${String(row.value)}`);
+    });
+    return lines.join('\n');
+  };
+
+  const handleCopy = async () => {
+    const txt = buildReport();
+    try {
+      await navigator.clipboard.writeText(txt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      try { window.prompt('Copy R1 ownership audit:', txt); } catch { /* */ }
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Live in-memory readout from the currently mounted R1 opponent
+        PlayerHand path. It is never rendered on the game table.
+      </p>
+      <div>
+        <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
+          {copied ? 'COPIED ✓' : 'COPY R1 OWNERSHIP AUDIT'}
+        </Button>
+      </div>
+      {!audit ? (
+        <div className="rounded-md border p-2 text-xs text-muted-foreground">
+          No mounted R1 3-5-7 opponent-showdown PlayerHand audit yet.
+        </div>
+      ) : (
+        <div className="rounded-md border p-2 space-y-1">
+          <div className="font-semibold text-xs">{audit.instanceKey}</div>
+          <table className="w-full text-[11px] font-mono">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-left font-normal">field</th>
+                <th className="text-left font-normal">resolved runtime value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.field}>
+                  <td>{r.field}</td>
+                  <td>{String(r.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Panel ────────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
@@ -800,6 +892,10 @@ export function ThreeFiveSevenShowdownRulesPanel() {
 
         <CollapsibleSection title="Parity Audit (LIVE vs LAB)">
           <ParityAuditPanel />
+        </CollapsibleSection>
+
+        <CollapsibleSection title="R1 Runtime Ownership Audit">
+          <R1RuntimeOwnershipAuditPanel />
         </CollapsibleSection>
       </CollapsibleSection>
     </div>
