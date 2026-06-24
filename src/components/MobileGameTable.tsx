@@ -4953,15 +4953,7 @@ export const MobileGameTable = ({
   // interstitial commit signal — see release effect below. Does NOT
   // re-acquire while already latched.
   useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    if (holmTerminalPresentation) return;
-    const triggered = !!_rawIsShowingAnnouncement || !!holmWinPotTriggerId;
-    if (!triggered) return;
-    if (!_rawWinnerPlayerId) return;
-
-    // Resolve terminal identity from already-valid terminal presentation
-    // owners — NOT from live handContextId/activeHandContextId, which are
-    // null in the completed-round terminal frame.
+    // ── HOLM_TERMINAL_LATCH_ACQUIRE_EVAL (forensics) ─────────────
     const stageSnap = lonePlayerStageSnapshotRef.current;
     const stickyTabled = tabledSelfStickyRef.current;
     const stickyChucky = chuckyStageStickyRef.current;
@@ -4974,6 +4966,13 @@ export const MobileGameTable = ({
       cachedChuckyHandContextRef.current ??
       cachedSelfHandCtxId ??
       null;
+    const terminalHciSource =
+      stageSnap?.handContextId ? 'stageSnap'
+      : stickyTabled?.handContextId ? 'stickyTabled'
+      : stickyChucky?.handContextId ? 'stickyChucky'
+      : cachedChuckyHandContextRef.current ? 'cachedChuckyHandCtxRef'
+      : cachedSelfHandCtxId ? 'cachedSelfHandCtxId'
+      : 'none';
 
     const terminalDealerGameId =
       stageSnap?.dealerGameId ??
@@ -4981,9 +4980,46 @@ export const MobileGameTable = ({
       stickyChucky?.dealerGameId ??
       holmDealerGameId ??
       null;
+    const terminalDgSource =
+      stageSnap?.dealerGameId ? 'stageSnap'
+      : stickyTabled?.dealerGameId ? 'stickyTabled'
+      : stickyChucky?.dealerGameId ? 'stickyChucky'
+      : holmDealerGameId ? 'holmDealerGameId'
+      : 'none';
 
-    if (!terminalHandContextId) return;
-    if (!terminalDealerGameId) return;
+    const triggered = !!_rawIsShowingAnnouncement || !!holmWinPotTriggerId;
+    let returnReason: string | null = null;
+    if (gameType !== 'holm-game') returnReason = 'not-holm';
+    else if (holmTerminalPresentation) returnReason = 'already-latched';
+    else if (!triggered) returnReason = 'not-triggered';
+    else if (!_rawWinnerPlayerId) returnReason = 'no-winner';
+    else if (!terminalHandContextId) returnReason = 'no-terminal-hci';
+    else if (!terminalDealerGameId) returnReason = 'no-terminal-dg';
+
+    ffRecord({
+      writerId: 'MobileGameTable:holmTerminalLatchAcquireEffect',
+      source: 'HOLM_TERMINAL_LATCH',
+      marker: 'HOLM_TERMINAL_LATCH_ACQUIRE_EVAL',
+      identity: { gameId: gameId ?? null, hci: terminalHandContextId },
+      payload: {
+        gameType,
+        triggered,
+        _rawIsShowingAnnouncement: !!_rawIsShowingAnnouncement,
+        holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        _rawWinnerPlayerId,
+        alreadyLatched: !!holmTerminalPresentation,
+        terminalHandContextId,
+        terminalHciSource,
+        terminalDealerGameId,
+        terminalDgSource,
+        stageSnapPresent: !!stageSnap,
+        stickyTabledPresent: !!stickyTabled,
+        stickyChuckyPresent: !!stickyChucky,
+        willExecute: returnReason === null,
+        returnReason,
+      },
+    });
+    if (returnReason !== null) return;
 
     const selfCards =
       stageSnap?.cards && stageSnap.cards.length > 0
@@ -4991,6 +5027,10 @@ export const MobileGameTable = ({
         : stickyTabled?.cards && stickyTabled.cards.length > 0
           ? [...stickyTabled.cards]
           : [...currentPlayerCards];
+    const selfSource =
+      stageSnap?.cards && stageSnap.cards.length > 0 ? 'stageSnap'
+      : stickyTabled?.cards && stickyTabled.cards.length > 0 ? 'stickyTabled'
+      : 'currentPlayerCards';
     const chuckyCardsSnap = [
       ...(stickyChucky?.cards && stickyChucky.cards.length > 0
         ? stickyChucky.cards
@@ -4998,11 +5038,17 @@ export const MobileGameTable = ({
           ? cachedChuckyCards
           : (chuckyCards ?? [])),
     ];
+    const chuckySource =
+      stickyChucky?.cards && stickyChucky.cards.length > 0 ? 'stickyChucky'
+      : cachedChuckyCards && cachedChuckyCards.length > 0 ? 'cachedChuckyCards'
+      : 'chuckyCards';
     const communitySnap = [
       ...(approvedCommunityCards && approvedCommunityCards.length > 0
         ? approvedCommunityCards
         : (communityCards ?? [])),
     ];
+    const communitySource =
+      approvedCommunityCards && approvedCommunityCards.length > 0 ? 'approvedCommunityCards' : 'communityCards';
     const snap: HolmTerminalPresentation = {
       outcomeKey: `${terminalHandContextId}:${_rawWinnerPlayerId}`,
       handContextId: terminalHandContextId,
@@ -5015,6 +5061,30 @@ export const MobileGameTable = ({
       winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
       soloVsChucky: true,
     };
+    ffRecord({
+      writerId: 'MobileGameTable:holmTerminalLatchAcquireEffect',
+      source: 'HOLM_TERMINAL_LATCH',
+      marker: 'HOLM_TERMINAL_LATCH_ACQUIRED',
+      identity: { gameId: gameId ?? null, hci: terminalHandContextId, playerId: _rawWinnerPlayerId ?? null },
+      payload: {
+        outcomeKey: snap.outcomeKey,
+        terminalHandContextId,
+        terminalHciSource,
+        terminalDealerGameId,
+        terminalDgSource,
+        winnerPlayerId: _rawWinnerPlayerId,
+        selfCount: selfCards.length,
+        selfSource,
+        chuckyCount: chuckyCardsSnap.length,
+        chuckySource,
+        communityCount: communitySnap.length,
+        communitySource,
+        winnerCardIndices: _rawWinningCardHighlights.playerIndices,
+        winnerCommunityIndices: _rawWinningCardHighlights.communityIndices,
+        hasHighlights: _rawWinningCardHighlights.hasHighlights,
+        acquireTrigger: _rawIsShowingAnnouncement ? 'announcement' : 'holmWinPotTrigger',
+      },
+    });
     setHolmTerminalPresentation(snap);
   }, [
     gameType,
@@ -5029,6 +5099,7 @@ export const MobileGameTable = ({
     approvedCommunityCards,
     communityCards,
     holmDealerGameId,
+    gameId,
   ]);
 
   // ── HOLM TERMINAL LATCH: release on neutral-interstitial commit ───
@@ -5037,10 +5108,176 @@ export const MobileGameTable = ({
   // presentation in place until the shell has actually swapped to
   // the neutral interstitial.
   useEffect(() => {
-    if (holmTerminalPresentation && neutralInterstitialCommittedForGame) {
+    const willRelease = !!holmTerminalPresentation && neutralInterstitialCommittedForGame;
+    ffRecord({
+      writerId: 'MobileGameTable:holmTerminalLatchReleaseEffect',
+      source: 'HOLM_TERMINAL_LATCH',
+      marker: 'HOLM_TERMINAL_LATCH_RELEASE_EVAL',
+      identity: {
+        gameId: gameId ?? null,
+        hci: holmTerminalPresentation?.handContextId ?? null,
+        playerId: holmTerminalPresentation?.winnerPlayerId ?? null,
+      },
+      payload: {
+        latched: !!holmTerminalPresentation,
+        neutralInterstitialCommittedForGame,
+        willRelease,
+        outcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
+      },
+    });
+    if (willRelease) {
+      ffRecord({
+        writerId: 'MobileGameTable:holmTerminalLatchReleaseEffect',
+        source: 'HOLM_TERMINAL_LATCH',
+        marker: 'HOLM_TERMINAL_LATCH_RELEASED',
+        identity: {
+          gameId: gameId ?? null,
+          hci: holmTerminalPresentation?.handContextId ?? null,
+          playerId: holmTerminalPresentation?.winnerPlayerId ?? null,
+        },
+        payload: {
+          reason: 'neutral-interstitial-committed',
+          priorOutcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
+          priorHci: holmTerminalPresentation?.handContextId ?? null,
+          priorDealerGameId: holmTerminalPresentation?.dealerGameId ?? null,
+          priorSelfCount: holmTerminalPresentation?.selfCards.length ?? 0,
+          priorChuckyCount: holmTerminalPresentation?.chuckyCards.length ?? 0,
+          priorCommunityCount: holmTerminalPresentation?.communityCards.length ?? 0,
+        },
+      });
       setHolmTerminalPresentation(null);
     }
-  }, [holmTerminalPresentation, neutralInterstitialCommittedForGame]);
+  }, [holmTerminalPresentation, neutralInterstitialCommittedForGame, gameId]);
+
+  // ── HOLM_TERMINAL_LATCH_STATE: emit on any change ────────────────
+  const __holmLatchStateRef = useRef<string>('');
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const snapshot = {
+      latchPresent: !!holmTerminalPresentation,
+      terminalPresentationActive,
+      neutralInterstitialCommittedForGame,
+      outcomeKey: holmTerminalPresentation?.outcomeKey ?? null,
+      handContextId: holmTerminalPresentation?.handContextId ?? null,
+      dealerGameId: holmTerminalPresentation?.dealerGameId ?? null,
+      winnerPlayerId: holmTerminalPresentation?.winnerPlayerId ?? null,
+      selfCount: holmTerminalPresentation?.selfCards.length ?? 0,
+      chuckyCount: holmTerminalPresentation?.chuckyCards.length ?? 0,
+      communityCount: holmTerminalPresentation?.communityCards.length ?? 0,
+    };
+    const key = JSON.stringify(snapshot);
+    if (key === __holmLatchStateRef.current) return;
+    __holmLatchStateRef.current = key;
+    ffRecord({
+      writerId: 'MobileGameTable:holmTerminalLatchStateEffect',
+      source: 'HOLM_TERMINAL_LATCH',
+      marker: 'HOLM_TERMINAL_LATCH_STATE',
+      identity: { gameId: gameId ?? null, hci: snapshot.handContextId },
+      payload: snapshot,
+    });
+  });
+
+  // ── HOLM_TERMINAL_LATCH_CONSUMER_DIFF: emit when any final consumer
+  //    diverges from raw (proves override is reaching the renderer).
+  const __holmLatchConsumerRef = useRef<string>('');
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const consumers: Array<{
+      consumerName: string;
+      owner: string;
+      rawValue: unknown;
+      overrideValue: unknown;
+      finalValue: unknown;
+    }> = [
+      {
+        consumerName: 'isShowingAnnouncement',
+        owner: 'MobileGameTable.tsx:isShowingAnnouncement (~L4526)',
+        rawValue: !!_rawIsShowingAnnouncement,
+        overrideValue: terminalPresentationActive ? true : null,
+        finalValue: isShowingAnnouncement,
+      },
+      {
+        consumerName: 'winnerPlayerId',
+        owner: 'MobileGameTable.tsx:winnerPlayerId (~L4574)',
+        rawValue: _rawWinnerPlayerId,
+        overrideValue:
+          terminalPresentationActive && holmTerminalPresentation
+            ? holmTerminalPresentation.winnerPlayerId
+            : null,
+        finalValue: winnerPlayerId,
+      },
+      {
+        consumerName: 'isCurrentPlayerSoloVsChucky',
+        owner: 'MobileGameTable.tsx:isCurrentPlayerSoloVsChucky (~L4894)',
+        rawValue: _rawIsCurrentPlayerSoloVsChucky,
+        overrideValue:
+          terminalPresentationActive && holmTerminalPresentation
+            ? holmTerminalPresentation.soloVsChucky &&
+              holmTerminalPresentation.winnerPlayerId === currentPlayer?.id
+            : null,
+        finalValue: isCurrentPlayerSoloVsChucky,
+      },
+      {
+        consumerName: 'winnerCards.count',
+        owner: 'MobileGameTable.tsx:winnerCards (~L4917)',
+        rawValue: _rawWinnerCards.length,
+        overrideValue:
+          terminalPresentationActive && holmTerminalPresentation
+            ? holmTerminalPresentation.selfCards.length
+            : null,
+        finalValue: winnerCards.length,
+      },
+      {
+        consumerName: 'winningCardHighlights.hasHighlights',
+        owner: 'MobileGameTable.tsx:winningCardHighlights (~L4936)',
+        rawValue: _rawWinningCardHighlights.hasHighlights,
+        overrideValue:
+          terminalPresentationActive && holmTerminalPresentation
+            ? holmTerminalPresentation.winnerCardIndices.length > 0 ||
+              holmTerminalPresentation.winnerCommunityIndices.length > 0
+            : null,
+        finalValue: winningCardHighlights.hasHighlights,
+      },
+      {
+        consumerName: 'shouldShowRabbitHuntLabel',
+        owner: 'MobileGameTable.tsx:shouldShowRabbitHuntLabel (~L3522)',
+        rawValue: _rawShouldShowRabbitHuntLabel,
+        overrideValue: terminalPresentationActive ? false : null,
+        finalValue: shouldShowRabbitHuntLabel,
+      },
+    ];
+    const diffs = consumers.filter(
+      (c) => JSON.stringify(c.rawValue) !== JSON.stringify(c.finalValue),
+    );
+    const summary = {
+      terminalPresentationActive,
+      diffNames: diffs.map((d) => d.consumerName),
+      consumers: consumers.map((c) => ({
+        consumerName: c.consumerName,
+        rawValue: c.rawValue,
+        finalValue: c.finalValue,
+      })),
+    };
+    const key = JSON.stringify(summary);
+    if (key === __holmLatchConsumerRef.current) return;
+    __holmLatchConsumerRef.current = key;
+    if (diffs.length === 0 && !terminalPresentationActive) return;
+    ffRecord({
+      writerId: 'MobileGameTable:holmTerminalLatchConsumerDiffEffect',
+      source: 'HOLM_TERMINAL_LATCH',
+      marker: 'HOLM_TERMINAL_LATCH_CONSUMER_DIFF',
+      identity: {
+        gameId: gameId ?? null,
+        hci: holmTerminalPresentation?.handContextId ?? null,
+      },
+      payload: {
+        terminalPresentationActive,
+        diffCount: diffs.length,
+        diffs,
+        allConsumers: consumers,
+      },
+    });
+  });
 
   // ──────────────────────────────────────────────────────────────────
   // POST-WIN HOLM INTERVAL FORENSICS (narrow ownership-transition only)
