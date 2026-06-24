@@ -391,7 +391,7 @@ type R1AuditListener = (value: ThreeFiveSevenR1OwnershipAudit | null) => void;
 const _r1OwnershipAudits = new Map<string, ThreeFiveSevenR1OwnershipAudit>();
 const _r1OwnershipListeners = new Set<R1AuditListener>();
 
-function getLatestR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAudit | null {
+export function getThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAudit | null {
   let latest: ThreeFiveSevenR1OwnershipAudit | null = null;
   for (const audit of _r1OwnershipAudits.values()) {
     if (!latest || audit.timestamp > latest.timestamp) latest = audit;
@@ -405,18 +405,18 @@ export function publishThreeFiveSevenR1OwnershipAudit(
 ): void {
   if (value) _r1OwnershipAudits.set(instanceKey, value);
   else _r1OwnershipAudits.delete(instanceKey);
-  const latest = getLatestR1OwnershipAudit();
+  const latest = getThreeFiveSevenR1OwnershipAudit();
   for (const l of _r1OwnershipListeners) {
     try { l(latest); } catch { /* */ }
   }
 }
 
 export function useThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAudit | null {
-  const [v, setV] = useState<ThreeFiveSevenR1OwnershipAudit | null>(() => getLatestR1OwnershipAudit());
+  const [v, setV] = useState<ThreeFiveSevenR1OwnershipAudit | null>(() => getThreeFiveSevenR1OwnershipAudit());
   useEffect(() => {
     const cb: R1AuditListener = (val) => setV(val);
     _r1OwnershipListeners.add(cb);
-    setV(getLatestR1OwnershipAudit());
+    setV(getThreeFiveSevenR1OwnershipAudit());
     return () => { _r1OwnershipListeners.delete(cb); };
   }, []);
   return v;
