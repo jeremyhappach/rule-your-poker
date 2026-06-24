@@ -293,26 +293,154 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6 pt-2">
-      {/* Game + Artifact pickers */}
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <Label>Game</Label>
-          <Select
-            value={game}
-            onValueChange={(v) => setGame(v as GameKey)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {GAME_KEYS.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {GAME_LABELS[g]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Top-level selection: Shell / Global vs per-game */}
+      <div className="space-y-1">
+        <Label>Section</Label>
+        <Select
+          value={selection}
+          onValueChange={(v) => setSelection(v as LabSelection)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__shell__">Shell / Global</SelectItem>
+            {GAME_KEYS.map((g) => (
+              <SelectItem key={g} value={g}>
+                {GAME_LABELS[g]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isShell ? (
+        <ShellGlobalSections />
+      ) : (
+        <GameSections
+          game={game}
+          artifactId={artifactId}
+          setArtifactId={setArtifactId}
+          sortedArtifacts={sortedArtifacts}
+          overrides={overrides}
+          presentation={presentation}
+          override={override}
+          descriptor={descriptor}
+          form={form}
+          setForm={setForm}
+          derivedH={derivedH}
+          derivedW={derivedW}
+          saving={saving}
+          handleSave={handleSave}
+          handleResetToDefault={handleResetToDefault}
+          handleConvertTo={handleConvertTo}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shell / Global sections — render once, independent of any selected game.
+// ---------------------------------------------------------------------------
+
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="border rounded-md group"
+    >
+      <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-sm flex items-center justify-between">
+        <span>{title}</span>
+        <span className="text-xs text-muted-foreground group-open:hidden">expand</span>
+        <span className="text-xs text-muted-foreground hidden group-open:inline">collapse</span>
+      </summary>
+      <div className="px-3 pb-3 pt-1 space-y-3">{children}</div>
+    </details>
+  );
+}
+
+function ShellGlobalSections() {
+  return (
+    <div className="space-y-3">
+      <CollapsibleSection title="Layout Tuning" defaultOpen>
+        <LayoutTuningAdminSection />
+      </CollapsibleSection>
+      <CollapsibleSection title="Deal Timing">
+        <DealTimingAdminSection />
+      </CollapsibleSection>
+      <CollapsibleSection title="Table Demo">
+        <TableDemoAdminSection />
+      </CollapsibleSection>
+      <CollapsibleSection title="HUD Stack">
+        <p className="text-xs text-muted-foreground">
+          Placeholder. Future Geometry Lab work: shell-owned HUD stack
+          composition, ordering, and spacing.
+        </p>
+      </CollapsibleSection>
+      <CollapsibleSection title="Gameplay Area">
+        <p className="text-xs text-muted-foreground">
+          Placeholder. Future Geometry Lab work: shared playfield bounds,
+          safe-area insets, and shell-owned gameplay region geometry.
+        </p>
+      </CollapsibleSection>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Per-game sections — Gameplay Artifacts / Chip Ring Artifacts / Showdown Rules
+// ---------------------------------------------------------------------------
+
+interface GameSectionsProps {
+  game: GameKey;
+  artifactId: string;
+  setArtifactId: (id: string) => void;
+  sortedArtifacts: ArtifactDescriptor[];
+  overrides: ReturnType<typeof useGeometryOverrides>;
+  presentation: ReturnType<typeof getArtifactPresentation>;
+  override: ReturnType<ReturnType<typeof useGeometryOverrides>["get"]>;
+  descriptor: ArtifactDescriptor;
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  derivedH: string;
+  derivedW: string;
+  saving: boolean;
+  handleSave: () => Promise<void> | void;
+  handleResetToDefault: () => Promise<void> | void;
+  handleConvertTo: (target: "widthDriven" | "heightDriven") => void;
+}
+
+function GameSections(props: GameSectionsProps) {
+  const {
+    artifactId,
+    setArtifactId,
+    sortedArtifacts,
+    overrides,
+    presentation,
+    override,
+    descriptor,
+    form,
+    setForm,
+    derivedH,
+    derivedW,
+    saving,
+    handleSave,
+    handleResetToDefault,
+    handleConvertTo,
+  } = props;
+
+  return (
+    <div className="space-y-3">
+      <CollapsibleSection title="Gameplay Artifacts" defaultOpen>
         <div className="space-y-1">
           <Label>Artifact</Label>
           <Select value={artifactId} onValueChange={setArtifactId}>
@@ -340,240 +468,244 @@ export function GeometryLab({ userId }: { userId: string }) {
             <p className="text-xs text-amber-500">● override active</p>
           )}
         </div>
-      </div>
 
-      {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
-      <div className="space-y-3 pt-2 border-t">
-        <h3 className="font-semibold">Geometry</h3>
-        <p className="text-xs text-muted-foreground">
-          Defaults read live from the canonical descriptor. Saving writes an
-          override row; the runtime merges it via{" "}
-          <code>applyGeometryOverrides</code>.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>anchorX</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              max={1}
-              value={form.anchorX}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, anchorX: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>anchorY</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              max={1}
-              value={form.anchorY}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, anchorY: e.target.value }))
-              }
-            />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label>anchorOrigin</Label>
-          <Select
-            value={form.anchorOrigin}
-            onValueChange={(v) =>
-              setForm((f) => ({ ...f, anchorOrigin: v as AnchorOrigin }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ANCHOR_ORIGINS.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>sizeMode</Label>
-          <Select
-            value={form.sizeMode}
-            onValueChange={(v) =>
-              setForm((f) => ({ ...f, sizeMode: v as SizeMode }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="widthDriven">widthDriven</SelectItem>
-              <SelectItem value="heightDriven">heightDriven</SelectItem>
-              <SelectItem value="rect">rect</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
+        <div className="space-y-3 pt-2 border-t">
+          <h3 className="font-semibold">Geometry</h3>
           <p className="text-xs text-muted-foreground">
-            Descriptor sizeMode: <code>{deriveSizeMode(descriptor)}</code>.
-            Three cannot be edited together: rect = width+height; widthDriven
-            = width+aspect; heightDriven = height+aspect.
+            Defaults read live from the canonical descriptor. Saving writes an
+            override row; the runtime merges it via{" "}
+            <code>applyGeometryOverrides</code>.
           </p>
-        </div>
-
-        {form.sizeMode === "widthDriven" && (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>widthPct</Label>
+              <Label>anchorX</Label>
               <Input
                 type="number"
                 step="0.01"
                 min={0}
                 max={1}
-                value={form.widthPct}
+                value={form.anchorX}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, widthPct: e.target.value }))
+                  setForm((f) => ({ ...f, anchorX: e.target.value }))
                 }
               />
             </div>
             <div className="space-y-1">
-              <Label>aspectRatio</Label>
+              <Label>anchorY</Label>
               <Input
                 type="number"
-                step="0.05"
-                value={form.aspectRatio}
+                step="0.01"
+                min={0}
+                max={1}
+                value={form.anchorY}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, aspectRatio: e.target.value }))
+                  setForm((f) => ({ ...f, anchorY: e.target.value }))
                 }
               />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>heightPct (derived)</Label>
-              <Input value={derivedH} readOnly disabled />
             </div>
           </div>
-        )}
-
-        {form.sizeMode === "heightDriven" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>heightPct</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                max={1}
-                value={form.heightPct}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, heightPct: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>aspectRatio</Label>
-              <Input
-                type="number"
-                step="0.05"
-                value={form.aspectRatio}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, aspectRatio: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>widthPct (derived)</Label>
-              <Input value={derivedW} readOnly disabled />
-            </div>
+          <div className="space-y-1">
+            <Label>anchorOrigin</Label>
+            <Select
+              value={form.anchorOrigin}
+              onValueChange={(v) =>
+                setForm((f) => ({ ...f, anchorOrigin: v as AnchorOrigin }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ANCHOR_ORIGINS.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          <div className="space-y-1">
+            <Label>sizeMode</Label>
+            <Select
+              value={form.sizeMode}
+              onValueChange={(v) =>
+                setForm((f) => ({ ...f, sizeMode: v as SizeMode }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="widthDriven">widthDriven</SelectItem>
+                <SelectItem value="heightDriven">heightDriven</SelectItem>
+                <SelectItem value="rect">rect</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Descriptor sizeMode: <code>{deriveSizeMode(descriptor)}</code>.
+              Three cannot be edited together: rect = width+height; widthDriven
+              = width+aspect; heightDriven = height+aspect.
+            </p>
+          </div>
 
-        {form.sizeMode === "rect" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>widthPct</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                max={1}
-                value={form.widthPct}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, widthPct: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>heightPct</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                max={1}
-                value={form.heightPct}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, heightPct: e.target.value }))
-                }
-              />
-            </div>
-            <div className="col-span-2 space-y-2 pt-2 border-t border-dashed">
-              <p className="text-xs text-muted-foreground">
-                Rect mode keeps width and height independent. To resize while
-                preserving proportions, convert this artifact to a driven mode —
-                the current widthPct/heightPct ratio becomes its aspectRatio.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleConvertTo("widthDriven")}
-                >
-                  Convert To Width Driven
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleConvertTo("heightDriven")}
-                >
-                  Convert To Height Driven
-                </Button>
+          {form.sizeMode === "widthDriven" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>widthPct</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={1}
+                  value={form.widthPct}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, widthPct: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>aspectRatio</Label>
+                <Input
+                  type="number"
+                  step="0.05"
+                  value={form.aspectRatio}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, aspectRatio: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>heightPct (derived)</Label>
+                <Input value={derivedH} readOnly disabled />
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Visualization toggles */}
-      <div className="space-y-2 pt-2 border-t">
-        <h3 className="font-semibold">Visualization</h3>
-        {OVERLAY_FLAGS.map((flag) => (
-          <OverlayFlagRow key={flag.key} flag={flag} />
-        ))}
-      </div>
+          {form.sizeMode === "heightDriven" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>heightPct</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={1}
+                  value={form.heightPct}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, heightPct: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>aspectRatio</Label>
+                <Input
+                  type="number"
+                  step="0.05"
+                  value={form.aspectRatio}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, aspectRatio: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>widthPct (derived)</Label>
+                <Input value={derivedW} readOnly disabled />
+              </div>
+            </div>
+          )}
 
-      {/* Safe Areas — global canonical-shell layout (moved from Admin). */}
-      <LayoutTuningAdminSection />
+          {form.sizeMode === "rect" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>widthPct</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={1}
+                  value={form.widthPct}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, widthPct: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>heightPct</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={1}
+                  value={form.heightPct}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, heightPct: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="col-span-2 space-y-2 pt-2 border-t border-dashed">
+                <p className="text-xs text-muted-foreground">
+                  Rect mode keeps width and height independent. To resize while
+                  preserving proportions, convert this artifact to a driven mode —
+                  the current widthPct/heightPct ratio becomes its aspectRatio.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleConvertTo("widthDriven")}
+                  >
+                    Convert To Width Driven
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleConvertTo("heightDriven")}
+                  >
+                    Convert To Height Driven
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
-      {/* Deal Timing — global motion knobs for ONE DEAL. */}
-      <DealTimingAdminSection />
+        {/* Visualization toggles */}
+        <div className="space-y-2 pt-2 border-t">
+          <h3 className="font-semibold">Visualization</h3>
+          {OVERLAY_FLAGS.map((flag) => (
+            <OverlayFlagRow key={flag.key} flag={flag} />
+          ))}
+        </div>
 
-      {/* Table Demo — global tuning mode that skips gameplay. */}
-      <TableDemoAdminSection />
+        <div className="flex gap-2 pt-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleResetToDefault}
+            disabled={saving || !override}
+          >
+            Reset
+          </Button>
+        </div>
+      </CollapsibleSection>
 
-      <div className="flex gap-2">
-        <Button onClick={handleSave} disabled={saving} className="flex-1">
-          {saving ? "Saving…" : "Save"}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleResetToDefault}
-          disabled={saving || !override}
-        >
-          Reset
-        </Button>
-      </div>
+      <CollapsibleSection title="Chip Ring Artifacts">
+        <p className="text-xs text-muted-foreground">
+          Future Geometry Lab work: dealer/buck/leg/chip-ring artifacts.
+        </p>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Showdown Rules">
+        <p className="text-xs text-muted-foreground">
+          Future Geometry Lab work: showdown card ownership, placement,
+          visibility, and projection rules.
+        </p>
+      </CollapsibleSection>
     </div>
   );
 }
