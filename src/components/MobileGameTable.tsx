@@ -9655,25 +9655,46 @@ export const MobileGameTable = ({
               lonePlayerStageSnapshotRef.current.handContextId,
             );
 
-          const activeSnap =
+          let activeSnap =
             (stickyEligibleByAdmission ? tabledSelfStickyRef.current : null) ??
             (stageEligibleByAdmission ? lonePlayerStageSnapshotRef.current : null);
-          const activeSnapSourceTag: 'sticky' | 'persistence' | 'none' =
+          let activeSnapSourceTag: 'sticky' | 'persistence' | 'none' | 'terminal-latch' =
             stickyEligibleByAdmission ? 'sticky'
             : (activeSnap ? 'persistence' : 'none');
 
-          const loneSoloPlayer =
+          let loneSoloPlayer =
             liveLoneSoloPlayer ??
             (activeSnap
               ? players.find(p => p.id === activeSnap.playerId) || null
               : null);
-          const loneSoloCards =
+          let loneSoloCards =
             liveLoneSoloCards.length > 0
               ? liveLoneSoloCards
               : (activeSnap?.cards ?? []);
-          const loneSoloCardsSourceTag: 'liveLoneSoloCards' | 'activeSnap.cards' | 'empty' =
+          let loneSoloCardsSourceTag: 'liveLoneSoloCards' | 'activeSnap.cards' | 'empty' | 'terminal-latch' =
             liveLoneSoloCards.length > 0 ? 'liveLoneSoloCards'
             : (activeSnap?.cards && activeSnap.cards.length > 0 ? 'activeSnap.cards' : 'empty');
+
+          // ── TERMINAL LATCH (consumer wiring): tabled-fan owner ─────
+          // While the Holm terminal-presentation latch is held, the
+          // tabled fan must render from the latch snapshot regardless
+          // of live / sticky / persistence sources clearing.
+          if (terminalPresentationActive && holmTerminalPresentation) {
+            const latchPlayerId = holmTerminalPresentation.winnerPlayerId;
+            const latchedPlayer = latchPlayerId
+              ? (players.find(p => p.id === latchPlayerId) ?? loneSoloPlayer)
+              : loneSoloPlayer;
+            activeSnap = {
+              handContextId: holmTerminalPresentation.handContextId,
+              dealerGameId: holmTerminalPresentation.dealerGameId,
+              playerId: latchPlayerId ?? (latchedPlayer?.id ?? ''),
+              cards: holmTerminalPresentation.selfCards,
+            };
+            activeSnapSourceTag = 'terminal-latch';
+            loneSoloPlayer = latchedPlayer;
+            loneSoloCards = holmTerminalPresentation.selfCards;
+            loneSoloCardsSourceTag = 'terminal-latch';
+          }
 
           ffRecord({
             writerId: 'MobileGameTable.tsx:loneSoloDerivation:L8961',
