@@ -876,7 +876,11 @@ export const PlayerHand = ({
       ? resolved357.three.fanStepDeg
       : 2;
   return (
-    <div className="flex" ref={is357Game ? measureRef : undefined}>
+    <div
+      className="flex"
+      ref={is357Game ? measureRef : undefined}
+      data-357-r1-host={is357R1ShowdownPath && displayCardCount === 3 ? forensicsId : undefined}
+    >
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
