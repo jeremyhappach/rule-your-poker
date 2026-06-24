@@ -213,9 +213,11 @@ function BoolSelect({
 
 function CardSizeControls({
   cfg,
+  disabled,
   onChange,
 }: {
   cfg: CardSizePx;
+  disabled?: boolean;
   onChange: (next: CardSizePx) => void;
 }) {
   const patch = (p: Partial<CardSizePx>) => onChange({ ...cfg, ...p });
@@ -224,6 +226,11 @@ function CardSizeControls({
       <p className="text-xs text-muted-foreground">
         Per-breakpoint px sizing. Mirrors Tailwind tiers like{" "}
         <code>w-8 h-12 sm:w-9 sm:h-14</code>.
+        {disabled && (
+          <span className="ml-1 italic">
+            Inactive — dynamic resolver is enabled.
+          </span>
+        )}
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -231,6 +238,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileWidthPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ mobileWidthPx: v })}
           />
         </div>
@@ -239,6 +247,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileHeightPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ mobileHeightPx: v })}
           />
         </div>
@@ -247,6 +256,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.smWidthPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ smWidthPx: v })}
           />
         </div>
@@ -255,6 +265,7 @@ function CardSizeControls({
           <NumInput
             value={cfg.smHeightPx}
             min={1}
+            disabled={disabled}
             onChange={(v) => patch({ smHeightPx: v })}
           />
         </div>
@@ -265,9 +276,11 @@ function CardSizeControls({
 
 function OverlapControls({
   cfg,
+  disabled,
   onChange,
 }: {
   cfg: OverlapPx;
+  disabled?: boolean;
   onChange: (next: OverlapPx) => void;
 }) {
   const patch = (p: Partial<OverlapPx>) => onChange({ ...cfg, ...p });
@@ -278,12 +291,13 @@ function OverlapControls({
         <NumInput
           value={cfg.mobilePx}
           min={0}
+          disabled={disabled}
           onChange={(v) => patch({ mobilePx: v })}
         />
       </div>
       <div className="space-y-1">
         <Label>Overlap sm (px)</Label>
-        <NumInput value={cfg.smPx} min={0} onChange={(v) => patch({ smPx: v })} />
+        <NumInput value={cfg.smPx} min={0} disabled={disabled} onChange={(v) => patch({ smPx: v })} />
       </div>
     </div>
   );
