@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import {
+  resolveShowdownRules,
+  useIsSmBreakpoint,
+  useThreeFiveSevenShowdownConfig,
+  type ResolvedRoundRow,
+} from "@/lib/threeFiveSeven/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
@@ -13,6 +19,7 @@ import {
   record357CardOwnership,
   record357DiagnosticViolation,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
+
 
 let __playerHandForensicsSeq = 0;
 
@@ -119,7 +126,15 @@ export const PlayerHand = ({
   
   // Determine wild rank for 3-5-7 games
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
+  // 3-5-7 showdown geometry — Geometry Lab v2 resolved values. Always
+  // call the hooks (rules of hooks); the resolved values are only
+  // consumed by the 3-5-7 showdown branches below, so non-357 PlayerHand
+  // renders remain behaviorally unchanged.
+  const showdownCfg = useThreeFiveSevenShowdownConfig();
+  const isSmBp = useIsSmBreakpoint();
+  const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
   const isHolmGame = gameType === 'holm-game';
+
   // Boundary guard applies to any canonical-deal game during DEALING.
   const isCanonicalDealGuarded = is357Game || isHolmGame;
   const claimedSet = new Set(claimedCardIds ?? []);
@@ -440,16 +455,21 @@ export const PlayerHand = ({
       ? Math.max(20, rawEffectiveHeight)
       : undefined;
 
+  // dyn357 resolver params. For R1 (3-cards) the Geometry Lab v2 config
+  // (`resolved357.three.dyn`) drives the parameters. For non-R1 357 hands
+  // and non-357 callers, the original hardcoded params are preserved so
+  // baseline behavior is identical at default values.
+  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && resolved357.three.dyn.enabled;
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
-    aspect: 0.71,
-    minCardWidth: 28,
+    aspect: useLabDynForR1 ? resolved357.three.dyn.aspect : 0.71,
+    minCardWidth: useLabDynForR1 ? resolved357.three.dyn.minCardWidth : 28,
     // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
     // MobileGameTable, this caps the rendered card width at ~160–220 px.
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
+    maxCardWidth: useLabDynForR1 ? resolved357.three.dyn.maxCardWidth : 80,
+    maxOverlapRatio: useLabDynForR1 ? resolved357.three.dyn.maxOverlapRatio : 0.6,
   });
   const dyn357Style: CSSProperties | null =
     is357Game && dyn357
@@ -463,16 +483,47 @@ export const PlayerHand = ({
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
-  const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
-  const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
-  const composeStyle = (base?: CSSProperties, includeOverlap = true): CSSProperties | undefined => {
-    if (!dynActive) return base;
-    return {
-      ...(base || {}),
-      ...(dyn357Style || {}),
-      ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
-    };
+  // Static 3-5-7 R1 size override (Lab-driven). Applied only when dyn is
+  // not active and we're in the R1 branch. At default Lab values this
+  // yields the same px footprint as the previous `w-10 h-16
+  // sm:w-11 sm:h-[4.25rem]` Tailwind tier.
+  const static357R1Style: CSSProperties | null =
+    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
+      ? {
+          width: `${resolved357.three.widthPx}px`,
+          height: `${resolved357.three.heightPx}px`,
+        }
+      : null;
+  const static357R1OverlapPx: number | null =
+    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
+      ? resolved357.three.overlapPx
+      : null;
+  const effectiveOverlapClass = dynActive
+    ? 'first:ml-0'
+    : static357R1OverlapPx !== null
+      ? 'first:ml-0'
+      : overlapClass;
+  const effectiveRound1Class = dynActive || static357R1Style ? '' : round1NarrowTallClass;
+  const composeStyle = (base?: CSSProperties, includeOverlap = true, displayIndex?: number): CSSProperties | undefined => {
+    if (dynActive) {
+      return {
+        ...(base || {}),
+        ...(dyn357Style || {}),
+        ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
+      };
+    }
+    if (static357R1Style && static357R1OverlapPx !== null) {
+      const ml = displayIndex === 0 ? 0 : -static357R1OverlapPx;
+      return {
+        ...(base || {}),
+        ...static357R1Style,
+        ...(includeOverlap ? { marginLeft: `${ml}px` } : {}),
+      };
+    }
+    return base;
   };
+
+
 
   // ─── Wave 2A measurement probe ────────────────────────────────────────────
   // Persists resolver output vs. actual rendered DOM size to debug_events.
@@ -594,37 +645,55 @@ export const PlayerHand = ({
 
   // 3-5-7 showdown display with unused cards in separate row (on outer edge)
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
-    const usedCardSize: CardSize = 'lg'; // Larger size for used cards during showdown
-    const unusedCardSize: CardSize = 'sm'; // Small size for dimmed unused cards
-    
+    const usedCardSize: CardSize = 'lg'; // Tailwind tier (overridden by inline style below).
+    const unusedCardSize: CardSize = 'sm';
+    // Geometry Lab v2 resolved values for this branch.
+    const mainRow: ResolvedRoundRow = isRound3WithUnusedBelow
+      ? resolved357.seven
+      : resolved357.five;
+    const irr = resolved357.sevenIrrelevant;
+    // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
+    const interRowGap = irr.interRowGapPx;
+    // Position-mode resolution. `auto` mirrors the historical seat-driven
+    // behavior (bottom seats stack unused ABOVE main; others stack unused
+    // BELOW main). `above`/`below` are explicit Lab overrides.
+    const unusedAbove =
+      irr.positionMode === 'auto'
+        ? isBottomPosition
+        : irr.positionMode === 'above';
+
     // Unused cards element
-    const unusedCardsElement = unusedCards.length > 0 && (
+    const unusedCardsElement = irr.visible && unusedCards.length > 0 && (
       <div className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}>
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
-            isDimmed={true}
+            isDimmed={irr.dimmed}
             isWild={false}
-            className="-ml-2 first:ml-0"
-            style={{ 
-              opacity: 0.4,
-              transform: 'scale(0.85)',
+            style={{
+              width: `${irr.widthPx}px`,
+              height: `${irr.heightPx}px`,
+              marginLeft: displayIndex === 0 ? 0 : `-${irr.overlapPx}px`,
+              opacity: irr.opacity,
+              transform: `scale(${irr.scale})`,
             }}
           />
         ))}
       </div>
     );
-    
+
     // Used cards element
+    const fanStep = mainRow.fanStepDeg;
+    const n = usedCards.length;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isHighlighted = highlightedIndices.includes(originalIndex);
           const isKicker = kickerIndices.includes(originalIndex);
           const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-          
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2; // = fanStep * i - fanStep * (n-1)/2
           return (
             <PlayingCard
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
@@ -634,20 +703,25 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={isWild}
-              className="-ml-3 first:ml-0"
-              style={{ 
-                transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
+              style={{
+                width: `${mainRow.widthPx}px`,
+                height: `${mainRow.heightPx}px`,
+                marginLeft: displayIndex === 0 ? 0 : `-${mainRow.overlapPx}px`,
+                transform: `rotate(${rotationDeg}deg)`,
               }}
             />
           );
         })}
       </div>
     );
-    
+
     return (
-      <div className="flex flex-col gap-0.5" ref={is357Game ? measureRef : undefined}>
-        {/* For bottom positions: unused above, used below. For others: used above, unused below */}
-        {isBottomPosition ? (
+      <div
+        className="flex flex-col"
+        style={{ gap: `${interRowGap}px` }}
+        ref={is357Game ? measureRef : undefined}
+      >
+        {unusedAbove ? (
           <>
             {unusedCardsElement}
             {usedCardsElement}
@@ -662,20 +736,24 @@ export const PlayerHand = ({
     );
   }
 
+
+
   // Special round 3 display with unused cards dimmed but all together (old inline style)
   if (isRound3With7Cards && !unusedCardsBelow) {
     // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
-    
+    const fanStep = resolved357.seven.fanStepDeg;
+    const n = allCardsOrdered.length;
+    const irrOpacity = resolved357.sevenIrrelevant.opacity;
+
     return (
       <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
-          const usedDisplayIndex = isUnused ? 0 : displayIndex - unusedCards.length;
           const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
           const isKicker = !isUnused && kickerIndices.includes(originalIndex);
           const isDimmed = isUnused || (hasHighlights && !isHighlighted && !isKicker);
-          
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
           return (
             <PlayingCard
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
@@ -688,9 +766,9 @@ export const PlayerHand = ({
               faceFillPx={dynActive && !isUnused ? dyn357!.cardWidth : undefined}
               className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
               style={composeStyle({
-                transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
-                opacity: isUnused ? 0.4 : 1,
-              })}
+                transform: `rotate(${rotationDeg}deg)`,
+                opacity: isUnused ? irrOpacity : 1,
+              }, true, displayIndex)}
             />
           );
         })}
@@ -698,6 +776,13 @@ export const PlayerHand = ({
     );
   }
 
+  // Default branch (also the 3-5-7 R1 showdown path).
+  // For 3-5-7 R1 (3 cards), fan step is sourced from resolved357.three.
+  // For all other callers, fan step remains 2°/card (historical default).
+  const defaultFanStep =
+    is357Game && currentRound === 1 && displayCardCount === 3
+      ? resolved357.three.fanStepDeg
+      : 2;
   return (
     <div className="flex" ref={is357Game ? measureRef : undefined}>
 
@@ -705,7 +790,9 @@ export const PlayerHand = ({
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-        
+        const n = sortedCardsWithIndices.length;
+        const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+
         return (
           <PlayingCard
             key={`${card.rank}-${card.suit}-${originalIndex}`}
@@ -719,11 +806,12 @@ export const PlayerHand = ({
             faceFillPx={dynActive ? dyn357!.cardWidth : undefined}
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
-              transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
-            })}
+              transform: `rotate(${rotationDeg}deg)`,
+            }, true, displayIndex)}
           />
         );
       })}
     </div>
   );
 };
+

@@ -93,9 +93,10 @@
  * showdown renderer is a separate, explicit step.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -103,204 +104,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DEFAULT_SHOWDOWN_RULES,
+  LIVE_BASELINE,
+  SHOWDOWN_RULES_STORAGE_KEY,
+  loadShowdownRules,
+  resolveShowdownRules,
+  saveShowdownRules,
+  useIsSmBreakpoint,
+  useThreeFiveSevenShowdownConfig,
+  type AnchorConfig,
+  type AnchorKind,
+  type CardSizePx,
+  type DynResolverParams,
+  type FanDegPerCard,
+  type IrrelevantPairConfig,
+  type OverlapPx,
+  type RoundRowConfig,
+  type ShowdownRulesState,
+} from "@/lib/threeFiveSeven/showdownConfig";
 
-// ─── Data model ───────────────────────────────────────────────────────────
+// Re-export aliases retained to minimise churn in this file.
+const DEFAULT_STATE = DEFAULT_SHOWDOWN_RULES;
+const STORAGE_KEY = SHOWDOWN_RULES_STORAGE_KEY;
+const loadState = loadShowdownRules;
 
-/** Anchor for the opponent showdown row. Today only `belowChip` exists. */
-type AnchorKind = "belowChip";
-
-/**
- * Px sizing at the two Tailwind breakpoints the renderer cares about
- * (mobile default + `sm:`). Matches existing static Tailwind tiers like
- * `w-8 h-12 sm:w-9 sm:h-14`.
- */
-interface CardSizePx {
-  mobileWidthPx: number;
-  mobileHeightPx: number;
-  smWidthPx: number;
-  smHeightPx: number;
-}
-
-/** Negative-margin overlap, in px, per breakpoint. */
-interface OverlapPx {
-  mobilePx: number;
-  smPx: number;
-}
-
-/** Fan as deg per card (sym; rotation = (i * stepDeg) - ((n-1)/2 * stepDeg) * 2). */
-interface FanDegPerCard {
-  stepDeg: number;
-}
-
-/**
- * Round 1 only. Mirrors `useCardRowLayout` invocation in PlayerHand.tsx.
- * When `enabled`, the resolver overrides static size + overlap at runtime
- * based on parent clientWidth.
- */
-interface DynResolverParams {
-  enabled: boolean;
-  aspect: number;
-  minCardWidth: number;
-  maxCardWidth: number;
-  maxOverlapRatio: number;
-  preferredOverlapRatio: number;
-}
-
-interface RoundRowConfig {
-  size: CardSizePx;
-  overlap: OverlapPx;
-  fan: FanDegPerCard;
-  /** Only meaningful when the row uses dyn357 (R1 today). */
-  dyn: DynResolverParams;
-}
-
-interface IrrelevantPairConfig {
-  /** Always rendered in live today — kept here for future toggling. */
-  visible: boolean;
-  /** Live = true (filter: grayscale 30% + opacity 0.4). */
-  dimmed: boolean;
-  /** Live = scale(0.85). */
-  scale: number;
-  /** Live = 0.4. Stacked with `dimmed` opacity. */
-  opacity: number;
-  /** Live = 30. Only applied when `dimmed` is true. */
-  grayscalePct: number;
-  /** Live `gap-0.5` between main row and unused row = 2 px. */
-  interRowGapPx: number;
-  size: CardSizePx;
-  overlap: OverlapPx;
-  /**
-   * Live position derivation:
-   *   `auto` → above for `isBottomPosition` seats, below for all others.
-   *   `above`/`below` override the auto derivation (Lab-only; no live
-   *   override exists yet).
-   */
-  positionMode: "auto" | "above" | "below";
-}
-
-interface AnchorConfig {
-  kind: AnchorKind;
-  /** Live = 2 px (`mt-[2px]`). */
-  belowChipGapPx: number;
-}
-
-interface ShowdownRulesState {
-  anchor: AnchorConfig;
-  three: RoundRowConfig;
-  five: RoundRowConfig;
-  seven: RoundRowConfig;
-  sevenIrrelevant: IrrelevantPairConfig;
-}
-
-// ─── Seeds (verbatim from live renderer) ──────────────────────────────────
-
-/** R1 — static Tailwind `w-10 h-16 sm:w-11 sm:h-[4.25rem]`. */
-const SEED_THREE: RoundRowConfig = {
-  size: {
-    mobileWidthPx: 40,
-    mobileHeightPx: 64,
-    smWidthPx: 44,
-    smHeightPx: 68,
-  },
-  overlap: { mobilePx: 4, smPx: 4 }, // `-ml-1`
-  fan: { stepDeg: 2 },
-  dyn: {
-    enabled: true,
-    aspect: 0.71,
-    minCardWidth: 28,
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
-    preferredOverlapRatio: 0.18,
-  },
-};
-
-/** R2/R3 main — static Tailwind `w-8 h-12 sm:w-9 sm:h-14`. */
-const SEED_FIVE_SEVEN_MAIN: RoundRowConfig = {
-  size: {
-    mobileWidthPx: 32,
-    mobileHeightPx: 48,
-    smWidthPx: 36,
-    smHeightPx: 56,
-  },
-  overlap: { mobilePx: 12, smPx: 12 }, // `-ml-3`
-  fan: { stepDeg: 2 },
-  dyn: {
-    enabled: false,
-    aspect: 0.71,
-    minCardWidth: 28,
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
-    preferredOverlapRatio: 0.18,
-  },
-};
-
-/** R3 irrelevant pair — static Tailwind `w-6 h-9 sm:w-7 sm:h-10`. */
-const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
-  visible: true,
-  dimmed: true,
-  scale: 0.85,
-  opacity: 0.4,
-  grayscalePct: 30,
-  interRowGapPx: 2, // `gap-0.5`
-  size: {
-    mobileWidthPx: 24,
-    mobileHeightPx: 36,
-    smWidthPx: 28,
-    smHeightPx: 40,
-  },
-  overlap: { mobilePx: 8, smPx: 8 }, // `-ml-2`
-  positionMode: "auto",
-};
-
-const DEFAULT_STATE: ShowdownRulesState = {
-  anchor: { kind: "belowChip", belowChipGapPx: 2 },
-  three: SEED_THREE,
-  five: { ...SEED_FIVE_SEVEN_MAIN },
-  seven: { ...SEED_FIVE_SEVEN_MAIN },
-  sevenIrrelevant: SEED_SEVEN_IRRELEVANT,
-};
-
-const STORAGE_KEY =
-  "geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v2";
-
-function loadState(): ShowdownRulesState {
-  if (typeof window === "undefined") return DEFAULT_STATE;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw);
-    return {
-      anchor: { ...DEFAULT_STATE.anchor, ...(parsed.anchor ?? {}) },
-      three: mergeRow(DEFAULT_STATE.three, parsed.three),
-      five: mergeRow(DEFAULT_STATE.five, parsed.five),
-      seven: mergeRow(DEFAULT_STATE.seven, parsed.seven),
-      sevenIrrelevant: {
-        ...DEFAULT_STATE.sevenIrrelevant,
-        ...(parsed.sevenIrrelevant ?? {}),
-        size: {
-          ...DEFAULT_STATE.sevenIrrelevant.size,
-          ...((parsed.sevenIrrelevant ?? {}).size ?? {}),
-        },
-        overlap: {
-          ...DEFAULT_STATE.sevenIrrelevant.overlap,
-          ...((parsed.sevenIrrelevant ?? {}).overlap ?? {}),
-        },
-      },
-    };
-  } catch {
-    return DEFAULT_STATE;
-  }
-}
-
-function mergeRow(base: RoundRowConfig, raw: unknown): RoundRowConfig {
-  const r = (raw ?? {}) as Partial<RoundRowConfig>;
-  return {
-    size: { ...base.size, ...(r.size ?? {}) },
-    overlap: { ...base.overlap, ...(r.overlap ?? {}) },
-    fan: { ...base.fan, ...(r.fan ?? {}) },
-    dyn: { ...base.dyn, ...(r.dyn ?? {}) },
-  };
-}
 
 // ─── UI primitives ────────────────────────────────────────────────────────
 
@@ -719,17 +547,167 @@ function AnchorControls({
   );
 }
 
+// ─── Parity Audit ─────────────────────────────────────────────────────────
+//
+// Temporary collapsible panel: compares the frozen LIVE_BASELINE against
+// the currently-resolved Lab values at the active breakpoint. Lives in
+// the Geometry Lab only — never on the game table.
+
+interface ParityRow {
+  field: string;
+  live: string | number | boolean;
+  lab: string | number | boolean;
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Math.abs(a - b) < 1e-6;
+  }
+  return a === b;
+}
+
+function buildRoundParityRows(
+  prefix: string,
+  liveResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
+  labResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
+): ParityRow[] {
+  const rows: ParityRow[] = [
+    { field: `${prefix}.widthPx`,    live: liveResolved.widthPx,    lab: labResolved.widthPx },
+    { field: `${prefix}.heightPx`,   live: liveResolved.heightPx,   lab: labResolved.heightPx },
+    { field: `${prefix}.overlapPx`,  live: liveResolved.overlapPx,  lab: labResolved.overlapPx },
+    { field: `${prefix}.fanStepDeg`, live: liveResolved.fanStepDeg, lab: labResolved.fanStepDeg },
+  ];
+  if (prefix === 'three') {
+    rows.push(
+      { field: `${prefix}.dyn.enabled`,               live: liveResolved.dyn.enabled,               lab: labResolved.dyn.enabled },
+      { field: `${prefix}.dyn.aspect`,                live: liveResolved.dyn.aspect,                lab: labResolved.dyn.aspect },
+      { field: `${prefix}.dyn.minCardWidth`,          live: liveResolved.dyn.minCardWidth,          lab: labResolved.dyn.minCardWidth },
+      { field: `${prefix}.dyn.maxCardWidth`,          live: liveResolved.dyn.maxCardWidth,          lab: labResolved.dyn.maxCardWidth },
+      { field: `${prefix}.dyn.maxOverlapRatio`,       live: liveResolved.dyn.maxOverlapRatio,       lab: labResolved.dyn.maxOverlapRatio },
+      { field: `${prefix}.dyn.preferredOverlapRatio`, live: liveResolved.dyn.preferredOverlapRatio, lab: labResolved.dyn.preferredOverlapRatio },
+    );
+  }
+  return rows;
+}
+
+function ParityAuditPanel() {
+  const lab = useThreeFiveSevenShowdownConfig();
+  const isSm = useIsSmBreakpoint();
+  const live = useMemo(() => resolveShowdownRules(LIVE_BASELINE, isSm), [isSm]);
+  const resolved = useMemo(() => resolveShowdownRules(lab, isSm), [lab, isSm]);
+  const [copied, setCopied] = useState(false);
+
+  const sections: { title: string; rows: ParityRow[] }[] = useMemo(() => {
+    const anchorRows: ParityRow[] = [
+      { field: 'anchor.kind',           live: live.anchor.kind,           lab: resolved.anchor.kind },
+      { field: 'anchor.belowChipGapPx', live: live.anchor.belowChipGapPx, lab: resolved.anchor.belowChipGapPx },
+    ];
+    const irr = live.sevenIrrelevant;
+    const irrLab = resolved.sevenIrrelevant;
+    const irrelevantRows: ParityRow[] = [
+      { field: 'sevenIrrelevant.visible',        live: irr.visible,        lab: irrLab.visible },
+      { field: 'sevenIrrelevant.dimmed',         live: irr.dimmed,         lab: irrLab.dimmed },
+      { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
+      { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
+      { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
+      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
+      { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
+      { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
+      { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },
+      { field: 'sevenIrrelevant.positionMode',   live: irr.positionMode,   lab: irrLab.positionMode },
+    ];
+    return [
+      { title: 'Anchor (shared)',    rows: anchorRows },
+      { title: '3-card round',       rows: buildRoundParityRows('three', live.three, resolved.three) },
+      { title: '5-card round',       rows: buildRoundParityRows('five',  live.five,  resolved.five)  },
+      { title: '7-card main row',    rows: buildRoundParityRows('seven', live.seven, resolved.seven) },
+      { title: '7-card irrelevant pair', rows: irrelevantRows },
+    ];
+  }, [live, resolved]);
+
+  const buildReport = (): string => {
+    const lines: string[] = [];
+    lines.push('=== 3-5-7 Showdown Geometry — Parity Report ===');
+    lines.push(`active breakpoint: ${resolved.breakpoint}`);
+    lines.push(`viewport: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'unknown'}`);
+    lines.push(`timestamp: ${new Date().toISOString()}`);
+    lines.push('');
+    for (const s of sections) {
+      lines.push(`-- ${s.title} --`);
+      for (const r of s.rows) {
+        const match = valuesEqual(r.live, r.lab) ? 'MATCH' : 'MISMATCH';
+        lines.push(`  ${r.field.padEnd(40)} live=${String(r.live).padEnd(10)} lab=${String(r.lab).padEnd(10)} ${match}`);
+      }
+    }
+    return lines.join('\n');
+  };
+
+  const handleCopy = async () => {
+    const txt = buildReport();
+    try {
+      await navigator.clipboard.writeText(txt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      try { window.prompt('Copy parity report:', txt); } catch { /* */ }
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Compares the frozen pre-migration LIVE_BASELINE against the
+        currently-resolved Lab values at the active Tailwind breakpoint
+        (<code>{resolved.breakpoint}</code>). All rows should read MATCH
+        at default values. Keep this panel in place until baseline parity
+        is smoke-confirmed.
+      </p>
+      <div>
+        <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
+          {copied ? 'COPIED ✓' : 'COPY PARITY REPORT'}
+        </Button>
+      </div>
+      {sections.map((s) => (
+        <div key={s.title} className="rounded-md border p-2 space-y-1">
+          <div className="font-semibold text-xs">{s.title}</div>
+          <table className="w-full text-[11px] font-mono">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-left font-normal">field</th>
+                <th className="text-left font-normal">live baseline</th>
+                <th className="text-left font-normal">lab resolved</th>
+                <th className="text-left font-normal">result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.rows.map((r) => {
+                const match = valuesEqual(r.live, r.lab);
+                return (
+                  <tr key={r.field}>
+                    <td>{r.field}</td>
+                    <td>{String(r.live)}</td>
+                    <td>{String(r.lab)}</td>
+                    <td className={match ? 'text-green-600' : 'text-red-600 font-semibold'}>
+                      {match ? 'MATCH' : 'MISMATCH'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Panel ────────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
   const [state, setState] = useState<ShowdownRulesState>(() => loadState());
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      /* ignore */
-    }
+    saveShowdownRules(state);
   }, [state]);
 
   const setRow =
@@ -742,8 +720,11 @@ export function ThreeFiveSevenShowdownRulesPanel() {
         Controls exposed opponent cards during 3-5-7 showdown near the
         opponent seat cluster. Schema mirrors the live renderer
         (per-breakpoint px size, deg/card fan, dyn357 resolver for R1,
-        seat-derived irrelevant-pair stacking). Live rendering is NOT
-        yet wired to these values — migration is a separate step.
+        seat-derived irrelevant-pair stacking). Live rendering is wired
+        to these values via{" "}
+        <code>src/lib/threeFiveSeven/showdownConfig.ts</code>. The
+        Parity Audit section below should read MATCH on every row when
+        defaults are untouched.
       </p>
 
       <CollapsibleSection title="Anchor (shared)">
@@ -785,7 +766,12 @@ export function ThreeFiveSevenShowdownRulesPanel() {
             />
           </CollapsibleSection>
         </CollapsibleSection>
+
+        <CollapsibleSection title="Parity Audit (LIVE vs LAB)">
+          <ParityAuditPanel />
+        </CollapsibleSection>
       </CollapsibleSection>
     </div>
   );
 }
+
