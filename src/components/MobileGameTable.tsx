@@ -738,6 +738,8 @@ interface MobileGameTableProps {
   horsesState?: HorsesStateFromDB | null;
   /** Dealer-game (session) UUID for the dice game framework identity feed. */
   horsesDealerGameId?: string | null;
+  /** Active dealer-game (session) UUID for Holm presentation admission gating. */
+  holmDealerGameId?: string | null;
   /** Authoritative hand_number of the current round (drives progress vector). */
   horsesHandNumber?: number | null;
   pendingDecision?: 'stay' | 'fold' | null;
