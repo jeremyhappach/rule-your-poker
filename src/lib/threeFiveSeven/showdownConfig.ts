@@ -324,18 +324,28 @@ export interface ResolvedShowdownRules {
   r3: ResolvedRound & { secondary: ResolvedSecondary };
 }
 
+/** Hard clamps prevent invalid / unmeasured felt from collapsing cards. */
+export const MIN_CARD_WIDTH_PX = 12;
+export const MAX_CARD_WIDTH_PX = 240;
+/** Last-resort width when feltVminPx is non-positive in responsive mode. */
+const RESPONSIVE_FALLBACK_WIDTH_PX = 40;
+
 function resolveCardPx(
   card: CardGeometry,
   feltVminPx: number,
 ): { w: number; h: number } {
+  let w: number;
   if (card.mode === 'fixed') {
-    const w = Math.max(1, card.cardWidthPx);
-    return { w, h: w * card.aspectRatio };
+    w = card.cardWidthPx;
+  } else {
+    const felt = Number.isFinite(feltVminPx) && feltVminPx > 0 ? feltVminPx : 0;
+    w =
+      felt > 0
+        ? (card.cardWidthPctOfFeltVmin / 100) * felt
+        : RESPONSIVE_FALLBACK_WIDTH_PX;
   }
-  const w = Math.max(
-    1,
-    (card.cardWidthPctOfFeltVmin / 100) * Math.max(0, feltVminPx),
-  );
+  if (!Number.isFinite(w) || w <= 0) w = RESPONSIVE_FALLBACK_WIDTH_PX;
+  w = Math.min(MAX_CARD_WIDTH_PX, Math.max(MIN_CARD_WIDTH_PX, w));
   return { w, h: w * card.aspectRatio };
 }
 
