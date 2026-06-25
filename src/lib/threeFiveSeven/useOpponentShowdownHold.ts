@@ -73,6 +73,15 @@ export interface UseOpponentShowdownHoldArgs {
   enabled: boolean;
 }
 
+export interface UseOpponentShowdownHoldArgsExtended extends UseOpponentShowdownHoldArgs {
+  /** Current authoritative gameId; change vs captured ⇒ auto-release. */
+  gameId: string | null;
+  /** Current authoritative dealerGameId; change vs captured ⇒ auto-release. */
+  dealerGameId: string | null;
+  /** True iff current gameType is in the 3-5-7 family; false ⇒ auto-release. */
+  isThreeFiveSevenFamily: boolean;
+}
+
 export interface UseOpponentShowdownHoldReturn {
   holdActive: boolean;
   snapshot: OpponentShowdownHoldSnapshot | null;
@@ -83,29 +92,39 @@ export interface UseOpponentShowdownHoldReturn {
 }
 
 export function useOpponentShowdownHold(
-  args: UseOpponentShowdownHoldArgs,
+  args: UseOpponentShowdownHoldArgsExtended,
 ): UseOpponentShowdownHoldReturn {
-  const { enabled } = args;
+  const { enabled, gameId, dealerGameId, isThreeFiveSevenFamily } = args;
   const [snapshot, setSnapshot] = useState<OpponentShowdownHoldSnapshot | null>(null);
   const snapshotRef = useRef<OpponentShowdownHoldSnapshot | null>(null);
   snapshotRef.current = snapshot;
+  // Latched identity at arm time. Used ONLY for hard-boundary auto-release
+  // (gameId / dealerGameId / family). Round / hand / awaitingNextRound
+  // changes intentionally do NOT release — that is the whole point of the hold.
+  const latchedGameIdRef = useRef<string | null>(null);
+  const latchedDealerGameIdRef = useRef<string | null>(null);
 
   const arm = useCallback(
     (incoming: Omit<OpponentShowdownHoldSnapshot, 'id'>) => {
       if (!enabled) return;
+      if (!isThreeFiveSevenFamily) return;
       if (snapshotRef.current) return; // already armed — single-shot
       const id = `357-osh-${Date.now()}`;
       const next: OpponentShowdownHoldSnapshot = { id, ...incoming };
       snapshotRef.current = next;
+      latchedGameIdRef.current = incoming.capturedGameId ?? gameId ?? null;
+      latchedDealerGameIdRef.current = incoming.capturedDealerGameId ?? dealerGameId ?? null;
       setSnapshot(next);
       // eslint-disable-next-line no-console
       console.log('[357 OPPONENT SHOWDOWN HOLD] armed', {
         id,
         seats: Object.keys(next.seatsByPlayerId).length,
         round: next.capturedRound,
+        gameId: latchedGameIdRef.current,
+        dealerGameId: latchedDealerGameIdRef.current,
       });
     },
-    [enabled],
+    [enabled, isThreeFiveSevenFamily, gameId, dealerGameId],
   );
 
   const release = useCallback(() => {
@@ -113,20 +132,34 @@ export function useOpponentShowdownHold(
     // eslint-disable-next-line no-console
     console.log('[357 OPPONENT SHOWDOWN HOLD] released', { id: snapshotRef.current.id });
     snapshotRef.current = null;
+    latchedGameIdRef.current = null;
+    latchedDealerGameIdRef.current = null;
     setSnapshot(null);
   }, []);
 
-  // Auto-release: harness toggled off or host unmount. Authoritative
-  // state changes deliberately do NOT trigger release.
+  // Auto-release on hard boundaries only:
+  //   - harness disabled
+  //   - 3-5-7 family exited
+  //   - gameId changed vs latched (session teardown / new game)
+  //   - dealerGameId changed vs latched (Run It Back creates a new dealer_game)
+  // Round / hand / awaitingNextRound changes are intentionally ignored.
   useEffect(() => {
-    if (!enabled && snapshotRef.current) {
-      release();
+    if (!snapshotRef.current) return;
+    if (!enabled) { release(); return; }
+    if (!isThreeFiveSevenFamily) { release(); return; }
+    if (latchedGameIdRef.current && gameId && gameId !== latchedGameIdRef.current) {
+      release(); return;
     }
-  }, [enabled, release]);
+    if (latchedDealerGameIdRef.current && dealerGameId && dealerGameId !== latchedDealerGameIdRef.current) {
+      release(); return;
+    }
+  }, [enabled, isThreeFiveSevenFamily, gameId, dealerGameId, release]);
 
   useEffect(() => {
     return () => {
       snapshotRef.current = null;
+      latchedGameIdRef.current = null;
+      latchedDealerGameIdRef.current = null;
     };
   }, []);
 
@@ -137,3 +170,4 @@ export function useOpponentShowdownHold(
     release,
   };
 }
+
