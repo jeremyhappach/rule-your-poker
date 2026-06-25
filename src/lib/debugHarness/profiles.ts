@@ -106,7 +106,7 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'Solo vs Chucky → winner = CHUCKY after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
     },
   ],
-  'three-five-seven': [
+  '3-5-7': [
     NONE_HARNESS,
     {
       id: 'opponent_showdown_hold',
