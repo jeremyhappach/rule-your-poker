@@ -397,7 +397,7 @@ export function CanonicalSeatCluster({
   // backs, dealer pip, and overlays are not touched.
   const nameRowRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const MAX_BIAS_PX = 56;
+    const MAX_BIAS_PX = 16;
     const SAFETY_PX = 4;
     const apply = () => {
       const el = nameRowRef.current;
