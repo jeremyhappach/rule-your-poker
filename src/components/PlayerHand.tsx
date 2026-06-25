@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import {
   resolveShowdownRules,
   useThreeFiveSevenShowdownConfig,
