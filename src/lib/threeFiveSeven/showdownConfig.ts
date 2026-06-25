@@ -71,6 +71,50 @@ export interface AnchorConfig {
   belowChipGapPx: number;
 }
 
+/**
+ * Opponent showdown row placement contract (P1 adapter).
+ *
+ * Conceptual model
+ * ----------------
+ *   anchor      : the opponent's canonical chipstack center
+ *                 (`[data-chip-center="${position}"]`).
+ *   attachment  : the row's *outer* edge attaches to the anchor —
+ *                 outer-left for a left-side opponent, outer-right for a
+ *                 right-side opponent. The single placement object thus
+ *                 mirrors automatically: the implementation flips X sign
+ *                 based on `isRightSide`, never duplicating values.
+ *   xPct        : INWARD shift (toward the felt center), expressed as a
+ *                 percentage of the row's OWN measured width. This is a
+ *                 normalized seat-relative coordinate frame — independent
+ *                 of viewport pixels and of arbitrary DOM-parent pixels.
+ *   yPct        : Vertical shift, percentage of the row's OWN measured
+ *                 height. Positive = downward in screen space (same sign
+ *                 for both opponents — left/right mirroring is X-only).
+ *
+ * Legacy-parity defaults
+ * ----------------------
+ *   The live renderer places the showdown row centered on the chip
+ *   horizontally and 2 px below/above it vertically (the 2 px gap is
+ *   owned by CanonicalSeatCluster's [data-canonical-seat-below]
+ *   wrapper and is NOT replaced by this adapter — yPct extends from
+ *   that baseline).
+ *
+ *   With "outer-edge attached to chip center", a zero offset would
+ *   shift the row by half its own width outward from the current
+ *   centered position. To preserve visual parity at defaults we
+ *   therefore initialise xPct = 50 (= one half-width back to center)
+ *   and yPct = 0 (the 2 px baseline gap is preserved by the wrapper).
+ */
+export interface OpponentShowdownPlacement {
+  anchor: 'chipstack-center';
+  attachment: 'outer-edge';
+  /** Inward shift, % of row width. 50 = visually centered (parity). */
+  xPct: number;
+  /** Vertical shift, % of row height. 0 = parity baseline. */
+  yPct: number;
+}
+
+
 export interface ShowdownRulesState {
   anchor: AnchorConfig;
   three: RoundRowConfig;
