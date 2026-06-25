@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import {
   resolveShowdownRules,
   useThreeFiveSevenShowdownConfig,
@@ -132,10 +133,13 @@ export const PlayerHand = ({
   // non-opponent-showdown callers stay on the prior Tailwind/dyn
   // baseline below — they never consume `v4Resolved`.
   const showdownCfgV4 = useThreeFiveSevenShowdownConfig();
-  // feltVminPx is only consulted by `responsive` sizing mode; seed
-  // values use `fixed`, so 0 is safe. Responsive callers should pass
-  // the felt vmin via a future shell-resolved prop.
-  const v4Resolved = resolveShowdownRules(showdownCfgV4, 0);
+  // Responsive sizing requires the canonical felt vmin (min of felt
+  // width/height in CSS pixels). usePlayGeometry returns 0 when outside
+  // the shell provider; resolveCardPx clamps that to a sane fallback so
+  // cards never disappear before measurement lands.
+  const _phPlay = usePlayGeometry();
+  const _feltVminPx = Math.min(_phPlay.width || 0, _phPlay.height || 0);
+  const v4Resolved = resolveShowdownRules(showdownCfgV4, _feltVminPx);
   // OWNERSHIP BOUNDARY: v4 applies ONLY to opponent-exposed showdown.
   const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
   const use357V4 = is357Game && isOpponentExposedShowdown;
