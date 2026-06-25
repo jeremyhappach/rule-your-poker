@@ -383,6 +383,8 @@ export function resolveShowdownRules(
 ): ResolvedShowdownRules {
   return {
     anchor: state.anchor,
+    opponentRowPlacement: state.opponentRowPlacement,
+
     three: resolveRow(state.three, isSm),
     five: resolveRow(state.five, isSm),
     seven: resolveRow(state.seven, isSm),
