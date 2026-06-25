@@ -212,12 +212,18 @@ function deepFreeze<T>(o: T): T {
 }
 
 // ─── Persistence ──────────────────────────────────────────────────────────
+//
+// Phase 1 migration: this domain is now a consumer of the shared Geometry
+// Lab defaults registry (`public.system_settings`, key
+// `three_five_seven_showdown_rules`). The legacy localStorage key remains
+// referenced as a first-paint cache only — it is never the runtime
+// authority once the shared substrate has loaded. Writes go through
+// `GeometryLabDraftProvider.applyAll()`, not through any function here.
 
 export const SHOWDOWN_RULES_STORAGE_KEY =
   'geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v3';
 
-/** Custom event for same-tab listeners (storage event only fires cross-tab). */
-const SHOWDOWN_RULES_UPDATE_EVENT = 'ptp:357showdownRules:updated';
+export const SHOWDOWN_RULES_DOMAIN_KEY = 'three_five_seven_showdown_rules';
 
 function mergeRow(base: RoundRowConfig, raw: unknown): RoundRowConfig {
   const r = (raw ?? {}) as Partial<RoundRowConfig>;
@@ -229,70 +235,79 @@ function mergeRow(base: RoundRowConfig, raw: unknown): RoundRowConfig {
   };
 }
 
-export function loadShowdownRules(): ShowdownRulesState {
-  if (typeof window === 'undefined') return DEFAULT_SHOWDOWN_RULES;
-  try {
-    const raw = window.localStorage.getItem(SHOWDOWN_RULES_STORAGE_KEY);
-    if (!raw) return DEFAULT_SHOWDOWN_RULES;
-    const parsed = JSON.parse(raw);
-    return {
-      anchor: { ...DEFAULT_SHOWDOWN_RULES.anchor, ...(parsed.anchor ?? {}) },
-      opponentRowPlacement: {
-        ...DEFAULT_SHOWDOWN_RULES.opponentRowPlacement,
-        ...(parsed.opponentRowPlacement ?? {}),
+function sanitizeShowdownRules(raw: unknown): ShowdownRulesState {
+  const parsed = (raw ?? {}) as Partial<ShowdownRulesState>;
+  return {
+    anchor: { ...DEFAULT_SHOWDOWN_RULES.anchor, ...(parsed.anchor ?? {}) },
+    opponentRowPlacement: {
+      ...DEFAULT_SHOWDOWN_RULES.opponentRowPlacement,
+      ...(parsed.opponentRowPlacement ?? {}),
+    },
+    three: mergeRow(DEFAULT_SHOWDOWN_RULES.three, parsed.three),
+    five: mergeRow(DEFAULT_SHOWDOWN_RULES.five, parsed.five),
+    seven: mergeRow(DEFAULT_SHOWDOWN_RULES.seven, parsed.seven),
+    sevenIrrelevant: {
+      ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant,
+      ...(parsed.sevenIrrelevant ?? {}),
+      size: {
+        ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.size,
+        ...((parsed.sevenIrrelevant ?? {}).size ?? {}),
       },
-      three: mergeRow(DEFAULT_SHOWDOWN_RULES.three, parsed.three),
+      overlap: {
+        ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.overlap,
+        ...((parsed.sevenIrrelevant ?? {}).overlap ?? {}),
+      },
+    },
+  };
+}
 
-      five: mergeRow(DEFAULT_SHOWDOWN_RULES.five, parsed.five),
-      seven: mergeRow(DEFAULT_SHOWDOWN_RULES.seven, parsed.seven),
-      sevenIrrelevant: {
-        ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant,
-        ...(parsed.sevenIrrelevant ?? {}),
-        size: {
-          ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.size,
-          ...((parsed.sevenIrrelevant ?? {}).size ?? {}),
-        },
-        overlap: {
-          ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.overlap,
-          ...((parsed.sevenIrrelevant ?? {}).overlap ?? {}),
-        },
-      },
-    };
+// Register the domain exactly once at module load.
+import {
+  registerDomain,
+  useDomainSnapshot,
+} from '@/lib/geometryLab/defaultsRegistry';
+
+registerDomain<ShowdownRulesState>({
+  key: SHOWDOWN_RULES_DOMAIN_KEY,
+  defaults: DEFAULT_SHOWDOWN_RULES,
+  sanitize: sanitizeShowdownRules,
+  firstPaintCacheKey: SHOWDOWN_RULES_STORAGE_KEY,
+});
+
+/**
+ * Back-compat read: returns the registry's current snapshot. The Geometry
+ * Lab modal no longer calls this for editing — drafts come from the
+ * draft provider. Kept for diagnostics / non-editing callers.
+ */
+export function loadShowdownRules(): ShowdownRulesState {
+  try {
+    return sanitizeShowdownRules(
+      // Late import to avoid a circular load with the registry above.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require('@/lib/geometryLab/defaultsRegistry') as typeof import('@/lib/geometryLab/defaultsRegistry'))
+        .getSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY),
+    );
   } catch {
     return DEFAULT_SHOWDOWN_RULES;
   }
 }
 
-export function saveShowdownRules(state: ShowdownRulesState): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(
-      SHOWDOWN_RULES_STORAGE_KEY,
-      JSON.stringify(state),
-    );
-    window.dispatchEvent(new CustomEvent(SHOWDOWN_RULES_UPDATE_EVENT));
-  } catch {
-    /* */
-  }
+/**
+ * @deprecated Writes now go through GeometryLabDraftProvider.applyAll().
+ * Kept as a no-op so any straggling caller fails loudly in dev rather
+ * than silently writing per-device state.
+ */
+export function saveShowdownRules(_state: ShowdownRulesState): void {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[showdownConfig] saveShowdownRules() is deprecated — writes must go through GeometryLabDraftProvider.applyAll().',
+  );
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
 export function useThreeFiveSevenShowdownConfig(): ShowdownRulesState {
-  const [cfg, setCfg] = useState<ShowdownRulesState>(() => loadShowdownRules());
-  useEffect(() => {
-    const onChange = () => setCfg(loadShowdownRules());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === SHOWDOWN_RULES_STORAGE_KEY) onChange();
-    };
-    window.addEventListener('storage', onStorage);
-    window.addEventListener(SHOWDOWN_RULES_UPDATE_EVENT, onChange);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener(SHOWDOWN_RULES_UPDATE_EVENT, onChange);
-    };
-  }, []);
-  return cfg;
+  return useDomainSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
 }
 
 // ─── Breakpoint helper ────────────────────────────────────────────────────
