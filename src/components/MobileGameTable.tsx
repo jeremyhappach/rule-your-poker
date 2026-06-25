@@ -3510,7 +3510,22 @@ export const MobileGameTable = ({
     if (!__isThreeFiveSevenForHarness) return;
     if (__debugHarnessId357 !== 'opponent_showdown_hold') return;
     if (oppShowdownHoldActive) return;
-    if (!is357MultiPlayerShowdown) return;
+
+    // Admission predicate:
+    //   A. real 3-5-7 showdown-capable phase
+    //   B. ≥1 non-self opponent currently has cards AND is exposed
+    const has357OpponentExposedAdmission = players.some((p) => {
+      if (p.user_id === currentUserId) return false;
+      if (getPlayerCards(p.id).length === 0) return false;
+      return isPlayerCardsExposed(p.id);
+    });
+    const is357ShowdownHoldAdmission =
+      (is357MultiPlayerShowdown ||
+        is357SecretRevealActive ||
+        winningLegPlayerId != null) &&
+      has357OpponentExposedAdmission;
+    if (!is357ShowdownHoldAdmission) return;
+
 
     const seats: Record<string, OpponentShowdownSeatSnapshot> = {};
     for (const player of players) {
