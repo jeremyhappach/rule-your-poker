@@ -772,7 +772,7 @@ export const PlayerHand = ({
       <div
         className="flex items-end"
         ref={is357Game ? measureRef : undefined}
-        style={opponentPlacementStyle}
+      
       >
 
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
