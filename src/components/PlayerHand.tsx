@@ -3,11 +3,11 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import {
-  LIVE_BASELINE,
   resolveShowdownRules,
-  useIsSmBreakpoint,
   useThreeFiveSevenShowdownConfig,
-  type ResolvedRoundRow,
+  fanRotationDeg,
+  type ResolvedRound,
+  type ResolvedSecondary,
 } from "@/lib/threeFiveSeven/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -127,21 +127,31 @@ export const PlayerHand = ({
   
   // Determine wild rank for 3-5-7 games
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
-  // 3-5-7 showdown geometry — Geometry Lab v2 resolved values. Always
-  // call the hooks (rules of hooks); the resolved values are only
-  // consumed by the 3-5-7 showdown branches below, so non-357 PlayerHand
-  // renders remain behaviorally unchanged.
-  const showdownCfg = useThreeFiveSevenShowdownConfig();
-  const isSmBp = useIsSmBreakpoint();
-  const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
-  // OWNERSHIP BOUNDARY: ThreeFiveSevenShowdownRules apply ONLY to the
-  // opponent exposed-cards showdown render path. The local player's
-  // active/decision hand (rendered via MobileGameTable.activeSelfHand)
-  // must remain on legacy baseline geometry regardless of Lab edits.
+  // ─── 3-5-7 showdown geometry (v4) ────────────────────────────────────
+  // v4 is OPPONENT-EXPOSED-SHOWDOWN ONLY. Self/active pane and all
+  // non-opponent-showdown callers stay on the prior Tailwind/dyn
+  // baseline below — they never consume `v4Resolved`.
+  const showdownCfgV4 = useThreeFiveSevenShowdownConfig();
+  // feltVminPx is only consulted by `responsive` sizing mode; seed
+  // values use `fixed`, so 0 is safe. Responsive callers should pass
+  // the felt vmin via a future shell-resolved prop.
+  const v4Resolved = resolveShowdownRules(showdownCfgV4, 0);
+  // OWNERSHIP BOUNDARY: v4 applies ONLY to opponent-exposed showdown.
   const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
-  const effective357 = isOpponentExposedShowdown
-    ? resolved357
-    : resolveShowdownRules(LIVE_BASELINE, isSmBp);
+  const use357V4 = is357Game && isOpponentExposedShowdown;
+
+  // Self-pane legacy geometry (preserves prior behavior verbatim for
+  // active-player pane and other non-showdown callers).
+  const SELF_LEGACY = {
+    r1: { widthPx: 40, heightPx: 56, overlapPx: 4, fanStepDeg: 2 },
+    r2: { widthPx: 64, heightPx: 96, overlapPx: 8, fanStepDeg: 2 },
+    r3: { widthPx: 64, heightPx: 96, overlapPx: 8, fanStepDeg: 2 },
+    irrelevant: {
+      visible: true, dimmed: true, opacity: 0.6, scale: 0.75,
+      positionMode: 'auto' as 'auto' | 'above' | 'below',
+      interRowGapPx: 2, widthPx: 48, heightPx: 72, overlapPx: 6,
+    },
+  };
 
   // P2 NOTE: opponent-row placement has moved out of PlayerHand.
   // CanonicalSeatCluster now owns the showdown-row slot and applies
@@ -472,53 +482,44 @@ export const PlayerHand = ({
       ? Math.max(20, rawEffectiveHeight)
       : undefined;
 
-  // dyn357 resolver params. For R1 (3-cards) the Geometry Lab v2 config
-  // (`effective357.three.dyn`) drives the parameters. For non-R1 357 hands
-  // and non-357 callers, the original hardcoded params are preserved so
-  // baseline behavior is identical at default values.
-  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && effective357.three.dyn.enabled;
+  // dyn357 resolver: self/non-showdown only (clean-slate opponent path
+  // does not use the dynamic resolver — v4 sizes are intrinsic).
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
-    aspect: useLabDynForR1 ? effective357.three.dyn.aspect : 0.71,
-    minCardWidth: useLabDynForR1 ? effective357.three.dyn.minCardWidth : 28,
-    // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
-    // MobileGameTable, this caps the rendered card width at ~160–220 px.
-    maxCardWidth: useLabDynForR1 ? effective357.three.dyn.maxCardWidth : 80,
-    maxOverlapRatio: useLabDynForR1 ? effective357.three.dyn.maxOverlapRatio : 0.6,
+    aspect: 0.71,
+    minCardWidth: 28,
+    maxCardWidth: 80,
+    maxOverlapRatio: 0.6,
   });
   const isR1ThreeCardShowdown =
     is357Game && currentRound === 1 && displayCardCount === 3;
+  // Opponent v4 path disables dyn entirely.
   const useDynStyles =
-    is357Game && Boolean(dyn357) && (!isR1ThreeCardShowdown || useLabDynForR1);
+    is357Game && Boolean(dyn357) && !isR1ThreeCardShowdown && !use357V4;
   const dyn357Style: CSSProperties | null =
     useDynStyles && dyn357
-      ? {
-          width: `${dyn357.cardWidth}px`,
-          height: `${dyn357.cardHeight}px`,
-        }
+      ? { width: `${dyn357.cardWidth}px`, height: `${dyn357.cardHeight}px` }
       : null;
   const dyn357OverlapStyle: CSSProperties | null =
     useDynStyles && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
-  // Static 3-5-7 R1 size override (Lab-driven). Applied only when dyn is
-  // not active and we're in the R1 branch. At default Lab values this
-  // yields the same px footprint as the previous `w-10 h-16
-  // sm:w-11 sm:h-[4.25rem]` Tailwind tier.
+
+  // R1 (3-card) static sizing. Opponent → v4. Self → legacy.
+  const r1StaticSrc = is357Game && currentRound === 1 && displayCardCount === 3
+    ? (use357V4
+        ? { w: v4Resolved.r1.cardWidthPx, h: v4Resolved.r1.cardHeightPx, ovr: v4Resolved.r1.overlapPx }
+        : { w: SELF_LEGACY.r1.widthPx, h: SELF_LEGACY.r1.heightPx, ovr: SELF_LEGACY.r1.overlapPx })
+    : null;
   const static357R1Style: CSSProperties | null =
-    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
-      ? {
-          width: `${effective357.three.widthPx}px`,
-          height: `${effective357.three.heightPx}px`,
-        }
+    is357Game && !dynActive && r1StaticSrc
+      ? { width: `${r1StaticSrc.w}px`, height: `${r1StaticSrc.h}px` }
       : null;
   const static357R1OverlapPx: number | null =
-    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
-      ? effective357.three.overlapPx
-      : null;
+    is357Game && !dynActive && r1StaticSrc ? r1StaticSrc.ovr : null;
   const effectiveOverlapClass = dynActive
     ? 'first:ml-0'
     : static357R1OverlapPx !== null
@@ -543,6 +544,7 @@ export const PlayerHand = ({
     }
     return base;
   };
+
 
 
 
@@ -664,57 +666,138 @@ export const PlayerHand = ({
     );
   }
 
-  // 3-5-7 showdown display with unused cards in separate row (on outer edge)
+  // 3-5-7 showdown display with unused cards in separate row (on outer edge).
+  // Opponent path uses v4 geometry; self path uses legacy constants.
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
-    const usedCardSize: CardSize = 'lg'; // Tailwind tier (overridden by inline style below).
+    const usedCardSize: CardSize = 'lg';
     const unusedCardSize: CardSize = 'sm';
-    // Geometry Lab v2 resolved values for this branch.
-    const mainRow: ResolvedRoundRow = isRound3WithUnusedBelow
-      ? effective357.seven
-      : effective357.five;
-    const irr = effective357.sevenIrrelevant;
-    // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
-    const interRowGap = irr.interRowGapPx;
-    // Position-mode resolution. `auto` mirrors the historical seat-driven
-    // behavior (bottom seats stack unused ABOVE main; others stack unused
-    // BELOW main). `above`/`below` are explicit Lab overrides.
-    const unusedAbove =
-      irr.positionMode === 'auto'
-        ? isBottomPosition
-        : irr.positionMode === 'above';
 
-    // Unused cards element
-    const unusedCardsElement = irr.visible && unusedCards.length > 0 && (
-      <div className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}>
+    // Resolve main-row and secondary-group sizing.
+    // - Opponent R3 uses v4.r3 + v4.r3.secondary.
+    // - Opponent R2 uses v4.r2; the secondary block is suppressed for
+    //   R2 (no irrelevant cards in R2 by game rules).
+    // - Self/legacy uses SELF_LEGACY constants verbatim.
+    let mainW: number, mainH: number, mainOverlapPx: number, mainFanDeg: number, mainCount: number;
+    let secVisibility: 'hidden' | 'dimmed' | 'face-down' = 'dimmed';
+    let secPlacement: 'above' | 'below' | 'left' | 'right' = 'below';
+    let secOffsetPrimaryPct = 0;
+    let secOffsetCrossPct = 0;
+    let secScale = 1;
+    let secOpacity = 1;
+    let secGrayscale = 0;
+    let secW: number, secH: number, secOverlapPx: number;
+    let interRowGap: number;
+
+    if (use357V4) {
+      const round = isRound3WithUnusedBelow ? v4Resolved.r3 : v4Resolved.r2;
+      mainW = round.cardWidthPx;
+      mainH = round.cardHeightPx;
+      mainOverlapPx = round.overlapPx;
+      mainFanDeg = round.fanDegrees;
+      mainCount = usedCards.length;
+      const sec: ResolvedSecondary | null = isRound3WithUnusedBelow
+        ? v4Resolved.r3.secondary
+        : null;
+      if (sec) {
+        secVisibility = sec.visibility;
+        secPlacement = sec.placement;
+        secOffsetPrimaryPct = sec.offsetPrimaryPct;
+        secOffsetCrossPct = sec.offsetCrossPct;
+        secScale = sec.scale;
+        secOpacity = sec.opacity;
+        secGrayscale = sec.grayscale;
+        secW = sec.cardWidthPx;
+        secH = sec.cardHeightPx;
+        secOverlapPx = sec.overlapPx;
+      } else {
+        secW = 0; secH = 0; secOverlapPx = 0;
+        secVisibility = 'hidden';
+      }
+      interRowGap = 0; // gap is now expressed via secondary.offsetPrimaryPct
+    } else {
+      const m = isRound3WithUnusedBelow ? SELF_LEGACY.r3 : SELF_LEGACY.r2;
+      mainW = m.widthPx;
+      mainH = m.heightPx;
+      mainOverlapPx = m.overlapPx;
+      mainFanDeg = 0;
+      mainCount = usedCards.length;
+      const sl = SELF_LEGACY.irrelevant;
+      secVisibility = sl.dimmed ? 'dimmed' : 'face-down';
+      secPlacement = (sl.positionMode === 'above' || (sl.positionMode === 'auto' && isBottomPosition)) ? 'above' : 'below';
+      secOffsetPrimaryPct = 0;
+      secOffsetCrossPct = 0;
+      secScale = sl.scale;
+      secOpacity = sl.opacity;
+      secGrayscale = 0;
+      secW = sl.widthPx;
+      secH = sl.heightPx;
+      secOverlapPx = sl.overlapPx;
+      interRowGap = sl.interRowGapPx;
+    }
+
+    // For v4, derive a px gap from offsetPrimaryPct relative to main-row
+    // extent along the placement axis. For above/below it's % of main-row
+    // height; for left/right it's % of main-row width-extent.
+    const mainRowExtentPx =
+      mainCount <= 0
+        ? 0
+        : mainCount === 1
+          ? mainW
+          : mainW + (mainCount - 1) * Math.max(0, mainW - mainOverlapPx);
+    const isVerticalSecondary = secPlacement === 'above' || secPlacement === 'below';
+    const secAxisBasis = isVerticalSecondary ? mainH : mainRowExtentPx;
+    const secPrimaryGapPx = use357V4
+      ? (secOffsetPrimaryPct / 100) * secAxisBasis
+      : interRowGap;
+    const secCrossDriftPx = use357V4
+      ? (secOffsetCrossPct / 100) * (isVerticalSecondary ? mainRowExtentPx : mainH)
+      : 0;
+
+    const showSecondary =
+      secVisibility !== 'hidden' && unusedCards.length > 0;
+
+    const unusedCardsElement = showSecondary && (
+      <div
+        className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}
+        style={
+          use357V4
+            ? { transform: `translate(${secCrossDriftPx}px, 0)` }
+            : undefined
+        }
+      >
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
-            isDimmed={irr.dimmed}
+            isDimmed={secVisibility === 'dimmed'}
+            // NOTE: face-down VISIBILITY only restyles; game-rule-owned
+            // reveal/face state is enforced upstream (we only render
+            // cards already classified as the R3 irrelevant secondary
+            // group).
+            isHidden={secVisibility === 'face-down'}
             isWild={false}
             style={{
-              width: `${irr.widthPx}px`,
-              height: `${irr.heightPx}px`,
-              marginLeft: displayIndex === 0 ? 0 : `-${irr.overlapPx}px`,
-              opacity: irr.opacity,
-              transform: `scale(${irr.scale})`,
+              width: `${secW}px`,
+              height: `${secH}px`,
+              marginLeft: displayIndex === 0 ? 0 : `-${secOverlapPx}px`,
+              opacity: secOpacity,
+              transform: `scale(${secScale})`,
+              filter: secGrayscale > 0 ? `grayscale(${secGrayscale})` : undefined,
             }}
           />
         ))}
       </div>
     );
 
-    // Used cards element
-    const fanStep = mainRow.fanStepDeg;
-    const n = usedCards.length;
+    const n = mainCount;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isHighlighted = highlightedIndices.includes(originalIndex);
           const isKicker = kickerIndices.includes(originalIndex);
           const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2; // = fanStep * i - fanStep * (n-1)/2
+          const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n);
           return (
             <PlayingCard
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
@@ -725,9 +808,9 @@ export const PlayerHand = ({
               isDimmed={isDimmed}
               isWild={isWild}
               style={{
-                width: `${mainRow.widthPx}px`,
-                height: `${mainRow.heightPx}px`,
-                marginLeft: displayIndex === 0 ? 0 : `-${mainRow.overlapPx}px`,
+                width: `${mainW}px`,
+                height: `${mainH}px`,
+                marginLeft: displayIndex === 0 ? 0 : `-${mainOverlapPx}px`,
                 transform: `rotate(${rotationDeg}deg)`,
               }}
             />
@@ -736,13 +819,16 @@ export const PlayerHand = ({
       </div>
     );
 
+    // Placement layout. above/below = column; left/right = row.
+    const stackVertical = secPlacement === 'above' || secPlacement === 'below';
+    const secondaryAbove = secPlacement === 'above' || secPlacement === 'left';
     return (
       <div
-        className="flex flex-col"
-        style={{ gap: `${interRowGap}px` }}
+        className={stackVertical ? 'flex flex-col' : 'flex flex-row items-center'}
+        style={{ gap: `${secPrimaryGapPx}px` }}
         ref={is357Game ? measureRef : undefined}
       >
-        {unusedAbove ? (
+        {secondaryAbove ? (
           <>
             {unusedCardsElement}
             {usedCardsElement}
@@ -760,27 +846,28 @@ export const PlayerHand = ({
 
 
 
-  // Special round 3 display with unused cards dimmed but all together (old inline style)
+
+  // Special round 3 display with unused cards dimmed but all together.
+  // This branch fires only when `!unusedCardsBelow`. Opponent showdown
+  // always passes unusedCardsBelow=true, so this is a self-only path
+  // and uses legacy constants exclusively.
   if (isRound3With7Cards && !unusedCardsBelow) {
-    // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
-    const fanStep = effective357.seven.fanStepDeg;
+    const fanStep = SELF_LEGACY.r3.fanStepDeg;
     const n = allCardsOrdered.length;
-    const irrOpacity = effective357.sevenIrrelevant.opacity;
+    const irrOpacity = SELF_LEGACY.irrelevant.opacity;
 
     return (
       <div
         className="flex items-end"
         ref={is357Game ? measureRef : undefined}
-      
       >
-
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
           const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
           const isKicker = !isUnused && kickerIndices.includes(originalIndex);
           const isDimmed = isUnused || (hasHighlights && !isHighlighted && !isKicker);
-          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2);
           return (
             <PlayingCard
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
@@ -804,12 +891,12 @@ export const PlayerHand = ({
   }
 
   // Default branch (also the 3-5-7 R1 showdown path).
-  // For 3-5-7 R1 (3 cards), fan step is sourced from effective357.three.
-  // For all other callers, fan step remains 2°/card (historical default).
-  const defaultFanStep =
-    is357Game && currentRound === 1 && displayCardCount === 3
-      ? effective357.three.fanStepDeg
-      : 2;
+  // For 3-5-7 R1 opponent: v4.r1.fanDegrees (TOTAL spread).
+  // For self R1 and all non-357 callers: legacy 2°/card step.
+  const isR1Three = is357Game && currentRound === 1 && displayCardCount === 3;
+  const useV4FanR1 = isR1Three && use357V4;
+  const defaultFanStep = isR1Three && !use357V4 ? SELF_LEGACY.r1.fanStepDeg : 2;
+  const v4R1TotalFanDeg = useV4FanR1 ? v4Resolved.r1.fanDegrees : 0;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
@@ -826,7 +913,9 @@ export const PlayerHand = ({
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
         const n = sortedCardsWithIndices.length;
-        const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+        const rotationDeg = useV4FanR1
+          ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n)
+          : defaultFanStep * (displayIndex - (n - 1) / 2);
 
         const cardEl = (
           <PlayingCard
