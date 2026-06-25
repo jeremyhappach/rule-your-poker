@@ -399,12 +399,45 @@ export function getThreeFiveSevenR1OwnershipAudit(): ThreeFiveSevenR1OwnershipAu
   return latest;
 }
 
+function _r1AuditEqual(
+  a: ThreeFiveSevenR1OwnershipAudit | undefined,
+  b: ThreeFiveSevenR1OwnershipAudit | null,
+): boolean {
+  if (!a || !b) return false;
+  if (
+    a.instanceKey !== b.instanceKey ||
+    a.is357Game !== b.is357Game ||
+    a.currentRound !== b.currentRound ||
+    a.displayCardCount !== b.displayCardCount ||
+    a.dynEnabledFromLiveLabState !== b.dynEnabledFromLiveLabState ||
+    a.renderedBranch !== b.renderedBranch ||
+    a.resolvedWidthPx !== b.resolvedWidthPx ||
+    a.resolvedHeightPx !== b.resolvedHeightPx ||
+    a.resolvedOverlapPx !== b.resolvedOverlapPx ||
+    a.resolvedFanStepDeg !== b.resolvedFanStepDeg ||
+    a.parentClientWidthUsedByDynPx !== b.parentClientWidthUsedByDynPx
+  ) return false;
+  const ak = Object.keys(a.predicates);
+  const bk = Object.keys(b.predicates);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) {
+    if ((a.predicates as Record<string, unknown>)[k] !== (b.predicates as Record<string, unknown>)[k]) return false;
+  }
+  return true;
+}
+
 export function publishThreeFiveSevenR1OwnershipAudit(
   instanceKey: string,
   value: ThreeFiveSevenR1OwnershipAudit | null,
 ): void {
-  if (value) _r1OwnershipAudits.set(instanceKey, value);
-  else _r1OwnershipAudits.delete(instanceKey);
+  const prev = _r1OwnershipAudits.get(instanceKey);
+  if (value) {
+    if (_r1AuditEqual(prev, value)) return; // no-op: skip notify loop
+    _r1OwnershipAudits.set(instanceKey, value);
+  } else {
+    if (!prev) return;
+    _r1OwnershipAudits.delete(instanceKey);
+  }
   const latest = getThreeFiveSevenR1OwnershipAudit();
   for (const l of _r1OwnershipListeners) {
     try { l(latest); } catch { /* */ }
