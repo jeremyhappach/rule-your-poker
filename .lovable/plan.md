@@ -1,231 +1,132 @@
-# Holm Hand-Boundary Transaction Fix (v3 — corrected)
+# 3-5-7 · Opponent Showdown Hold — presentation-only hold
 
-Replace the scatter of Holm hand-boundary writers with **two explicit transactions** keyed by a one-shot outcome handshake plus a hand generation fence. Holm-only; Cribbage / 3-5-7 / Gin paths and the existing `beginDeal(N)` contract are untouched.
+## Contract recap
 
----
+- Real game, real flow. No fixtures, no route, no fake shell.
+- Selecting the harness in Game Defaults arms a single client-presentation hold at the real 3-5-7 opponent-exposed showdown boundary.
+- CONTINUE HAND releases the hold once and yields back to the live pipeline. No RPC, no server writes, no recompute, no timers, no new round.
 
-## 1. Hand generation fence
+## Entry point
 
-In `src/components/MobileGameTable.tsx` (Holm scope only):
-
-- `holmHandGenerationRef: { current: number }` — incremented exactly once inside `runNewHandInit`.
-- `holmActiveTxnRef: { handContextId, handGeneration, outcomeId | null, presentationHandContextId, teardownComplete, newHandInitComplete, dealStarted }`.
-- Every Holm-scoped cache mutation, settle callback, scheduled timeout/RAF, and phase-event recorder captures `{ handContextId, handGeneration }` at registration and **rejects itself** unless both still match `holmActiveTxnRef`. Rejections recorded as `HOLM_STALE_CALLBACK_REJECTED` (observational).
-
----
-
-## 2. Transaction A — outcome teardown (`runOutcomeTeardown`)
-
-Eligibility is **not** derived from "no active triggers." It runs only in response to one explicit event:
-
-```
-HOLM_OUTCOME_PRESENTATION_COMPLETE { handContextId, handGeneration, outcomeId }
-→ outcomeTxnKey = `${handContextId}:${outcomeId}`
-```
-
-Emission rule (single emitter): may emit only after ALL of:
-- All four Chucky card IDs are present in `visualChuckyFlipCommittedIds` (see §3).
-- The outcome animation `onComplete` (HolmWinPotAnimation / loss animation) has fired.
-- `handContextId` and `handGeneration` still match `holmActiveTxnRef`.
-- `outcomeTxnKey` not already latched in `holmEmittedOutcomeKeysRef: Set<string>`.
-
-`runOutcomeTeardown(outcomeTxnKey)` is idempotent on that key and synchronously, in one batch:
-
-- `cachedChuckyCards` → null
-- `cachedChuckyActive` → false
-- `cachedChuckyCardsRevealed` → 0
-- `chuckyTargetRevealedRef` / `cachedChuckyHandContextRef` cleared via `clearChuckyRevealOwnership`
-- `visualChuckyFlipCommittedIds` reset
-- tabled-self snapshot refs cleared
-- `cachedCommunityCards` cleared
-- solo-vs-chucky lock refs cleared
-- `chuckyNormalRevealBranchLockedRef.current = false`
-- win/loss trigger latches cleared
-- `holmActiveTxnRef.teardownComplete = true`
-- emit `HOLM_OUTCOME_TEARDOWN_COMPLETE { outcomeTxnKey }`
-
-`presentationHandContextId` (state): equals `handContextId` normally; pinned to the outcome's hand while celebration is rendering; **must never be null while any Holm gameplay stage is mounted** — violation `HAND_PRESENTATION_CONTEXT_NULL`.
-
-Dealer-config interactivity gate (Holm only): becomes interactive iff `teardownComplete === true` for the most recent outcome. If no outcome was in flight (cold start), gate auto-passes.
-
----
-
-## 3. Visual completion = actual flip completion
-
-New per-hand monotonic set:
+`src/lib/debugHarness/profiles.ts` — under existing `'3-5-7'` key add:
 
 ```ts
-visualChuckyFlipCommittedIds: Set<string>   // scoped to (handContextId, handGeneration)
+{ id: 'opponent_showdown_hold',
+  label: 'Opponent Showdown Hold',
+  description: 'Real-game presentation hold at the opponent exposed showdown boundary. CONTINUE HAND releases.' }
 ```
 
-Population rule: a cardId enters the set **only** from its actual `VISUAL_CHUCKY_FLIP_COMPLETE` / animation `onComplete` callback (wired into the Chucky card flip component's existing `onAnimationEnd` / equivalent). The callback rejects itself if `(handContextId, handGeneration)` no longer match.
+`useDebugHarness('3-5-7')` already validates against the registry, so the dropdown picks it up automatically. No change to `GameDefaultsConfig.tsx`.
 
-```ts
-chuckyVisualRevealComplete =
-  visualChuckyFlipCommittedIds.size === requiredRevealCount
+## Hold boundary
+
+The real boundary already exists in `src/components/MobileGameTable.tsx`:
+
+- `is357MultiPlayerShowdown` (line ~2953) — `(round 2 || 3) && stayedPlayersCount>=2 && (allDecisionsIn || awaitingNextRound)`
+- `is357Round3MultiPlayerShowdown` (line ~2950)
+- per-seat `isShowdown` derivation (line ~7025) gated on real exposed cards present.
+
+The hold ARMS when **all** of:
+1. `gameType` is the 3-5-7 family
+2. `useDebugHarness('3-5-7') === 'opponent_showdown_hold'`
+3. `is357MultiPlayerShowdown === true`
+4. At least one opponent seat has rendered exposed cards (`hasExposedCards`) — confirms the row is fully eligible and mounted.
+
+Once armed, the hold latches:
+- `heldHandContextId` (current `handContextId`)
+- `heldGameId` (current `gameId`)
+- `heldRound` (`currentRound` snapshot)
+- `heldDealerGameId` (current `dealerGameId`)
+
+The hold does NOT cache cards — the live exposed-card subtree continues to render from authoritative state until the round transitions; only the *post-showdown presentation transition* is suppressed. (Server is free to advance; if it does, the auto-release rules below fire.)
+
+## What the hold suppresses (presentation only)
+
+While `holdActive`:
+- Win-celebration overlay (`LegEarnedAnimation`, `LegsToPlayerAnimation`, `PotToPlayerAnimation` for 3-5-7 — gated by `threeFiveSevenWinPhase`/`threeFiveSevenWinTriggerId`) is masked at render time via a prop passed to MobileGameTable: `threeFiveSevenPresentationHold: boolean`.
+- Active-player decision strip render (the `currentPlayer.auto_fold / canDecide` block at ~line 10611) is hidden for the local viewer when the hold is active (replaced by the CONTINUE HAND row described below).
+- Next-hand presentation (the `awaitingNextRound`-driven UI swap to ante/deal of the next hand) is masked behind the same prop: keep showing the held showdown layout until release.
+
+No game-logic decisions change. No timer is suppressed; the deadline enforcer is server-side and out of scope. If the server progresses anyway, auto-release fires (see Safety).
+
+## Action Pane integration
+
+The real shell "Action Pane" for 3-5-7 today is the stable-height strip at `MobileGameTable.tsx:10611-10721`. While the hold is active and `gameType` is 3-5-7, that strip renders a single CONTINUE HAND button instead of the decision/auto-fold/badge variants:
+
+```tsx
+{holdActive ? (
+  <Button onClick={releaseHold} className="...">CONTINUE HAND</Button>
+) : (
+  /* existing 10624-10720 ladder unchanged */
+)}
 ```
 
-`cachedChuckyCardsRevealed === requiredRevealCount` is no longer accepted as proof of visual completion. The existing stepper continues to drive the visual reveal cadence, but completion is observed from flip-onComplete, not from the counter.
+This reuses the real shell pane — no new container, no portal.
 
----
+## Hold owner
 
-## 4. Transaction B — new-hand init (`runNewHandInit`)
+A new minimal hook + ref lives at the Game.tsx scope (the shell-owned coordinator):
 
-Triggered exactly when `handContextId` transitions to a new value AND (the prior outcome's teardown ran, OR no prior outcome existed). Synchronously:
+`src/lib/threeFiveSeven/useOpponentShowdownHold.ts` (new, ~60 LOC) — owns:
+- `holdActive: boolean`
+- `armIfEligible({gameId, gameType, dealerGameId, handContextId, currentRound, isShowdown, hasAnyExposedCards, harnessId})`
+- `release()` — single-shot; clears latch
+- auto-release rules (see Safety).
 
-1. `holmHandGenerationRef.current += 1`
-2. Update `holmActiveTxnRef = { handContextId: newId, handGeneration: newGen, outcomeId: null, presentationHandContextId: newId, teardownComplete: false, newHandInitComplete: false, dealStarted: false }`
-3. Tell `CardTransportProvider` to drop every active intent whose `handContextId` ≠ new id (new Holm-aware helper `dropIntentsNotMatchingHand(handContextId, reason)`; reason `stale_prior_hand_at_init`).
-4. Call DealRuntime Holm-only API `resetForHand({ handContextId: newId, handGeneration: newGen })` — replaces ledger with an empty one, sets `expected=0`, `dispatched=0`, `settled=∅`, phase = `PRE_DEAL`.
-5. Reset Holm local presentation caches to empty (already cleared by teardown; this is a defensive idempotent step for cold start).
-6. Reset `visualChuckyFlipCommittedIds` for the new generation.
-7. `holmActiveTxnRef.newHandInitComplete = true`
-8. emit `HOLM_NEW_HAND_INIT_COMPLETE { handContextId, handGeneration }`
+Game.tsx imports the hook, calls `armIfEligible` in a `useEffect` keyed on its existing showdown signals, and threads `holdActive` + `releaseHold` into `<MobileGameTable>` as two new optional props:
+- `threeFiveSevenPresentationHold?: boolean`
+- `onThreeFiveSevenPresentationHoldRelease?: () => void`
 
-**`runNewHandInit` does NOT call `beginDealForHand`.** Init only prepares the runtime. The deal is started later by the existing Holm deal orchestrator when the **authoritative new-hand card manifest is available** — see §5.
+MobileGameTable uses them only in:
+1. The Action Pane swap above.
+2. Three `&&`-guards around the 3-5-7 win-overlay components.
+3. One guard around the next-hand swap (suppress the `awaitingNextRound` driven re-mount of the active-self-hand pane while held).
 
-Only after step 7 may Holm admit SOLO / CHUCKY / decision events for the new hand (subject to §7 readiness gates).
+No edits in `PlayerHand`, `CanonicalSeatCluster`, `showdownConfig`, server, RPC layer, or game logic.
 
----
+## Safety / teardown (auto-release, all in the hook)
 
-## 5. Holm-only DealRuntime APIs
+`release()` is called immediately when ANY of these change away from the latched identity:
+- `harnessId !== 'opponent_showdown_hold'`
+- `gameId !== heldGameId`
+- `dealerGameId !== heldDealerGameId`
+- `handContextId !== heldHandContextId`
+- `currentRound !== heldRound`
+- `gameType` family changes off 3-5-7
+- MobileGameTable unmounts (hook cleanup)
+- Run It Back fires (existing `runItBack` trigger observed by Game.tsx — we hook the same signal)
 
-Edit `src/lib/canonicalShell/cardTransport/DealRuntime.tsx`. **Existing `beginDeal(N)` / `beginWave(N)` signatures and behavior are unchanged** — Cribbage / 3-5-7 / Gin keep calling them exactly as today.
+After auto-release the latch is empty and nothing is preserved.
 
-Add NEW Holm-only methods on the same context value (no overload; distinct names):
+## Toggle-off contract
 
-```ts
-resetForHand({ handContextId: string, handGeneration: number }): void
+When `useDebugHarness('3-5-7') !== 'opponent_showdown_hold'`:
+- `armIfEligible` no-ops, `holdActive` stays `false`.
+- All three MobileGameTable guards collapse to their existing branches.
+- No CONTINUE HAND button. No code path differs from today.
 
-beginDealForHand({
-  handContextId: string,
-  handGeneration: number,
-  expectedCards: Array<{ cardId: string; handContextId: string }>,
-}): void
+## Files touched (final list)
 
-beginWaveForHand({
-  handContextId: string,
-  handGeneration: number,
-  addedExpectedCards: Array<{ cardId: string; handContextId: string }>,
-}): void
-```
+1. `src/lib/debugHarness/profiles.ts` — +1 profile entry.
+2. `src/lib/threeFiveSeven/useOpponentShowdownHold.ts` — NEW, ~60 LOC.
+3. `src/pages/Game.tsx` — import hook, call `armIfEligible`, pass 2 props into MobileGameTable. ~15 LOC.
+4. `src/components/MobileGameTable.tsx` — accept 2 props; gate Action Pane swap + 3-5-7 win overlays + awaiting-next swap. ~25 LOC, no logic refactor.
 
-`resetForHand` synchronously replaces the ledger with an empty one keyed to `(handContextId, handGeneration)`.
+Total: 4 files, ~100 LOC additive, no edits to PlayerHand / CanonicalSeatCluster / showdownConfig / RPC / edge functions / timers / deal pipeline / game rules.
 
-`beginDealForHand`, in one batch:
-- Validate every `expectedCard.handContextId === handContextId`. Any mismatch → record `HAND_RUNTIME_IDENTITY_BREACH`, leave ledger reset, return.
-- Drop active intents whose handContextId ≠ this hand.
-- `expectedCount = expectedCards.length`
-- `dispatchedCount = 0`
-- `settledCardIds = new Set()`
-- Phase → `DEALING`
+## Confirmation
 
-Critical semantics (enforced for the Holm path only — non-Holm path unchanged):
-- `expected` = planned cards (set at `beginDealForHand`).
-- `dispatched` increments only when `CardTransportProvider.dispatch` accepts a new intent whose `(handContextId, handGeneration)` match the active txn.
-- `settled` increments only from a current-hand intent callback whose `(handContextId, handGeneration)` match.
-- Neither `beginDealForHand` nor `beginWaveForHand` may mark cards dispatched merely because they are expected.
+- No server / RPC / edge function / migration code touched.
+- No timer, deadline, or scheduler touched.
+- No deal-pipeline, orchestrator, or game-rule logic touched.
+- No PlayerHand / CanonicalSeatCluster / showdownConfig changes.
+- Typecheck only — no Playwright run unless requested.
 
-The Holm orchestrator (`HolmDealOrchestrator`) calls `beginDealForHand` exactly once, when the new-hand manifest is ready, gated on `holmActiveTxnRef.newHandInitComplete && handContextId/handGeneration match`.
+## Return on completion
 
----
-
-## 6. Identity-only churn must not mutate cache (Holm only)
-
-In Holm `cacheEffect` (~lines 5020–5170):
-- Track `lastSeenChuckyContentHash: string | null` (rank|suit join).
-- Cache write fires only on: `handContextId` change, content-hash change, explicit teardown, or explicit new-hand init.
-- Reference-identity churn (`chuckyCardsRef !== prevRef && hashEqual`) → no-op, log `HOLM_IDENTITY_ONLY_CHURN_IGNORED` (observational).
-
-Apply the same rule to community cards cache and tabled-self snapshot.
-
----
-
-## 7. Transaction readiness gates (replace coarse PRE_DEAL blocks)
-
-```ts
-canEmitSolo =
-  holmActiveTxnRef.newHandInitComplete &&
-  dealRuntime.handContextId === handContextId &&
-  initialHandWaveSettled;            // dealSettled for the player-hand wave
-
-canStartChucky =
-  holmActiveTxnRef.newHandInitComplete &&
-  dealRuntime.handContextId === handContextId &&
-  requiredPriorWavesSettled &&        // community wave settled
-  allDecisionsCommittedForCurrentHand;
-```
-
-If false at emission time → record `SOLO_OR_CHUCKY_STARTED_BEFORE_TXN_READY` and `return`.
-
----
-
-## 8. Detached writers folded in (Holm only)
-
-In `MobileGameTable.tsx`:
-- `soloDestroyOnHandChange` effect body removed; lives in `runOutcomeTeardown`.
-- `cacheEffect.dealerConfigPhase` chucky-clear branch removed; replaced with assertion-only: if dealer-config phase entered and `teardownComplete === false`, emit `HAND_PRESENTATION_LEAK_ACROSS_DEALER_SELECTION`.
-- Deferred `resetHandUiCaches` effect: Holm path short-circuits and routes to `runNewHandInit`. Non-Holm path unchanged.
-- `resetHandUiCaches` itself: unchanged for non-Holm; no-op for Holm.
-
-Cribbage, 3-5-7, Gin call sites of `resetHandUiCaches` / `beginDeal` are untouched.
-
----
-
-## 9. Permanent hard violations (recorded to wartime + visible debug pill)
-
-Recorded in `src/lib/canonicalShell/cardTransport/holmDealDbg.ts` and surfaced via the existing Holm trace HUD (project rule: visible in-app pill, not console):
-
-- `HAND_PRESENTATION_CONTEXT_NULL`
-- `HAND_PRESENTATION_LEAK_ACROSS_DEALER_SELECTION`
-- `HAND_RUNTIME_IDENTITY_BREACH`
-- `DISPATCH_WITHOUT_CURRENT_HAND_INTENT` — `expectedCount > 0 && dispatchedCount > 0 && settledCount === 0 && activeIntentsForHand === 0` persists > 250ms.
-- `SOLO_OR_CHUCKY_STARTED_BEFORE_TXN_READY`
-
-Observational: `HOLM_STALE_CALLBACK_REJECTED`, `HOLM_IDENTITY_ONLY_CHURN_IGNORED`, `HOLM_OUTCOME_TEARDOWN_COMPLETE`, `HOLM_NEW_HAND_INIT_COMPLETE`, `VISUAL_CHUCKY_FLIP_COMPLETE`.
-
----
-
-## 10. Files touched
-
-- `src/components/MobileGameTable.tsx` — Holm transactions, fence, cache-effect change, readiness gates, writer removals, visual-flip set, outcome handshake emitter.
-- `src/components/ChuckyHand.tsx` — wire `onAnimationEnd` for each flipped card to call back into MobileGameTable's `recordVisualChuckyFlipComplete(cardId, handContextId, handGeneration)`.
-- `src/components/HolmDealOrchestrator.tsx` — call `beginDealForHand` once the new-hand manifest is ready and txn is initialized.
-- `src/lib/canonicalShell/cardTransport/DealRuntime.tsx` — add `resetForHand`, `beginDealForHand`, `beginWaveForHand` (Holm-only methods); leave `beginDeal`/`beginWave` untouched.
-- `src/lib/canonicalShell/cardTransport/CardTransportProvider.tsx` — `dropIntentsNotMatchingHand`; track `(handContextId, handGeneration)` on intents.
-- `src/lib/canonicalShell/cardTransport/holmDealDbg.ts` — new violation codes + HUD surfacing.
-
-No changes to Cribbage / 3-5-7 / Gin orchestrators or any non-Holm consumer.
-
----
-
-## 11. Acceptance — Playwright matrix
-
-Single script under `/tmp/browser/holm-handboundary/`:
-
-A. **10 consecutive cycles** without page reload — Bot Holm solo win → outcome plays → dealer selection → Run Back Holm → fresh deal. Per cycle assert:
-  1. Dealer selection has zero prior-hand cards mounted.
-  2. New DealRuntime ledger contains only its own `handContextId` and `handGeneration` (read from HUD pill).
-  3. No runtime persists `expectedCount > 0 && dispatchedCount > 0 && settledCount === 0 && activeIntentsForHand === 0` for >250ms.
-  4. No cache write recorded from identity-only churn (HUD `cachedChuckyCards` write events with `reason=identity_churn` count = 0).
-  5. Zero occurrences of any hard violation in §9.
-  6. `HOLM_OUTCOME_PRESENTATION_COMPLETE` count equals cycle count, and each emission was preceded by exactly 4 `VISUAL_CHUCKY_FLIP_COMPLETE` events for that outcome.
-
-B. **One cold-start Holm hand** (fresh page load → first hand) passes A2–A5.
-
-C. **One non-Holm smoke** (3-5-7 single hand) — no regression in deal/settle counters (assert numeric `beginDeal(N)` path still functions identically via HUD).
-
-Screenshots: dealer-selection cleared state, new deal complete, post-cycle-10 HUD pill.
-
----
-
-## Acceptance summary
-
-- Dealer selection shows zero old gameplay cards across 10 cycles.
-- New DealRuntime ledgers contain only new-hand IDs and generation.
-- No counters increment without matching active intents.
-- Hand / community / Chucky settle normally.
-- No stale tabled or Chucky cards survive into the next hand.
-- No deadlock: SOLO/CHUCKY gated on transaction readiness, not coarse phase label.
-- Outcome teardown only fires after real visual flip completion, never on counter alone.
-- Non-Holm games behaviorally unchanged.
+- Final changed files / line ranges
+- Registry entry id + label
+- Exact `holdActive` arm condition expression
+- Real Action Pane swap site (MobileGameTable.tsx line range)
+- Identity fields retained for safety (list)
+- Typecheck status
