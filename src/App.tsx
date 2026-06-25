@@ -55,6 +55,11 @@ import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5Over
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import { GeometryOverridesLoader } from '@/lib/geometryLab/GeometryOverridesLoader';
+import { GeometryLabDefaultsLoader } from '@/lib/geometryLab/GeometryLabDefaultsLoader';
+// Force domain registration at app boot so the defaults loader's initial
+// fetch + realtime routing include the 3-5-7 showdown rules domain even
+// before the Geometry Lab modal mounts.
+import '@/lib/threeFiveSeven/showdownConfig';
 import { SeatClusterInvariantMonitor } from '@/lib/canonicalShell/seatClusterInvariant';
 
 
@@ -99,6 +104,7 @@ const App = () => {
       <TooltipProvider>
         <ResponsiveGeometryProvider>
           <GeometryOverridesLoader />
+          <GeometryLabDefaultsLoader />
           <SeatClusterInvariantMonitor />
           <Toaster />
           <Sonner />

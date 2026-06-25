@@ -59,6 +59,8 @@ import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { DebugPillsAdminSection } from "@/components/admin/DebugPillsAdminSection";
 import { GeometryLab } from "@/components/admin/GeometryLab";
 import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
+import { GeometryLabDraftProvider } from "@/lib/geometryLab/GeometryLabDraftProvider";
+import { GeometryLabModalChrome } from "@/components/admin/GeometryLabModalChrome";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
@@ -913,7 +915,11 @@ const Index = () => {
                 <ScrollArea className="h-full pr-4 overscroll-contain">
                   {user && (
                     <GeometryLabCrashBoundary>
-                      <GeometryLab userId={user.id} />
+                      <GeometryLabDraftProvider>
+                        <GeometryLabModalChrome>
+                          <GeometryLab userId={user.id} />
+                        </GeometryLabModalChrome>
+                      </GeometryLabDraftProvider>
                     </GeometryLabCrashBoundary>
                   )}
                 </ScrollArea>
