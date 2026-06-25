@@ -338,6 +338,8 @@ export interface ResolvedIrrelevant {
 
 export interface ResolvedShowdownRules {
   anchor: { kind: AnchorKind; belowChipGapPx: number };
+  /** P1 opponent-row placement (breakpoint-independent, pass-through). */
+  opponentRowPlacement: OpponentShowdownPlacement;
   three: ResolvedRoundRow;
   five: ResolvedRoundRow;
   seven: ResolvedRoundRow;
@@ -345,6 +347,7 @@ export interface ResolvedShowdownRules {
   /** 'mobile' | 'sm' — which breakpoint values were chosen. */
   breakpoint: 'mobile' | 'sm';
 }
+
 
 function resolveRow(cfg: RoundRowConfig, isSm: boolean): ResolvedRoundRow {
   return {
