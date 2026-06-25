@@ -8535,7 +8535,7 @@ export const MobileGameTable = ({
         )}
         
         {/* 3-5-7 Pot To Player Animation */}
-        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
+        {!oppShowdownHoldActive && gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
           <PotToPlayerAnimation
             triggerId={potToPlayerTriggerId357}
             amount={threeFiveSevenWinPotAmount}
