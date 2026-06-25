@@ -782,12 +782,18 @@ export function CanonicalSeatCluster({
         let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
           const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
+          // outer-edge: row extends AWAY from felt center (outward).
+          //   left opponent  ⇒ row grows leftward  ⇒ translateX(-100%)
+          //   right opponent ⇒ row grows rightward ⇒ translateX(0%)
           const selfX =
             attachment === 'chip-centered'
               ? '-50%'
               : isRightSide
-              ? '-100%'
-              : '0%';
+              ? '0%'
+              : '-100%';
+          // Signed +X = inward toward felt center. Right-side opponents
+          // need the sign flipped so a single positive dxPx moves both
+          // sides inward (and negative moves both outward).
           const signedDx = isRightSide ? -dxPx : dxPx;
           overrideStyle = {
             transform: `translate(${selfX}, 0) translate(${signedDx}px, ${dyPx}px)`,
