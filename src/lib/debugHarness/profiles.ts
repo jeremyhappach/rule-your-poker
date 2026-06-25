@@ -106,6 +106,24 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'Solo vs Chucky → winner = CHUCKY after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
     },
   ],
+  '3-5-7': [
+    NONE_HARNESS,
+    {
+      id: 'pause_r1_showdown',
+      label: 'R1 Showdown Pause',
+      description: 'Pause once on the first real opponent-exposed showdown that resolves in Round 1 of the current dealer game. Leaves awaiting_next_round=true; no auto-proceed, no release button.',
+    },
+    {
+      id: 'pause_r2_showdown',
+      label: 'R2 Showdown Pause',
+      description: 'Pause once on the first real opponent-exposed showdown that resolves in Round 2 of the current dealer game. Leaves awaiting_next_round=true; no auto-proceed, no release button.',
+    },
+    {
+      id: 'pause_r3_showdown',
+      label: 'R3 Showdown Pause',
+      description: 'Pause once on the first real opponent-exposed showdown that resolves in Round 3 of the current dealer game. Leaves awaiting_next_round=true; no auto-proceed, no release button.',
+    },
+  ],
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
