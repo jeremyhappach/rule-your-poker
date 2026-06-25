@@ -40,6 +40,12 @@ import {
   prevWaveCountFor357,
   totalAfterWaveFor357,
 } from "./ThreeFiveSevenDealOrchestrator";
+import { useDebugHarness } from "@/lib/debugHarness/useDebugHarness";
+import {
+  useOpponentShowdownHold,
+  type OpponentShowdownSeatSnapshot,
+} from "@/lib/threeFiveSeven/useOpponentShowdownHold";
+
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
@@ -1744,6 +1750,21 @@ export const MobileGameTable = ({
     
     return () => clearInterval(interval);
   }, [threeFiveSevenWinPhase]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // 3-5-7 · Opponent Showdown Hold (Game Default harness)
+  // Snapshot-backed presentation hold over the live opponent exposed
+  // showdown surface. Geometry Lab remains live. CONTINUE HAND in the
+  // Action Pane releases. See useOpponentShowdownHold for the contract.
+  // ─────────────────────────────────────────────────────────────────
+  const __isThreeFiveSevenForHarness = __is357GameType(gameType);
+  const __debugHarnessId357 = useDebugHarness(__isThreeFiveSevenForHarness ? '3-5-7' : null);
+  const oppShowdownHold = useOpponentShowdownHold({
+    enabled: __isThreeFiveSevenForHarness && __debugHarnessId357 === 'opponent_showdown_hold',
+  });
+  const oppShowdownHoldSnapshot = oppShowdownHold.snapshot;
+  const oppShowdownHoldActive = oppShowdownHold.holdActive;
+
   
   // FIX: Keep pot hidden after Holm win animation until game resets
   // NEW APPROACH: Use a "pot hidden until next game" flag that's set when Holm win starts
@@ -3473,6 +3494,100 @@ export const MobileGameTable = ({
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
     is357Round3MultiPlayerShowdown ||
     is357SecretRevealActive;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Opponent Showdown Hold — arming effect.
+  // Fires ONCE per harness session when the live 3-5-7 surface admits
+  // the opponent exposed showdown and at least one opponent has cards
+  // present. Builds a self-contained snapshot (cards + branch flags +
+  // chip/name/dealer/position) per opponent. Once armed, the hold is
+  // immune to authoritative-state changes — see hook for release rules.
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!__isThreeFiveSevenForHarness) return;
+    if (__debugHarnessId357 !== 'opponent_showdown_hold') return;
+    if (oppShowdownHoldActive) return;
+    if (!is357MultiPlayerShowdown) return;
+
+    const seats: Record<string, OpponentShowdownSeatSnapshot> = {};
+    for (const player of players) {
+      if (player.user_id === currentUserId) continue; // opponents only
+      const cards = getPlayerCards(player.id);
+      if (cards.length === 0) continue;
+      const exposed = isPlayerCardsExposed(player.id);
+      if (!exposed) continue;
+
+      const playerDecision = (allDecisionsIn ? player.current_decision : null) as
+        | 'stay'
+        | 'fold'
+        | null;
+      const isWinningLegReveal = winningLegPlayerId === player.id;
+      const isRound3MultiShowdown = is357Round3MultiPlayerShowdown;
+      const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay';
+      const branch: OpponentShowdownSeatSnapshot['showdownBranch'] = isWinningLegReveal
+        ? 'winningLeg'
+        : isRound3MultiShowdown
+          ? 'round3Multi'
+          : isSecretReveal
+            ? 'secretReveal'
+            : 'round3Multi';
+
+      // Replicate slot derivation (slot >= 3 ⇒ right side; 0/5/-1 ⇒ bottom).
+      // Slots aren't stable here without the seat map, so fall back to a
+      // position-based heuristic that matches the existing renderer's
+      // mirroring for typical 5/6-seat layouts.
+      const pos = player.position;
+      const isRightSide = pos >= 4;
+      const isBottomPosition = pos === 1;
+
+      const displayName = player.is_bot
+        ? (player.profiles?.username || `Bot ${pos}`)
+        : (player.profiles?.username || `P${pos}`);
+      const chipAmount =
+        lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+      const chipText = `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+      seats[player.id] = {
+        playerId: player.id,
+        position: pos,
+        displayName,
+        chipText,
+        isDealer: dealerPosition === pos,
+        isRightSide,
+        isBottomPosition,
+        cards: cards.slice(), // freeze reference
+        playerDecision,
+        currentRound: (currentRound ?? 0) as number,
+        displayCardCount: cards.length,
+        showSeparated: (currentRound === 3) && cards.length === 7 && !is357MultiPlayerShowdown,
+        unusedCardsBelow: is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3),
+        showdownBranch: branch,
+      };
+    }
+
+    if (Object.keys(seats).length === 0) return;
+
+    oppShowdownHold.arm({
+      capturedGameId: gameId ?? null,
+      capturedDealerGameId: (typeof horsesDealerGameId === 'string' ? horsesDealerGameId : null),
+      capturedHandContextId: handContextId ?? null,
+      capturedRound: (currentRound ?? 0) as number,
+      seatsByPlayerId: seats,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    __isThreeFiveSevenForHarness,
+    __debugHarnessId357,
+    oppShowdownHoldActive,
+    is357MultiPlayerShowdown,
+    is357Round3MultiPlayerShowdown,
+    is357SecretRevealActive,
+    winningLegPlayerId,
+    allDecisionsIn,
+    currentRound,
+    handContextId,
+  ]);
+
   
   // Clear showdown cache when:
   // 1. A new round number is detected (but NOT during game_over - keep cards visible for animations)
@@ -6997,10 +7112,10 @@ export const MobileGameTable = ({
     const isCurrentUser = player.user_id === currentUserId;
 
     // 357 hides opponent decisions until allDecisionsIn flips.
-    const playerDecision = (isCurrentUser || allDecisionsIn)
+    let playerDecision = (isCurrentUser || allDecisionsIn)
       ? player.current_decision
       : null;
-    const cards = getPlayerCards(player.id);
+    let cards = getPlayerCards(player.id);
 
     const rawIsActivePlayer = player.status === 'active' && !player.sitting_out;
     // While we're hiding decisions from opponents, treat "folded" as
@@ -7012,17 +7127,17 @@ export const MobileGameTable = ({
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
-    const isDealer = dealerPosition === player.position;
+    let isDealer = dealerPosition === player.position;
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
-    const isRightSideSlot = slot >= 3;
-    const isBottomPosition = slot === 0 || slot === 5 || slot === -1;
+    let isRightSideSlot = slot >= 3;
+    let isBottomPosition = slot === 0 || slot === 5 || slot === -1;
 
     // 357 showdown derivation — three exclusive reveal modes.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isWinningLegReveal = winningLegPlayerId === player.id && cards.length > 0;
     const isRound3MultiShowdown = is357Round3MultiPlayerShowdown && hasExposedCards;
     const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
-    const isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
+    let isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
 
     // Win-animation / solo-vs-Chucky tabling suppression.
     const isWinAnimationWinner =
@@ -7035,23 +7150,50 @@ export const MobileGameTable = ({
       : null;
     const isSoloVsChuckyPlayerRaw =
       soloAreaPlayerId !== null && soloAreaPlayerId === player.id && player.id !== currentPlayer?.id;
-    const shouldHideForTabling =
+    let shouldHideForTabling =
       isWinAnimationWinner || isSoloVsChuckyPlayerForChip || isSoloVsChuckyPlayerRaw;
 
     // Hide chip during multi-player showdowns (R2/R3) to make room for cards.
-    const hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
+    let hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
 
     // Status palette (357 honors stayed-decision green).
     const participantStatus = derivePlayerStatus(player, playerDecision, {
       hasStayDecision: true,
     });
 
-    const displayName = player.is_bot
+    let displayName = player.is_bot
       ? getBotAlias(players, player.user_id)
       : (player.profiles?.username || `P${player.position}`);
 
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    let chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    // ─── Opponent Showdown Hold override (snapshot-backed) ───
+    // When the hold is armed and this opponent seat was admitted into
+    // the snapshot, every render input below the chip/cards layer is
+    // sourced from the frozen snapshot — NOT from authoritative state.
+    // Geometry Lab placement/sizing remains live.
+    const __holdSeat =
+      oppShowdownHoldActive && !isCurrentUser
+        ? (oppShowdownHoldSnapshot?.seatsByPlayerId[player.id] ?? null)
+        : null;
+    const __holdRound: number | null = __holdSeat ? __holdSeat.currentRound : null;
+    const __holdUnusedCardsBelow = __holdSeat ? __holdSeat.unusedCardsBelow : null;
+    const __holdShowSeparated = __holdSeat ? __holdSeat.showSeparated : null;
+    if (__holdSeat) {
+      cards = __holdSeat.cards;
+      playerDecision = __holdSeat.playerDecision;
+      isDealer = __holdSeat.isDealer;
+      isRightSideSlot = __holdSeat.isRightSide;
+      isBottomPosition = __holdSeat.isBottomPosition;
+      displayName = __holdSeat.displayName;
+      chipText = __holdSeat.chipText;
+      isShowdown = true;
+      hideChipForShowdown = true;
+      shouldHideForTabling = false;
+    }
+
+
 
     // 357 has no per-seat turn (decisions are simultaneous within the
     // round) — no status ring, no ActivePlayerHUD wrapper.
@@ -7213,10 +7355,10 @@ export const MobileGameTable = ({
           kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
           gameType={gameType}
-          currentRound={currentRound}
-          showSeparated={currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown}
+          currentRound={__holdRound ?? currentRound}
+          showSeparated={__holdShowSeparated ?? (currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown)}
           tightOverlap={false}
-          unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
+          unusedCardsBelow={__holdUnusedCardsBelow ?? (is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3))}
           isRightSide={isRightSideSlot}
           isBottomPosition={isBottomPosition}
         />
@@ -8314,7 +8456,7 @@ export const MobileGameTable = ({
         
         {/* Leg Earned Animation (3-5-7 only) */}
         <LegEarnedAnimation 
-          show={showLegEarned} 
+          show={showLegEarned && !oppShowdownHoldActive} 
           playerName={legEarnedPlayerName}
           legValue={legValue}
           targetPosition={(() => {
@@ -8378,7 +8520,7 @@ export const MobileGameTable = ({
         />
         
         {/* 3-5-7 Legs To Player Animation (all legs fly to winner's chip stack) */}
-        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
+        {!oppShowdownHoldActive && gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
             legPositions={threeFiveSevenCachedLegPositions} // Use cached positions from parent
@@ -8393,7 +8535,7 @@ export const MobileGameTable = ({
         )}
         
         {/* 3-5-7 Pot To Player Animation */}
-        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
+        {!oppShowdownHoldActive && gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
           <PotToPlayerAnimation
             triggerId={potToPlayerTriggerId357}
             amount={threeFiveSevenWinPotAmount}
@@ -10621,7 +10763,19 @@ export const MobileGameTable = ({
                     isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
 
-                    {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
+                    {oppShowdownHoldActive ? (
+                      <Button
+                        size="default"
+                        onClick={() => oppShowdownHold.release()}
+                        className={cn(
+                          "bg-amber-500 hover:bg-amber-500/80 text-black font-bold",
+                          isTablet ? "w-[260px] text-lg h-14" : "w-[180px] text-sm h-9"
+                        )}
+                        data-harness="357-opponent-showdown-hold-continue"
+                      >
+                        CONTINUE HAND
+                      </Button>
+                    ) : currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                       <label className={cn(
                         "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
                         isTablet ? "px-6 py-3" : "px-4 py-2"
