@@ -42,7 +42,8 @@ export type DebugPillKey =
   | 'threeFiveSevenForensics'
   | 'holmDealDbg'
   | 'bucksOverlay'
-  | 'communityExport';
+  | 'communityExport'
+  | 'r1Snapback';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
