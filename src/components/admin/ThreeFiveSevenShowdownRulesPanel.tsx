@@ -807,7 +807,19 @@ export function ThreeFiveSevenShowdownRulesPanel() {
         />
       </CollapsibleSection>
 
+      <CollapsibleSection title="Opponent Exposed Row">
+        <CollapsibleSection title="Placement">
+          <PlacementControls
+            cfg={state.opponentRowPlacement}
+            onChange={(opponentRowPlacement) =>
+              setState((s) => ({ ...s, opponentRowPlacement }))
+            }
+          />
+        </CollapsibleSection>
+      </CollapsibleSection>
+
       <CollapsibleSection title="Opponent Exposed Cards">
+
         <CollapsibleSection title="3-card round">
           <RoundRowControls
             cfg={state.three}
