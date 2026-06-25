@@ -104,6 +104,7 @@ const App = () => {
       <TooltipProvider>
         <ResponsiveGeometryProvider>
           <GeometryOverridesLoader />
+          <GeometryLabDefaultsLoader />
           <SeatClusterInvariantMonitor />
           <Toaster />
           <Sonner />
