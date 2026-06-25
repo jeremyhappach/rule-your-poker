@@ -7355,10 +7355,10 @@ export const MobileGameTable = ({
           kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
           gameType={gameType}
-          currentRound={currentRound}
-          showSeparated={currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown}
+          currentRound={__holdRound ?? currentRound}
+          showSeparated={__holdShowSeparated ?? (currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown)}
           tightOverlap={false}
-          unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
+          unusedCardsBelow={__holdUnusedCardsBelow ?? (is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3))}
           isRightSide={isRightSideSlot}
           isBottomPosition={isBottomPosition}
         />
