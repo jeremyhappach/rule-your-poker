@@ -841,8 +841,10 @@ export const PlayerHand = ({
     <div
       className="flex"
       ref={is357Game ? measureRef : undefined}
+      style={opponentPlacementStyle}
       {...(r1MarkerActive ? { 'data-357-r1-row': 'true' } : {})}
     >
+
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
