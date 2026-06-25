@@ -847,27 +847,27 @@ export const PlayerHand = ({
 
 
 
-  // Special round 3 display with unused cards dimmed but all together (old inline style)
+  // Special round 3 display with unused cards dimmed but all together.
+  // This branch fires only when `!unusedCardsBelow`. Opponent showdown
+  // always passes unusedCardsBelow=true, so this is a self-only path
+  // and uses legacy constants exclusively.
   if (isRound3With7Cards && !unusedCardsBelow) {
-    // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
-    const fanStep = effective357.seven.fanStepDeg;
+    const fanStep = SELF_LEGACY.r3.fanStepDeg;
     const n = allCardsOrdered.length;
-    const irrOpacity = effective357.sevenIrrelevant.opacity;
+    const irrOpacity = SELF_LEGACY.irrelevant.opacity;
 
     return (
       <div
         className="flex items-end"
         ref={is357Game ? measureRef : undefined}
-      
       >
-
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
           const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
           const isKicker = !isUnused && kickerIndices.includes(originalIndex);
           const isDimmed = isUnused || (hasHighlights && !isHighlighted && !isKicker);
-          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2);
           return (
             <PlayingCard
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
@@ -891,12 +891,12 @@ export const PlayerHand = ({
   }
 
   // Default branch (also the 3-5-7 R1 showdown path).
-  // For 3-5-7 R1 (3 cards), fan step is sourced from effective357.three.
-  // For all other callers, fan step remains 2°/card (historical default).
-  const defaultFanStep =
-    is357Game && currentRound === 1 && displayCardCount === 3
-      ? effective357.three.fanStepDeg
-      : 2;
+  // For 3-5-7 R1 opponent: v4.r1.fanDegrees (TOTAL spread).
+  // For self R1 and all non-357 callers: legacy 2°/card step.
+  const isR1Three = is357Game && currentRound === 1 && displayCardCount === 3;
+  const useV4FanR1 = isR1Three && use357V4;
+  const defaultFanStep = isR1Three && !use357V4 ? SELF_LEGACY.r1.fanStepDeg : 2;
+  const v4R1TotalFanDeg = useV4FanR1 ? v4Resolved.r1.fanDegrees : 0;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
