@@ -284,10 +284,12 @@ export function ThreeFiveSevenShowdownRulesPanel() {
             </SelectContent>
           </Select>
         </Row>
-        <Row label="X offset (% of felt width, +X = inward)">
+        <Row label="X offset (% of felt width, −outward / +inward)">
           <NumInput
             value={state.placement.xPctOfFelt}
             step={0.5}
+            min={-50}
+            max={50}
             onChange={(n) => setValue({ ...state, placement: { ...state.placement, xPctOfFelt: n } })}
           />
         </Row>
