@@ -13,7 +13,7 @@
  * by game rules as the R3 irrelevant secondary group.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/**
+ * Controlled numeric input that preserves intermediate text such as
+ * "-" or "" so typing a negative value is never silently rejected by
+ * the controlled-input round-trip. Previously `onChange` did
+ * `Number(e.target.value)` which returns NaN for "-", skipped
+ * `setValue`, and React reconciled the DOM back to the last positive
+ * value — clobbering the user's typed "-" before they could append a
+ * digit. That was the proximate cause of "X does not accept negatives".
+ */
 function NumInput({
   value,
   step = 1,
@@ -62,16 +71,33 @@ function NumInput({
   max?: number;
   onChange: (n: number) => void;
 }) {
+  const [text, setText] = useState<string>(() => String(value));
+  const lastExternalRef = useRef<number>(value);
+  useEffect(() => {
+    if (value !== lastExternalRef.current) {
+      lastExternalRef.current = value;
+      const parsed = Number(text);
+      if (!Number.isFinite(parsed) || parsed !== value) {
+        setText(String(value));
+      }
+    }
+  }, [value, text]);
   return (
     <Input
       type="number"
-      value={value}
+      value={text}
       step={step}
       min={min}
       max={max}
       onChange={(e) => {
-        const n = Number(e.target.value);
-        if (Number.isFinite(n)) onChange(n);
+        const raw = e.target.value;
+        setText(raw);
+        if (raw === "" || raw === "-" || raw === "." || raw === "-.") return;
+        const n = Number(raw);
+        if (Number.isFinite(n)) {
+          lastExternalRef.current = n;
+          onChange(n);
+        }
       }}
       className="h-8 w-24"
     />

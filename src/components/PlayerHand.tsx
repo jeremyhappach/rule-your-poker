@@ -795,9 +795,37 @@ export const PlayerHand = ({
     );
 
     const n = mainCount;
-    const mainFanSign = use357V4
-      ? ((isRound3WithUnusedBelow ? v4Resolved.r3.fanDirection : v4Resolved.r2.fanDirection) === 'inward' ? -1 : 1)
-      : 1;
+    const mainFanDir = use357V4
+      ? (isRound3WithUnusedBelow ? v4Resolved.r3.fanDirection : v4Resolved.r2.fanDirection)
+      : 'outward';
+    const mainFanSign = mainFanDir === 'inward' ? -1 : 1;
+    // ── Real fan/bow ─────────────────────────────────────────────
+    // Each card retains its marginLeft overlap. To turn pure rotation
+    // into a true bow, we move each card's transform-origin off-center
+    // along the row's perpendicular axis. Rotating around that off-
+    // center pivot translates the card along an arc of radius equal
+    // to the pivot distance, so non-zero fanDegrees produces BOTH a
+    // per-card tilt AND a per-card positional offset. Per-card
+    // displacement: dx ≈ R·sin(θ_i), dy ≈ R·(1−cos θ_i).
+    //
+    //   outward (bow AWAY from felt center): pivot BELOW row → arc
+    //                                         curves UP → outer cards
+    //                                         rise away from felt.
+    //   inward  (bow TOWARD felt center)   : pivot ABOVE row → arc
+    //                                         curves DOWN → outer cards
+    //                                         drop toward felt.
+    //
+    // Bow is vertical (perpendicular to the horizontal row), so the
+    // up/down semantics are preserved for every seat side; horizontal
+    // mirroring is owned by the placement attachment system, not here.
+    const PIVOT_K = 1.8;
+    const mainUseArcFan = use357V4 && mainFanDeg !== 0;
+    const mainPivotPx = mainH * PIVOT_K;
+    const mainTransformOrigin = mainUseArcFan
+      ? (mainFanDir === 'inward'
+          ? `50% ${-mainPivotPx}px`
+          : `50% ${mainH + mainPivotPx}px`)
+      : undefined;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
@@ -819,6 +847,7 @@ export const PlayerHand = ({
                 height: `${mainH}px`,
                 marginLeft: displayIndex === 0 ? 0 : `-${mainOverlapPx}px`,
                 transform: `rotate(${rotationDeg}deg)`,
+                transformOrigin: mainTransformOrigin,
               }}
             />
           );
@@ -905,7 +934,18 @@ export const PlayerHand = ({
   const useV4FanR1 = isR1Three && use357V4;
   const defaultFanStep = isR1Three && !use357V4 ? SELF_LEGACY.r1.fanStepDeg : 2;
   const v4R1TotalFanDeg = useV4FanR1 ? v4Resolved.r1.fanDegrees : 0;
-  const v4R1FanSign = useV4FanR1 && v4Resolved.r1.fanDirection === 'inward' ? -1 : 1;
+  const v4R1FanDir = useV4FanR1 ? v4Resolved.r1.fanDirection : 'outward';
+  const v4R1FanSign = v4R1FanDir === 'inward' ? -1 : 1;
+  // Real-fan pivot for R1 opponent showdown. Pivot distance scales with
+  // resolved R1 card height. See main-row comment above for full math.
+  const v4R1UseArcFan = useV4FanR1 && v4R1TotalFanDeg !== 0;
+  const v4R1CardH = useV4FanR1 ? v4Resolved.r1.cardHeightPx : 0;
+  const v4R1PivotPx = v4R1CardH * 1.8;
+  const v4R1TransformOrigin = v4R1UseArcFan
+    ? (v4R1FanDir === 'inward'
+        ? `50% ${-v4R1PivotPx}px`
+        : `50% ${v4R1CardH + v4R1PivotPx}px`)
+    : undefined;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
@@ -941,6 +981,7 @@ export const PlayerHand = ({
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
               transform: `rotate(${rotationDeg}deg)`,
+              ...(v4R1TransformOrigin ? { transformOrigin: v4R1TransformOrigin } : null),
             }, true, displayIndex)}
           />
         );
