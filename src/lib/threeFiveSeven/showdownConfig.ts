@@ -252,10 +252,11 @@ function sanitizePlacement(
   fallback: OpponentShowdownPlacement,
 ): OpponentShowdownPlacement {
   const r = (raw ?? {}) as Partial<OpponentShowdownPlacement>;
+  const a = r.attachment;
   return {
     attachment:
-      r.attachment === 'outer-edge' || r.attachment === 'chip-centered'
-        ? r.attachment
+      a === 'outer-edge' || a === 'inner-edge' || a === 'chip-centered'
+        ? a
         : fallback.attachment,
     xPctOfFelt:
       typeof r.xPctOfFelt === 'number' ? r.xPctOfFelt : fallback.xPctOfFelt,
@@ -263,6 +264,7 @@ function sanitizePlacement(
       typeof r.yPctOfFelt === 'number' ? r.yPctOfFelt : fallback.yPctOfFelt,
   };
 }
+
 
 function sanitizeShowdownRules(raw: unknown): ShowdownRulesState {
   const parsed = (raw ?? {}) as Partial<ShowdownRulesState>;
@@ -327,7 +329,10 @@ export interface ResolvedRound {
   overlapPx: number;
   /** Total degrees spread first→last. Per-card step derived at render. */
   fanDegrees: number;
+  /** Bow orientation (consumed by PlayerHand to flip rotation sign). */
+  fanDirection: FanDirection;
 }
+
 
 export interface ResolvedSecondary {
   visibility: 'hidden' | 'dimmed' | 'face-down';
@@ -382,8 +387,10 @@ function resolveRound(g: RoundGeometry, feltVminPx: number): ResolvedRound {
     cardHeightPx: h,
     overlapPx: Math.max(0, g.row.overlap) * w,
     fanDegrees: g.row.fanDegrees,
+    fanDirection: g.row.fanDirection,
   };
 }
+
 
 /**
  * Resolve config → pixel-space values.
