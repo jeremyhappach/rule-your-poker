@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { cloneElement, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { cn } from '@/lib/utils';
 import {
