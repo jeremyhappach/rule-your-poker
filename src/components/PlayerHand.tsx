@@ -471,15 +471,19 @@ export const PlayerHand = ({
     maxCardWidth: useLabDynForR1 ? resolved357.three.dyn.maxCardWidth : 80,
     maxOverlapRatio: useLabDynForR1 ? resolved357.three.dyn.maxOverlapRatio : 0.6,
   });
+  const isR1ThreeCardShowdown =
+    is357Game && currentRound === 1 && displayCardCount === 3;
+  const useDynStyles =
+    is357Game && Boolean(dyn357) && (!isR1ThreeCardShowdown || useLabDynForR1);
   const dyn357Style: CSSProperties | null =
-    is357Game && dyn357
+    useDynStyles && dyn357
       ? {
           width: `${dyn357.cardWidth}px`,
           height: `${dyn357.cardHeight}px`,
         }
       : null;
   const dyn357OverlapStyle: CSSProperties | null =
-    is357Game && dyn357
+    useDynStyles && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
