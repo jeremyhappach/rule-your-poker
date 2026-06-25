@@ -143,37 +143,12 @@ export const PlayerHand = ({
     ? resolved357
     : resolveShowdownRules(LIVE_BASELINE, isSmBp);
 
-  // ─── P1 opponent-row placement adapter ───────────────────────────────
-  // Applies ONLY to the opponent exposed-cards showdown render path of
-  // 3-5-7 (R1/R2/R3). For the self/active hand and every non-357 caller
-  // this is a no-op (style = undefined). The adapter wraps the entire
-  // showdown row as ONE unit; per-card sizing/fan/overlap is unchanged.
-  //
-  // Coordinate frame: percentages of the row's OWN measured width/height
-  // (seat-relative, NOT viewport / NOT arbitrary parent pixels).
-  //
-  // Sign / mirroring: a single (xPct, yPct) drives both opponents — the
-  // X sign flips on `isRightSide`. Positive xPct = inward (toward felt
-  // center) for both sides.
-  //
-  // Parity: the cluster wrapper already centers the row over the chip.
-  // At default xPct=50 (= half-row inward from the conceptual outer-edge
-  // attachment) the net translate is 0 → visually identical to legacy.
-  const opponentPlacementStyle: CSSProperties | undefined = (() => {
-    if (!isOpponentExposedShowdown || !is357Game) return undefined;
-    const p = effective357.opponentRowPlacement;
-    // Net horizontal translate from the cluster-centered baseline,
-    // in % of row width. Derivation:
-    //   outer-edge attached to chip center  ≡ +50% (left opp) / -50% (right opp)
-    //   inward shift xPct                    ≡ -xPct% (left)   / +xPct% (right)
-    //   net                                  = (50 - xPct) * (left ? -1 : +1)
-    // Net is 0 at the parity default (xPct = 50).
-    const sideSign = isRightSide ? +1 : -1;
-    const netX = (50 - p.xPct) * sideSign;
-    const netY = p.yPct;
-    if (netX === 0 && netY === 0) return undefined;
-    return { transform: `translate(${netX}%, ${netY}%)` };
-  })();
+  // P2 NOTE: opponent-row placement has moved out of PlayerHand.
+  // CanonicalSeatCluster now owns the showdown-row slot and applies
+  // the felt-relative placement transform on its below-chip wrapper.
+  // PlayerHand returns the card row content only — placement is a
+  // shell concern, not a card-row concern.
+
 
   const isHolmGame = gameType === 'holm-game';
 
