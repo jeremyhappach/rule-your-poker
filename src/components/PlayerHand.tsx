@@ -666,57 +666,138 @@ export const PlayerHand = ({
     );
   }
 
-  // 3-5-7 showdown display with unused cards in separate row (on outer edge)
+  // 3-5-7 showdown display with unused cards in separate row (on outer edge).
+  // Opponent path uses v4 geometry; self path uses legacy constants.
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
-    const usedCardSize: CardSize = 'lg'; // Tailwind tier (overridden by inline style below).
+    const usedCardSize: CardSize = 'lg';
     const unusedCardSize: CardSize = 'sm';
-    // Geometry Lab v2 resolved values for this branch.
-    const mainRow: ResolvedRoundRow = isRound3WithUnusedBelow
-      ? effective357.seven
-      : effective357.five;
-    const irr = effective357.sevenIrrelevant;
-    // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
-    const interRowGap = irr.interRowGapPx;
-    // Position-mode resolution. `auto` mirrors the historical seat-driven
-    // behavior (bottom seats stack unused ABOVE main; others stack unused
-    // BELOW main). `above`/`below` are explicit Lab overrides.
-    const unusedAbove =
-      irr.positionMode === 'auto'
-        ? isBottomPosition
-        : irr.positionMode === 'above';
 
-    // Unused cards element
-    const unusedCardsElement = irr.visible && unusedCards.length > 0 && (
-      <div className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}>
+    // Resolve main-row and secondary-group sizing.
+    // - Opponent R3 uses v4.r3 + v4.r3.secondary.
+    // - Opponent R2 uses v4.r2; the secondary block is suppressed for
+    //   R2 (no irrelevant cards in R2 by game rules).
+    // - Self/legacy uses SELF_LEGACY constants verbatim.
+    let mainW: number, mainH: number, mainOverlapPx: number, mainFanDeg: number, mainCount: number;
+    let secVisibility: 'hidden' | 'dimmed' | 'face-down' = 'dimmed';
+    let secPlacement: 'above' | 'below' | 'left' | 'right' = 'below';
+    let secOffsetPrimaryPct = 0;
+    let secOffsetCrossPct = 0;
+    let secScale = 1;
+    let secOpacity = 1;
+    let secGrayscale = 0;
+    let secW: number, secH: number, secOverlapPx: number;
+    let interRowGap: number;
+
+    if (use357V4) {
+      const round = isRound3WithUnusedBelow ? v4Resolved.r3 : v4Resolved.r2;
+      mainW = round.cardWidthPx;
+      mainH = round.cardHeightPx;
+      mainOverlapPx = round.overlapPx;
+      mainFanDeg = round.fanDegrees;
+      mainCount = usedCards.length;
+      const sec: ResolvedSecondary | null = isRound3WithUnusedBelow
+        ? v4Resolved.r3.secondary
+        : null;
+      if (sec) {
+        secVisibility = sec.visibility;
+        secPlacement = sec.placement;
+        secOffsetPrimaryPct = sec.offsetPrimaryPct;
+        secOffsetCrossPct = sec.offsetCrossPct;
+        secScale = sec.scale;
+        secOpacity = sec.opacity;
+        secGrayscale = sec.grayscale;
+        secW = sec.cardWidthPx;
+        secH = sec.cardHeightPx;
+        secOverlapPx = sec.overlapPx;
+      } else {
+        secW = 0; secH = 0; secOverlapPx = 0;
+        secVisibility = 'hidden';
+      }
+      interRowGap = 0; // gap is now expressed via secondary.offsetPrimaryPct
+    } else {
+      const m = isRound3WithUnusedBelow ? SELF_LEGACY.r3 : SELF_LEGACY.r2;
+      mainW = m.widthPx;
+      mainH = m.heightPx;
+      mainOverlapPx = m.overlapPx;
+      mainFanDeg = 0;
+      mainCount = usedCards.length;
+      const sl = SELF_LEGACY.irrelevant;
+      secVisibility = sl.dimmed ? 'dimmed' : 'face-down';
+      secPlacement = (sl.positionMode === 'above' || (sl.positionMode === 'auto' && isBottomPosition)) ? 'above' : 'below';
+      secOffsetPrimaryPct = 0;
+      secOffsetCrossPct = 0;
+      secScale = sl.scale;
+      secOpacity = sl.opacity;
+      secGrayscale = 0;
+      secW = sl.widthPx;
+      secH = sl.heightPx;
+      secOverlapPx = sl.overlapPx;
+      interRowGap = sl.interRowGapPx;
+    }
+
+    // For v4, derive a px gap from offsetPrimaryPct relative to main-row
+    // extent along the placement axis. For above/below it's % of main-row
+    // height; for left/right it's % of main-row width-extent.
+    const mainRowExtentPx =
+      mainCount <= 0
+        ? 0
+        : mainCount === 1
+          ? mainW
+          : mainW + (mainCount - 1) * Math.max(0, mainW - mainOverlapPx);
+    const isVerticalSecondary = secPlacement === 'above' || secPlacement === 'below';
+    const secAxisBasis = isVerticalSecondary ? mainH : mainRowExtentPx;
+    const secPrimaryGapPx = use357V4
+      ? (secOffsetPrimaryPct / 100) * secAxisBasis
+      : interRowGap;
+    const secCrossDriftPx = use357V4
+      ? (secOffsetCrossPct / 100) * (isVerticalSecondary ? mainRowExtentPx : mainH)
+      : 0;
+
+    const showSecondary =
+      secVisibility !== 'hidden' && unusedCards.length > 0;
+
+    const unusedCardsElement = showSecondary && (
+      <div
+        className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}
+        style={
+          use357V4
+            ? { transform: `translate(${secCrossDriftPx}px, 0)` }
+            : undefined
+        }
+      >
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
-            isDimmed={irr.dimmed}
+            isDimmed={secVisibility === 'dimmed'}
+            // NOTE: face-down VISIBILITY only restyles; game-rule-owned
+            // reveal/face state is enforced upstream (we only render
+            // cards already classified as the R3 irrelevant secondary
+            // group).
+            isHidden={secVisibility === 'face-down'}
             isWild={false}
             style={{
-              width: `${irr.widthPx}px`,
-              height: `${irr.heightPx}px`,
-              marginLeft: displayIndex === 0 ? 0 : `-${irr.overlapPx}px`,
-              opacity: irr.opacity,
-              transform: `scale(${irr.scale})`,
+              width: `${secW}px`,
+              height: `${secH}px`,
+              marginLeft: displayIndex === 0 ? 0 : `-${secOverlapPx}px`,
+              opacity: secOpacity,
+              transform: `scale(${secScale})`,
+              filter: secGrayscale > 0 ? `grayscale(${secGrayscale})` : undefined,
             }}
           />
         ))}
       </div>
     );
 
-    // Used cards element
-    const fanStep = mainRow.fanStepDeg;
-    const n = usedCards.length;
+    const n = mainCount;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isHighlighted = highlightedIndices.includes(originalIndex);
           const isKicker = kickerIndices.includes(originalIndex);
           const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-          const rotationDeg = fanStep * (displayIndex - (n - 1) / 2) * 2 / 2; // = fanStep * i - fanStep * (n-1)/2
+          const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n);
           return (
             <PlayingCard
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
@@ -727,9 +808,9 @@ export const PlayerHand = ({
               isDimmed={isDimmed}
               isWild={isWild}
               style={{
-                width: `${mainRow.widthPx}px`,
-                height: `${mainRow.heightPx}px`,
-                marginLeft: displayIndex === 0 ? 0 : `-${mainRow.overlapPx}px`,
+                width: `${mainW}px`,
+                height: `${mainH}px`,
+                marginLeft: displayIndex === 0 ? 0 : `-${mainOverlapPx}px`,
                 transform: `rotate(${rotationDeg}deg)`,
               }}
             />
@@ -738,13 +819,16 @@ export const PlayerHand = ({
       </div>
     );
 
+    // Placement layout. above/below = column; left/right = row.
+    const stackVertical = secPlacement === 'above' || secPlacement === 'below';
+    const secondaryAbove = secPlacement === 'above' || secPlacement === 'left';
     return (
       <div
-        className="flex flex-col"
-        style={{ gap: `${interRowGap}px` }}
+        className={stackVertical ? 'flex flex-col' : 'flex flex-row items-center'}
+        style={{ gap: `${secPrimaryGapPx}px` }}
         ref={is357Game ? measureRef : undefined}
       >
-        {unusedAbove ? (
+        {secondaryAbove ? (
           <>
             {unusedCardsElement}
             {usedCardsElement}
@@ -758,6 +842,7 @@ export const PlayerHand = ({
       </div>
     );
   }
+
 
 
 
