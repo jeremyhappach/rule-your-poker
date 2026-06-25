@@ -148,7 +148,7 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
       // statement, so all domains commit or none do.
       const rows = keys.map((k) => ({
         key: k,
-        value: draftsRef.current.get(k)!.current as unknown as Record<string, unknown>,
+        value: draftsRef.current.get(k)!.current as never,
         updated_at: new Date().toISOString(),
       }));
 
