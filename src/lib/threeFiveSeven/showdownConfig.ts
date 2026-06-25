@@ -188,11 +188,13 @@ const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
 
 export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
   anchor: { kind: 'belowChip', belowChipGapPx: 2 },
+  opponentRowPlacement: { ...SEED_OPPONENT_ROW_PLACEMENT },
   three: SEED_THREE,
   five: { ...SEED_FIVE_SEVEN_MAIN },
   seven: { ...SEED_FIVE_SEVEN_MAIN },
   sevenIrrelevant: SEED_SEVEN_IRRELEVANT,
 };
+
 
 /** Deep-frozen snapshot of the pre-migration live constants. */
 export const LIVE_BASELINE: ShowdownRulesState = deepFreeze(
