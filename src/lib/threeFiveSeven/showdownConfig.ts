@@ -138,7 +138,12 @@ export const SHOWDOWN_RULES_DOMAIN_KEY = 'three_five_seven_showdown_rules';
 // ─── Sanitize ─────────────────────────────────────────────────────────────
 
 function sanitizeCard(raw: unknown, fallback: CardGeometry): CardGeometry {
-  const r = (raw ?? {}) as Partial<CardGeometryFixed & CardGeometryResponsive>;
+  const r = (raw ?? {}) as {
+    mode?: SizingMode;
+    cardWidthPx?: number;
+    cardWidthPctOfFeltVmin?: number;
+    aspectRatio?: number;
+  };
   const aspectRatio =
     typeof r.aspectRatio === 'number' && r.aspectRatio > 0
       ? r.aspectRatio
