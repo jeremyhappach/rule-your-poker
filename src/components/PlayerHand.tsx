@@ -794,7 +794,12 @@ export const PlayerHand = ({
     const irrOpacity = effective357.sevenIrrelevant.opacity;
 
     return (
-      <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
+      <div
+        className="flex items-end"
+        ref={is357Game ? measureRef : undefined}
+        style={opponentPlacementStyle}
+      >
+
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
           const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
