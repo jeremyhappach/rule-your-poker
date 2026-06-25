@@ -117,11 +117,22 @@ export interface OpponentShowdownPlacement {
 
 export interface ShowdownRulesState {
   anchor: AnchorConfig;
+  /** P1 opponent-row placement adapter (shared across R1/R2/R3). */
+  opponentRowPlacement: OpponentShowdownPlacement;
   three: RoundRowConfig;
   five: RoundRowConfig;
   seven: RoundRowConfig;
   sevenIrrelevant: IrrelevantPairConfig;
 }
+
+/** Defaults derived for visual parity with the legacy centered baseline. */
+const SEED_OPPONENT_ROW_PLACEMENT: OpponentShowdownPlacement = {
+  anchor: 'chipstack-center',
+  attachment: 'outer-edge',
+  xPct: 50, // inward by half-row-width → equals legacy centered position
+  yPct: 0,  // legacy 2 px baseline gap preserved by cluster wrapper
+};
+
 
 // ─── Live baseline (frozen) ───────────────────────────────────────────────
 // Values verbatim from the pre-migration live renderer.
