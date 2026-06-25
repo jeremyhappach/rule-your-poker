@@ -787,8 +787,14 @@ export const PlayerHand = ({
     is357Game && currentRound === 1 && displayCardCount === 3
       ? resolved357.three.fanStepDeg
       : 2;
+  const r1MarkerActive =
+    is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
-    <div className="flex" ref={is357Game ? measureRef : undefined}>
+    <div
+      className="flex"
+      ref={is357Game ? measureRef : undefined}
+      {...(r1MarkerActive ? { 'data-357-r1-row': 'true' } : {})}
+    >
 
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
@@ -797,7 +803,7 @@ export const PlayerHand = ({
         const n = sortedCardsWithIndices.length;
         const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
 
-        return (
+        const cardEl = (
           <PlayingCard
             key={`${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
@@ -814,6 +820,18 @@ export const PlayerHand = ({
             }, true, displayIndex)}
           />
         );
+        if (r1MarkerActive && displayIndex < 3) {
+          return (
+            <span
+              key={`r1m-${card.rank}-${card.suit}-${originalIndex}`}
+              data-357-r1-card={String(displayIndex)}
+              style={{ display: 'contents' }}
+            >
+              {cardEl}
+            </span>
+          );
+        }
+        return cardEl;
       })}
     </div>
   );
