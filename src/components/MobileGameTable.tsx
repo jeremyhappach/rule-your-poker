@@ -1116,18 +1116,18 @@ export const MobileGameTable = ({
   const _ttPlay = usePlayGeometry();
   const _ttShowdownCfg = useThreeFiveSevenShowdownConfig();
   const opponentShowdownPlacementPx = useMemo(() => {
-    const p = _ttShowdownCfg.opponentRowPlacement;
+    const p = _ttShowdownCfg.placement;
     const w = _ttPlay.width || 0;
     const h = _ttPlay.height || 0;
     return {
       attachment: p.attachment,
-      dxPx: (p.xPctOfPlayfield / 100) * w,
-      dyPx: (p.yPctOfPlayfield / 100) * h,
+      dxPx: (p.xPctOfFelt / 100) * w,
+      dyPx: (p.yPctOfFelt / 100) * h,
     };
   }, [
-    _ttShowdownCfg.opponentRowPlacement.attachment,
-    _ttShowdownCfg.opponentRowPlacement.xPctOfPlayfield,
-    _ttShowdownCfg.opponentRowPlacement.yPctOfPlayfield,
+    _ttShowdownCfg.placement.attachment,
+    _ttShowdownCfg.placement.xPctOfFelt,
+    _ttShowdownCfg.placement.yPctOfFelt,
     _ttPlay.width,
     _ttPlay.height,
   ]);
