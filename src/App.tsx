@@ -143,6 +143,7 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
+                <R1SnapbackPill />
 
 
                 <CardBackDbgPanel />
