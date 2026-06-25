@@ -128,15 +128,15 @@ export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
   rounds: {
     r1: {
       card: { mode: 'fixed', cardWidthPx: 40, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
     },
     r2: {
       card: { mode: 'fixed', cardWidthPx: 44, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
     },
     r3: {
       card: { mode: 'fixed', cardWidthPx: 48, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
       secondary: {
         visibility: 'dimmed',
         placement: 'below',
@@ -149,6 +149,7 @@ export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
     },
   },
 };
+
 
 // ─── Persistence keys ─────────────────────────────────────────────────────
 
@@ -195,12 +196,16 @@ function sanitizeCard(raw: unknown, fallback: CardGeometry): CardGeometry {
 
 function sanitizeRow(raw: unknown, fallback: RowGeometry): RowGeometry {
   const r = (raw ?? {}) as Partial<RowGeometry>;
+  const dir = r.fanDirection;
   return {
     overlap: typeof r.overlap === 'number' ? r.overlap : fallback.overlap,
     fanDegrees:
       typeof r.fanDegrees === 'number' ? r.fanDegrees : fallback.fanDegrees,
+    fanDirection:
+      dir === 'outward' || dir === 'inward' ? dir : fallback.fanDirection,
   };
 }
+
 
 function sanitizeRound(raw: unknown, fallback: RoundGeometry): RoundGeometry {
   const r = (raw ?? {}) as Partial<RoundGeometry>;
