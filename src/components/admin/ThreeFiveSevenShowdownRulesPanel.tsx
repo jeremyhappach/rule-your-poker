@@ -182,10 +182,29 @@ function RoundEditor({
             onChange={(n) => onChange({ ...value, row: { ...value.row, fanDegrees: n } })}
           />
         </Row>
+        <Row label="Fan direction">
+          <Select
+            value={value.row.fanDirection}
+            onValueChange={(v) =>
+              onChange({ ...value, row: { ...value.row, fanDirection: v as 'outward' | 'inward' } })
+            }
+          >
+            <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="outward">outward (bow away from felt)</SelectItem>
+              <SelectItem value="inward">inward (bow toward felt)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Row>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          0° = flat row regardless of direction. Direction only changes
+          the curvature/bow orientation, not the card order.
+        </p>
       </div>
     </div>
   );
 }
+
 
 // ─── R3 secondary editor ─────────────────────────────────────────────────
 
@@ -274,16 +293,23 @@ export function ThreeFiveSevenShowdownRulesPanel() {
           <Select
             value={state.placement.attachment}
             onValueChange={(v) =>
-              setValue({ ...state, placement: { ...state.placement, attachment: v as 'chip-centered' | 'outer-edge' } })
+              setValue({ ...state, placement: { ...state.placement, attachment: v as 'chip-centered' | 'inner-edge' | 'outer-edge' } })
             }
           >
             <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="chip-centered">chip-centered</SelectItem>
+              <SelectItem value="inner-edge">inner-edge</SelectItem>
               <SelectItem value="outer-edge">outer-edge</SelectItem>
             </SelectContent>
           </Select>
         </Row>
+        <p className="text-[11px] text-muted-foreground leading-snug -mt-1">
+          chip-centered: row centered on chip. outer-edge: row extends
+          AWAY from the table (left seat → leftward, right seat →
+          rightward). inner-edge: row extends TOWARD the table center
+          (left seat → rightward, right seat → leftward).
+        </p>
         <Row label="X offset (% of felt width, −outward / +inward)">
           <NumInput
             value={state.placement.xPctOfFelt}
@@ -301,6 +327,7 @@ export function ThreeFiveSevenShowdownRulesPanel() {
           />
         </Row>
       </Section>
+
 
       <Section title="Per-round geometry">
         <div className="flex gap-1">

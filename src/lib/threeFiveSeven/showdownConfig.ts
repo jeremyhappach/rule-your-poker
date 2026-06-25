@@ -56,12 +56,23 @@ export interface CardGeometryResponsive {
 }
 export type CardGeometry = CardGeometryFixed | CardGeometryResponsive;
 
+export type FanDirection = 'outward' | 'inward';
+
 export interface RowGeometry {
   /** 0..1, fraction of card width hidden by next card. */
   overlap: number;
   /** Total degrees from first to last card. 0 = flat. */
   fanDegrees: number;
+  /**
+   * Curvature/bow orientation of the row arc.
+   *   'outward' — arc bows AWAY from felt center
+   *   'inward'  — arc bows TOWARD felt center
+   * 0° fanDegrees → no visible difference. Logical card order is
+   * never reversed; only the bow direction changes.
+   */
+  fanDirection: FanDirection;
 }
+
 
 export interface SecondaryGroupGeometry {
   visibility: 'hidden' | 'dimmed' | 'face-down';
@@ -75,13 +86,23 @@ export interface SecondaryGroupGeometry {
   grayscale: number; // 0..1
 }
 
+export type ShowdownAttachment = 'chip-centered' | 'inner-edge' | 'outer-edge';
+
 export interface OpponentShowdownPlacement {
-  attachment: 'chip-centered' | 'outer-edge';
+  /**
+   *   'chip-centered' — row centered on chip
+   *   'outer-edge'    — row extends AWAY from felt center
+   *                     (left seat → leftward, right seat → rightward)
+   *   'inner-edge'    — row extends TOWARD felt center
+   *                     (left seat → rightward, right seat → leftward)
+   */
+  attachment: ShowdownAttachment;
   /** % of canonical felt WIDTH. +X = inward toward felt center. */
   xPctOfFelt: number;
   /** % of canonical felt HEIGHT. +Y = downward. */
   yPctOfFelt: number;
 }
+
 
 export interface RoundGeometry {
   card: CardGeometry;
@@ -107,15 +128,15 @@ export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
   rounds: {
     r1: {
       card: { mode: 'fixed', cardWidthPx: 40, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
     },
     r2: {
       card: { mode: 'fixed', cardWidthPx: 44, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
     },
     r3: {
       card: { mode: 'fixed', cardWidthPx: 48, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0 },
+      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
       secondary: {
         visibility: 'dimmed',
         placement: 'below',
@@ -128,6 +149,7 @@ export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
     },
   },
 };
+
 
 // ─── Persistence keys ─────────────────────────────────────────────────────
 
@@ -174,12 +196,16 @@ function sanitizeCard(raw: unknown, fallback: CardGeometry): CardGeometry {
 
 function sanitizeRow(raw: unknown, fallback: RowGeometry): RowGeometry {
   const r = (raw ?? {}) as Partial<RowGeometry>;
+  const dir = r.fanDirection;
   return {
     overlap: typeof r.overlap === 'number' ? r.overlap : fallback.overlap,
     fanDegrees:
       typeof r.fanDegrees === 'number' ? r.fanDegrees : fallback.fanDegrees,
+    fanDirection:
+      dir === 'outward' || dir === 'inward' ? dir : fallback.fanDirection,
   };
 }
+
 
 function sanitizeRound(raw: unknown, fallback: RoundGeometry): RoundGeometry {
   const r = (raw ?? {}) as Partial<RoundGeometry>;
@@ -226,10 +252,11 @@ function sanitizePlacement(
   fallback: OpponentShowdownPlacement,
 ): OpponentShowdownPlacement {
   const r = (raw ?? {}) as Partial<OpponentShowdownPlacement>;
+  const a = r.attachment;
   return {
     attachment:
-      r.attachment === 'outer-edge' || r.attachment === 'chip-centered'
-        ? r.attachment
+      a === 'outer-edge' || a === 'inner-edge' || a === 'chip-centered'
+        ? a
         : fallback.attachment,
     xPctOfFelt:
       typeof r.xPctOfFelt === 'number' ? r.xPctOfFelt : fallback.xPctOfFelt,
@@ -237,6 +264,7 @@ function sanitizePlacement(
       typeof r.yPctOfFelt === 'number' ? r.yPctOfFelt : fallback.yPctOfFelt,
   };
 }
+
 
 function sanitizeShowdownRules(raw: unknown): ShowdownRulesState {
   const parsed = (raw ?? {}) as Partial<ShowdownRulesState>;
@@ -301,7 +329,10 @@ export interface ResolvedRound {
   overlapPx: number;
   /** Total degrees spread first→last. Per-card step derived at render. */
   fanDegrees: number;
+  /** Bow orientation (consumed by PlayerHand to flip rotation sign). */
+  fanDirection: FanDirection;
 }
+
 
 export interface ResolvedSecondary {
   visibility: 'hidden' | 'dimmed' | 'face-down';
@@ -356,8 +387,10 @@ function resolveRound(g: RoundGeometry, feltVminPx: number): ResolvedRound {
     cardHeightPx: h,
     overlapPx: Math.max(0, g.row.overlap) * w,
     fanDegrees: g.row.fanDegrees,
+    fanDirection: g.row.fanDirection,
   };
 }
+
 
 /**
  * Resolve config → pixel-space values.
