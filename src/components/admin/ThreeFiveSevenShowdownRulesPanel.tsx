@@ -384,6 +384,23 @@ function RoundRowControls({
   showDyn: boolean;
   onChange: (next: RoundRowConfig) => void;
 }) {
+  // R1 invariant: any static size/overlap edit atomically disables dyn.
+  // Persist one complete next state — no later effect, no second write,
+  // no stale closure dependency on a separate dyn toggle.
+  const onStaticSizeChange = (size: CardSizePx) => {
+    if (showDyn) {
+      onChange({ ...cfg, size, dyn: { ...cfg.dyn, enabled: false } });
+    } else {
+      onChange({ ...cfg, size });
+    }
+  };
+  const onStaticOverlapChange = (overlap: OverlapPx) => {
+    if (showDyn) {
+      onChange({ ...cfg, overlap, dyn: { ...cfg.dyn, enabled: false } });
+    } else {
+      onChange({ ...cfg, overlap });
+    }
+  };
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -392,15 +409,16 @@ function RoundRowControls({
         Cross-axis alignment mirrors automatically off seat side
         (<code>self-end</code> right-side, <code>self-start</code> left-side).
         Cards are face-up; no exposure/drop concept.
+        {showDyn && (
+          <>
+            {" "}<strong>R1:</strong> editing any static size or overlap
+            field below atomically sets <code>dyn.enabled = false</code>
+            in the same write.
+          </>
+        )}
       </p>
-      <CardSizeControls
-        cfg={cfg.size}
-        onChange={(size) => onChange({ ...cfg, size })}
-      />
-      <OverlapControls
-        cfg={cfg.overlap}
-        onChange={(overlap) => onChange({ ...cfg, overlap })}
-      />
+      <CardSizeControls cfg={cfg.size} onChange={onStaticSizeChange} />
+      <OverlapControls cfg={cfg.overlap} onChange={onStaticOverlapChange} />
       <FanControls cfg={cfg.fan} onChange={(fan) => onChange({ ...cfg, fan })} />
       {showDyn && (
         <DynResolverControls
