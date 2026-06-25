@@ -266,10 +266,11 @@ export interface CanonicalSeatClusterProps {
    * Defaults: undefined → identical legacy behavior.
    */
   opponentShowdownPlacement?: {
-    attachment: 'chip-centered' | 'outer-edge';
+    attachment: 'chip-centered' | 'inner-edge' | 'outer-edge';
     dxPx: number;
     dyPx: number;
   };
+
 }
 
 export function CanonicalSeatCluster({
@@ -783,14 +784,20 @@ export function CanonicalSeatCluster({
         if (opponentShowdownPlacement) {
           const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
           // outer-edge: row extends AWAY from felt center (outward).
-          //   left opponent  ⇒ row grows leftward  ⇒ translateX(-100%)
-          //   right opponent ⇒ row grows rightward ⇒ translateX(0%)
-          const selfX =
-            attachment === 'chip-centered'
-              ? '-50%'
-              : isRightSide
-              ? '0%'
-              : '-100%';
+          //   left  ⇒ row grows leftward  ⇒ translateX(-100%)
+          //   right ⇒ row grows rightward ⇒ translateX(0%)
+          // inner-edge: row extends TOWARD felt center (inward).
+          //   left  ⇒ row grows rightward ⇒ translateX(0%)
+          //   right ⇒ row grows leftward  ⇒ translateX(-100%)
+          let selfX: string;
+          if (attachment === 'chip-centered') {
+            selfX = '-50%';
+          } else if (attachment === 'outer-edge') {
+            selfX = isRightSide ? '0%' : '-100%';
+          } else {
+            // inner-edge
+            selfX = isRightSide ? '-100%' : '0%';
+          }
           // Signed +X = inward toward felt center. Right-side opponents
           // need the sign flipped so a single positive dxPx moves both
           // sides inward (and negative moves both outward).
@@ -799,6 +806,7 @@ export function CanonicalSeatCluster({
             transform: `translate(${selfX}, 0) translate(${signedDx}px, ${dyPx}px)`,
           };
         }
+
         const baseClass = opponentShowdownPlacement
           ? 'absolute top-full left-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none'
           : 'absolute top-full left-1/2 -translate-x-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none';
