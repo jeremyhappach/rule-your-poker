@@ -259,7 +259,7 @@ function SecondaryEditor({
 // ─── panel ───────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
-  const { value, setValue, reset } = useDomainDraft<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
+  const { value, setValue, reset } = useDomainDraft<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY, DEFAULT_SHOWDOWN_RULES);
   const state = value ?? DEFAULT_SHOWDOWN_RULES;
   const [tab, setTab] = useState<'r1' | 'r2' | 'r3'>('r1');
 
