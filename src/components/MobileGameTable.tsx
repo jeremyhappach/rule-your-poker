@@ -7112,10 +7112,10 @@ export const MobileGameTable = ({
     const isCurrentUser = player.user_id === currentUserId;
 
     // 357 hides opponent decisions until allDecisionsIn flips.
-    const playerDecision = (isCurrentUser || allDecisionsIn)
+    let playerDecision = (isCurrentUser || allDecisionsIn)
       ? player.current_decision
       : null;
-    const cards = getPlayerCards(player.id);
+    let cards = getPlayerCards(player.id);
 
     const rawIsActivePlayer = player.status === 'active' && !player.sitting_out;
     // While we're hiding decisions from opponents, treat "folded" as
@@ -7127,17 +7127,17 @@ export const MobileGameTable = ({
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
-    const isDealer = dealerPosition === player.position;
+    let isDealer = dealerPosition === player.position;
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
-    const isRightSideSlot = slot >= 3;
-    const isBottomPosition = slot === 0 || slot === 5 || slot === -1;
+    let isRightSideSlot = slot >= 3;
+    let isBottomPosition = slot === 0 || slot === 5 || slot === -1;
 
     // 357 showdown derivation — three exclusive reveal modes.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isWinningLegReveal = winningLegPlayerId === player.id && cards.length > 0;
     const isRound3MultiShowdown = is357Round3MultiPlayerShowdown && hasExposedCards;
     const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
-    const isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
+    let isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
 
     // Win-animation / solo-vs-Chucky tabling suppression.
     const isWinAnimationWinner =
@@ -7150,23 +7150,50 @@ export const MobileGameTable = ({
       : null;
     const isSoloVsChuckyPlayerRaw =
       soloAreaPlayerId !== null && soloAreaPlayerId === player.id && player.id !== currentPlayer?.id;
-    const shouldHideForTabling =
+    let shouldHideForTabling =
       isWinAnimationWinner || isSoloVsChuckyPlayerForChip || isSoloVsChuckyPlayerRaw;
 
     // Hide chip during multi-player showdowns (R2/R3) to make room for cards.
-    const hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
+    let hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
 
     // Status palette (357 honors stayed-decision green).
     const participantStatus = derivePlayerStatus(player, playerDecision, {
       hasStayDecision: true,
     });
 
-    const displayName = player.is_bot
+    let displayName = player.is_bot
       ? getBotAlias(players, player.user_id)
       : (player.profiles?.username || `P${player.position}`);
 
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    let chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    // ─── Opponent Showdown Hold override (snapshot-backed) ───
+    // When the hold is armed and this opponent seat was admitted into
+    // the snapshot, every render input below the chip/cards layer is
+    // sourced from the frozen snapshot — NOT from authoritative state.
+    // Geometry Lab placement/sizing remains live.
+    const __holdSeat =
+      oppShowdownHoldActive && !isCurrentUser
+        ? (oppShowdownHoldSnapshot?.seatsByPlayerId[player.id] ?? null)
+        : null;
+    const __holdRound: number | null = __holdSeat ? __holdSeat.currentRound : null;
+    const __holdUnusedCardsBelow = __holdSeat ? __holdSeat.unusedCardsBelow : null;
+    const __holdShowSeparated = __holdSeat ? __holdSeat.showSeparated : null;
+    if (__holdSeat) {
+      cards = __holdSeat.cards;
+      playerDecision = __holdSeat.playerDecision;
+      isDealer = __holdSeat.isDealer;
+      isRightSideSlot = __holdSeat.isRightSide;
+      isBottomPosition = __holdSeat.isBottomPosition;
+      displayName = __holdSeat.displayName;
+      chipText = __holdSeat.chipText;
+      isShowdown = true;
+      hideChipForShowdown = true;
+      shouldHideForTabling = false;
+    }
+
+
 
     // 357 has no per-seat turn (decisions are simultaneous within the
     // round) — no status ring, no ActivePlayerHUD wrapper.
