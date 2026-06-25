@@ -913,7 +913,9 @@ export const PlayerHand = ({
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
         const n = sortedCardsWithIndices.length;
-        const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2) * 2 / 2;
+        const rotationDeg = useV4FanR1
+          ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n)
+          : defaultFanStep * (displayIndex - (n - 1) / 2);
 
         const cardEl = (
           <PlayingCard
