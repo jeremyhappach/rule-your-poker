@@ -7271,6 +7271,7 @@ export const MobileGameTable = ({
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.357CanonicalSeat"
         playerId={player.id}
+        opponentShowdownPlacement={isShowdown ? opponentShowdownPlacementPx : undefined}
       >
         {cardsNode}
       </CanonicalSeatCluster>
