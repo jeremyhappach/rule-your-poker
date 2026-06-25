@@ -3,6 +3,7 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import {
+  LIVE_BASELINE,
   resolveShowdownRules,
   useIsSmBreakpoint,
   useThreeFiveSevenShowdownConfig,
@@ -133,6 +134,14 @@ export const PlayerHand = ({
   const showdownCfg = useThreeFiveSevenShowdownConfig();
   const isSmBp = useIsSmBreakpoint();
   const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
+  // OWNERSHIP BOUNDARY: ThreeFiveSevenShowdownRules apply ONLY to the
+  // opponent exposed-cards showdown render path. The local player's
+  // active/decision hand (rendered via MobileGameTable.activeSelfHand)
+  // must remain on legacy baseline geometry regardless of Lab edits.
+  const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
+  const effective357 = isOpponentExposedShowdown
+    ? resolved357
+    : resolveShowdownRules(LIVE_BASELINE, isSmBp);
   const isHolmGame = gameType === 'holm-game';
 
   // Boundary guard applies to any canonical-deal game during DEALING.
@@ -456,20 +465,20 @@ export const PlayerHand = ({
       : undefined;
 
   // dyn357 resolver params. For R1 (3-cards) the Geometry Lab v2 config
-  // (`resolved357.three.dyn`) drives the parameters. For non-R1 357 hands
+  // (`effective357.three.dyn`) drives the parameters. For non-R1 357 hands
   // and non-357 callers, the original hardcoded params are preserved so
   // baseline behavior is identical at default values.
-  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && resolved357.three.dyn.enabled;
+  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && effective357.three.dyn.enabled;
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
-    aspect: useLabDynForR1 ? resolved357.three.dyn.aspect : 0.71,
-    minCardWidth: useLabDynForR1 ? resolved357.three.dyn.minCardWidth : 28,
+    aspect: useLabDynForR1 ? effective357.three.dyn.aspect : 0.71,
+    minCardWidth: useLabDynForR1 ? effective357.three.dyn.minCardWidth : 28,
     // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
     // MobileGameTable, this caps the rendered card width at ~160–220 px.
-    maxCardWidth: useLabDynForR1 ? resolved357.three.dyn.maxCardWidth : 80,
-    maxOverlapRatio: useLabDynForR1 ? resolved357.three.dyn.maxOverlapRatio : 0.6,
+    maxCardWidth: useLabDynForR1 ? effective357.three.dyn.maxCardWidth : 80,
+    maxOverlapRatio: useLabDynForR1 ? effective357.three.dyn.maxOverlapRatio : 0.6,
   });
   const isR1ThreeCardShowdown =
     is357Game && currentRound === 1 && displayCardCount === 3;
@@ -494,13 +503,13 @@ export const PlayerHand = ({
   const static357R1Style: CSSProperties | null =
     is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
       ? {
-          width: `${resolved357.three.widthPx}px`,
-          height: `${resolved357.three.heightPx}px`,
+          width: `${effective357.three.widthPx}px`,
+          height: `${effective357.three.heightPx}px`,
         }
       : null;
   const static357R1OverlapPx: number | null =
     is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
-      ? resolved357.three.overlapPx
+      ? effective357.three.overlapPx
       : null;
   const effectiveOverlapClass = dynActive
     ? 'first:ml-0'
@@ -653,9 +662,9 @@ export const PlayerHand = ({
     const unusedCardSize: CardSize = 'sm';
     // Geometry Lab v2 resolved values for this branch.
     const mainRow: ResolvedRoundRow = isRound3WithUnusedBelow
-      ? resolved357.seven
-      : resolved357.five;
-    const irr = resolved357.sevenIrrelevant;
+      ? effective357.seven
+      : effective357.five;
+    const irr = effective357.sevenIrrelevant;
     // Inter-row gap (was Tailwind `gap-0.5` = 2 px).
     const interRowGap = irr.interRowGapPx;
     // Position-mode resolution. `auto` mirrors the historical seat-driven
@@ -746,9 +755,9 @@ export const PlayerHand = ({
   if (isRound3With7Cards && !unusedCardsBelow) {
     // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
-    const fanStep = resolved357.seven.fanStepDeg;
+    const fanStep = effective357.seven.fanStepDeg;
     const n = allCardsOrdered.length;
-    const irrOpacity = resolved357.sevenIrrelevant.opacity;
+    const irrOpacity = effective357.sevenIrrelevant.opacity;
 
     return (
       <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
@@ -781,11 +790,11 @@ export const PlayerHand = ({
   }
 
   // Default branch (also the 3-5-7 R1 showdown path).
-  // For 3-5-7 R1 (3 cards), fan step is sourced from resolved357.three.
+  // For 3-5-7 R1 (3 cards), fan step is sourced from effective357.three.
   // For all other callers, fan step remains 2°/card (historical default).
   const defaultFanStep =
     is357Game && currentRound === 1 && displayCardCount === 3
-      ? resolved357.three.fanStepDeg
+      ? effective357.three.fanStepDeg
       : 2;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
