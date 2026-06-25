@@ -72,52 +72,53 @@ export interface AnchorConfig {
 }
 
 /**
- * Opponent showdown row placement contract (P1 adapter).
+ * Opponent showdown row placement contract (P2 — felt-relative).
  *
  * Conceptual model
  * ----------------
  *   anchor      : the opponent's canonical chipstack center
- *                 (`[data-chip-center="${position}"]`).
- *   attachment  : the row's *outer* edge attaches to the anchor —
- *                 outer-left for a left-side opponent, outer-right for a
- *                 right-side opponent. The single placement object thus
- *                 mirrors automatically: the implementation flips X sign
- *                 based on `isRightSide`, never duplicating values.
- *   xPct        : INWARD shift (toward the felt center), expressed as a
- *                 percentage of the row's OWN measured width. This is a
- *                 normalized seat-relative coordinate frame — independent
- *                 of viewport pixels and of arbitrary DOM-parent pixels.
- *   yPct        : Vertical shift, percentage of the row's OWN measured
- *                 height. Positive = downward in screen space (same sign
- *                 for both opponents — left/right mirroring is X-only).
+ *                 (CanonicalSeatCluster chip cell).
+ *   attachment  : how the row's own X self-anchor lines up with the
+ *                 chip-center anchor.
+ *                  - 'chip-centered' : translateX(-50%) — row centered
+ *                                      horizontally over the chip
+ *                                      (legacy parity baseline).
+ *                  - 'outer-edge'    : translateX(0%) for left-side
+ *                                      opponents (row outer-left edge
+ *                                      at chip center) and
+ *                                      translateX(-100%) for right-side
+ *                                      opponents (row outer-right edge
+ *                                      at chip center). Automatic
+ *                                      mirroring — one setting, both
+ *                                      sides.
+ *   xPctOfPlayfield : horizontal offset as % of the canonical PLAYFIELD
+ *                     (felt) width. Resolved to pixels at the shell
+ *                     boundary via usePlayGeometry() — sizing of cards
+ *                     / overlap / fan can NEVER alter this offset.
+ *                     Positive = INWARD toward felt center (sign is
+ *                     flipped at the seat for left/right opponents).
+ *   yPctOfPlayfield : vertical offset as % of canonical PLAYFIELD
+ *                     (felt) height. Positive = downward on both sides.
  *
  * Legacy-parity defaults
  * ----------------------
- *   The live renderer places the showdown row centered on the chip
- *   horizontally and 2 px below/above it vertically (the 2 px gap is
- *   owned by CanonicalSeatCluster's [data-canonical-seat-below]
- *   wrapper and is NOT replaced by this adapter — yPct extends from
- *   that baseline).
- *
- *   With "outer-edge attached to chip center", a zero offset would
- *   shift the row by half its own width outward from the current
- *   centered position. To preserve visual parity at defaults we
- *   therefore initialise xPct = 50 (= one half-width back to center)
- *   and yPct = 0 (the 2 px baseline gap is preserved by the wrapper).
+ *   attachment: 'chip-centered', xPctOfPlayfield: 0, yPctOfPlayfield: 0
+ *   → exactly equivalent to the cluster's pre-existing
+ *     `left-1/2 -translate-x-1/2 mt-[2px]` below-chip baseline.
  */
 export interface OpponentShowdownPlacement {
   anchor: 'chipstack-center';
-  attachment: 'outer-edge';
-  /** Inward shift, % of row width. 50 = visually centered (parity). */
-  xPct: number;
-  /** Vertical shift, % of row height. 0 = parity baseline. */
-  yPct: number;
+  attachment: 'chip-centered' | 'outer-edge';
+  /** Horizontal offset, % of canonical felt WIDTH. Positive = inward. */
+  xPctOfPlayfield: number;
+  /** Vertical offset, % of canonical felt HEIGHT. Positive = downward. */
+  yPctOfPlayfield: number;
 }
 
 
 export interface ShowdownRulesState {
   anchor: AnchorConfig;
-  /** P1 opponent-row placement adapter (shared across R1/R2/R3). */
+  /** P2 opponent-row placement adapter (shared across R1/R2/R3). */
   opponentRowPlacement: OpponentShowdownPlacement;
   three: RoundRowConfig;
   five: RoundRowConfig;
@@ -125,13 +126,14 @@ export interface ShowdownRulesState {
   sevenIrrelevant: IrrelevantPairConfig;
 }
 
-/** Defaults derived for visual parity with the legacy centered baseline. */
+/** Parity default — chip-centered, zero offset → identical to legacy. */
 const SEED_OPPONENT_ROW_PLACEMENT: OpponentShowdownPlacement = {
   anchor: 'chipstack-center',
-  attachment: 'outer-edge',
-  xPct: 50, // inward by half-row-width → equals legacy centered position
-  yPct: 0,  // legacy 2 px baseline gap preserved by cluster wrapper
+  attachment: 'chip-centered',
+  xPctOfPlayfield: 0,
+  yPctOfPlayfield: 0,
 };
+
 
 
 // ─── Live baseline (frozen) ───────────────────────────────────────────────
