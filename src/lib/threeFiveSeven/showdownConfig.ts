@@ -235,7 +235,12 @@ export function loadShowdownRules(): ShowdownRulesState {
     const parsed = JSON.parse(raw);
     return {
       anchor: { ...DEFAULT_SHOWDOWN_RULES.anchor, ...(parsed.anchor ?? {}) },
+      opponentRowPlacement: {
+        ...DEFAULT_SHOWDOWN_RULES.opponentRowPlacement,
+        ...(parsed.opponentRowPlacement ?? {}),
+      },
       three: mergeRow(DEFAULT_SHOWDOWN_RULES.three, parsed.three),
+
       five: mergeRow(DEFAULT_SHOWDOWN_RULES.five, parsed.five),
       seven: mergeRow(DEFAULT_SHOWDOWN_RULES.seven, parsed.seven),
       sevenIrrelevant: {
