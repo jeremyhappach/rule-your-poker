@@ -1,99 +1,19 @@
 /**
- * 3-5-7 Geometry Lab — Showdown Rules → Opponent Exposed Cards.
+ * 3-5-7 Geometry Lab — Showdown Rules → Opponent Exposed Cards (v4).
  *
- * IA + control surface ONLY. No live showdown rendering changes.
+ * Clean-slate v4 control surface. No parity bridge with v3.
  *
- * ─────────────────────────────────────────────────────────────────────────
- * LIVE RENDERER CONTRACT (mirrored losslessly by this panel)
- * ─────────────────────────────────────────────────────────────────────────
- * Sources:
- *   - src/components/MobileGameTable.tsx :6969–7250
- *       Builds `cardsNode` (line 7175–7196) and hands it to
- *       CanonicalSeatCluster as `children`. No transform/offset applied
- *       at this layer.
- *   - src/lib/canonicalShell/CanonicalSeatCluster.tsx :672–747
- *       Wraps `children` in `[data-canonical-seat-below]` with
- *       `absolute top-full left-1/2 -translate-x-1/2 mt-[2px]`. This is
- *       the *only* anchor: bottom edge of the 40×40 chip cell, centered,
- *       with a 2 px vertical gap. There is no X/Y offset surface.
- *   - src/components/PlayerHand.tsx :596–727
- *       Three render branches:
- *         • Round 1 (3 cards) → default flex path (L701–L727).
- *           Static size: `w-10 h-16 sm:w-11 sm:h-[4.25rem]`
- *               = 40×64 px / 44×68 px (mobile / sm).
- *           Overlap: `-ml-1 first:ml-0` (4 px on mobile).
- *           Fan: inline `rotate((i*2) - (n-1))deg` → ±2°/card.
- *           Dynamic override: `useCardRowLayout({ aspect: 0.71,
- *               minCardWidth: 28, maxCardWidth: 80,
- *               maxOverlapRatio: 0.6 })`; defaults preferredOverlapRatio
- *               = 0.18. When it fires, it replaces width/height/overlap
- *               with px values resolved from the parent's clientWidth.
- *         • Round 2 (5 cards) and Round 3 (7 cards, main row) →
- *           multi-player showdown branch (L596–663).
- *           Static size: `w-8 h-12 sm:w-9 sm:h-14`
- *               = 32×48 px / 36×56 px (mobile / sm).
- *           Overlap: `-ml-3 first:ml-0` (12 px on mobile).
- *           Fan: ±2°/card.
- *           No dyn357 (composeStyle not called).
- *         • Round 3 irrelevant pair → same branch, unused row.
- *           Static size: `w-6 h-9 sm:w-7 sm:h-10`
- *               = 24×36 px / 28×40 px (mobile / sm).
- *           Overlap: `-ml-2 first:ml-0` (8 px on mobile).
- *           Inline `transform: scale(0.85)` and `opacity: 0.4`.
- *           `isDimmed={true}` adds `filter: grayscale(30%)` and
- *               another opacity:0.4 (stacked → effective 0.4).
- *           Inter-row gap: `gap-0.5` = 2 px between main and unused row.
- *           Position: derived from seat — bottom seats
- *               (`isBottomPosition`) stack unused ABOVE main; all other
- *               seats stack unused BELOW main.
- *           Secondary axis alignment: `self-end` for right-side seats,
- *               `self-start` for left-side seats.
+ * Three coordinate groups:
+ *   1. SHARED FELT PLACEMENT (top)  — attachment + xPct/yPct of felt
+ *   2. PER-ROUND GEOMETRY (R1/R2/R3) — card + row controls
+ *   3. R3 SECONDARY GROUP             — visibility, placement, offsets, style
  *
- * L/R seat mirroring:
- *   - Position derivation (above/below) keys on `isBottomPosition`
- *     (slots 0, 5, -1) — not L/R per se.
- *   - Cross-axis alignment keys on `isRightSide` (slots 3, 4, 5)
- *     vs left-side (slots 0, 1, 2). Tuning is mirrored automatically;
- *     no per-side knob exists in the live renderer.
- *
- * Concepts the live renderer does NOT have:
- *   - Anchor X/Y offsets (always 0/2px).
- *   - Percent-based card sizes (all values are px / Tailwind tiers).
- *   - Fan as a percentage (it's a fixed deg/card constant).
- *   - Exposure direction (cards face-up at showdown, no drop/orient).
- *   - Aspect-ratio constraint editor (R1 dyn aspect is a resolver
- *     parameter, not a card-instance attribute).
- *   - Free above/below/left/right placement for the irrelevant pair
- *     (live derives this from seat slot).
- *
- * ─────────────────────────────────────────────────────────────────────────
- * 3-5-7-SPECIFIC vs candidates for shared showdown primitives
- * ─────────────────────────────────────────────────────────────────────────
- *   3-5-7-specific:
- *     - dyn357 resolver params (aspect, minW, maxW, maxOverlapRatio,
- *       preferredOverlapRatio). Only R1 uses it today.
- *     - "Irrelevant pair" concept (round 3 only).
- *     - Per-round size tiers tied to Tailwind classes documented above.
- *
- *   Candidates for future shared showdown primitives:
- *     - Anchor model (belowChip with px gap) — likely reusable for any
- *       game that anchors showdown cards under the canonical seat
- *       cluster's chip cell.
- *     - Fan-as-deg-per-card with optional asymmetric step — generic.
- *     - Per-breakpoint px size tiers (mobile / sm) with optional pct
- *       fallback — generic.
- *     - Cross-axis alignment derived from seat side — generic.
- *
- * ─────────────────────────────────────────────────────────────────────────
- * STORAGE
- * ─────────────────────────────────────────────────────────────────────────
- * Persisted to localStorage under
- *   `geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v2`
- * Nothing in the live runtime reads this key yet — wiring to the
- * showdown renderer is a separate, explicit step.
+ * Card-reveal / face state is GAME-RULE-OWNED. The `face-down`
+ * visibility option here only restyles cards already classified
+ * by game rules as the R3 irrelevant secondary group.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -106,47 +26,23 @@ import {
 } from "@/components/ui/select";
 import {
   DEFAULT_SHOWDOWN_RULES,
-  LIVE_BASELINE,
   SHOWDOWN_RULES_DOMAIN_KEY,
-  resolveShowdownRules,
-  useIsSmBreakpoint,
-  useThreeFiveSevenShowdownConfig,
-  type AnchorConfig,
-  type CardSizePx,
-  type DynResolverParams,
-  type FanDegPerCard,
-  type IrrelevantPairConfig,
-  type OpponentShowdownPlacement,
-  type OverlapPx,
-  type RoundRowConfig,
+  type CardGeometry,
+  type RoundGeometry,
+  type RoundGeometryR3,
+  type SecondaryGroupGeometry,
   type ShowdownRulesState,
+  type SizingMode,
 } from "@/lib/threeFiveSeven/showdownConfig";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 
+// ─── primitives ──────────────────────────────────────────────────────────
 
-// Re-export aliases retained to minimise churn in this file.
-const DEFAULT_STATE = DEFAULT_SHOWDOWN_RULES;
-
-
-// ─── UI primitives ────────────────────────────────────────────────────────
-
-function CollapsibleSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <details className="border rounded-md group/section">
-      <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-sm flex items-center justify-between">
-        <span>{title}</span>
-        <span className="text-base leading-none text-muted-foreground group-[[open]]/section:hidden">
-          +
-        </span>
-        <span className="text-base leading-none text-muted-foreground hidden group-[[open]]/section:inline">
-          −
-        </span>
+    <details className="border rounded-md" open>
+      <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-sm">
+        {title}
       </summary>
       <div className="px-3 pb-3 pt-1 space-y-3">{children}</div>
     </details>
@@ -157,732 +53,311 @@ function NumInput({
   value,
   step = 1,
   min,
+  max,
   onChange,
 }: {
   value: number;
   step?: number;
   min?: number;
-  onChange: (v: number) => void;
+  max?: number;
+  onChange: (n: number) => void;
 }) {
   return (
     <Input
       type="number"
+      value={value}
       step={step}
-      value={Number.isFinite(value) ? Number(value.toFixed(6)) : 0}
+      min={min}
+      max={max}
       onChange={(e) => {
         const n = Number(e.target.value);
-        if (!Number.isFinite(n)) return;
-        if (typeof min === "number" && n < min) return;
-        onChange(n);
+        if (Number.isFinite(n)) onChange(n);
       }}
+      className="h-8 w-24"
     />
   );
 }
 
-function BoolSelect({
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
+// ─── card geometry editor ────────────────────────────────────────────────
+
+function CardEditor({
   value,
   onChange,
 }: {
-  value: boolean;
-  onChange: (v: boolean) => void;
+  value: CardGeometry;
+  onChange: (next: CardGeometry) => void;
 }) {
   return (
-    <Select
-      value={value ? "yes" : "no"}
-      onValueChange={(v) => onChange(v === "yes")}
-    >
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="yes">yes</SelectItem>
-        <SelectItem value="no">no</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
-
-// ─── Placement controls (P1 opponent-row adapter) ─────────────────────────
-
-function PlacementControls({
-  cfg,
-  onChange,
-}: {
-  cfg: OpponentShowdownPlacement;
-  onChange: (next: OpponentShowdownPlacement) => void;
-}) {
-  const patch = (p: Partial<OpponentShowdownPlacement>) =>
-    onChange({ ...cfg, ...p });
-  return (
-    <div className="space-y-2 rounded-md border p-2">
-      <p className="text-xs text-muted-foreground">
-        Anchors the entire opponent exposed showdown row (R1 / R2 / R3,
-        as one unit) to the opponent's canonical chipstack center.
-        Offsets are normalized to the canonical PLAYFIELD (felt)
-        width/height — they are resolved to pixels at the shell
-        boundary, so changing card width / height / overlap / fan can
-        NEVER alter where the row attaches. Mirroring is automatic:
-        positive X moves both opponents INWARD toward felt center.
-        Default (chip-centered, 0, 0) matches the legacy baseline.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Anchor</Label>
-          <Input value="Opponent chipstack center" readOnly disabled />
-        </div>
-        <div className="space-y-1">
-          <Label>Row attachment</Label>
-          <Select
-            value={cfg.attachment}
-            onValueChange={(v) =>
-              patch({ attachment: v as OpponentShowdownPlacement['attachment'] })
-            }
-          >
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="chip-centered">chip-centered (parity)</SelectItem>
-              <SelectItem value="outer-edge">outer-edge (auto-mirrored L/R)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>X offset (% of felt width, inward+)</Label>
-          <NumInput
-            value={cfg.xPctOfPlayfield}
-            step={1}
-            onChange={(v) => patch({ xPctOfPlayfield: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Y offset (% of felt height, down+)</Label>
-          <NumInput
-            value={cfg.yPctOfPlayfield}
-            step={1}
-            onChange={(v) => patch({ yPctOfPlayfield: v })}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function CardSizeControls({
-  cfg,
-  onChange,
-}: {
-  cfg: CardSizePx;
-  onChange: (next: CardSizePx) => void;
-}) {
-  const patch = (p: Partial<CardSizePx>) => onChange({ ...cfg, ...p });
-  return (
-    <div className="space-y-2 rounded-md border p-2">
-      <p className="text-xs text-muted-foreground">
-        Per-breakpoint px sizing. Mirrors Tailwind tiers like{" "}
-        <code>w-8 h-12 sm:w-9 sm:h-14</code>.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Mobile width (px)</Label>
-          <NumInput
-            value={cfg.mobileWidthPx}
-            min={1}
-            onChange={(v) => patch({ mobileWidthPx: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Mobile height (px)</Label>
-          <NumInput
-            value={cfg.mobileHeightPx}
-            min={1}
-            onChange={(v) => patch({ mobileHeightPx: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>sm width (px)</Label>
-          <NumInput
-            value={cfg.smWidthPx}
-            min={1}
-            onChange={(v) => patch({ smWidthPx: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>sm height (px)</Label>
-          <NumInput
-            value={cfg.smHeightPx}
-            min={1}
-            onChange={(v) => patch({ smHeightPx: v })}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OverlapControls({
-  cfg,
-  onChange,
-}: {
-  cfg: OverlapPx;
-  onChange: (next: OverlapPx) => void;
-}) {
-  const patch = (p: Partial<OverlapPx>) => onChange({ ...cfg, ...p });
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="space-y-1">
-        <Label>Overlap mobile (px)</Label>
-        <NumInput
-          value={cfg.mobilePx}
-          min={0}
-          onChange={(v) => patch({ mobilePx: v })}
-        />
-      </div>
-      <div className="space-y-1">
-        <Label>Overlap sm (px)</Label>
-        <NumInput value={cfg.smPx} min={0} onChange={(v) => patch({ smPx: v })} />
-      </div>
-    </div>
-  );
-}
-
-function FanControls({
-  cfg,
-  onChange,
-}: {
-  cfg: FanDegPerCard;
-  onChange: (next: FanDegPerCard) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="space-y-1">
-        <Label>Fan step (deg / card)</Label>
-        <NumInput
-          step={0.5}
-          value={cfg.stepDeg}
-          onChange={(v) => onChange({ stepDeg: v })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function DynResolverControls({
-  cfg,
-  onChange,
-}: {
-  cfg: DynResolverParams;
-  onChange: (next: DynResolverParams) => void;
-}) {
-  const patch = (p: Partial<DynResolverParams>) => onChange({ ...cfg, ...p });
-  return (
-    <div className="space-y-2 rounded-md border p-2">
-      <p className="text-xs text-muted-foreground">
-        Round-1 only: <code>useCardRowLayout</code> overrides static size +
-        overlap at runtime based on parent <code>clientWidth</code>.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Enabled</Label>
-          <BoolSelect
-            value={cfg.enabled}
-            onChange={(v) => patch({ enabled: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Aspect (w/h)</Label>
-          <NumInput
-            step={0.01}
-            value={cfg.aspect}
-            min={0.01}
-            onChange={(v) => patch({ aspect: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Min card width (px)</Label>
-          <NumInput
-            value={cfg.minCardWidth}
-            min={1}
-            onChange={(v) => patch({ minCardWidth: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Max card width (px)</Label>
-          <NumInput
-            value={cfg.maxCardWidth}
-            min={1}
-            onChange={(v) => patch({ maxCardWidth: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Max overlap ratio</Label>
-          <NumInput
-            step={0.01}
-            value={cfg.maxOverlapRatio}
-            min={0}
-            onChange={(v) => patch({ maxOverlapRatio: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Preferred overlap ratio</Label>
-          <NumInput
-            step={0.01}
-            value={cfg.preferredOverlapRatio}
-            min={0}
-            onChange={(v) => patch({ preferredOverlapRatio: v })}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoundRowControls({
-  cfg,
-  showDyn,
-  onChange,
-}: {
-  cfg: RoundRowConfig;
-  showDyn: boolean;
-  onChange: (next: RoundRowConfig) => void;
-}) {
-  // R1 invariant: any static size/overlap edit atomically disables dyn.
-  // Persist one complete next state — no later effect, no second write,
-  // no stale closure dependency on a separate dyn toggle.
-  const onStaticSizeChange = (size: CardSizePx) => {
-    if (showDyn) {
-      onChange({ ...cfg, size, dyn: { ...cfg.dyn, enabled: false } });
-    } else {
-      onChange({ ...cfg, size });
-    }
-  };
-  const onStaticOverlapChange = (overlap: OverlapPx) => {
-    if (showDyn) {
-      onChange({ ...cfg, overlap, dyn: { ...cfg.dyn, enabled: false } });
-    } else {
-      onChange({ ...cfg, overlap });
-    }
-  };
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Anchor: <code>belowChip</code> (bottom edge of canonical chip
-        cell, centered, <code>{`{anchor.belowChipGapPx}`}</code> px gap).
-        Cross-axis alignment mirrors automatically off seat side
-        (<code>self-end</code> right-side, <code>self-start</code> left-side).
-        Cards are face-up; no exposure/drop concept.
-        {showDyn && (
-          <>
-            {" "}<strong>R1:</strong> editing any static size or overlap
-            field below atomically sets <code>dyn.enabled = false</code>
-            in the same write.
-          </>
-        )}
-      </p>
-      <CardSizeControls cfg={cfg.size} onChange={onStaticSizeChange} />
-      <OverlapControls cfg={cfg.overlap} onChange={onStaticOverlapChange} />
-      <FanControls cfg={cfg.fan} onChange={(fan) => onChange({ ...cfg, fan })} />
-      {showDyn && (
-        <DynResolverControls
-          cfg={cfg.dyn}
-          onChange={(dyn) => onChange({ ...cfg, dyn })}
-        />
-      )}
-    </div>
-  );
-}
-
-function IrrelevantPairControls({
-  cfg,
-  onChange,
-}: {
-  cfg: IrrelevantPairConfig;
-  onChange: (next: IrrelevantPairConfig) => void;
-}) {
-  const patch = (p: Partial<IrrelevantPairConfig>) => onChange({ ...cfg, ...p });
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Round-3 unused pair. Live position derivation: bottom-row seats
-        stack the pair ABOVE the main row; all other seats stack it
-        BELOW. Cross-axis alignment mirrors off seat side automatically.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Visible</Label>
-          <BoolSelect
-            value={cfg.visible}
-            onChange={(v) => patch({ visible: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Dimmed (grayscale + opacity)</Label>
-          <BoolSelect
-            value={cfg.dimmed}
-            onChange={(v) => patch({ dimmed: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Scale</Label>
-          <NumInput
-            step={0.01}
-            value={cfg.scale}
-            min={0.01}
-            onChange={(v) => patch({ scale: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Opacity</Label>
-          <NumInput
-            step={0.05}
-            value={cfg.opacity}
-            min={0}
-            onChange={(v) => patch({ opacity: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Grayscale (%)</Label>
-          <NumInput
-            value={cfg.grayscalePct}
-            min={0}
-            onChange={(v) => patch({ grayscalePct: v })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Inter-row gap (px)</Label>
-          <NumInput
-            value={cfg.interRowGapPx}
-            min={0}
-            onChange={(v) => patch({ interRowGapPx: v })}
-          />
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label>Position mode</Label>
+    <div className="space-y-2">
+      <Row label="Sizing mode">
         <Select
-          value={cfg.positionMode}
-          onValueChange={(v) =>
-            patch({ positionMode: v as IrrelevantPairConfig["positionMode"] })
-          }
+          value={value.mode}
+          onValueChange={(m) => {
+            const mode = m as SizingMode;
+            if (mode === 'fixed') {
+              onChange({ mode: 'fixed', cardWidthPx: 'cardWidthPx' in value ? value.cardWidthPx : 40, aspectRatio: value.aspectRatio });
+            } else {
+              onChange({ mode: 'responsive', cardWidthPctOfFeltVmin: 'cardWidthPctOfFeltVmin' in value ? value.cardWidthPctOfFeltVmin : 14, aspectRatio: value.aspectRatio });
+            }
+          }}
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-8 w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="auto">auto (live; from seat)</SelectItem>
-            <SelectItem value="above">above (override)</SelectItem>
-            <SelectItem value="below">below (override)</SelectItem>
+            <SelectItem value="fixed">fixed (px)</SelectItem>
+            <SelectItem value="responsive">responsive (% felt vmin)</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <CardSizeControls
-        cfg={cfg.size}
-        onChange={(size) => patch({ size })}
-      />
-      <OverlapControls
-        cfg={cfg.overlap}
-        onChange={(overlap) => patch({ overlap })}
-      />
+      </Row>
+      {value.mode === 'fixed' ? (
+        <Row label="Card width (px)">
+          <NumInput
+            value={value.cardWidthPx}
+            min={1}
+            onChange={(n) => onChange({ ...value, cardWidthPx: n })}
+          />
+        </Row>
+      ) : (
+        <Row label="Card width (% felt vmin)">
+          <NumInput
+            value={value.cardWidthPctOfFeltVmin}
+            step={0.1}
+            min={0}
+            onChange={(n) => onChange({ ...value, cardWidthPctOfFeltVmin: n })}
+          />
+        </Row>
+      )}
+      <Row label="Aspect ratio (h / w)">
+        <NumInput
+          value={value.aspectRatio}
+          step={0.05}
+          min={0.1}
+          onChange={(n) => onChange({ ...value, aspectRatio: n })}
+        />
+      </Row>
     </div>
   );
 }
 
-function AnchorControls({
-  cfg,
+// ─── round editor ────────────────────────────────────────────────────────
+
+function RoundEditor({
+  value,
   onChange,
 }: {
-  cfg: AnchorConfig;
-  onChange: (next: AnchorConfig) => void;
+  value: RoundGeometry;
+  onChange: (next: RoundGeometry) => void;
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Live anchor is always <code>belowChip</code>:{" "}
-        <code>[data-canonical-seat-below]</code> at{" "}
-        <code>top-full left-1/2 -translate-x-1/2 mt-[gapPx]</code>. No
-        X/Y offset surface exists in the live renderer.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Anchor kind</Label>
-          <Select value={cfg.kind} onValueChange={() => {}}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="belowChip">belowChip</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Below-chip gap (px)</Label>
-          <NumInput
-            value={cfg.belowChipGapPx}
-            min={0}
-            onChange={(v) => onChange({ ...cfg, belowChipGapPx: v })}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Parity Audit ─────────────────────────────────────────────────────────
-//
-// Temporary collapsible panel: compares the frozen LIVE_BASELINE against
-// the currently-resolved Lab values at the active breakpoint. Lives in
-// the Geometry Lab only — never on the game table.
-
-interface ParityRow {
-  field: string;
-  live: string | number | boolean;
-  lab: string | number | boolean;
-}
-
-function valuesEqual(a: unknown, b: unknown): boolean {
-  if (typeof a === 'number' && typeof b === 'number') {
-    return Math.abs(a - b) < 1e-6;
-  }
-  return a === b;
-}
-
-function buildRoundParityRows(
-  prefix: string,
-  liveResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
-  labResolved: { widthPx: number; heightPx: number; overlapPx: number; fanStepDeg: number; dyn: DynResolverParams },
-): ParityRow[] {
-  const rows: ParityRow[] = [
-    { field: `${prefix}.widthPx`,    live: liveResolved.widthPx,    lab: labResolved.widthPx },
-    { field: `${prefix}.heightPx`,   live: liveResolved.heightPx,   lab: labResolved.heightPx },
-    { field: `${prefix}.overlapPx`,  live: liveResolved.overlapPx,  lab: labResolved.overlapPx },
-    { field: `${prefix}.fanStepDeg`, live: liveResolved.fanStepDeg, lab: labResolved.fanStepDeg },
-  ];
-  if (prefix === 'three') {
-    rows.push(
-      { field: `${prefix}.dyn.enabled`,               live: liveResolved.dyn.enabled,               lab: labResolved.dyn.enabled },
-      { field: `${prefix}.dyn.aspect`,                live: liveResolved.dyn.aspect,                lab: labResolved.dyn.aspect },
-      { field: `${prefix}.dyn.minCardWidth`,          live: liveResolved.dyn.minCardWidth,          lab: labResolved.dyn.minCardWidth },
-      { field: `${prefix}.dyn.maxCardWidth`,          live: liveResolved.dyn.maxCardWidth,          lab: labResolved.dyn.maxCardWidth },
-      { field: `${prefix}.dyn.maxOverlapRatio`,       live: liveResolved.dyn.maxOverlapRatio,       lab: labResolved.dyn.maxOverlapRatio },
-      { field: `${prefix}.dyn.preferredOverlapRatio`, live: liveResolved.dyn.preferredOverlapRatio, lab: labResolved.dyn.preferredOverlapRatio },
-    );
-  }
-  return rows;
-}
-
-function ParityAuditPanel() {
-  const lab = useThreeFiveSevenShowdownConfig();
-  const isSm = useIsSmBreakpoint();
-  const live = useMemo(() => resolveShowdownRules(LIVE_BASELINE, isSm), [isSm]);
-  const resolved = useMemo(() => resolveShowdownRules(lab, isSm), [lab, isSm]);
-  const [copied, setCopied] = useState(false);
-
-  const sections: { title: string; rows: ParityRow[] }[] = useMemo(() => {
-    const anchorRows: ParityRow[] = [
-      { field: 'anchor.kind',           live: live.anchor.kind,           lab: resolved.anchor.kind },
-      { field: 'anchor.belowChipGapPx', live: live.anchor.belowChipGapPx, lab: resolved.anchor.belowChipGapPx },
-    ];
-    const irr = live.sevenIrrelevant;
-    const irrLab = resolved.sevenIrrelevant;
-    const irrelevantRows: ParityRow[] = [
-      { field: 'sevenIrrelevant.visible',        live: irr.visible,        lab: irrLab.visible },
-      { field: 'sevenIrrelevant.dimmed',         live: irr.dimmed,         lab: irrLab.dimmed },
-      { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
-      { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
-      { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
-      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
-      { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
-      { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
-      { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },
-      { field: 'sevenIrrelevant.positionMode',   live: irr.positionMode,   lab: irrLab.positionMode },
-    ];
-    return [
-      { title: 'Anchor (shared)',    rows: anchorRows },
-      { title: '3-card round',       rows: buildRoundParityRows('three', live.three, resolved.three) },
-      { title: '5-card round',       rows: buildRoundParityRows('five',  live.five,  resolved.five)  },
-      { title: '7-card main row',    rows: buildRoundParityRows('seven', live.seven, resolved.seven) },
-      { title: '7-card irrelevant pair', rows: irrelevantRows },
-    ];
-  }, [live, resolved]);
-
-  const buildReport = (): string => {
-    const lines: string[] = [];
-    lines.push('=== 3-5-7 Showdown Geometry — Parity Report ===');
-    lines.push(`active breakpoint: ${resolved.breakpoint}`);
-    lines.push(`viewport: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'unknown'}`);
-    lines.push(`timestamp: ${new Date().toISOString()}`);
-    lines.push('');
-    for (const s of sections) {
-      lines.push(`-- ${s.title} --`);
-      for (const r of s.rows) {
-        const match = valuesEqual(r.live, r.lab) ? 'MATCH' : 'MISMATCH';
-        lines.push(`  ${r.field.padEnd(40)} live=${String(r.live).padEnd(10)} lab=${String(r.lab).padEnd(10)} ${match}`);
-      }
-    }
-    return lines.join('\n');
-  };
-
-  const handleCopy = async () => {
-    const txt = buildReport();
-    try {
-      await navigator.clipboard.writeText(txt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      try { window.prompt('Copy parity report:', txt); } catch { /* */ }
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Compares the frozen pre-migration LIVE_BASELINE against the
-        currently-resolved Lab values at the active Tailwind breakpoint
-        (<code>{resolved.breakpoint}</code>). All rows should read MATCH
-        at default values. Keep this panel in place until baseline parity
-        is smoke-confirmed.
-      </p>
       <div>
-        <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
-          {copied ? 'COPIED ✓' : 'COPY PARITY REPORT'}
-        </Button>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Card geometry</div>
+        <CardEditor value={value.card} onChange={(card) => onChange({ ...value, card })} />
       </div>
-      {sections.map((s) => (
-        <div key={s.title} className="rounded-md border p-2 space-y-1">
-          <div className="font-semibold text-xs">{s.title}</div>
-          <table className="w-full text-[11px] font-mono">
-            <thead>
-              <tr className="text-muted-foreground">
-                <th className="text-left font-normal">field</th>
-                <th className="text-left font-normal">live baseline</th>
-                <th className="text-left font-normal">lab resolved</th>
-                <th className="text-left font-normal">result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.rows.map((r) => {
-                const match = valuesEqual(r.live, r.lab);
-                return (
-                  <tr key={r.field}>
-                    <td>{r.field}</td>
-                    <td>{String(r.live)}</td>
-                    <td>{String(r.lab)}</td>
-                    <td className={match ? 'text-green-600' : 'text-red-600 font-semibold'}>
-                      {match ? 'MATCH' : 'MISMATCH'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ))}
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Row geometry</div>
+        <Row label="Overlap (fraction of card width)">
+          <NumInput
+            value={value.row.overlap}
+            step={0.05}
+            min={0}
+            max={1}
+            onChange={(n) => onChange({ ...value, row: { ...value.row, overlap: n } })}
+          />
+        </Row>
+        <Row label="Total fan (degrees, first→last)">
+          <NumInput
+            value={value.row.fanDegrees}
+            step={1}
+            onChange={(n) => onChange({ ...value, row: { ...value.row, fanDegrees: n } })}
+          />
+        </Row>
+      </div>
     </div>
   );
 }
 
-// ─── Panel ────────────────────────────────────────────────────────────────
+// ─── R3 secondary editor ─────────────────────────────────────────────────
+
+function SecondaryEditor({
+  value,
+  onChange,
+}: {
+  value: SecondaryGroupGeometry;
+  onChange: (next: SecondaryGroupGeometry) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Row label="Visibility">
+        <Select
+          value={value.visibility}
+          onValueChange={(v) => onChange({ ...value, visibility: v as SecondaryGroupGeometry['visibility'] })}
+        >
+          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hidden">hidden</SelectItem>
+            <SelectItem value="dimmed">dimmed</SelectItem>
+            <SelectItem value="face-down">face-down (style only)</SelectItem>
+          </SelectContent>
+        </Select>
+      </Row>
+      <Row label="Placement">
+        <Select
+          value={value.placement}
+          onValueChange={(v) => onChange({ ...value, placement: v as SecondaryGroupGeometry['placement'] })}
+        >
+          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="above">above</SelectItem>
+            <SelectItem value="below">below</SelectItem>
+            <SelectItem value="left">left</SelectItem>
+            <SelectItem value="right">right</SelectItem>
+          </SelectContent>
+        </Select>
+      </Row>
+      <Row label="Offset along placement axis (%)">
+        <NumInput
+          value={value.offsetPrimaryPct}
+          step={1}
+          onChange={(n) => onChange({ ...value, offsetPrimaryPct: n })}
+        />
+      </Row>
+      <Row label="Cross-axis drift (%)">
+        <NumInput
+          value={value.offsetCrossPct}
+          step={1}
+          onChange={(n) => onChange({ ...value, offsetCrossPct: n })}
+        />
+      </Row>
+      <Row label="Scale">
+        <NumInput value={value.scale} step={0.05} min={0.05} onChange={(n) => onChange({ ...value, scale: n })} />
+      </Row>
+      <Row label="Opacity">
+        <NumInput value={value.opacity} step={0.05} min={0} max={1} onChange={(n) => onChange({ ...value, opacity: n })} />
+      </Row>
+      <Row label="Grayscale">
+        <NumInput value={value.grayscale} step={0.05} min={0} max={1} onChange={(n) => onChange({ ...value, grayscale: n })} />
+      </Row>
+      <p className="text-[11px] text-muted-foreground leading-snug pt-1">
+        Card-reveal / face state is game-rule-owned. <code>face-down</code> only
+        restyles cards already classified as the R3 irrelevant secondary group.
+      </p>
+    </div>
+  );
+}
+
+// ─── panel ───────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
-  // Bind every control to the modal-wide draft. No per-control persistence,
-  // no per-panel Save button, no per-control side effects. The shared modal
-  // chrome owns Apply / Cancel / dirty surfacing.
-  const { value: state, setValue: setState, reset, dirty } = useDomainDraft<ShowdownRulesState>(
-    SHOWDOWN_RULES_DOMAIN_KEY,
-    DEFAULT_SHOWDOWN_RULES,
-  );
+  const { value, setValue, reset } = useDomainDraft<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
+  const state = value ?? DEFAULT_SHOWDOWN_RULES;
+  const [tab, setTab] = useState<'r1' | 'r2' | 'r3'>('r1');
 
-  const setRow =
-    (key: "three" | "five" | "seven") => (next: RoundRowConfig) =>
-      setState((s) => ({ ...s, [key]: next }));
+  const patchRound = <K extends 'r1' | 'r2' | 'r3'>(k: K, next: K extends 'r3' ? RoundGeometryR3 : RoundGeometry) => {
+    setValue({ ...state, rounds: { ...state.rounds, [k]: next } } as ShowdownRulesState);
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs text-muted-foreground flex-1">
-          Controls exposed opponent cards during 3-5-7 showdown near the
-          opponent seat cluster. Edits here are draft-only — click
-          <strong> Apply Changes </strong>
-          in the modal footer to commit shared defaults; every connected
-          client updates live without refresh or redeal. Click
-          <strong> Cancel </strong>
-          (or close the modal) to discard.
-        </p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={reset}
-          title="Reset this section's draft to baseline. Still requires Apply."
-        >
-          Reset section
+    <div className="space-y-4 text-sm">
+      <Section title="Shared felt placement">
+        <Row label="Attachment">
+          <Select
+            value={state.placement.attachment}
+            onValueChange={(v) =>
+              setValue({ ...state, placement: { ...state.placement, attachment: v as 'chip-centered' | 'outer-edge' } })
+            }
+          >
+            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chip-centered">chip-centered</SelectItem>
+              <SelectItem value="outer-edge">outer-edge</SelectItem>
+            </SelectContent>
+          </Select>
+        </Row>
+        <Row label="X offset (% of felt width, +X = inward)">
+          <NumInput
+            value={state.placement.xPctOfFelt}
+            step={0.5}
+            onChange={(n) => setValue({ ...state, placement: { ...state.placement, xPctOfFelt: n } })}
+          />
+        </Row>
+        <Row label="Y offset (% of felt height, +Y = down)">
+          <NumInput
+            value={state.placement.yPctOfFelt}
+            step={0.5}
+            onChange={(n) => setValue({ ...state, placement: { ...state.placement, yPctOfFelt: n } })}
+          />
+        </Row>
+      </Section>
+
+      <Section title="Per-round geometry">
+        <div className="flex gap-1">
+          {(['r1', 'r2', 'r3'] as const).map((k) => (
+            <Button
+              key={k}
+              size="sm"
+              variant={tab === k ? 'default' : 'outline'}
+              onClick={() => setTab(k)}
+            >
+              {k.toUpperCase()}
+            </Button>
+          ))}
+        </div>
+        {tab === 'r1' && (
+          <RoundEditor
+            value={state.rounds.r1}
+            onChange={(next) => patchRound('r1', next)}
+          />
+        )}
+        {tab === 'r2' && (
+          <RoundEditor
+            value={state.rounds.r2}
+            onChange={(next) => patchRound('r2', next)}
+          />
+        )}
+        {tab === 'r3' && (
+          <>
+            <RoundEditor
+              value={state.rounds.r3}
+              onChange={(next) => patchRound('r3', { ...next, secondary: state.rounds.r3.secondary })}
+            />
+            <div className="pt-2 border-t mt-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                R3 secondary group (irrelevant pair)
+              </div>
+              <SecondaryEditor
+                value={state.rounds.r3.secondary}
+                onChange={(secondary) =>
+                  patchRound('r3', { ...state.rounds.r3, secondary })
+                }
+              />
+            </div>
+          </>
+        )}
+      </Section>
+
+      <div className="flex gap-2 pt-2 border-t">
+        <Button size="sm" variant="outline" onClick={() => reset()}>
+          Reset to defaults
         </Button>
       </div>
 
-      {dirty ? (
-        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300">
-          Section has unsaved draft edits.
-        </div>
-      ) : null}
-
-      <CollapsibleSection title="Anchor (shared)">
-        <AnchorControls
-          cfg={state.anchor}
-          onChange={(anchor) => setState((s) => ({ ...s, anchor }))}
-        />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Opponent Exposed Row">
-        <CollapsibleSection title="Placement">
-          <PlacementControls
-            cfg={state.opponentRowPlacement}
-            onChange={(opponentRowPlacement) =>
-              setState((s) => ({ ...s, opponentRowPlacement }))
-            }
-          />
-        </CollapsibleSection>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Opponent Exposed Cards">
-
-        <CollapsibleSection title="3-card round">
-          <RoundRowControls
-            cfg={state.three}
-            showDyn
-            onChange={setRow("three")}
-          />
-        </CollapsibleSection>
-
-        <CollapsibleSection title="5-card round">
-          <RoundRowControls
-            cfg={state.five}
-            showDyn={false}
-            onChange={setRow("five")}
-          />
-        </CollapsibleSection>
-
-        <CollapsibleSection title="7-card round">
-          <RoundRowControls
-            cfg={state.seven}
-            showDyn={false}
-            onChange={setRow("seven")}
-          />
-          <CollapsibleSection title="Irrelevant Pair">
-            <IrrelevantPairControls
-              cfg={state.sevenIrrelevant}
-              onChange={(next) =>
-                setState((s) => ({ ...s, sevenIrrelevant: next }))
-              }
-            />
-          </CollapsibleSection>
-        </CollapsibleSection>
-
-        <CollapsibleSection title="Parity Audit (LIVE vs LAB)">
-          <ParityAuditPanel />
-        </CollapsibleSection>
-      </CollapsibleSection>
+      <p className="text-[11px] text-muted-foreground leading-snug">
+        Edits stage to the modal draft. Use the shared <strong>Apply
+        Changes</strong> footer to publish to all clients.
+      </p>
     </div>
   );
 }
 
+export default ThreeFiveSevenShowdownRulesPanel;
