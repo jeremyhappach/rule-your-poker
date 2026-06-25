@@ -795,13 +795,16 @@ export const PlayerHand = ({
     );
 
     const n = mainCount;
+    const mainFanSign = use357V4
+      ? ((isRound3WithUnusedBelow ? v4Resolved.r3.fanDirection : v4Resolved.r2.fanDirection) === 'inward' ? -1 : 1)
+      : 1;
     const usedCardsElement = (
       <div className="flex items-end">
         {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isHighlighted = highlightedIndices.includes(originalIndex);
           const isKicker = kickerIndices.includes(originalIndex);
           const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-          const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n);
+          const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n) * mainFanSign;
           return (
             <PlayingCard
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
@@ -822,6 +825,7 @@ export const PlayerHand = ({
         })}
       </div>
     );
+
 
     // Placement layout. above/below = column; left/right = row.
     const stackVertical = secPlacement === 'above' || secPlacement === 'below';
@@ -901,6 +905,7 @@ export const PlayerHand = ({
   const useV4FanR1 = isR1Three && use357V4;
   const defaultFanStep = isR1Three && !use357V4 ? SELF_LEGACY.r1.fanStepDeg : 2;
   const v4R1TotalFanDeg = useV4FanR1 ? v4Resolved.r1.fanDegrees : 0;
+  const v4R1FanSign = useV4FanR1 && v4Resolved.r1.fanDirection === 'inward' ? -1 : 1;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
@@ -918,8 +923,9 @@ export const PlayerHand = ({
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
         const n = sortedCardsWithIndices.length;
         const rotationDeg = useV4FanR1
-          ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n)
+          ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n) * v4R1FanSign
           : defaultFanStep * (displayIndex - (n - 1) / 2);
+
 
         const cardEl = (
           <PlayingCard
