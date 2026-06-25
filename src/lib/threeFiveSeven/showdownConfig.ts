@@ -56,12 +56,23 @@ export interface CardGeometryResponsive {
 }
 export type CardGeometry = CardGeometryFixed | CardGeometryResponsive;
 
+export type FanDirection = 'outward' | 'inward';
+
 export interface RowGeometry {
   /** 0..1, fraction of card width hidden by next card. */
   overlap: number;
   /** Total degrees from first to last card. 0 = flat. */
   fanDegrees: number;
+  /**
+   * Curvature/bow orientation of the row arc.
+   *   'outward' — arc bows AWAY from felt center
+   *   'inward'  — arc bows TOWARD felt center
+   * 0° fanDegrees → no visible difference. Logical card order is
+   * never reversed; only the bow direction changes.
+   */
+  fanDirection: FanDirection;
 }
+
 
 export interface SecondaryGroupGeometry {
   visibility: 'hidden' | 'dimmed' | 'face-down';
@@ -75,13 +86,23 @@ export interface SecondaryGroupGeometry {
   grayscale: number; // 0..1
 }
 
+export type ShowdownAttachment = 'chip-centered' | 'inner-edge' | 'outer-edge';
+
 export interface OpponentShowdownPlacement {
-  attachment: 'chip-centered' | 'outer-edge';
+  /**
+   *   'chip-centered' — row centered on chip
+   *   'outer-edge'    — row extends AWAY from felt center
+   *                     (left seat → leftward, right seat → rightward)
+   *   'inner-edge'    — row extends TOWARD felt center
+   *                     (left seat → rightward, right seat → leftward)
+   */
+  attachment: ShowdownAttachment;
   /** % of canonical felt WIDTH. +X = inward toward felt center. */
   xPctOfFelt: number;
   /** % of canonical felt HEIGHT. +Y = downward. */
   yPctOfFelt: number;
 }
+
 
 export interface RoundGeometry {
   card: CardGeometry;
