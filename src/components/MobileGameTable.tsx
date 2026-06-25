@@ -97,6 +97,8 @@ import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 import { setPresessionGeometryPhase } from "@/lib/wartimeDebug/presessionGeometrySampler";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
+import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
+import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
@@ -1104,6 +1106,31 @@ export const MobileGameTable = ({
   // the shell's `slot` overlay layer (z=78, above seat clusters, below
   // ChipTransportRuntime z=80). See ShellOverlayMounts.
   const highCardOverlayPortal = useShellOverlayPortal('slot');
+
+  // ── P2: 3-5-7 opponent showdown row placement (felt-relative) ──────
+  // Resolved ONCE at the MGT level using shared canonical play geometry
+  // (single shared usePlayGeometry consumer — no new per-seat
+  // ResizeObserver) and the Geometry Lab v2 placement config. Pixel
+  // offsets are passed into CanonicalSeatCluster's opponent-showdown
+  // slot; per-card size / overlap / fan cannot affect them.
+  const _ttPlay = usePlayGeometry();
+  const _ttShowdownCfg = useThreeFiveSevenShowdownConfig();
+  const opponentShowdownPlacementPx = useMemo(() => {
+    const p = _ttShowdownCfg.opponentRowPlacement;
+    const w = _ttPlay.width || 0;
+    const h = _ttPlay.height || 0;
+    return {
+      attachment: p.attachment,
+      dxPx: (p.xPctOfPlayfield / 100) * w,
+      dyPx: (p.yPctOfPlayfield / 100) * h,
+    };
+  }, [
+    _ttShowdownCfg.opponentRowPlacement.attachment,
+    _ttShowdownCfg.opponentRowPlacement.xPctOfPlayfield,
+    _ttShowdownCfg.opponentRowPlacement.yPctOfPlayfield,
+    _ttPlay.width,
+    _ttPlay.height,
+  ]);
 
   // ── dealer_selection_diag: cards_visible / cleared ──
   // NOTE: this checkpoint is intentionally NOT fired from a prop-keyed
@@ -7244,6 +7271,7 @@ export const MobileGameTable = ({
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.357CanonicalSeat"
         playerId={player.id}
+        opponentShowdownPlacement={isShowdown ? opponentShowdownPlacementPx : undefined}
       >
         {cardsNode}
       </CanonicalSeatCluster>

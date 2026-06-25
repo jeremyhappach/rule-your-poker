@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { cloneElement, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { cn } from '@/lib/utils';
 import {
@@ -244,6 +244,32 @@ export interface CanonicalSeatClusterProps {
    * for every other consumer.
    */
   growUpwardAtBottom?: boolean;
+  /**
+   * Wave P2 — 3-5-7 opponent showdown row placement (felt-relative).
+   *
+   * When provided, the cluster owns the placement of `children` in
+   * its below-chip slot via a felt-relative anchor:
+   *
+   *   - attachment 'chip-centered' → translateX(-50%) self-anchor
+   *     (legacy baseline; visually identical when dxPx=dyPx=0).
+   *   - attachment 'outer-edge'    → translateX(0%) for left-side
+   *     opponents, translateX(-100%) for right-side opponents
+   *     (automatic mirroring, single placement object drives both).
+   *
+   *   dxPx / dyPx are RESOLVED PIXELS owned by the shell-level caller
+   *   (computed once at MGT from canonical play geometry — felt
+   *   width/height × xPctOfPlayfield / yPctOfPlayfield). Per-card
+   *   size / overlap / fan cannot alter them by construction.
+   *   The X sign is flipped here for right-side opponents so a single
+   *   positive dxPx moves both sides INWARD toward felt center.
+   *
+   * Defaults: undefined → identical legacy behavior.
+   */
+  opponentShowdownPlacement?: {
+    attachment: 'chip-centered' | 'outer-edge';
+    dxPx: number;
+    dyPx: number;
+  };
 }
 
 export function CanonicalSeatCluster({
@@ -273,6 +299,7 @@ export function CanonicalSeatCluster({
   chipPresentation = 'auto',
   namePlacement = 'above-chip',
   growUpwardAtBottom = false,
+  opponentShowdownPlacement,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
@@ -736,15 +763,52 @@ export function CanonicalSeatCluster({
         </div>
       )}
 
-      {belowChipNodes.length > 0 && (
-        <div
-          data-canonical-seat-below=""
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none"
-          style={transportSuppressed ? { visibility: 'hidden' } : undefined}
-        >
-          {belowChipNodes}
-        </div>
-      )}
+      {belowChipNodes.length > 0 && (() => {
+        // P2 — opponent showdown row placement.
+        // When `opponentShowdownPlacement` is provided, the cluster
+        // owns the below-chip wrapper's transform via a felt-relative
+        // anchor. The shell-level caller pre-resolved the % offsets
+        // to pixels using canonical play geometry, so per-card
+        // sizing/overlap/fan cannot alter row position.
+        //   self-anchor    : chip-centered ⇒ translateX(-50%)
+        //                    outer-edge L  ⇒ translateX(0%)
+        //                    outer-edge R  ⇒ translateX(-100%)
+        //   pixel offset   : translate(±dxPx, dyPx) — sign on X is
+        //                    flipped for right-side opponents so a
+        //                    single positive dxPx moves both sides
+        //                    INWARD toward felt center.
+        // Default (chip-centered, 0, 0) is byte-for-byte identical to
+        // the legacy `left-1/2 -translate-x-1/2 mt-[2px]` baseline.
+        let overrideStyle: CSSProperties | undefined;
+        if (opponentShowdownPlacement) {
+          const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
+          const selfX =
+            attachment === 'chip-centered'
+              ? '-50%'
+              : isRightSide
+              ? '-100%'
+              : '0%';
+          const signedDx = isRightSide ? -dxPx : dxPx;
+          overrideStyle = {
+            transform: `translate(${selfX}, 0) translate(${signedDx}px, ${dyPx}px)`,
+          };
+        }
+        const baseClass = opponentShowdownPlacement
+          ? 'absolute top-full left-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none'
+          : 'absolute top-full left-1/2 -translate-x-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none';
+        return (
+          <div
+            data-canonical-seat-below=""
+            className={baseClass}
+            style={{
+              ...(transportSuppressed ? { visibility: 'hidden' as const } : null),
+              ...(overrideStyle ?? null),
+            }}
+          >
+            {belowChipNodes}
+          </div>
+        );
+      })()}
     </div>
   );
 }
