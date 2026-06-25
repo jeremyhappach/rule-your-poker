@@ -97,6 +97,8 @@ import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 import { setPresessionGeometryPhase } from "@/lib/wartimeDebug/presessionGeometrySampler";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
+import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
+import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
