@@ -913,7 +913,11 @@ const Index = () => {
                 <ScrollArea className="h-full pr-4 overscroll-contain">
                   {user && (
                     <GeometryLabCrashBoundary>
-                      <GeometryLab userId={user.id} />
+                      <GeometryLabDraftProvider>
+                        <GeometryLabModalChrome>
+                          <GeometryLab userId={user.id} />
+                        </GeometryLabModalChrome>
+                      </GeometryLabDraftProvider>
                     </GeometryLabCrashBoundary>
                   )}
                 </ScrollArea>
