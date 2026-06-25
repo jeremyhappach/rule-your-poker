@@ -5348,6 +5348,48 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[AWAITING_NEXT_ROUND] 🔧 DEBUG MODE: Auto-proceed paused. Click "Proceed to Next Round" button manually.');
         return;
       }
+
+      // ── 3-5-7 Showdown Pause Harness gate ─────────────────────────
+      // Pauses AUTO_PROCEED scheduling for ONE qualifying real opponent-
+      // exposed showdown per dealer game. All conditions must hold:
+      //   - game_type === '3-5-7'
+      //   - selected harness maps current_round → {1,2,3}
+      //   - awaiting_next_round === true (outer if already enforces)
+      //   - classify357TransitionType === 'showdown' (the existing
+      //     real opponent-exposed showdown admission predicate —
+      //     excludes folds, pussy-tax, sweep, leg-win, tie, and any
+      //     stale prior-result state where last_round_result lacks
+      //     the |||WINNER:…  payload)
+      //   - this current_game_uuid has not already been paused
+      if (game?.game_type === '3-5-7') {
+        const harnessTargetRound: number | null =
+          harness357 === 'pause_r1_showdown' ? 1
+          : harness357 === 'pause_r2_showdown' ? 2
+          : harness357 === 'pause_r3_showdown' ? 3
+          : null;
+        const dealerGameKey = game?.current_game_uuid ?? null;
+        const transitionType357 = classify357TransitionType(game?.last_round_result);
+        const alreadyPausedThisGame =
+          !!dealerGameKey && harness357PausedGameRef.current === dealerGameKey;
+        if (
+          harnessTargetRound !== null
+          && currentRound === harnessTargetRound
+          && transitionType357 === 'showdown'
+          && !!dealerGameKey
+          && !alreadyPausedThisGame
+        ) {
+          harness357PausedGameRef.current = dealerGameKey;
+          console.log('[357_SHOWDOWN_PAUSE_HARNESS] 🛑 Pausing AUTO_PROCEED', {
+            harness: harness357,
+            round: currentRound,
+            dealerGameKey,
+            transitionType: transitionType357,
+          });
+          return;
+        }
+      }
+
+
       
       console.log('[AWAITING_NEXT_ROUND] Starting 4-second timer', {
         game_type: game?.game_type,
