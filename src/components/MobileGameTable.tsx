@@ -1750,6 +1750,21 @@ export const MobileGameTable = ({
     
     return () => clearInterval(interval);
   }, [threeFiveSevenWinPhase]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // 3-5-7 · Opponent Showdown Hold (Game Default harness)
+  // Snapshot-backed presentation hold over the live opponent exposed
+  // showdown surface. Geometry Lab remains live. CONTINUE HAND in the
+  // Action Pane releases. See useOpponentShowdownHold for the contract.
+  // ─────────────────────────────────────────────────────────────────
+  const __isThreeFiveSevenForHarness = __is357GameType(gameType);
+  const __debugHarnessId357 = useDebugHarness(__isThreeFiveSevenForHarness ? '3-5-7' : null);
+  const oppShowdownHold = useOpponentShowdownHold({
+    enabled: __isThreeFiveSevenForHarness && __debugHarnessId357 === 'opponent_showdown_hold',
+  });
+  const oppShowdownHoldSnapshot = oppShowdownHold.snapshot;
+  const oppShowdownHoldActive = oppShowdownHold.holdActive;
+
   
   // FIX: Keep pot hidden after Holm win animation until game resets
   // NEW APPROACH: Use a "pot hidden until next game" flag that's set when Holm win starts
