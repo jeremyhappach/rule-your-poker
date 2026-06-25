@@ -40,6 +40,12 @@ import {
   prevWaveCountFor357,
   totalAfterWaveFor357,
 } from "./ThreeFiveSevenDealOrchestrator";
+import { useDebugHarness } from "@/lib/debugHarness/useDebugHarness";
+import {
+  useOpponentShowdownHold,
+  type OpponentShowdownSeatSnapshot,
+} from "@/lib/threeFiveSeven/useOpponentShowdownHold";
+
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
