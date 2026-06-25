@@ -40,7 +40,6 @@ import {
   prevWaveCountFor357,
   totalAfterWaveFor357,
 } from "./ThreeFiveSevenDealOrchestrator";
-import { ThreeFiveSevenOpponentShowdownGapAdapter } from "@/lib/threeFiveSeven/ThreeFiveSevenOpponentShowdownGapAdapter";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
@@ -6844,23 +6843,7 @@ export const MobileGameTable = ({
     })();
 
 
-    const showdownPlayerHand = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
-      <PlayerHand
-        cards={cards}
-        isHidden={false}
-        highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
-        kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
-        hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
-        gameType={gameType}
-        currentRound={currentRound}
-        showSeparated={false}
-        tightOverlap={isHolmMultiPlayerShowdown}
-        unusedCardsBelow={false}
-        isRightSide={isRightSideSlot}
-        isBottomPosition={isBottomPosition}
-      />
-    ) : null;
-    const cardsNode = showdownPlayerHand ? (
+    const cardsNode = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
       <div
         className={cn(
           'flex scale-100 origin-top relative z-40',
@@ -6868,13 +6851,20 @@ export const MobileGameTable = ({
           showNameBelowCards && isUpperCorner && '-mb-2',
         )}
       >
-        {__is357GameType(gameType) ? (
-          <ThreeFiveSevenOpponentShowdownGapAdapter>
-            {showdownPlayerHand}
-          </ThreeFiveSevenOpponentShowdownGapAdapter>
-        ) : (
-          showdownPlayerHand
-        )}
+        <PlayerHand
+          cards={cards}
+          isHidden={false}
+          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
+          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
+          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+          gameType={gameType}
+          currentRound={currentRound}
+          showSeparated={false}
+          tightOverlap={isHolmMultiPlayerShowdown}
+          unusedCardsBelow={false}
+          isRightSide={isRightSideSlot}
+          isBottomPosition={isBottomPosition}
+        />
       </div>
     ) : (
       !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
