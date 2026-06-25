@@ -244,6 +244,32 @@ export interface CanonicalSeatClusterProps {
    * for every other consumer.
    */
   growUpwardAtBottom?: boolean;
+  /**
+   * Wave P2 — 3-5-7 opponent showdown row placement (felt-relative).
+   *
+   * When provided, the cluster owns the placement of `children` in
+   * its below-chip slot via a felt-relative anchor:
+   *
+   *   - attachment 'chip-centered' → translateX(-50%) self-anchor
+   *     (legacy baseline; visually identical when dxPx=dyPx=0).
+   *   - attachment 'outer-edge'    → translateX(0%) for left-side
+   *     opponents, translateX(-100%) for right-side opponents
+   *     (automatic mirroring, single placement object drives both).
+   *
+   *   dxPx / dyPx are RESOLVED PIXELS owned by the shell-level caller
+   *   (computed once at MGT from canonical play geometry — felt
+   *   width/height × xPctOfPlayfield / yPctOfPlayfield). Per-card
+   *   size / overlap / fan cannot alter them by construction.
+   *   The X sign is flipped here for right-side opponents so a single
+   *   positive dxPx moves both sides INWARD toward felt center.
+   *
+   * Defaults: undefined → identical legacy behavior.
+   */
+  opponentShowdownPlacement?: {
+    attachment: 'chip-centered' | 'outer-edge';
+    dxPx: number;
+    dyPx: number;
+  };
 }
 
 export function CanonicalSeatCluster({
