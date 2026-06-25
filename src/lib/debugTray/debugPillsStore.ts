@@ -81,6 +81,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'holmDealDbg', abbreviation: 'HOLM DEAL DBG', fullName: 'Holm Deal Debug', description: 'Holm canonical deal forensics: DealRuntime, hands/community/Chucky dispatch/settle, DOM visibility, and pre-settle render violations.' },
   { key: 'bucksOverlay', abbreviation: 'BUCKS', fullName: 'Bucks Overlay Forensics', description: 'BUCK\'S ON YOU overlay provenance: effect eval / show requested / latch set / overlay mounted / dismissed. Copy or download the dump.' },
   { key: 'communityExport', abbreviation: 'COMM EXPORT', fullName: 'Community Export', description: 'Holm community-card landing export pill (one-tap download of the retained wartime buffer slice).' },
+  { key: 'r1Snapback', abbreviation: 'R1 SNAPBACK', fullName: 'R1 Snapback Recording', description: 'Manual 3-5-7 R1 opponent showdown snapback recorder. Pill only appears while a marked R1 3-card row is mounted. ARM begins an 8-second bounded recording (MutationObserver + ResizeObserver + rAF) on the marked row and three card hosts; EXPORT downloads the captured stream as 357-r1-snapback-recording-<ts>.txt.' },
 
 ];
 
