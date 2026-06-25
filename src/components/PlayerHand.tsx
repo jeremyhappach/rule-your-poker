@@ -127,21 +127,31 @@ export const PlayerHand = ({
   
   // Determine wild rank for 3-5-7 games
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
-  // 3-5-7 showdown geometry — Geometry Lab v2 resolved values. Always
-  // call the hooks (rules of hooks); the resolved values are only
-  // consumed by the 3-5-7 showdown branches below, so non-357 PlayerHand
-  // renders remain behaviorally unchanged.
-  const showdownCfg = useThreeFiveSevenShowdownConfig();
-  const isSmBp = useIsSmBreakpoint();
-  const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
-  // OWNERSHIP BOUNDARY: ThreeFiveSevenShowdownRules apply ONLY to the
-  // opponent exposed-cards showdown render path. The local player's
-  // active/decision hand (rendered via MobileGameTable.activeSelfHand)
-  // must remain on legacy baseline geometry regardless of Lab edits.
+  // ─── 3-5-7 showdown geometry (v4) ────────────────────────────────────
+  // v4 is OPPONENT-EXPOSED-SHOWDOWN ONLY. Self/active pane and all
+  // non-opponent-showdown callers stay on the prior Tailwind/dyn
+  // baseline below — they never consume `v4Resolved`.
+  const showdownCfgV4 = useThreeFiveSevenShowdownConfig();
+  // feltVminPx is only consulted by `responsive` sizing mode; seed
+  // values use `fixed`, so 0 is safe. Responsive callers should pass
+  // the felt vmin via a future shell-resolved prop.
+  const v4Resolved = resolveShowdownRules(showdownCfgV4, 0);
+  // OWNERSHIP BOUNDARY: v4 applies ONLY to opponent-exposed showdown.
   const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
-  const effective357 = isOpponentExposedShowdown
-    ? resolved357
-    : resolveShowdownRules(LIVE_BASELINE, isSmBp);
+  const use357V4 = is357Game && isOpponentExposedShowdown;
+
+  // Self-pane legacy geometry (preserves prior behavior verbatim for
+  // active-player pane and other non-showdown callers).
+  const SELF_LEGACY = {
+    r1: { widthPx: 40, heightPx: 56, overlapPx: 4, fanStepDeg: 2 },
+    r2: { widthPx: 64, heightPx: 96, overlapPx: 8, fanStepDeg: 2 },
+    r3: { widthPx: 64, heightPx: 96, overlapPx: 8, fanStepDeg: 2 },
+    irrelevant: {
+      visible: true, dimmed: true, opacity: 0.6, scale: 0.75,
+      positionMode: 'auto' as 'auto' | 'above' | 'below',
+      interRowGapPx: 2, widthPx: 48, heightPx: 72, overlapPx: 6,
+    },
+  };
 
   // P2 NOTE: opponent-row placement has moved out of PlayerHand.
   // CanonicalSeatCluster now owns the showdown-row slot and applies
