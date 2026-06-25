@@ -1107,6 +1107,31 @@ export const MobileGameTable = ({
   // ChipTransportRuntime z=80). See ShellOverlayMounts.
   const highCardOverlayPortal = useShellOverlayPortal('slot');
 
+  // ── P2: 3-5-7 opponent showdown row placement (felt-relative) ──────
+  // Resolved ONCE at the MGT level using shared canonical play geometry
+  // (single shared usePlayGeometry consumer — no new per-seat
+  // ResizeObserver) and the Geometry Lab v2 placement config. Pixel
+  // offsets are passed into CanonicalSeatCluster's opponent-showdown
+  // slot; per-card size / overlap / fan cannot affect them.
+  const _ttPlay = usePlayGeometry();
+  const _ttShowdownCfg = useThreeFiveSevenShowdownConfig();
+  const opponentShowdownPlacementPx = useMemo(() => {
+    const p = _ttShowdownCfg.opponentRowPlacement;
+    const w = _ttPlay.width || 0;
+    const h = _ttPlay.height || 0;
+    return {
+      attachment: p.attachment,
+      dxPx: (p.xPctOfPlayfield / 100) * w,
+      dyPx: (p.yPctOfPlayfield / 100) * h,
+    };
+  }, [
+    _ttShowdownCfg.opponentRowPlacement.attachment,
+    _ttShowdownCfg.opponentRowPlacement.xPctOfPlayfield,
+    _ttShowdownCfg.opponentRowPlacement.yPctOfPlayfield,
+    _ttPlay.width,
+    _ttPlay.height,
+  ]);
+
   // ── dealer_selection_diag: cards_visible / cleared ──
   // NOTE: this checkpoint is intentionally NOT fired from a prop-keyed
   // effect here. Receiving props does not prove the cards reached the
