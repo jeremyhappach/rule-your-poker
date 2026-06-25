@@ -1762,7 +1762,7 @@ export const MobileGameTable = ({
   const oppShowdownHold = useOpponentShowdownHold({
     enabled: __isThreeFiveSevenForHarness && __debugHarnessId357 === 'opponent_showdown_hold',
     gameId: gameId ?? null,
-    dealerGameId: dealerGameId ?? null,
+    dealerGameId: (typeof horsesDealerGameId === 'string' ? horsesDealerGameId : null),
     isThreeFiveSevenFamily: __isThreeFiveSevenForHarness,
   });
   const oppShowdownHoldSnapshot = oppShowdownHold.snapshot;
