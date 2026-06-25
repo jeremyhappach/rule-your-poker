@@ -482,53 +482,44 @@ export const PlayerHand = ({
       ? Math.max(20, rawEffectiveHeight)
       : undefined;
 
-  // dyn357 resolver params. For R1 (3-cards) the Geometry Lab v2 config
-  // (`effective357.three.dyn`) drives the parameters. For non-R1 357 hands
-  // and non-357 callers, the original hardcoded params are preserved so
-  // baseline behavior is identical at default values.
-  const useLabDynForR1 = is357Game && currentRound === 1 && displayCardCount === 3 && effective357.three.dyn.enabled;
+  // dyn357 resolver: self/non-showdown only (clean-slate opponent path
+  // does not use the dynamic resolver — v4 sizes are intrinsic).
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
     availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
-    aspect: useLabDynForR1 ? effective357.three.dyn.aspect : 0.71,
-    minCardWidth: useLabDynForR1 ? effective357.three.dyn.minCardWidth : 28,
-    // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
-    // MobileGameTable, this caps the rendered card width at ~160–220 px.
-    maxCardWidth: useLabDynForR1 ? effective357.three.dyn.maxCardWidth : 80,
-    maxOverlapRatio: useLabDynForR1 ? effective357.three.dyn.maxOverlapRatio : 0.6,
+    aspect: 0.71,
+    minCardWidth: 28,
+    maxCardWidth: 80,
+    maxOverlapRatio: 0.6,
   });
   const isR1ThreeCardShowdown =
     is357Game && currentRound === 1 && displayCardCount === 3;
+  // Opponent v4 path disables dyn entirely.
   const useDynStyles =
-    is357Game && Boolean(dyn357) && (!isR1ThreeCardShowdown || useLabDynForR1);
+    is357Game && Boolean(dyn357) && !isR1ThreeCardShowdown && !use357V4;
   const dyn357Style: CSSProperties | null =
     useDynStyles && dyn357
-      ? {
-          width: `${dyn357.cardWidth}px`,
-          height: `${dyn357.cardHeight}px`,
-        }
+      ? { width: `${dyn357.cardWidth}px`, height: `${dyn357.cardHeight}px` }
       : null;
   const dyn357OverlapStyle: CSSProperties | null =
     useDynStyles && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
-  // Static 3-5-7 R1 size override (Lab-driven). Applied only when dyn is
-  // not active and we're in the R1 branch. At default Lab values this
-  // yields the same px footprint as the previous `w-10 h-16
-  // sm:w-11 sm:h-[4.25rem]` Tailwind tier.
+
+  // R1 (3-card) static sizing. Opponent → v4. Self → legacy.
+  const r1StaticSrc = is357Game && currentRound === 1 && displayCardCount === 3
+    ? (use357V4
+        ? { w: v4Resolved.r1.cardWidthPx, h: v4Resolved.r1.cardHeightPx, ovr: v4Resolved.r1.overlapPx }
+        : { w: SELF_LEGACY.r1.widthPx, h: SELF_LEGACY.r1.heightPx, ovr: SELF_LEGACY.r1.overlapPx })
+    : null;
   const static357R1Style: CSSProperties | null =
-    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
-      ? {
-          width: `${effective357.three.widthPx}px`,
-          height: `${effective357.three.heightPx}px`,
-        }
+    is357Game && !dynActive && r1StaticSrc
+      ? { width: `${r1StaticSrc.w}px`, height: `${r1StaticSrc.h}px` }
       : null;
   const static357R1OverlapPx: number | null =
-    is357Game && !dynActive && currentRound === 1 && displayCardCount === 3
-      ? effective357.three.overlapPx
-      : null;
+    is357Game && !dynActive && r1StaticSrc ? r1StaticSrc.ovr : null;
   const effectiveOverlapClass = dynActive
     ? 'first:ml-0'
     : static357R1OverlapPx !== null
@@ -553,6 +544,7 @@ export const PlayerHand = ({
     }
     return base;
   };
+
 
 
 
