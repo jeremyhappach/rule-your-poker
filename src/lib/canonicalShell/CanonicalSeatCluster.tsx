@@ -779,7 +779,7 @@ export function CanonicalSeatCluster({
         //                    INWARD toward felt center.
         // Default (chip-centered, 0, 0) is byte-for-byte identical to
         // the legacy `left-1/2 -translate-x-1/2 mt-[2px]` baseline.
-        let overrideStyle: React.CSSProperties | undefined;
+        let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
           const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
           const selfX =
