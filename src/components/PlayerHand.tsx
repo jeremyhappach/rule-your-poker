@@ -134,6 +134,14 @@ export const PlayerHand = ({
   const showdownCfg = useThreeFiveSevenShowdownConfig();
   const isSmBp = useIsSmBreakpoint();
   const resolved357 = resolveShowdownRules(showdownCfg, isSmBp);
+  // OWNERSHIP BOUNDARY: ThreeFiveSevenShowdownRules apply ONLY to the
+  // opponent exposed-cards showdown render path. The local player's
+  // active/decision hand (rendered via MobileGameTable.activeSelfHand)
+  // must remain on legacy baseline geometry regardless of Lab edits.
+  const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
+  const effective357 = isOpponentExposedShowdown
+    ? resolved357
+    : resolveShowdownRules(LIVE_BASELINE, isSmBp);
   const isHolmGame = gameType === 'holm-game';
 
   // Boundary guard applies to any canonical-deal game during DEALING.
