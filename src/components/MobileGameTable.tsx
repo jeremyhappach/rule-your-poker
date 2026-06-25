@@ -8456,7 +8456,7 @@ export const MobileGameTable = ({
         
         {/* Leg Earned Animation (3-5-7 only) */}
         <LegEarnedAnimation 
-          show={showLegEarned} 
+          show={showLegEarned && !oppShowdownHoldActive} 
           playerName={legEarnedPlayerName}
           legValue={legValue}
           targetPosition={(() => {
