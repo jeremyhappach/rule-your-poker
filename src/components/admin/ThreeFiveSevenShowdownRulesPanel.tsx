@@ -107,14 +107,11 @@ import {
 import {
   DEFAULT_SHOWDOWN_RULES,
   LIVE_BASELINE,
-  SHOWDOWN_RULES_STORAGE_KEY,
-  loadShowdownRules,
+  SHOWDOWN_RULES_DOMAIN_KEY,
   resolveShowdownRules,
-  saveShowdownRules,
   useIsSmBreakpoint,
   useThreeFiveSevenShowdownConfig,
   type AnchorConfig,
-  type AnchorKind,
   type CardSizePx,
   type DynResolverParams,
   type FanDegPerCard,
@@ -124,12 +121,11 @@ import {
   type RoundRowConfig,
   type ShowdownRulesState,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 
 
 // Re-export aliases retained to minimise churn in this file.
 const DEFAULT_STATE = DEFAULT_SHOWDOWN_RULES;
-const STORAGE_KEY = SHOWDOWN_RULES_STORAGE_KEY;
-const loadState = loadShowdownRules;
 
 
 // ─── UI primitives ────────────────────────────────────────────────────────
