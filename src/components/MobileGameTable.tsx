@@ -3494,6 +3494,100 @@ export const MobileGameTable = ({
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
     is357Round3MultiPlayerShowdown ||
     is357SecretRevealActive;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Opponent Showdown Hold — arming effect.
+  // Fires ONCE per harness session when the live 3-5-7 surface admits
+  // the opponent exposed showdown and at least one opponent has cards
+  // present. Builds a self-contained snapshot (cards + branch flags +
+  // chip/name/dealer/position) per opponent. Once armed, the hold is
+  // immune to authoritative-state changes — see hook for release rules.
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!__isThreeFiveSevenForHarness) return;
+    if (__debugHarnessId357 !== 'opponent_showdown_hold') return;
+    if (oppShowdownHoldActive) return;
+    if (!is357MultiPlayerShowdown) return;
+
+    const seats: Record<string, OpponentShowdownSeatSnapshot> = {};
+    for (const player of players) {
+      if (player.user_id === currentUserId) continue; // opponents only
+      const cards = getPlayerCards(player.id);
+      if (cards.length === 0) continue;
+      const exposed = isPlayerCardsExposed(player.id);
+      if (!exposed) continue;
+
+      const playerDecision = (allDecisionsIn ? player.current_decision : null) as
+        | 'stay'
+        | 'fold'
+        | null;
+      const isWinningLegReveal = winningLegPlayerId === player.id;
+      const isRound3MultiShowdown = is357Round3MultiPlayerShowdown;
+      const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay';
+      const branch: OpponentShowdownSeatSnapshot['showdownBranch'] = isWinningLegReveal
+        ? 'winningLeg'
+        : isRound3MultiShowdown
+          ? 'round3Multi'
+          : isSecretReveal
+            ? 'secretReveal'
+            : 'round3Multi';
+
+      // Replicate slot derivation (slot >= 3 ⇒ right side; 0/5/-1 ⇒ bottom).
+      // Slots aren't stable here without the seat map, so fall back to a
+      // position-based heuristic that matches the existing renderer's
+      // mirroring for typical 5/6-seat layouts.
+      const pos = player.position;
+      const isRightSide = pos >= 4;
+      const isBottomPosition = pos === 1;
+
+      const displayName = player.is_bot
+        ? (player.profiles?.username || `Bot ${pos}`)
+        : (player.profiles?.username || `P${pos}`);
+      const chipAmount =
+        lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+      const chipText = `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+      seats[player.id] = {
+        playerId: player.id,
+        position: pos,
+        displayName,
+        chipText,
+        isDealer: dealerPosition === pos,
+        isRightSide,
+        isBottomPosition,
+        cards: cards.slice(), // freeze reference
+        playerDecision,
+        currentRound: (currentRound ?? 0) as number,
+        displayCardCount: cards.length,
+        showSeparated: (currentRound === 3) && cards.length === 7 && !is357MultiPlayerShowdown,
+        unusedCardsBelow: is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3),
+        showdownBranch: branch,
+      };
+    }
+
+    if (Object.keys(seats).length === 0) return;
+
+    oppShowdownHold.arm({
+      capturedGameId: gameId ?? null,
+      capturedDealerGameId: (typeof horsesDealerGameId === 'string' ? horsesDealerGameId : null),
+      capturedHandContextId: handContextId ?? null,
+      capturedRound: (currentRound ?? 0) as number,
+      seatsByPlayerId: seats,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    __isThreeFiveSevenForHarness,
+    __debugHarnessId357,
+    oppShowdownHoldActive,
+    is357MultiPlayerShowdown,
+    is357Round3MultiPlayerShowdown,
+    is357SecretRevealActive,
+    winningLegPlayerId,
+    allDecisionsIn,
+    currentRound,
+    handContextId,
+  ]);
+
   
   // Clear showdown cache when:
   // 1. A new round number is detected (but NOT during game_over - keep cards visible for animations)
