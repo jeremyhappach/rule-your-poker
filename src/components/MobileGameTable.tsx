@@ -10763,7 +10763,19 @@ export const MobileGameTable = ({
                     isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
 
-                    {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
+                    {oppShowdownHoldActive ? (
+                      <Button
+                        size="default"
+                        onClick={() => oppShowdownHold.release()}
+                        className={cn(
+                          "bg-amber-500 hover:bg-amber-500/80 text-black font-bold",
+                          isTablet ? "w-[260px] text-lg h-14" : "w-[180px] text-sm h-9"
+                        )}
+                        data-harness="357-opponent-showdown-hold-continue"
+                      >
+                        CONTINUE HAND
+                      </Button>
+                    ) : currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                       <label className={cn(
                         "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
                         isTablet ? "px-6 py-3" : "px-4 py-2"
