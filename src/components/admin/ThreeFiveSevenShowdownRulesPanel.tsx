@@ -119,10 +119,12 @@ import {
   type DynResolverParams,
   type FanDegPerCard,
   type IrrelevantPairConfig,
+  type OpponentShowdownPlacement,
   type OverlapPx,
   type RoundRowConfig,
   type ShowdownRulesState,
 } from "@/lib/threeFiveSeven/showdownConfig";
+
 
 // Re-export aliases retained to minimise churn in this file.
 const DEFAULT_STATE = DEFAULT_SHOWDOWN_RULES;
