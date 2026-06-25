@@ -194,6 +194,7 @@ import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebug
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
+import { useDebugHarness } from "@/lib/debugHarness/useDebugHarness";
 
 
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -1913,6 +1914,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
   const [debugHolmPaused, setDebugHolmPaused] = useState(false); // TEMPORARILY DISABLED - set to true to re-enable
+
+  // ── 3-5-7 Showdown Pause Harness (Game Default) ──────────────────
+  // Reads the selected harness profile for 3-5-7. When set to
+  // 'pause_r{1,2,3}_showdown', the AUTO_PROCEED scheduling seam below
+  // refuses to schedule the 4s timer on the first real opponent-exposed
+  // showdown of the matching round in the current dealer game. No new
+  // timer, no override, no release path — awaiting_next_round stays
+  // true and the natural live tableau remains on screen.
+  const harness357 = useDebugHarness('3-5-7');
+  const harness357PausedGameRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Clear one-shot tracking on any of: dealer-game change, game change,
+    // harness selection change, game-type change away from 3-5-7. Unmount
+    // garbage-collects the ref naturally.
+    harness357PausedGameRef.current = null;
+  }, [game?.current_game_uuid, game?.game_type, harness357, gameId]);
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
