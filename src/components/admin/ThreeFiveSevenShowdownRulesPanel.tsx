@@ -114,7 +114,6 @@ import {
   resolveShowdownRules,
   saveShowdownRules,
   useIsSmBreakpoint,
-  useThreeFiveSevenR1OwnershipAudit,
   useThreeFiveSevenShowdownConfig,
   type AnchorConfig,
   type AnchorKind,
@@ -162,20 +161,17 @@ function NumInput({
   value,
   step = 1,
   min,
-  disabled,
   onChange,
 }: {
   value: number;
   step?: number;
   min?: number;
-  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   return (
     <Input
       type="number"
       step={step}
-      disabled={disabled}
       value={Number.isFinite(value) ? Number(value.toFixed(6)) : 0}
       onChange={(e) => {
         const n = Number(e.target.value);
@@ -214,11 +210,9 @@ function BoolSelect({
 
 function CardSizeControls({
   cfg,
-  disabled,
   onChange,
 }: {
   cfg: CardSizePx;
-  disabled?: boolean;
   onChange: (next: CardSizePx) => void;
 }) {
   const patch = (p: Partial<CardSizePx>) => onChange({ ...cfg, ...p });
@@ -227,11 +221,6 @@ function CardSizeControls({
       <p className="text-xs text-muted-foreground">
         Per-breakpoint px sizing. Mirrors Tailwind tiers like{" "}
         <code>w-8 h-12 sm:w-9 sm:h-14</code>.
-        {disabled && (
-          <span className="ml-1 italic">
-            Inactive — dynamic resolver is enabled.
-          </span>
-        )}
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -239,7 +228,6 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileWidthPx}
             min={1}
-            disabled={disabled}
             onChange={(v) => patch({ mobileWidthPx: v })}
           />
         </div>
@@ -248,7 +236,6 @@ function CardSizeControls({
           <NumInput
             value={cfg.mobileHeightPx}
             min={1}
-            disabled={disabled}
             onChange={(v) => patch({ mobileHeightPx: v })}
           />
         </div>
@@ -257,7 +244,6 @@ function CardSizeControls({
           <NumInput
             value={cfg.smWidthPx}
             min={1}
-            disabled={disabled}
             onChange={(v) => patch({ smWidthPx: v })}
           />
         </div>
@@ -266,7 +252,6 @@ function CardSizeControls({
           <NumInput
             value={cfg.smHeightPx}
             min={1}
-            disabled={disabled}
             onChange={(v) => patch({ smHeightPx: v })}
           />
         </div>
@@ -277,11 +262,9 @@ function CardSizeControls({
 
 function OverlapControls({
   cfg,
-  disabled,
   onChange,
 }: {
   cfg: OverlapPx;
-  disabled?: boolean;
   onChange: (next: OverlapPx) => void;
 }) {
   const patch = (p: Partial<OverlapPx>) => onChange({ ...cfg, ...p });
@@ -292,13 +275,12 @@ function OverlapControls({
         <NumInput
           value={cfg.mobilePx}
           min={0}
-          disabled={disabled}
           onChange={(v) => patch({ mobilePx: v })}
         />
       </div>
       <div className="space-y-1">
         <Label>Overlap sm (px)</Label>
-        <NumInput value={cfg.smPx} min={0} disabled={disabled} onChange={(v) => patch({ smPx: v })} />
+        <NumInput value={cfg.smPx} min={0} onChange={(v) => patch({ smPx: v })} />
       </div>
     </div>
   );
@@ -404,15 +386,6 @@ function RoundRowControls({
   showDyn: boolean;
   onChange: (next: RoundRowConfig) => void;
 }) {
-  // R1 contract: dynamic resolver and explicit static px sizing are
-  // mutually exclusive. When dyn is enabled the static size/overlap
-  // inputs are inactive; editing any static value auto-disables dyn so
-  // the user's explicit values persist through mount/resize/showdown.
-  const dynActive = showDyn && cfg.dyn.enabled;
-  const disableDynIfActive = (next: RoundRowConfig): RoundRowConfig =>
-    showDyn && next.dyn.enabled
-      ? { ...next, dyn: { ...next.dyn, enabled: false } }
-      : next;
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -424,13 +397,11 @@ function RoundRowControls({
       </p>
       <CardSizeControls
         cfg={cfg.size}
-        disabled={dynActive}
-        onChange={(size) => onChange(disableDynIfActive({ ...cfg, size }))}
+        onChange={(size) => onChange({ ...cfg, size })}
       />
       <OverlapControls
         cfg={cfg.overlap}
-        disabled={dynActive}
-        onChange={(overlap) => onChange(disableDynIfActive({ ...cfg, overlap }))}
+        onChange={(overlap) => onChange({ ...cfg, overlap })}
       />
       <FanControls cfg={cfg.fan} onChange={(fan) => onChange({ ...cfg, fan })} />
       {showDyn && (
@@ -499,8 +470,15 @@ function IrrelevantPairControls({
             onChange={(v) => patch({ grayscalePct: v })}
           />
         </div>
+        <div className="space-y-1">
+          <Label>Inter-row gap (px)</Label>
+          <NumInput
+            value={cfg.interRowGapPx}
+            min={0}
+            onChange={(v) => patch({ interRowGapPx: v })}
+          />
+        </div>
       </div>
-
       <div className="space-y-1">
         <Label>Position mode</Label>
         <Select
@@ -642,7 +620,7 @@ function ParityAuditPanel() {
       { field: 'sevenIrrelevant.scale',          live: irr.scale,          lab: irrLab.scale },
       { field: 'sevenIrrelevant.opacity',        live: irr.opacity,        lab: irrLab.opacity },
       { field: 'sevenIrrelevant.grayscalePct',   live: irr.grayscalePct,   lab: irrLab.grayscalePct },
-      
+      { field: 'sevenIrrelevant.interRowGapPx',  live: irr.interRowGapPx,  lab: irrLab.interRowGapPx },
       { field: 'sevenIrrelevant.widthPx',        live: irr.widthPx,        lab: irrLab.widthPx },
       { field: 'sevenIrrelevant.heightPx',       live: irr.heightPx,       lab: irrLab.heightPx },
       { field: 'sevenIrrelevant.overlapPx',      live: irr.overlapPx,      lab: irrLab.overlapPx },
@@ -733,97 +711,6 @@ function ParityAuditPanel() {
   );
 }
 
-function R1RuntimeOwnershipAuditPanel() {
-  const audit = useThreeFiveSevenR1OwnershipAudit();
-  const [copied, setCopied] = useState(false);
-
-  const rows: { field: string; value: string | number | boolean | null }[] = audit
-    ? [
-        { field: 'is357Game', value: audit.is357Game },
-        { field: 'currentRound', value: audit.currentRound },
-        { field: 'displayCardCount', value: audit.displayCardCount },
-        { field: 'dyn.enabled from live Lab state', value: audit.dynEnabledFromLiveLabState },
-        { field: 'which size branch actually rendered', value: audit.renderedBranch },
-        { field: 'resolved width', value: audit.resolvedWidthPx },
-        { field: 'resolved height', value: audit.resolvedHeightPx },
-        { field: 'resolved overlap', value: audit.resolvedOverlapPx },
-        { field: 'resolved fan step', value: audit.resolvedFanStepDeg },
-        { field: 'parent clientWidth used by dyn resolver', value: audit.parentClientWidthUsedByDynPx },
-        ...Object.entries(audit.predicates).map(([field, value]) => ({
-          field: `predicate.${field}`,
-          value,
-        })),
-      ]
-    : [];
-
-  const buildReport = (): string => {
-    const lines: string[] = [];
-    lines.push('=== 3-5-7 Showdown Geometry — R1 Runtime Ownership Audit ===');
-    lines.push(`timestamp: ${new Date().toISOString()}`);
-    if (!audit) {
-      lines.push('status: no mounted R1 3-5-7 opponent-showdown PlayerHand audit yet');
-      return lines.join('\n');
-    }
-    lines.push(`audit timestamp: ${audit.timestamp}`);
-    lines.push(`instance: ${audit.instanceKey}`);
-    lines.push('');
-    rows.forEach((row) => {
-      lines.push(`${row.field}: ${String(row.value)}`);
-    });
-    return lines.join('\n');
-  };
-
-  const handleCopy = async () => {
-    const txt = buildReport();
-    try {
-      await navigator.clipboard.writeText(txt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      try { window.prompt('Copy R1 ownership audit:', txt); } catch { /* */ }
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Live in-memory readout from the currently mounted R1 opponent
-        PlayerHand path. It is never rendered on the game table.
-      </p>
-      <div>
-        <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
-          {copied ? 'COPIED ✓' : 'COPY R1 OWNERSHIP AUDIT'}
-        </Button>
-      </div>
-      {!audit ? (
-        <div className="rounded-md border p-2 text-xs text-muted-foreground">
-          No mounted R1 3-5-7 opponent-showdown PlayerHand audit yet.
-        </div>
-      ) : (
-        <div className="rounded-md border p-2 space-y-1">
-          <div className="font-semibold text-xs">{audit.instanceKey}</div>
-          <table className="w-full text-[11px] font-mono">
-            <thead>
-              <tr className="text-muted-foreground">
-                <th className="text-left font-normal">field</th>
-                <th className="text-left font-normal">resolved runtime value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.field}>
-                  <td>{r.field}</td>
-                  <td>{String(r.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Panel ────────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
@@ -892,10 +779,6 @@ export function ThreeFiveSevenShowdownRulesPanel() {
 
         <CollapsibleSection title="Parity Audit (LIVE vs LAB)">
           <ParityAuditPanel />
-        </CollapsibleSection>
-
-        <CollapsibleSection title="R1 Runtime Ownership Audit">
-          <R1RuntimeOwnershipAuditPanel />
         </CollapsibleSection>
       </CollapsibleSection>
     </div>
