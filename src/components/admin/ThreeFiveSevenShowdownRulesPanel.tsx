@@ -222,13 +222,12 @@ function PlacementControls({
       <p className="text-xs text-muted-foreground">
         Anchors the entire opponent exposed showdown row (R1 / R2 / R3,
         as one unit) to the opponent's canonical chipstack center.
-        Attachment is the row's <em>outer</em> edge — outer-left for
-        left-side opponents, outer-right for right-side opponents — so a
-        single (X, Y) drives both sides; mirroring is automatic.
-        Percentages are normalized to the row's own width/height
-        (seat-relative; not viewport, not arbitrary parent pixels).
-        Defaults (X=50, Y=0) are calibrated to the legacy centered
-        baseline — visual parity at defaults.
+        Offsets are normalized to the canonical PLAYFIELD (felt)
+        width/height — they are resolved to pixels at the shell
+        boundary, so changing card width / height / overlap / fan can
+        NEVER alter where the row attaches. Mirroring is automatic:
+        positive X moves both opponents INWARD toward felt center.
+        Default (chip-centered, 0, 0) matches the legacy baseline.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -237,22 +236,35 @@ function PlacementControls({
         </div>
         <div className="space-y-1">
           <Label>Row attachment</Label>
-          <Input value="Outer edge (auto-mirrored L/R)" readOnly disabled />
+          <Select
+            value={cfg.attachment}
+            onValueChange={(v) =>
+              patch({ attachment: v as OpponentShowdownPlacement['attachment'] })
+            }
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chip-centered">chip-centered (parity)</SelectItem>
+              <SelectItem value="outer-edge">outer-edge (auto-mirrored L/R)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1">
-          <Label>X offset (% of row width, inward+)</Label>
+          <Label>X offset (% of felt width, inward+)</Label>
           <NumInput
-            value={cfg.xPct}
+            value={cfg.xPctOfPlayfield}
             step={1}
-            onChange={(v) => patch({ xPct: v })}
+            onChange={(v) => patch({ xPctOfPlayfield: v })}
           />
         </div>
         <div className="space-y-1">
-          <Label>Y offset (% of row height, down+)</Label>
+          <Label>Y offset (% of felt height, down+)</Label>
           <NumInput
-            value={cfg.yPct}
+            value={cfg.yPctOfPlayfield}
             step={1}
-            onChange={(v) => patch({ yPct: v })}
+            onChange={(v) => patch({ yPctOfPlayfield: v })}
           />
         </div>
       </div>
