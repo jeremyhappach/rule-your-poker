@@ -265,6 +265,7 @@ function sanitizeShowdownRules(raw: unknown): ShowdownRulesState {
 import {
   registerDomain,
   useDomainSnapshot,
+  getSnapshot,
 } from '@/lib/geometryLab/defaultsRegistry';
 
 registerDomain<ShowdownRulesState>({
@@ -281,12 +282,7 @@ registerDomain<ShowdownRulesState>({
  */
 export function loadShowdownRules(): ShowdownRulesState {
   try {
-    return sanitizeShowdownRules(
-      // Late import to avoid a circular load with the registry above.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (require('@/lib/geometryLab/defaultsRegistry') as typeof import('@/lib/geometryLab/defaultsRegistry'))
-        .getSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY),
-    );
+    return getSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
   } catch {
     return DEFAULT_SHOWDOWN_RULES;
   }
