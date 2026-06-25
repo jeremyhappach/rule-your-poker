@@ -1,267 +1,257 @@
 /**
- * 3-5-7 Showdown Geometry — runtime resolver.
+ * 3-5-7 Showdown Geometry — v4 (clean-slate, opponent-exposed only).
  *
- * Single source of truth for the Geometry Lab v2 "Opponent Exposed
- * Cards" configuration. Both the admin panel (editor) and the live
- * 3-5-7 showdown renderer (PlayerHand) read from here so that:
+ * Three orthogonal coordinate groups. No legacy bridge, no parity
+ * guarantee with prior versions, no breakpoint table, no dynamic
+ * resolver, no per-breakpoint px tiers.
  *
- *   - At default values, the resolved geometry equals the previous
- *     hardcoded constants pixel-for-pixel (baseline parity).
- *   - Edits made in the Lab propagate to the renderer at runtime
- *     (storage event + custom event for same-tab updates).
- *   - The parity panel in the Lab can compare the frozen LIVE_BASELINE
- *     against the currently-resolved Lab values.
+ *   1. CARD GEOMETRY (intrinsic)
+ *      - Mutually exclusive sizing modes:
+ *          fixed       → cardWidthPx (intrinsic px),    height = w * aspectRatio
+ *          responsive  → cardWidthPctOfFeltVmin,         height = w * aspectRatio
  *
- * This module is consumed ONLY by the 3-5-7 opponent showdown render
- * path. PlayerHand's non-3-5-7 branches are not touched.
+ *   2. ROW GEOMETRY (intra-row)
+ *      - overlap     : 0..1, fraction of one card width hidden by the
+ *                      next card (e.g. 0.35 = 35% covered).
+ *      - fanDegrees  : TOTAL rotation spread from first to last
+ *                      main-row card (0° = flat row). Per-card step is
+ *                      `fanDegrees / max(1, n - 1)`.
+ *
+ *   3. SEAT/FELT PLACEMENT (extrinsic, shared across R1/R2/R3)
+ *      - attachment  : 'chip-centered' | 'outer-edge' (auto-mirrored L/R)
+ *      - xPctOfFelt  : signed %, +X = INWARD toward felt center (sign
+ *                      flipped per side internally by the seat cluster).
+ *      - yPctOfFelt  : signed %, +Y = downward (both sides).
+ *
+ *   R3-only SECONDARY GROUP — for the two non-scoring R3 cards.
+ *      - visibility       : 'hidden' | 'dimmed' | 'face-down'
+ *      - placement        : 'above' | 'below' | 'left' | 'right'
+ *      - offsetPrimaryPct : along placement axis, % of main-row extent
+ *      - offsetCrossPct   : perpendicular drift, % of main-row extent
+ *      - scale / opacity / grayscale
+ *
+ *      Card-reveal/face state remains AUTHORITATIVELY GAME-RULE-OWNED.
+ *      `secondary.visibility = 'face-down'` only restyles cards already
+ *      classified by game rules as the R3 irrelevant secondary group.
+ *
+ * Scope: This module is consumed ONLY by the 3-5-7 opponent-exposed
+ * showdown render path. PlayerHand's self/active and non-3-5-7
+ * branches do not read v4 — they keep their legacy Tailwind/static
+ * behavior.
  */
-
-import { useEffect, useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
-export type AnchorKind = 'belowChip';
+export type SizingMode = 'fixed' | 'responsive';
 
-export interface CardSizePx {
-  mobileWidthPx: number;
-  mobileHeightPx: number;
-  smWidthPx: number;
-  smHeightPx: number;
+export interface CardGeometryFixed {
+  mode: 'fixed';
+  cardWidthPx: number;
+  aspectRatio: number; // height = width * aspectRatio
+}
+export interface CardGeometryResponsive {
+  mode: 'responsive';
+  cardWidthPctOfFeltVmin: number;
+  aspectRatio: number;
+}
+export type CardGeometry = CardGeometryFixed | CardGeometryResponsive;
+
+export interface RowGeometry {
+  /** 0..1, fraction of card width hidden by next card. */
+  overlap: number;
+  /** Total degrees from first to last card. 0 = flat. */
+  fanDegrees: number;
 }
 
-export interface OverlapPx {
-  mobilePx: number;
-  smPx: number;
+export interface SecondaryGroupGeometry {
+  visibility: 'hidden' | 'dimmed' | 'face-down';
+  placement: 'above' | 'below' | 'left' | 'right';
+  /** Along placement axis, % of main-row extent. */
+  offsetPrimaryPct: number;
+  /** Perpendicular drift, % of main-row extent. */
+  offsetCrossPct: number;
+  scale: number;     // 0..N, relative to main-card size
+  opacity: number;   // 0..1
+  grayscale: number; // 0..1
 }
 
-export interface FanDegPerCard {
-  stepDeg: number;
-}
-
-export interface DynResolverParams {
-  enabled: boolean;
-  aspect: number;
-  minCardWidth: number;
-  maxCardWidth: number;
-  maxOverlapRatio: number;
-  preferredOverlapRatio: number;
-}
-
-export interface RoundRowConfig {
-  size: CardSizePx;
-  overlap: OverlapPx;
-  fan: FanDegPerCard;
-  dyn: DynResolverParams;
-}
-
-export interface IrrelevantPairConfig {
-  visible: boolean;
-  dimmed: boolean;
-  scale: number;
-  opacity: number;
-  grayscalePct: number;
-  interRowGapPx: number;
-  size: CardSizePx;
-  overlap: OverlapPx;
-  positionMode: 'auto' | 'above' | 'below';
-}
-
-export interface AnchorConfig {
-  kind: AnchorKind;
-  belowChipGapPx: number;
-}
-
-/**
- * Opponent showdown row placement contract (P2 — felt-relative).
- *
- * Conceptual model
- * ----------------
- *   anchor      : the opponent's canonical chipstack center
- *                 (CanonicalSeatCluster chip cell).
- *   attachment  : how the row's own X self-anchor lines up with the
- *                 chip-center anchor.
- *                  - 'chip-centered' : translateX(-50%) — row centered
- *                                      horizontally over the chip
- *                                      (legacy parity baseline).
- *                  - 'outer-edge'    : translateX(0%) for left-side
- *                                      opponents (row outer-left edge
- *                                      at chip center) and
- *                                      translateX(-100%) for right-side
- *                                      opponents (row outer-right edge
- *                                      at chip center). Automatic
- *                                      mirroring — one setting, both
- *                                      sides.
- *   xPctOfPlayfield : horizontal offset as % of the canonical PLAYFIELD
- *                     (felt) width. Resolved to pixels at the shell
- *                     boundary via usePlayGeometry() — sizing of cards
- *                     / overlap / fan can NEVER alter this offset.
- *                     Positive = INWARD toward felt center (sign is
- *                     flipped at the seat for left/right opponents).
- *   yPctOfPlayfield : vertical offset as % of canonical PLAYFIELD
- *                     (felt) height. Positive = downward on both sides.
- *
- * Legacy-parity defaults
- * ----------------------
- *   attachment: 'chip-centered', xPctOfPlayfield: 0, yPctOfPlayfield: 0
- *   → exactly equivalent to the cluster's pre-existing
- *     `left-1/2 -translate-x-1/2 mt-[2px]` below-chip baseline.
- */
 export interface OpponentShowdownPlacement {
-  anchor: 'chipstack-center';
   attachment: 'chip-centered' | 'outer-edge';
-  /** Horizontal offset, % of canonical felt WIDTH. Positive = inward. */
-  xPctOfPlayfield: number;
-  /** Vertical offset, % of canonical felt HEIGHT. Positive = downward. */
-  yPctOfPlayfield: number;
+  /** % of canonical felt WIDTH. +X = inward toward felt center. */
+  xPctOfFelt: number;
+  /** % of canonical felt HEIGHT. +Y = downward. */
+  yPctOfFelt: number;
 }
 
+export interface RoundGeometry {
+  card: CardGeometry;
+  row: RowGeometry;
+}
+export interface RoundGeometryR3 extends RoundGeometry {
+  secondary: SecondaryGroupGeometry;
+}
 
 export interface ShowdownRulesState {
-  anchor: AnchorConfig;
-  /** P2 opponent-row placement adapter (shared across R1/R2/R3). */
-  opponentRowPlacement: OpponentShowdownPlacement;
-  three: RoundRowConfig;
-  five: RoundRowConfig;
-  seven: RoundRowConfig;
-  sevenIrrelevant: IrrelevantPairConfig;
+  placement: OpponentShowdownPlacement; // shared R1/R2/R3
+  rounds: {
+    r1: RoundGeometry;
+    r2: RoundGeometry;
+    r3: RoundGeometryR3;
+  };
 }
 
-/** Parity default — chip-centered, zero offset → identical to legacy. */
-const SEED_OPPONENT_ROW_PLACEMENT: OpponentShowdownPlacement = {
-  anchor: 'chipstack-center',
-  attachment: 'chip-centered',
-  xPctOfPlayfield: 0,
-  yPctOfPlayfield: 0,
-};
-
-
-
-// ─── Live baseline (frozen) ───────────────────────────────────────────────
-// Values verbatim from the pre-migration live renderer.
-//   PlayerHand.tsx:236 — R1 `w-10 h-16 sm:w-11 sm:h-[4.25rem]`
-//   PlayerHand.tsx:249 — R1 overlap `-ml-1`
-//   PlayerHand.tsx:597–637 — R2/R3 main `'lg'` = `w-8 h-12 sm:w-9 sm:h-14`,
-//     `-ml-3`, fan 2°/card.
-//   PlayerHand.tsx:598–614 — irrelevant pair `'sm'` = `w-6 h-9 sm:w-7 sm:h-10`,
-//     `-ml-2`, scale 0.85, opacity 0.4, isDimmed→grayscale 30%.
-//   PlayerHand.tsx:648 — `gap-0.5` = 2 px inter-row.
-//   PlayerHand.tsx:443–453 — dyn357 resolver params.
-//   CanonicalSeatCluster.tsx:742 — `mt-[2px]`.
-
-const SEED_THREE: RoundRowConfig = {
-  size: { mobileWidthPx: 40, mobileHeightPx: 64, smWidthPx: 44, smHeightPx: 68 },
-  overlap: { mobilePx: 4, smPx: 4 },
-  fan: { stepDeg: 2 },
-  dyn: {
-    enabled: true,
-    aspect: 0.71,
-    minCardWidth: 28,
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
-    preferredOverlapRatio: 0.18,
-  },
-};
-
-const SEED_FIVE_SEVEN_MAIN: RoundRowConfig = {
-  size: { mobileWidthPx: 32, mobileHeightPx: 48, smWidthPx: 36, smHeightPx: 56 },
-  overlap: { mobilePx: 12, smPx: 12 },
-  fan: { stepDeg: 2 },
-  dyn: {
-    enabled: false,
-    aspect: 0.71,
-    minCardWidth: 28,
-    maxCardWidth: 80,
-    maxOverlapRatio: 0.6,
-    preferredOverlapRatio: 0.18,
-  },
-};
-
-const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
-  visible: true,
-  dimmed: true,
-  scale: 0.85,
-  opacity: 0.4,
-  grayscalePct: 30,
-  interRowGapPx: 2,
-  size: { mobileWidthPx: 24, mobileHeightPx: 36, smWidthPx: 28, smHeightPx: 40 },
-  overlap: { mobilePx: 8, smPx: 8 },
-  positionMode: 'auto',
-};
+// ─── Seeds (rough; tuned in pause harness) ────────────────────────────────
 
 export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
-  anchor: { kind: 'belowChip', belowChipGapPx: 2 },
-  opponentRowPlacement: { ...SEED_OPPONENT_ROW_PLACEMENT },
-  three: SEED_THREE,
-  five: { ...SEED_FIVE_SEVEN_MAIN },
-  seven: { ...SEED_FIVE_SEVEN_MAIN },
-  sevenIrrelevant: SEED_SEVEN_IRRELEVANT,
+  placement: { attachment: 'chip-centered', xPctOfFelt: 0, yPctOfFelt: 0 },
+  rounds: {
+    r1: {
+      card: { mode: 'fixed', cardWidthPx: 40, aspectRatio: 1.4 },
+      row: { overlap: 0.35, fanDegrees: 0 },
+    },
+    r2: {
+      card: { mode: 'fixed', cardWidthPx: 44, aspectRatio: 1.4 },
+      row: { overlap: 0.35, fanDegrees: 0 },
+    },
+    r3: {
+      card: { mode: 'fixed', cardWidthPx: 48, aspectRatio: 1.4 },
+      row: { overlap: 0.35, fanDegrees: 0 },
+      secondary: {
+        visibility: 'dimmed',
+        placement: 'below',
+        offsetPrimaryPct: 10,
+        offsetCrossPct: 0,
+        scale: 0.75,
+        opacity: 0.6,
+        grayscale: 0.4,
+      },
+    },
+  },
 };
 
-
-/** Deep-frozen snapshot of the pre-migration live constants. */
-export const LIVE_BASELINE: ShowdownRulesState = deepFreeze(
-  JSON.parse(JSON.stringify(DEFAULT_SHOWDOWN_RULES)),
-);
-
-function deepFreeze<T>(o: T): T {
-  if (o && typeof o === 'object') {
-    Object.values(o as Record<string, unknown>).forEach((v) => deepFreeze(v));
-    Object.freeze(o);
-  }
-  return o;
-}
-
-// ─── Persistence ──────────────────────────────────────────────────────────
-//
-// Phase 1 migration: this domain is now a consumer of the shared Geometry
-// Lab defaults registry (`public.system_settings`, key
-// `three_five_seven_showdown_rules`). The legacy localStorage key remains
-// referenced as a first-paint cache only — it is never the runtime
-// authority once the shared substrate has loaded. Writes go through
-// `GeometryLabDraftProvider.applyAll()`, not through any function here.
+// ─── Persistence keys ─────────────────────────────────────────────────────
 
 export const SHOWDOWN_RULES_STORAGE_KEY =
-  'geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v3';
-
+  'geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v4';
 export const SHOWDOWN_RULES_DOMAIN_KEY = 'three_five_seven_showdown_rules';
 
-function mergeRow(base: RoundRowConfig, raw: unknown): RoundRowConfig {
-  const r = (raw ?? {}) as Partial<RoundRowConfig>;
+// ─── Sanitize ─────────────────────────────────────────────────────────────
+
+function sanitizeCard(raw: unknown, fallback: CardGeometry): CardGeometry {
+  const r = (raw ?? {}) as Partial<CardGeometryFixed & CardGeometryResponsive>;
+  const aspectRatio =
+    typeof r.aspectRatio === 'number' && r.aspectRatio > 0
+      ? r.aspectRatio
+      : fallback.aspectRatio;
+  if (r.mode === 'responsive') {
+    return {
+      mode: 'responsive',
+      cardWidthPctOfFeltVmin:
+        typeof r.cardWidthPctOfFeltVmin === 'number'
+          ? r.cardWidthPctOfFeltVmin
+          : fallback.mode === 'responsive'
+          ? fallback.cardWidthPctOfFeltVmin
+          : 14,
+      aspectRatio,
+    };
+  }
   return {
-    size: { ...base.size, ...(r.size ?? {}) },
-    overlap: { ...base.overlap, ...(r.overlap ?? {}) },
-    fan: { ...base.fan, ...(r.fan ?? {}) },
-    dyn: { ...base.dyn, ...(r.dyn ?? {}) },
+    mode: 'fixed',
+    cardWidthPx:
+      typeof r.cardWidthPx === 'number' && r.cardWidthPx > 0
+        ? r.cardWidthPx
+        : fallback.mode === 'fixed'
+        ? fallback.cardWidthPx
+        : 40,
+    aspectRatio,
+  };
+}
+
+function sanitizeRow(raw: unknown, fallback: RowGeometry): RowGeometry {
+  const r = (raw ?? {}) as Partial<RowGeometry>;
+  return {
+    overlap: typeof r.overlap === 'number' ? r.overlap : fallback.overlap,
+    fanDegrees:
+      typeof r.fanDegrees === 'number' ? r.fanDegrees : fallback.fanDegrees,
+  };
+}
+
+function sanitizeRound(raw: unknown, fallback: RoundGeometry): RoundGeometry {
+  const r = (raw ?? {}) as Partial<RoundGeometry>;
+  return {
+    card: sanitizeCard(r.card, fallback.card),
+    row: sanitizeRow(r.row, fallback.row),
+  };
+}
+
+function sanitizeSecondary(
+  raw: unknown,
+  fallback: SecondaryGroupGeometry,
+): SecondaryGroupGeometry {
+  const r = (raw ?? {}) as Partial<SecondaryGroupGeometry>;
+  const vis = r.visibility;
+  const pl = r.placement;
+  return {
+    visibility:
+      vis === 'hidden' || vis === 'dimmed' || vis === 'face-down'
+        ? vis
+        : fallback.visibility,
+    placement:
+      pl === 'above' || pl === 'below' || pl === 'left' || pl === 'right'
+        ? pl
+        : fallback.placement,
+    offsetPrimaryPct:
+      typeof r.offsetPrimaryPct === 'number'
+        ? r.offsetPrimaryPct
+        : fallback.offsetPrimaryPct,
+    offsetCrossPct:
+      typeof r.offsetCrossPct === 'number'
+        ? r.offsetCrossPct
+        : fallback.offsetCrossPct,
+    scale: typeof r.scale === 'number' && r.scale > 0 ? r.scale : fallback.scale,
+    opacity:
+      typeof r.opacity === 'number' ? r.opacity : fallback.opacity,
+    grayscale:
+      typeof r.grayscale === 'number' ? r.grayscale : fallback.grayscale,
+  };
+}
+
+function sanitizePlacement(
+  raw: unknown,
+  fallback: OpponentShowdownPlacement,
+): OpponentShowdownPlacement {
+  const r = (raw ?? {}) as Partial<OpponentShowdownPlacement>;
+  return {
+    attachment:
+      r.attachment === 'outer-edge' || r.attachment === 'chip-centered'
+        ? r.attachment
+        : fallback.attachment,
+    xPctOfFelt:
+      typeof r.xPctOfFelt === 'number' ? r.xPctOfFelt : fallback.xPctOfFelt,
+    yPctOfFelt:
+      typeof r.yPctOfFelt === 'number' ? r.yPctOfFelt : fallback.yPctOfFelt,
   };
 }
 
 function sanitizeShowdownRules(raw: unknown): ShowdownRulesState {
   const parsed = (raw ?? {}) as Partial<ShowdownRulesState>;
+  const fb = DEFAULT_SHOWDOWN_RULES;
+  const r3Raw = (parsed.rounds?.r3 ?? {}) as Partial<RoundGeometryR3>;
   return {
-    anchor: { ...DEFAULT_SHOWDOWN_RULES.anchor, ...(parsed.anchor ?? {}) },
-    opponentRowPlacement: {
-      ...DEFAULT_SHOWDOWN_RULES.opponentRowPlacement,
-      ...(parsed.opponentRowPlacement ?? {}),
-    },
-    three: mergeRow(DEFAULT_SHOWDOWN_RULES.three, parsed.three),
-    five: mergeRow(DEFAULT_SHOWDOWN_RULES.five, parsed.five),
-    seven: mergeRow(DEFAULT_SHOWDOWN_RULES.seven, parsed.seven),
-    sevenIrrelevant: {
-      ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant,
-      ...(parsed.sevenIrrelevant ?? {}),
-      size: {
-        ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.size,
-        ...((parsed.sevenIrrelevant ?? {}).size ?? {}),
-      },
-      overlap: {
-        ...DEFAULT_SHOWDOWN_RULES.sevenIrrelevant.overlap,
-        ...((parsed.sevenIrrelevant ?? {}).overlap ?? {}),
+    placement: sanitizePlacement(parsed.placement, fb.placement),
+    rounds: {
+      r1: sanitizeRound(parsed.rounds?.r1, fb.rounds.r1),
+      r2: sanitizeRound(parsed.rounds?.r2, fb.rounds.r2),
+      r3: {
+        ...sanitizeRound(r3Raw, fb.rounds.r3),
+        secondary: sanitizeSecondary(r3Raw.secondary, fb.rounds.r3.secondary),
       },
     },
   };
 }
 
-// Register the domain exactly once at module load.
+// ─── Registry hookup ──────────────────────────────────────────────────────
+
 import {
   registerDomain,
   useDomainSnapshot,
@@ -275,11 +265,6 @@ registerDomain<ShowdownRulesState>({
   firstPaintCacheKey: SHOWDOWN_RULES_STORAGE_KEY,
 });
 
-/**
- * Back-compat read: returns the registry's current snapshot. The Geometry
- * Lab modal no longer calls this for editing — drafts come from the
- * draft provider. Kept for diagnostics / non-editing callers.
- */
 export function loadShowdownRules(): ShowdownRulesState {
   try {
     return getSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
@@ -288,11 +273,7 @@ export function loadShowdownRules(): ShowdownRulesState {
   }
 }
 
-/**
- * @deprecated Writes now go through GeometryLabDraftProvider.applyAll().
- * Kept as a no-op so any straggling caller fails loudly in dev rather
- * than silently writing per-device state.
- */
+/** @deprecated writes go through GeometryLabDraftProvider.applyAll(). */
 export function saveShowdownRules(_state: ShowdownRulesState): void {
   // eslint-disable-next-line no-console
   console.warn(
@@ -300,108 +281,128 @@ export function saveShowdownRules(_state: ShowdownRulesState): void {
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────
-
 export function useThreeFiveSevenShowdownConfig(): ShowdownRulesState {
   return useDomainSnapshot<ShowdownRulesState>(SHOWDOWN_RULES_DOMAIN_KEY);
 }
 
-// ─── Breakpoint helper ────────────────────────────────────────────────────
-// Tailwind `sm` breakpoint = 640 px (default theme).
+// ─── Resolution ───────────────────────────────────────────────────────────
 
-const SM_MIN_PX = 640;
-
-export function useIsSmBreakpoint(): boolean {
-  const [isSm, setIsSm] = useState<boolean>(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia(`(min-width: ${SM_MIN_PX}px)`).matches;
-  });
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia(`(min-width: ${SM_MIN_PX}px)`);
-    const handler = () => setIsSm(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isSm;
-}
-
-// ─── Resolution (px values at active breakpoint) ──────────────────────────
-
-export interface ResolvedRoundRow {
-  widthPx: number;
-  heightPx: number;
+export interface ResolvedRound {
+  /** Pixel card width. */
+  cardWidthPx: number;
+  /** Pixel card height (= width * aspectRatio). */
+  cardHeightPx: number;
+  /** Pixel overlap (= overlap fraction * cardWidthPx). */
   overlapPx: number;
-  fanStepDeg: number;
-  dyn: DynResolverParams;
+  /** Total degrees spread first→last. Per-card step derived at render. */
+  fanDegrees: number;
 }
 
-export interface ResolvedIrrelevant {
-  visible: boolean;
-  dimmed: boolean;
+export interface ResolvedSecondary {
+  visibility: 'hidden' | 'dimmed' | 'face-down';
+  placement: 'above' | 'below' | 'left' | 'right';
+  offsetPrimaryPct: number;
+  offsetCrossPct: number;
   scale: number;
   opacity: number;
-  grayscalePct: number;
-  interRowGapPx: number;
-  widthPx: number;
-  heightPx: number;
+  grayscale: number;
+  /** Secondary card pixel dims (= main * scale). */
+  cardWidthPx: number;
+  cardHeightPx: number;
   overlapPx: number;
-  positionMode: 'auto' | 'above' | 'below';
 }
 
 export interface ResolvedShowdownRules {
-  anchor: { kind: AnchorKind; belowChipGapPx: number };
-  /** P1 opponent-row placement (breakpoint-independent, pass-through). */
-  opponentRowPlacement: OpponentShowdownPlacement;
-  three: ResolvedRoundRow;
-  five: ResolvedRoundRow;
-  seven: ResolvedRoundRow;
-  sevenIrrelevant: ResolvedIrrelevant;
-  /** 'mobile' | 'sm' — which breakpoint values were chosen. */
-  breakpoint: 'mobile' | 'sm';
+  placement: OpponentShowdownPlacement;
+  r1: ResolvedRound;
+  r2: ResolvedRound;
+  r3: ResolvedRound & { secondary: ResolvedSecondary };
 }
 
+function resolveCardPx(
+  card: CardGeometry,
+  feltVminPx: number,
+): { w: number; h: number } {
+  if (card.mode === 'fixed') {
+    const w = Math.max(1, card.cardWidthPx);
+    return { w, h: w * card.aspectRatio };
+  }
+  const w = Math.max(
+    1,
+    (card.cardWidthPctOfFeltVmin / 100) * Math.max(0, feltVminPx),
+  );
+  return { w, h: w * card.aspectRatio };
+}
 
-function resolveRow(cfg: RoundRowConfig, isSm: boolean): ResolvedRoundRow {
+function resolveRound(g: RoundGeometry, feltVminPx: number): ResolvedRound {
+  const { w, h } = resolveCardPx(g.card, feltVminPx);
   return {
-    widthPx: isSm ? cfg.size.smWidthPx : cfg.size.mobileWidthPx,
-    heightPx: isSm ? cfg.size.smHeightPx : cfg.size.mobileHeightPx,
-    overlapPx: isSm ? cfg.overlap.smPx : cfg.overlap.mobilePx,
-    fanStepDeg: cfg.fan.stepDeg,
-    dyn: cfg.dyn,
+    cardWidthPx: w,
+    cardHeightPx: h,
+    overlapPx: Math.max(0, g.row.overlap) * w,
+    fanDegrees: g.row.fanDegrees,
   };
 }
 
-function resolveIrrelevant(
-  cfg: IrrelevantPairConfig,
-  isSm: boolean,
-): ResolvedIrrelevant {
-  return {
-    visible: cfg.visible,
-    dimmed: cfg.dimmed,
-    scale: cfg.scale,
-    opacity: cfg.opacity,
-    grayscalePct: cfg.grayscalePct,
-    interRowGapPx: cfg.interRowGapPx,
-    widthPx: isSm ? cfg.size.smWidthPx : cfg.size.mobileWidthPx,
-    heightPx: isSm ? cfg.size.smHeightPx : cfg.size.mobileHeightPx,
-    overlapPx: isSm ? cfg.overlap.smPx : cfg.overlap.mobilePx,
-    positionMode: cfg.positionMode,
-  };
-}
-
+/**
+ * Resolve config → pixel-space values.
+ * `feltVminPx` = min(feltWidth, feltHeight) in CSS pixels — only used
+ * for `responsive` sizing mode. Pass 0 (or any value) when every round
+ * is in `fixed` mode; it will be ignored.
+ */
 export function resolveShowdownRules(
   state: ShowdownRulesState,
-  isSm: boolean,
+  feltVminPx: number,
 ): ResolvedShowdownRules {
-  return {
-    anchor: state.anchor,
-    opponentRowPlacement: state.opponentRowPlacement,
-
-    three: resolveRow(state.three, isSm),
-    five: resolveRow(state.five, isSm),
-    seven: resolveRow(state.seven, isSm),
-    sevenIrrelevant: resolveIrrelevant(state.sevenIrrelevant, isSm),
-    breakpoint: isSm ? 'sm' : 'mobile',
+  const r1 = resolveRound(state.rounds.r1, feltVminPx);
+  const r2 = resolveRound(state.rounds.r2, feltVminPx);
+  const r3Main = resolveRound(state.rounds.r3, feltVminPx);
+  const sec = state.rounds.r3.secondary;
+  const secondary: ResolvedSecondary = {
+    visibility: sec.visibility,
+    placement: sec.placement,
+    offsetPrimaryPct: sec.offsetPrimaryPct,
+    offsetCrossPct: sec.offsetCrossPct,
+    scale: sec.scale,
+    opacity: sec.opacity,
+    grayscale: sec.grayscale,
+    cardWidthPx: r3Main.cardWidthPx * sec.scale,
+    cardHeightPx: r3Main.cardHeightPx * sec.scale,
+    overlapPx: r3Main.overlapPx * sec.scale,
   };
+  return {
+    placement: state.placement,
+    r1,
+    r2,
+    r3: { ...r3Main, secondary },
+  };
+}
+
+/**
+ * Per-card rotation in degrees for a fanDegrees TOTAL spread across n
+ * cards. Card at index `i` (0-based). Centered at 0; first = -total/2.
+ */
+export function fanRotationDeg(
+  totalDegrees: number,
+  index: number,
+  count: number,
+): number {
+  if (count <= 1) return 0;
+  const step = totalDegrees / (count - 1);
+  return step * (index - (count - 1) / 2);
+}
+
+/**
+ * Visual extent of a flat row in pixels: width consumed by `n` cards
+ * with `overlapPx` between successive cards. Used as the basis for
+ * R3 secondary-group % offsets.
+ */
+export function rowExtentPx(
+  cardWidthPx: number,
+  overlapPx: number,
+  n: number,
+): number {
+  if (n <= 0) return 0;
+  if (n === 1) return cardWidthPx;
+  return cardWidthPx + (n - 1) * Math.max(0, cardWidthPx - overlapPx);
 }
