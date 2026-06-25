@@ -785,11 +785,13 @@ function ParityAuditPanel() {
 // ─── Panel ────────────────────────────────────────────────────────────────
 
 export function ThreeFiveSevenShowdownRulesPanel() {
-  const [state, setState] = useState<ShowdownRulesState>(() => loadState());
-
-  useEffect(() => {
-    saveShowdownRules(state);
-  }, [state]);
+  // Bind every control to the modal-wide draft. No per-control persistence,
+  // no per-panel Save button, no per-control side effects. The shared modal
+  // chrome owns Apply / Cancel / dirty surfacing.
+  const { value: state, setValue: setState, reset, dirty } = useDomainDraft<ShowdownRulesState>(
+    SHOWDOWN_RULES_DOMAIN_KEY,
+    DEFAULT_SHOWDOWN_RULES,
+  );
 
   const setRow =
     (key: "three" | "five" | "seven") => (next: RoundRowConfig) =>
@@ -797,16 +799,32 @@ export function ThreeFiveSevenShowdownRulesPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Controls exposed opponent cards during 3-5-7 showdown near the
-        opponent seat cluster. Schema mirrors the live renderer
-        (per-breakpoint px size, deg/card fan, dyn357 resolver for R1,
-        seat-derived irrelevant-pair stacking). Live rendering is wired
-        to these values via{" "}
-        <code>src/lib/threeFiveSeven/showdownConfig.ts</code>. The
-        Parity Audit section below should read MATCH on every row when
-        defaults are untouched.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs text-muted-foreground flex-1">
+          Controls exposed opponent cards during 3-5-7 showdown near the
+          opponent seat cluster. Edits here are draft-only — click
+          <strong> Apply Changes </strong>
+          in the modal footer to commit shared defaults; every connected
+          client updates live without refresh or redeal. Click
+          <strong> Cancel </strong>
+          (or close the modal) to discard.
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={reset}
+          title="Reset this section's draft to baseline. Still requires Apply."
+        >
+          Reset section
+        </Button>
+      </div>
+
+      {dirty ? (
+        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300">
+          Section has unsaved draft edits.
+        </div>
+      ) : null}
 
       <CollapsibleSection title="Anchor (shared)">
         <AnchorControls
