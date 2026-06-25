@@ -934,7 +934,18 @@ export const PlayerHand = ({
   const useV4FanR1 = isR1Three && use357V4;
   const defaultFanStep = isR1Three && !use357V4 ? SELF_LEGACY.r1.fanStepDeg : 2;
   const v4R1TotalFanDeg = useV4FanR1 ? v4Resolved.r1.fanDegrees : 0;
-  const v4R1FanSign = useV4FanR1 && v4Resolved.r1.fanDirection === 'inward' ? -1 : 1;
+  const v4R1FanDir = useV4FanR1 ? v4Resolved.r1.fanDirection : 'outward';
+  const v4R1FanSign = v4R1FanDir === 'inward' ? -1 : 1;
+  // Real-fan pivot for R1 opponent showdown. Pivot distance scales with
+  // resolved R1 card height. See main-row comment above for full math.
+  const v4R1UseArcFan = useV4FanR1 && v4R1TotalFanDeg !== 0;
+  const v4R1CardH = useV4FanR1 ? v4Resolved.r1.cardHeightPx : 0;
+  const v4R1PivotPx = v4R1CardH * 1.8;
+  const v4R1TransformOrigin = v4R1UseArcFan
+    ? (v4R1FanDir === 'inward'
+        ? `50% ${-v4R1PivotPx}px`
+        : `50% ${v4R1CardH + v4R1PivotPx}px`)
+    : undefined;
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
   return (
@@ -970,6 +981,7 @@ export const PlayerHand = ({
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
               transform: `rotate(${rotationDeg}deg)`,
+              ...(v4R1TransformOrigin ? { transformOrigin: v4R1TransformOrigin } : null),
             }, true, displayIndex)}
           />
         );
