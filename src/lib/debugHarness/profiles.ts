@@ -106,14 +106,6 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'Solo vs Chucky → winner = CHUCKY after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
     },
   ],
-  '3-5-7': [
-    NONE_HARNESS,
-    {
-      id: 'opponent_showdown_hold',
-      label: 'Opponent Showdown Hold',
-      description: 'Snapshot-backed presentation hold at the 3-5-7 opponent exposed showdown boundary. CONTINUE HAND releases.',
-    },
-  ],
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
