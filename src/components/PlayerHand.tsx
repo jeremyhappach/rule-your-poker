@@ -739,7 +739,7 @@ export const PlayerHand = ({
     return (
       <div
         className="flex flex-col"
-        style={{ gap: `${interRowGap}px`, ...(opponentPlacementStyle ?? {}) }}
+        style={{ gap: `${interRowGap}px` }}
         ref={is357Game ? measureRef : undefined}
       >
         {unusedAbove ? (
