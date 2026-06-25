@@ -119,10 +119,12 @@ import {
   type DynResolverParams,
   type FanDegPerCard,
   type IrrelevantPairConfig,
+  type OpponentShowdownPlacement,
   type OverlapPx,
   type RoundRowConfig,
   type ShowdownRulesState,
 } from "@/lib/threeFiveSeven/showdownConfig";
+
 
 // Re-export aliases retained to minimise churn in this file.
 const DEFAULT_STATE = DEFAULT_SHOWDOWN_RULES;
@@ -204,7 +206,60 @@ function BoolSelect({
   );
 }
 
-// ─── Row controls ─────────────────────────────────────────────────────────
+// ─── Placement controls (P1 opponent-row adapter) ─────────────────────────
+
+function PlacementControls({
+  cfg,
+  onChange,
+}: {
+  cfg: OpponentShowdownPlacement;
+  onChange: (next: OpponentShowdownPlacement) => void;
+}) {
+  const patch = (p: Partial<OpponentShowdownPlacement>) =>
+    onChange({ ...cfg, ...p });
+  return (
+    <div className="space-y-2 rounded-md border p-2">
+      <p className="text-xs text-muted-foreground">
+        Anchors the entire opponent exposed showdown row (R1 / R2 / R3,
+        as one unit) to the opponent's canonical chipstack center.
+        Attachment is the row's <em>outer</em> edge — outer-left for
+        left-side opponents, outer-right for right-side opponents — so a
+        single (X, Y) drives both sides; mirroring is automatic.
+        Percentages are normalized to the row's own width/height
+        (seat-relative; not viewport, not arbitrary parent pixels).
+        Defaults (X=50, Y=0) are calibrated to the legacy centered
+        baseline — visual parity at defaults.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label>Anchor</Label>
+          <Input value="Opponent chipstack center" readOnly disabled />
+        </div>
+        <div className="space-y-1">
+          <Label>Row attachment</Label>
+          <Input value="Outer edge (auto-mirrored L/R)" readOnly disabled />
+        </div>
+        <div className="space-y-1">
+          <Label>X offset (% of row width, inward+)</Label>
+          <NumInput
+            value={cfg.xPct}
+            step={1}
+            onChange={(v) => patch({ xPct: v })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Y offset (% of row height, down+)</Label>
+          <NumInput
+            value={cfg.yPct}
+            step={1}
+            onChange={(v) => patch({ yPct: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function CardSizeControls({
   cfg,
@@ -752,7 +807,19 @@ export function ThreeFiveSevenShowdownRulesPanel() {
         />
       </CollapsibleSection>
 
+      <CollapsibleSection title="Opponent Exposed Row">
+        <CollapsibleSection title="Placement">
+          <PlacementControls
+            cfg={state.opponentRowPlacement}
+            onChange={(opponentRowPlacement) =>
+              setState((s) => ({ ...s, opponentRowPlacement }))
+            }
+          />
+        </CollapsibleSection>
+      </CollapsibleSection>
+
       <CollapsibleSection title="Opponent Exposed Cards">
+
         <CollapsibleSection title="3-card round">
           <RoundRowControls
             cfg={state.three}

@@ -71,13 +71,68 @@ export interface AnchorConfig {
   belowChipGapPx: number;
 }
 
+/**
+ * Opponent showdown row placement contract (P1 adapter).
+ *
+ * Conceptual model
+ * ----------------
+ *   anchor      : the opponent's canonical chipstack center
+ *                 (`[data-chip-center="${position}"]`).
+ *   attachment  : the row's *outer* edge attaches to the anchor —
+ *                 outer-left for a left-side opponent, outer-right for a
+ *                 right-side opponent. The single placement object thus
+ *                 mirrors automatically: the implementation flips X sign
+ *                 based on `isRightSide`, never duplicating values.
+ *   xPct        : INWARD shift (toward the felt center), expressed as a
+ *                 percentage of the row's OWN measured width. This is a
+ *                 normalized seat-relative coordinate frame — independent
+ *                 of viewport pixels and of arbitrary DOM-parent pixels.
+ *   yPct        : Vertical shift, percentage of the row's OWN measured
+ *                 height. Positive = downward in screen space (same sign
+ *                 for both opponents — left/right mirroring is X-only).
+ *
+ * Legacy-parity defaults
+ * ----------------------
+ *   The live renderer places the showdown row centered on the chip
+ *   horizontally and 2 px below/above it vertically (the 2 px gap is
+ *   owned by CanonicalSeatCluster's [data-canonical-seat-below]
+ *   wrapper and is NOT replaced by this adapter — yPct extends from
+ *   that baseline).
+ *
+ *   With "outer-edge attached to chip center", a zero offset would
+ *   shift the row by half its own width outward from the current
+ *   centered position. To preserve visual parity at defaults we
+ *   therefore initialise xPct = 50 (= one half-width back to center)
+ *   and yPct = 0 (the 2 px baseline gap is preserved by the wrapper).
+ */
+export interface OpponentShowdownPlacement {
+  anchor: 'chipstack-center';
+  attachment: 'outer-edge';
+  /** Inward shift, % of row width. 50 = visually centered (parity). */
+  xPct: number;
+  /** Vertical shift, % of row height. 0 = parity baseline. */
+  yPct: number;
+}
+
+
 export interface ShowdownRulesState {
   anchor: AnchorConfig;
+  /** P1 opponent-row placement adapter (shared across R1/R2/R3). */
+  opponentRowPlacement: OpponentShowdownPlacement;
   three: RoundRowConfig;
   five: RoundRowConfig;
   seven: RoundRowConfig;
   sevenIrrelevant: IrrelevantPairConfig;
 }
+
+/** Defaults derived for visual parity with the legacy centered baseline. */
+const SEED_OPPONENT_ROW_PLACEMENT: OpponentShowdownPlacement = {
+  anchor: 'chipstack-center',
+  attachment: 'outer-edge',
+  xPct: 50, // inward by half-row-width → equals legacy centered position
+  yPct: 0,  // legacy 2 px baseline gap preserved by cluster wrapper
+};
+
 
 // ─── Live baseline (frozen) ───────────────────────────────────────────────
 // Values verbatim from the pre-migration live renderer.
@@ -133,11 +188,13 @@ const SEED_SEVEN_IRRELEVANT: IrrelevantPairConfig = {
 
 export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
   anchor: { kind: 'belowChip', belowChipGapPx: 2 },
+  opponentRowPlacement: { ...SEED_OPPONENT_ROW_PLACEMENT },
   three: SEED_THREE,
   five: { ...SEED_FIVE_SEVEN_MAIN },
   seven: { ...SEED_FIVE_SEVEN_MAIN },
   sevenIrrelevant: SEED_SEVEN_IRRELEVANT,
 };
+
 
 /** Deep-frozen snapshot of the pre-migration live constants. */
 export const LIVE_BASELINE: ShowdownRulesState = deepFreeze(
@@ -178,7 +235,12 @@ export function loadShowdownRules(): ShowdownRulesState {
     const parsed = JSON.parse(raw);
     return {
       anchor: { ...DEFAULT_SHOWDOWN_RULES.anchor, ...(parsed.anchor ?? {}) },
+      opponentRowPlacement: {
+        ...DEFAULT_SHOWDOWN_RULES.opponentRowPlacement,
+        ...(parsed.opponentRowPlacement ?? {}),
+      },
       three: mergeRow(DEFAULT_SHOWDOWN_RULES.three, parsed.three),
+
       five: mergeRow(DEFAULT_SHOWDOWN_RULES.five, parsed.five),
       seven: mergeRow(DEFAULT_SHOWDOWN_RULES.seven, parsed.seven),
       sevenIrrelevant: {
@@ -276,6 +338,8 @@ export interface ResolvedIrrelevant {
 
 export interface ResolvedShowdownRules {
   anchor: { kind: AnchorKind; belowChipGapPx: number };
+  /** P1 opponent-row placement (breakpoint-independent, pass-through). */
+  opponentRowPlacement: OpponentShowdownPlacement;
   three: ResolvedRoundRow;
   five: ResolvedRoundRow;
   seven: ResolvedRoundRow;
@@ -283,6 +347,7 @@ export interface ResolvedShowdownRules {
   /** 'mobile' | 'sm' — which breakpoint values were chosen. */
   breakpoint: 'mobile' | 'sm';
 }
+
 
 function resolveRow(cfg: RoundRowConfig, isSm: boolean): ResolvedRoundRow {
   return {
@@ -318,6 +383,8 @@ export function resolveShowdownRules(
 ): ResolvedShowdownRules {
   return {
     anchor: state.anchor,
+    opponentRowPlacement: state.opponentRowPlacement,
+
     three: resolveRow(state.three, isSm),
     five: resolveRow(state.five, isSm),
     seven: resolveRow(state.seven, isSm),
