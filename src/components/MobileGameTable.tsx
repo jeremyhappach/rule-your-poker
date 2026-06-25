@@ -8520,7 +8520,7 @@ export const MobileGameTable = ({
         />
         
         {/* 3-5-7 Legs To Player Animation (all legs fly to winner's chip stack) */}
-        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
+        {!oppShowdownHoldActive && gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
             legPositions={threeFiveSevenCachedLegPositions} // Use cached positions from parent
