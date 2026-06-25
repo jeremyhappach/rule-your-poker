@@ -214,7 +214,7 @@ function deepFreeze<T>(o: T): T {
 // ─── Persistence ──────────────────────────────────────────────────────────
 
 export const SHOWDOWN_RULES_STORAGE_KEY =
-  'geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v2';
+  'geometryLab.threeFiveSeven.showdownRules.opponentExposedCards.v3';
 
 /** Custom event for same-tab listeners (storage event only fires cross-tab). */
 const SHOWDOWN_RULES_UPDATE_EVENT = 'ptp:357showdownRules:updated';
