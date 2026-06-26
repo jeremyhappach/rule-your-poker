@@ -6952,6 +6952,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRoundNumber: gameData.current_round,
         currentHandNumber: gameData.total_hands,
       });
+      if (holmRound && isHolmTraceArmed()) {
+        const prior = latestAuthoritativeTurnRef.current;
+        const previousCurrentTurnPosition = prior?.roundId === holmRound.id
+          ? prior.currentTurnPosition
+          : null;
+        recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `fetchGameData turn=${previousCurrentTurnPosition ?? 'null'}→${holmRound.current_turn_position ?? 'null'}`,
+          buildHolmTurnAuthorityTraceDetail({
+            source: 'fetchGameData',
+            round: holmRound,
+            players: (playersData || []) as Player[],
+            previousCurrentTurnPosition,
+          }),
+        );
+      }
       const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
       if (snapshot) {
         const prevRoundId = holmSyncLastRoundIdRef.current;
