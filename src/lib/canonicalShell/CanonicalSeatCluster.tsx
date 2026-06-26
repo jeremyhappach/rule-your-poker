@@ -465,6 +465,45 @@ export function CanonicalSeatCluster({
     };
   }, [position, name, slot]);
 
+  // Live chip-disc radius measurement — used by the opponent-showdown
+  // row to pin to the *visible* chip rim (inner-edge / outer-edge)
+  // instead of assuming a fixed 20px half-width. Reads the actual
+  // [data-chip-center="${position}"] rect so future chip-disc sizing
+  // changes flow through automatically. Falls back to 20px until the
+  // first measurement lands.
+  const [chipRadiusPx, setChipRadiusPx] = useState<number>(20);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const measure = () => {
+      const chip = document.querySelector(
+        `[data-chip-center="${position}"]`,
+      ) as HTMLElement | null;
+      if (!chip) return;
+      const r = chip.getBoundingClientRect();
+      if (r.width > 0) {
+        const next = r.width / 2;
+        setChipRadiusPx((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+      }
+    };
+    measure();
+    if (typeof window === 'undefined') return;
+    let ro: ResizeObserver | null = null;
+    const chip = document.querySelector(
+      `[data-chip-center="${position}"]`,
+    ) as HTMLElement | null;
+    if (chip && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure);
+      ro.observe(chip);
+    }
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [position]);
+
 
   if (slot === null || slot === undefined) return null;
 
