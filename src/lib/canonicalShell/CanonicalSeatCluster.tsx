@@ -50,6 +50,7 @@ import {
 } from './canonicalSlotPlacement';
 import type { CanonicalSlot } from './seatAnchors';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
+import { resolveSideAwareRowAnchor } from './sideAwareRowAnchor';
 import { useChipTransportSuppressedSeats } from './ChipTransportProvider';
 import {
   getParticipantChipBgClass,
