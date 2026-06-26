@@ -6992,11 +6992,12 @@ export const MobileGameTable = ({
         dimChip={hasFolded}
         onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
         raisePosition={raise}
-        growUpwardAtBottom={isHolmMultiPlayerShowdown}
+        growUpwardAtBottom={false}
         allowSelfRender={allowSelfRenderForShowdown}
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.holmCanonicalSeat"
         playerId={player.id}
+        opponentShowdownPlacement={isShowdown ? holmShowdownPlacementPx : undefined}
       >
         {cardsNode}
         {nameBelowCardsNode}
