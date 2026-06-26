@@ -25,6 +25,7 @@ import { useHolmGameplayGeometry } from "@/lib/wave5GameplayGeometry/HolmGamepla
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { useShellFeltFrameElement } from "@/lib/canonicalShell/useShellFeltFrameElement";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+import { recordHolmTrace } from "@/lib/holm/holmTrace";
 
 export interface HolmAnchoredSlotProps {
   artifactId: string;
