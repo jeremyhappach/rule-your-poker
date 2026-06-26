@@ -349,8 +349,8 @@ export interface ResolvedRound {
   overlapPx: number;
   /** Total degrees spread first→last. Per-card step derived at render. */
   fanDegrees: number;
-  /** Bow orientation (consumed by PlayerHand to flip rotation sign). */
-  fanDirection: FanDirection;
+  /** Fan arch orientation (consumed by PlayerHand to flip rotation sign). */
+  fanArch: FanArch;
 }
 
 
