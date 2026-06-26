@@ -5133,19 +5133,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // HUMAN seat whenever current_turn_position transitioned through it,
           // mislabeling the attempt as "bot action" in the trace.
           const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
-          const authoritativePos = latestAuthoritativeTurnRef.current?.currentTurnPosition ?? currentRound?.current_turn_position ?? null;
+          const authSnap = latestAuthoritativeTurnRef.current;
+          const authoritativePos = authSnap?.currentTurnPosition ?? (isHolmGame ? null : currentRound?.current_turn_position ?? null);
+          const authorityEpochNow = authSnap?.epoch ?? authoritativeTurnEpochRef.current;
+          const authorityRoundIdNow = authSnap?.roundId ?? null;
           const actorIsBot = botActor?.is_bot === true;
           const authorityMatchesActor = botActor != null && authoritativePos === botActor.position;
           const decisionAlreadyLocked = !!(botActor && (botActor as any).decision_locked);
+          // P0: reject if authority has already advanced past the captured
+          // snapshot. Wait for the next holmAuthorityTick instead of spinning.
+          const epochDrifted = isHolmGame && (authorityEpochNow !== capturedAuthorityEpoch || authorityRoundIdNow !== capturedRoundId);
 
-          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked) {
-            console.log('[BOT TRIGGER] final-boundary guard rejected non-bot/out-of-turn/locked actor', {
+          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked || epochDrifted) {
+            console.log('[BOT TRIGGER] final-boundary guard rejected', {
               capturedTurnPosition,
+              capturedAuthorityEpoch,
               authoritativePos,
+              authorityEpochNow,
               actorPosition: botActor?.position ?? null,
               actorIsBot,
               authorityMatchesActor,
               decisionAlreadyLocked,
+              epochDrifted,
             });
             recordHolmDecisionSubmission({
               source: 'bot action',
@@ -5155,14 +5164,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               requestStatus: 'rejected',
               extra: {
                 capturedTurnPosition,
+                capturedAuthorityEpoch,
                 authoritativePos,
-                guardReason: !botActor
-                  ? 'no-actor-at-position'
-                  : !actorIsBot
-                    ? 'actor-not-bot'
-                    : !authorityMatchesActor
-                      ? 'authority-mismatch'
-                      : 'decision-already-locked',
+                authorityEpochNow,
+                guardReason: epochDrifted
+                  ? 'authority-epoch-drifted'
+                  : !botActor
+                    ? 'no-actor-at-position'
+                    : !actorIsBot
+                      ? 'actor-not-bot'
+                      : !authorityMatchesActor
+                        ? 'authority-mismatch'
+                        : 'decision-already-locked',
               },
             });
             return;
