@@ -234,3 +234,21 @@ export async function saveDealTiming(
 export async function resetDealTiming(): Promise<{ ok: true } | { ok: false; error: string }> {
   return saveDealTiming({ ...DEAL_TIMING_DEFAULTS });
 }
+
+// ── Geometry Lab modal-draft adapter ──────────────────────────
+// Registers Deal Timing as a draft domain so the modal-wide Apply
+// commits these values alongside every other registered domain.
+// Per-section Save/Reset buttons are forbidden by the modal-draft
+// contract; admins edit via the panel and commit via the footer.
+registerDomain<DealTimingConfig>({
+  key: DEAL_TIMING_KEY,
+  defaults: DEAL_TIMING_DEFAULTS,
+  sanitize,
+  onApply: (next) => {
+    // Mirror committed snapshot into the existing live store so all
+    // non-React readers (engine loops, transports, bots) see the new
+    // values immediately. The store's private realtime echo will
+    // arrive shortly with the same value; setCurrent is idempotent.
+    setCurrent(next, 'apply:modal-draft', true, new Date().toISOString());
+  },
+});
