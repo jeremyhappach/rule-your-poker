@@ -208,23 +208,24 @@ function RoundEditor({
             onChange={(n) => onChange({ ...value, row: { ...value.row, fanDegrees: n } })}
           />
         </Row>
-        <Row label="Fan direction">
+        <Row label="Fan arch">
           <Select
-            value={value.row.fanDirection}
+            value={value.row.fanArch}
             onValueChange={(v) =>
-              onChange({ ...value, row: { ...value.row, fanDirection: v as 'outward' | 'inward' } })
+              onChange({ ...value, row: { ...value.row, fanArch: v as 'outward' | 'inward' } })
             }
           >
             <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="outward">outward (bow away from felt)</SelectItem>
-              <SelectItem value="inward">inward (bow toward felt)</SelectItem>
+              <SelectItem value="outward">outward (arch away from felt)</SelectItem>
+              <SelectItem value="inward">inward (arch toward felt)</SelectItem>
             </SelectContent>
           </Select>
         </Row>
         <p className="text-[11px] text-muted-foreground leading-snug">
-          0° = flat row regardless of direction. Direction only changes
-          the curvature/bow orientation, not the card order.
+          Tilt/curvature only. Does NOT decide which card endpoint is
+          pinned or which direction the row extends — that is owned by
+          Attachment + Sprawl direction.
         </p>
       </div>
     </div>
