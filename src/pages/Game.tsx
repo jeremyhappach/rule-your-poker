@@ -1509,6 +1509,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // ─────────────────────────────────────────────────────────────────────
   const latestAuthoritativeTurnRef = useRef<{
     roundId: string | null;
+    handNumber: number | null;
     currentTurnPosition: number | null;
     epoch: number;
   } | null>(null);
@@ -3037,9 +3038,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
+                handNumber: (n && 'hand_number' in n) ? (n.hand_number ?? null) : null,
                 currentTurnPosition: (n && 'current_turn_position' in n) ? (n.current_turn_position ?? null) : null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -3069,9 +3072,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
+                handNumber: (n && 'hand_number' in n) ? (n.hand_number ?? null) : (latestAuthoritativeTurnRef.current?.roundId === n?.id ? latestAuthoritativeTurnRef.current?.handNumber ?? null : null),
                 currentTurnPosition: n?.current_turn_position ?? null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -5020,6 +5025,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Re-render-trigger for Holm deal-ready barrier flips so the bot
   // trigger effect re-evaluates the moment the deal completes.
   const [holmReadyTick, setHolmReadyTick] = useState(0);
+  // Increments on every authoritative turn-ref stamp (realtime INSERT/UPDATE
+  // + fetchGameData). Bot scheduler depends on THIS, not currentRound — that
+  // is the only way to keep actor selection and the final-boundary guard
+  // reading from the same authority source.
+  const [holmAuthorityTick, setHolmAuthorityTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
   useEffect(() => {
     if (safetyPollsDisabled) {
@@ -5069,29 +5079,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     if (game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id)) {
-      // For Holm games, only trigger if there's a valid turn position
-      // For other games, trigger on any undecided bot
-      if (isHolmGame && !currentRound?.current_turn_position) {
-        console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
-        return;
+      // ─────────────────────────────────────────────────────────────
+      // P0 single-snapshot rule: scheduler actor identity comes from
+      // latestAuthoritativeTurnRef for Holm — the same source the
+      // final-boundary guard validates against. Reading from
+      // currentRound here is what caused bot-N+1 to be scheduled while
+      // authority remained bot-N (the React snapshot is updated by the
+      // post-decision fetchGameData before realtime stamps the ref).
+      // For non-Holm games, retain the prior currentRound behavior.
+      // ─────────────────────────────────────────────────────────────
+      let capturedTurnPosition: number | null | undefined;
+      let capturedRoundId: string | null = null;
+      let capturedAuthorityEpoch: number = authoritativeTurnEpochRef.current;
+      if (isHolmGame) {
+        const auth = latestAuthoritativeTurnRef.current;
+        capturedTurnPosition = auth?.currentTurnPosition ?? null;
+        capturedRoundId = auth?.roundId ?? null;
+        capturedAuthorityEpoch = auth?.epoch ?? authoritativeTurnEpochRef.current;
+        if (!capturedTurnPosition) {
+          console.log('[BOT TRIGGER] Holm: no authoritative turn position yet, skipping');
+          return;
+        }
+        if (!isHolmHandReady(handContextKey)) {
+          console.log('[BOT TRIGGER] Holm deal not complete — barrier blocks bot decision', { handContextKey });
+          return;
+        }
+      } else {
+        capturedTurnPosition = currentRound?.current_turn_position;
+        capturedRoundId = currentRound?.id ?? null;
       }
 
-      // Canonical animation contract: bots may not act until the Holm
-      // initial deal (hands + community + chucky) has fully settled.
-      // DealRuntime marks the barrier when phase enters GAMEPLAY.
-      if (isHolmGame && !isHolmHandReady(handContextKey)) {
-        console.log('[BOT TRIGGER] Holm deal not complete — barrier blocks bot decision', { handContextKey });
-        return;
-      }
-      
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
-        current_turn: currentRound?.current_turn_position
+        captured_turn: capturedTurnPosition,
+        captured_round: capturedRoundId,
+        captured_epoch: capturedAuthorityEpoch,
+        source: isHolmGame ? 'authoritative-ref' : 'currentRound',
       });
-      
-      // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
-      const capturedTurnPosition = currentRound?.current_turn_position;
-      
+
       // Set processing flag
       botProcessingRef.current = true;
       
@@ -5108,19 +5133,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // HUMAN seat whenever current_turn_position transitioned through it,
           // mislabeling the attempt as "bot action" in the trace.
           const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
-          const authoritativePos = latestAuthoritativeTurnRef.current?.currentTurnPosition ?? currentRound?.current_turn_position ?? null;
+          const authSnap = latestAuthoritativeTurnRef.current;
+          const authoritativePos = authSnap?.currentTurnPosition ?? (isHolmGame ? null : currentRound?.current_turn_position ?? null);
+          const authorityEpochNow = authSnap?.epoch ?? authoritativeTurnEpochRef.current;
+          const authorityRoundIdNow = authSnap?.roundId ?? null;
           const actorIsBot = botActor?.is_bot === true;
           const authorityMatchesActor = botActor != null && authoritativePos === botActor.position;
           const decisionAlreadyLocked = !!(botActor && (botActor as any).decision_locked);
+          // P0: reject if authority has already advanced past the captured
+          // snapshot. Wait for the next holmAuthorityTick instead of spinning.
+          const epochDrifted = isHolmGame && (authorityEpochNow !== capturedAuthorityEpoch || authorityRoundIdNow !== capturedRoundId);
 
-          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked) {
-            console.log('[BOT TRIGGER] final-boundary guard rejected non-bot/out-of-turn/locked actor', {
+          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked || epochDrifted) {
+            console.log('[BOT TRIGGER] final-boundary guard rejected', {
               capturedTurnPosition,
+              capturedAuthorityEpoch,
               authoritativePos,
+              authorityEpochNow,
               actorPosition: botActor?.position ?? null,
               actorIsBot,
               authorityMatchesActor,
               decisionAlreadyLocked,
+              epochDrifted,
             });
             recordHolmDecisionSubmission({
               source: 'bot action',
@@ -5130,14 +5164,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               requestStatus: 'rejected',
               extra: {
                 capturedTurnPosition,
+                capturedAuthorityEpoch,
                 authoritativePos,
-                guardReason: !botActor
-                  ? 'no-actor-at-position'
-                  : !actorIsBot
-                    ? 'actor-not-bot'
-                    : !authorityMatchesActor
-                      ? 'authority-mismatch'
-                      : 'decision-already-locked',
+                authorityEpochNow,
+                guardReason: epochDrifted
+                  ? 'authority-epoch-drifted'
+                  : !botActor
+                    ? 'no-actor-at-position'
+                    : !actorIsBot
+                      ? 'actor-not-bot'
+                      : !authorityMatchesActor
+                        ? 'authority-mismatch'
+                        : 'decision-already-locked',
               },
             });
             return;
@@ -5182,12 +5220,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
   }, [
-    game?.status, 
+    game?.status,
     game?.all_decisions_in,
     game?.all_decisions_in_round_id,
     game?.is_paused,
-    // Watch turn position for Holm games (turn-based)
-    // Watch round id to catch new rounds (since current_round isn't updated for Holm)
+    // Holm: re-evaluate on authority changes (one snapshot source).
+    // Non-Holm: retain currentRound deps so existing 3-5-7 path is unchanged.
+    holmAuthorityTick,
     currentRound?.current_turn_position,
     currentRound?.id,
     game?.game_type,
@@ -7454,13 +7493,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const prior = latestAuthoritativeTurnRef.current;
             const sameRound = prior?.roundId === currentRound.id;
             const sameTurn = prior?.currentTurnPosition === currentRound.current_turn_position;
-            if (!prior || !sameRound || !sameTurn) {
+            const sameHand = prior?.handNumber === ((currentRound as any).hand_number ?? null);
+            if (!prior || !sameRound || !sameTurn || !sameHand) {
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: currentRound.id,
+                handNumber: (currentRound as any).hand_number ?? null,
                 currentTurnPosition: currentRound.current_turn_position ?? null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
           }
 

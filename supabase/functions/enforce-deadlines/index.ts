@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { nextEligibleUndecided } from "../_shared/seatRing.ts";
 
 /**
  * SLIM CLIENT-SIDE DEADLINE ENFORCER
@@ -529,10 +530,23 @@ serve(async (req) => {
             });
           }
 
-          // Otherwise, advance turn to the next undecided player.
-          const sortedUndecided = undecidedPlayersNow.sort((a: any, b: any) => a.position - b.position);
-          const higherPositions = sortedUndecided.filter((p: any) => p.position > currentTurnPos);
-          const nextPlayer = higherPositions.length > 0 ? higherPositions[0] : sortedUndecided[0];
+          // CANONICAL RESOLVER (Holm clockwise = descending/wrap).
+          // Walks the occupied ring with nextClockwise until the next
+          // undecided seat. Replaces the legacy ascending-sort selector
+          // that skipped lower-position eligible seats.
+          const occupiedRing = activePlayers.map((p: any) => p.position);
+          const undecidedRing = undecidedPlayersNow.map((p: any) => p.position);
+          const nextPos = nextEligibleUndecided(currentTurnPos, undecidedRing, occupiedRing);
+          const nextPlayer = nextPos != null
+            ? undecidedPlayersNow.find((p: any) => p.position === nextPos)
+            : null;
+
+          if (!nextPlayer) {
+            actionsTaken.push('Holm recovery: no eligible undecided seat (canonical resolver)');
+            return new Response(JSON.stringify({
+              success: true, actionsTaken, gameStatus: game.status, timestamp: nowIso, source, requestId,
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
 
           const { data: gameDefaults } = await supabase
             .from('game_defaults')
@@ -553,7 +567,7 @@ serve(async (req) => {
             .select();
 
           if (turnAdvanceResult && turnAdvanceResult.length > 0) {
-            actionsTaken.push(`Holm recovery: advanced turn to position ${nextPlayer.position}`);
+            actionsTaken.push(`Holm recovery: advanced turn to position ${nextPlayer.position} (canonical clockwise)`);
           } else {
             actionsTaken.push('Holm recovery: turn advance skipped - another client already advanced');
           }
@@ -732,26 +746,36 @@ serve(async (req) => {
         const undecidedPlayers = freshActivePlayers.filter((p: any) => !p.decision_locked);
 
         if (undecidedPlayers.length > 0) {
-          const sortedUndecided = undecidedPlayers.sort((a: any, b: any) => a.position - b.position);
-          const higherPositions = sortedUndecided.filter((p: any) => p.position > currentTurnPos);
-          const nextPlayer = higherPositions.length > 0 ? higherPositions[0] : sortedUndecided[0];
+          // CANONICAL RESOLVER (Holm clockwise = descending/wrap). Same
+          // helper as the recovery branch above; do not reintroduce a
+          // local ascending-position selector here.
+          const occupiedRingPost = freshActivePlayers.map((p: any) => p.position);
+          const undecidedRingPost = undecidedPlayers.map((p: any) => p.position);
+          const nextPosPost = nextEligibleUndecided(currentTurnPos, undecidedRingPost, occupiedRingPost);
+          const nextPlayer = nextPosPost != null
+            ? undecidedPlayers.find((p: any) => p.position === nextPosPost)
+            : null;
 
-          const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-
-          const { data: turnAdvanceResult } = await supabase
-            .from('rounds')
-            .update({
-              current_turn_position: nextPlayer.position,
-              decision_deadline: newDeadline,
-            })
-            .eq('id', currentRound.id)
-            .eq('current_turn_position', currentTurnPos)
-            .select();
-
-          if (turnAdvanceResult && turnAdvanceResult.length > 0) {
-            actionsTaken.push(`Turn advanced to position ${nextPlayer.position}`);
+          if (!nextPlayer) {
+            actionsTaken.push('Turn advance: no eligible undecided seat (canonical resolver)');
           } else {
-            actionsTaken.push('Turn advance skipped - another client already advanced');
+            const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+
+            const { data: turnAdvanceResult } = await supabase
+              .from('rounds')
+              .update({
+                current_turn_position: nextPlayer.position,
+                decision_deadline: newDeadline,
+              })
+              .eq('id', currentRound.id)
+              .eq('current_turn_position', currentTurnPos)
+              .select();
+
+            if (turnAdvanceResult && turnAdvanceResult.length > 0) {
+              actionsTaken.push(`Turn advanced to position ${nextPlayer.position} (canonical clockwise)`);
+            } else {
+              actionsTaken.push('Turn advance skipped - another client already advanced');
+            }
           }
         } else {
           const { data: lockResult } = await supabase
