@@ -10012,12 +10012,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
-  const handleStay = async () => {
+  const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
     if (!gameId || !user) return;
 
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
+      const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'holm-deal-not-ready' },
+      });
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -10025,7 +10034,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: null,
+        decision: 'stay',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'current-player-not-found' },
+      });
+      return;
+    }
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('stay');
@@ -10038,6 +10057,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: true,
+        requestStatus: 'accepted',
+      });
       
       console.log('[PLAYER DECISION] Stay decision made - makeDecision handles turn advancement');
       
@@ -10049,17 +10075,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: true,
+        requestStatus: 'error',
+        errorMessage: error?.message ?? String(error),
+      });
       // Clear pending decision on error
       setPendingDecision(null);
     }
   };
 
-  const handleFold = async () => {
+  const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold') => {
     if (!gameId || !user) return;
 
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Fold — Holm deal not ready');
+      const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'holm-deal-not-ready' },
+      });
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -10067,13 +10110,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: null,
+        decision: 'fold',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'current-player-not-found' },
+      });
+      return;
+    }
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('fold');
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: true,
+        requestStatus: 'accepted',
+      });
       
       console.log('[PLAYER DECISION] Fold decision made - makeDecision handles turn advancement');
       
@@ -10085,6 +10145,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: true,
+        requestStatus: 'error',
+        errorMessage: error?.message ?? String(error),
+      });
       // Clear pending decision on error
       setPendingDecision(null);
     }
