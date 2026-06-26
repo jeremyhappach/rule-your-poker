@@ -147,18 +147,20 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
       },
     });
     if (!renderEligible) return null;
+    if (!feltSurface) return null;
 
     const x = toVmin(placement.rect.x, vminInPx);
     const y = toVmin(placement.rect.y, vminInPx);
     const w = toVmin(placement.rect.width, vminInPx);
     const h = toVmin(placement.rect.height, vminInPx);
 
-    return (
+    return createPortal(
       <div
         ref={ref}
         data-wave5-holm-slot={artifactId}
         data-artifact-id={artifactId}
         data-placement-mode="anchored"
+        data-placement-frame="felt-surface"
         data-placement-source={current && current.visible ? "current" : "lastValid"}
         data-holm-slot-fault-count={String(faults.length)}
         style={{
@@ -175,7 +177,8 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
         }}
       >
         {children}
-      </div>
+      </div>,
+      feltSurface,
     );
   },
 );
