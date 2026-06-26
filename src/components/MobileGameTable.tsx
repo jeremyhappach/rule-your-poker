@@ -1121,11 +1121,13 @@ export const MobileGameTable = ({
     const h = _ttPlay.height || 0;
     return {
       attachment: p.attachment,
+      sprawlDirection: p.sprawlDirection,
       dxPx: (p.xPctOfFelt / 100) * w,
       dyPx: (p.yPctOfFelt / 100) * h,
     };
   }, [
     _ttShowdownCfg.placement.attachment,
+    _ttShowdownCfg.placement.sprawlDirection,
     _ttShowdownCfg.placement.xPctOfFelt,
     _ttShowdownCfg.placement.yPctOfFelt,
     _ttPlay.width,

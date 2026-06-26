@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { cloneElement, isValidElement, useEffect, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { cn } from '@/lib/utils';
 import {
@@ -268,6 +268,7 @@ export interface CanonicalSeatClusterProps {
    */
   opponentShowdownPlacement?: {
     attachment: 'chip-centered' | 'inner-edge' | 'outer-edge';
+    sprawlDirection: 'inward' | 'outward';
     dxPx: number;
     dyPx: number;
   };
@@ -463,6 +464,45 @@ export function CanonicalSeatCluster({
       window.removeEventListener('scroll', apply, true);
     };
   }, [position, name, slot]);
+
+  // Live chip-disc radius measurement — used by the opponent-showdown
+  // row to pin to the *visible* chip rim (inner-edge / outer-edge)
+  // instead of assuming a fixed 20px half-width. Reads the actual
+  // [data-chip-center="${position}"] rect so future chip-disc sizing
+  // changes flow through automatically. Falls back to 20px until the
+  // first measurement lands.
+  const [chipRadiusPx, setChipRadiusPx] = useState<number>(20);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const measure = () => {
+      const chip = document.querySelector(
+        `[data-chip-center="${position}"]`,
+      ) as HTMLElement | null;
+      if (!chip) return;
+      const r = chip.getBoundingClientRect();
+      if (r.width > 0) {
+        const next = r.width / 2;
+        setChipRadiusPx((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+      }
+    };
+    measure();
+    if (typeof window === 'undefined') return;
+    let ro: ResizeObserver | null = null;
+    const chip = document.querySelector(
+      `[data-chip-center="${position}"]`,
+    ) as HTMLElement | null;
+    if (chip && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure);
+      ro.observe(chip);
+    }
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [position]);
 
 
   if (slot === null || slot === undefined) return null;
@@ -774,17 +814,27 @@ export function CanonicalSeatCluster({
         // the legacy `left-1/2 -translate-x-1/2 mt-[2px]` baseline.
         let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
-          const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
-          const { selfTranslateX } = resolveSideAwareRowAnchor(
+          const { attachment, sprawlDirection, dxPx, dyPx } = opponentShowdownPlacement;
+          const { selfTranslateX, anchorInwardMagnitude } = resolveSideAwareRowAnchor(
             isRightSide ? 'right' : 'left',
             attachment,
+            sprawlDirection,
           );
-          // Signed +X = inward toward felt center. Right-side opponents
-          // need the sign flipped so a single positive dxPx moves both
-          // sides inward (and negative moves both outward).
-          const signedDx = isRightSide ? -dxPx : dxPx;
+          // Felt-relative INWARD direction in CSS X:
+          //   left-side opponent  → +CSS X
+          //   right-side opponent → -CSS X
+          const inwardCssSign = isRightSide ? -1 : 1;
+          // User offset (+X = inward) flipped per side so a single
+          // positive dxPx moves both sides inward.
+          const signedDx = inwardCssSign * dxPx;
+          // Chip-rim offset uses the LIVE measured chip-disc radius so
+          // inner-edge / outer-edge pin to the visible circle rim, not
+          // a hardcoded 20px half of the w-10 cell.
+          const anchorOffsetCssX =
+            inwardCssSign * anchorInwardMagnitude * chipRadiusPx;
+          const totalCssX = signedDx + anchorOffsetCssX;
           overrideStyle = {
-            transform: `translate(${selfTranslateX}, 0) translate(${signedDx}px, ${dyPx}px)`,
+            transform: `translate(${selfTranslateX}, 0) translate(${totalCssX}px, ${dyPx}px)`,
           };
         }
 

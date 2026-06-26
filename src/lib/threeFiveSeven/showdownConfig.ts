@@ -56,7 +56,9 @@ export interface CardGeometryResponsive {
 }
 export type CardGeometry = CardGeometryFixed | CardGeometryResponsive;
 
-export type FanDirection = 'outward' | 'inward';
+export type FanArch = 'outward' | 'inward';
+/** @deprecated Read-time alias for legacy persisted rows. Use FanArch. */
+export type FanDirection = FanArch;
 
 export interface RowGeometry {
   /** 0..1, fraction of card width hidden by next card. */
@@ -67,10 +69,11 @@ export interface RowGeometry {
    * Curvature/bow orientation of the row arc.
    *   'outward' — arc bows AWAY from felt center
    *   'inward'  — arc bows TOWARD felt center
-   * 0° fanDegrees → no visible difference. Logical card order is
-   * never reversed; only the bow direction changes.
+   * 0° fanDegrees → no visible difference. Never affects pin
+   * selection or row extension direction (those are owned by
+   * Attachment + Sprawl direction on the shared placement).
    */
-  fanDirection: FanDirection;
+  fanArch: FanArch;
 }
 
 
@@ -87,16 +90,24 @@ export interface SecondaryGroupGeometry {
 }
 
 export type ShowdownAttachment = 'chip-centered' | 'inner-edge' | 'outer-edge';
+export type SprawlDirection = 'inward' | 'outward';
 
 export interface OpponentShowdownPlacement {
   /**
-   *   'chip-centered' — row centered on chip
-   *   'outer-edge'    — row extends AWAY from felt center
-   *                     (left seat → leftward, right seat → rightward)
-   *   'inner-edge'    — row extends TOWARD felt center
-   *                     (left seat → rightward, right seat → leftward)
+   * WHERE on the chip the row pins (visible chip-disc rim, measured
+   * from the live `[data-chip-center]` rect by the shell):
+   *   'chip-centered' — center of chip
+   *   'inner-edge'    — chip rim nearest felt center
+   *   'outer-edge'    — chip rim farthest from felt center
    */
   attachment: ShowdownAttachment;
+  /**
+   * WHICH WAY the row extends from the pin (never reverses card
+   * order; selects which endpoint of the row is pinned):
+   *   'inward'  — row extends toward felt center
+   *   'outward' — row extends away from felt center
+   */
+  sprawlDirection: SprawlDirection;
   /** % of canonical felt WIDTH. +X = inward toward felt center. */
   xPctOfFelt: number;
   /** % of canonical felt HEIGHT. +Y = downward. */
@@ -124,19 +135,24 @@ export interface ShowdownRulesState {
 // ─── Seeds (rough; tuned in pause harness) ────────────────────────────────
 
 export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
-  placement: { attachment: 'chip-centered', xPctOfFelt: 0, yPctOfFelt: 0 },
+  placement: {
+    attachment: 'outer-edge',
+    sprawlDirection: 'inward',
+    xPctOfFelt: 0,
+    yPctOfFelt: 0,
+  },
   rounds: {
     r1: {
       card: { mode: 'fixed', cardWidthPx: 40, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
     },
     r2: {
       card: { mode: 'fixed', cardWidthPx: 44, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
     },
     r3: {
       card: { mode: 'fixed', cardWidthPx: 48, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
       secondary: {
         visibility: 'dimmed',
         placement: 'below',
@@ -195,14 +211,15 @@ function sanitizeCard(raw: unknown, fallback: CardGeometry): CardGeometry {
 }
 
 function sanitizeRow(raw: unknown, fallback: RowGeometry): RowGeometry {
-  const r = (raw ?? {}) as Partial<RowGeometry>;
-  const dir = r.fanDirection;
+  // Read-time legacy alias: `fanDirection` → `fanArch`.
+  const r = (raw ?? {}) as Partial<RowGeometry> & { fanDirection?: FanArch };
+  const archRaw = r.fanArch ?? r.fanDirection;
   return {
     overlap: typeof r.overlap === 'number' ? r.overlap : fallback.overlap,
     fanDegrees:
       typeof r.fanDegrees === 'number' ? r.fanDegrees : fallback.fanDegrees,
-    fanDirection:
-      dir === 'outward' || dir === 'inward' ? dir : fallback.fanDirection,
+    fanArch:
+      archRaw === 'outward' || archRaw === 'inward' ? archRaw : fallback.fanArch,
   };
 }
 
@@ -253,11 +270,14 @@ function sanitizePlacement(
 ): OpponentShowdownPlacement {
   const r = (raw ?? {}) as Partial<OpponentShowdownPlacement>;
   const a = r.attachment;
+  const s = r.sprawlDirection;
   return {
     attachment:
       a === 'outer-edge' || a === 'inner-edge' || a === 'chip-centered'
         ? a
         : fallback.attachment,
+    sprawlDirection:
+      s === 'inward' || s === 'outward' ? s : 'inward',
     xPctOfFelt:
       typeof r.xPctOfFelt === 'number' ? r.xPctOfFelt : fallback.xPctOfFelt,
     yPctOfFelt:
@@ -329,8 +349,8 @@ export interface ResolvedRound {
   overlapPx: number;
   /** Total degrees spread first→last. Per-card step derived at render. */
   fanDegrees: number;
-  /** Bow orientation (consumed by PlayerHand to flip rotation sign). */
-  fanDirection: FanDirection;
+  /** Fan arch orientation (consumed by PlayerHand to flip rotation sign). */
+  fanArch: FanArch;
 }
 
 
@@ -387,7 +407,7 @@ function resolveRound(g: RoundGeometry, feltVminPx: number): ResolvedRound {
     cardHeightPx: h,
     overlapPx: Math.max(0, g.row.overlap) * w,
     fanDegrees: g.row.fanDegrees,
-    fanDirection: g.row.fanDirection,
+    fanArch: g.row.fanArch,
   };
 }
 
