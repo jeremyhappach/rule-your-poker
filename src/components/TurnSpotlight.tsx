@@ -137,6 +137,24 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     setOpacity(1);
   }, [shellOwned, isVisible, currentTurnPosition, isMyTurn, measuredAngle]);
 
+  // Holm trace — emit when authoritative turn / consumed pos / angle change.
+  useEffect(() => {
+    if (!isHolmTraceActive()) return;
+    if (!shellOwned) return;
+    recordHolmTrace('TURN_SPOTLIGHT', `turn=${currentTurnPosition ?? 'null'} angle=${rotation.toFixed(1)}°`, {
+      currentTurnPosition,
+      consumedTurnPosition: currentTurnPosition,
+      currentPlayerPosition,
+      isObserver,
+      isMyTurn,
+      measuredAngle,
+      angle: rotation,
+      opacity,
+      shellFrameToken: shellFrame ? (shellFrame.getAttribute('data-canonical-felt-surface') || 'frame') : 'null',
+      isVisible,
+    });
+  }, [shellOwned, currentTurnPosition, currentPlayerPosition, isObserver, isMyTurn, measuredAngle, rotation, opacity, shellFrame, isVisible]);
+
   if (!isVisible || currentTurnPosition === null || disabled) {
     return null;
   }
