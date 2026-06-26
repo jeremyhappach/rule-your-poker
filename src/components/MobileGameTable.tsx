@@ -8514,13 +8514,20 @@ export const MobileGameTable = ({
 
           return (
             <div 
-              className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
-                gameType === 'holm-game' 
-                  ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
+              className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
+                gameType === 'holm-game'
+                  // P1 fix: Holm pot must remain stationary across showdown.
+                  // The previous showdown-only `top-[50%]` toggle interpolated
+                  // via `transition-all`, producing the ancestor-transform
+                  // pot.y drift observed in the Holm trace. Pin a single
+                  // position for the full Holm lifecycle; pot-to-winner
+                  // transport owns any intentional motion.
+                  ? 'top-[35%] -translate-y-full'
                   : isDiceGame
-                    ? 'top-[28%] -translate-y-full'  /* Dice games: moved up since label is now single line */
-                    : 'top-1/2 -translate-y-1/2'
+                    ? 'top-[28%] -translate-y-full transition-all duration-300'  /* Dice games: moved up since label is now single line */
+                    : 'top-1/2 -translate-y-1/2 transition-all duration-300'
               }`}
+
               style={{ 
                 visibility: shouldHidePot ? 'hidden' : 'visible',
                 opacity: shouldHidePot ? 0 : 1,
