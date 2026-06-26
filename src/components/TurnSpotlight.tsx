@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
+import { isHolmTraceActive, recordHolmTrace } from '@/lib/holm/holmTrace';
 
 interface TurnSpotlightProps {
   /** The position of the player whose turn it is (absolute 1-7) */
