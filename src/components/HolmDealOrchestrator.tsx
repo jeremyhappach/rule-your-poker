@@ -42,6 +42,7 @@ import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/typ
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
+import { recordHolmTrace } from '@/lib/holm/holmTrace';
 import { recordCommunityTransport } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
 
