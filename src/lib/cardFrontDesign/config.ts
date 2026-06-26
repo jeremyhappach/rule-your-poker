@@ -252,16 +252,25 @@ export function resolveCardFrontStyle(
   const dx = (p.groupOffsetXPctOfCardWidth / 100) * w;
   const dy = (p.groupOffsetYPctOfCardHeight / 100) * h;
   const groupTransform = dx || dy ? `translate(${dx}px, ${dy}px)` : undefined;
+  // lineHeight:1 embeds ~20-25% font-metric padding around the visible
+  // glyph, which acts as a hidden minimum gap and absorbs sub-1% values
+  // (0% and ~0.5% look identical). Collapse the line box to the glyph
+  // cap height so `marginTop = gapPx` is the SOLE spacing between the
+  // visible rank and suit glyphs. Fractional/sub-pixel marginTop values
+  // are preserved verbatim — no rounding, no minimum clamp.
+  const TIGHT_LINE_HEIGHT = 0.72;
   return {
     rankStyle: {
       fontSize: `${rankPx}px`,
-      lineHeight: 1,
+      lineHeight: TIGHT_LINE_HEIGHT,
       fontWeight: 900,
+      display: 'block',
       transform: groupTransform,
     },
     suitStyle: {
       fontSize: `${suitPx}px`,
-      lineHeight: 1,
+      lineHeight: TIGHT_LINE_HEIGHT,
+      display: 'block',
       marginTop: `${gapPx}px`,
       transform: groupTransform,
     },

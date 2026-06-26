@@ -169,8 +169,9 @@ export function CardFrontDesignPanel() {
           </div>
           <div className="space-y-1">
             <Label>Rank↔Suit gap (% of card height)</Label>
-            <Num value={tier.twoColor.rankSuitGapPctOfCardHeight} step={0.5}
+            <Num value={tier.twoColor.rankSuitGapPctOfCardHeight} step={0.1}
               onChange={(n) => updateTwo({ rankSuitGapPctOfCardHeight: n })} />
+
           </div>
           <div className="space-y-1">
             <Label>Group offset X (% of card width)</Label>
