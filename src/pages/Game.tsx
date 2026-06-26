@@ -3038,9 +3038,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
+                handNumber: (n && 'hand_number' in n) ? (n.hand_number ?? null) : null,
                 currentTurnPosition: (n && 'current_turn_position' in n) ? (n.current_turn_position ?? null) : null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -3070,9 +3072,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
+                handNumber: (n && 'hand_number' in n) ? (n.hand_number ?? null) : (latestAuthoritativeTurnRef.current?.roundId === n?.id ? latestAuthoritativeTurnRef.current?.handNumber ?? null : null),
                 currentTurnPosition: n?.current_turn_position ?? null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -7455,13 +7459,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const prior = latestAuthoritativeTurnRef.current;
             const sameRound = prior?.roundId === currentRound.id;
             const sameTurn = prior?.currentTurnPosition === currentRound.current_turn_position;
-            if (!prior || !sameRound || !sameTurn) {
+            const sameHand = prior?.handNumber === ((currentRound as any).hand_number ?? null);
+            if (!prior || !sameRound || !sameTurn || !sameHand) {
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: currentRound.id,
+                handNumber: (currentRound as any).hand_number ?? null,
                 currentTurnPosition: currentRound.current_turn_position ?? null,
                 epoch: authoritativeTurnEpochRef.current,
               };
+              setHolmAuthorityTick(t => t + 1);
             }
           }
 
