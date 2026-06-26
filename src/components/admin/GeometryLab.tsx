@@ -514,16 +514,23 @@ function GameSections(props: GameSectionsProps) {
           {override && (
             <p className="text-xs text-amber-500">● override active</p>
           )}
+          {dirty && (
+            <p className="text-xs text-sky-500">
+              ● unsaved draft — click footer Apply Changes to persist
+            </p>
+          )}
         </div>
 
         {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
         <div className="space-y-3 pt-2 border-t">
           <h3 className="font-semibold">Geometry</h3>
           <p className="text-xs text-muted-foreground">
-            Defaults read live from the canonical descriptor. Saving writes an
-            override row; the runtime merges it via{" "}
-            <code>applyGeometryOverrides</code>.
+            Defaults read live from the canonical descriptor. Edits stage
+            into the modal-wide draft and persist only when the footer
+            Apply Changes button is pressed; the runtime then merges the
+            committed override row via <code>applyGeometryOverrides</code>.
           </p>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>anchorX</Label>
