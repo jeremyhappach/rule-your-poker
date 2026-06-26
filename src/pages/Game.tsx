@@ -28,7 +28,12 @@ import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTrac
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
-import { setHolmTraceActive } from "@/lib/holm/holmTrace";
+import {
+  isHolmTraceArmed,
+  recordHolmTrace,
+  setHolmTraceActive,
+} from "@/lib/holm/holmTrace";
+import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import HolmTracePill from "@/components/HolmTracePill";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
@@ -340,6 +345,122 @@ interface Round {
   created_at?: string;
   horses_state?: any; // Horses dice game state
   gin_rummy_state?: any; // Gin Rummy JSONB state
+}
+
+type HolmTraceDecisionSeat = {
+  id: string | null;
+  position: number | null;
+  isBot: boolean;
+  status: string | null;
+  sittingOut: boolean;
+  currentDecision: string | null;
+  decisionLocked: boolean;
+  eligible: boolean;
+  shouldSkip: boolean;
+};
+
+function getHolmDealIdentityFromRound(round: Pick<Round, 'id' | 'hand_number'> | null | undefined): string | null {
+  if (!round?.id) return null;
+  return `${round.id}:h${round.hand_number ?? 'unknown'}`;
+}
+
+function summarizeHolmDecisionSeats(players: readonly Player[] | null | undefined): HolmTraceDecisionSeat[] {
+  return (players ?? [])
+    .map((p) => {
+      const position = typeof p.position === 'number' ? p.position : null;
+      const sittingOut = p.sitting_out === true;
+      const status = p.status ?? null;
+      const decisionLocked = p.decision_locked === true;
+      const currentDecision = p.current_decision ?? null;
+      const eligible = position !== null && status === 'active' && !sittingOut;
+      return {
+        id: p.id ?? null,
+        position,
+        isBot: p.is_bot === true,
+        status,
+        sittingOut,
+        currentDecision,
+        decisionLocked,
+        eligible,
+        shouldSkip: !eligible || decisionLocked || currentDecision !== null,
+      };
+    })
+    .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+}
+
+function resolveExpectedHolmNextSeat(
+  previousCurrentTurnPosition: number | null,
+  seats: readonly HolmTraceDecisionSeat[],
+): number | null {
+  if (previousCurrentTurnPosition == null) return null;
+
+  const activePositions = seats
+    .filter((s) => s.eligible && typeof s.position === 'number')
+    .map((s) => s.position as number);
+  const undecidedPositions = seats
+    .filter((s) => s.eligible && !s.decisionLocked && s.currentDecision == null && typeof s.position === 'number')
+    .map((s) => s.position as number);
+
+  if (undecidedPositions.length === 0) return null;
+
+  try {
+    if (undecidedPositions.includes(previousCurrentTurnPosition)) {
+      return nextClockwise(previousCurrentTurnPosition, undecidedPositions);
+    }
+
+    if (!activePositions.includes(previousCurrentTurnPosition)) return null;
+    let probe = nextClockwise(previousCurrentTurnPosition, activePositions);
+    let guard = 0;
+    while (!undecidedPositions.includes(probe) && guard < activePositions.length + 1) {
+      probe = nextClockwise(probe, activePositions);
+      guard += 1;
+    }
+    return undecidedPositions.includes(probe) ? probe : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildHolmTurnAuthorityTraceDetail(params: {
+  source: 'realtime INSERT' | 'realtime UPDATE' | 'fetchGameData';
+  round: Partial<Round> | null | undefined;
+  players: readonly Player[] | null | undefined;
+  previousCurrentTurnPosition: number | null;
+}): Record<string, unknown> {
+  const { source, round, players, previousCurrentTurnPosition } = params;
+  const nextCurrentTurnPosition = typeof round?.current_turn_position === 'number'
+    ? round.current_turn_position
+    : null;
+  const seats = summarizeHolmDecisionSeats(players);
+  const expectedClockwiseNextEligibleSeat = resolveExpectedHolmNextSeat(previousCurrentTurnPosition, seats);
+  const comparisonApplicable =
+    previousCurrentTurnPosition != null &&
+    nextCurrentTurnPosition != null &&
+    previousCurrentTurnPosition !== nextCurrentTurnPosition &&
+    round?.status === 'betting';
+  const incomingMatchesExpected = comparisonApplicable
+    ? nextCurrentTurnPosition === expectedClockwiseNextEligibleSeat
+    : null;
+  const decisionSummaryForIncomingSeat = seats.find((s) => s.position === nextCurrentTurnPosition) ?? null;
+  const incomingTargetsSkippedSeat = round?.status === 'betting' && nextCurrentTurnPosition != null
+    ? (decisionSummaryForIncomingSeat ? decisionSummaryForIncomingSeat.shouldSkip : true)
+    : false;
+
+  return {
+    timestamp: new Date().toISOString(),
+    roundId: round?.id ?? null,
+    stableHolmDealIdentityKey: getHolmDealIdentityFromRound(round as Round | null | undefined),
+    handNumber: round?.hand_number ?? null,
+    previousCurrentTurnPosition,
+    nextCurrentTurnPosition,
+    source,
+    rawAuthoritativeRoundStatus: round?.status ?? null,
+    decisionMap: seats,
+    expectedClockwiseNextEligibleSeat,
+    incomingMatchesExpected,
+    incomingTargetsSkippedSeat,
+    decisionSummaryForIncomingSeat,
+  };
 }
 
 function toDealerSelectionCardIds(cards: DealerSelectionCard[] | null | undefined): string[] {
@@ -2902,6 +3023,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // authoritative turn ref BEFORE React state scheduling.
             {
               const n: any = payload.new;
+              const previousCurrentTurnPosition = null;
+              if (game?.game_type === 'holm-game') {
+                recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `realtime INSERT turn=${n?.current_turn_position ?? 'null'}`,
+                  buildHolmTurnAuthorityTraceDetail({
+                    source: 'realtime INSERT',
+                    round: n as Partial<Round>,
+                    players: playersRef.current,
+                    previousCurrentTurnPosition,
+                  }),
+                );
+              }
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
@@ -2918,6 +3050,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // click-at-boundary race window).
             {
               const n: any = payload.new;
+              const o: any = payload.old;
+              const previousCurrentTurnPosition = ('current_turn_position' in (o ?? {}))
+                ? (o?.current_turn_position ?? null)
+                : (latestAuthoritativeTurnRef.current?.roundId === n?.id
+                  ? latestAuthoritativeTurnRef.current?.currentTurnPosition ?? null
+                  : null);
+              if (game?.game_type === 'holm-game') {
+                recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `realtime UPDATE turn=${previousCurrentTurnPosition ?? 'null'}→${n?.current_turn_position ?? 'null'}`,
+                  buildHolmTurnAuthorityTraceDetail({
+                    source: 'realtime UPDATE',
+                    round: n as Partial<Round>,
+                    players: playersRef.current,
+                    previousCurrentTurnPosition,
+                  }),
+                );
+              }
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
@@ -4666,6 +4814,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // (capture-logic identity guards). Not used as a lifecycle key.
   void holmHandIdentityCards;
 
+  const recordHolmDecisionSubmission = useCallback((params: {
+    source: 'live stay' | 'live fold' | 'pre-stay execute' | 'pre-fold execute' | 'bot action' | 'bot deadline' | 'server-timeout observed' | 'unknown';
+    actor?: Pick<Player, 'id' | 'position' | 'user_id' | 'is_bot'> | null;
+    decision?: 'stay' | 'fold' | null;
+    makeDecisionInvoked: boolean;
+    requestStatus: 'accepted' | 'rejected' | 'error';
+    errorMessage?: string | null;
+    extra?: Record<string, unknown>;
+  }) => {
+    if (game?.game_type !== 'holm-game') return;
+    if (!isHolmTraceArmed()) return;
+
+    const authoritativeCurrentTurnPosition =
+      latestAuthoritativeTurnRef.current?.currentTurnPosition ??
+      currentRound?.current_turn_position ??
+      null;
+    const actorPosition = typeof params.actor?.position === 'number' ? params.actor.position : null;
+    recordHolmTrace('DECISION_SUBMISSION', `${params.source} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
+      timestamp: new Date().toISOString(),
+      actorPosition,
+      actorId: params.actor?.id ?? null,
+      actorUserId: params.actor?.user_id ?? null,
+      actorIsBot: params.actor?.is_bot ?? null,
+      decision: params.decision ?? null,
+      source: params.source,
+      stableHandIdentity: holmDealIdentityKey ?? handContextKey,
+      roundId: currentRound?.id ?? null,
+      handNumber: currentRound?.hand_number ?? holmView?.handNumber ?? null,
+      authoritativeCurrentTurnPosition,
+      authorityMatchesActor: actorPosition != null ? authoritativeCurrentTurnPosition === actorPosition : null,
+      pendingDecision,
+      preDecisionArmState: holmPreDecisionArmedRef.current,
+      makeDecisionInvoked: params.makeDecisionInvoked,
+      requestStatus: params.requestStatus,
+      errorMessage: params.errorMessage ?? null,
+      latestAuthoritativeTurn: latestAuthoritativeTurnRef.current,
+      ...params.extra,
+    });
+  }, [game?.game_type, currentRound?.id, currentRound?.current_turn_position, currentRound?.hand_number, holmDealIdentityKey, handContextKey, holmView?.handNumber, pendingDecision]);
+
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
     maxRevealedRef.current = 0;
@@ -4905,13 +5093,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const triggerBot = async () => {
         try {
           console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+            const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
+            const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+            recordHolmDecisionSubmission({
+              source: 'bot action',
+              actor: botActor,
+              decision: null,
+              makeDecisionInvoked: true,
+              requestStatus: botMadeDecision ? 'accepted' : 'rejected',
+              extra: { capturedTurnPosition },
+            });
           
           // If bot made a decision, explicitly fetch to get updated turn position
           if (botMadeDecision) {
             console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
             await fetchGameData();
           }
+        } catch (error: any) {
+          const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
+          recordHolmDecisionSubmission({
+            source: 'bot action',
+            actor: botActor,
+            decision: null,
+            makeDecisionInvoked: true,
+            requestStatus: 'error',
+            errorMessage: error?.message ?? String(error),
+            extra: { capturedTurnPosition },
+          });
+          throw error;
         } finally {
           botProcessingRef.current = false;
         }
@@ -5210,6 +5419,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRoundId: currentRound.id,
         handContextKey,
       });
+      recordHolmDecisionSubmission({
+        source: armed.decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
+        actor: currentPlayer,
+        decision: armed.decision,
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'pre-decision-invariant-failed', armed, latest, myPos },
+      });
       // Stale/invalid arming — clear to force live decision path.
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
@@ -5225,8 +5442,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     holmPreDecisionArmedRef.current = null;
     setHolmPreFold(false);
     setHolmPreStay(false);
-    if (decision === 'fold') handleFold();
-    else handleStay();
+    if (decision === 'fold') handleFold('pre-fold execute');
+    else handleStay('pre-stay execute');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     game?.game_type,
@@ -5310,15 +5527,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           try {
             console.log('[TIMER EXPIRED HOLM] Invoking enforce-deadlines');
-            await supabase.functions.invoke('enforce-deadlines', {
+            const timeoutActor = playersRef.current.find(p => p.position === timerTurnPosition) ?? null;
+            const { error } = await supabase.functions.invoke('enforce-deadlines', {
               body: {
                 gameId,
                 source: 'client-timer-expired',
                 requestId: crypto.randomUUID(),
               },
             });
+            recordHolmDecisionSubmission({
+              source: 'server-timeout observed',
+              actor: timeoutActor,
+              decision: null,
+              makeDecisionInvoked: false,
+              requestStatus: error ? 'error' : 'accepted',
+              errorMessage: error?.message ?? null,
+              extra: { timerTurnPosition },
+            });
           } catch (err) {
             console.warn('[TIMER EXPIRED HOLM] enforce-deadlines failed:', err);
+            const timeoutActor = playersRef.current.find(p => p.position === timerTurnPosition) ?? null;
+            recordHolmDecisionSubmission({
+              source: 'server-timeout observed',
+              actor: timeoutActor,
+              decision: null,
+              makeDecisionInvoked: false,
+              requestStatus: 'error',
+              errorMessage: err instanceof Error ? err.message : String(err),
+              extra: { timerTurnPosition },
+            });
           } finally {
             autoFoldingRef.current = false;
             // Force a quick refresh so the UI picks up the new decision_deadline/turn
@@ -6804,6 +7041,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRoundNumber: gameData.current_round,
         currentHandNumber: gameData.total_hands,
       });
+      if (holmRound && isHolmTraceArmed()) {
+        const prior = latestAuthoritativeTurnRef.current;
+        const previousCurrentTurnPosition = prior?.roundId === holmRound.id
+          ? prior.currentTurnPosition
+          : null;
+        recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `fetchGameData turn=${previousCurrentTurnPosition ?? 'null'}→${holmRound.current_turn_position ?? 'null'}`,
+          buildHolmTurnAuthorityTraceDetail({
+            source: 'fetchGameData',
+            round: holmRound,
+            players: (playersData || []) as Player[],
+            previousCurrentTurnPosition,
+          }),
+        );
+      }
       const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
       if (snapshot) {
         const prevRoundId = holmSyncLastRoundIdRef.current;
@@ -9781,12 +10032,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
-  const handleStay = async () => {
+  const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
     if (!gameId || !user) return;
 
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
+      const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'holm-deal-not-ready' },
+      });
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -9794,7 +10054,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: null,
+        decision: 'stay',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'current-player-not-found' },
+      });
+      return;
+    }
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('stay');
@@ -9807,6 +10077,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: true,
+        requestStatus: 'accepted',
+      });
       
       console.log('[PLAYER DECISION] Stay decision made - makeDecision handles turn advancement');
       
@@ -9818,17 +10095,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'stay',
+        makeDecisionInvoked: true,
+        requestStatus: 'error',
+        errorMessage: error?.message ?? String(error),
+      });
       // Clear pending decision on error
       setPendingDecision(null);
     }
   };
 
-  const handleFold = async () => {
+  const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold') => {
     if (!gameId || !user) return;
 
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Fold — Holm deal not ready');
+      const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'holm-deal-not-ready' },
+      });
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -9836,13 +10130,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: null,
+        decision: 'fold',
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'current-player-not-found' },
+      });
+      return;
+    }
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('fold');
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: true,
+        requestStatus: 'accepted',
+      });
       
       console.log('[PLAYER DECISION] Fold decision made - makeDecision handles turn advancement');
       
@@ -9854,6 +10165,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
+      recordHolmDecisionSubmission({
+        source: traceSource,
+        actor: currentPlayer,
+        decision: 'fold',
+        makeDecisionInvoked: true,
+        requestStatus: 'error',
+        errorMessage: error?.message ?? String(error),
+      });
       // Clear pending decision on error
       setPendingDecision(null);
     }

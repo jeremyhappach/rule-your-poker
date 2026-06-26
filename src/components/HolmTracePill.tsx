@@ -3,42 +3,42 @@
  * portal/lifecycle trace buffer.
  *
  * Contract:
- *   - Renders only when a Holm table is mounted (isHolmTraceActive()).
+ *   - Renders only when a Holm table is mounted (isolated availability signal).
  *   - Recording is OFF by default; user taps ARM to enable.
- *   - No useSyncExternalStore, no subscriptions, no intervals, no
- *     querySelector polling, no DOM measurement.
- *   - Event count updates only on user tap (REFRESH / ARM / COPY / CLEAR).
+ *   - No useSyncExternalStore, no intervals, no querySelector polling, no DOM
+ *     measurement. The only subscription is pill availability, not gameplay.
  *   - Pill is `position: fixed` body-level; outside the gameplay tree.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   clearHolmTrace,
   formatHolmTraceAsText,
-  getHolmTraceEventCount,
   isHolmTraceActive,
   isHolmTraceArmed,
   setHolmTraceArmed,
+  subscribeHolmTraceAvailability,
 } from '@/lib/holm/holmTrace';
 
 export function HolmTracePill() {
+  const [available, setAvailable] = useState<boolean>(() => isHolmTraceActive());
   const [armed, setArmed] = useState<boolean>(() => isHolmTraceArmed());
-  const [count, setCount] = useState<number>(() => getHolmTraceEventCount());
-  const [copied, setCopied] = useState(false);
 
-  const refresh = useCallback(() => {
-    setArmed(isHolmTraceArmed());
-    setCount(getHolmTraceEventCount());
+  useEffect(() => {
+    return subscribeHolmTraceAvailability((nextAvailable) => {
+      setAvailable(nextAvailable);
+      setArmed(isHolmTraceArmed());
+    });
   }, []);
 
-  const handleArmToggle = useCallback(() => {
-    setHolmTraceArmed(!isHolmTraceArmed());
-    refresh();
-  }, [refresh]);
+  const handleArm = useCallback(() => {
+    setHolmTraceArmed(true);
+    setArmed(isHolmTraceArmed());
+  }, []);
 
   const handleClear = useCallback(() => {
     clearHolmTrace();
-    refresh();
-  }, [refresh]);
+    setArmed(isHolmTraceArmed());
+  }, []);
 
   const handleCopy = useCallback(async () => {
     const text = formatHolmTraceAsText();
@@ -55,15 +55,13 @@ export function HolmTracePill() {
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      setCopied(false);
+      // Copy errors are intentionally non-fatal; this control must never touch gameplay.
     }
-    refresh();
-  }, [refresh]);
+    setArmed(isHolmTraceArmed());
+  }, []);
 
-  if (!isHolmTraceActive()) return null;
+  if (!available) return null;
 
   const btn = (bg: string): React.CSSProperties => ({
     background: bg,
@@ -98,16 +96,11 @@ export function HolmTracePill() {
       data-holm-trace-pill=""
     >
       <span style={{ fontWeight: 700 }}>HOLM TRACE</span>
-      <span style={{ opacity: 0.75 }}>{armed ? 'ARMED' : 'IDLE'}</span>
-      <span>EVENTS: {count}</span>
-      <button type="button" onClick={handleArmToggle} style={btn(armed ? '#F08080' : '#FFD580')}>
-        {armed ? 'DISARM' : 'ARM'}
+      <button type="button" onClick={handleArm} style={btn(armed ? '#9FE2BF' : '#FFD580')}>
+        ARM
       </button>
-      <button type="button" onClick={refresh} style={btn('#FFD580')}>
-        REFRESH
-      </button>
-      <button type="button" onClick={handleCopy} style={btn(copied ? '#9FE2BF' : '#FFD580')}>
-        {copied ? 'COPIED' : 'COPY'}
+      <button type="button" onClick={handleCopy} style={btn('#FFD580')}>
+        COPY
       </button>
       <button type="button" onClick={handleClear} style={btn('#FFD580')}>
         CLEAR
