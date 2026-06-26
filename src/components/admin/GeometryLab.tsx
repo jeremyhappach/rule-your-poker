@@ -217,15 +217,14 @@ export function GeometryLab({ userId }: { userId: string }) {
   // dirty draft for a previously-selected artifact still has its commit
   // adapter wired when the admin clicks Apply Changes.
   const registeredRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!descriptor) return;
-    const id = artifactId;
+  const ensureRegistered = (id: string) => {
     const k = artifactDraftKey(id);
     if (registeredRef.current.has(k)) return;
     registeredRef.current.add(k);
     draft.registerSeed(k, () => {
       const info = descriptorByIdRef.current.get(id);
-      const d = info?.desc ?? descriptor;
+      const d = info?.desc;
+      if (!d) return EMPTY_FORM;
       return buildSeedForm(d, overridesRef.current.get(id));
     });
     draft.registerCommitAdapter(k, async (value) => {
@@ -262,7 +261,11 @@ export function GeometryLab({ userId }: { userId: string }) {
       logGeometryLab("draft_commit_succeeded", { artifactId: id });
       return { ok: true };
     });
-  }, [artifactId, descriptor, game, draft]);
+  };
+  // Register synchronously during render so getDraft below never falls
+  // through to defaultsRegistry (these keys are external-table backed,
+  // not system_settings backed, and would otherwise throw).
+  if (descriptor) ensureRegistered(artifactId);
 
   // Unregister all on unmount so a closed modal does not leak adapters.
   useEffect(() => {
