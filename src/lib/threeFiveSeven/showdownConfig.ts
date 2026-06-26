@@ -270,11 +270,14 @@ function sanitizePlacement(
 ): OpponentShowdownPlacement {
   const r = (raw ?? {}) as Partial<OpponentShowdownPlacement>;
   const a = r.attachment;
+  const s = r.sprawlDirection;
   return {
     attachment:
       a === 'outer-edge' || a === 'inner-edge' || a === 'chip-centered'
         ? a
         : fallback.attachment,
+    sprawlDirection:
+      s === 'inward' || s === 'outward' ? s : 'inward',
     xPctOfFelt:
       typeof r.xPctOfFelt === 'number' ? r.xPctOfFelt : fallback.xPctOfFelt,
     yPctOfFelt:
