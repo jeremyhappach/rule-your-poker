@@ -33,6 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   useGeometryOverrides,
+  setOverrideOptimistic,
   type GeometryOverride,
   type SizeMode,
 } from "@/lib/geometryLab/store";
