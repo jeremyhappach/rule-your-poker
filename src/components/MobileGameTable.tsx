@@ -10728,7 +10728,7 @@ export const MobileGameTable = ({
                       >
                         ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                       </Badge>
-                    ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
+                    ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold && holmDealReady ? (
                       <div className="flex items-center justify-center gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
