@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { useGeometryLabDraft } from '@/lib/geometryLab/GeometryLabDraftProvider';
 
 export function GeometryLabModalChrome({ children }: { children: React.ReactNode }) {
-  const { dirtyKeys, isDirty, applying, applyError, applyAll, cancelAll } =
+  const { dirtyKeys, isDirty, applying, applyAll, cancelAll } =
     useGeometryLabDraft();
+
 
   const handleApply = async () => {
     const res = await applyAll();
