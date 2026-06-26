@@ -17,7 +17,7 @@
  *         realtime override store loop closes
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,11 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useGeometryOverrides, type SizeMode } from "@/lib/geometryLab/store";
+import {
+  useGeometryOverrides,
+  type GeometryOverride,
+  type SizeMode,
+} from "@/lib/geometryLab/store";
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
 import {
   GAME_KEYS,
@@ -49,12 +53,14 @@ import {
   logGeometryLab,
   recordGeometryLabContext,
 } from "./GeometryLabCrashBoundary";
+import { useGeometryLabDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
+
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
