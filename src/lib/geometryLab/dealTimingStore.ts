@@ -21,6 +21,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { registerDomain } from './defaultsRegistry';
 
 export interface DealTimingConfig {
   launchSpacingMs: number;
