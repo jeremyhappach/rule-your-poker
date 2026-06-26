@@ -50,6 +50,7 @@ import {
 } from './canonicalSlotPlacement';
 import type { CanonicalSlot } from './seatAnchors';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
+import { resolveSideAwareRowAnchor } from './sideAwareRowAnchor';
 import { useChipTransportSuppressedSeats } from './ChipTransportProvider';
 import {
   getParticipantChipBgClass,
@@ -766,44 +767,24 @@ export function CanonicalSeatCluster({
 
       {belowChipNodes.length > 0 && (() => {
         // P2 — opponent showdown row placement.
-        // When `opponentShowdownPlacement` is provided, the cluster
-        // owns the below-chip wrapper's transform via a felt-relative
-        // anchor. The shell-level caller pre-resolved the % offsets
-        // to pixels using canonical play geometry, so per-card
-        // sizing/overlap/fan cannot alter row position.
-        //   self-anchor    : chip-centered ⇒ translateX(-50%)
-        //                    outer-edge L  ⇒ translateX(0%)
-        //                    outer-edge R  ⇒ translateX(-100%)
-        //   pixel offset   : translate(±dxPx, dyPx) — sign on X is
-        //                    flipped for right-side opponents so a
-        //                    single positive dxPx moves both sides
-        //                    INWARD toward felt center.
+        // Self-alignment is resolved by the canonical side-aware
+        // row-anchor resolver. Attachment names describe the VISIBLE
+        // pinned edge of the row footprint, never literal render order.
         // Default (chip-centered, 0, 0) is byte-for-byte identical to
         // the legacy `left-1/2 -translate-x-1/2 mt-[2px]` baseline.
         let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
           const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
-          // outer-edge: row extends AWAY from felt center (outward).
-          //   left  ⇒ row grows leftward  ⇒ translateX(-100%)
-          //   right ⇒ row grows rightward ⇒ translateX(0%)
-          // inner-edge: row extends TOWARD felt center (inward).
-          //   left  ⇒ row grows rightward ⇒ translateX(0%)
-          //   right ⇒ row grows leftward  ⇒ translateX(-100%)
-          let selfX: string;
-          if (attachment === 'chip-centered') {
-            selfX = '-50%';
-          } else if (attachment === 'outer-edge') {
-            selfX = isRightSide ? '0%' : '-100%';
-          } else {
-            // inner-edge
-            selfX = isRightSide ? '-100%' : '0%';
-          }
+          const { selfTranslateX } = resolveSideAwareRowAnchor(
+            isRightSide ? 'right' : 'left',
+            attachment,
+          );
           // Signed +X = inward toward felt center. Right-side opponents
           // need the sign flipped so a single positive dxPx moves both
           // sides inward (and negative moves both outward).
           const signedDx = isRightSide ? -dxPx : dxPx;
           overrideStyle = {
-            transform: `translate(${selfX}, 0) translate(${signedDx}px, ${dyPx}px)`,
+            transform: `translate(${selfTranslateX}, 0) translate(${signedDx}px, ${dyPx}px)`,
           };
         }
 
