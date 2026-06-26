@@ -5220,12 +5220,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
   }, [
-    game?.status, 
+    game?.status,
     game?.all_decisions_in,
     game?.all_decisions_in_round_id,
     game?.is_paused,
-    // Watch turn position for Holm games (turn-based)
-    // Watch round id to catch new rounds (since current_round isn't updated for Holm)
+    // Holm: re-evaluate on authority changes (one snapshot source).
+    // Non-Holm: retain currentRound deps so existing 3-5-7 path is unchanged.
+    holmAuthorityTick,
     currentRound?.current_turn_position,
     currentRound?.id,
     game?.game_type,
