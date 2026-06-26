@@ -122,6 +122,27 @@ export function HolmDealOrchestrator({
   const communityDispatchedRef = useRef(false);
   const chuckyDispatchedRef = useRef(false);
 
+  // Holm trace — orchestrator instance lifecycle.
+  const instanceRef = useRef<string>(`orch_${Math.random().toString(36).slice(2, 8)}`);
+  useEffect(() => {
+    const inst = instanceRef.current;
+    recordHolmTrace('ORCHESTRATOR', `mount ${inst}`, {
+      phase: 'mount', instance: inst, handContextId, selfPlayerId,
+    });
+    return () => {
+      recordHolmTrace('ORCHESTRATOR', `unmount ${inst}`, {
+        phase: 'unmount', instance: inst, handContextId, selfPlayerId,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    recordHolmTrace('ORCHESTRATOR', `handContext ${handContextId}`, {
+      phase: 'identity', instance: instanceRef.current, handContextId, cardsPerPlayer, seatsLength: seats.length,
+    });
+  }, [handContextId, cardsPerPlayer, seats.length]);
+
+
   // Helper to build an intent with shared timing metadata.
   const buildIntents = (
     specs: Array<{
