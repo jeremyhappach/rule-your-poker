@@ -99,6 +99,7 @@ import { setPresessionGeometryPhase } from "@/lib/wartimeDebug/presessionGeometr
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
+import { useHolmShowdownConfig } from "@/lib/holm/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
@@ -1130,6 +1131,29 @@ export const MobileGameTable = ({
     _ttShowdownCfg.placement.sprawlDirection,
     _ttShowdownCfg.placement.xPctOfFelt,
     _ttShowdownCfg.placement.yPctOfFelt,
+    _ttPlay.width,
+    _ttPlay.height,
+  ]);
+
+  // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
+  // single shared placement object resolves to felt-relative pixels
+  // once at MGT). Per-card geometry is consumed inside PlayerHand.
+  const _holmShowdownCfg = useHolmShowdownConfig();
+  const holmShowdownPlacementPx = useMemo(() => {
+    const p = _holmShowdownCfg.placement;
+    const w = _ttPlay.width || 0;
+    const h = _ttPlay.height || 0;
+    return {
+      attachment: p.attachment,
+      sprawlDirection: p.sprawlDirection,
+      dxPx: (p.xPctOfFelt / 100) * w,
+      dyPx: (p.yPctOfFelt / 100) * h,
+    };
+  }, [
+    _holmShowdownCfg.placement.attachment,
+    _holmShowdownCfg.placement.sprawlDirection,
+    _holmShowdownCfg.placement.xPctOfFelt,
+    _holmShowdownCfg.placement.yPctOfFelt,
     _ttPlay.width,
     _ttPlay.height,
   ]);
