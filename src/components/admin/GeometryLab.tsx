@@ -460,12 +460,10 @@ interface GameSectionsProps {
   override: ReturnType<ReturnType<typeof useGeometryOverrides>["get"]>;
   descriptor: ArtifactDescriptor;
   form: FormState;
-  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  setForm: (updater: FormState | ((prev: FormState) => FormState)) => void;
   derivedH: string;
   derivedW: string;
-  saving: boolean;
-  handleSave: () => Promise<void> | void;
-  handleResetToDefault: () => Promise<void> | void;
+  dirty: boolean;
   handleConvertTo: (target: "widthDriven" | "heightDriven") => void;
 }
 
@@ -482,11 +480,10 @@ function GameSections(props: GameSectionsProps) {
     setForm,
     derivedH,
     derivedW,
-    saving,
-    handleSave,
-    handleResetToDefault,
+    dirty,
     handleConvertTo,
   } = props;
+
 
   return (
     <div className="space-y-3">
