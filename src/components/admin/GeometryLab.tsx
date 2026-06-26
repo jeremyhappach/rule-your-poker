@@ -734,18 +734,6 @@ function GameSections(props: GameSectionsProps) {
           ))}
         </div>
 
-        <div className="pt-2 rounded border border-dashed border-border bg-muted/30 px-2 py-2">
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            <strong>Per-artifact override editing is paused.</strong> The
-            modal-wide draft / Apply Changes contract is the only persistence
-            path; the legacy per-artifact Save/Reset wrote directly to
-            <code className="mx-1">geometry_overrides</code> and bypassed the
-            shared draft. A collection adapter for that table will be added
-            in a future Geometry Lab phase. Use the panels above (Showdown
-            Rules, Layout Tuning, Deal Timing, Table Demo, Card Front Design)
-            until then.
-          </p>
-        </div>
       </CollapsibleSection>
 
       <CollapsibleSection title="Chip Ring Artifacts">
