@@ -105,6 +105,11 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       label: 'Force Chucky Beats Player',
       description: 'Solo vs Chucky → winner = CHUCKY after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
     },
+    {
+      id: 'pause_showdown_freeze',
+      label: 'Showdown Freeze',
+      description: 'Pause once on the first real Holm multiplayer showdown (≥1 stayed opponent). Leaves awaiting_next_round=true after exposed cards visually settle; no auto-proceed, no release button. Solo/Chucky outcomes are excluded.',
+    },
   ],
   '3-5-7': [
     NONE_HARNESS,
