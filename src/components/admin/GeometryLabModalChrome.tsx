@@ -2,7 +2,10 @@
  * Geometry Lab — shared modal chrome (Phase 1).
  *
  * Single Apply / Cancel footer for the entire modal session. Per-panel
- * Save UI is forbidden; per-section Reset lives inside each panel.
+ * Save UI is forbidden; per-section Reset is permitted only when it
+ * re-seeds the modal draft (no direct persistence, no realtime
+ * broadcast). Realtime propagation happens exclusively after the
+ * footer Apply Changes commits.
  *
  * Cancel/X/Esc/outside-close discards every draft across every section
  * via the provider's cancelAll(). If there are unsaved changes, a
