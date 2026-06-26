@@ -5093,13 +5093,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const triggerBot = async () => {
         try {
           console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+            const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
+            const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+            recordHolmDecisionSubmission({
+              source: 'bot action',
+              actor: botActor,
+              decision: null,
+              makeDecisionInvoked: true,
+              requestStatus: botMadeDecision ? 'accepted' : 'rejected',
+              extra: { capturedTurnPosition },
+            });
           
           // If bot made a decision, explicitly fetch to get updated turn position
           if (botMadeDecision) {
             console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
             await fetchGameData();
           }
+        } catch (error: any) {
+          const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
+          recordHolmDecisionSubmission({
+            source: 'bot action',
+            actor: botActor,
+            decision: null,
+            makeDecisionInvoked: true,
+            requestStatus: 'error',
+            errorMessage: error?.message ?? String(error),
+            extra: { capturedTurnPosition },
+          });
         } finally {
           botProcessingRef.current = false;
         }
