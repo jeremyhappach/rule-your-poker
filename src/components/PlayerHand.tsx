@@ -143,6 +143,12 @@ export const PlayerHand = ({
   // OWNERSHIP BOUNDARY: v4 applies ONLY to opponent-exposed showdown.
   const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
   const use357V4 = is357Game && isOpponentExposedShowdown;
+  // Card Front Design tier — Phase 1: opponent seat-cluster exposed
+  // cards use Small face-density (compact rank/suit), active-player
+  // hand uses Large. Applies to every PlayingCard rendered by this
+  // component.
+  const cardTier: import('@/lib/cardFrontDesign/config').CardFrontTierKey =
+    isOpponentExposedShowdown ? 'small' : 'large';
 
   // Self-pane legacy geometry (preserves prior behavior verbatim for
   // active-player pane and other non-showdown callers).
