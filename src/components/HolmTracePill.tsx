@@ -47,11 +47,12 @@ export function HolmTracePill() {
     }
   }, []);
 
-  // Pot geometry sampler — runs only while pill is mounted (= Holm active).
+  // Pot geometry sampler — runs always; recordHolmTrace no-ops when
+  // the trace is inactive, so this has zero side-effects outside Holm.
   useEffect(() => {
-    if (!isHolmTraceActive()) return;
     let lastSig = '';
     const sample = () => {
+      if (!isHolmTraceActive()) return;
       const pot = document.querySelector<HTMLElement>('[data-pot-anchor]');
       const felt = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
       const frame = document.querySelector<HTMLElement>('[data-canonical-shell-felt-frame]');
