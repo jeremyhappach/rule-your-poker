@@ -5120,6 +5120,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             errorMessage: error?.message ?? String(error),
             extra: { capturedTurnPosition },
           });
+          throw error;
         } finally {
           botProcessingRef.current = false;
         }
