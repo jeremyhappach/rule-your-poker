@@ -2128,6 +2128,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return () => setShellLifecycleActiveGameType(null);
   }, [game?.game_type]);
 
+  // Holm trace pill — activate only while a Holm table is mounted.
+  // Buffer resets on activation; deactivation clears the on-screen pill.
+  useEffect(() => {
+    const isHolm = game?.game_type === 'holm-game';
+    setHolmTraceActive(isHolm);
+    return () => setHolmTraceActive(false);
+  }, [game?.game_type, game?.id]);
+
 
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
