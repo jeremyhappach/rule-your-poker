@@ -804,7 +804,7 @@ export const PlayerHand = ({
 
     const n = mainCount;
     const mainFanDir = use357V4
-      ? (isRound3WithUnusedBelow ? v4Resolved.r3.fanDirection : v4Resolved.r2.fanDirection)
+      ? (isRound3WithUnusedBelow ? v4Resolved.r3.fanArch : v4Resolved.r2.fanArch)
       : 'outward';
     // Fan-sign mapping (rotation-only; no arc, no pivot, no vertical bow):
     //   sideSign: right-side opponent = +1, left-side opponent = -1
