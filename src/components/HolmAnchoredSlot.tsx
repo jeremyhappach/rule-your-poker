@@ -14,6 +14,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -22,6 +23,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useHolmGameplayGeometry } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { useShellFeltFrameElement } from "@/lib/canonicalShell/useShellFeltFrameElement";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 export interface HolmAnchoredSlotProps {
