@@ -43,6 +43,19 @@ export function setGeometryOverrides(next: GeometryOverridesMap) {
   emit();
 }
 
+/**
+ * Optimistically merge a single committed override into the local snapshot
+ * so admin UI re-seeds immediately after Apply without waiting for the
+ * realtime echo. The realtime refresh that follows is idempotent (same
+ * row contents → same snapshot value).
+ */
+export function setOverrideOptimistic(id: string, value: GeometryOverride) {
+  const next = new Map(snapshot);
+  next.set(id, value);
+  snapshot = next;
+  emit();
+}
+
 export function getGeometryOverridesSnapshot(): GeometryOverridesMap {
   return snapshot;
 }
