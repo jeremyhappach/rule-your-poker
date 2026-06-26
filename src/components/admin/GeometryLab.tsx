@@ -241,18 +241,24 @@ export function GeometryLab({ userId }: { userId: string }) {
       const info = descriptorByIdRef.current.get(id);
       const g = info?.game ?? game;
       const f = value as FormState;
+      const anchorX = num(f.anchorX);
+      const anchorY = num(f.anchorY);
+      const widthPct =
+        f.sizeMode === "heightDriven" ? null : num(f.widthPct);
+      const heightPct =
+        f.sizeMode === "widthDriven" ? null : num(f.heightPct);
+      const aspectRatio =
+        f.sizeMode === "rect" ? null : num(f.aspectRatio);
       const payload: Record<string, unknown> = {
         artifact_id: id,
         game: g,
-        anchor_x: num(f.anchorX),
-        anchor_y: num(f.anchorY),
+        anchor_x: anchorX,
+        anchor_y: anchorY,
         anchor_origin: f.anchorOrigin,
         size_mode: f.sizeMode,
-        width_pct:
-          f.sizeMode === "heightDriven" ? null : num(f.widthPct),
-        height_pct:
-          f.sizeMode === "widthDriven" ? null : num(f.heightPct),
-        aspect_ratio: f.sizeMode === "rect" ? null : num(f.aspectRatio),
+        width_pct: widthPct,
+        height_pct: heightPct,
+        aspect_ratio: aspectRatio,
         updated_by: userIdRef.current,
         updated_at: new Date().toISOString(),
       };
@@ -268,6 +274,21 @@ export function GeometryLab({ userId }: { userId: string }) {
         });
         return { ok: false, error: error.message };
       }
+      // Optimistically merge the committed row into the local override
+      // snapshot so the panel re-seeds with the just-applied value
+      // without waiting for the realtime echo. The async refresh that
+      // follows is idempotent.
+      setOverrideOptimistic(id, {
+        artifact_id: id,
+        game: g,
+        anchor_x: anchorX,
+        anchor_y: anchorY,
+        anchor_origin: f.anchorOrigin,
+        size_mode: f.sizeMode,
+        width_pct: widthPct,
+        height_pct: heightPct,
+        aspect_ratio: aspectRatio,
+      });
       logGeometryLab("draft_commit_succeeded", { artifactId: id });
       return { ok: true };
     });
