@@ -22,6 +22,9 @@ export type HolmTraceKind =
   | 'HOLM_SLOT'
   | 'TURN_SPOTLIGHT'
   | 'POT_GEOMETRY'
+  | 'TURN_AUTHORITY_ARRIVAL'
+  | 'DECISION_SUBMISSION'
+  | 'TURN_INVARIANT_VIOLATION'
   | 'INCIDENT_CARD_SURFACE_DROP'
   | 'INCIDENT_ORCHESTRATOR_REMOUNT'
   | 'INCIDENT_PORTAL_TARGET_SWAP'
@@ -53,6 +56,7 @@ const t0 =
 // Game.tsx; arming is exclusively a user gesture on the pill.
 let _available = false;
 let _armed = false;
+const availabilityListeners = new Set<(available: boolean) => void>();
 
 // Per-source last-state for incident detection.
 const last = {
@@ -80,6 +84,7 @@ function resetIncidentState() {
 
 /** Pill visibility — Holm table mounted. Does NOT enable recording. */
 export function setHolmTraceActive(available: boolean): void {
+  const changed = _available !== available;
   _available = available;
   if (!available) {
     // Leaving Holm — disarm and clear so the next session starts fresh.
@@ -88,10 +93,26 @@ export function setHolmTraceActive(available: boolean): void {
     seq = 0;
     resetIncidentState();
   }
+  if (changed) {
+    availabilityListeners.forEach((listener) => {
+      try { listener(_available); } catch { /* availability UI must never affect gameplay */ }
+    });
+  }
 }
 
 export function isHolmTraceActive(): boolean {
   return _available;
+}
+
+/**
+ * Isolated pill-availability signal. This is intentionally the only
+ * subscription in the Holm trace module: it only toggles the fixed body-level
+ * pill after Game enters/leaves Holm, and it is not connected to trace events
+ * or gameplay state changes.
+ */
+export function subscribeHolmTraceAvailability(listener: (available: boolean) => void): () => void {
+  availabilityListeners.add(listener);
+  return () => availabilityListeners.delete(listener);
 }
 
 /** User-controlled arming. The ONLY enabler of recording. */
@@ -214,6 +235,34 @@ export function recordHolmTrace(
       emitMarker('INCIDENT_POT_Y_DELTA', `pot.y ${last.potY.toFixed(1)} → ${y.toFixed(1)}`, last.potY, y);
     }
     if (typeof y === 'number') last.potY = y;
+  }
+
+  if (kind === 'TURN_AUTHORITY_ARRIVAL') {
+    if (detail?.incomingMatchesExpected === false) {
+      emitMarker(
+        'TURN_INVARIANT_VIOLATION',
+        `authority skip ${detail?.previousCurrentTurnPosition ?? 'null'} → ${detail?.nextCurrentTurnPosition ?? 'null'} expected ${detail?.expectedClockwiseNextEligibleSeat ?? 'null'}`,
+        detail?.previousCurrentTurnPosition ?? null,
+        detail?.nextCurrentTurnPosition ?? null,
+      );
+    }
+    if (detail?.incomingTargetsSkippedSeat === true) {
+      emitMarker(
+        'TURN_INVARIANT_VIOLATION',
+        `authority targeted skipped seat ${detail?.nextCurrentTurnPosition ?? 'null'}`,
+        detail?.decisionSummaryForIncomingSeat ?? null,
+        detail?.nextCurrentTurnPosition ?? null,
+      );
+    }
+  }
+
+  if (kind === 'DECISION_SUBMISSION' && detail?.authorityMatchesActor === false) {
+    emitMarker(
+      'TURN_INVARIANT_VIOLATION',
+      `decision attempted out of turn actor=${detail?.actorPosition ?? 'null'} authority=${detail?.authoritativeCurrentTurnPosition ?? 'null'}`,
+      detail?.authoritativeCurrentTurnPosition ?? null,
+      detail?.actorPosition ?? null,
+    );
   }
 
   push({ seq: seq++, tMs, kind, summary, detail });
