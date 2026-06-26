@@ -12,6 +12,13 @@
  * to renderers when the admin clicks Apply Changes, which triggers a
  * single upsert against `system_settings` (atomic per-domain at this
  * phase — Phase 2 swaps the commit path for a cross-table RPC).
+ *
+ * External-table domains (e.g. Gameplay Artifacts → geometry_overrides)
+ * register a per-key seed source AND a per-key commit adapter so they
+ * participate in the same modal-wide dirty / Apply / Cancel contract
+ * without sharing the system_settings storage path. During Apply the
+ * provider executes external adapters first, then bundles every
+ * registry-backed dirty key into the single system_settings upsert.
  */
 
 import {
@@ -36,6 +43,9 @@ interface DraftEntry {
   current: unknown;
 }
 
+type CommitAdapter = (value: unknown) => Promise<{ ok: boolean; error?: string }>;
+type SeedFn = () => unknown;
+
 interface DraftContextValue {
   getDraft: <T>(key: string) => T;
   setDraft: <T>(key: string, updater: T | ((prev: T) => T)) => void;
@@ -47,6 +57,23 @@ interface DraftContextValue {
   applyError: string | null;
   applyAll: () => Promise<{ ok: boolean; error?: string }>;
   cancelAll: () => void;
+  /**
+   * Register a draft seed source for a key that is NOT backed by the
+   * defaultsRegistry / system_settings (e.g. one row in
+   * `geometry_overrides`). The provider will call `seed()` to obtain the
+   * pre-edit baseline whenever it needs to seed a draft entry for `key`.
+   * Idempotent; the latest registration wins. Safe to call from effects.
+   */
+  registerSeed: (key: string, seed: SeedFn) => void;
+  unregisterSeed: (key: string) => void;
+  /**
+   * Register a commit adapter for an external-table key. During Apply
+   * the provider runs every external adapter first; if any fail the
+   * batch surfaces an error and no drafts are cleared. Keys WITHOUT an
+   * adapter are persisted via the single shared system_settings upsert.
+   */
+  registerCommitAdapter: (key: string, fn: CommitAdapter) => void;
+  unregisterCommitAdapter: (key: string) => void;
 }
 
 const Ctx = createContext<DraftContextValue | null>(null);
@@ -57,6 +84,8 @@ function deepEqual(a: unknown, b: unknown): boolean {
 
 export function GeometryLabDraftProvider({ children }: { children: React.ReactNode }) {
   const draftsRef = useRef<Map<string, DraftEntry>>(new Map());
+  const seedAdaptersRef = useRef<Map<string, SeedFn>>(new Map());
+  const commitAdaptersRef = useRef<Map<string, CommitAdapter>>(new Map());
   // Bump to force consumers to re-read drafts. We deliberately do not put
   // the draft map in React state — controls call getDraft on every render.
   const [tick, setTick] = useState(0);
@@ -64,6 +93,17 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
   const [applyError, setApplyError] = useState<string | null>(null);
 
   const seedDraft = useCallback((key: string): DraftEntry => {
+    // External-table domains supply their own seed source — use it when
+    // present and skip the defaultsRegistry path entirely (those keys
+    // are not registered there).
+    const seedFn = seedAdaptersRef.current.get(key);
+    if (seedFn) {
+      const seeded = seedFn();
+      const entry: DraftEntry = { initial: seeded, current: seeded };
+      draftsRef.current.set(key, entry);
+      return entry;
+    }
+
     const committed = getSnapshot<unknown>(key);
     // Option A — preserve current established device-local values. Only
     // applies before the shared row has ever been committed AND only when
@@ -103,11 +143,6 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
 
   const resetDomain = useCallback((key: string) => {
     // Reset to baked defaults (the seed). Still a draft — admin must Apply.
-    // We pull the defaults via a sentinel: round-trip through getSnapshot
-    // would give the committed snapshot, not the seed. Instead, we ask
-    // every consumer that calls resetDomain to know its own defaults; the
-    // panel passes them via setDraft. To keep the API simple here, this
-    // helper just clears the draft so the consumer can re-seed.
     draftsRef.current.delete(key);
     setTick((t) => t + 1);
   }, []);
@@ -136,6 +171,19 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
     setTick((t) => t + 1);
   }, []);
 
+  const registerSeed = useCallback((key: string, seed: SeedFn) => {
+    seedAdaptersRef.current.set(key, seed);
+  }, []);
+  const unregisterSeed = useCallback((key: string) => {
+    seedAdaptersRef.current.delete(key);
+  }, []);
+  const registerCommitAdapter = useCallback((key: string, fn: CommitAdapter) => {
+    commitAdaptersRef.current.set(key, fn);
+  }, []);
+  const unregisterCommitAdapter = useCallback((key: string) => {
+    commitAdaptersRef.current.delete(key);
+  }, []);
+
   const applyAll = useCallback(async () => {
     setApplyError(null);
     const keys = dirtyKeys;
@@ -143,30 +191,51 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
 
     setApplying(true);
     try {
-      // Phase 1: one upsert against `system_settings` carrying every
-      // dirty JSON-blob domain. PostgREST executes this as a single
-      // statement, so all domains commit or none do.
-      const rows = keys.map((k) => ({
-        key: k,
-        value: draftsRef.current.get(k)!.current as never,
-        updated_at: new Date().toISOString(),
-      }));
-
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert(rows, { onConflict: 'key' });
-
-      if (error) {
-        setApplying(false);
-        setApplyError(error.message);
-        return { ok: false, error: error.message };
-      }
-
-      // Optimistic local promotion — realtime echo will reconfirm.
+      // Split: external-adapter keys vs system_settings keys.
+      const externalKeys: string[] = [];
+      const settingsKeys: string[] = [];
       for (const k of keys) {
-        _setFromLocalCommit(k, draftsRef.current.get(k)!.current);
+        if (commitAdaptersRef.current.has(k)) externalKeys.push(k);
+        else settingsKeys.push(k);
       }
-      // Clear drafts; subsequent reads will seed from the new committed.
+
+      // 1) Run external adapters first. Sequential so failures attribute.
+      for (const k of externalKeys) {
+        const fn = commitAdaptersRef.current.get(k)!;
+        const value = draftsRef.current.get(k)!.current;
+        const res = await fn(value);
+        if (!res.ok) {
+          setApplying(false);
+          const msg = res.error ?? `commit failed for ${k}`;
+          setApplyError(msg);
+          return { ok: false, error: msg };
+        }
+      }
+
+      // 2) Bundle remaining keys into the single system_settings upsert.
+      if (settingsKeys.length > 0) {
+        const rows = settingsKeys.map((k) => ({
+          key: k,
+          value: draftsRef.current.get(k)!.current as never,
+          updated_at: new Date().toISOString(),
+        }));
+        const { error } = await supabase
+          .from('system_settings')
+          .upsert(rows, { onConflict: 'key' });
+        if (error) {
+          setApplying(false);
+          setApplyError(error.message);
+          return { ok: false, error: error.message };
+        }
+        // Optimistic local promotion — realtime echo will reconfirm.
+        for (const k of settingsKeys) {
+          _setFromLocalCommit(k, draftsRef.current.get(k)!.current);
+        }
+      }
+
+      // Clear drafts; subsequent reads will seed from the new committed
+      // values (system_settings via registry, external via seed adapters
+      // re-evaluating against their refreshed realtime stores).
       draftsRef.current.clear();
       setApplying(false);
       setTick((t) => t + 1);
@@ -191,8 +260,12 @@ export function GeometryLabDraftProvider({ children }: { children: React.ReactNo
       applyError,
       applyAll,
       cancelAll,
+      registerSeed,
+      unregisterSeed,
+      registerCommitAdapter,
+      unregisterCommitAdapter,
     }),
-    [getDraft, setDraft, resetDomain, isDomainDirty, dirtyKeys, isDirty, applying, applyError, applyAll, cancelAll],
+    [getDraft, setDraft, resetDomain, isDomainDirty, dirtyKeys, isDirty, applying, applyError, applyAll, cancelAll, registerSeed, unregisterSeed, registerCommitAdapter, unregisterCommitAdapter],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
