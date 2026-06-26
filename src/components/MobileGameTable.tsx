@@ -7040,8 +7040,12 @@ export const MobileGameTable = ({
     const shouldHideForTabling =
       isWinAnimationWinner || isSoloVsChuckyPlayerForChip || isSoloVsChuckyPlayerRaw;
 
-    // Hide chip during multi-player showdowns (R2/R3) to make room for cards.
-    const hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
+    // P1 fix: chip disc must remain mounted during R2/R3 multi-player
+    // showdown — opponent-showdown card row is now anchored on the
+    // canonical chip-disc rect ([data-chip-center]). Hiding the disc
+    // removed both the chip circle AND the placement anchor, causing
+    // the row to collapse. Keep chip visible; cards lay out below.
+    const hideChipForShowdown = false;
 
     // Status palette (357 honors stayed-decision green).
     const participantStatus = derivePlayerStatus(player, playerDecision, {
