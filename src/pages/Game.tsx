@@ -5439,19 +5439,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       armed,
       latest,
     });
-    recordHolmDecisionSubmission({
-      source: decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
-      actor: currentPlayer,
-      decision,
-      makeDecisionInvoked: true,
-      requestStatus: 'accepted',
-      extra: { armed, latest },
-    });
     holmPreDecisionArmedRef.current = null;
     setHolmPreFold(false);
     setHolmPreStay(false);
-    if (decision === 'fold') handleFold();
-    else handleStay();
+    if (decision === 'fold') handleFold('pre-fold execute');
+    else handleStay('pre-stay execute');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     game?.game_type,
