@@ -325,6 +325,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch HANDS accepted`, { phase: 'dispatch', wave: 'hands', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'handsDispatchedRef', intents: intents.length, reason: 'hands-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:handsWave:L300',
