@@ -199,7 +199,16 @@ export function GeometryLab({ userId }: { userId: string }) {
   // geometry_overrides → realtime echo refreshes the override store.
   // No section-level Save/Reset persistence remains.
   // -------------------------------------------------------------------------
-  const draft = useGeometryLabDraft();
+  const {
+    getDraft,
+    setDraft,
+    resetDomain,
+    isDomainDirty,
+    registerSeed,
+    unregisterSeed,
+    registerCommitAdapter,
+    unregisterCommitAdapter,
+  } = useGeometryLabDraft();
 
   // Refs let the seed/commit adapters always read the latest descriptor
   // and override snapshot without re-registering on every render.
@@ -221,13 +230,13 @@ export function GeometryLab({ userId }: { userId: string }) {
     const k = artifactDraftKey(id);
     if (registeredRef.current.has(k)) return;
     registeredRef.current.add(k);
-    draft.registerSeed(k, () => {
+    registerSeed(k, () => {
       const info = descriptorByIdRef.current.get(id);
       const d = info?.desc;
       if (!d) return EMPTY_FORM;
       return buildSeedForm(d, overridesRef.current.get(id));
     });
-    draft.registerCommitAdapter(k, async (value) => {
+    registerCommitAdapter(k, async (value) => {
       const info = descriptorByIdRef.current.get(id);
       const g = info?.game ?? game;
       const f = value as FormState;
@@ -272,12 +281,12 @@ export function GeometryLab({ userId }: { userId: string }) {
     const set = registeredRef.current;
     return () => {
       set.forEach((k) => {
-        draft.unregisterSeed(k);
-        draft.unregisterCommitAdapter(k);
+        unregisterSeed(k);
+        unregisterCommitAdapter(k);
       });
       set.clear();
     };
-  }, [draft]);
+  }, [unregisterSeed, unregisterCommitAdapter]);
 
   // When the realtime override store changes for the selected artifact
   // and the user has no dirty edits, drop the cached draft so the next
@@ -286,16 +295,16 @@ export function GeometryLab({ userId }: { userId: string }) {
   const draftKey = descriptor ? artifactDraftKey(artifactId) : "";
   useEffect(() => {
     if (!descriptor) return;
-    if (draft.isDomainDirty(draftKey)) return;
-    draft.resetDomain(draftKey);
-  }, [override, descriptor, draftKey, draft]);
+    if (isDomainDirty(draftKey)) return;
+    resetDomain(draftKey);
+  }, [override, descriptor, draftKey, isDomainDirty, resetDomain]);
 
   const form: FormState = descriptor
-    ? draft.getDraft<FormState>(draftKey)
+    ? getDraft<FormState>(draftKey)
     : EMPTY_FORM;
   const setForm = (updater: FormState | ((prev: FormState) => FormState)) => {
     if (!descriptor) return;
-    draft.setDraft<FormState>(draftKey, updater);
+    setDraft<FormState>(draftKey, updater);
   };
 
   // Record snapshot for the crash boundary on every render.
@@ -385,7 +394,7 @@ export function GeometryLab({ userId }: { userId: string }) {
           setForm={setForm}
           derivedH={derivedH}
           derivedW={derivedW}
-          dirty={draft.isDomainDirty(draftKey)}
+          dirty={isDomainDirty(draftKey)}
 
           handleConvertTo={handleConvertTo}
         />
