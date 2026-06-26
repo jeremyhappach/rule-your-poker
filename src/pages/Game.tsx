@@ -12337,8 +12337,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenCachedLegPositions={cachedLegPositions}
               onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
-              onStay={isInProgress ? handleStay : () => {}}
-              onFold={isInProgress ? handleFold : () => {}}
+              onStay={isInProgress ? () => handleStay() : () => {}}
+              onFold={isInProgress ? () => handleFold() : () => {}}
+
               onSelectSeat={handleSelectSeat}
               isHost={isCreator}
               onPlayerClick={isInProgress ? (player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); } : undefined}
