@@ -6746,8 +6746,10 @@ export const MobileGameTable = ({
     const soloLockedId = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayerForChip =
       isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
-    const hideChipForShowdown =
-      isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    // Holm clean-baseline: canonical chip disc remains visible during
+    // showdown so exposed cards anchor below it. Emoticon overlay is
+    // still handled independently via `chipOverlay`.
+    const hideChipForShowdown = false;
     const soloAreaPlayerId = isSoloVsChucky
       ? (soloLockedId || players.find(p => p.current_decision === 'stay')?.id || null)
       : null;
