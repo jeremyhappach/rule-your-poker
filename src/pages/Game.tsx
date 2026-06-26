@@ -11977,8 +11977,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onWinner357ShowCards={handleWinner357ShowCards}
               holmPreFold={holmPreFold}
               holmPreStay={holmPreStay}
-              onHolmPreFoldChange={setHolmPreFold}
-              onHolmPreStayChange={setHolmPreStay}
+              onHolmPreFoldChange={(checked) => armHolmPreDecision(checked ? 'fold' : null)}
+              onHolmPreStayChange={(checked) => armHolmPreDecision(checked ? 'stay' : null)}
+              holmDealReady={game?.game_type === 'holm-game' ? isHolmHandReady(handContextKey) : true}
               rabbitHunt={game.rabbit_hunt ?? false}
               activeTab={mobileActiveTab}
               onActiveTabChange={setMobileActiveTab}
