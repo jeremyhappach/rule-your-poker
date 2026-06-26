@@ -4646,14 +4646,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRoundDealerGameIdForArtifacts !== currentDealerGameIdForArtifacts
   );
 
+  // Holm uses a STABLE per-hand lifecycle key: (roundId, handNumber). It MUST
+  // NOT include community-card identity — those reveal progressively during
+  // the hand and any churn here would remount DealRuntime mid-hand, clear
+  // isHolmHandReady, and brick pre-decisions / bots / live decisions.
+  // See: holmDealIdentityKey contract.
+  const holmDealIdentityKey = (game?.game_type === 'holm-game' && holmView)
+    ? `${holmView.roundId}:h${holmView.handNumber}`
+    : null;
   const handContextKey = hasCurrentRoundDealerGameMismatch
     ? null
-    : game?.game_type === 'holm-game' && holmView
-      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}`
+    : holmDealIdentityKey
+      ? holmDealIdentityKey
       : (cardStateContext?.roundId ??
         (currentRound?.id
           ? `${currentRound.id}:${currentCardIdentity}`
           : null));
+  // holmHandIdentityCards retained above ONLY for non-readiness consumers
+  // (capture-logic identity guards). Not used as a lifecycle key.
+  void holmHandIdentityCards;
 
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
