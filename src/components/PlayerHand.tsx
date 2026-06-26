@@ -659,6 +659,7 @@ export const PlayerHand = ({
           
           return (
             <PlayingCard
+              tier={cardTier}
               key={index}
               isHidden
               size={cardSize}
@@ -777,6 +778,7 @@ export const PlayerHand = ({
       >
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
+            tier={cardTier}
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
@@ -823,6 +825,7 @@ export const PlayerHand = ({
           const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n) * mainFanSign;
           return (
             <PlayingCard
+              tier={cardTier}
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
               card={card}
               size={usedCardSize}
@@ -895,6 +898,7 @@ export const PlayerHand = ({
           const rotationDeg = fanStep * (displayIndex - (n - 1) / 2);
           return (
             <PlayingCard
+              tier={cardTier}
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
               card={card}
               size={cardSize}
@@ -952,6 +956,7 @@ export const PlayerHand = ({
 
         const cardEl = (
           <PlayingCard
+            tier={cardTier}
             key={`${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             isHidden={forceHiddenFaces}
