@@ -1371,6 +1371,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Holm pre-fold/pre-stay state (for when it's not your turn yet)
   const [holmPreFold, setHolmPreFold] = useState(false);
   const [holmPreStay, setHolmPreStay] = useState(false);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // P0 Holm pre-decision authority contract
+  //
+  // Authoritative epoch source: monotonic local counter incremented
+  // SYNCHRONOUSLY in the realtime-ingest boundary (rounds UPDATE/INSERT
+  // payload handler in this file, ~L2871) before any React state set.
+  // `rounds` has no native `updated_at`, so this counter is the
+  // canonical local mirror of authoritative turn arrivals.
+  //
+  // Arming captures {roundId, handContextId, fromTurnPosition, epoch}
+  // from this ref — never from a render closure. Execution requires
+  // a STRICTLY newer epoch + same round/hand + turn-now-mine + deal
+  // ready. See holmPreDecisionExecuteEffect below.
+  // ─────────────────────────────────────────────────────────────────────
+  const latestAuthoritativeTurnRef = useRef<{
+    roundId: string | null;
+    currentTurnPosition: number | null;
+    epoch: number;
+  } | null>(null);
+  const authoritativeTurnEpochRef = useRef(0);
+  const holmPreDecisionArmedRef = useRef<{
+    armedRoundId: string | null;
+    armedHandContextId: string | null;
+    armedFromTurnPosition: number | null;
+    armedAuthorityEpoch: number;
+    decision: 'stay' | 'fold';
+  } | null>(null);
+
+  // Re-render when the Holm deal barrier flips so render gates and
+  // execute-effect both observe the readiness change.
+  const [holmReadyTick, setHolmReadyTick] = useState(0);
+  useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
