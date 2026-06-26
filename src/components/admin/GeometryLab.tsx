@@ -93,6 +93,47 @@ function stringifyOptional(v: number | undefined): string {
 
 type LabSelection = "__shell__" | GameKey;
 
+const EMPTY_FORM: FormState = {
+  anchorX: "",
+  anchorY: "",
+  anchorOrigin: "center",
+  sizeMode: "widthDriven",
+  widthPct: "",
+  heightPct: "",
+  aspectRatio: "",
+};
+
+function artifactDraftKey(artifactId: string): string {
+  return `geometry_overrides:${artifactId}`;
+}
+
+function buildSeedForm(
+  d: ArtifactDescriptor,
+  o: GeometryOverride | undefined,
+): FormState {
+  const descSizeMode = deriveSizeMode(d);
+  const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+  return {
+    anchorX: String(o?.anchor_x ?? d.anchorX ?? 0.5),
+    anchorY: String(o?.anchor_y ?? d.anchorY ?? 0.5),
+    anchorOrigin: (o?.anchor_origin ?? d.anchorOrigin ?? "center") as AnchorOrigin,
+    sizeMode,
+    widthPct:
+      o?.width_pct != null
+        ? String(o.width_pct)
+        : stringifyOptional(d.widthPct),
+    heightPct:
+      o?.height_pct != null
+        ? String(o.height_pct)
+        : stringifyOptional(d.heightPct),
+    aspectRatio:
+      o?.aspect_ratio != null
+        ? String(o.aspect_ratio)
+        : stringifyOptional(d.aspectRatio),
+  };
+}
+
+
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
 
