@@ -1930,6 +1930,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // garbage-collects the ref naturally.
     harness357PausedGameRef.current = null;
   }, [game?.current_game_uuid, game?.game_type, harness357, gameId]);
+
+  // Holm Showdown Freeze harness — same pattern as 3-5-7. One-shot per
+  // hand identity = (current_game_uuid | current_round). Pauses
+  // AUTO_PROCEED scheduling on the first real Holm multiplayer showdown
+  // (parseable WINNER+LOSERS marker in last_round_result) so the
+  // live-rendered table stays mounted for Geometry Lab inspection.
+  const harnessHolm = useDebugHarness('holm');
+  const harnessHolmPausedHandRef = useRef<string | null>(null);
+  useEffect(() => {
+    harnessHolmPausedHandRef.current = null;
+  }, [game?.current_game_uuid, game?.game_type, harnessHolm, gameId]);
+
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
