@@ -5527,15 +5527,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           try {
             console.log('[TIMER EXPIRED HOLM] Invoking enforce-deadlines');
-            await supabase.functions.invoke('enforce-deadlines', {
+            const timeoutActor = playersRef.current.find(p => p.position === timerTurnPosition) ?? null;
+            const { error } = await supabase.functions.invoke('enforce-deadlines', {
               body: {
                 gameId,
                 source: 'client-timer-expired',
                 requestId: crypto.randomUUID(),
               },
             });
+            recordHolmDecisionSubmission({
+              source: 'server-timeout observed',
+              actor: timeoutActor,
+              decision: null,
+              makeDecisionInvoked: false,
+              requestStatus: error ? 'error' : 'accepted',
+              errorMessage: error?.message ?? null,
+              extra: { timerTurnPosition },
+            });
           } catch (err) {
             console.warn('[TIMER EXPIRED HOLM] enforce-deadlines failed:', err);
+            const timeoutActor = playersRef.current.find(p => p.position === timerTurnPosition) ?? null;
+            recordHolmDecisionSubmission({
+              source: 'server-timeout observed',
+              actor: timeoutActor,
+              decision: null,
+              makeDecisionInvoked: false,
+              requestStatus: 'error',
+              errorMessage: err instanceof Error ? err.message : String(err),
+              extra: { timerTurnPosition },
+            });
           } finally {
             autoFoldingRef.current = false;
             // Force a quick refresh so the UI picks up the new decision_deadline/turn
