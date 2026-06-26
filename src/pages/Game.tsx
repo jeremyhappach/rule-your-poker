@@ -5080,8 +5080,63 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     user?.id,
   ]);
 
-  // Holm instant auto-fold/pre-decision effect
+  // Holm pre-decision arming helper.
+  //
+  // Captures the latest AUTHORITATIVE turn ref (updated synchronously
+  // at the realtime ingest boundary), not a React render snapshot.
+  // Rejects arming when:
+  //   - authority for this round already shows my turn (the live
+  //     Stay/Fold path is the only valid action then), or
+  //   - the Holm initial deal is not yet ready.
+  const armHolmPreDecision = useCallback((decision: 'stay' | 'fold' | null) => {
+    if (decision === null) {
+      holmPreDecisionArmedRef.current = null;
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      return;
+    }
+    if (game?.game_type !== 'holm-game') return;
+    const cp = players.find(p => p.user_id === user?.id);
+    if (!cp) return;
+    const myPos = cp.position;
 
+    // Reject if Holm deal not ready yet.
+    if (!isHolmHandReady(handContextKey)) {
+      console.warn('[PRE-DECISION] reject arm — Holm deal not ready');
+      holmPreDecisionArmedRef.current = null;
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      return;
+    }
+
+    // Reject if authority for this round already shows my turn.
+    const latest = latestAuthoritativeTurnRef.current;
+    const sameRound = latest?.roundId && currentRound?.id && latest.roundId === currentRound.id;
+    const authoritySaysMyTurn = sameRound && latest?.currentTurnPosition === myPos;
+    if (authoritySaysMyTurn) {
+      console.warn('[PRE-DECISION] reject arm — authority already at my turn', {
+        roundId: currentRound?.id,
+        myPos,
+        latest,
+      });
+      holmPreDecisionArmedRef.current = null;
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      return;
+    }
+
+    holmPreDecisionArmedRef.current = {
+      armedRoundId: currentRound?.id ?? null,
+      armedHandContextId: handContextKey,
+      armedFromTurnPosition: latest?.currentTurnPosition ?? currentRound?.current_turn_position ?? null,
+      armedAuthorityEpoch: latest?.epoch ?? authoritativeTurnEpochRef.current,
+      decision,
+    };
+    if (decision === 'stay') { setHolmPreStay(true); setHolmPreFold(false); }
+    else { setHolmPreFold(true); setHolmPreStay(false); }
+  }, [game?.game_type, players, user?.id, currentRound?.id, currentRound?.current_turn_position, handContextKey, holmReadyTick]);
+
+  // Holm instant auto-fold + authoritative-arrival pre-decision dispatch.
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
     if (game?.status !== 'in_progress') return;
@@ -5090,12 +5145,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
-    if (currentPlayer.current_decision || currentPlayer.decision_locked) return; // Already decided
+    if (currentPlayer.current_decision || currentPlayer.decision_locked) return;
 
     const isMyTurn = currentRound.current_turn_position === currentPlayer.position;
     if (!isMyTurn) return;
 
-    // Auto-fold enabled: fold immediately as soon as it's your turn (no countdown)
+    // P0 fix B: gate everything on canonical Holm deal readiness.
+    if (!isHolmHandReady(handContextKey)) {
+      return;
+    }
+
+    // Auto-fold: fold immediately when it's your turn.
     if (currentPlayer.auto_fold && !currentPlayer.is_bot && !currentPlayer.sitting_out) {
       const key = `${currentRound.id}:${currentRound.current_turn_position}`;
       if (instantAutoFoldKeyRef.current === key) return;
@@ -5107,33 +5167,54 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
 
       instantAutoFoldKeyRef.current = key;
-
-      // Clear any queued pre-decisions
+      holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
-
-      // Stop showing the local countdown immediately; realtime/fetch will sync the next turn.
       setTimeLeft(null);
       setDecisionDeadline(null);
-
       handleFold();
       return;
     }
 
-    // Check for pre-decisions and execute immediately
-    if (holmPreFold) {
-      console.log('[PRE-DECISION] Executing pre-FOLD for player');
+    // P0 fix A: pre-decision contract — must have been armed BEFORE
+    // authority moved to me, on this same round + handContext, and a
+    // strictly newer authoritative epoch must have arrived.
+    const armed = holmPreDecisionArmedRef.current;
+    if (!armed) return;
+
+    const latest = latestAuthoritativeTurnRef.current;
+    const myPos = currentPlayer.position;
+    const sameRound = armed.armedRoundId === currentRound.id;
+    const sameHandContext = armed.armedHandContextId === handContextKey;
+    const armedFromOpponentTurn = armed.armedFromTurnPosition !== myPos;
+    const authorityNowMine = !!latest && latest.roundId === currentRound.id && latest.currentTurnPosition === myPos;
+    const newerEpoch = !!latest && latest.epoch > armed.armedAuthorityEpoch;
+
+    if (!(sameRound && sameHandContext && armedFromOpponentTurn && authorityNowMine && newerEpoch)) {
+      console.warn('[PRE-DECISION] reject execute — invariant failed', {
+        armed,
+        latest,
+        myPos,
+        currentRoundId: currentRound.id,
+        handContextKey,
+      });
+      // Stale/invalid arming — clear to force live decision path.
+      holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
-      handleFold();
-    } else if (holmPreStay) {
-      console.log('[PRE-DECISION] Executing pre-STAY for player');
-      setHolmPreFold(false);
-      setHolmPreStay(false);
-      handleStay();
+      return;
     }
-  // Note: handleStay and handleFold intentionally excluded to avoid infinite loops
-  // They're stable function references that don't change
+
+    const decision = armed.decision;
+    console.log('[PRE-DECISION] Executing armed pre-' + decision.toUpperCase(), {
+      armed,
+      latest,
+    });
+    holmPreDecisionArmedRef.current = null;
+    setHolmPreFold(false);
+    setHolmPreStay(false);
+    if (decision === 'fold') handleFold();
+    else handleStay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     game?.game_type,
@@ -5144,6 +5225,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.id,
     holmPreFold,
     holmPreStay,
+    holmReadyTick,
+    handContextKey,
     players,
     user?.id,
   ]);
