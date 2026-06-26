@@ -3023,6 +3023,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // authoritative turn ref BEFORE React state scheduling.
             {
               const n: any = payload.new;
+              const previousCurrentTurnPosition = null;
+              if (game?.game_type === 'holm-game') {
+                recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `realtime INSERT turn=${n?.current_turn_position ?? 'null'}`,
+                  buildHolmTurnAuthorityTraceDetail({
+                    source: 'realtime INSERT',
+                    round: n as Partial<Round>,
+                    players: playersRef.current,
+                    previousCurrentTurnPosition,
+                  }),
+                );
+              }
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
@@ -3039,6 +3050,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // click-at-boundary race window).
             {
               const n: any = payload.new;
+              const o: any = payload.old;
+              const previousCurrentTurnPosition = ('current_turn_position' in (o ?? {}))
+                ? (o?.current_turn_position ?? null)
+                : (latestAuthoritativeTurnRef.current?.roundId === n?.id
+                  ? latestAuthoritativeTurnRef.current?.currentTurnPosition ?? null
+                  : null);
+              if (game?.game_type === 'holm-game') {
+                recordHolmTrace('TURN_AUTHORITY_ARRIVAL', `realtime UPDATE turn=${previousCurrentTurnPosition ?? 'null'}→${n?.current_turn_position ?? 'null'}`,
+                  buildHolmTurnAuthorityTraceDetail({
+                    source: 'realtime UPDATE',
+                    round: n as Partial<Round>,
+                    players: playersRef.current,
+                    previousCurrentTurnPosition,
+                  }),
+                );
+              }
               authoritativeTurnEpochRef.current += 1;
               latestAuthoritativeTurnRef.current = {
                 roundId: n?.id ?? null,
