@@ -438,6 +438,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     communityDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch COMMUNITY accepted`, { phase: 'dispatch', wave: 'community', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'communityDispatchedRef', intents: intents.length, reason: 'community-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:communityWave:L405',
