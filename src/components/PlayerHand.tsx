@@ -176,6 +176,16 @@ export const PlayerHand = ({
 
   const isHolmGame = gameType === 'holm-game';
 
+  // Holm clean-baseline showdown geometry. Consumes the v4-shape
+  // single-round Holm config when this PlayerHand represents an
+  // opponent-exposed (i.e. non-active-self) Holm hand with visible
+  // cards. Self/active hand and card-back / hidden branches do NOT
+  // consume this — they stay on the legacy/dyn paths.
+  const _holmCfg = useHolmShowdownConfig();
+  const holmResolved = resolveHolmShowdownRules(_holmCfg, _feltVminPx);
+  const useHolmShowdownGeometry =
+    isHolmGame && isOpponentExposedShowdown;
+
   // Boundary guard applies to any canonical-deal game during DEALING.
   const isCanonicalDealGuarded = is357Game || isHolmGame;
   const claimedSet = new Set(claimedCardIds ?? []);
