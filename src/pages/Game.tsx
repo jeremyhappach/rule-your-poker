@@ -28,6 +28,8 @@ import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTrac
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
+import { setHolmTraceActive } from "@/lib/holm/holmTrace";
+import HolmTracePill from "@/components/HolmTracePill";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -2125,6 +2127,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setShellLifecycleActiveGameType(game?.game_type ?? null);
     return () => setShellLifecycleActiveGameType(null);
   }, [game?.game_type]);
+
+  // Holm trace pill — activate only while a Holm table is mounted.
+  // Buffer resets on activation; deactivation clears the on-screen pill.
+  useEffect(() => {
+    const isHolm = game?.game_type === 'holm-game';
+    setHolmTraceActive(isHolm);
+    return () => setHolmTraceActive(false);
+  }, [game?.game_type, game?.id]);
 
 
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow

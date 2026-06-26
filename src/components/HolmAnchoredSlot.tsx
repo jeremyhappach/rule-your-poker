@@ -25,6 +25,7 @@ import { useHolmGameplayGeometry } from "@/lib/wave5GameplayGeometry/HolmGamepla
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { useShellFeltFrameElement } from "@/lib/canonicalShell/useShellFeltFrameElement";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+import { recordHolmTrace } from "@/lib/holm/holmTrace";
 
 export interface HolmAnchoredSlotProps {
   artifactId: string;
@@ -129,6 +130,45 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
     ]);
 
     const renderEligible = !!placement && !!placement.visible && vminInPx > 0;
+    const suppressionReason =
+      !placement ? 'no-placement'
+      : !placement.visible ? 'placement-not-visible'
+      : vminInPx <= 0 ? 'vmin-zero'
+      : !feltSurface ? 'no-felt-surface'
+      : null;
+    const feltToken = feltSurface
+      ? (feltSurface.getAttribute('data-canonical-felt-surface') || feltSurface.tagName + '#' + (feltSurface.id || 'anon'))
+      : 'null';
+    // Holm trace — portal target + render eligibility per artifact.
+    useEffect(() => {
+      recordHolmTrace('FRAME_TARGET', `slot:${artifactId} target=${feltSurface ? 'present' : 'missing'}`, {
+        artifactId,
+        feltToken,
+        present: !!feltSurface,
+        vminInPx,
+        renderEligible,
+      });
+    }, [artifactId, feltSurface, feltToken, vminInPx, renderEligible]);
+    useEffect(() => {
+      recordHolmTrace('HOLM_SLOT', `${artifactId} mount`, { artifactId, phase: 'mount', feltToken });
+      return () => {
+        recordHolmTrace('HOLM_SLOT', `${artifactId} unmount`, { artifactId, phase: 'unmount', feltToken });
+      };
+      // intentionally only on artifactId — slot identity stable
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [artifactId]);
+    recordHolmTrace('HOLM_SLOT', `${artifactId} render eligible=${renderEligible}`, {
+      artifactId,
+      phase: 'render',
+      renderEligible,
+      currentVisible: !!current?.visible,
+      hasLastValid: !!lastValid,
+      usedPlacementSource: current && current.visible ? 'current' : (lastValid ? 'lastValid' : 'none'),
+      feltToken,
+      portalTargetPresent: !!feltSurface,
+      assignedRect,
+      suppressionReason,
+    });
     ffRecord({
       writerId: 'HolmAnchoredSlot.tsx:render:L120',
       source: 'HOLM_ANCHORED_SLOT',

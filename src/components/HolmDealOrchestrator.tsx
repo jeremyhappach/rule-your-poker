@@ -42,6 +42,7 @@ import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/typ
 import { holmDbgEndpoint, holmDealDbgRecordWave, type HolmExpectedCardDbg } from '@/lib/canonicalShell/cardTransport/holmDealDbg';
 import { holmTimelineRecordDispatch, holmTimelineResetForHand } from '@/lib/canonicalShell/cardTransport/holmCardTimeline';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
+import { recordHolmTrace } from '@/lib/holm/holmTrace';
 import { recordCommunityTransport } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
 
@@ -120,6 +121,27 @@ export function HolmDealOrchestrator({
   const handsDispatchedRef = useRef(false);
   const communityDispatchedRef = useRef(false);
   const chuckyDispatchedRef = useRef(false);
+
+  // Holm trace — orchestrator instance lifecycle.
+  const instanceRef = useRef<string>(`orch_${Math.random().toString(36).slice(2, 8)}`);
+  useEffect(() => {
+    const inst = instanceRef.current;
+    recordHolmTrace('ORCHESTRATOR', `mount ${inst}`, {
+      phase: 'mount', instance: inst, handContextId, selfPlayerId,
+    });
+    return () => {
+      recordHolmTrace('ORCHESTRATOR', `unmount ${inst}`, {
+        phase: 'unmount', instance: inst, handContextId, selfPlayerId,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    recordHolmTrace('ORCHESTRATOR', `handContext ${handContextId}`, {
+      phase: 'identity', instance: instanceRef.current, handContextId, cardsPerPlayer, seatsLength: seats.length,
+    });
+  }, [handContextId, cardsPerPlayer, seats.length]);
+
 
   // Helper to build an intent with shared timing metadata.
   const buildIntents = (
@@ -303,6 +325,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     handsDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch HANDS accepted`, { phase: 'dispatch', wave: 'hands', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'handsDispatchedRef', intents: intents.length, reason: 'hands-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:handsWave:L300',
@@ -415,6 +438,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     communityDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch COMMUNITY accepted`, { phase: 'dispatch', wave: 'community', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'communityDispatchedRef', intents: intents.length, reason: 'community-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:communityWave:L405',
@@ -499,6 +523,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     chuckyDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch CHUCKY accepted`, { phase: 'dispatch', wave: 'chucky', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'chuckyDispatchedRef', intents: intents.length, reason: 'chucky-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:chuckyWave:L482',

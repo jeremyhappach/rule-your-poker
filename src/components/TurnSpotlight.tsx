@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
+import { isHolmTraceActive, recordHolmTrace } from '@/lib/holm/holmTrace';
 
 interface TurnSpotlightProps {
   /** The position of the player whose turn it is (absolute 1-7) */
@@ -135,6 +136,24 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     setRotation(measuredAngle);
     setOpacity(1);
   }, [shellOwned, isVisible, currentTurnPosition, isMyTurn, measuredAngle]);
+
+  // Holm trace — emit when authoritative turn / consumed pos / angle change.
+  useEffect(() => {
+    if (!isHolmTraceActive()) return;
+    if (!shellOwned) return;
+    recordHolmTrace('TURN_SPOTLIGHT', `turn=${currentTurnPosition ?? 'null'} angle=${rotation.toFixed(1)}°`, {
+      currentTurnPosition,
+      consumedTurnPosition: currentTurnPosition,
+      currentPlayerPosition,
+      isObserver,
+      isMyTurn,
+      measuredAngle,
+      angle: rotation,
+      opacity,
+      shellFrameToken: shellFrame ? (shellFrame.getAttribute('data-canonical-felt-surface') || 'frame') : 'null',
+      isVisible,
+    });
+  }, [shellOwned, currentTurnPosition, currentPlayerPosition, isObserver, isMyTurn, measuredAngle, rotation, opacity, shellFrame, isVisible]);
 
   if (!isVisible || currentTurnPosition === null || disabled) {
     return null;
