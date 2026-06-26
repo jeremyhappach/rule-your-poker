@@ -158,6 +158,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                 >
                   <PlayingCard
                     card={card}
+                    tier="medium"
                     size="lg"
                     isHidden={false}
                     borderColor="border-red-500"

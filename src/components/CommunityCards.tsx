@@ -216,6 +216,7 @@ export const CommunityCards = ({
                 {showFront ? (
                   <PlayingCard
                     card={card}
+                    tier="large"
                     style={{ width: layout.cardWidth, height: layout.cardHeight }}
                     faceFillPx={layout.cardWidth}
                     isHighlighted={highlightedIndices.includes(index)}
