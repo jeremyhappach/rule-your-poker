@@ -28,7 +28,12 @@ import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTrac
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
-import { setHolmTraceActive } from "@/lib/holm/holmTrace";
+import {
+  isHolmTraceArmed,
+  recordHolmTrace,
+  setHolmTraceActive,
+} from "@/lib/holm/holmTrace";
+import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import HolmTracePill from "@/components/HolmTracePill";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
