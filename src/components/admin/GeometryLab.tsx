@@ -53,6 +53,7 @@ import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
+import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -376,6 +377,9 @@ function ShellGlobalSections() {
       </CollapsibleSection>
       <CollapsibleSection title="Table Demo">
         <TableDemoAdminSection />
+      </CollapsibleSection>
+      <CollapsibleSection title="Card Front Design">
+        <CardFrontDesignPanel />
       </CollapsibleSection>
       <CollapsibleSection title="HUD Stack">
         <p className="text-xs text-muted-foreground">
