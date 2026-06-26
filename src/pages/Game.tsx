@@ -5079,29 +5079,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     if (game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id)) {
-      // For Holm games, only trigger if there's a valid turn position
-      // For other games, trigger on any undecided bot
-      if (isHolmGame && !currentRound?.current_turn_position) {
-        console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
-        return;
+      // ─────────────────────────────────────────────────────────────
+      // P0 single-snapshot rule: scheduler actor identity comes from
+      // latestAuthoritativeTurnRef for Holm — the same source the
+      // final-boundary guard validates against. Reading from
+      // currentRound here is what caused bot-N+1 to be scheduled while
+      // authority remained bot-N (the React snapshot is updated by the
+      // post-decision fetchGameData before realtime stamps the ref).
+      // For non-Holm games, retain the prior currentRound behavior.
+      // ─────────────────────────────────────────────────────────────
+      let capturedTurnPosition: number | null | undefined;
+      let capturedRoundId: string | null = null;
+      let capturedAuthorityEpoch: number = authoritativeTurnEpochRef.current;
+      if (isHolmGame) {
+        const auth = latestAuthoritativeTurnRef.current;
+        capturedTurnPosition = auth?.currentTurnPosition ?? null;
+        capturedRoundId = auth?.roundId ?? null;
+        capturedAuthorityEpoch = auth?.epoch ?? authoritativeTurnEpochRef.current;
+        if (!capturedTurnPosition) {
+          console.log('[BOT TRIGGER] Holm: no authoritative turn position yet, skipping');
+          return;
+        }
+        if (!isHolmHandReady(handContextKey)) {
+          console.log('[BOT TRIGGER] Holm deal not complete — barrier blocks bot decision', { handContextKey });
+          return;
+        }
+      } else {
+        capturedTurnPosition = currentRound?.current_turn_position;
+        capturedRoundId = currentRound?.id ?? null;
       }
 
-      // Canonical animation contract: bots may not act until the Holm
-      // initial deal (hands + community + chucky) has fully settled.
-      // DealRuntime marks the barrier when phase enters GAMEPLAY.
-      if (isHolmGame && !isHolmHandReady(handContextKey)) {
-        console.log('[BOT TRIGGER] Holm deal not complete — barrier blocks bot decision', { handContextKey });
-        return;
-      }
-      
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
-        current_turn: currentRound?.current_turn_position
+        captured_turn: capturedTurnPosition,
+        captured_round: capturedRoundId,
+        captured_epoch: capturedAuthorityEpoch,
+        source: isHolmGame ? 'authoritative-ref' : 'currentRound',
       });
-      
-      // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
-      const capturedTurnPosition = currentRound?.current_turn_position;
-      
+
       // Set processing flag
       botProcessingRef.current = true;
       
