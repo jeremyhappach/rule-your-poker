@@ -5025,6 +5025,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Re-render-trigger for Holm deal-ready barrier flips so the bot
   // trigger effect re-evaluates the moment the deal completes.
   const [holmReadyTick, setHolmReadyTick] = useState(0);
+  // Increments on every authoritative turn-ref stamp (realtime INSERT/UPDATE
+  // + fetchGameData). Bot scheduler depends on THIS, not currentRound — that
+  // is the only way to keep actor selection and the final-boundary guard
+  // reading from the same authority source.
+  const [holmAuthorityTick, setHolmAuthorityTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
   useEffect(() => {
     if (safetyPollsDisabled) {
