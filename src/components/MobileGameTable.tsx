@@ -837,6 +837,10 @@ interface MobileGameTableProps {
   holmPreStay?: boolean;
   onHolmPreFoldChange?: (checked: boolean) => void;
   onHolmPreStayChange?: (checked: boolean) => void;
+  /** P0 fix B: when false (Holm only), all decision affordances
+   *  (pre-decision checkboxes + live Stay/Fold buttons) are gated off
+   *  until the canonical Holm initial-deal barrier opens. */
+  holmDealReady?: boolean;
   // Holm rabbit hunt enabled
   rabbitHunt?: boolean;
   // Mobile tab state (lifted to parent to persist across remounts)
