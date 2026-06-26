@@ -20,6 +20,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { registerDomain } from '@/lib/geometryLab/defaultsRegistry';
 
 export interface CanonicalShellLayoutConfig {
   playSafeTop: number;
