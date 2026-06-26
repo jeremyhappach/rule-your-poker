@@ -53,6 +53,7 @@ import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
+import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
@@ -704,6 +705,8 @@ function GameSections(props: GameSectionsProps) {
       <CollapsibleSection title="Showdown Rules">
         {props.game === "threeFiveSeven" ? (
           <ThreeFiveSevenShowdownRulesPanel />
+        ) : props.game === "holm" ? (
+          <HolmShowdownRulesPanel />
         ) : (
           <p className="text-xs text-muted-foreground">
             Future Geometry Lab work: showdown card ownership, placement,
