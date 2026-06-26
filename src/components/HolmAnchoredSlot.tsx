@@ -157,18 +157,36 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
       // intentionally only on artifactId — slot identity stable
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [artifactId]);
-    recordHolmTrace('HOLM_SLOT', `${artifactId} render eligible=${renderEligible}`, {
+    // Post-commit render-eligibility probe — replaces the previous
+    // inline render-time recordHolmTrace call (contamination fix).
+    useEffect(() => {
+      recordHolmTrace('HOLM_SLOT', `${artifactId} eligible=${renderEligible}`, {
+        artifactId,
+        phase: 'render-eligibility',
+        renderEligible,
+        currentVisible: !!current?.visible,
+        hasLastValid: !!lastValid,
+        usedPlacementSource: current && current.visible ? 'current' : (lastValid ? 'lastValid' : 'none'),
+        feltToken,
+        portalTargetPresent: !!feltSurface,
+        assignedRect,
+        suppressionReason,
+      });
+    }, [
       artifactId,
-      phase: 'render',
       renderEligible,
-      currentVisible: !!current?.visible,
-      hasLastValid: !!lastValid,
-      usedPlacementSource: current && current.visible ? 'current' : (lastValid ? 'lastValid' : 'none'),
+      current?.visible,
+      lastValid,
       feltToken,
-      portalTargetPresent: !!feltSurface,
-      assignedRect,
+      feltSurface,
       suppressionReason,
-    });
+      assignedRect.x,
+      assignedRect.y,
+      assignedRect.width,
+      assignedRect.height,
+      current,
+    ]);
+
     ffRecord({
       writerId: 'HolmAnchoredSlot.tsx:render:L120',
       source: 'HOLM_ANCHORED_SLOT',
