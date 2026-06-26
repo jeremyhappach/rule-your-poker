@@ -523,6 +523,7 @@ export function HolmDealOrchestrator({
 
     const intents = buildIntents(specs);
     chuckyDispatchedRef.current = true;
+    recordHolmTrace('ORCHESTRATOR', `dispatch CHUCKY accepted`, { phase: 'dispatch', wave: 'chucky', accepted: true, instance: instanceRef.current, handContextId, dispatchedKey: 'chuckyDispatchedRef', intents: intents.length, reason: 'chucky-wave-ready' });
     const beginAt = performance.now();
     ffRecord({
       writerId: 'HolmDealOrchestrator.tsx:chuckyWave:L482',
