@@ -382,9 +382,8 @@ export function GeometryLab({ userId }: { userId: string }) {
           setForm={setForm}
           derivedH={derivedH}
           derivedW={derivedW}
-          saving={saving}
-          handleSave={handleSave}
-          handleResetToDefault={handleResetToDefault}
+          dirty={draft.isDomainDirty(draftKey)}
+
           handleConvertTo={handleConvertTo}
         />
       )}
