@@ -328,62 +328,6 @@ export function GeometryLab({ userId }: { userId: string }) {
       ? (hNum * arNum).toFixed(4)
       : "";
 
-  async function handleSave() {
-    setSaving(true);
-    const payload: Record<string, unknown> = {
-      artifact_id: artifactId,
-      game,
-      anchor_x: num(form.anchorX),
-      anchor_y: num(form.anchorY),
-      anchor_origin: form.anchorOrigin,
-      size_mode: form.sizeMode,
-      width_pct:
-        form.sizeMode === "heightDriven" ? null : num(form.widthPct),
-      height_pct:
-        form.sizeMode === "widthDriven" ? null : num(form.heightPct),
-      aspect_ratio: form.sizeMode === "rect" ? null : num(form.aspectRatio),
-      updated_by: userId,
-      updated_at: new Date().toISOString(),
-    };
-    logGeometryLab("save_attempt", { artifactId, payload });
-    const { error } = await supabase
-      .from("geometry_overrides" as any)
-      .upsert(payload as any, { onConflict: "artifact_id" });
-    setSaving(false);
-    if (error) {
-      logGeometryLab("save_failed", {
-        artifactId,
-        code: (error as { code?: string }).code,
-        message: error.message,
-      });
-      toast.error(`Save failed: ${error.message}`);
-    } else {
-      logGeometryLab("save_succeeded", { artifactId });
-      toast.success("Geometry saved — all clients updating.");
-    }
-  }
-
-  async function handleResetToDefault() {
-    if (!override) {
-      toast.info("Already using canonical descriptor.");
-      return;
-    }
-    setSaving(true);
-    logGeometryLab("reset_attempt", { artifactId });
-    const { error } = await supabase
-      .from("geometry_overrides" as any)
-      .delete()
-      .eq("artifact_id", artifactId);
-    setSaving(false);
-    if (error) {
-      logGeometryLab("reset_failed", { artifactId, message: error.message });
-      toast.error(`Reset failed: ${error.message}`);
-    } else {
-      logGeometryLab("reset_succeeded", { artifactId });
-      toast.success("Override cleared — descriptor defaults restored.");
-    }
-  }
-
   function handleConvertTo(target: "widthDriven" | "heightDriven") {
     const w = num(form.widthPct);
     const h = num(form.heightPct);
@@ -395,8 +339,9 @@ export function GeometryLab({ userId }: { userId: string }) {
     const ar = w / h;
     logGeometryLab("convert_applied", { artifactId, target, derivedAspectRatio: ar });
     setForm((f) => ({ ...f, sizeMode: target, aspectRatio: ar.toFixed(4) }));
-    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Press Save to persist.`);
+    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Apply Changes to persist.`);
   }
+
 
   return (
     <div className="space-y-6 pt-2">
