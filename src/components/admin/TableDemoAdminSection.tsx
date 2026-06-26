@@ -7,71 +7,33 @@
  * across every player, observer, device, and table in realtime.
  * Edit requires admin role (enforced by RLS).
  *
- * Contract (v1 — pre-population):
- *   When Demo is ON, gameplay is skipped and the table's natural
- *   lifecycle (deal → pause → advance → deal) keeps running so the
- *   admin can audit motion/geometry without anyone making decisions.
- *
- *   This is intentionally destructive in a multiplayer world — see
- *   the project memory on the "ONE TABLE, ONE FEEL" philosophy.
+ * Persistence contract:
+ *   This panel edits the modal-wide draft only. Per-section Save/Reset
+ *   buttons are forbidden — the footer **Apply Changes** is the only
+ *   commit path. **Cancel / X** discards every section's draft.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { useDomainDraft } from '@/lib/geometryLab/GeometryLabDraftProvider';
 import {
   TABLE_DEMO_BOUNDS,
   TABLE_DEMO_DEFAULTS,
+  TABLE_DEMO_KEY,
   type TableDemoConfig,
-  saveTableDemo,
-  resetTableDemo,
   useTableDemo,
 } from '@/lib/geometryLab/tableDemoStore';
 
 export function TableDemoAdminSection() {
   const live = useTableDemo();
-  const [draft, setDraft] = useState<TableDemoConfig>(live);
-  const [saving, setSaving] = useState(false);
+  const { value: draft, setValue, reset, dirty } = useDomainDraft<TableDemoConfig>(
+    TABLE_DEMO_KEY,
+    TABLE_DEMO_DEFAULTS,
+  );
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setDraft((prev) => {
-      const dirty =
-        prev.enabled !== live.enabled
-        || prev.pauseBetweenHandsMs !== live.pauseBetweenHandsMs;
-      return dirty ? prev : live;
-    });
-  }, [live]);
-
-  const dirty =
-    draft.enabled !== live.enabled
-    || draft.pauseBetweenHandsMs !== live.pauseBetweenHandsMs;
-
-  const handleSave = async () => {
-    setSaving(true);
-    const res = await saveTableDemo(draft);
-    setSaving(false);
-    if (res.ok === true) {
-      toast.success(draft.enabled ? 'Demo Mode ENABLED globally' : 'Demo Mode disabled globally');
-    } else {
-      toast.error(`Save failed: ${res.error}`);
-    }
-  };
-
-  const handleReset = async () => {
-    setSaving(true);
-    const res = await resetTableDemo();
-    setSaving(false);
-    if (res.ok === true) {
-      setDraft({ ...TABLE_DEMO_DEFAULTS });
-      toast.success('Table Demo reset globally');
-    } else {
-      toast.error(`Reset failed: ${res.error}`);
-    }
-  };
 
   const pauseBounds = TABLE_DEMO_BOUNDS.pauseBetweenHandsMs;
   const pauseSec = (draft.pauseBetweenHandsMs / 1000).toFixed(1);
@@ -86,6 +48,7 @@ export function TableDemoAdminSection() {
         <div className="space-y-0.5">
           <Label className="text-sm font-semibold cursor-pointer">
             ▼ Table Demo {live.enabled && <span className="ml-2 text-[10px] text-amber-500">(ON · global)</span>}
+            {dirty && <span className="ml-2 text-[10px] text-amber-500">(draft)</span>}
           </Label>
           {!open && (
             <p className="text-[11px] text-muted-foreground">
@@ -99,10 +62,9 @@ export function TableDemoAdminSection() {
       {open && (
         <>
           <p className="text-xs text-muted-foreground">
-            Geometry Lab values are shared globally and affect all players,
-            observers, and devices in real time. Enabling Demo Mode skips
-            gameplay at every table — destructive in multiplayer; intended
-            for the current tuning phase.
+            Geometry Lab values are shared globally. Edits stage to the
+            modal draft — use the footer <strong>Apply Changes</strong> to
+            commit to every player, observer, and device.
           </p>
 
           <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center justify-between gap-3">
@@ -114,7 +76,7 @@ export function TableDemoAdminSection() {
             </div>
             <Switch
               checked={draft.enabled}
-              onCheckedChange={(v) => setDraft((d) => ({ ...d, enabled: v === true }))}
+              onCheckedChange={(v) => setValue((d) => ({ ...d, enabled: v === true }))}
             />
           </div>
 
@@ -138,7 +100,7 @@ export function TableDemoAdminSection() {
               max={pauseBounds.max}
               step={pauseBounds.step}
               value={[draft.pauseBetweenHandsMs]}
-              onValueChange={([v]) => setDraft((d) => ({ ...d, pauseBetweenHandsMs: v }))}
+              onValueChange={([v]) => setValue((d) => ({ ...d, pauseBetweenHandsMs: v }))}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
               <span>0s</span>
@@ -147,14 +109,15 @@ export function TableDemoAdminSection() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button size="sm" disabled={!dirty || saving} onClick={handleSave} className="flex-1">
-              {saving ? 'Saving…' : dirty ? 'Save globally' : 'Saved'}
-            </Button>
-            <Button variant="outline" size="sm" disabled={saving} onClick={handleReset}>
-              Reset to defaults
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => reset()}>
+              Reset section (draft only)
             </Button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            Reset re-seeds this section's draft to baked defaults. Nothing is
+            persisted until you click <strong>Apply Changes</strong> in the modal footer.
+          </p>
         </>
       )}
     </div>

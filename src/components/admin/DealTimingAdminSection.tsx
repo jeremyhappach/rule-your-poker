@@ -7,23 +7,21 @@
  * across every player, observer, and device in realtime. NOT a
  * per-user preference. Edit requires admin role (enforced by RLS).
  *
- * Pattern mirrors LayoutTuningAdminSection (safe areas): sliders edit
- * a local draft, "Save" upserts the row, and realtime broadcasts the
- * new values to every other client (including the caller).
+ * Persistence contract:
+ *   This panel edits the modal-wide draft only. Per-section Save/Reset
+ *   buttons are forbidden — the footer **Apply Changes** is the only
+ *   commit path. **Cancel / X** discards every section's draft.
  */
 
-import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { toast } from 'sonner';
+import { useDomainDraft } from '@/lib/geometryLab/GeometryLabDraftProvider';
 import {
   DEAL_TIMING_BOUNDS,
   DEAL_TIMING_DEFAULTS,
+  DEAL_TIMING_KEY,
   type DealTimingConfig,
-  saveDealTiming,
-  resetDealTiming,
-  useDealTiming,
   useDealTimingSnapshot,
 } from '@/lib/geometryLab/dealTimingStore';
 
@@ -80,64 +78,23 @@ function TimingRow({ label, description, field, value, onChange }: RowProps) {
 }
 
 export function DealTimingAdminSection() {
-  const live = useDealTiming();
   const liveSnapshot = useDealTimingSnapshot();
-  const [draft, setDraft] = useState<DealTimingConfig>(live);
-  const lastLiveRef = useRef<DealTimingConfig>(live);
-  const [saving, setSaving] = useState(false);
-
-  // When the global authoritative value changes (realtime), snap the
-  // draft to it ONLY if the admin has no unsaved edits. Otherwise leave
-  // the dirty draft alone so the diff stays meaningful.
-  useEffect(() => {
-    const previousLive = lastLiveRef.current;
-    setDraft((prev) => {
-      const dirty =
-        prev.launchSpacingMs !== previousLive.launchSpacingMs
-        || prev.durationMs !== previousLive.durationMs
-        || prev.ownershipClaimDelayMs !== previousLive.ownershipClaimDelayMs;
-      // First mount: prev === initial live snapshot, so treat as clean.
-      return dirty ? prev : live;
-    });
-    lastLiveRef.current = live;
-  }, [live]);
-
-  const dirty =
-    draft.launchSpacingMs !== live.launchSpacingMs
-    || draft.durationMs !== live.durationMs
-    || draft.ownershipClaimDelayMs !== live.ownershipClaimDelayMs;
-
-  const handleSave = async () => {
-    setSaving(true);
-    const res = await saveDealTiming(draft);
-    setSaving(false);
-    if (res.ok === true) {
-      toast.success('Deal Timing saved globally');
-    } else {
-      toast.error(`Save failed: ${res.error}`);
-    }
-  };
-
-  const handleReset = async () => {
-    setSaving(true);
-    const res = await resetDealTiming();
-    setSaving(false);
-    if (res.ok === true) {
-      setDraft({ ...DEAL_TIMING_DEFAULTS });
-      toast.success('Deal Timing reset globally');
-    } else {
-      toast.error(`Reset failed: ${res.error}`);
-    }
-  };
+  const { value: draft, setValue, reset, dirty } = useDomainDraft<DealTimingConfig>(
+    DEAL_TIMING_KEY,
+    DEAL_TIMING_DEFAULTS,
+  );
 
   return (
     <div className="space-y-3 py-2 border-t border-border">
       <div className="space-y-0.5">
-        <Label className="text-sm font-semibold">Deal Timing</Label>
+        <Label className="text-sm font-semibold">
+          Deal Timing
+          {dirty && <span className="ml-2 text-[10px] text-amber-500">(draft)</span>}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Geometry Lab values are shared globally and affect all players,
-          observers, and devices in real time. Edits save to the canonical
-          shell config — there is one table, one deal, one feel.
+          Geometry Lab values are shared globally. Edits stage to the modal
+          draft — use the footer <strong>Apply Changes</strong> to commit
+          to every player, observer, and device.
         </p>
         <div className="rounded border border-border bg-muted/40 px-2 py-1 text-[10px] font-mono text-muted-foreground">
           AUTH STORE v{liveSnapshot.storeVersion} · source={liveSnapshot.source} · updatedAt={liveSnapshot.updatedAt}<br />
@@ -151,31 +108,32 @@ export function DealTimingAdminSection() {
         description="Time between successive card launches."
         field="launchSpacingMs"
         value={draft.launchSpacingMs}
-        onChange={(v) => setDraft((d) => ({ ...d, launchSpacingMs: v }))}
+        onChange={(v) => setValue((d) => ({ ...d, launchSpacingMs: v }))}
       />
       <TimingRow
         label="Flight Duration"
         description="Per-card translate(0)→translate(dx,dy) flight time."
         field="durationMs"
         value={draft.durationMs}
-        onChange={(v) => setDraft((d) => ({ ...d, durationMs: v }))}
+        onChange={(v) => setValue((d) => ({ ...d, durationMs: v }))}
       />
       <TimingRow
         label="Ownership Claim Delay"
         description="Pause between transport arrival and destination claiming ownership (transport destroyed)."
         field="ownershipClaimDelayMs"
         value={draft.ownershipClaimDelayMs}
-        onChange={(v) => setDraft((d) => ({ ...d, ownershipClaimDelayMs: v }))}
+        onChange={(v) => setValue((d) => ({ ...d, ownershipClaimDelayMs: v }))}
       />
 
-      <div className="flex gap-2">
-        <Button size="sm" disabled={!dirty || saving} onClick={handleSave} className="flex-1">
-          {saving ? 'Saving…' : dirty ? 'Save globally' : 'Saved'}
-        </Button>
-        <Button variant="outline" size="sm" disabled={saving} onClick={handleReset}>
-          Reset all to defaults
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => reset()}>
+          Reset section (draft only)
         </Button>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Reset re-seeds this section's draft to baked defaults. Nothing is
+        persisted until you click <strong>Apply Changes</strong> in the modal footer.
+      </p>
     </div>
   );
 }

@@ -20,6 +20,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { registerDomain } from '@/lib/geometryLab/defaultsRegistry';
 
 export interface CanonicalShellLayoutConfig {
   playSafeTop: number;
@@ -168,3 +169,18 @@ export async function saveCanonicalShellLayout(
   setCurrent(merged);
   return { ok: true };
 }
+
+// ── Geometry Lab modal-draft adapter ──────────────────────────
+// Registers Canonical Shell Layout as a draft domain so the modal-wide
+// Apply commits these values alongside every other registered domain.
+// The legacy `saveCanonicalShellLayout` export remains for non-Lab
+// callers; the Geometry Lab panel must edit via the draft and commit
+// via the footer Apply Changes button.
+registerDomain<CanonicalShellLayoutConfig>({
+  key: CANONICAL_SHELL_LAYOUT_KEY,
+  defaults: DEFAULT_CANONICAL_SHELL_LAYOUT,
+  sanitize,
+  onApply: (next) => {
+    setCurrent(next);
+  },
+});

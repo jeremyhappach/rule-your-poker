@@ -20,6 +20,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { registerDomain } from './defaultsRegistry';
 
 export interface TableDemoConfig {
   enabled: boolean;
@@ -159,3 +160,15 @@ export async function saveTableDemo(
 export async function resetTableDemo(): Promise<{ ok: true } | { ok: false; error: string }> {
   return saveTableDemo({ ...TABLE_DEMO_DEFAULTS });
 }
+
+// ── Geometry Lab modal-draft adapter ──────────────────────────
+// Registers Table Demo as a draft domain so the modal-wide Apply
+// commits these values alongside every other registered domain.
+registerDomain<TableDemoConfig>({
+  key: TABLE_DEMO_KEY,
+  defaults: TABLE_DEMO_DEFAULTS,
+  sanitize,
+  onApply: (next) => {
+    setCurrent(next);
+  },
+});

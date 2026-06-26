@@ -305,15 +305,16 @@ export function HolmShowdownRulesPanel() {
         </p>
       </Section>
 
-      <div className="flex gap-2 pt-2 border-t">
+      <div className="flex justify-end pt-2 border-t">
         <Button size="sm" variant="outline" onClick={() => reset()}>
-          Reset to defaults
+          Reset section (draft only)
         </Button>
       </div>
 
       <p className="text-[11px] text-muted-foreground leading-snug">
-        Edits stage to the modal draft. Use the shared <strong>Apply
-        Changes</strong> footer to publish to all clients.
+        Reset re-seeds this section's draft to baked defaults. Edits stage
+        to the modal draft — use the shared <strong>Apply Changes</strong>{' '}
+        footer to publish to all clients.
       </p>
     </div>
   );
