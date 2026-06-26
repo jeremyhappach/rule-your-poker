@@ -1,29 +1,44 @@
 /**
- * HolmTracePill — temporary on-screen pill for Holm portal/lifecycle
- * investigation. Single COPY action exports the full ordered event
- * history (rolling 500-event buffer) as text.
+ * HolmTracePill — passive, manual on-screen control for the Holm
+ * portal/lifecycle trace buffer.
  *
- * Mount: only when `isHolmTraceActive()` is true (managed by Game.tsx
- * based on `game.game_type === 'holm-game'`).
- *
- * No console output. No server writes. No behavior change.
+ * Contract:
+ *   - Renders only when a Holm table is mounted (isHolmTraceActive()).
+ *   - Recording is OFF by default; user taps ARM to enable.
+ *   - No useSyncExternalStore, no subscriptions, no intervals, no
+ *     querySelector polling, no DOM measurement.
+ *   - Event count updates only on user tap (REFRESH / ARM / COPY / CLEAR).
+ *   - Pill is `position: fixed` body-level; outside the gameplay tree.
  */
-import { useSyncExternalStore, useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
+  clearHolmTrace,
   formatHolmTraceAsText,
-  getHolmTraceEvents,
+  getHolmTraceEventCount,
   isHolmTraceActive,
-  recordHolmTrace,
-  subscribeHolmTrace,
+  isHolmTraceArmed,
+  setHolmTraceArmed,
 } from '@/lib/holm/holmTrace';
 
 export function HolmTracePill() {
-  const events = useSyncExternalStore(
-    subscribeHolmTrace,
-    getHolmTraceEvents,
-    () => [],
-  );
+  const [armed, setArmed] = useState<boolean>(() => isHolmTraceArmed());
+  const [count, setCount] = useState<number>(() => getHolmTraceEventCount());
   const [copied, setCopied] = useState(false);
+
+  const refresh = useCallback(() => {
+    setArmed(isHolmTraceArmed());
+    setCount(getHolmTraceEventCount());
+  }, []);
+
+  const handleArmToggle = useCallback(() => {
+    setHolmTraceArmed(!isHolmTraceArmed());
+    refresh();
+  }, [refresh]);
+
+  const handleClear = useCallback(() => {
+    clearHolmTrace();
+    refresh();
+  }, [refresh]);
 
   const handleCopy = useCallback(async () => {
     const text = formatHolmTraceAsText();
@@ -45,59 +60,21 @@ export function HolmTracePill() {
     } catch {
       setCopied(false);
     }
-  }, []);
-
-  // Pot geometry sampler — runs always; recordHolmTrace no-ops when
-  // the trace is inactive, so this has zero side-effects outside Holm.
-  useEffect(() => {
-    let lastSig = '';
-    const sample = () => {
-      if (!isHolmTraceActive()) return;
-      const pot = document.querySelector<HTMLElement>('[data-pot-anchor]');
-      const felt = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
-      const frame = document.querySelector<HTMLElement>('[data-canonical-shell-felt-frame]');
-      if (!pot) return;
-      const rect = (el: Element) => {
-        const r = el.getBoundingClientRect();
-        return { x: r.x, y: r.y, w: r.width, h: r.height };
-      };
-      const potRect = rect(pot);
-      const feltRect = felt ? rect(felt) : null;
-      const frameRect = frame ? rect(frame) : null;
-      const rootStyles = getComputedStyle(document.documentElement);
-      const cssVar = (n: string) => rootStyles.getPropertyValue(n).trim() || null;
-      const ancestorTransform: string[] = [];
-      let n: HTMLElement | null = pot;
-      let depth = 0;
-      while (n && depth < 8) {
-        const t = getComputedStyle(n).transform;
-        if (t && t !== 'none') ancestorTransform.push(`${n.tagName}:${t}`);
-        n = n.parentElement;
-        depth++;
-      }
-      const sig = `${Math.round(potRect.y)}|${Math.round(potRect.x)}|${Math.round(feltRect?.y ?? 0)}|${Math.round(frameRect?.y ?? 0)}`;
-      if (sig === lastSig) return;
-      lastSig = sig;
-      recordHolmTrace('POT_GEOMETRY', `pot.y=${potRect.y.toFixed(1)}`, {
-        potRect,
-        feltRect,
-        frameRect,
-        cssVars: {
-          '--play-top-safe-area': cssVar('--play-top-safe-area'),
-          '--shell-felt-h': cssVar('--shell-felt-h'),
-          '--shell-play-h': cssVar('--shell-play-h'),
-        },
-        ancestorTransform,
-        showdownAttr: pot.closest('[data-showdown]')?.getAttribute('data-showdown') ?? null,
-      });
-    };
-    const iv = window.setInterval(sample, 300);
-    sample();
-    return () => window.clearInterval(iv);
-  }, []);
-
+    refresh();
+  }, [refresh]);
 
   if (!isHolmTraceActive()) return null;
+
+  const btn = (bg: string): React.CSSProperties => ({
+    background: bg,
+    color: '#000',
+    border: 'none',
+    borderRadius: 3,
+    padding: '2px 6px',
+    font: 'inherit',
+    fontWeight: 700,
+    cursor: 'pointer',
+  });
 
   return (
     <div
@@ -121,23 +98,19 @@ export function HolmTracePill() {
       data-holm-trace-pill=""
     >
       <span style={{ fontWeight: 700 }}>HOLM TRACE</span>
-      <span style={{ opacity: 0.75 }}>ARMED</span>
-      <span>EVENTS: {events.length}</span>
-      <button
-        type="button"
-        onClick={handleCopy}
-        style={{
-          background: copied ? '#9FE2BF' : '#FFD580',
-          color: '#000',
-          border: 'none',
-          borderRadius: 3,
-          padding: '2px 6px',
-          font: 'inherit',
-          fontWeight: 700,
-          cursor: 'pointer',
-        }}
-      >
+      <span style={{ opacity: 0.75 }}>{armed ? 'ARMED' : 'IDLE'}</span>
+      <span>EVENTS: {count}</span>
+      <button type="button" onClick={handleArmToggle} style={btn(armed ? '#F08080' : '#FFD580')}>
+        {armed ? 'DISARM' : 'ARM'}
+      </button>
+      <button type="button" onClick={refresh} style={btn('#FFD580')}>
+        REFRESH
+      </button>
+      <button type="button" onClick={handleCopy} style={btn(copied ? '#9FE2BF' : '#FFD580')}>
         {copied ? 'COPIED' : 'COPY'}
+      </button>
+      <button type="button" onClick={handleClear} style={btn('#FFD580')}>
+        CLEAR
       </button>
     </div>
   );
