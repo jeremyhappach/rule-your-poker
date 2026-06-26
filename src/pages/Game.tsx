@@ -4831,14 +4831,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentRound?.current_turn_position ??
       null;
     const actorPosition = typeof params.actor?.position === 'number' ? params.actor.position : null;
-    recordHolmTrace('DECISION_SUBMISSION', `${params.source} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
+    // Defensive: callers reaching us through onClick handlers can pass a synthetic event as the
+    // traceSource. Coerce to a deterministic string so the export never shows [object Object].
+    const sourceLabel = typeof params.source === 'string'
+      ? params.source
+      : `unknown(${Object.prototype.toString.call(params.source)})`;
+    recordHolmTrace('DECISION_SUBMISSION', `${sourceLabel} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
       timestamp: new Date().toISOString(),
       actorPosition,
       actorId: params.actor?.id ?? null,
       actorUserId: params.actor?.user_id ?? null,
       actorIsBot: params.actor?.is_bot ?? null,
       decision: params.decision ?? null,
-      source: params.source,
+      source: sourceLabel,
+      rawSourceArg: typeof params.source === 'string' ? undefined : Object.prototype.toString.call(params.source),
       stableHandIdentity: holmDealIdentityKey ?? handContextKey,
       roundId: currentRound?.id ?? null,
       handNumber: currentRound?.hand_number ?? holmView?.handNumber ?? null,
@@ -5092,18 +5098,62 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Call immediately - no delay needed, makeBotDecisions has its own delay
       const triggerBot = async () => {
         try {
-          console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-            const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
-            const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+          // FINAL-BOUNDARY BOT GUARD (P0 invariant).
+          // A "bot action" path may only invoke makeBotDecisions when ALL of:
+          //   - actor at the captured position is a bot (live playersRef)
+          //   - actor's position === latest authoritative current_turn_position
+          //   - actor has not already submitted/locked a decision
+          //   - canonical Holm deal readiness is true (already guarded above for Holm)
+          // Without this guard, the effect would fire makeBotDecisions for a
+          // HUMAN seat whenever current_turn_position transitioned through it,
+          // mislabeling the attempt as "bot action" in the trace.
+          const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
+          const authoritativePos = latestAuthoritativeTurnRef.current?.currentTurnPosition ?? currentRound?.current_turn_position ?? null;
+          const actorIsBot = botActor?.is_bot === true;
+          const authorityMatchesActor = botActor != null && authoritativePos === botActor.position;
+          const decisionAlreadyLocked = !!(botActor && (botActor as any).decision_locked);
+
+          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked) {
+            console.log('[BOT TRIGGER] final-boundary guard rejected non-bot/out-of-turn/locked actor', {
+              capturedTurnPosition,
+              authoritativePos,
+              actorPosition: botActor?.position ?? null,
+              actorIsBot,
+              authorityMatchesActor,
+              decisionAlreadyLocked,
+            });
             recordHolmDecisionSubmission({
               source: 'bot action',
               actor: botActor,
               decision: null,
-              makeDecisionInvoked: true,
-              requestStatus: botMadeDecision ? 'accepted' : 'rejected',
-              extra: { capturedTurnPosition },
+              makeDecisionInvoked: false,
+              requestStatus: 'rejected',
+              extra: {
+                capturedTurnPosition,
+                authoritativePos,
+                guardReason: !botActor
+                  ? 'no-actor-at-position'
+                  : !actorIsBot
+                    ? 'actor-not-bot'
+                    : !authorityMatchesActor
+                      ? 'authority-mismatch'
+                      : 'decision-already-locked',
+              },
             });
-          
+            return;
+          }
+
+          console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
+          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+          recordHolmDecisionSubmission({
+            source: 'bot action',
+            actor: botActor,
+            decision: null,
+            makeDecisionInvoked: true,
+            requestStatus: botMadeDecision ? 'accepted' : 'rejected',
+            extra: { capturedTurnPosition, authoritativePos },
+          });
+
           // If bot made a decision, explicitly fetch to get updated turn position
           if (botMadeDecision) {
             console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
@@ -5125,6 +5175,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           botProcessingRef.current = false;
         }
       };
+
       
       triggerBot();
     } else {
@@ -12286,8 +12337,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenCachedLegPositions={cachedLegPositions}
               onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
-              onStay={isInProgress ? handleStay : () => {}}
-              onFold={isInProgress ? handleFold : () => {}}
+              onStay={isInProgress ? () => handleStay() : () => {}}
+              onFold={isInProgress ? () => handleFold() : () => {}}
+
               onSelectSeat={handleSelectSeat}
               isHost={isCreator}
               onPlayerClick={isInProgress ? (player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); } : undefined}
