@@ -4831,7 +4831,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentRound?.current_turn_position ??
       null;
     const actorPosition = typeof params.actor?.position === 'number' ? params.actor.position : null;
-    recordHolmTrace('DECISION_SUBMISSION', `${params.source} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
+    // Defensive: callers reaching us through onClick handlers can pass a synthetic event as the
+    // traceSource. Coerce to a deterministic string so the export never shows [object Object].
+    const sourceLabel = typeof params.source === 'string'
+      ? params.source
+      : `unknown(${Object.prototype.toString.call(params.source)})`;
+    recordHolmTrace('DECISION_SUBMISSION', `${sourceLabel} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
       timestamp: new Date().toISOString(),
       actorPosition,
       actorId: params.actor?.id ?? null,
