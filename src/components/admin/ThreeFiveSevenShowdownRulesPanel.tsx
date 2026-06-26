@@ -332,10 +332,27 @@ export function ThreeFiveSevenShowdownRulesPanel() {
           </Select>
         </Row>
         <p className="text-[11px] text-muted-foreground leading-snug -mt-1">
-          chip-centered: row centered on chip. outer-edge: row extends
-          AWAY from the table (left seat → leftward, right seat →
-          rightward). inner-edge: row extends TOWARD the table center
-          (left seat → rightward, right seat → leftward).
+          WHERE the row pins on the visible chip-disc rim:
+          chip-centered = chip center; inner-edge = rim nearest felt
+          center; outer-edge = rim farthest from felt center.
+        </p>
+        <Row label="Sprawl direction">
+          <Select
+            value={state.placement.sprawlDirection}
+            onValueChange={(v) =>
+              setValue({ ...state, placement: { ...state.placement, sprawlDirection: v as 'inward' | 'outward' } })
+            }
+          >
+            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="inward">inward (toward felt center)</SelectItem>
+              <SelectItem value="outward">outward (toward table edge)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Row>
+        <p className="text-[11px] text-muted-foreground leading-snug -mt-1">
+          WHICH WAY the row extends from the pin. Selects which row
+          endpoint is pinned — card array order is never reversed.
         </p>
         <Row label="X offset (% of felt width, −outward / +inward)">
           <NumInput
