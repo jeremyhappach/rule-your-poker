@@ -172,6 +172,11 @@ const App = () => {
                 <Wave5GridOverlayToggle />
               </div>
 
+              {/* HOLM TRACE PILL — temporary, self-gates on isHolmTraceActive(). */}
+              <HolmTracePill />
+
+
+
             </AppNetworkSim>
           </BrowserRouter>
 
