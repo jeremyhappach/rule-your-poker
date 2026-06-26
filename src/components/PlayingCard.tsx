@@ -284,19 +284,21 @@ export const PlayingCard = ({
     boxShadow: '0 0 8px 2px rgba(251, 191, 36, 0.6), inset 0 0 4px rgba(251, 191, 36, 0.3)',
   } : {};
 
-  // faceFillPx callers still own the container layout (justify-between,
-  // tighter padding) but face typography is now resolved exclusively by
-  // the Card Front Design tier — no legacy 0.62/0.70 fallback.
-  const fillMode = typeof faceFillPx === 'number' && faceFillPx > 0;
+  // Face typography is resolved exclusively by the Card Front Design
+  // tier. The container always uses justify-center with no padding so
+  // the configured rank↔suit gap (marginTop on the suit span) is the
+  // SOLE spacing between rank and suit. Any fixed py-* / justify-between
+  // would re-introduce a hidden minimum gap.
 
   return (
     <Card
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-id={`${card.rank}-${card.suit}`}
-      className={`${sizeClasses.container} flex flex-col items-center ${fillMode ? 'justify-between py-0.5' : 'justify-center p-0'} shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200 overflow-hidden`}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
+
       <span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
