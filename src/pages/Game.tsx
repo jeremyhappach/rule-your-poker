@@ -5398,6 +5398,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             transitionType: transitionType357,
           });
           return;
+        }
       }
 
       // ── Holm Showdown Freeze Harness gate ─────────────────────────
@@ -5437,7 +5438,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
 
-      }
 
 
       
