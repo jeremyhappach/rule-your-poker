@@ -4524,6 +4524,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
       
       // Reset pre-fold/pre-stay for the new hand
+      holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
       setHolmPreStay(false);
     }
