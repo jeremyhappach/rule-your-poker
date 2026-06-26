@@ -1401,9 +1401,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   } | null>(null);
 
   // Re-render when the Holm deal barrier flips so render gates and
-  // execute-effect both observe the readiness change.
-  const [holmReadyTick, setHolmReadyTick] = useState(0);
-  useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
+  // execute-effect both observe the readiness change. (Tick state
+  // declared below near the bot-trigger effect at ~L4794.)
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
