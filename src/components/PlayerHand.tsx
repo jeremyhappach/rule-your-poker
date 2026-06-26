@@ -933,6 +933,46 @@ export const PlayerHand = ({
     );
   }
 
+  // Holm clean-baseline opponent-exposed showdown branch — flat row of
+  // resolved-width cards, rotation-only fan (no arc, no pivot). Fires
+  // ONLY when cards are visible (hidden / card-back paths above return
+  // earlier). Self/active hand and non-Holm callers skip this branch.
+  if (useHolmShowdownGeometry && cards.length > 0) {
+    const n = sortedCardsWithIndices.length;
+    const sideSign = isRightSide ? 1 : -1;
+    const dirSign = holmResolved.fanArch === 'inward' ? -1 : 1;
+    const fanSign = sideSign * dirSign;
+    return (
+      <div className="flex items-end">
+        {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
+          const isHighlighted = highlightedIndices.includes(originalIndex);
+          const isKicker = kickerIndices.includes(originalIndex);
+          const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+          const rotationDeg =
+            fanRotationDeg(holmResolved.fanDegrees, displayIndex, n) * fanSign;
+          return (
+            <PlayingCard
+              tier={cardTier}
+              key={`holm-${card.rank}-${card.suit}-${originalIndex}`}
+              card={card}
+              isHighlighted={isHighlighted}
+              isKicker={isKicker}
+              isDimmed={isDimmed}
+              isWild={isWild}
+              style={{
+                width: `${holmResolved.cardWidthPx}px`,
+                height: `${holmResolved.cardHeightPx}px`,
+                marginLeft:
+                  displayIndex === 0 ? 0 : `-${holmResolved.overlapPx}px`,
+                transform: `rotate(${rotationDeg}deg)`,
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   // Default branch (also the 3-5-7 R1 showdown path).
   // For 3-5-7 R1 opponent: v4.r1.fanDegrees (TOTAL spread).
   // For self R1 and all non-357 callers: legacy 2°/card step.
