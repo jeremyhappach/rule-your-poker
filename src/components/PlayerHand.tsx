@@ -143,6 +143,12 @@ export const PlayerHand = ({
   // OWNERSHIP BOUNDARY: v4 applies ONLY to opponent-exposed showdown.
   const isOpponentExposedShowdown = source !== 'MobileGameTable.activeSelfHand';
   const use357V4 = is357Game && isOpponentExposedShowdown;
+  // Card Front Design tier — Phase 1: opponent seat-cluster exposed
+  // cards use Small face-density (compact rank/suit), active-player
+  // hand uses Large. Applies to every PlayingCard rendered by this
+  // component.
+  const cardTier: import('@/lib/cardFrontDesign/config').CardFrontTierKey =
+    isOpponentExposedShowdown ? 'small' : 'large';
 
   // Self-pane legacy geometry (preserves prior behavior verbatim for
   // active-player pane and other non-showdown callers).
@@ -653,6 +659,7 @@ export const PlayerHand = ({
           
           return (
             <PlayingCard
+              tier={cardTier}
               key={index}
               isHidden
               size={cardSize}
@@ -771,6 +778,7 @@ export const PlayerHand = ({
       >
         {unusedCards.map(({ card, originalIndex }, displayIndex) => (
           <PlayingCard
+            tier={cardTier}
             key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={unusedCardSize}
@@ -817,6 +825,7 @@ export const PlayerHand = ({
           const rotationDeg = fanRotationDeg(mainFanDeg, displayIndex, n) * mainFanSign;
           return (
             <PlayingCard
+              tier={cardTier}
               key={`used-${card.rank}-${card.suit}-${originalIndex}`}
               card={card}
               size={usedCardSize}
@@ -889,6 +898,7 @@ export const PlayerHand = ({
           const rotationDeg = fanStep * (displayIndex - (n - 1) / 2);
           return (
             <PlayingCard
+              tier={cardTier}
               key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
               card={card}
               size={cardSize}
@@ -946,6 +956,7 @@ export const PlayerHand = ({
 
         const cardEl = (
           <PlayingCard
+            tier={cardTier}
             key={`${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             isHidden={forceHiddenFaces}

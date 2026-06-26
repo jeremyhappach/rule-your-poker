@@ -203,6 +203,7 @@ export function HolmCanonicalCommunityRow({
                 {renderedAs === 'face' && card ? (
                   <PlayingCard
                     card={card}
+                    tier="large"
                     style={{ width: layout.cardWidth, height: layout.cardHeight }}
                     faceFillPx={layout.cardWidth}
                     isHighlighted={highlightedIndices.includes(i)}
