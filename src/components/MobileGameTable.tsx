@@ -837,6 +837,10 @@ interface MobileGameTableProps {
   holmPreStay?: boolean;
   onHolmPreFoldChange?: (checked: boolean) => void;
   onHolmPreStayChange?: (checked: boolean) => void;
+  /** P0 fix B: when false (Holm only), all decision affordances
+   *  (pre-decision checkboxes + live Stay/Fold buttons) are gated off
+   *  until the canonical Holm initial-deal barrier opens. */
+  holmDealReady?: boolean;
   // Holm rabbit hunt enabled
   rabbitHunt?: boolean;
   // Mobile tab state (lifted to parent to persist across remounts)
@@ -1058,6 +1062,7 @@ export const MobileGameTable = ({
   holmPreStay = false,
   onHolmPreFoldChange,
   onHolmPreStayChange,
+  holmDealReady = true,
   rabbitHunt = false,
   activeTab: externalActiveTab,
   onActiveTabChange,
@@ -4346,7 +4351,10 @@ export const MobileGameTable = ({
     roundStatus === 'betting' && 
     !hasDecided;
   
-  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
+  // P0 fix B: Holm decisions are blocked until the canonical deal
+  // barrier opens (holmDealReady). Non-Holm games default true.
+  const holmDecisionGate = gameType === 'holm-game' ? holmDealReady : true;
+  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate;
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and
@@ -10720,7 +10728,7 @@ export const MobileGameTable = ({
                       >
                         ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                       </Badge>
-                    ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
+                    ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold && holmDealReady ? (
                       <div className="flex items-center justify-center gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
