@@ -47,6 +47,55 @@ export function HolmTracePill() {
     }
   }, []);
 
+  // Pot geometry sampler — runs only while pill is mounted (= Holm active).
+  useEffect(() => {
+    if (!isHolmTraceActive()) return;
+    let lastSig = '';
+    const sample = () => {
+      const pot = document.querySelector<HTMLElement>('[data-pot-anchor]');
+      const felt = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
+      const frame = document.querySelector<HTMLElement>('[data-canonical-shell-felt-frame]');
+      if (!pot) return;
+      const rect = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, w: r.width, h: r.height };
+      };
+      const potRect = rect(pot);
+      const feltRect = felt ? rect(felt) : null;
+      const frameRect = frame ? rect(frame) : null;
+      const rootStyles = getComputedStyle(document.documentElement);
+      const cssVar = (n: string) => rootStyles.getPropertyValue(n).trim() || null;
+      const ancestorTransform: string[] = [];
+      let n: HTMLElement | null = pot;
+      let depth = 0;
+      while (n && depth < 8) {
+        const t = getComputedStyle(n).transform;
+        if (t && t !== 'none') ancestorTransform.push(`${n.tagName}:${t}`);
+        n = n.parentElement;
+        depth++;
+      }
+      const sig = `${Math.round(potRect.y)}|${Math.round(potRect.x)}|${Math.round(feltRect?.y ?? 0)}|${Math.round(frameRect?.y ?? 0)}`;
+      if (sig === lastSig) return;
+      lastSig = sig;
+      recordHolmTrace('POT_GEOMETRY', `pot.y=${potRect.y.toFixed(1)}`, {
+        potRect,
+        feltRect,
+        frameRect,
+        cssVars: {
+          '--play-top-safe-area': cssVar('--play-top-safe-area'),
+          '--shell-felt-h': cssVar('--shell-felt-h'),
+          '--shell-play-h': cssVar('--shell-play-h'),
+        },
+        ancestorTransform,
+        showdownAttr: pot.closest('[data-showdown]')?.getAttribute('data-showdown') ?? null,
+      });
+    };
+    const iv = window.setInterval(sample, 300);
+    sample();
+    return () => window.clearInterval(iv);
+  }, [events.length === 0 ? 0 : 1]);
+
+
   if (!isHolmTraceActive()) return null;
 
   return (
