@@ -814,17 +814,27 @@ export function CanonicalSeatCluster({
         // the legacy `left-1/2 -translate-x-1/2 mt-[2px]` baseline.
         let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
-          const { attachment, dxPx, dyPx } = opponentShowdownPlacement;
-          const { selfTranslateX } = resolveSideAwareRowAnchor(
+          const { attachment, sprawlDirection, dxPx, dyPx } = opponentShowdownPlacement;
+          const { selfTranslateX, anchorInwardMagnitude } = resolveSideAwareRowAnchor(
             isRightSide ? 'right' : 'left',
             attachment,
+            sprawlDirection,
           );
-          // Signed +X = inward toward felt center. Right-side opponents
-          // need the sign flipped so a single positive dxPx moves both
-          // sides inward (and negative moves both outward).
-          const signedDx = isRightSide ? -dxPx : dxPx;
+          // Felt-relative INWARD direction in CSS X:
+          //   left-side opponent  → +CSS X
+          //   right-side opponent → -CSS X
+          const inwardCssSign = isRightSide ? -1 : 1;
+          // User offset (+X = inward) flipped per side so a single
+          // positive dxPx moves both sides inward.
+          const signedDx = inwardCssSign * dxPx;
+          // Chip-rim offset uses the LIVE measured chip-disc radius so
+          // inner-edge / outer-edge pin to the visible circle rim, not
+          // a hardcoded 20px half of the w-10 cell.
+          const anchorOffsetCssX =
+            inwardCssSign * anchorInwardMagnitude * chipRadiusPx;
+          const totalCssX = signedDx + anchorOffsetCssX;
           overrideStyle = {
-            transform: `translate(${selfTranslateX}, 0) translate(${signedDx}px, ${dyPx}px)`,
+            transform: `translate(${selfTranslateX}, 0) translate(${totalCssX}px, ${dyPx}px)`,
           };
         }
 
