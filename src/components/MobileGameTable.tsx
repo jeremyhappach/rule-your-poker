@@ -6731,12 +6731,11 @@ export const MobileGameTable = ({
     const isRightSideSlot = slot >= 3;
 
     const stayed = playerDecision === 'stay';
-    // Latch raise through the entire multiplayer showdown lifecycle
-    // (including holmWinPotTriggerId / WIN_SEQUENCE). Dropping it on
-    // pot-trigger caused stayed clusters to snap downward at the start
-    // of the pot-to-player animation. Raise releases only when
-    // isHolmMultiPlayerShowdown itself releases (hand boundary).
-    const raise = isHolmMultiPlayerShowdown && stayed;
+    // Holm clean-baseline: no ergonomic raise. Seat clusters never
+    // translate vertically for showdown — exposed cards render below
+    // the canonical chip disc anchor instead.
+    const raise = false;
+    void stayed;
 
     // Showdown / chip-replacement derivation.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
