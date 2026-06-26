@@ -1930,6 +1930,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // garbage-collects the ref naturally.
     harness357PausedGameRef.current = null;
   }, [game?.current_game_uuid, game?.game_type, harness357, gameId]);
+
+  // Holm Showdown Freeze harness — same pattern as 3-5-7. One-shot per
+  // hand identity = (current_game_uuid | current_round). Pauses
+  // AUTO_PROCEED scheduling on the first real Holm multiplayer showdown
+  // (parseable WINNER+LOSERS marker in last_round_result) so the
+  // live-rendered table stays mounted for Geometry Lab inspection.
+  const harnessHolm = useDebugHarness('holm');
+  const harnessHolmPausedHandRef = useRef<string | null>(null);
+  useEffect(() => {
+    harnessHolmPausedHandRef.current = null;
+  }, [game?.current_game_uuid, game?.game_type, harnessHolm, gameId]);
+
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
@@ -5388,6 +5400,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           return;
         }
       }
+
+      // ── Holm Showdown Freeze Harness gate ─────────────────────────
+      // Pauses AUTO_PROCEED for ONE qualifying real multiplayer
+      // showdown per hand identity. Conditions:
+      //   - game_type === 'holm-game'
+      //   - harnessHolm === 'pause_showdown_freeze'
+      //   - last_round_result carries WINNER+LOSERS+POT+MATCH marker
+      //     (this excludes solo/Chucky outcomes, non-showdown phases,
+      //     and any stale prior-result state — the marker is only
+      //     written when ≥1 stayed opponent reaches showdown)
+      //   - awaiting_next_round === true (outer if already enforces)
+      //   - this (dealer_game | current_round) hand has not been paused
+      // Returning early keeps the live tableau mounted; card-flip
+      // animations finish to settle naturally in the DOM and remain
+      // on screen indefinitely. No snapshot, no remount, no release.
+      if (game?.game_type === 'holm-game' && harnessHolm === 'pause_showdown_freeze') {
+        const holmLastResult = game?.last_round_result || '';
+        const holmShowdownMarker = /\|\|\|WINNER:[^|]+\|\|\|LOSERS:[^|]+\|\|\|POT:\d+\|\|\|MATCH:\d+/.test(holmLastResult);
+        const dealerGameKey = game?.current_game_uuid ?? null;
+        const holmHandKey = dealerGameKey ? `${dealerGameKey}|${currentRound}` : null;
+        const alreadyPausedThisHand =
+          !!holmHandKey && harnessHolmPausedHandRef.current === holmHandKey;
+        if (
+          holmShowdownMarker
+          && !!holmHandKey
+          && !alreadyPausedThisHand
+        ) {
+          harnessHolmPausedHandRef.current = holmHandKey;
+          console.log('[HOLM_SHOWDOWN_FREEZE_HARNESS] 🛑 Pausing AUTO_PROCEED', {
+            harness: harnessHolm,
+            handKey: holmHandKey,
+            currentRound,
+          });
+          return;
+        }
+      }
+
+
 
 
       
