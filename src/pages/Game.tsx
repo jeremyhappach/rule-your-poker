@@ -2898,10 +2898,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return;
             }
             console.log('[REALTIME] 🎴 NEW ROUND INSERTED - Immediate fetch for all clients!');
+            // P0 pre-decision contract: synchronously stamp the
+            // authoritative turn ref BEFORE React state scheduling.
+            {
+              const n: any = payload.new;
+              authoritativeTurnEpochRef.current += 1;
+              latestAuthoritativeTurnRef.current = {
+                roundId: n?.id ?? null,
+                currentTurnPosition: (n && 'current_turn_position' in n) ? (n.current_turn_position ?? null) : null,
+                epoch: authoritativeTurnEpochRef.current,
+              };
+            }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else if (payload.eventType === 'UPDATE' && payload.new && 'current_turn_position' in payload.new) {
             console.log('[REALTIME] Turn change detected! Immediately fetching without debounce');
+            // P0 pre-decision contract: synchronously stamp authoritative
+            // turn ref BEFORE React state scheduling (closes the
+            // click-at-boundary race window).
+            {
+              const n: any = payload.new;
+              authoritativeTurnEpochRef.current += 1;
+              latestAuthoritativeTurnRef.current = {
+                roundId: n?.id ?? null,
+                currentTurnPosition: n?.current_turn_position ?? null,
+                epoch: authoritativeTurnEpochRef.current,
+              };
+            }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else {
