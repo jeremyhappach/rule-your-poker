@@ -8,11 +8,12 @@
  *
  * No console output. No server writes. No behavior change.
  */
-import { useSyncExternalStore, useState, useCallback } from 'react';
+import { useSyncExternalStore, useState, useCallback, useEffect } from 'react';
 import {
   formatHolmTraceAsText,
   getHolmTraceEvents,
   isHolmTraceActive,
+  recordHolmTrace,
   subscribeHolmTrace,
 } from '@/lib/holm/holmTrace';
 
