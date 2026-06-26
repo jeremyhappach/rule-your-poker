@@ -45,27 +45,8 @@ export function GeometryLabModalChrome({ children }: { children: React.ReactNode
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Persistent dirty banner — surfaces draft state in-app, not in console. */}
-      <div
-        role="status"
-        className={
-          'sticky top-0 z-10 rounded-md border px-3 py-2 text-xs flex items-center justify-between gap-3 ' +
-          (isDirty
-            ? 'border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-            : 'border-border bg-muted/40 text-muted-foreground')
-        }
-      >
-        <span>
-          {isDirty
-            ? `Unsaved draft: ${dirtyKeys.length} section${dirtyKeys.length === 1 ? '' : 's'} — ${dirtyKeys.join(', ')}`
-            : 'No unsaved Geometry Lab changes.'}
-        </span>
-        {applyError ? (
-          <span className="text-red-600 font-semibold">{applyError}</span>
-        ) : null}
-      </div>
-
       <div>{children}</div>
+
 
       <div className="sticky bottom-0 z-10 -mx-1 mt-2 flex items-center justify-end gap-2 border-t bg-background/95 px-1 py-2 backdrop-blur">
         <Button
