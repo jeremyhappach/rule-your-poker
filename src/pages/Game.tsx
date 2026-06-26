@@ -4814,6 +4814,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // (capture-logic identity guards). Not used as a lifecycle key.
   void holmHandIdentityCards;
 
+  const recordHolmDecisionSubmission = useCallback((params: {
+    source: 'live stay' | 'live fold' | 'pre-stay execute' | 'pre-fold execute' | 'bot action' | 'bot deadline' | 'server-timeout observed' | 'unknown';
+    actor?: Pick<Player, 'id' | 'position' | 'user_id' | 'is_bot'> | null;
+    decision?: 'stay' | 'fold' | null;
+    makeDecisionInvoked: boolean;
+    requestStatus: 'accepted' | 'rejected' | 'error';
+    errorMessage?: string | null;
+    extra?: Record<string, unknown>;
+  }) => {
+    if (game?.game_type !== 'holm-game') return;
+    if (!isHolmTraceArmed()) return;
+
+    const authoritativeCurrentTurnPosition =
+      latestAuthoritativeTurnRef.current?.currentTurnPosition ??
+      currentRound?.current_turn_position ??
+      null;
+    const actorPosition = typeof params.actor?.position === 'number' ? params.actor.position : null;
+    recordHolmTrace('DECISION_SUBMISSION', `${params.source} actor=${actorPosition ?? 'null'} status=${params.requestStatus}`, {
+      timestamp: new Date().toISOString(),
+      actorPosition,
+      actorId: params.actor?.id ?? null,
+      actorUserId: params.actor?.user_id ?? null,
+      actorIsBot: params.actor?.is_bot ?? null,
+      decision: params.decision ?? null,
+      source: params.source,
+      stableHandIdentity: holmDealIdentityKey ?? handContextKey,
+      roundId: currentRound?.id ?? null,
+      handNumber: currentRound?.hand_number ?? holmView?.handNumber ?? null,
+      authoritativeCurrentTurnPosition,
+      authorityMatchesActor: actorPosition != null ? authoritativeCurrentTurnPosition === actorPosition : null,
+      pendingDecision,
+      preDecisionArmState: holmPreDecisionArmedRef.current,
+      makeDecisionInvoked: params.makeDecisionInvoked,
+      requestStatus: params.requestStatus,
+      errorMessage: params.errorMessage ?? null,
+      latestAuthoritativeTurn: latestAuthoritativeTurnRef.current,
+      ...params.extra,
+    });
+  }, [game?.game_type, currentRound?.id, currentRound?.current_turn_position, currentRound?.hand_number, holmDealIdentityKey, handContextKey, holmView?.handNumber, pendingDecision]);
+
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
     maxRevealedRef.current = 0;
