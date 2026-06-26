@@ -191,53 +191,109 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   const override = overrides.get(artifactId);
 
-  const [form, setForm] = useState<FormState>({
-    anchorX: "",
-    anchorY: "",
-    anchorOrigin: "center",
-    sizeMode: "widthDriven",
-    widthPct: "",
-    heightPct: "",
-    aspectRatio: "",
-  });
-  const [saving, setSaving] = useState(false);
+  // -------------------------------------------------------------------------
+  // Draft pipeline — Gameplay Artifacts is wired to the modal-wide draft
+  // contract via per-artifact seed + commit adapters on
+  // GeometryLabDraftProvider. Every edit flows: input → setDraft →
+  // dirtyKeys → footer Apply enabled → commit adapter upsert into
+  // geometry_overrides → realtime echo refreshes the override store.
+  // No section-level Save/Reset persistence remains.
+  // -------------------------------------------------------------------------
+  const draft = useGeometryLabDraft();
 
-  // Hydrate form from override (if any) layered over the canonical descriptor.
+  // Refs let the seed/commit adapters always read the latest descriptor
+  // and override snapshot without re-registering on every render.
+  const descriptorByIdRef = useRef<Map<string, { desc: ArtifactDescriptor; game: GameKey }>>(new Map());
+  for (const a of sortedArtifacts) {
+    descriptorByIdRef.current.set(a.id, { desc: a, game });
+  }
+  const overridesRef = useRef(overrides);
+  overridesRef.current = overrides;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+
+  // Register seed + commit adapter for any artifact the user has selected
+  // at least once. Registrations accumulate across artifact switches so a
+  // dirty draft for a previously-selected artifact still has its commit
+  // adapter wired when the admin clicks Apply Changes.
+  const registeredRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!descriptor) return;
-    try {
-      const o = override;
-      const descSizeMode = deriveSizeMode(descriptor);
-      const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+    const id = artifactId;
+    const k = artifactDraftKey(id);
+    if (registeredRef.current.has(k)) return;
+    registeredRef.current.add(k);
+    draft.registerSeed(k, () => {
+      const info = descriptorByIdRef.current.get(id);
+      const d = info?.desc ?? descriptor;
+      return buildSeedForm(d, overridesRef.current.get(id));
+    });
+    draft.registerCommitAdapter(k, async (value) => {
+      const info = descriptorByIdRef.current.get(id);
+      const g = info?.game ?? game;
+      const f = value as FormState;
+      const payload: Record<string, unknown> = {
+        artifact_id: id,
+        game: g,
+        anchor_x: num(f.anchorX),
+        anchor_y: num(f.anchorY),
+        anchor_origin: f.anchorOrigin,
+        size_mode: f.sizeMode,
+        width_pct:
+          f.sizeMode === "heightDriven" ? null : num(f.widthPct),
+        height_pct:
+          f.sizeMode === "widthDriven" ? null : num(f.heightPct),
+        aspect_ratio: f.sizeMode === "rect" ? null : num(f.aspectRatio),
+        updated_by: userIdRef.current,
+        updated_at: new Date().toISOString(),
+      };
+      logGeometryLab("draft_commit_attempt", { artifactId: id, payload });
+      const { error } = await supabase
+        .from("geometry_overrides" as any)
+        .upsert(payload as any, { onConflict: "artifact_id" });
+      if (error) {
+        logGeometryLab("draft_commit_failed", {
+          artifactId: id,
+          code: (error as { code?: string }).code,
+          message: error.message,
+        });
+        return { ok: false, error: error.message };
+      }
+      logGeometryLab("draft_commit_succeeded", { artifactId: id });
+      return { ok: true };
+    });
+  }, [artifactId, descriptor, game, draft]);
 
-      setForm({
-        anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
-        anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
-        anchorOrigin: (o?.anchor_origin ??
-          descriptor.anchorOrigin ??
-          "center") as AnchorOrigin,
-        sizeMode,
-        widthPct:
-          o?.width_pct != null
-            ? String(o.width_pct)
-            : stringifyOptional(descriptor.widthPct),
-        heightPct:
-          o?.height_pct != null
-            ? String(o.height_pct)
-            : stringifyOptional(descriptor.heightPct),
-        aspectRatio:
-          o?.aspect_ratio != null
-            ? String(o.aspect_ratio)
-            : stringifyOptional(descriptor.aspectRatio),
+  // Unregister all on unmount so a closed modal does not leak adapters.
+  useEffect(() => {
+    const set = registeredRef.current;
+    return () => {
+      set.forEach((k) => {
+        draft.unregisterSeed(k);
+        draft.unregisterCommitAdapter(k);
       });
-    } catch (err) {
-      logGeometryLab("hydrate_failed", {
-        artifactId,
-        error: (err as Error)?.message ?? String(err),
-      });
-      throw err;
-    }
-  }, [artifactId, override, descriptor]);
+      set.clear();
+    };
+  }, [draft]);
+
+  // When the realtime override store changes for the selected artifact
+  // and the user has no dirty edits, drop the cached draft so the next
+  // read re-seeds from the fresh override. Mirrors the previous hydrate
+  // effect's behaviour without overwriting in-flight edits.
+  const draftKey = descriptor ? artifactDraftKey(artifactId) : "";
+  useEffect(() => {
+    if (!descriptor) return;
+    if (draft.isDomainDirty(draftKey)) return;
+    draft.resetDomain(draftKey);
+  }, [override, descriptor, draftKey, draft]);
+
+  const form: FormState = descriptor
+    ? draft.getDraft<FormState>(draftKey)
+    : EMPTY_FORM;
+  const setForm = (updater: FormState | ((prev: FormState) => FormState)) => {
+    if (!descriptor) return;
+    draft.setDraft<FormState>(draftKey, updater);
+  };
 
   // Record snapshot for the crash boundary on every render.
   recordGeometryLabContext({
@@ -247,6 +303,7 @@ export function GeometryLab({ userId }: { userId: string }) {
       typeof window !== "undefined" ? window.location.pathname : "(ssr)",
     unsavedForm: { ...form },
   });
+
 
   if (!descriptor) {
     return (
