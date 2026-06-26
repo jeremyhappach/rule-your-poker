@@ -407,7 +407,7 @@ function resolveRound(g: RoundGeometry, feltVminPx: number): ResolvedRound {
     cardHeightPx: h,
     overlapPx: Math.max(0, g.row.overlap) * w,
     fanDegrees: g.row.fanDegrees,
-    fanDirection: g.row.fanDirection,
+    fanArch: g.row.fanArch,
   };
 }
 
