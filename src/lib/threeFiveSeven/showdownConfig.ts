@@ -135,19 +135,24 @@ export interface ShowdownRulesState {
 // ─── Seeds (rough; tuned in pause harness) ────────────────────────────────
 
 export const DEFAULT_SHOWDOWN_RULES: ShowdownRulesState = {
-  placement: { attachment: 'chip-centered', xPctOfFelt: 0, yPctOfFelt: 0 },
+  placement: {
+    attachment: 'outer-edge',
+    sprawlDirection: 'inward',
+    xPctOfFelt: 0,
+    yPctOfFelt: 0,
+  },
   rounds: {
     r1: {
       card: { mode: 'fixed', cardWidthPx: 40, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
     },
     r2: {
       card: { mode: 'fixed', cardWidthPx: 44, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
     },
     r3: {
       card: { mode: 'fixed', cardWidthPx: 48, aspectRatio: 1.4 },
-      row: { overlap: 0.35, fanDegrees: 0, fanDirection: 'outward' },
+      row: { overlap: 0.35, fanDegrees: 0, fanArch: 'outward' },
       secondary: {
         visibility: 'dimmed',
         placement: 'below',
