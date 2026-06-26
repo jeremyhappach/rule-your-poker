@@ -17,7 +17,7 @@
  *         realtime override store loop closes
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,11 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useGeometryOverrides, type SizeMode } from "@/lib/geometryLab/store";
+import {
+  useGeometryOverrides,
+  type GeometryOverride,
+  type SizeMode,
+} from "@/lib/geometryLab/store";
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
 import {
   GAME_KEYS,
@@ -49,12 +53,14 @@ import {
   logGeometryLab,
   recordGeometryLabContext,
 } from "./GeometryLabCrashBoundary";
+import { useGeometryLabDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
+
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -86,6 +92,47 @@ function stringifyOptional(v: number | undefined): string {
 }
 
 type LabSelection = "__shell__" | GameKey;
+
+const EMPTY_FORM: FormState = {
+  anchorX: "",
+  anchorY: "",
+  anchorOrigin: "center",
+  sizeMode: "widthDriven",
+  widthPct: "",
+  heightPct: "",
+  aspectRatio: "",
+};
+
+function artifactDraftKey(artifactId: string): string {
+  return `geometry_overrides:${artifactId}`;
+}
+
+function buildSeedForm(
+  d: ArtifactDescriptor,
+  o: GeometryOverride | undefined,
+): FormState {
+  const descSizeMode = deriveSizeMode(d);
+  const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+  return {
+    anchorX: String(o?.anchor_x ?? d.anchorX ?? 0.5),
+    anchorY: String(o?.anchor_y ?? d.anchorY ?? 0.5),
+    anchorOrigin: (o?.anchor_origin ?? d.anchorOrigin ?? "center") as AnchorOrigin,
+    sizeMode,
+    widthPct:
+      o?.width_pct != null
+        ? String(o.width_pct)
+        : stringifyOptional(d.widthPct),
+    heightPct:
+      o?.height_pct != null
+        ? String(o.height_pct)
+        : stringifyOptional(d.heightPct),
+    aspectRatio:
+      o?.aspect_ratio != null
+        ? String(o.aspect_ratio)
+        : stringifyOptional(d.aspectRatio),
+  };
+}
+
 
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
@@ -144,53 +191,109 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   const override = overrides.get(artifactId);
 
-  const [form, setForm] = useState<FormState>({
-    anchorX: "",
-    anchorY: "",
-    anchorOrigin: "center",
-    sizeMode: "widthDriven",
-    widthPct: "",
-    heightPct: "",
-    aspectRatio: "",
-  });
-  const [saving, setSaving] = useState(false);
+  // -------------------------------------------------------------------------
+  // Draft pipeline — Gameplay Artifacts is wired to the modal-wide draft
+  // contract via per-artifact seed + commit adapters on
+  // GeometryLabDraftProvider. Every edit flows: input → setDraft →
+  // dirtyKeys → footer Apply enabled → commit adapter upsert into
+  // geometry_overrides → realtime echo refreshes the override store.
+  // No section-level Save/Reset persistence remains.
+  // -------------------------------------------------------------------------
+  const draft = useGeometryLabDraft();
 
-  // Hydrate form from override (if any) layered over the canonical descriptor.
+  // Refs let the seed/commit adapters always read the latest descriptor
+  // and override snapshot without re-registering on every render.
+  const descriptorByIdRef = useRef<Map<string, { desc: ArtifactDescriptor; game: GameKey }>>(new Map());
+  for (const a of sortedArtifacts) {
+    descriptorByIdRef.current.set(a.id, { desc: a, game });
+  }
+  const overridesRef = useRef(overrides);
+  overridesRef.current = overrides;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+
+  // Register seed + commit adapter for any artifact the user has selected
+  // at least once. Registrations accumulate across artifact switches so a
+  // dirty draft for a previously-selected artifact still has its commit
+  // adapter wired when the admin clicks Apply Changes.
+  const registeredRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!descriptor) return;
-    try {
-      const o = override;
-      const descSizeMode = deriveSizeMode(descriptor);
-      const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+    const id = artifactId;
+    const k = artifactDraftKey(id);
+    if (registeredRef.current.has(k)) return;
+    registeredRef.current.add(k);
+    draft.registerSeed(k, () => {
+      const info = descriptorByIdRef.current.get(id);
+      const d = info?.desc ?? descriptor;
+      return buildSeedForm(d, overridesRef.current.get(id));
+    });
+    draft.registerCommitAdapter(k, async (value) => {
+      const info = descriptorByIdRef.current.get(id);
+      const g = info?.game ?? game;
+      const f = value as FormState;
+      const payload: Record<string, unknown> = {
+        artifact_id: id,
+        game: g,
+        anchor_x: num(f.anchorX),
+        anchor_y: num(f.anchorY),
+        anchor_origin: f.anchorOrigin,
+        size_mode: f.sizeMode,
+        width_pct:
+          f.sizeMode === "heightDriven" ? null : num(f.widthPct),
+        height_pct:
+          f.sizeMode === "widthDriven" ? null : num(f.heightPct),
+        aspect_ratio: f.sizeMode === "rect" ? null : num(f.aspectRatio),
+        updated_by: userIdRef.current,
+        updated_at: new Date().toISOString(),
+      };
+      logGeometryLab("draft_commit_attempt", { artifactId: id, payload });
+      const { error } = await supabase
+        .from("geometry_overrides" as any)
+        .upsert(payload as any, { onConflict: "artifact_id" });
+      if (error) {
+        logGeometryLab("draft_commit_failed", {
+          artifactId: id,
+          code: (error as { code?: string }).code,
+          message: error.message,
+        });
+        return { ok: false, error: error.message };
+      }
+      logGeometryLab("draft_commit_succeeded", { artifactId: id });
+      return { ok: true };
+    });
+  }, [artifactId, descriptor, game, draft]);
 
-      setForm({
-        anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
-        anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
-        anchorOrigin: (o?.anchor_origin ??
-          descriptor.anchorOrigin ??
-          "center") as AnchorOrigin,
-        sizeMode,
-        widthPct:
-          o?.width_pct != null
-            ? String(o.width_pct)
-            : stringifyOptional(descriptor.widthPct),
-        heightPct:
-          o?.height_pct != null
-            ? String(o.height_pct)
-            : stringifyOptional(descriptor.heightPct),
-        aspectRatio:
-          o?.aspect_ratio != null
-            ? String(o.aspect_ratio)
-            : stringifyOptional(descriptor.aspectRatio),
+  // Unregister all on unmount so a closed modal does not leak adapters.
+  useEffect(() => {
+    const set = registeredRef.current;
+    return () => {
+      set.forEach((k) => {
+        draft.unregisterSeed(k);
+        draft.unregisterCommitAdapter(k);
       });
-    } catch (err) {
-      logGeometryLab("hydrate_failed", {
-        artifactId,
-        error: (err as Error)?.message ?? String(err),
-      });
-      throw err;
-    }
-  }, [artifactId, override, descriptor]);
+      set.clear();
+    };
+  }, [draft]);
+
+  // When the realtime override store changes for the selected artifact
+  // and the user has no dirty edits, drop the cached draft so the next
+  // read re-seeds from the fresh override. Mirrors the previous hydrate
+  // effect's behaviour without overwriting in-flight edits.
+  const draftKey = descriptor ? artifactDraftKey(artifactId) : "";
+  useEffect(() => {
+    if (!descriptor) return;
+    if (draft.isDomainDirty(draftKey)) return;
+    draft.resetDomain(draftKey);
+  }, [override, descriptor, draftKey, draft]);
+
+  const form: FormState = descriptor
+    ? draft.getDraft<FormState>(draftKey)
+    : EMPTY_FORM;
+  const setForm = (updater: FormState | ((prev: FormState) => FormState)) => {
+    if (!descriptor) return;
+    draft.setDraft<FormState>(draftKey, updater);
+  };
 
   // Record snapshot for the crash boundary on every render.
   recordGeometryLabContext({
@@ -200,6 +303,7 @@ export function GeometryLab({ userId }: { userId: string }) {
       typeof window !== "undefined" ? window.location.pathname : "(ssr)",
     unsavedForm: { ...form },
   });
+
 
   if (!descriptor) {
     return (
@@ -224,62 +328,6 @@ export function GeometryLab({ userId }: { userId: string }) {
       ? (hNum * arNum).toFixed(4)
       : "";
 
-  async function handleSave() {
-    setSaving(true);
-    const payload: Record<string, unknown> = {
-      artifact_id: artifactId,
-      game,
-      anchor_x: num(form.anchorX),
-      anchor_y: num(form.anchorY),
-      anchor_origin: form.anchorOrigin,
-      size_mode: form.sizeMode,
-      width_pct:
-        form.sizeMode === "heightDriven" ? null : num(form.widthPct),
-      height_pct:
-        form.sizeMode === "widthDriven" ? null : num(form.heightPct),
-      aspect_ratio: form.sizeMode === "rect" ? null : num(form.aspectRatio),
-      updated_by: userId,
-      updated_at: new Date().toISOString(),
-    };
-    logGeometryLab("save_attempt", { artifactId, payload });
-    const { error } = await supabase
-      .from("geometry_overrides" as any)
-      .upsert(payload as any, { onConflict: "artifact_id" });
-    setSaving(false);
-    if (error) {
-      logGeometryLab("save_failed", {
-        artifactId,
-        code: (error as { code?: string }).code,
-        message: error.message,
-      });
-      toast.error(`Save failed: ${error.message}`);
-    } else {
-      logGeometryLab("save_succeeded", { artifactId });
-      toast.success("Geometry saved — all clients updating.");
-    }
-  }
-
-  async function handleResetToDefault() {
-    if (!override) {
-      toast.info("Already using canonical descriptor.");
-      return;
-    }
-    setSaving(true);
-    logGeometryLab("reset_attempt", { artifactId });
-    const { error } = await supabase
-      .from("geometry_overrides" as any)
-      .delete()
-      .eq("artifact_id", artifactId);
-    setSaving(false);
-    if (error) {
-      logGeometryLab("reset_failed", { artifactId, message: error.message });
-      toast.error(`Reset failed: ${error.message}`);
-    } else {
-      logGeometryLab("reset_succeeded", { artifactId });
-      toast.success("Override cleared — descriptor defaults restored.");
-    }
-  }
-
   function handleConvertTo(target: "widthDriven" | "heightDriven") {
     const w = num(form.widthPct);
     const h = num(form.heightPct);
@@ -291,8 +339,9 @@ export function GeometryLab({ userId }: { userId: string }) {
     const ar = w / h;
     logGeometryLab("convert_applied", { artifactId, target, derivedAspectRatio: ar });
     setForm((f) => ({ ...f, sizeMode: target, aspectRatio: ar.toFixed(4) }));
-    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Press Save to persist.`);
+    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Apply Changes to persist.`);
   }
+
 
   return (
     <div className="space-y-6 pt-2">
@@ -333,9 +382,8 @@ export function GeometryLab({ userId }: { userId: string }) {
           setForm={setForm}
           derivedH={derivedH}
           derivedW={derivedW}
-          saving={saving}
-          handleSave={handleSave}
-          handleResetToDefault={handleResetToDefault}
+          dirty={draft.isDomainDirty(draftKey)}
+
           handleConvertTo={handleConvertTo}
         />
       )}
@@ -412,12 +460,10 @@ interface GameSectionsProps {
   override: ReturnType<ReturnType<typeof useGeometryOverrides>["get"]>;
   descriptor: ArtifactDescriptor;
   form: FormState;
-  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  setForm: (updater: FormState | ((prev: FormState) => FormState)) => void;
   derivedH: string;
   derivedW: string;
-  saving: boolean;
-  handleSave: () => Promise<void> | void;
-  handleResetToDefault: () => Promise<void> | void;
+  dirty: boolean;
   handleConvertTo: (target: "widthDriven" | "heightDriven") => void;
 }
 
@@ -434,11 +480,10 @@ function GameSections(props: GameSectionsProps) {
     setForm,
     derivedH,
     derivedW,
-    saving,
-    handleSave,
-    handleResetToDefault,
+    dirty,
     handleConvertTo,
   } = props;
+
 
   return (
     <div className="space-y-3">
@@ -469,16 +514,23 @@ function GameSections(props: GameSectionsProps) {
           {override && (
             <p className="text-xs text-amber-500">● override active</p>
           )}
+          {dirty && (
+            <p className="text-xs text-sky-500">
+              ● unsaved draft — click footer Apply Changes to persist
+            </p>
+          )}
         </div>
 
         {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
         <div className="space-y-3 pt-2 border-t">
           <h3 className="font-semibold">Geometry</h3>
           <p className="text-xs text-muted-foreground">
-            Defaults read live from the canonical descriptor. Saving writes an
-            override row; the runtime merges it via{" "}
-            <code>applyGeometryOverrides</code>.
+            Defaults read live from the canonical descriptor. Edits stage
+            into the modal-wide draft and persist only when the footer
+            Apply Changes button is pressed; the runtime then merges the
+            committed override row via <code>applyGeometryOverrides</code>.
           </p>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>anchorX</Label>
@@ -682,18 +734,6 @@ function GameSections(props: GameSectionsProps) {
           ))}
         </div>
 
-        <div className="pt-2 rounded border border-dashed border-border bg-muted/30 px-2 py-2">
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            <strong>Per-artifact override editing is paused.</strong> The
-            modal-wide draft / Apply Changes contract is the only persistence
-            path; the legacy per-artifact Save/Reset wrote directly to
-            <code className="mx-1">geometry_overrides</code> and bypassed the
-            shared draft. A collection adapter for that table will be added
-            in a future Geometry Lab phase. Use the panels above (Showdown
-            Rules, Layout Tuning, Deal Timing, Table Demo, Card Front Design)
-            until then.
-          </p>
-        </div>
       </CollapsibleSection>
 
       <CollapsibleSection title="Chip Ring Artifacts">
