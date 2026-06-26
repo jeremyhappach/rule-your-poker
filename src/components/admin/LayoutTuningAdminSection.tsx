@@ -2,31 +2,33 @@
  * Admin → Layout Tuning section.
  *
  * Edits the GLOBAL Canonical Shell Layout config, not a per-user or
- * per-device preference. Sliders update the local DOM live for the
- * admin's session; pressing SAVE writes the values to
+ * per-device preference. Sliders update the live CSS vars in this
+ * admin's session via the modal-wide draft path; the footer
+ * **Apply Changes** writes the values to
  * `system_settings.canonical_shell_layout` and every other client
  * (every user, every device, every game) receives them automatically
  * over realtime — no redeploy, no localStorage.
  *
- * Bound CSS variables:
+ * Persistence contract:
+ *   Per-section Save buttons are forbidden by the modal-draft contract.
+ *   This panel only edits the draft; the footer Apply Changes commits.
+ *   Cancel / X discards every section's draft.
+ *
+ * Bound CSS variables (live preview in this admin's session only):
  *   --play-top-safe-area
  *   --play-bottom-safe-area
- *
- * Donates pixels exclusively from HUD Row 4 (the active content pane).
- * Does not change felt, seat ring, chip anchors, spotlight, or any
- * other HUD row.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { toast } from 'sonner';
+import { useDomainDraft } from '@/lib/geometryLab/GeometryLabDraftProvider';
 import {
   CANONICAL_SHELL_LAYOUT_BOUNDS,
+  CANONICAL_SHELL_LAYOUT_KEY,
   DEFAULT_CANONICAL_SHELL_LAYOUT,
   getCanonicalShellLayout,
-  saveCanonicalShellLayout,
-  subscribeCanonicalShellLayout,
+  type CanonicalShellLayoutConfig,
 } from '@/lib/canonicalShell/canonicalShellLayoutConfig';
 
 const { min: MIN_PX, max: MAX_PX, step: STEP_PX } = CANONICAL_SHELL_LAYOUT_BOUNDS;
@@ -60,37 +62,30 @@ function readDiag(): Diag {
 }
 
 export function LayoutTuningAdminSection() {
-  const initial = getCanonicalShellLayout();
-  const [top, setTop] = useState<number>(initial.playSafeTop);
-  const [bottom, setBottom] = useState<number>(initial.playSafeBottom);
-  // Saved baseline = last value written to (or fetched from) the DB.
-  const [savedTop, setSavedTop] = useState<number>(initial.playSafeTop);
-  const [savedBottom, setSavedBottom] = useState<number>(initial.playSafeBottom);
-  const [saving, setSaving] = useState(false);
+  const { value: draft, setValue, reset, dirty } = useDomainDraft<CanonicalShellLayoutConfig>(
+    CANONICAL_SHELL_LAYOUT_KEY,
+    DEFAULT_CANONICAL_SHELL_LAYOUT,
+  );
+  const top = draft.playSafeTop;
+  const bottom = draft.playSafeBottom;
+  const setTop = (v: number) => setValue((d) => ({ ...d, playSafeTop: v }));
+  const setBottom = (v: number) => setValue((d) => ({ ...d, playSafeBottom: v }));
+
   const [diag, setDiag] = useState<Diag>({ pane: 0, topSafe: 0, bottomSafe: 0 });
   const timerRef = useRef<number | null>(null);
 
-  // Track the global authoritative value (fetch + realtime updates).
-  // When the global changes and the admin has no unsaved edits, snap
-  // the sliders to it; otherwise just update the saved baseline so
-  // the dirty diff stays meaningful.
-  useEffect(() => {
-    const unsub = subscribeCanonicalShellLayout((c) => {
-      setSavedTop((prevSaved) => {
-        setTop((prevTop) => (prevTop === prevSaved ? c.playSafeTop : prevTop));
-        return c.playSafeTop;
-      });
-      setSavedBottom((prevSaved) => {
-        setBottom((prevBot) => (prevBot === prevSaved ? c.playSafeBottom : prevBot));
-        return c.playSafeBottom;
-      });
-    });
-    return unsub;
-  }, []);
-
-  // Live preview for the admin's current session only.
+  // Live preview for the admin's current session only. On unmount we
+  // snap CSS vars back to the authoritative committed value so the
+  // draft preview doesn't leak past the modal session.
   useEffect(() => { applyTopLive(top); }, [top]);
   useEffect(() => { applyBottomLive(bottom); }, [bottom]);
+  useEffect(() => {
+    return () => {
+      const committed = getCanonicalShellLayout();
+      applyTopLive(committed.playSafeTop);
+      applyBottomLive(committed.playSafeBottom);
+    };
+  }, []);
 
   // Diagnostic polling.
   useEffect(() => {
@@ -107,39 +102,17 @@ export function LayoutTuningAdminSection() {
     };
   }, []);
 
-  const dirty = top !== savedTop || bottom !== savedBottom;
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await saveCanonicalShellLayout({
-        playSafeTop: top,
-        playSafeBottom: bottom,
-      });
-      if (res.ok) {
-        toast.success('Saved as global default');
-      } else {
-        const err = (res as { ok: false; error: string }).error;
-        toast.error(`Save failed: ${err}`);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRevert = () => {
-    setTop(savedTop);
-    setBottom(savedBottom);
-  };
-
   return (
     <div className="space-y-3 py-2 border-t border-border">
       <div className="space-y-0.5">
-        <Label className="text-sm font-semibold">Layout Tuning (Global)</Label>
+        <Label className="text-sm font-semibold">
+          Layout Tuning (Global)
+          {dirty && <span className="ml-2 text-[10px] text-amber-500">(draft)</span>}
+        </Label>
         <p className="text-xs text-muted-foreground">
           Canonical shell-owned safe areas around the felt. Sliders preview
-          live in this session. Press <strong>Save as global default</strong>{' '}
-          to apply for every user, device, and game — no redeploy. Donates
+          live in this session. Use the footer <strong>Apply Changes</strong>{' '}
+          to commit for every user, device, and game — no redeploy. Donates
           pixels exclusively from HUD Row 4 (active content pane); does not
           change felt, seat ring, chip anchors, or other HUD rows.
         </p>
@@ -149,12 +122,7 @@ export function LayoutTuningAdminSection() {
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="top-safe-slider" className="text-sm">TOP SAFE AREA</Label>
-          <span className="font-mono text-base font-semibold">
-            {top} px
-            {top !== savedTop && (
-              <span className="ml-2 text-[10px] text-amber-500">(unsaved · saved {savedTop})</span>
-            )}
-          </span>
+          <span className="font-mono text-base font-semibold">{top} px</span>
         </div>
         <Slider
           id="top-safe-slider"
@@ -189,12 +157,7 @@ export function LayoutTuningAdminSection() {
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="bottom-safe-slider" className="text-sm">BOTTOM SAFE AREA</Label>
-          <span className="font-mono text-base font-semibold">
-            {bottom} px
-            {bottom !== savedBottom && (
-              <span className="ml-2 text-[10px] text-amber-500">(unsaved · saved {savedBottom})</span>
-            )}
-          </span>
+          <span className="font-mono text-base font-semibold">{bottom} px</span>
         </div>
         <Slider
           id="bottom-safe-slider"
@@ -225,23 +188,15 @@ export function LayoutTuningAdminSection() {
         </div>
       </div>
 
-      {/* SAVE */}
-      <div className="flex gap-2">
-        <Button
-          className="flex-1"
-          disabled={!dirty || saving}
-          onClick={handleSave}
-        >
-          {saving ? 'Saving…' : 'SAVE AS GLOBAL DEFAULT'}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={!dirty || saving}
-          onClick={handleRevert}
-        >
-          Revert
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => reset()}>
+          Reset section (draft only)
         </Button>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Reset re-seeds this section's draft to baked defaults. Nothing is
+        persisted until you click <strong>Apply Changes</strong> in the modal footer.
+      </p>
 
       <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
