@@ -56,7 +56,9 @@ export interface CardGeometryResponsive {
 }
 export type CardGeometry = CardGeometryFixed | CardGeometryResponsive;
 
-export type FanDirection = 'outward' | 'inward';
+export type FanArch = 'outward' | 'inward';
+/** @deprecated Read-time alias for legacy persisted rows. Use FanArch. */
+export type FanDirection = FanArch;
 
 export interface RowGeometry {
   /** 0..1, fraction of card width hidden by next card. */
@@ -67,10 +69,11 @@ export interface RowGeometry {
    * Curvature/bow orientation of the row arc.
    *   'outward' — arc bows AWAY from felt center
    *   'inward'  — arc bows TOWARD felt center
-   * 0° fanDegrees → no visible difference. Logical card order is
-   * never reversed; only the bow direction changes.
+   * 0° fanDegrees → no visible difference. Never affects pin
+   * selection or row extension direction (those are owned by
+   * Attachment + Sprawl direction on the shared placement).
    */
-  fanDirection: FanDirection;
+  fanArch: FanArch;
 }
 
 
@@ -87,16 +90,24 @@ export interface SecondaryGroupGeometry {
 }
 
 export type ShowdownAttachment = 'chip-centered' | 'inner-edge' | 'outer-edge';
+export type SprawlDirection = 'inward' | 'outward';
 
 export interface OpponentShowdownPlacement {
   /**
-   *   'chip-centered' — row centered on chip
-   *   'outer-edge'    — row extends AWAY from felt center
-   *                     (left seat → leftward, right seat → rightward)
-   *   'inner-edge'    — row extends TOWARD felt center
-   *                     (left seat → rightward, right seat → leftward)
+   * WHERE on the chip the row pins (visible chip-disc rim, measured
+   * from the live `[data-chip-center]` rect by the shell):
+   *   'chip-centered' — center of chip
+   *   'inner-edge'    — chip rim nearest felt center
+   *   'outer-edge'    — chip rim farthest from felt center
    */
   attachment: ShowdownAttachment;
+  /**
+   * WHICH WAY the row extends from the pin (never reverses card
+   * order; selects which endpoint of the row is pinned):
+   *   'inward'  — row extends toward felt center
+   *   'outward' — row extends away from felt center
+   */
+  sprawlDirection: SprawlDirection;
   /** % of canonical felt WIDTH. +X = inward toward felt center. */
   xPctOfFelt: number;
   /** % of canonical felt HEIGHT. +Y = downward. */
