@@ -3,6 +3,12 @@ import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
+import {
+  useCardFrontDesign,
+  resolveCardFrontStyle,
+  type CardFrontTierKey,
+  type DeckFaceMode,
+} from "@/lib/cardFrontDesign/config";
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -48,12 +54,21 @@ interface PlayingCardProps {
   isDimmed?: boolean;       // Card is not part of winning hand (dim it)
   isWild?: boolean;         // Card is a wild card (3-5-7 games)
   /**
-   * When provided, the face renders in "fill" mode: legacy stacked
-   * layout (rank top, suit bottom, justify-between, ~zero padding) with
-   * inline font-size derived from this width so the rank/suit fill the
-   * available card area. Used by dynamic-geometry consumers (e.g. the
-   * Wave 2A 3-5-7 hand row) so the resolver-computed cardWidth drives
-   * face typography too — no Tailwind text-step quantization.
+   * Face-density tier (Card Front Design domain). Defaults to 'medium'
+   * for ordinary inline/tabled cards. Callers select explicitly:
+   *   - small  → opponent seat-cluster exposed cards, 3-5-7 opponent showdown
+   *   - large  → active-player hand, community cards, primary-focus cards
+   *   - medium → everything else
+   * The tier is a visual face-density policy ONLY. It does not change
+   * card width, height, aspect, overlap, fan, or placement.
+   */
+  tier?: CardFrontTierKey;
+  /**
+   * When the caller drives the card container dimensions dynamically
+   * (e.g. opponent-showdown v4 paths), it MUST also pass the resolved
+   * card width here so the Card Front Design resolver receives the
+   * true face area. The legacy 0.62/0.70 face-art constants are gone —
+   * face typography always flows through the tier/deck-mode resolver.
    */
   faceFillPx?: number;
 }
@@ -62,52 +77,50 @@ interface PlayingCardProps {
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
 // Taller/narrower cards with larger face content
 // TABLET: Tighter padding between rank/suit, slightly bigger text
-const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
-  sm: {
-    container: 'w-6 h-9 sm:w-7 sm:h-10',
-    rank: 'text-base sm:text-lg font-black',
-    suit: 'text-base sm:text-lg', // Bigger suit for mobile visibility
-  },
-  md: {
-    container: 'w-7 h-10 sm:w-8 sm:h-12',
-    rank: 'text-lg sm:text-xl font-black',
-    suit: 'text-base sm:text-lg',
-  },
-  lg: {
-    container: 'w-8 h-12 sm:w-9 sm:h-14',
-    rank: 'text-xl sm:text-2xl font-black',
-    suit: 'text-lg sm:text-xl',
-  },
-  xl: {
-    container: 'w-9 h-14 sm:w-10 sm:h-16',
-    rank: 'text-2xl sm:text-3xl font-black',
-    suit: 'text-xl sm:text-2xl',
-  },
+const SIZE_CLASSES: Record<CardSize, { container: string }> = {
+  sm: { container: 'w-6 h-9 sm:w-7 sm:h-10' },
+  md: { container: 'w-7 h-10 sm:w-8 sm:h-12' },
+  lg: { container: 'w-8 h-12 sm:w-9 sm:h-14' },
+  xl: { container: 'w-9 h-14 sm:w-10 sm:h-16' },
 };
 
-// TABLET: Enhanced sizes with tighter spacing (using valid Tailwind classes)
-const TABLET_SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
-  sm: {
-    container: 'w-8 h-12',
-    rank: 'text-lg font-black leading-none',
-    suit: 'text-lg leading-none -mt-0.5',
-  },
-  md: {
-    container: 'w-10 h-14',
-    rank: 'text-xl font-black leading-none',
-    suit: 'text-lg leading-none -mt-0.5',
-  },
-  lg: {
-    container: 'w-12 h-16',
-    rank: 'text-2xl font-black leading-none',
-    suit: 'text-xl leading-none -mt-0.5',
-  },
-  xl: {
-    container: 'w-14 h-20',
-    rank: 'text-3xl font-black leading-none',
-    suit: 'text-2xl leading-none -mt-0.5',
-  },
+const TABLET_SIZE_CLASSES: Record<CardSize, { container: string }> = {
+  sm: { container: 'w-8 h-12' },
+  md: { container: 'w-10 h-14' },
+  lg: { container: 'w-12 h-16' },
+  xl: { container: 'w-14 h-20' },
 };
+
+// Representative pixel widths used by the face resolver when the caller
+// did not supply explicit card dimensions via faceFillPx or style.width.
+// These mirror the Tailwind container widths above (mobile breakpoint).
+// Tier still drives proportions — these only set the absolute base.
+const SIZE_CLASS_PX_FALLBACK: Record<CardSize, { w: number; h: number }> = {
+  sm: { w: 24, h: 36 },
+  md: { w: 28, h: 40 },
+  lg: { w: 32, h: 48 },
+  xl: { w: 36, h: 56 },
+};
+const TABLET_SIZE_CLASS_PX_FALLBACK: Record<CardSize, { w: number; h: number }> = {
+  sm: { w: 32, h: 48 },
+  md: { w: 40, h: 56 },
+  lg: { w: 48, h: 64 },
+  xl: { w: 56, h: 80 },
+};
+
+function parsePxLike(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+  if (typeof v === 'string') {
+    const m = v.match(/^(-?\d+(?:\.\d+)?)\s*px$/i) || v.match(/^(-?\d+(?:\.\d+)?)$/);
+    if (m) {
+      const n = parseFloat(m[1]);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }
+  return null;
+}
+
+const CARD_ASPECT_FALLBACK = 1.4; // height = width * aspect
 
 export const PlayingCard = ({
   card,
@@ -122,6 +135,7 @@ export const PlayingCard = ({
   isKicker = false,
   isDimmed = false,
   isWild = false,
+  tier = 'medium',
   faceFillPx,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
@@ -129,18 +143,44 @@ export const PlayingCard = ({
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
-  
+  const cardFrontDesign = useCardFrontDesign();
+
   // TABLET: Use enhanced size classes with tighter padding
   const sizeClasses = isTablet ? TABLET_SIZE_CLASSES[size] : SIZE_CLASSES[size];
-  
+  const sizePxFallback = (isTablet ? TABLET_SIZE_CLASS_PX_FALLBACK : SIZE_CLASS_PX_FALLBACK)[size];
+
+  // Resolve effective card dimensions used by the face resolver.
+  // Precedence: faceFillPx → style.width → tier-class fallback.
+  const styleWidthPx = parsePxLike((style as { width?: unknown })?.width);
+  const styleHeightPx = parsePxLike((style as { height?: unknown })?.height);
+  const effectiveCardWidthPx =
+    (typeof faceFillPx === 'number' && faceFillPx > 0 ? faceFillPx : null) ??
+    styleWidthPx ??
+    sizePxFallback.w;
+  const effectiveCardHeightPx =
+    styleHeightPx ??
+    (typeof faceFillPx === 'number' && faceFillPx > 0
+      ? Math.round(faceFillPx * CARD_ASPECT_FALLBACK)
+      : sizePxFallback.h);
+
   // Normalize suit to handle corrupted data with text suit names
   const normalizedSuit = card ? normalizeSuit(card.suit) : null;
-  
-  // Determine card styling based on effective deck color mode (considers session override)
+
+  // Determine card styling based on effective deck color mode
   const effectiveDeckColorMode = getEffectiveDeckColorMode();
   const isFourColor = effectiveDeckColorMode === 'four_color';
+  const deckFaceMode: DeckFaceMode = isFourColor ? 'four-color' : 'two-color';
   const fourColorConfig = normalizedSuit ? FOUR_COLOR_SUITS[normalizedSuit] : null;
-  
+
+  // Face-density resolved styles (Card Front Design domain).
+  const face = resolveCardFrontStyle(
+    cardFrontDesign,
+    tier,
+    deckFaceMode,
+    effectiveCardWidthPx,
+    effectiveCardHeightPx,
+  );
+
   // For 4-color deck: colored background with white text, no suit symbol
   // For 2-color deck: white background with red/black text and suit symbol
   const getCardFaceStyle = () => {
@@ -155,12 +195,10 @@ export const PlayingCard = ({
       textColor: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? 'text-red-600' : 'text-black',
     };
   };
-  
+
   const cardFaceStyle = getCardFaceStyle();
-  
+
   // If hidden or no card, show CANONICAL card back.
-  // The Tailwind sizeClasses.container drives the box size; CanonicalCardBack
-  // fills it via width:100%/height:100% so we never duplicate gradient/border code.
   if (isHidden || !card) {
     return (
       <div className={`${sizeClasses.container} ${className}`} style={style} data-playing-card-hidden="1">
@@ -175,7 +213,7 @@ export const PlayingCard = ({
       </div>
     );
   }
-  
+
   // For flip animation support
   if (isFlipping !== undefined && !showFront) {
     return (
@@ -184,14 +222,14 @@ export const PlayingCard = ({
         data-playing-card-flip=""
         data-card-id={card ? `${card.rank}-${card.suit}` : undefined}
         className={`${sizeClasses.container} relative ${className}`}
-        style={{ 
+        style={{
           transformStyle: 'preserve-3d',
           transition: isFlipping ? 'transform 1.2s ease-in-out' : 'none',
           transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
           ...style,
         }}
       >
-        {/* Card Back — CANONICAL renderer (gradient/border/accent owned by shell) */}
+        {/* Card Back — CANONICAL renderer */}
         <div
           className="absolute inset-0 w-full h-full"
           style={{
@@ -207,9 +245,9 @@ export const PlayingCard = ({
             style={{ width: '100%', height: '100%' }}
           />
         </div>
-        
+
         {/* Card Front */}
-        <Card 
+        <Card
           className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg`}
           style={{
             backgroundColor: cardFaceStyle.backgroundColor,
@@ -218,50 +256,38 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
+          <span
+            className={isFourColor ? cardFaceStyle.textColor : ''}
+            style={face.rankStyle}
+          >
             {card.rank}
           </span>
-          {!isFourColor && (
-            <span className={`${sizeClasses.suit} leading-none mt-0`}>
-              {normalizedSuit}
-            </span>
+          {face.renderSuit && !isFourColor && face.suitStyle && (
+            <span style={face.suitStyle}>{normalizedSuit}</span>
           )}
         </Card>
       </div>
     );
   }
-  
+
   // Standard face-up card
-  // For 2-color mode, we need to explicitly set text color inline to override dark mode's text-card-foreground
-  const textColorStyle = !isFourColor 
+  const textColorStyle = !isFourColor
     ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' }
     : {};
-  
-  // No ring/glow highlighting - just use lift effect for winning cards
-  
-  // Dimming style for cards not part of winning hand
+
   const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-  
-  // Lift effect for highlighted/kicker cards (move up by ~25% of card height)
   const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
-  
-  // Combine transforms - lift goes first, then any transform from style prop
   const combinedTransform = [liftTransform, style?.transform].filter(Boolean).join(' ') || undefined;
-  
-  // Wild card styling - golden border and subtle glow that works in both 2-color and 4-color modes
+
   const wildCardStyles = isWild ? {
     border: '3px solid #fbbf24',
     boxShadow: '0 0 8px 2px rgba(251, 191, 36, 0.6), inset 0 0 4px rgba(251, 191, 36, 0.3)',
   } : {};
-    
-  // Face-fill mode: when consumer drives dynamic card width (e.g. the
-  // Wave 2A 3-5-7 hand row), render the legacy stacked face layout
-  // (rank top, suit bottom, justify-between, ~zero padding) and scale
-  // rank/suit typography off the resolved width so the card area is
-  // fully utilised — matching the legacy 3-5-7 card presentation.
+
+  // faceFillPx callers still own the container layout (justify-between,
+  // tighter padding) but face typography is now resolved exclusively by
+  // the Card Front Design tier — no legacy 0.62/0.70 fallback.
   const fillMode = typeof faceFillPx === 'number' && faceFillPx > 0;
-  const rankPx = fillMode ? Math.round((faceFillPx as number) * 0.62) : undefined;
-  const suitPx = fillMode ? Math.round((faceFillPx as number) * 0.70) : undefined;
 
   return (
     <Card
@@ -272,18 +298,13 @@ export const PlayingCard = ({
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
       <span
-        className={`${fillMode ? 'font-black' : sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}
-        style={fillMode ? { fontSize: `${rankPx}px`, lineHeight: 1 } : undefined}
+        className={isFourColor ? cardFaceStyle.textColor : ''}
+        style={face.rankStyle}
       >
         {card.rank}
       </span>
-      {!isFourColor && (
-        <span
-          className={`${fillMode ? '' : sizeClasses.suit} leading-none ${fillMode ? '' : 'mt-0'}`}
-          style={fillMode ? { fontSize: `${suitPx}px`, lineHeight: 1 } : undefined}
-        >
-          {normalizedSuit}
-        </span>
+      {face.renderSuit && !isFourColor && face.suitStyle && (
+        <span style={face.suitStyle}>{normalizedSuit}</span>
       )}
     </Card>
   );
