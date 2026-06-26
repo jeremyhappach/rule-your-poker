@@ -815,27 +815,39 @@ export function CanonicalSeatCluster({
         let overrideStyle: CSSProperties | undefined;
         if (opponentShowdownPlacement) {
           const { attachment, sprawlDirection, dxPx, dyPx } = opponentShowdownPlacement;
-          const { selfTranslateX, anchorInwardMagnitude } = resolveSideAwareRowAnchor(
-            isRightSide ? 'right' : 'left',
-            attachment,
-            sprawlDirection,
-          );
-          // Felt-relative INWARD direction in CSS X:
-          //   left-side opponent  → +CSS X
-          //   right-side opponent → -CSS X
-          const inwardCssSign = isRightSide ? -1 : 1;
-          // User offset (+X = inward) flipped per side so a single
-          // positive dxPx moves both sides inward.
-          const signedDx = inwardCssSign * dxPx;
-          // Chip-rim offset uses the LIVE measured chip-disc radius so
-          // inner-edge / outer-edge pin to the visible circle rim, not
-          // a hardcoded 20px half of the w-10 cell.
-          const anchorOffsetCssX =
-            inwardCssSign * anchorInwardMagnitude * chipRadiusPx;
-          const totalCssX = signedDx + anchorOffsetCssX;
-          overrideStyle = {
-            transform: `translate(${selfTranslateX}, 0) translate(${totalCssX}px, ${dyPx}px)`,
-          };
+          // Bottom-center / local seat (HOME=-1, BOTTOM_RAIL=-3) has no
+          // meaningful left/right table-edge: force chip-centered and
+          // ignore the side-aware X offset. Card size, overlap, fan,
+          // fan arch, and Y placement are unaffected — they live on the
+          // cards themselves and dyPx.
+          const isBottomCenterSeat = slot === -1 || slot === -3;
+          if (isBottomCenterSeat) {
+            overrideStyle = {
+              transform: `translate(-50%, 0) translate(0px, ${dyPx}px)`,
+            };
+          } else {
+            const { selfTranslateX, anchorInwardMagnitude } = resolveSideAwareRowAnchor(
+              isRightSide ? 'right' : 'left',
+              attachment,
+              sprawlDirection,
+            );
+            // Felt-relative INWARD direction in CSS X:
+            //   left-side opponent  → +CSS X
+            //   right-side opponent → -CSS X
+            const inwardCssSign = isRightSide ? -1 : 1;
+            // User offset (+X = inward) flipped per side so a single
+            // positive dxPx moves both sides inward.
+            const signedDx = inwardCssSign * dxPx;
+            // Chip-rim offset uses the LIVE measured chip-disc radius so
+            // inner-edge / outer-edge pin to the visible circle rim, not
+            // a hardcoded 20px half of the w-10 cell.
+            const anchorOffsetCssX =
+              inwardCssSign * anchorInwardMagnitude * chipRadiusPx;
+            const totalCssX = signedDx + anchorOffsetCssX;
+            overrideStyle = {
+              transform: `translate(${selfTranslateX}, 0) translate(${totalCssX}px, ${dyPx}px)`,
+            };
+          }
         }
 
         const baseClass = opponentShowdownPlacement
