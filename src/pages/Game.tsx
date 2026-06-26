@@ -7048,7 +7048,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (gameData.game_type === 'holm-game' && currentRound.current_turn_position) {
           // Check if turn changed
           const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
-          
+
+          // P0 pre-decision contract: stamp authoritative turn ref
+          // from fetch as well (covers initial load + non-realtime
+          // arrivals). Only bump epoch when the value actually
+          // advances vs the prior stamp.
+          {
+            const prior = latestAuthoritativeTurnRef.current;
+            const sameRound = prior?.roundId === currentRound.id;
+            const sameTurn = prior?.currentTurnPosition === currentRound.current_turn_position;
+            if (!prior || !sameRound || !sameTurn) {
+              authoritativeTurnEpochRef.current += 1;
+              latestAuthoritativeTurnRef.current = {
+                roundId: currentRound.id,
+                currentTurnPosition: currentRound.current_turn_position ?? null,
+                epoch: authoritativeTurnEpochRef.current,
+              };
+            }
+          }
+
           if (turnChanged) {
             console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '***');
             setLastTurnPosition(currentRound.current_turn_position);
@@ -7059,7 +7077,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           }
-        } 
+        }
         // 3-5-7 game: simultaneous decisions, no turn position needed
         else if (gameData.game_type !== 'holm-game' && gameData.game_type !== 'horses') {
           console.log('[FETCH] 3-5-7: Using server deadline for timer');
