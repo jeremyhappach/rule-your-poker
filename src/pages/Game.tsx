@@ -1509,6 +1509,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // ─────────────────────────────────────────────────────────────────────
   const latestAuthoritativeTurnRef = useRef<{
     roundId: string | null;
+    handNumber: number | null;
     currentTurnPosition: number | null;
     epoch: number;
   } | null>(null);
