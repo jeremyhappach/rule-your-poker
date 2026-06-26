@@ -9813,7 +9813,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleFold = async () => {
     if (!gameId || !user) return;
-    
+
+    // P0 fix B: Holm decision actionability requires deal readiness.
+    if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
+      console.warn('[PLAYER DECISION] reject Fold — Holm deal not ready');
+      holmPreDecisionArmedRef.current = null;
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      return;
+    }
+
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
