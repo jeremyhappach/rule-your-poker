@@ -99,6 +99,7 @@ import { setPresessionGeometryPhase } from "@/lib/wartimeDebug/presessionGeometr
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
+import { useHolmShowdownConfig } from "@/lib/holm/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
@@ -1130,6 +1131,29 @@ export const MobileGameTable = ({
     _ttShowdownCfg.placement.sprawlDirection,
     _ttShowdownCfg.placement.xPctOfFelt,
     _ttShowdownCfg.placement.yPctOfFelt,
+    _ttPlay.width,
+    _ttPlay.height,
+  ]);
+
+  // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
+  // single shared placement object resolves to felt-relative pixels
+  // once at MGT). Per-card geometry is consumed inside PlayerHand.
+  const _holmShowdownCfg = useHolmShowdownConfig();
+  const holmShowdownPlacementPx = useMemo(() => {
+    const p = _holmShowdownCfg.placement;
+    const w = _ttPlay.width || 0;
+    const h = _ttPlay.height || 0;
+    return {
+      attachment: p.attachment,
+      sprawlDirection: p.sprawlDirection,
+      dxPx: (p.xPctOfFelt / 100) * w,
+      dyPx: (p.yPctOfFelt / 100) * h,
+    };
+  }, [
+    _holmShowdownCfg.placement.attachment,
+    _holmShowdownCfg.placement.sprawlDirection,
+    _holmShowdownCfg.placement.xPctOfFelt,
+    _holmShowdownCfg.placement.yPctOfFelt,
     _ttPlay.width,
     _ttPlay.height,
   ]);
@@ -6707,12 +6731,11 @@ export const MobileGameTable = ({
     const isRightSideSlot = slot >= 3;
 
     const stayed = playerDecision === 'stay';
-    // Latch raise through the entire multiplayer showdown lifecycle
-    // (including holmWinPotTriggerId / WIN_SEQUENCE). Dropping it on
-    // pot-trigger caused stayed clusters to snap downward at the start
-    // of the pot-to-player animation. Raise releases only when
-    // isHolmMultiPlayerShowdown itself releases (hand boundary).
-    const raise = isHolmMultiPlayerShowdown && stayed;
+    // Holm clean-baseline: no ergonomic raise. Seat clusters never
+    // translate vertically for showdown — exposed cards render below
+    // the canonical chip disc anchor instead.
+    const raise = false;
+    void stayed;
 
     // Showdown / chip-replacement derivation.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
@@ -6723,8 +6746,10 @@ export const MobileGameTable = ({
     const soloLockedId = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayerForChip =
       isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
-    const hideChipForShowdown =
-      isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    // Holm clean-baseline: canonical chip disc remains visible during
+    // showdown so exposed cards anchor below it. Emoticon overlay is
+    // still handled independently via `chipOverlay`.
+    const hideChipForShowdown = false;
     const soloAreaPlayerId = isSoloVsChucky
       ? (soloLockedId || players.find(p => p.current_decision === 'stay')?.id || null)
       : null;
@@ -6889,7 +6914,7 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={false}
-          tightOverlap={isHolmMultiPlayerShowdown}
+          tightOverlap={false}
           unusedCardsBelow={false}
           isRightSide={isRightSideSlot}
           isBottomPosition={isBottomPosition}
@@ -6967,11 +6992,12 @@ export const MobileGameTable = ({
         dimChip={hasFolded}
         onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
         raisePosition={raise}
-        growUpwardAtBottom={isHolmMultiPlayerShowdown}
+        growUpwardAtBottom={false}
         allowSelfRender={allowSelfRenderForShowdown}
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.holmCanonicalSeat"
         playerId={player.id}
+        opponentShowdownPlacement={isShowdown ? holmShowdownPlacementPx : undefined}
       >
         {cardsNode}
         {nameBelowCardsNode}

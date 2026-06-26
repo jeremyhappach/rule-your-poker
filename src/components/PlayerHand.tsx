@@ -10,6 +10,10 @@ import {
   type ResolvedRound,
   type ResolvedSecondary,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  resolveHolmShowdownRules,
+  useHolmShowdownConfig,
+} from "@/lib/holm/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
@@ -171,6 +175,16 @@ export const PlayerHand = ({
 
 
   const isHolmGame = gameType === 'holm-game';
+
+  // Holm clean-baseline showdown geometry. Consumes the v4-shape
+  // single-round Holm config when this PlayerHand represents an
+  // opponent-exposed (i.e. non-active-self) Holm hand with visible
+  // cards. Self/active hand and card-back / hidden branches do NOT
+  // consume this — they stay on the legacy/dyn paths.
+  const _holmCfg = useHolmShowdownConfig();
+  const holmResolved = resolveHolmShowdownRules(_holmCfg, _feltVminPx);
+  const useHolmShowdownGeometry =
+    isHolmGame && isOpponentExposedShowdown;
 
   // Boundary guard applies to any canonical-deal game during DEALING.
   const isCanonicalDealGuarded = is357Game || isHolmGame;
@@ -912,6 +926,46 @@ export const PlayerHand = ({
                 transform: `rotate(${rotationDeg}deg)`,
                 opacity: isUnused ? irrOpacity : 1,
               }, true, displayIndex)}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Holm clean-baseline opponent-exposed showdown branch — flat row of
+  // resolved-width cards, rotation-only fan (no arc, no pivot). Fires
+  // ONLY when cards are visible (hidden / card-back paths above return
+  // earlier). Self/active hand and non-Holm callers skip this branch.
+  if (useHolmShowdownGeometry && cards.length > 0) {
+    const n = sortedCardsWithIndices.length;
+    const sideSign = isRightSide ? 1 : -1;
+    const dirSign = holmResolved.fanArch === 'inward' ? -1 : 1;
+    const fanSign = sideSign * dirSign;
+    return (
+      <div className="flex items-end">
+        {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
+          const isHighlighted = highlightedIndices.includes(originalIndex);
+          const isKicker = kickerIndices.includes(originalIndex);
+          const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+          const rotationDeg =
+            fanRotationDeg(holmResolved.fanDegrees, displayIndex, n) * fanSign;
+          return (
+            <PlayingCard
+              tier={cardTier}
+              key={`holm-${card.rank}-${card.suit}-${originalIndex}`}
+              card={card}
+              isHighlighted={isHighlighted}
+              isKicker={isKicker}
+              isDimmed={isDimmed}
+              isWild={isWild}
+              style={{
+                width: `${holmResolved.cardWidthPx}px`,
+                height: `${holmResolved.cardHeightPx}px`,
+                marginLeft:
+                  displayIndex === 0 ? 0 : `-${holmResolved.overlapPx}px`,
+                transform: `rotate(${rotationDeg}deg)`,
+              }}
             />
           );
         })}
