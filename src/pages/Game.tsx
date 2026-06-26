@@ -5419,6 +5419,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRoundId: currentRound.id,
         handContextKey,
       });
+      recordHolmDecisionSubmission({
+        source: armed.decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
+        actor: currentPlayer,
+        decision: armed.decision,
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'pre-decision-invariant-failed', armed, latest, myPos },
+      });
       // Stale/invalid arming — clear to force live decision path.
       holmPreDecisionArmedRef.current = null;
       setHolmPreFold(false);
@@ -5430,6 +5438,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[PRE-DECISION] Executing armed pre-' + decision.toUpperCase(), {
       armed,
       latest,
+    });
+    recordHolmDecisionSubmission({
+      source: decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
+      actor: currentPlayer,
+      decision,
+      makeDecisionInvoked: true,
+      requestStatus: 'accepted',
+      extra: { armed, latest },
     });
     holmPreDecisionArmedRef.current = null;
     setHolmPreFold(false);
