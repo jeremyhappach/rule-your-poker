@@ -93,7 +93,7 @@ export function HolmTracePill() {
     const iv = window.setInterval(sample, 300);
     sample();
     return () => window.clearInterval(iv);
-  }, [events.length === 0 ? 0 : 1]);
+  }, []);
 
 
   if (!isHolmTraceActive()) return null;
