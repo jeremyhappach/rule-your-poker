@@ -347,6 +347,122 @@ interface Round {
   gin_rummy_state?: any; // Gin Rummy JSONB state
 }
 
+type HolmTraceDecisionSeat = {
+  id: string | null;
+  position: number | null;
+  isBot: boolean;
+  status: string | null;
+  sittingOut: boolean;
+  currentDecision: string | null;
+  decisionLocked: boolean;
+  eligible: boolean;
+  shouldSkip: boolean;
+};
+
+function getHolmDealIdentityFromRound(round: Pick<Round, 'id' | 'hand_number'> | null | undefined): string | null {
+  if (!round?.id) return null;
+  return `${round.id}:h${round.hand_number ?? 'unknown'}`;
+}
+
+function summarizeHolmDecisionSeats(players: readonly Player[] | null | undefined): HolmTraceDecisionSeat[] {
+  return (players ?? [])
+    .map((p) => {
+      const position = typeof p.position === 'number' ? p.position : null;
+      const sittingOut = p.sitting_out === true;
+      const status = p.status ?? null;
+      const decisionLocked = p.decision_locked === true;
+      const currentDecision = p.current_decision ?? null;
+      const eligible = position !== null && status === 'active' && !sittingOut;
+      return {
+        id: p.id ?? null,
+        position,
+        isBot: p.is_bot === true,
+        status,
+        sittingOut,
+        currentDecision,
+        decisionLocked,
+        eligible,
+        shouldSkip: !eligible || decisionLocked || currentDecision !== null,
+      };
+    })
+    .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+}
+
+function resolveExpectedHolmNextSeat(
+  previousCurrentTurnPosition: number | null,
+  seats: readonly HolmTraceDecisionSeat[],
+): number | null {
+  if (previousCurrentTurnPosition == null) return null;
+
+  const activePositions = seats
+    .filter((s) => s.eligible && typeof s.position === 'number')
+    .map((s) => s.position as number);
+  const undecidedPositions = seats
+    .filter((s) => s.eligible && !s.decisionLocked && s.currentDecision == null && typeof s.position === 'number')
+    .map((s) => s.position as number);
+
+  if (undecidedPositions.length === 0) return null;
+
+  try {
+    if (undecidedPositions.includes(previousCurrentTurnPosition)) {
+      return nextClockwise(previousCurrentTurnPosition, undecidedPositions);
+    }
+
+    if (!activePositions.includes(previousCurrentTurnPosition)) return null;
+    let probe = nextClockwise(previousCurrentTurnPosition, activePositions);
+    let guard = 0;
+    while (!undecidedPositions.includes(probe) && guard < activePositions.length + 1) {
+      probe = nextClockwise(probe, activePositions);
+      guard += 1;
+    }
+    return undecidedPositions.includes(probe) ? probe : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildHolmTurnAuthorityTraceDetail(params: {
+  source: 'realtime INSERT' | 'realtime UPDATE' | 'fetchGameData';
+  round: Partial<Round> | null | undefined;
+  players: readonly Player[] | null | undefined;
+  previousCurrentTurnPosition: number | null;
+}): Record<string, unknown> {
+  const { source, round, players, previousCurrentTurnPosition } = params;
+  const nextCurrentTurnPosition = typeof round?.current_turn_position === 'number'
+    ? round.current_turn_position
+    : null;
+  const seats = summarizeHolmDecisionSeats(players);
+  const expectedClockwiseNextEligibleSeat = resolveExpectedHolmNextSeat(previousCurrentTurnPosition, seats);
+  const comparisonApplicable =
+    previousCurrentTurnPosition != null &&
+    nextCurrentTurnPosition != null &&
+    previousCurrentTurnPosition !== nextCurrentTurnPosition &&
+    round?.status === 'betting';
+  const incomingMatchesExpected = comparisonApplicable
+    ? nextCurrentTurnPosition === expectedClockwiseNextEligibleSeat
+    : null;
+  const decisionSummaryForIncomingSeat = seats.find((s) => s.position === nextCurrentTurnPosition) ?? null;
+  const incomingTargetsSkippedSeat = round?.status === 'betting' && nextCurrentTurnPosition != null
+    ? (decisionSummaryForIncomingSeat ? decisionSummaryForIncomingSeat.shouldSkip : true)
+    : false;
+
+  return {
+    timestamp: new Date().toISOString(),
+    roundId: round?.id ?? null,
+    stableHolmDealIdentityKey: getHolmDealIdentityFromRound(round as Round | null | undefined),
+    handNumber: round?.hand_number ?? null,
+    previousCurrentTurnPosition,
+    nextCurrentTurnPosition,
+    source,
+    rawAuthoritativeRoundStatus: round?.status ?? null,
+    decisionMap: seats,
+    expectedClockwiseNextEligibleSeat,
+    incomingMatchesExpected,
+    incomingTargetsSkippedSeat,
+    decisionSummaryForIncomingSeat,
+  };
+}
+
 function toDealerSelectionCardIds(cards: DealerSelectionCard[] | null | undefined): string[] {
   if (!cards || cards.length === 0) return [];
   return cards.slice(0, 8).map((c) => {
