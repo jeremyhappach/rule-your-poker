@@ -958,8 +958,8 @@ export const PlayerHand = ({
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
               transform: `rotate(${rotationDeg}deg)`,
-              ...(v4R1TransformOrigin ? { transformOrigin: v4R1TransformOrigin } : null),
             }, true, displayIndex)}
+
           />
         );
         if (r1MarkerActive && displayIndex < 3) {
