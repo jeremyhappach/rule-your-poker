@@ -268,6 +268,7 @@ export interface CanonicalSeatClusterProps {
    */
   opponentShowdownPlacement?: {
     attachment: 'chip-centered' | 'inner-edge' | 'outer-edge';
+    sprawlDirection: 'inward' | 'outward';
     dxPx: number;
     dyPx: number;
   };
