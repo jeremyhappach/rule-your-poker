@@ -10,6 +10,10 @@ import {
   type ResolvedRound,
   type ResolvedSecondary,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  resolveHolmShowdownRules,
+  useHolmShowdownConfig,
+} from "@/lib/holm/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
 import {
   recordThreeFiveSevenHandRender,
