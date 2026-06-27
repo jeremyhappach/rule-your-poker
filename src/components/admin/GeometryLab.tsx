@@ -163,10 +163,16 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   // Enumerate anchored descriptors for the selected game directly from the
   // descriptor factories — no parallel defaults table.
-  const artifacts: ArtifactDescriptor[] = useMemo(
-    () => enumerateAnchoredArtifacts(game),
-    [game],
-  );
+  const artifacts: ArtifactDescriptor[] = useMemo(() => {
+    const anchored = enumerateAnchoredArtifacts(game);
+    const extras = LAB_EXTRA_ARTIFACT_IDS[game] ?? [];
+    if (!extras.length) return anchored;
+    const anchoredIds = new Set(anchored.map((a) => a.id));
+    const extraDs = ARTIFACT_DESCRIPTOR_FACTORIES[game]
+      .enumerate()
+      .filter((d) => extras.includes(d.id) && !anchoredIds.has(d.id));
+    return [...anchored, ...extraDs];
+  }, [game]);
 
   // Sort by registry sortOrder (when present), then label, then id.
   const sortedArtifacts = useMemo(() => {
