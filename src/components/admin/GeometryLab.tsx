@@ -787,6 +787,7 @@ function GameSections(props: GameSectionsProps) {
             </div>
           )}
         </div>
+        )}
 
         {/* Per-artifact felt-overlap controls — visible only for the
             artifacts that own a persisted fan-overlap value. */}
