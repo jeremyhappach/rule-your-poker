@@ -1521,6 +1521,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     armedAuthorityEpoch: number;
     decision: 'stay' | 'fold';
   } | null>(null);
+  // Atomic consume latch — set true the instant we begin dispatching an
+  // armed pre-decision, prevents any second execute. Reset by:
+  //   - new hand boundary
+  //   - explicit arm cancellation
+  //   - handler settles (success/error)
+  //   - transient handler rejection (so the same authoritative-arrival
+  //     can retry on next effect tick)
+  const holmPreDecisionConsumingRef = useRef(false);
 
   // Re-render when the Holm deal barrier flips so render gates and
   // execute-effect both observe the readiness change. (Tick state
