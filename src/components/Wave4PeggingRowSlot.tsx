@@ -25,6 +25,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
