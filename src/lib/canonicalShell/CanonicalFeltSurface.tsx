@@ -218,9 +218,20 @@ export function CanonicalFeltSurface({
           data-canonical-felt-plate-variant="waiting"
           data-canonical-felt-rendered-game="P-TOWN POKER"
           data-canonical-felt-rendered-stakes="none"
-          className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none"
+          className="absolute top-3 inset-x-0 z-20 flex justify-center pointer-events-none px-3"
+          style={{ containerType: 'inline-size' } as React.CSSProperties}
         >
-          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+          <span
+            className="text-white/30 font-bold uppercase tracking-wider text-center text-balance"
+            style={{
+              fontSize: 'clamp(0.875rem, 7cqw, 1.125rem)',
+              whiteSpace: 'nowrap',
+              maxWidth: '100%',
+            }}
+            // Fallback: at container widths where even the minimum font
+            // cannot fit one line, allow a balanced two-line wrap.
+            data-brand-plate-title=""
+          >
             P-Town Poker
           </span>
         </div>
