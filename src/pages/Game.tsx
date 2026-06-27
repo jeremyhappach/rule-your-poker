@@ -4686,6 +4686,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // Reset pre-fold/pre-stay for the new hand
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
     }
