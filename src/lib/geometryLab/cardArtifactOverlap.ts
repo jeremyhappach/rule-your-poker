@@ -103,7 +103,24 @@ export const INDEPENDENT_OVERLAP_DOMAINS: CardOverlapDomain[] = [
     cacheKey: 'ptp_cardOverlap_cribbage_scoringHandToCutGap',
     min: 0, max: 2, step: 0.01,
   },
+  {
+    key: 'cardOverlap.cribbage.cribFan',
+    label: 'Cribbage crib pile · fan overlap',
+    help: 'Spacing inside the crib pile card group (separate from scoring hand).',
+    default: 0.35,
+    cacheKey: 'ptp_cardOverlap_cribbage_cribFan',
+    min: -0.5, max: 0.9, step: 0.01,
+  },
+  {
+    key: 'cardOverlap.cribbage.cribToCutGap',
+    label: 'Cribbage crib pile ↔ cut card · gap',
+    help: 'Horizontal separation between the crib pile cluster and its cut card. 0 = touching; positive = proportional gap (fraction of crib card width).',
+    default: 0.30,
+    cacheKey: 'ptp_cardOverlap_cribbage_cribToCutGap',
+    min: -0.5, max: 2, step: 0.01,
+  },
   // NOTE: Cribbage pegging, Cribbage active-player hand, and Gin
+
   // active-player hand are intentionally NOT registered here. They are
   // HUDStack / adaptive-resolver contracts, not felt-artifact overlap
   // values. See useCardRowLayout consumers in Wave4PeggingRowSlot,

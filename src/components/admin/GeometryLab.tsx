@@ -883,7 +883,12 @@ const ARTIFACT_OVERLAP_KEYS: Record<string, string[]> = {
     "cardOverlap.cribbage.scoringHand",
     "cardOverlap.cribbage.scoringHandToCutGap",
   ],
+  "cribbage.cribCutGroup": [
+    "cardOverlap.cribbage.cribFan",
+    "cardOverlap.cribbage.cribToCutGap",
+  ],
 };
+
 
 // Artifacts whose overlap is owned by a non-cardOverlap.* persisted
 // source. Render a bespoke bridge editor that mutates that source

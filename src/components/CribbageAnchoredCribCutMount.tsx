@@ -45,6 +45,8 @@ import { useCribbageGameplayGeometry } from '@/lib/wave5GameplayGeometry/Cribbag
 import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeometryConstraints';
 import { useChildrenBoundsContract } from '@/lib/wave5GameplayGeometry/useChildrenBoundsContract';
 import { toVmin } from '@/lib/wave4LayoutResolver';
+import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+
 
 const CRIB_CUT_GROUP_ID = 'cribbage.cribCutGroup';
 
@@ -131,8 +133,14 @@ export function CribbageAnchoredCribCutMount({
 
   const cribCardHeightPx = Math.max(6, stageHeightPx * CRIB_CARD_HEIGHT_RATIO);
   const cribCardWidthPx = cribCardHeightPx * CARD_ASPECT;
-  // Negative spacing fans the pile; ~35% of card width keeps it tight but visible.
-  const cribCardOverlapPx = cribCardWidthPx * 0.35;
+
+  // Geometry-Lab–owned overlap/gap (independent of scoring-hand values).
+  // fanOverlap normalized to crib card width: nextCardOffset = w * (1 - overlap)
+  const cribFanOverlap = useCardOverlap('cardOverlap.cribbage.cribFan');
+  const cribToCutGap = useCardOverlap('cardOverlap.cribbage.cribToCutGap');
+  const cribCardOverlapPx = cribCardWidthPx * cribFanOverlap;
+  const cribToCutGapPx = cribCardWidthPx * cribToCutGap;
+
 
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
@@ -153,7 +161,10 @@ export function CribbageAnchoredCribCutMount({
   }
 
   return (
-    <Wave4CribCutGroupSlot>
+    <Wave4CribCutGroupSlot
+      styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
+    >
+
       {/* Crib pile — sized from stage height. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (
         <div ref={cribRef} className="flex flex-col items-center">
