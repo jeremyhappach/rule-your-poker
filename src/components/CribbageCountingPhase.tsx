@@ -4,6 +4,7 @@ import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/l
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
 
 interface Player {
   id: string;
