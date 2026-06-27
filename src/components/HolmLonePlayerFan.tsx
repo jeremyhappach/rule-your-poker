@@ -23,6 +23,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
+import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
 
 type Card = { rank: string; suit: string };
 
@@ -71,21 +72,18 @@ export function HolmLonePlayerFan({
   }, []);
 
   const count = sortedCards.length;
+  const fanOverlap = useCardOverlap('cardOverlap.holm.lonePlayerFan');
   const layout =
     size.w > 0 && size.h > 0
       ? resolveCardRowLayout({
           availableWidth: size.w,
           availableHeight: size.h,
           count,
-          aspect: 5 / 7, // playing card aspect
+          aspect: 5 / 7,
           minCardWidth: 24,
           maxCardWidth: 96,
-          // Tabled cards should read cleanly; do not let the resolver
-          // hide more than 45% of any card.
           maxOverlapRatio: 0.45,
-          // Small counts (2–3) get a tasteful gap; bumps to dense fan
-          // only when the budget actually forces it.
-          preferredOverlapRatio: count <= 3 ? 0 : 0.18,
+          preferredOverlapRatio: fanOverlap,
         })
       : null;
 
@@ -157,7 +155,7 @@ export function HolmLonePlayerFan({
                   ...dimStyle,
                   transform: lift || undefined,
                   marginLeft:
-                    displayIndex > 0 ? `-${layout.overlapPx}px` : "0",
+                    displayIndex > 0 ? `${-layout.overlapPx}px` : "0",
                 }}
               >
                 <span

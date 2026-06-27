@@ -61,7 +61,10 @@ import { GeometryLabDefaultsLoader } from '@/lib/geometryLab/GeometryLabDefaults
 // fetch + realtime routing include the 3-5-7 showdown rules domain even
 // before the Geometry Lab modal mounts.
 import '@/lib/threeFiveSeven/showdownConfig';
+import '@/lib/holm/showdownConfig';
 import '@/lib/cardFrontDesign/config';
+import '@/lib/geometryLab/cardArtifactOverlap';
+import '@/lib/geometryLab/overlayFlags';
 import { SeatClusterInvariantMonitor } from '@/lib/canonicalShell/seatClusterInvariant';
 
 

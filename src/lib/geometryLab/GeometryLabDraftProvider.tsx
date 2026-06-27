@@ -279,6 +279,11 @@ export function useGeometryLabDraft(): DraftContextValue {
   return v;
 }
 
+/** Non-throwing variant — returns null outside the provider. */
+export function useGeometryLabDraftOptional(): DraftContextValue | null {
+  return useContext(Ctx);
+}
+
 /**
  * Convenience hook for a single domain. `defaults` is the baked seed —
  * provided by the consumer so Reset can re-seed the draft to the seed

@@ -28,6 +28,7 @@ import {
 } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import { resolveCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
+import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
 
 interface HolmCanonicalCommunityRowProps {
   handContextId: string;
@@ -106,6 +107,7 @@ export function HolmCanonicalCommunityRow({
   }, [handContextId]);
 
   const count = 4;
+  const fanOverlap = useCardOverlap('cardOverlap.holm.community');
   const layout =
     size.w > 0 && size.h > 0
       ? resolveCardRowLayout({
@@ -116,7 +118,7 @@ export function HolmCanonicalCommunityRow({
           minCardWidth: 18,
           maxCardWidth: 160,
           maxOverlapRatio: 0.45,
-          preferredOverlapRatio: tightOverlap ? 0.08 : 0.03,
+          preferredOverlapRatio: fanOverlap,
         })
       : null;
 
@@ -197,7 +199,7 @@ export function HolmCanonicalCommunityRow({
                   position: 'relative',
                   width: layout.cardWidth,
                   height: layout.cardHeight,
-                  marginLeft: i > 0 ? `-${layout.overlapPx}px` : '0',
+                  marginLeft: i > 0 ? `${-layout.overlapPx}px` : '0',
                 }}
               >
                 {renderedAs === 'face' && card ? (

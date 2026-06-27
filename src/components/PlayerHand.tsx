@@ -528,7 +528,7 @@ export const PlayerHand = ({
       : null;
   const dyn357OverlapStyle: CSSProperties | null =
     useDynStyles && dyn357
-      ? { marginLeft: `-${dyn357.overlapPx}px` }
+      ? { marginLeft: `${-dyn357.overlapPx}px` }
       : null;
   const dynActive = !!dyn357Style;
 
@@ -806,7 +806,7 @@ export const PlayerHand = ({
             style={{
               width: `${secW}px`,
               height: `${secH}px`,
-              marginLeft: displayIndex === 0 ? 0 : `-${secOverlapPx}px`,
+              marginLeft: displayIndex === 0 ? 0 : `${-secOverlapPx}px`,
               opacity: secOpacity,
               transform: `scale(${secScale})`,
               filter: secGrayscale > 0 ? `grayscale(${secGrayscale})` : undefined,
@@ -850,7 +850,7 @@ export const PlayerHand = ({
               style={{
                 width: `${mainW}px`,
                 height: `${mainH}px`,
-                marginLeft: displayIndex === 0 ? 0 : `-${mainOverlapPx}px`,
+                marginLeft: displayIndex === 0 ? 0 : `${-mainOverlapPx}px`,
                 transform: `rotate(${rotationDeg}deg)`,
               }}
             />
@@ -963,7 +963,7 @@ export const PlayerHand = ({
                 width: `${holmResolved.cardWidthPx}px`,
                 height: `${holmResolved.cardHeightPx}px`,
                 marginLeft:
-                  displayIndex === 0 ? 0 : `-${holmResolved.overlapPx}px`,
+                  displayIndex === 0 ? 0 : `${-holmResolved.overlapPx}px`,
                 transform: `rotate(${rotationDeg}deg)`,
               }}
             />

@@ -2,6 +2,7 @@ import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
 
 interface CommunityCardsProps {
   cards: CardType[];
@@ -165,6 +166,8 @@ export const CommunityCards = ({
   if (cards.length === 0) return null;
 
   const count = cards.length;
+  // Universal Geometry Lab fan-overlap (negative = gap).
+  const fanOverlap = useCardOverlap('cardOverlap.holm.community');
   const layout =
     size.w > 0 && size.h > 0
       ? resolveCardRowLayout({
@@ -175,9 +178,7 @@ export const CommunityCards = ({
           minCardWidth: 18,
           maxCardWidth: 160,
           maxOverlapRatio: 0.45,
-          // Community cards traditionally render with a hair of overlap.
-          // tightOverlap (multi-player showdown) packs them closer.
-          preferredOverlapRatio: tightOverlap ? 0.08 : 0.03,
+          preferredOverlapRatio: fanOverlap,
         })
       : null;
 
@@ -207,7 +208,7 @@ export const CommunityCards = ({
                 data-card-anchor={`community-${index}`}
                 data-anchor-owner="CommunityCards.slot"
                 style={{
-                  marginLeft: index > 0 ? `-${layout.overlapPx}px` : "0",
+                  marginLeft: index > 0 ? `${-layout.overlapPx}px` : "0",
                   transition: "opacity 0.3s ease-out, transform 0.3s ease-out",
                   transform: isVisible ? "translateY(0)" : "translateY(-20px)",
                   opacity: isVisible ? 1 : 0,

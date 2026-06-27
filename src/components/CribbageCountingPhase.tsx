@@ -4,6 +4,7 @@ import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/l
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
 
 interface Player {
   id: string;
@@ -81,6 +82,16 @@ export const CribbageCountingPhase = ({
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
   const [baselineInitialized, setBaselineInitialized] = useState(false);
   const skipAheadAppliedRef = useRef(false);
+
+  // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
+  // independent controls: cluster card-to-card overlap + cluster ↔ cut
+  // card horizontal gap. Cut card is NOT part of the hand fan.
+  const scoringFanOverlap = useCardOverlap('cardOverlap.cribbage.scoringHand');
+  const scoringToCutGap = useCardOverlap('cardOverlap.cribbage.scoringHandToCutGap');
+  // Width basis for both controls = "md" card width (CribbagePlayingCard).
+  const SCORING_CARD_WIDTH_PX = 40;
+  const scoringHandMarginPx = -scoringFanOverlap * SCORING_CARD_WIDTH_PX;
+  const scoringHandToCutGapPx = scoringToCutGap * SCORING_CARD_WIDTH_PX;
   
   const completedRef = useRef(false);
   const enterToScoringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -752,13 +763,13 @@ export const CribbageCountingPhase = ({
       <div className="absolute inset-0 flex flex-col items-center justify-center z-30">
         {/* Cards being scored - horizontal layout */}
         <div className="absolute top-[58%] left-1/2 -translate-x-1/2 z-40">
-          <div className="flex items-end gap-1">
+          <div className="flex items-end">
             {/* Player's 4 cards - these animate in/out */}
             <div 
               className={getCardContainerClasses()}
               style={{ transformOrigin: 'center center' }}
             >
-              <div className="flex items-end gap-1">
+              <div className="flex items-end">
                 {cardsToShow.map((card, i) => (
                   <div 
                     key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
@@ -767,6 +778,7 @@ export const CribbageCountingPhase = ({
                         ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
                         : ''
                     }`}
+                    style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
                   >
                     <CribbagePlayingCard card={card} size="md" />
                   </div>
@@ -776,7 +788,10 @@ export const CribbageCountingPhase = ({
             
             {/* Cut card with label - stays in place during scoring, hidden when complete */}
             {cribbageState.cutCard && !isComplete && (
-              <div className="flex flex-col items-center ml-2">
+              <div
+                className="flex flex-col items-center"
+                style={{ marginLeft: `${scoringHandToCutGapPx}px` }}
+              >
                 <span className="text-[8px] text-white/60 mb-0.5">Cut</span>
                 <div 
                   className={`transition-all duration-300 ${

@@ -25,6 +25,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -212,6 +213,8 @@ export function Wave4PeggingRowSlot({
   const visibleCardCount =
     playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
 
+  const fanOverlap = useCardOverlap('cardOverlap.cribbage.pegging');
+
   // Reuse the canonical card-row fan algorithm shared with ActivePlayerPane /
   // useCardRowLayout consumers. One platform, one fan language.
   const fan = visibleCardCount > 0
@@ -222,8 +225,8 @@ export function Wave4PeggingRowSlot({
         aspect: CARD_ASPECT_WH,
         minCardWidth: 18,
         maxCardWidth: cardCeilingWidthPx,
-        preferredOverlapRatio: 0.18,
-        maxOverlapRatio: 0.6,
+        preferredOverlapRatio: fanOverlap,
+        maxOverlapRatio: 0.9,
       })
     : null;
 
@@ -290,7 +293,7 @@ export function Wave4PeggingRowSlot({
         }}
       >
         {playedCards.map((pc, i) => (
-          <div key={i} style={{ marginLeft: i === 0 ? 0 : -finalOverlap }}>
+          <div key={i} style={{ marginLeft: i === 0 ? 0 : `${-finalOverlap}px` }}>
             <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
           </div>
         ))}

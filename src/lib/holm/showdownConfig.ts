@@ -244,7 +244,7 @@ export function resolveHolmShowdownRules(
     placement: state.placement,
     cardWidthPx: w,
     cardHeightPx: h,
-    overlapPx: Math.max(0, state.row.overlap) * w,
+    overlapPx: state.row.overlap * w,
     fanDegrees: state.row.fanDegrees,
     fanArch: state.row.fanArch,
   };
