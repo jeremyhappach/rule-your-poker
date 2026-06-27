@@ -161,7 +161,10 @@ export function CribbageAnchoredCribCutMount({
   }
 
   return (
-    <Wave4CribCutGroupSlot>
+    <Wave4CribCutGroupSlot
+      styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
+    >
+
       {/* Crib pile — sized from stage height. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (
         <div ref={cribRef} className="flex flex-col items-center">
