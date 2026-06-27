@@ -260,3 +260,12 @@ All colors MUST be HSL.
 .yahtzee-opponent-scorecard .opacity-50 span.text-amber-200 {
   color: hsl(0 0% 35%) !important;
 }
+
+/* Brand felt-plate title — wrap to balanced 2 lines only when one line
+ * truly cannot fit at the readable minimum within the plate container. */
+@container (max-width: 150px) {
+  [data-brand-plate-title] {
+    white-space: normal !important;
+    line-height: 1.05;
+  }
+}
