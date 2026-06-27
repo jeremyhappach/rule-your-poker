@@ -14,13 +14,11 @@
  * without code changes.
  */
 
-import { useContext, useEffect, useState } from 'react';
 import {
   registerDomain,
   useDomainSnapshot,
-  subscribe,
-  getSnapshot,
 } from './defaultsRegistry';
+import { useGeometryLabDraftOptional } from './GeometryLabDraftProvider';
 
 export interface OverlayFlagDescriptor {
   key: string;
@@ -91,12 +89,11 @@ export function readOverlayFlag(storageKey: string): boolean {
 export function useOverlayFlag(
   d: OverlayFlagDescriptor,
 ): [boolean, (n: boolean) => void] {
-  // Lazy-import the draft provider to avoid cycles. When mounted under
-  // the provider, route writes through the draft. Else, write directly
-  // to the registry (used by non-modal admin surfaces, if any).
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-  const { useGeometryLabDraftOptional } = require('./GeometryLabDraftProvider') as typeof import('./GeometryLabDraftProvider');
-  const draft = useGeometryLabDraftOptional?.();
+  // When mounted under the draft provider, route writes through the
+  // draft so the modal-wide Apply/Cancel contract owns persistence.
+  // Outside the provider, the setter just mirrors to localStorage (no
+  // persisted shared change).
+  const draft = useGeometryLabDraftOptional();
   const committed = useDomainSnapshot<boolean>(d.domainKey);
   const draftVal = draft
     ? draft.getDraft<boolean>(d.domainKey)
