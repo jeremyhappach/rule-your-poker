@@ -1521,6 +1521,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     armedAuthorityEpoch: number;
     decision: 'stay' | 'fold';
   } | null>(null);
+  // Atomic consume latch — set true the instant we begin dispatching an
+  // armed pre-decision, prevents any second execute. Reset by:
+  //   - new hand boundary
+  //   - explicit arm cancellation
+  //   - handler settles (success/error)
+  //   - transient handler rejection (so the same authoritative-arrival
+  //     can retry on next effect tick)
+  const holmPreDecisionConsumingRef = useRef(false);
 
   // Re-render when the Holm deal barrier flips so render gates and
   // execute-effect both observe the readiness change. (Tick state
@@ -4678,6 +4686,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // Reset pre-fold/pre-stay for the new hand
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
     }
@@ -5402,6 +5411,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const armHolmPreDecision = useCallback((decision: 'stay' | 'fold' | null) => {
     if (decision === null) {
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
       return;
@@ -5456,7 +5466,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
-    if (currentPlayer.current_decision || currentPlayer.decision_locked) return;
+    // Terminal: already-authoritative decision wipes any stale arm.
+    if (currentPlayer.current_decision || currentPlayer.decision_locked) {
+      if (holmPreDecisionArmedRef.current) {
+        holmPreDecisionArmedRef.current = null;
+        holmPreDecisionConsumingRef.current = false;
+        setHolmPreFold(false);
+        setHolmPreStay(false);
+      }
+      return;
+    }
 
     const isMyTurn = currentRound.current_turn_position === currentPlayer.position;
     if (!isMyTurn) return;
@@ -5479,6 +5498,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       instantAutoFoldKeyRef.current = key;
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
       setTimeLeft(null);
@@ -5486,6 +5506,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       handleFold();
       return;
     }
+
+    // Already mid-dispatch from a previous tick of this same arrival.
+    if (holmPreDecisionConsumingRef.current) return;
 
     // P0 fix A: pre-decision contract — must have been armed BEFORE
     // authority moved to me, on this same round + handContext, and a
@@ -5496,31 +5519,56 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const latest = latestAuthoritativeTurnRef.current;
     const myPos = currentPlayer.position;
     const sameRound = armed.armedRoundId === currentRound.id;
-    const sameHandContext = armed.armedHandContextId === handContextKey;
+    const sameHand = armed.armedHandContextId === handContextKey;
     const armedFromOpponentTurn = armed.armedFromTurnPosition !== myPos;
     const authorityNowMine = !!latest && latest.roundId === currentRound.id && latest.currentTurnPosition === myPos;
     const newerEpoch = !!latest && latest.epoch > armed.armedAuthorityEpoch;
+    const dealReady = isHolmHandReady(handContextKey);
+    const consuming = holmPreDecisionConsumingRef.current;
 
-    if (!(sameRound && sameHandContext && armedFromOpponentTurn && authorityNowMine && newerEpoch)) {
-      console.warn('[PRE-DECISION] reject execute — invariant failed', {
-        armed,
-        latest,
-        myPos,
-        currentRoundId: currentRound.id,
-        handContextKey,
-      });
+    // Terminal invalidation: stable identity drift — arm belongs to a
+    // hand/round that no longer exists. Drop it.
+    const terminalInvalidation = !sameRound || !sameHand || !armedFromOpponentTurn;
+
+    // Explicit per-predicate trace on every execute attempt.
+    const predicates = {
+      sameRound,
+      sameHand,
+      authorityNowMine,
+      newerEpoch,
+      dealReady,
+      consuming,
+      terminalInvalidation,
+    };
+
+    if (terminalInvalidation) {
       recordHolmDecisionSubmission({
         source: armed.decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
         actor: currentPlayer,
         decision: armed.decision,
         makeDecisionInvoked: false,
         requestStatus: 'rejected',
-        extra: { reason: 'pre-decision-invariant-failed', armed, latest, myPos },
+        extra: { reason: 'pre-decision-terminal-invalidation', predicates, armed, latest, myPos },
       });
-      // Stale/invalid arming — clear to force live decision path.
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
+      return;
+    }
+
+    if (!(authorityNowMine && newerEpoch && dealReady)) {
+      // TRANSIENT: latest authoritative ref not yet converged with React
+      // state. Keep arm intact — a later effect tick (epoch bump, ready
+      // flip, players refetch) will retry.
+      recordHolmDecisionSubmission({
+        source: armed.decision === 'fold' ? 'pre-fold execute' : 'pre-stay execute',
+        actor: currentPlayer,
+        decision: armed.decision,
+        makeDecisionInvoked: false,
+        requestStatus: 'rejected',
+        extra: { reason: 'pre-decision-transient', predicates, armed, latest, myPos },
+      });
       return;
     }
 
@@ -5528,12 +5576,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[PRE-DECISION] Executing armed pre-' + decision.toUpperCase(), {
       armed,
       latest,
+      predicates,
     });
+    // Atomic consume: latch first, then clear visuals, then dispatch.
+    holmPreDecisionConsumingRef.current = true;
     holmPreDecisionArmedRef.current = null;
     setHolmPreFold(false);
     setHolmPreStay(false);
-    if (decision === 'fold') handleFold('pre-fold execute');
-    else handleStay('pre-stay execute');
+    const dispatch = decision === 'fold'
+      ? handleFold('pre-fold execute')
+      : handleStay('pre-stay execute');
+    Promise.resolve(dispatch).finally(() => {
+      holmPreDecisionConsumingRef.current = false;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     game?.game_type,
@@ -10132,17 +10187,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
       const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      const fromPre = traceSource === 'pre-stay execute';
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
         decision: 'stay',
         makeDecisionInvoked: false,
         requestStatus: 'rejected',
-        extra: { reason: 'holm-deal-not-ready' },
+        extra: { reason: 'holm-deal-not-ready', preserveArm: fromPre },
       });
-      holmPreDecisionArmedRef.current = null;
-      setHolmPreFold(false);
-      setHolmPreStay(false);
+      if (fromPre) {
+        // Transient — release consume latch so a later tick can retry this same arrival.
+        holmPreDecisionConsumingRef.current = false;
+      } else {
+        holmPreDecisionArmedRef.current = null;
+        holmPreDecisionConsumingRef.current = false;
+        setHolmPreFold(false);
+        setHolmPreStay(false);
+      }
       return;
     }
 
@@ -10208,17 +10270,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Fold — Holm deal not ready');
       const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      const fromPre = traceSource === 'pre-fold execute';
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
         decision: 'fold',
         makeDecisionInvoked: false,
         requestStatus: 'rejected',
-        extra: { reason: 'holm-deal-not-ready' },
+        extra: { reason: 'holm-deal-not-ready', preserveArm: fromPre },
       });
-      holmPreDecisionArmedRef.current = null;
-      setHolmPreFold(false);
-      setHolmPreStay(false);
+      if (fromPre) {
+        holmPreDecisionConsumingRef.current = false;
+      } else {
+        holmPreDecisionArmedRef.current = null;
+        holmPreDecisionConsumingRef.current = false;
+        setHolmPreFold(false);
+        setHolmPreStay(false);
+      }
       return;
     }
 
