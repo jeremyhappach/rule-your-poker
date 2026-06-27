@@ -767,6 +767,11 @@ function GameSections(props: GameSectionsProps) {
           )}
         </div>
 
+        {/* Per-artifact felt-overlap controls — visible only for the
+            artifacts that own a persisted fan-overlap value. */}
+        <ArtifactOverlapControls artifactId={artifactId} />
+
+
         {/* Visualization toggles */}
         <div className="space-y-2 pt-2 border-t">
           <h3 className="font-semibold">Visualization</h3>
