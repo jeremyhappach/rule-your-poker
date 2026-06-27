@@ -86,12 +86,26 @@ export const CribbageCountingPhase = ({
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
   // card horizontal gap. Cut card is NOT part of the hand fan.
+  // Both controls resolve from the ACTUAL responsive card width via
+  // ResizeObserver; no fixed-px width or breakpoint map.
   const scoringFanOverlap = useCardOverlap('cardOverlap.cribbage.scoringHand');
   const scoringToCutGap = useCardOverlap('cardOverlap.cribbage.scoringHandToCutGap');
-  // Width basis for both controls = "md" card width (CribbagePlayingCard).
-  const SCORING_CARD_WIDTH_PX = 40;
-  const scoringHandMarginPx = -scoringFanOverlap * SCORING_CARD_WIDTH_PX;
-  const scoringHandToCutGapPx = scoringToCutGap * SCORING_CARD_WIDTH_PX;
+  const firstCardRef = useRef<HTMLDivElement | null>(null);
+  const [measuredCardWidthPx, setMeasuredCardWidthPx] = useState<number>(40);
+  useEffect(() => {
+    const el = firstCardRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setMeasuredCardWidthPx(w);
+    });
+    ro.observe(el);
+    const w = el.getBoundingClientRect().width;
+    if (w > 0) setMeasuredCardWidthPx(w);
+    return () => ro.disconnect();
+  }, []);
+  const scoringHandMarginPx = -scoringFanOverlap * measuredCardWidthPx;
+  const scoringHandToCutGapPx = scoringToCutGap * measuredCardWidthPx;
   
   const completedRef = useRef(false);
   const enterToScoringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
