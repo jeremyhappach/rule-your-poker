@@ -872,9 +872,6 @@ function CardOverlapRow({ domain }: { domain: CardOverlapDomain }) {
   );
 }
 
-// (Bridge components removed — Holm and 3-5-7 showdown overlap controls
-// now live exclusively in their native Showdown Rules panels.)
-
 // Map ArtifactDescriptor.id → persisted cardOverlap domain key(s) that
 // belong inside that artifact's geometry section. Artifacts not listed
 // here render no overlap controls (the picker's game-scoping then
@@ -888,13 +885,20 @@ const ARTIFACT_OVERLAP_KEYS: Record<string, string[]> = {
   ],
 };
 
+// Artifacts whose overlap is owned by a non-cardOverlap.* persisted
+// source. Render a bespoke bridge editor that mutates that source
+// through its existing draft hook — no duplicate persisted state.
+const ARTIFACT_BRIDGE_OVERLAPS: Record<string, "threeFiveSevenRoundRowOverlap"> = {
+  "threeFiveSeven.winnerTabledCardsStage": "threeFiveSevenRoundRowOverlap",
+};
+
 function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
   const keys = ARTIFACT_OVERLAP_KEYS[artifactId];
-  if (!keys || keys.length === 0) return null;
-  const domains = keys
+  const bridge = ARTIFACT_BRIDGE_OVERLAPS[artifactId];
+  const domains = (keys ?? [])
     .map((k) => INDEPENDENT_OVERLAP_DOMAINS.find((d) => d.key === k))
     .filter((d): d is CardOverlapDomain => !!d);
-  if (domains.length === 0) return null;
+  if (domains.length === 0 && !bridge) return null;
   return (
     <div className="space-y-3 pt-2 border-t">
       <h3 className="font-semibold">Fan Overlap</h3>
@@ -905,8 +909,69 @@ function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
       {domains.map((d) => (
         <CardOverlapRow key={d.key} domain={d} />
       ))}
+      {bridge === "threeFiveSevenRoundRowOverlap" && (
+        <ThreeFiveSevenWinnerOverlapBridge />
+      )}
     </div>
   );
 }
+
+function ThreeFiveSevenWinnerOverlapBridge() {
+  const { value, setValue } = useDomainDraft<ShowdownRulesState>(
+    SHOWDOWN_RULES_DOMAIN_KEY,
+    DEFAULT_SHOWDOWN_RULES,
+  );
+  const rounds: Array<{ k: "r1" | "r2" | "r3"; label: string }> = [
+    { k: "r1", label: "Round 1 (3-card)" },
+    { k: "r2", label: "Round 2 (5-card)" },
+    { k: "r3", label: "Round 3 (7-card)" },
+  ];
+  const patch = (k: "r1" | "r2" | "r3", overlap: number) => {
+    if (k === "r3") {
+      const r3: RoundGeometryR3 = {
+        ...value.rounds.r3,
+        row: { ...value.rounds.r3.row, overlap },
+      };
+      setValue({ ...value, rounds: { ...value.rounds, r3 } });
+    } else {
+      const next: RoundGeometry = {
+        ...value.rounds[k],
+        row: { ...value.rounds[k].row, overlap },
+      };
+      setValue({ ...value, rounds: { ...value.rounds, [k]: next } });
+    }
+  };
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-muted-foreground">
+        Edits <code>three_five_seven_showdown_rules.rounds.r{`{1,2,3}`}.row.overlap</code>{" "}
+        directly — same persisted source as the Showdown Rules panel.
+      </p>
+      {rounds.map(({ k, label }) => {
+        const v = value.rounds[k].row.overlap;
+        return (
+          <div key={k} className="space-y-1">
+            <div className="flex items-baseline justify-between">
+              <Label className="text-sm font-medium">{label}</Label>
+              <span className="text-xs font-mono text-muted-foreground">
+                {v.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={-0.5}
+              max={0.9}
+              step={0.01}
+              value={v}
+              onChange={(e) => patch(k, Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 
