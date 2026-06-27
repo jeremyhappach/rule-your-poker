@@ -120,54 +120,10 @@ for (const d of INDEPENDENT_OVERLAP_DOMAINS) {
   });
 }
 
-// ─── Bridge entries (existing showdown configs own the persistence) ─────
+// Bridge entries removed. Holm and 3-5-7 showdown overlap controls now
+// live exclusively in their native Showdown Rules panels (single
+// persisted source: holm_showdown_rules / three_five_seven_showdown_rules).
 
-/**
- * Bridge descriptor used by the consolidated admin UI to render
- * sliders for overlap values that live INSIDE another domain's blob
- * (Holm / 3-5-7 showdown rules). The admin UI applies these via the
- * existing showdown-rules `useDomainDraft` paths so there is exactly
- * one persisted source per artifact.
- */
-export interface CardOverlapBridge {
-  id: string;
-  label: string;
-  help: string;
-  /** Reference into the existing draft blob. Used only as documentation. */
-  source: string;
-  min: number; max: number; step: number;
-}
-
-export const BRIDGE_OVERLAPS: CardOverlapBridge[] = [
-  {
-    id: 'bridge.holm.tabledShowdown',
-    label: 'Holm tabled/showdown player row',
-    help: 'Holm exposed opponent rows. Persisted in holm_showdown_rules.row.overlap.',
-    source: 'holm_showdown_rules.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r1',
-    label: '3-5-7 round 1 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r1.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r1.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r2',
-    label: '3-5-7 round 2 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r2.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r2.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r3',
-    label: '3-5-7 round 3 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r3.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r3.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-];
 
 // ─── Runtime accessors ─────────────────────────────────────────────────
 
