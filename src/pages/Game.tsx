@@ -10270,17 +10270,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Fold — Holm deal not ready');
       const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      const fromPre = traceSource === 'pre-fold execute';
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
         decision: 'fold',
         makeDecisionInvoked: false,
         requestStatus: 'rejected',
-        extra: { reason: 'holm-deal-not-ready' },
+        extra: { reason: 'holm-deal-not-ready', preserveArm: fromPre },
       });
-      holmPreDecisionArmedRef.current = null;
-      setHolmPreFold(false);
-      setHolmPreStay(false);
+      if (fromPre) {
+        holmPreDecisionConsumingRef.current = false;
+      } else {
+        holmPreDecisionArmedRef.current = null;
+        holmPreDecisionConsumingRef.current = false;
+        setHolmPreFold(false);
+        setHolmPreStay(false);
+      }
       return;
     }
 
