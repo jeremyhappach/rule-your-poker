@@ -9,7 +9,8 @@ import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+// (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
+// not a felt-artifact overlap value. Prior static margins restored below.)
 
 interface Player {
   id: string;
