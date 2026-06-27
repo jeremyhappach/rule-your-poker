@@ -63,9 +63,7 @@ import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
-  BRIDGE_OVERLAPS,
   type CardOverlapDomain,
-  type CardOverlapBridge,
 } from "@/lib/geometryLab/cardArtifactOverlap";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
 import {
