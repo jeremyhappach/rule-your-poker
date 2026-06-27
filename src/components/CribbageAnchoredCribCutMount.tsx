@@ -45,6 +45,8 @@ import { useCribbageGameplayGeometry } from '@/lib/wave5GameplayGeometry/Cribbag
 import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeometryConstraints';
 import { useChildrenBoundsContract } from '@/lib/wave5GameplayGeometry/useChildrenBoundsContract';
 import { toVmin } from '@/lib/wave4LayoutResolver';
+import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+
 
 const CRIB_CUT_GROUP_ID = 'cribbage.cribCutGroup';
 
