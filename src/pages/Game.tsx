@@ -5411,6 +5411,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const armHolmPreDecision = useCallback((decision: 'stay' | 'fold' | null) => {
     if (decision === null) {
       holmPreDecisionArmedRef.current = null;
+      holmPreDecisionConsumingRef.current = false;
       setHolmPreFold(false);
       setHolmPreStay(false);
       return;
