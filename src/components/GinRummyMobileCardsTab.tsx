@@ -9,7 +9,8 @@ import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+// (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
+// not a felt-artifact overlap value. Prior static margins restored below.)
 
 interface Player {
   id: string;
@@ -254,12 +255,11 @@ export const GinRummyMobileCardsTab = ({
       return (SUIT_ORDER[a.card.suit] || 0) - (SUIT_ORDER[b.card.suit] || 0);
     });
 
-  // Universal fan-overlap (Geometry Lab). CribbagePlayingCard "lg" = 48px,
-  // "md" = 40px. Use lg basis for the normal flat row, scaled down for
-  // laying-off-mode (md). Negative result = overlap; positive = gap.
-  const ginFanOverlap = useCardOverlap('cardOverlap.gin.inHand');
-  const ginLgMarginPx = -ginFanOverlap * 48;
-  const ginMdMarginPx = -ginFanOverlap * 40;
+  // Static margins — match the prior `-space-x-4` (16px) overlap on lg
+  // (48px) cards; md (40px) scaled proportionally. Adaptive fan behavior
+  // for this hand will move to the HUDStack contract.
+  const ginLgMarginPx = -16;
+  const ginMdMarginPx = -13;
 
 
   return (

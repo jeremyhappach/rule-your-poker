@@ -63,21 +63,11 @@ import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
-  BRIDGE_OVERLAPS,
   type CardOverlapDomain,
-  type CardOverlapBridge,
 } from "@/lib/geometryLab/cardArtifactOverlap";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
-import {
-  DEFAULT_HOLM_SHOWDOWN_RULES,
-  HOLM_SHOWDOWN_RULES_DOMAIN_KEY,
-  type HolmShowdownRulesState,
-} from "@/lib/holm/showdownConfig";
-import {
-  DEFAULT_SHOWDOWN_RULES as DEFAULT_357_SHOWDOWN_RULES,
-  SHOWDOWN_RULES_DOMAIN_KEY as THREE_FIVE_SEVEN_DOMAIN_KEY,
-  type ShowdownRulesState as ThreeFiveSevenShowdownRulesState,
-} from "@/lib/threeFiveSeven/showdownConfig";
+// (Holm/3-5-7 showdown rule imports removed — those panels own their own
+// state via their native Showdown Rules editors.)
 
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
@@ -777,6 +767,11 @@ function GameSections(props: GameSectionsProps) {
           )}
         </div>
 
+        {/* Per-artifact felt-overlap controls — visible only for the
+            artifacts that own a persisted fan-overlap value. */}
+        <ArtifactOverlapControls artifactId={artifactId} />
+
+
         {/* Visualization toggles */}
         <div className="space-y-2 pt-2 border-t">
           <h3 className="font-semibold">Visualization</h3>
@@ -787,31 +782,6 @@ function GameSections(props: GameSectionsProps) {
 
       </CollapsibleSection>
 
-      <CollapsibleSection title="Card Artifact Overlap">
-        <p className="text-xs text-muted-foreground">
-          Universal fan-overlap contract. Normalized to card width:
-          <br />
-          <code>0.00</code> = adjacent edges touch &nbsp;·&nbsp;
-          <code>&gt; 0</code> = overlap &nbsp;·&nbsp;
-          <code>&lt; 0</code> = proportional gap
-          <br />
-          <code>nextCardOffsetPx = cardWidthPx × (1 − fanOverlap)</code>
-        </p>
-        <div className="space-y-3 pt-2">
-          {INDEPENDENT_OVERLAP_DOMAINS.map((d) => (
-            <CardOverlapRow key={d.key} domain={d} />
-          ))}
-        </div>
-        <div className="pt-3 mt-3 border-t space-y-3">
-          <p className="text-[11px] text-muted-foreground">
-            Bridge controls — these write into existing Holm / 3-5-7
-            showdown rules (single persisted source).
-          </p>
-          {BRIDGE_OVERLAPS.map((b) => (
-            <CardOverlapBridgeRow key={b.id} bridge={b} />
-          ))}
-        </div>
-      </CollapsibleSection>
 
       <CollapsibleSection title="Chip Ring Artifacts">
         <p className="text-xs text-muted-foreground">
@@ -880,98 +850,41 @@ function CardOverlapRow({ domain }: { domain: CardOverlapDomain }) {
   );
 }
 
-function CardOverlapBridgeRow({ bridge }: { bridge: CardOverlapBridge }) {
-  // Bridge into the existing draft blob so there is exactly one
-  // persisted source per artifact.
-  if (bridge.id === "bridge.holm.tabledShowdown") {
-    return (
-      <HolmOverlapBridge bridge={bridge} />
-    );
-  }
-  const round =
-    bridge.id === "bridge.threeFiveSeven.r1"
-      ? "r1"
-      : bridge.id === "bridge.threeFiveSeven.r2"
-        ? "r2"
-        : "r3";
-  return <ThreeFiveSevenOverlapBridge bridge={bridge} round={round} />;
-}
+// (Bridge components removed — Holm and 3-5-7 showdown overlap controls
+// now live exclusively in their native Showdown Rules panels.)
 
-function HolmOverlapBridge({ bridge }: { bridge: CardOverlapBridge }) {
-  const { value, setValue } = useDomainDraft<HolmShowdownRulesState>(
-    HOLM_SHOWDOWN_RULES_DOMAIN_KEY,
-    DEFAULT_HOLM_SHOWDOWN_RULES,
-  );
-  const overlap = value.row.overlap;
+// Map ArtifactDescriptor.id → persisted cardOverlap domain key(s) that
+// belong inside that artifact's geometry section. Artifacts not listed
+// here render no overlap controls (the picker's game-scoping then
+// gates visibility automatically).
+const ARTIFACT_OVERLAP_KEYS: Record<string, string[]> = {
+  "holm.communityCardsStage": ["cardOverlap.holm.community"],
+  "holm.lonePlayerTabledCardsStage": ["cardOverlap.holm.lonePlayerFan"],
+  "cribbage.countingRow": [
+    "cardOverlap.cribbage.scoringHand",
+    "cardOverlap.cribbage.scoringHandToCutGap",
+  ],
+};
+
+function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
+  const keys = ARTIFACT_OVERLAP_KEYS[artifactId];
+  if (!keys || keys.length === 0) return null;
+  const domains = keys
+    .map((k) => INDEPENDENT_OVERLAP_DOMAINS.find((d) => d.key === k))
+    .filter((d): d is CardOverlapDomain => !!d);
+  if (domains.length === 0) return null;
   return (
-    <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <Label className="text-sm font-medium">{bridge.label}</Label>
-        <span className="text-xs font-mono text-muted-foreground">
-          {overlap.toFixed(2)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={bridge.min}
-        max={bridge.max}
-        step={bridge.step}
-        value={overlap}
-        onChange={(e) =>
-          setValue({
-            ...value,
-            row: { ...value.row, overlap: Number(e.target.value) },
-          })
-        }
-        className="w-full"
-      />
-      <p className="text-[11px] text-muted-foreground">{bridge.help}</p>
+    <div className="space-y-3 pt-2 border-t">
+      <h3 className="font-semibold">Fan Overlap</h3>
+      <p className="text-xs text-muted-foreground">
+        Normalized to card width. <code>0.00</code> = edges touch ·{" "}
+        <code>&gt; 0</code> overlap · <code>&lt; 0</code> gap.
+      </p>
+      {domains.map((d) => (
+        <CardOverlapRow key={d.key} domain={d} />
+      ))}
     </div>
   );
 }
 
-function ThreeFiveSevenOverlapBridge({
-  bridge,
-  round,
-}: {
-  bridge: CardOverlapBridge;
-  round: "r1" | "r2" | "r3";
-}) {
-  const { value, setValue } = useDomainDraft<ThreeFiveSevenShowdownRulesState>(
-    THREE_FIVE_SEVEN_DOMAIN_KEY,
-    DEFAULT_357_SHOWDOWN_RULES,
-  );
-  const overlap = value.rounds[round].row.overlap;
-  return (
-    <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <Label className="text-sm font-medium">{bridge.label}</Label>
-        <span className="text-xs font-mono text-muted-foreground">
-          {overlap.toFixed(2)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={bridge.min}
-        max={bridge.max}
-        step={bridge.step}
-        value={overlap}
-        onChange={(e) => {
-          const next = Number(e.target.value);
-          setValue({
-            ...value,
-            rounds: {
-              ...value.rounds,
-              [round]: {
-                ...value.rounds[round],
-                row: { ...value.rounds[round].row, overlap: next },
-              },
-            },
-          });
-        }}
-        className="w-full"
-      />
-      <p className="text-[11px] text-muted-foreground">{bridge.help}</p>
-    </div>
-  );
-}
+

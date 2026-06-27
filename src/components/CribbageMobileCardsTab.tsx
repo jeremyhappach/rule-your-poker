@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+// (Removed cardArtifactOverlap import — Cribbage active-player hand is
+// HUDStack-owned; adaptive resolver handles fan sizing.)
 
 /**
  * Discrete CribbagePlayingCard size ladder (width px → size token).
@@ -335,14 +336,13 @@ export const CribbageMobileCardsTab = ({
     return () => ro.disconnect();
   }, []);
 
-  const inHandOverlap = useCardOverlap('cardOverlap.cribbage.inHand');
   const handLayout = useCardRowLayout({
     availableWidth: paneWidthPx ?? 0,
     count: cardCount > 0 ? cardCount : 1,
     aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
     minCardWidth: 24,
     maxCardWidth: 48,
-    preferredOverlapRatio: isPreDiscard ? inHandOverlap : 0.05,
+    preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
   const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout

@@ -103,30 +103,11 @@ export const INDEPENDENT_OVERLAP_DOMAINS: CardOverlapDomain[] = [
     cacheKey: 'ptp_cardOverlap_cribbage_scoringHandToCutGap',
     min: 0, max: 2, step: 0.01,
   },
-  {
-    key: 'cardOverlap.cribbage.pegging',
-    label: 'Cribbage pegging cards',
-    help: 'Pegging row inside the cribbage anchored pegging slot.',
-    default: 0.18,
-    cacheKey: 'ptp_cardOverlap_cribbage_pegging',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
-  {
-    key: 'cardOverlap.cribbage.inHand',
-    label: 'Cribbage active-player hand',
-    help: "Local viewer's hand row in the cribbage cards tab.",
-    default: 0.32,
-    cacheKey: 'ptp_cardOverlap_cribbage_inHand',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
-  {
-    key: 'cardOverlap.gin.inHand',
-    label: 'Gin active-player hand',
-    help: "Local viewer's flat hand row + melds in the gin cards tab.",
-    default: 0.30,
-    cacheKey: 'ptp_cardOverlap_gin_inHand',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
+  // NOTE: Cribbage pegging, Cribbage active-player hand, and Gin
+  // active-player hand are intentionally NOT registered here. They are
+  // HUDStack / adaptive-resolver contracts, not felt-artifact overlap
+  // values. See useCardRowLayout consumers in Wave4PeggingRowSlot,
+  // CribbageMobileCardsTab, and GinRummyMobileCardsTab.
 ];
 
 // Register each domain at module import.
@@ -139,54 +120,10 @@ for (const d of INDEPENDENT_OVERLAP_DOMAINS) {
   });
 }
 
-// ─── Bridge entries (existing showdown configs own the persistence) ─────
+// Bridge entries removed. Holm and 3-5-7 showdown overlap controls now
+// live exclusively in their native Showdown Rules panels (single
+// persisted source: holm_showdown_rules / three_five_seven_showdown_rules).
 
-/**
- * Bridge descriptor used by the consolidated admin UI to render
- * sliders for overlap values that live INSIDE another domain's blob
- * (Holm / 3-5-7 showdown rules). The admin UI applies these via the
- * existing showdown-rules `useDomainDraft` paths so there is exactly
- * one persisted source per artifact.
- */
-export interface CardOverlapBridge {
-  id: string;
-  label: string;
-  help: string;
-  /** Reference into the existing draft blob. Used only as documentation. */
-  source: string;
-  min: number; max: number; step: number;
-}
-
-export const BRIDGE_OVERLAPS: CardOverlapBridge[] = [
-  {
-    id: 'bridge.holm.tabledShowdown',
-    label: 'Holm tabled/showdown player row',
-    help: 'Holm exposed opponent rows. Persisted in holm_showdown_rules.row.overlap.',
-    source: 'holm_showdown_rules.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r1',
-    label: '3-5-7 round 1 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r1.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r1.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r2',
-    label: '3-5-7 round 2 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r2.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r2.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-  {
-    id: 'bridge.threeFiveSeven.r3',
-    label: '3-5-7 round 3 opponent showdown',
-    help: 'Persisted in three_five_seven_showdown_rules.rounds.r3.row.overlap.',
-    source: 'three_five_seven_showdown_rules.rounds.r3.row.overlap',
-    min: -0.5, max: 0.95, step: 0.01,
-  },
-];
 
 // ─── Runtime accessors ─────────────────────────────────────────────────
 

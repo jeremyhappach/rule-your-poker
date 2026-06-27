@@ -25,7 +25,8 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
-import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
+// (Removed cardArtifactOverlap import — pegging row uses the adaptive
+// resolver default; not a manually tuned felt-artifact overlap value.)
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -213,10 +214,8 @@ export function Wave4PeggingRowSlot({
   const visibleCardCount =
     playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
 
-  const fanOverlap = useCardOverlap('cardOverlap.cribbage.pegging');
-
-  // Reuse the canonical card-row fan algorithm shared with ActivePlayerPane /
-  // useCardRowLayout consumers. One platform, one fan language.
+  // Adaptive pegging fan — resolver's default preferredOverlapRatio
+  // (0.18) is the implementation default. No manual override.
   const fan = visibleCardCount > 0
     ? resolveCardRowLayout({
         availableWidth: Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx),
@@ -225,7 +224,6 @@ export function Wave4PeggingRowSlot({
         aspect: CARD_ASPECT_WH,
         minCardWidth: 18,
         maxCardWidth: cardCeilingWidthPx,
-        preferredOverlapRatio: fanOverlap,
         maxOverlapRatio: 0.9,
       })
     : null;
