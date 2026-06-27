@@ -2,6 +2,7 @@ import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
 
 interface CommunityCardsProps {
   cards: CardType[];
