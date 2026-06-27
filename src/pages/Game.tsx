@@ -10187,17 +10187,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
       const currentPlayer = players.find(p => p.user_id === user.id) ?? null;
+      const fromPre = traceSource === 'pre-stay execute';
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
         decision: 'stay',
         makeDecisionInvoked: false,
         requestStatus: 'rejected',
-        extra: { reason: 'holm-deal-not-ready' },
+        extra: { reason: 'holm-deal-not-ready', preserveArm: fromPre },
       });
-      holmPreDecisionArmedRef.current = null;
-      setHolmPreFold(false);
-      setHolmPreStay(false);
+      if (fromPre) {
+        // Transient — release consume latch so a later tick can retry this same arrival.
+        holmPreDecisionConsumingRef.current = false;
+      } else {
+        holmPreDecisionArmedRef.current = null;
+        holmPreDecisionConsumingRef.current = false;
+        setHolmPreFold(false);
+        setHolmPreStay(false);
+      }
       return;
     }
 
