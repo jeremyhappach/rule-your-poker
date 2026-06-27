@@ -10736,7 +10736,6 @@ export const MobileGameTable = ({
                             checked={holmPreFold}
                             onChange={(e) => {
                               onHolmPreFoldChange?.(e.target.checked);
-                              if (e.target.checked) onHolmPreStayChange?.(false);
                             }}
                             className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
                           />
