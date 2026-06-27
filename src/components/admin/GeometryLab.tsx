@@ -66,16 +66,8 @@ import {
   type CardOverlapDomain,
 } from "@/lib/geometryLab/cardArtifactOverlap";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
-import {
-  DEFAULT_HOLM_SHOWDOWN_RULES,
-  HOLM_SHOWDOWN_RULES_DOMAIN_KEY,
-  type HolmShowdownRulesState,
-} from "@/lib/holm/showdownConfig";
-import {
-  DEFAULT_SHOWDOWN_RULES as DEFAULT_357_SHOWDOWN_RULES,
-  SHOWDOWN_RULES_DOMAIN_KEY as THREE_FIVE_SEVEN_DOMAIN_KEY,
-  type ShowdownRulesState as ThreeFiveSevenShowdownRulesState,
-} from "@/lib/threeFiveSeven/showdownConfig";
+// (Holm/3-5-7 showdown rule imports removed — those panels own their own
+// state via their native Showdown Rules editors.)
 
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
