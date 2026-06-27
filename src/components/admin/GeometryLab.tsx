@@ -785,31 +785,6 @@ function GameSections(props: GameSectionsProps) {
 
       </CollapsibleSection>
 
-      <CollapsibleSection title="Card Artifact Overlap">
-        <p className="text-xs text-muted-foreground">
-          Universal fan-overlap contract. Normalized to card width:
-          <br />
-          <code>0.00</code> = adjacent edges touch &nbsp;·&nbsp;
-          <code>&gt; 0</code> = overlap &nbsp;·&nbsp;
-          <code>&lt; 0</code> = proportional gap
-          <br />
-          <code>nextCardOffsetPx = cardWidthPx × (1 − fanOverlap)</code>
-        </p>
-        <div className="space-y-3 pt-2">
-          {INDEPENDENT_OVERLAP_DOMAINS.map((d) => (
-            <CardOverlapRow key={d.key} domain={d} />
-          ))}
-        </div>
-        <div className="pt-3 mt-3 border-t space-y-3">
-          <p className="text-[11px] text-muted-foreground">
-            Bridge controls — these write into existing Holm / 3-5-7
-            showdown rules (single persisted source).
-          </p>
-          {BRIDGE_OVERLAPS.map((b) => (
-            <CardOverlapBridgeRow key={b.id} bridge={b} />
-          ))}
-        </div>
-      </CollapsibleSection>
 
       <CollapsibleSection title="Chip Ring Artifacts">
         <p className="text-xs text-muted-foreground">
