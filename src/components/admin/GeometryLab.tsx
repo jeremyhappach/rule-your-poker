@@ -853,3 +853,38 @@ function CardOverlapRow({ domain }: { domain: CardOverlapDomain }) {
 // (Bridge components removed — Holm and 3-5-7 showdown overlap controls
 // now live exclusively in their native Showdown Rules panels.)
 
+// Map ArtifactDescriptor.id → persisted cardOverlap domain key(s) that
+// belong inside that artifact's geometry section. Artifacts not listed
+// here render no overlap controls (the picker's game-scoping then
+// gates visibility automatically).
+const ARTIFACT_OVERLAP_KEYS: Record<string, string[]> = {
+  "holm.communityCardsStage": ["cardOverlap.holm.community"],
+  "holm.lonePlayerTabledCardsStage": ["cardOverlap.holm.lonePlayerFan"],
+  "cribbage.countingRow": [
+    "cardOverlap.cribbage.scoringHand",
+    "cardOverlap.cribbage.scoringHandToCutGap",
+  ],
+};
+
+function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
+  const keys = ARTIFACT_OVERLAP_KEYS[artifactId];
+  if (!keys || keys.length === 0) return null;
+  const domains = keys
+    .map((k) => INDEPENDENT_OVERLAP_DOMAINS.find((d) => d.key === k))
+    .filter((d): d is CardOverlapDomain => !!d);
+  if (domains.length === 0) return null;
+  return (
+    <div className="space-y-3 pt-2 border-t">
+      <h3 className="font-semibold">Fan Overlap</h3>
+      <p className="text-xs text-muted-foreground">
+        Normalized to card width. <code>0.00</code> = edges touch ·{" "}
+        <code>&gt; 0</code> overlap · <code>&lt; 0</code> gap.
+      </p>
+      {domains.map((d) => (
+        <CardOverlapRow key={d.key} domain={d} />
+      ))}
+    </div>
+  );
+}
+
+
