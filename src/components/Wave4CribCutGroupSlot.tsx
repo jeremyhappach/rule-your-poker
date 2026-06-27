@@ -223,7 +223,9 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
         alignItems: "center",
         justifyContent: "center",
         gap: "var(--cribcut-gap, 1rem)",
+        ...(styleVars ?? {}),
       }}
+
 
     >
       {children}
