@@ -272,14 +272,15 @@ export const GinRummyMobileCardsTab = ({
           <div className={cn("flex items-end flex-wrap w-full px-1", isLayingOff ? "gap-y-0" : "gap-y-1")}>
             {/* Melds */}
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-3")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex", meldIdx > 0 && "ml-3")}>
                 {meld.cards.map((card, ci) => {
                   const isLaidOff = iAmKnocker && laidOffOnMyMelds.some(lo => lo.rank === card.rank && lo.suit === card.suit);
+                  const m = isLayingOff ? ginMdMarginPx : ginLgMarginPx;
                   return (
                     <div
                       key={`my-meld-${meldIdx}-${ci}`}
                       className={cn(isLaidOff && "rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]")}
-                      style={{ zIndex: ci }}
+                      style={{ zIndex: ci, marginLeft: ci === 0 ? 0 : `${m}px` }}
                     >
               <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} />
                     </div>
@@ -292,10 +293,11 @@ export const GinRummyMobileCardsTab = ({
 
             {/* Deadwood — pushed to the right on whichever row it lands on */}
             {postKnockDeadwoodCards.length > 0 && (
-              <div className="flex -space-x-4 ml-auto items-end">
+              <div className="flex ml-auto items-end">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
+                  const m = isLayingOff ? ginMdMarginPx : ginLgMarginPx;
                   return (
                     <button
                       key={`dw-${card.rank}-${card.suit}-${ci}`}
@@ -306,7 +308,7 @@ export const GinRummyMobileCardsTab = ({
                         isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "",
                         isLayingOff && "cursor-pointer"
                       )}
-                      style={{ zIndex: isSelected ? 20 : ci }}
+                      style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${m}px` }}
                     >
                       <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} />
                     </button>
@@ -333,7 +335,7 @@ export const GinRummyMobileCardsTab = ({
               DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
             </span>
           </div>
-          <div className="flex items-start justify-center py-1 overflow-visible -space-x-4">
+          <div className="flex items-start justify-center py-1 overflow-visible">
             {flatSortedHand.map(({ card, originalIndex, meldGroup }, ci) => {
               const isSelected = selectedCardIndex === originalIndex;
               const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
@@ -352,7 +354,7 @@ export const GinRummyMobileCardsTab = ({
                     canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
                     isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
                   )}
-                  style={{ zIndex: isSelected ? 20 : ci }}
+                  style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${ginLgMarginPx}px` }}
                 >
                   <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
                 </button>
