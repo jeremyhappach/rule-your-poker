@@ -787,6 +787,7 @@ export const CribbageCountingPhase = ({
                 {cardsToShow.map((card, i) => (
                   <div 
                     key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
+                    ref={i === 0 ? firstCardRef : undefined}
                     className={`transition-all duration-300 ${
                       isCardHighlighted(card) && transitionPhase === 'scoring'
                         ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
