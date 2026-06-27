@@ -336,14 +336,13 @@ export const CribbageMobileCardsTab = ({
     return () => ro.disconnect();
   }, []);
 
-  const inHandOverlap = useCardOverlap('cardOverlap.cribbage.inHand');
   const handLayout = useCardRowLayout({
     availableWidth: paneWidthPx ?? 0,
     count: cardCount > 0 ? cardCount : 1,
     aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
     minCardWidth: 24,
     maxCardWidth: 48,
-    preferredOverlapRatio: isPreDiscard ? inHandOverlap : 0.05,
+    preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
   const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout
