@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+// (Removed cardArtifactOverlap import — Cribbage active-player hand is
+// HUDStack-owned; adaptive resolver handles fan sizing.)
 
 /**
  * Discrete CribbagePlayingCard size ladder (width px → size token).
