@@ -581,7 +581,9 @@ function GameSections(props: GameSectionsProps) {
           )}
         </div>
 
-        {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
+        {/* Geometry — defaults shown are the live ArtifactDescriptor values.
+            Hidden for non-anchored artifacts (no anchor/size fields apply). */}
+        {descriptor.composeMode === "anchored" && (
         <div className="space-y-3 pt-2 border-t">
           <h3 className="font-semibold">Geometry</h3>
           <p className="text-xs text-muted-foreground">
