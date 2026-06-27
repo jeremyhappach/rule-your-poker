@@ -219,8 +219,9 @@ export function Wave4CribCutGroupSlot({ children }: Wave4CribCutGroupSlotProps) 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "1rem",
+        gap: "var(--cribcut-gap, 1rem)",
       }}
+
     >
       {children}
     </div>
