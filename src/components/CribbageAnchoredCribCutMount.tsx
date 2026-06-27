@@ -133,8 +133,14 @@ export function CribbageAnchoredCribCutMount({
 
   const cribCardHeightPx = Math.max(6, stageHeightPx * CRIB_CARD_HEIGHT_RATIO);
   const cribCardWidthPx = cribCardHeightPx * CARD_ASPECT;
-  // Negative spacing fans the pile; ~35% of card width keeps it tight but visible.
-  const cribCardOverlapPx = cribCardWidthPx * 0.35;
+
+  // Geometry-Lab–owned overlap/gap (independent of scoring-hand values).
+  // fanOverlap normalized to crib card width: nextCardOffset = w * (1 - overlap)
+  const cribFanOverlap = useCardOverlap('cardOverlap.cribbage.cribFan');
+  const cribToCutGap = useCardOverlap('cardOverlap.cribbage.cribToCutGap');
+  const cribCardOverlapPx = cribCardWidthPx * cribFanOverlap;
+  const cribToCutGapPx = cribCardWidthPx * cribToCutGap;
+
 
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
