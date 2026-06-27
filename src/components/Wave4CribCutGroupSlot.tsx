@@ -70,9 +70,12 @@ const CRIB_CUT_GROUP_ID = "cribbage.cribCutGroup";
 
 export interface Wave4CribCutGroupSlotProps {
   children: ReactNode;
+  /** Inline CSS-variable overrides applied to the slot root (e.g. `--cribcut-gap`). */
+  styleVars?: React.CSSProperties;
 }
 
-export function Wave4CribCutGroupSlot({ children }: Wave4CribCutGroupSlotProps) {
+export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroupSlotProps) {
+
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
