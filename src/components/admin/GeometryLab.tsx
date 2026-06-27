@@ -66,8 +66,20 @@ import {
   type CardOverlapDomain,
 } from "@/lib/geometryLab/cardArtifactOverlap";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
-// (Holm/3-5-7 showdown rule imports removed — those panels own their own
-// state via their native Showdown Rules editors.)
+import {
+  DEFAULT_SHOWDOWN_RULES,
+  SHOWDOWN_RULES_DOMAIN_KEY,
+  type RoundGeometry,
+  type RoundGeometryR3,
+  type ShowdownRulesState,
+} from "@/lib/threeFiveSeven/showdownConfig";
+
+// Non-anchored artifacts that the Lab picker still needs to surface so
+// their per-artifact overlap controls have a host section. The geometry
+// editor (anchor/size) auto-hides for these.
+const LAB_EXTRA_ARTIFACT_IDS: Partial<Record<GameKey, string[]>> = {
+  cribbage: ["cribbage.countingRow"],
+};
 
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
