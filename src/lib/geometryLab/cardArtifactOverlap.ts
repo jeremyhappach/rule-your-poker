@@ -103,30 +103,11 @@ export const INDEPENDENT_OVERLAP_DOMAINS: CardOverlapDomain[] = [
     cacheKey: 'ptp_cardOverlap_cribbage_scoringHandToCutGap',
     min: 0, max: 2, step: 0.01,
   },
-  {
-    key: 'cardOverlap.cribbage.pegging',
-    label: 'Cribbage pegging cards',
-    help: 'Pegging row inside the cribbage anchored pegging slot.',
-    default: 0.18,
-    cacheKey: 'ptp_cardOverlap_cribbage_pegging',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
-  {
-    key: 'cardOverlap.cribbage.inHand',
-    label: 'Cribbage active-player hand',
-    help: "Local viewer's hand row in the cribbage cards tab.",
-    default: 0.32,
-    cacheKey: 'ptp_cardOverlap_cribbage_inHand',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
-  {
-    key: 'cardOverlap.gin.inHand',
-    label: 'Gin active-player hand',
-    help: "Local viewer's flat hand row + melds in the gin cards tab.",
-    default: 0.30,
-    cacheKey: 'ptp_cardOverlap_gin_inHand',
-    min: -0.5, max: 0.9, step: 0.01,
-  },
+  // NOTE: Cribbage pegging, Cribbage active-player hand, and Gin
+  // active-player hand are intentionally NOT registered here. They are
+  // HUDStack / adaptive-resolver contracts, not felt-artifact overlap
+  // values. See useCardRowLayout consumers in Wave4PeggingRowSlot,
+  // CribbageMobileCardsTab, and GinRummyMobileCardsTab.
 ];
 
 // Register each domain at module import.
