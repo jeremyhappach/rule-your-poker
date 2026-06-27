@@ -254,6 +254,14 @@ export const GinRummyMobileCardsTab = ({
       return (SUIT_ORDER[a.card.suit] || 0) - (SUIT_ORDER[b.card.suit] || 0);
     });
 
+  // Universal fan-overlap (Geometry Lab). CribbagePlayingCard "lg" = 48px,
+  // "md" = 40px. Use lg basis for the normal flat row, scaled down for
+  // laying-off-mode (md). Negative result = overlap; positive = gap.
+  const ginFanOverlap = useCardOverlap('cardOverlap.gin.inHand');
+  const ginLgMarginPx = -ginFanOverlap * 48;
+  const ginMdMarginPx = -ginFanOverlap * 40;
+
+
   return (
     <div className="h-full px-2 flex flex-col">
 
