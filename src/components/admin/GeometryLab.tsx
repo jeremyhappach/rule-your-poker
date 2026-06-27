@@ -39,6 +39,7 @@ import {
 } from "@/lib/geometryLab/store";
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
 import {
+  ARTIFACT_DESCRIPTOR_FACTORIES,
   GAME_KEYS,
   GAME_LABELS,
   enumerateAnchoredArtifacts,
