@@ -3352,6 +3352,7 @@ export const CribbageMobileGameTable = ({
         }
         // Inject "new game starting" message into chat (idempotent per dealer_game_id)
         announceNewGameStarting();
+        recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: true, callsite: 'loadOrInitializeState:first_hand_selection', currentRoundId: fetchRoundId, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
         persistSyncDebugEvent({
