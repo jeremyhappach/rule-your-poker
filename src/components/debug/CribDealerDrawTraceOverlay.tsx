@@ -1,12 +1,12 @@
 /**
  * CribDealerDrawTraceOverlay — on-screen, exportable trace surface.
  *
- * Tails the per-active-game ring buffer from cribbageDealerDrawTrace.
- * Local buffer is authoritative for export.
+ * Collapsed by default as a tiny pill in a safe corner so it cannot
+ * obstruct Start Game / game-selection / action / table controls.
+ * Tap pill to expand; Copy JSON / Clear / Collapse live in the
+ * expanded header only.
  *
- * Controls: Copy JSON, Clear, Collapse.
- *
- * NO timers/guards/refs that alter behavior. NO fix path.
+ * Capture behavior is unchanged — UI-only edit.
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -36,9 +36,20 @@ export default function CribDealerDrawTraceOverlay({ gameId }: Props) {
   return <Overlay gameId={gameId} />;
 }
 
+// Anchor: top-left corner, well clear of typical bottom action bars,
+// bottom-center Start Game, and bottom-right debug tray pills.
+const ANCHOR_STYLE = {
+  position: 'fixed' as const,
+  top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+  left: 6,
+  zIndex: 2147483600,
+  // Container is non-interactive; only the pill/panel inside opt in.
+  pointerEvents: 'none' as const,
+};
+
 function Overlay({ gameId }: { gameId: string }) {
   const [events, setEvents] = useState<CribDealerDrawEvent[]>(() => getCribDealerDrawBuffer(gameId));
-  const [collapsed, setCollapsed] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<null | 'ok' | 'err'>(null);
 
   useEffect(() => {
@@ -70,34 +81,57 @@ function Overlay({ gameId }: { gameId: string }) {
 
   const onClear = useCallback(() => clearCribDealerDrawBuffer(gameId), [gameId]);
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        right: 8,
-        bottom: 8,
-        zIndex: 2147483600,
-        maxWidth: collapsed ? 220 : 460,
-        maxHeight: collapsed ? 'auto' : '60vh',
-        background: 'rgba(15,23,42,0.92)',
-        color: '#e2e8f0',
-        font: '11px/1.3 ui-monospace,Menlo,monospace',
-        border: '1px solid #334155',
-        borderRadius: 6,
-        padding: 6,
-        pointerEvents: 'auto',
-      }}
-      data-debug-overlay="crib-dealer-draw-trace"
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <strong style={{ color: '#fbbf24' }}>CRIB DEALER DRAW</strong>
-        <span style={{ marginLeft: 'auto' }}>{events.length}</span>
-        <button onClick={copyJson} style={btn}>{copied === 'ok' ? '✓' : copied === 'err' ? '✗' : 'Copy'}</button>
-        <button onClick={onClear} style={btn}>Clear</button>
-        <button onClick={() => setCollapsed(c => !c)} style={btn}>{collapsed ? '▲' : '▼'}</button>
+  if (!expanded) {
+    return (
+      <div style={ANCHOR_STYLE} data-debug-overlay="crib-dealer-draw-trace-pill">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          style={{
+            pointerEvents: 'auto',
+            background: 'rgba(15,23,42,0.85)',
+            color: '#fbbf24',
+            border: '1px solid #334155',
+            borderRadius: 999,
+            padding: '2px 8px',
+            font: '10px/1.2 ui-monospace,Menlo,monospace',
+            fontWeight: 700,
+            cursor: 'pointer',
+            letterSpacing: '0.04em',
+          }}
+          title="Expand Crib Dealer Draw trace"
+        >
+          CRIB TRACE · {events.length}
+        </button>
       </div>
-      {!collapsed && (
-        <div style={{ overflow: 'auto', maxHeight: 'calc(60vh - 32px)' }}>
+    );
+  }
+
+  return (
+    <div style={ANCHOR_STYLE} data-debug-overlay="crib-dealer-draw-trace">
+      <div
+        style={{
+          pointerEvents: 'auto',
+          width: 'min(92vw, 460px)',
+          maxHeight: '60vh',
+          background: 'rgba(15,23,42,0.92)',
+          color: '#e2e8f0',
+          font: '11px/1.3 ui-monospace,Menlo,monospace',
+          border: '1px solid #334155',
+          borderRadius: 6,
+          padding: 6,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <strong style={{ color: '#fbbf24' }}>CRIB DEALER DRAW</strong>
+          <span style={{ marginLeft: 'auto' }}>{events.length}</span>
+          <button onClick={copyJson} style={btn}>{copied === 'ok' ? '✓' : copied === 'err' ? '✗' : 'Copy'}</button>
+          <button onClick={onClear} style={btn}>Clear</button>
+          <button onClick={() => setExpanded(false)} style={btn}>▲</button>
+        </div>
+        <div style={{ overflow: 'auto', flex: 1 }}>
           {events.length === 0 && <div style={{ opacity: 0.6 }}>no events</div>}
           {events.slice().reverse().map(e => (
             <div key={e.seq} style={{ borderTop: '1px solid #1e293b', padding: '3px 0' }}>
@@ -116,7 +150,7 @@ function Overlay({ gameId }: { gameId: string }) {
             </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
