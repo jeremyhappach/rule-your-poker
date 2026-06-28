@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Settings, Bot, DollarSign, Timer, Spade, Dice5, Anchor, Crown, FlaskConical } from 'lucide-react';
 import { getHarnessProfiles } from '@/lib/debugHarness/profiles';
+import { setHarnessCacheValue } from '@/lib/debugHarness/runtimeCache';
 
 
 
@@ -250,6 +251,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           .eq('game_type', defaultConfig.game_type);
 
         if (error) throw error;
+
+        // Reconcile the in-tab harness cache immediately on the
+        // initiating client. Realtime echo (now that game_defaults
+        // is in supabase_realtime) handles every other connected tab.
+        setHarnessCacheValue(
+          defaultConfig.game_type,
+          defaultConfig.debug_harness ?? 'none',
+        );
       }
       toast.success('Defaults saved successfully');
       onOpenChange(false);

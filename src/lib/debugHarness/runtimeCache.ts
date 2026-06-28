@@ -60,6 +60,34 @@ export function subscribeHarnessCache(cb: () => void): () => void {
 }
 
 /**
+ * Synchronously reconcile the in-tab harness cache after a successful
+ * `game_defaults` write on the initiating client. This bypasses the
+ * realtime echo so the next bootstrap-time `getActiveHarnessCached(...)`
+ * call sees the new value immediately, with no reload required.
+ *
+ * Contract:
+ *  - Call ONLY after the DB write has succeeded.
+ *  - `id === 'none'` (or null/undefined) DELETES the entry from the
+ *    cache map so subsequent reads fall through `harnessCache[gt] ?? 'none'`
+ *    to the literal 'none' default — never a truthy stale sentinel.
+ *  - A non-'none' id overwrites in place.
+ *  - Listeners are notified so admin UI surfaces re-render.
+ *  - This is a no-op for `ensureHarnessCacheLoaded()` semantics; the
+ *    initial bootstrap fetch remains the sole hydration path.
+ */
+export function setHarnessCacheValue(
+  gameType: string,
+  id: string | null | undefined,
+): void {
+  if (!id || id === 'none') {
+    if (gameType in harnessCache) delete harnessCache[gameType];
+  } else {
+    harnessCache[gameType] = id;
+  }
+  harnessListeners.forEach((cb) => cb());
+}
+
+/**
  * Raw per-game-type harness selection, IGNORING the global debug gate.
  * Use ONLY for admin UI surfaces that need to display preserved
  * selections while debug mode is off.
