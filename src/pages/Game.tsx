@@ -84,9 +84,48 @@ type HighCardDealerSelectionShimProps = {
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   onWinnerPositionUpdate?: (position: number | null) => void;
+  /** Crib-dealer-draw-trace: gating-input snapshot from the mount site. */
+  cribTraceGating?: Record<string, unknown>;
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
-  useHighCardDealerSelection(props);
+  const _cribTraceInstanceId = useCribDealerDrawSurfaceTrace({
+    gameId: props.gameId,
+    surface: 'Game.HighCardDealerSelection',
+    gating: {
+      ...(props.cribTraceGating ?? {}),
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      syncedStateNullness: props.syncedState == null ? 'null' : 'non-null',
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      syncedWinnerPosition: props.syncedState?.winnerPosition ?? null,
+      syncedIsComplete: !!props.syncedState?.isComplete,
+    },
+  });
+  useHighCardDealerSelection({
+    gameId: props.gameId,
+    players: props.players,
+    onComplete: (pos: number) => {
+      recordCribDealerDraw({
+        gameId: props.gameId,
+        surface: 'Game.HighCardDealerSelection',
+        controllerInstanceId: _cribTraceInstanceId,
+        event: 'completion',
+        payload: {
+          winnerPosition: pos,
+          callbackTarget: 'Game.HighCardDealerSelection.props.onComplete',
+          handlerName: 'selectDealer',
+          gameStatusGate: 'dealer_selection',
+        },
+      });
+      props.onComplete(pos);
+    },
+    isHost: props.isHost,
+    allowBotDealers: props.allowBotDealers,
+    selectionVariant: props.selectionVariant,
+    syncedState: props.syncedState,
+    onCardsUpdate: props.onCardsUpdate,
+    onWinnerPositionUpdate: props.onWinnerPositionUpdate,
+  });
 
   // P-WAIT.C5: per-render trace — fires every render of the shim so
   // we can correlate cards-array transitions with parent re-renders
