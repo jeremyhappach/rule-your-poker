@@ -22,7 +22,9 @@ import {
   registerDomain,
   getSnapshot,
   subscribe,
+  _setFromLocalCommit,
 } from './defaultsRegistry';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NoTimersConfig {
   enabled: boolean;
