@@ -93,8 +93,10 @@ export function GinRummyDealOrchestrator({
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
 
     const dealerIsSelf = dealerPlayerId === selfPlayerId;
+    // When local viewer is dealer, EVERY flight launches from canonical
+    // bottom-center felt deal origin. Recipient determines destination only.
     const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
-      ? { kind: 'hand', playerId: selfPlayerId }
+      ? { kind: 'feltDealOrigin' }
       : { kind: 'seat', position: dealerSeat.position };
 
     // Recipient order per round: non-dealer first, then dealer.

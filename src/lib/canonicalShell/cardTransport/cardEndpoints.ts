@@ -65,6 +65,9 @@ function anchorCandidates(ep: CardEndpoint): AnchorCandidate[] {
     case 'discard': return [
       { selector: `[data-card-anchor="discard"]`, label: 'discard' },
     ];
+    case 'feltDealOrigin': return [
+      { selector: `[data-card-anchor="felt-deal-origin"]`, label: 'felt-deal-origin' },
+    ];
   }
 }
 

@@ -163,7 +163,14 @@ export function HolmDealOrchestrator({
     const launchDelayFormula = inspect
       ? 'idx * inspectionMode.launchSpacingMs(800)'
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
-    const from: CardTransportIntent['from'] = fromOverride ?? { kind: 'seat', position: dealerPosition };
+    // When the local viewer is the dealer, EVERY flight launches from
+    // the canonical bottom-center felt deal origin
+    // ([data-card-anchor="felt-deal-origin"]). Recipient determines
+    // destination only.
+    const defaultFrom: CardTransportIntent['from'] = dealerIsSelf
+      ? { kind: 'feltDealOrigin' }
+      : { kind: 'seat', position: dealerPosition };
+    const from: CardTransportIntent['from'] = fromOverride ?? defaultFrom;
 
     return specs.map((s, idx) => {
       const launchDelayMs = idx * staggerMs;

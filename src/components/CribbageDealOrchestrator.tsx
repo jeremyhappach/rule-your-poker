@@ -87,11 +87,16 @@ export function CribbageDealOrchestrator({
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
 
     const totalCount = cardsPerPlayer * sorted.length;
-    // Opponent flights launch from the dealer's canonical seat-cluster
-    // anchor (CanonicalSeatCluster emits [data-card-anchor="seat-${pos}"]
-    // for EVERY seat — including the local viewer at HOME). No Cribbage
-    // portal, no slot override.
-    const dealerOriginForOpponent: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
+    const dealerIsSelf = dealerPlayerId === selfPlayerId;
+    // When the local viewer is the dealer, EVERY flight (self + opponent)
+    // originates from the canonical bottom-center felt deal origin
+    // ([data-card-anchor="felt-deal-origin"]). Recipient determines
+    // destination only; it MUST NOT determine or override the source.
+    // The anchor is static DOM inside the felt surface, so resolution
+    // returns the same rect for every flight in this batch.
+    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
+      ? { kind: 'feltDealOrigin' }
+      : { kind: 'seat', position: dealerSeat.position };
 
     const intents: CardTransportIntent[] = [];
     for (let round = 0; round < cardsPerPlayer; round++) {
@@ -100,12 +105,7 @@ export function CribbageDealOrchestrator({
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
         const launchDelayMs = idx * staggerMs;
-        // Self-recipient: from == to (hand). Card resolves in place inside
-        // the Cribbage active-player pane — no felt traversal, no top-center
-        // origin, no 3-5-7 fallback.
-        const from: CardTransportIntent['from'] = isSelf
-          ? { kind: 'hand', playerId: selfPlayerId }
-          : dealerOriginForOpponent;
+        const from: CardTransportIntent['from'] = dealerOrigin;
         const to: CardTransportIntent['to'] = isSelf
           ? { kind: 'hand', playerId: selfPlayerId }
           : { kind: 'oppStack', position: r.position };

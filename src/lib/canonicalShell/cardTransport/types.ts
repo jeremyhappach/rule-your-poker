@@ -26,7 +26,16 @@ export type CardEndpoint =
   | { kind: 'community'; index: number }
   | { kind: 'chucky'; index: number }
   | { kind: 'stock' }
-  | { kind: 'discard' };
+  | { kind: 'discard' }
+  /**
+   * Canonical bottom-center felt deal origin — a static anchor mounted
+   * inside the canonical felt surface directly in front of the local
+   * viewer. Used as the SOURCE for every flight when the local viewer
+   * is the active dealer, so cards never originate from an ActivePlayer
+   * HUD/pane, opponent seat/nameplate/chip, or any already-landed
+   * card/cardback rect.
+   */
+  | { kind: 'feltDealOrigin' };
 
 export type CardFace = 'hidden' | 'visible';
 
@@ -116,13 +125,14 @@ export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
 
 export function describeCardEndpoint(ep: CardEndpoint): string {
   switch (ep.kind) {
-    case 'dealer':    return `dealer:${ep.playerId}`;
-    case 'seat':      return `seat:${ep.position}`;
-    case 'oppStack':  return `opp-stack:${ep.position}`;
-    case 'hand':      return `hand:${ep.playerId}`;
-    case 'community': return `community:${ep.index}`;
-    case 'chucky':    return `chucky:${ep.index}`;
-    case 'stock':     return 'stock';
-    case 'discard':   return 'discard';
+    case 'dealer':         return `dealer:${ep.playerId}`;
+    case 'seat':           return `seat:${ep.position}`;
+    case 'oppStack':       return `opp-stack:${ep.position}`;
+    case 'hand':           return `hand:${ep.playerId}`;
+    case 'community':      return `community:${ep.index}`;
+    case 'chucky':         return `chucky:${ep.index}`;
+    case 'stock':          return 'stock';
+    case 'discard':        return 'discard';
+    case 'feltDealOrigin': return 'felt-deal-origin';
   }
 }
