@@ -7,35 +7,39 @@
  * JSON:
  *
  *   {
- *     xOffsetDia:  number,   // chip-DIAMETER ratio
- *     yOffsetDia:  number,   // chip-DIAMETER ratio
- *     maxWidthDia: number,   // chip-DIAMETER ratio
+ *     anchorStart: 'upper' | 'lower' | 'inner' | 'outer',
+ *     attachment:  'inner' | 'center' | 'outer',
+ *     xOffsetDia:  number,    // chip-DIAMETER ratio
+ *     yOffsetDia:  number,    // chip-DIAMETER ratio
+ *     maxWidthDia: number,    // chip-DIAMETER ratio
  *   }
  *
- * COORDINATE CONTRACT (truthful):
- *   Origin     = chip-circle CENTER
- *   Vector to  = nameplate VISUAL CENTER
- *   Units      = chip-circle DIAMETER (viewport-stable)
+ * COORDINATE CONTRACT
+ *   1. ANCHOR START — reference point on chip-circle perimeter:
+ *        upper = top of chip
+ *        lower = bottom of chip
+ *        inner = side of chip facing table center  (mirrors per seat)
+ *        outer = side of chip facing away from table center (mirrors)
+ *   2. NAMEPLATE ATTACHMENT — horizontal pin point on the pill:
+ *        inner  = pill inner edge   (mirrors per seat)
+ *        center = pill horizontal center
+ *        outer  = pill outer edge   (mirrors per seat)
+ *      Vertical pin is implied by anchor:
+ *        anchor=upper        → pill bottom pinned
+ *        anchor=lower        → pill top pinned
+ *        anchor=inner/outer  → pill vertical center pinned
+ *   3. OFFSETS (after anchor + attachment resolve base placement):
+ *        X: negative = outward (mirrored), positive = inward (mirrored)
+ *        Y: negative = upward,             positive = downward
+ *      Units are chip-circle DIAMETERS (viewport-stable).
  *
- *   X = 0,  Y = 0  ⇒ nameplate center sits directly over chip center.
- *   Y < 0          ⇒ nameplate moves UPWARD.
- *   Y > 0          ⇒ nameplate moves DOWNWARD.
- *   X < 0          ⇒ nameplate moves OUTWARD (mirrored both seat sides).
- *   X > 0          ⇒ nameplate moves INWARD  (mirrored both seat sides).
- *   Center-anchored slots (HOME=-1, BOTTOM_RAIL=-3) collapse the
- *   horizontal axis to 0 because "inner / outer" have no meaning.
+ *   Center-anchored cluster slots (HOME=-1, BOTTOM_RAIL=-3) collapse
+ *   the inner/outer axis to the center value (no left/right table-edge
+ *   exists for them); attachment 'inner' / 'outer' resolve to 'center'
+ *   and the X offset collapses to 0.
  *
- * Baseline preservation (measured from today's rendered geometry, NOT
- * a hidden legacy CSS offset):
- *   Chip diameter: 40px (20px radius)
- *   Pill height:  ≈ 14.5px (text-[10px] line-height 1.05 = 10.5px
- *                 + py-[1px] = 2px + border 1px×2 = 2px)
- *   Legacy gap between pill bottom edge and chip top edge: 2px
- *   ⇒ nameplate center distance above chip center:
- *       chipRadius (20) + gap (2) + pillHalfHeight (7.25) = 29.25px
- *   ⇒ yOffsetDia = -29.25 / 40 ≈ -0.73
- *   Horizontal: pill is currently chip-centered ⇒ xOffsetDia = 0
- *   Max width: legacy max-w-[88px] = 88/40 = 2.2 dia
+ * BASELINE (matches current visual placement of the above-chip pill):
+ *   anchorStart = upper, attachment = center, X = 0, Y = 0, maxW = 2.2.
  *
  * Realtime: routed through GeometryLabDefaultsLoader's single channel
  * via registerDomain — every client receives admin saves automatically.
@@ -47,7 +51,12 @@
 
 import { registerDomain } from '@/lib/geometryLab/defaultsRegistry';
 
+export type ShellNameplateAnchorStart = 'upper' | 'lower' | 'inner' | 'outer';
+export type ShellNameplateAttachment = 'inner' | 'center' | 'outer';
+
 export interface ShellNameplateConfig {
+  anchorStart: ShellNameplateAnchorStart;
+  attachment: ShellNameplateAttachment;
   xOffsetDia: number;
   yOffsetDia: number;
   maxWidthDia: number;
@@ -55,11 +64,16 @@ export interface ShellNameplateConfig {
 
 export const SHELL_NAMEPLATE_KEY = 'shell_nameplate';
 
-// Seeded baseline truthfully describes today's rendered placement
-// relative to chip-circle center (see header for derivation).
+export const SHELL_NAMEPLATE_ANCHOR_OPTIONS: ShellNameplateAnchorStart[] =
+  ['upper', 'lower', 'inner', 'outer'];
+export const SHELL_NAMEPLATE_ATTACHMENT_OPTIONS: ShellNameplateAttachment[] =
+  ['inner', 'center', 'outer'];
+
 export const DEFAULT_SHELL_NAMEPLATE: ShellNameplateConfig = {
+  anchorStart: 'upper',
+  attachment: 'center',
   xOffsetDia: 0,
-  yOffsetDia: -0.73,
+  yOffsetDia: 0,
   maxWidthDia: 2.2,
 };
 
@@ -73,12 +87,25 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+function sanitizeAnchor(v: unknown): ShellNameplateAnchorStart {
+  return SHELL_NAMEPLATE_ANCHOR_OPTIONS.includes(v as ShellNameplateAnchorStart)
+    ? (v as ShellNameplateAnchorStart)
+    : DEFAULT_SHELL_NAMEPLATE.anchorStart;
+}
+function sanitizeAttachment(v: unknown): ShellNameplateAttachment {
+  return SHELL_NAMEPLATE_ATTACHMENT_OPTIONS.includes(v as ShellNameplateAttachment)
+    ? (v as ShellNameplateAttachment)
+    : DEFAULT_SHELL_NAMEPLATE.attachment;
+}
+
 function sanitize(value: unknown): ShellNameplateConfig {
   const v = (value ?? {}) as Record<string, unknown>;
   const x = Number(v.xOffsetDia);
   const y = Number(v.yOffsetDia);
   const w = Number(v.maxWidthDia);
   return {
+    anchorStart: sanitizeAnchor(v.anchorStart),
+    attachment: sanitizeAttachment(v.attachment),
     xOffsetDia: Number.isFinite(x)
       ? clamp(x, SHELL_NAMEPLATE_BOUNDS.offset.min, SHELL_NAMEPLATE_BOUNDS.offset.max)
       : DEFAULT_SHELL_NAMEPLATE.xOffsetDia,
@@ -122,6 +149,8 @@ function notify() {
 export function applyShellNameplateCssVars(c: ShellNameplateConfig): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
+  root.style.setProperty('--shell-nameplate-anchor-start', c.anchorStart);
+  root.style.setProperty('--shell-nameplate-attachment', c.attachment);
   root.style.setProperty('--shell-nameplate-x-dia', String(c.xOffsetDia));
   root.style.setProperty('--shell-nameplate-y-dia', String(c.yOffsetDia));
   root.style.setProperty('--shell-nameplate-maxw-dia', String(c.maxWidthDia));
