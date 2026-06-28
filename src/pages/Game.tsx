@@ -53,6 +53,8 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
+import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from "@/lib/cribbageDealerDrawTrace";
+import CribDealerDrawTraceOverlay from "@/components/debug/CribDealerDrawTraceOverlay";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
