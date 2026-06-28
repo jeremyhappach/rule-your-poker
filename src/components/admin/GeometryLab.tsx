@@ -82,10 +82,10 @@ import {
 
 // Non-anchored artifacts that the Lab picker still needs to surface so
 // their per-artifact overlap controls have a host section. The geometry
-// editor (anchor/size) auto-hides for these.
-const LAB_EXTRA_ARTIFACT_IDS: Partial<Record<GameKey, string[]>> = {
-  cribbage: ["cribbage.countingRow"],
-};
+// editor (anchor/size) auto-hides for these. (cribbage.countingRow is
+// now anchored — Wave 6 — so it no longer needs to live here.)
+const LAB_EXTRA_ARTIFACT_IDS: Partial<Record<GameKey, string[]>> = {};
+
 
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
