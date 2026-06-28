@@ -167,6 +167,16 @@ serve(async (req) => {
       });
     }
 
+    // No-Timers global harness: short-circuit BEFORE any mutation.
+    // Deadlines remain intact in DB so flipping the harness OFF
+    // resumes normal enforcement on the next invocation.
+    if (await isNoTimersEnabled(supabase)) {
+      return new Response(
+        JSON.stringify({ success: true, disabled: true, reason: 'no_timers' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // DEBUG: allow temporarily disabling client-side enforcement to isolate race conditions.
     // Set system_settings.key = 'debug_disable_enforcement' with value:
     // - true (disables everything)
