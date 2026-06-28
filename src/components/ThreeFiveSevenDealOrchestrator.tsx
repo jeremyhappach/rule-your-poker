@@ -139,11 +139,13 @@ export function ThreeFiveSevenDealOrchestrator({
       ? `idx * inspectionMode.launchSpacingMs(800); order=[${recipientPositions.join(',')}]`
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}; order=[${recipientPositions.join(',')}]`;
 
-    // Dealer seat is the canonical visual source for ALL flights —
-    // including when the viewer is the dealer. We mount an invisible
-    // `[data-card-anchor="seat-${dealerPosition}"]` anchor below when
-    // dealerIsSelf so resolveCardEndpoint always finds it.
-    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerPosition };
+    // When the local viewer is the dealer, EVERY flight (self + opponent)
+    // launches from the canonical bottom-center felt deal origin —
+    // a static [data-card-anchor="felt-deal-origin"] anchor inside the
+    // canonical felt surface. Recipient determines destination only.
+    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
+      ? { kind: 'feltDealOrigin' }
+      : { kind: 'seat', position: dealerPosition };
     const intents: CardTransportIntent[] = [];
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
