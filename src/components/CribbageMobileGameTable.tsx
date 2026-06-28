@@ -6365,11 +6365,17 @@ export const CribbageMobileGameTable = ({
                     }}
                   />
                 )}
-                {/* Session-level dealer-selection writer lives in Game.tsx
-                    (single authoritative HighCardDealerSelection owner). The
-                    table only renders the surface — no inner controller mount
-                    here to avoid a duplicate useHighCardDealerSelection
-                    initializer for the same gameId/host. */}
+                {isDealerSelection && onDealerSelectionCardsUpdate && onDealerSelectionComplete && (
+                  <CribbageDealerSelectionController
+                    gameId={gameId}
+                    players={players as any}
+                    isHost={isHost}
+                    syncedState={dealerSelectionSyncedState}
+                    onCardsUpdate={onDealerSelectionCardsUpdate}
+                    onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
+                    onComplete={onDealerSelectionComplete}
+                  />
+                )}
                 {isDealerSelection && effectiveHighCardCards.length > 0 && (
                   <CribbageDealerSelectionVisibilityTracker
                     gameId={gameId}
