@@ -106,7 +106,7 @@ export function ShellNameplateAdminSection() {
           className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => reset()}
         >
-          Reset section to defaults (x=0, y=0, maxW=
+          Reset section to defaults (x=0, y={DEFAULT_SHELL_NAMEPLATE.yOffsetDia}, maxW=
           {DEFAULT_SHELL_NAMEPLATE.maxWidthDia})
         </button>
       </div>
