@@ -159,6 +159,41 @@ function buildSeedForm(
   };
 }
 
+/**
+ * Derive the canonical `GeometryOverride` payload a FormState would commit.
+ * Shared by the commit adapter (Apply) and the live-preview mirror effect
+ * so both paths resolve to byte-identical overrides — guaranteeing zero
+ * visual jump between draft preview and post-Apply committed state.
+ */
+function buildOverrideFromForm(
+  artifactId: string,
+  game: string,
+  f: FormState,
+): GeometryOverride {
+  const anchorX = num(f.anchorX);
+  const anchorY = num(f.anchorY);
+  const widthPct =
+    f.sizeMode === "heightDriven" ? null : num(f.widthPct);
+  const heightPct =
+    f.sizeMode === "widthDriven" ? null : num(f.heightPct);
+  const aspectRatio =
+    f.sizeMode === "rect" ? null : num(f.aspectRatio);
+  return {
+    artifact_id: artifactId,
+    game,
+    anchor_x: anchorX,
+    anchor_y: anchorY,
+    anchor_origin: f.anchorOrigin,
+    size_mode: f.sizeMode,
+    width_pct: widthPct,
+    height_pct: heightPct,
+    aspect_ratio: aspectRatio,
+  };
+}
+
+const GEOMETRY_OVERRIDE_DRAFT_PREFIX = "geometry_overrides:";
+
+
 
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
