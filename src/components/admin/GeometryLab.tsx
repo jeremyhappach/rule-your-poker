@@ -66,6 +66,7 @@ import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
+import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
@@ -544,6 +545,16 @@ function ShellGlobalSections() {
       {/* No Timers moved to Admin Settings (near Under Maintenance). */}
       <CollapsibleSection title="Card Front Design">
         <CardFrontDesignPanel />
+      </CollapsibleSection>
+      <CollapsibleSection title="Seat Cluster">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Nameplate
+            </h4>
+            <ShellNameplateAdminSection />
+          </div>
+        </div>
       </CollapsibleSection>
       <CollapsibleSection title="HUD Stack">
         <p className="text-xs text-muted-foreground">

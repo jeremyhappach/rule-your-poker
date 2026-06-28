@@ -575,6 +575,26 @@ export function CanonicalSeatCluster({
     ? 'right-0 translate-x-full'
     : 'left-0 -translate-x-full';
 
+  // Global Shell → Seat Cluster → Nameplate config drives max width
+  // and X/Y offsets (relative to the chip-circle DIAMETER). X is
+  // mirrored by side so positive = inward toward felt center for
+  // BOTH left- and right-side opponent seats. Center-anchored slots
+  // (HOME=-1, BOTTOM_RAIL=-3) collapse to 0 because "inward" has no
+  // horizontal meaning there. These are computed unconditionally so
+  // both the chip-cell render branch and the name-row wrapper below
+  // share the same offset/maxWidth styles.
+  const chipDiameterPx = chipRadiusPx * 2;
+  const isCenterAnchoredSlot = slot === -1 || slot === -3;
+  const inwardCssSignForName = isCenterAnchoredSlot ? 0 : (isRightSideCanonicalSlot(slot) ? -1 : 1);
+  const namePlateMaxWidthStyle: CSSProperties = {
+    maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
+  };
+  const namePlateOffsetStyle: CSSProperties = {
+    transform:
+      `translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
+      ` calc(var(--shell-nameplate-y-dia, 0) * ${chipDiameterPx}px))`,
+  };
+
   // Build chip-cell contents and name row.
   let chipCellContents: ReactNode = null;
   let nameRow: ReactNode = null;
@@ -584,9 +604,10 @@ export function CanonicalSeatCluster({
         ref={nameRowRef}
         data-canonical-seat-name-row=""
         className={cn(
-          'inline-flex items-center gap-1 rounded-[3px] px-1 py-[1px] max-w-[88px]',
+          'inline-flex items-center gap-1 rounded-[3px] px-1 py-[1px]',
           'bg-black/75 backdrop-blur-sm border border-black/40',
         )}
+        style={namePlateMaxWidthStyle}
       >
         <span
           className="text-[10px] text-white font-semibold truncate min-w-0 leading-[1.05]"
@@ -700,7 +721,7 @@ export function CanonicalSeatCluster({
     }
     if (effectiveNamePlacement === 'above-chip' && nameRow) {
       aboveChipNodes.push(
-        <div key="name" className="relative inline-flex items-center">
+        <div key="name" className="relative inline-flex items-center" style={namePlateOffsetStyle}>
           {nameRow}
           {isDealer && (
             <div
