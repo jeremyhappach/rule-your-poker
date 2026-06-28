@@ -60,6 +60,11 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       label: 'Near Double Skunk',
       description: 'Host seeded to 119, opponents to 10 — one hand to a real double-skunk match win.',
     },
+    {
+      id: 'max_pegging_fan',
+      label: 'Max Pegging Fan',
+      description: 'Deterministic legal deal of low cards (A/2/3 ×2 suits each) — guarantees both players play all 8 cards without breaking 31, producing a maximum-length pegging row.',
+    },
   ],
   'gin-rummy': [
     NONE_HARNESS,
