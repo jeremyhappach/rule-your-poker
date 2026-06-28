@@ -575,27 +575,30 @@ export function CanonicalSeatCluster({
     ? 'right-0 translate-x-full'
     : 'left-0 -translate-x-full';
 
+  // Global Shell → Seat Cluster → Nameplate config drives max width
+  // and X/Y offsets (relative to the chip-circle DIAMETER). X is
+  // mirrored by side so positive = inward toward felt center for
+  // BOTH left- and right-side opponent seats. Center-anchored slots
+  // (HOME=-1, BOTTOM_RAIL=-3) collapse to 0 because "inward" has no
+  // horizontal meaning there. These are computed unconditionally so
+  // both the chip-cell render branch and the name-row wrapper below
+  // share the same offset/maxWidth styles.
+  const chipDiameterPx = chipRadiusPx * 2;
+  const isCenterAnchoredSlot = slot === -1 || slot === -3;
+  const inwardCssSignForName = isCenterAnchoredSlot ? 0 : (isRightSideCanonicalSlot(slot) ? -1 : 1);
+  const namePlateMaxWidthStyle: CSSProperties = {
+    maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
+  };
+  const namePlateOffsetStyle: CSSProperties = {
+    transform:
+      `translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
+      ` calc(var(--shell-nameplate-y-dia, 0) * ${chipDiameterPx}px))`,
+  };
+
   // Build chip-cell contents and name row.
   let chipCellContents: ReactNode = null;
   let nameRow: ReactNode = null;
   if (!hideChipBubble) {
-    // Global Shell → Seat Cluster → Nameplate config drives max width
-    // and X/Y offsets (relative to the chip-circle DIAMETER). X is
-    // mirrored by side so positive = inward toward felt center for
-    // BOTH left- and right-side opponent seats. Center-anchored slots
-    // (HOME=-1, BOTTOM_RAIL=-3, TOP_CENTER=-2) collapse to 0 because
-    // "inward" has no horizontal meaning there.
-    const chipDiameterPx = chipRadiusPx * 2;
-    const isCenterAnchoredSlot = slot === -1 || slot === -3;
-    const inwardCssSignForName = isCenterAnchoredSlot ? 0 : (isRightSideCanonicalSlot(slot) ? -1 : 1);
-    const namePlateMaxWidthStyle: CSSProperties = {
-      maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
-    };
-    const namePlateOffsetStyle: CSSProperties = {
-      transform:
-        `translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
-        ` calc(var(--shell-nameplate-y-dia, 0) * ${chipDiameterPx}px))`,
-    };
     nameRow = namePlacement === 'none' ? null : (
       <div
         ref={nameRowRef}
