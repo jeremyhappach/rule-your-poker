@@ -307,24 +307,9 @@ export function GeometryLab({ userId }: { userId: string }) {
       const info = descriptorByIdRef.current.get(id);
       const g = info?.game ?? game;
       const f = value as FormState;
-      const anchorX = num(f.anchorX);
-      const anchorY = num(f.anchorY);
-      const widthPct =
-        f.sizeMode === "heightDriven" ? null : num(f.widthPct);
-      const heightPct =
-        f.sizeMode === "widthDriven" ? null : num(f.heightPct);
-      const aspectRatio =
-        f.sizeMode === "rect" ? null : num(f.aspectRatio);
+      const override = buildOverrideFromForm(id, g, f);
       const payload: Record<string, unknown> = {
-        artifact_id: id,
-        game: g,
-        anchor_x: anchorX,
-        anchor_y: anchorY,
-        anchor_origin: f.anchorOrigin,
-        size_mode: f.sizeMode,
-        width_pct: widthPct,
-        height_pct: heightPct,
-        aspect_ratio: aspectRatio,
+        ...override,
         updated_by: userIdRef.current,
         updated_at: new Date().toISOString(),
       };
@@ -344,21 +329,12 @@ export function GeometryLab({ userId }: { userId: string }) {
       // snapshot so the panel re-seeds with the just-applied value
       // without waiting for the realtime echo. The async refresh that
       // follows is idempotent.
-      setOverrideOptimistic(id, {
-        artifact_id: id,
-        game: g,
-        anchor_x: anchorX,
-        anchor_y: anchorY,
-        anchor_origin: f.anchorOrigin,
-        size_mode: f.sizeMode,
-        width_pct: widthPct,
-        height_pct: heightPct,
-        aspect_ratio: aspectRatio,
-      });
+      setOverrideOptimistic(id, override);
       logGeometryLab("draft_commit_succeeded", { artifactId: id });
       return { ok: true };
     });
   };
+
   // Register synchronously during render so getDraft below never falls
   // through to defaultsRegistry (these keys are external-table backed,
   // not system_settings backed, and would otherwise throw).
