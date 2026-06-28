@@ -33,9 +33,13 @@ const EMPTY: GeometryOverridesMap = new Map();
 
 let snapshot: GeometryOverridesMap = EMPTY;
 const listeners = new Set<() => void>();
+let committedVersion = 0;
 
 function emit() {
+  committedVersion++;
+  invalidateMerged();
   for (const l of listeners) l();
+  for (const l of draftedListeners) l();
 }
 
 export function setGeometryOverrides(next: GeometryOverridesMap) {
@@ -70,6 +74,89 @@ function subscribe(l: () => void) {
 export function useGeometryOverrides(): GeometryOverridesMap {
   return useSyncExternalStore(subscribe, getGeometryOverridesSnapshot, getGeometryOverridesSnapshot);
 }
+
+// ---------------------------------------------------------------------------
+// Drafted overrides — local, in-memory, NOT broadcast. Populated by
+// Geometry Lab while the admin is editing an artifact draft, consumed by
+// `useDraftedGeometryOverrides()` for live preview in the editing client.
+// Drafts win per artifact id; cleared on Cancel / modal close / Apply.
+// ---------------------------------------------------------------------------
+
+let draftedSnapshot: Map<string, GeometryOverride> = new Map();
+const draftedListeners = new Set<() => void>();
+let draftedVersion = 0;
+
+export function setDraftedOverride(
+  id: string,
+  value: GeometryOverride | null,
+) {
+  const cur = draftedSnapshot.get(id);
+  if (value == null) {
+    if (cur === undefined) return;
+    const next = new Map(draftedSnapshot);
+    next.delete(id);
+    draftedSnapshot = next;
+  } else {
+    if (cur && JSON.stringify(cur) === JSON.stringify(value)) return;
+    const next = new Map(draftedSnapshot);
+    next.set(id, value);
+    draftedSnapshot = next;
+  }
+  draftedVersion++;
+  invalidateMerged();
+  for (const l of draftedListeners) l();
+}
+
+export function clearAllDraftedOverrides() {
+  if (draftedSnapshot.size === 0) return;
+  draftedSnapshot = new Map();
+  draftedVersion++;
+  invalidateMerged();
+  for (const l of draftedListeners) l();
+}
+
+let mergedCacheKey = -1;
+let mergedCacheValue: GeometryOverridesMap = EMPTY;
+function invalidateMerged() {
+  mergedCacheKey = -1;
+}
+function getMergedOverridesSnapshot(): GeometryOverridesMap {
+  const key = committedVersion * 1_000_003 + draftedVersion;
+  if (key === mergedCacheKey) return mergedCacheValue;
+  if (draftedSnapshot.size === 0) {
+    mergedCacheValue = snapshot;
+  } else {
+    const m = new Map(snapshot);
+    for (const [k, v] of draftedSnapshot) m.set(k, v);
+    mergedCacheValue = m;
+  }
+  mergedCacheKey = key;
+  return mergedCacheValue;
+}
+
+function subscribeMerged(l: () => void) {
+  listeners.add(l);
+  draftedListeners.add(l);
+  return () => {
+    listeners.delete(l);
+    draftedListeners.delete(l);
+  };
+}
+
+/**
+ * Merged committed-∪-drafted overrides for live preview. Drafts win per
+ * artifact id. Drafts are LOCAL to the editing client and disappear on
+ * Cancel / modal close / Apply. All runtime gameplay-geometry providers
+ * should consume this hook so Lab edits move the live table immediately.
+ */
+export function useDraftedGeometryOverrides(): GeometryOverridesMap {
+  return useSyncExternalStore(
+    subscribeMerged,
+    getMergedOverridesSnapshot,
+    getMergedOverridesSnapshot,
+  );
+}
+
 
 /**
  * Merge overrides into the descriptor list. Only `anchored` descriptors are
