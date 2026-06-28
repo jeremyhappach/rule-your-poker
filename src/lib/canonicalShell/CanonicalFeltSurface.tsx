@@ -204,6 +204,27 @@ export function CanonicalFeltSurface({
             }
           />
         )}
+        {/* Canonical bottom-center deal origin. Static 1×1 anchor directly
+            in front of the local viewer (HOME). Consumed via
+            CardEndpoint { kind: 'feltDealOrigin' } as the single source
+            for every deal flight when the local viewer is the dealer.
+            Snapshot stability: the anchor's DOM position never moves
+            within a deal batch, so resolveCardEndpoint returns the same
+            rect for every intent in the batch. */}
+        <div
+          aria-hidden="true"
+          data-card-anchor="felt-deal-origin"
+          data-anchor-owner="CanonicalFeltSurface.feltDealOrigin"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: 0,
+            width: 1,
+            height: 1,
+            transform: 'translate(-50%, 50%)',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
 
 
