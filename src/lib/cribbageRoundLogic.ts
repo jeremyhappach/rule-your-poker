@@ -2,6 +2,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
+import { ensureHarnessCacheLoaded } from './debugHarness/runtimeCache';
 import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
@@ -22,6 +23,10 @@ export async function startCribbageRound(
   console.log('[CRIBBAGE] Starting cribbage round', { gameId, isFirstHand });
 
   try {
+    // Ensure harness cache is hydrated so deterministic deal harnesses
+    // (e.g. max_pegging_fan) are honored on the very first hand.
+    await ensureHarnessCacheLoaded();
+
     // Fetch game data
     const { data: game, error: gameError } = await supabase
       .from('games')
@@ -207,6 +212,9 @@ export async function startNextCribbageHand(
   console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId });
 
   try {
+    // Ensure harness cache hydrated before deterministic deals on subsequent hands.
+    await ensureHarnessCacheLoaded();
+
     // Calculate the new state with rotated dealer and preserved scores
     const newState = startNewHand(previousState, playerIds);
     
