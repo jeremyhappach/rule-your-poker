@@ -343,6 +343,8 @@ export function GeometryLab({ userId }: { userId: string }) {
   if (descriptor) ensureRegistered(artifactId);
 
   // Unregister all on unmount so a closed modal does not leak adapters.
+  // Also clear any live drafted-overrides previews so the renderer
+  // collapses back to the committed snapshot on close/cancel/X.
   useEffect(() => {
     const set = registeredRef.current;
     return () => {
@@ -351,8 +353,37 @@ export function GeometryLab({ userId }: { userId: string }) {
         unregisterCommitAdapter(k);
       });
       set.clear();
+      clearAllDraftedOverrides();
     };
   }, [unregisterSeed, unregisterCommitAdapter]);
+
+  // Mirror dirty geometry_overrides:* drafts into the module-level
+  // drafted-overrides store so every gameplay-geometry provider that
+  // consumes `useDraftedGeometryOverrides()` re-resolves to the in-edit
+  // rect immediately — restoring the live-preview contract that the
+  // modal-wide draft refactor severed. Drafts win per artifact id. When
+  // a key stops being dirty (Cancel / Apply / Reset / value equals
+  // committed) we clear its drafted entry so the renderer collapses to
+  // the committed snapshot with zero visual jump.
+  const draftedIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const nextIds = new Set<string>();
+    for (const key of dirtyKeys) {
+      if (!key.startsWith(GEOMETRY_OVERRIDE_DRAFT_PREFIX)) continue;
+      const id = key.slice(GEOMETRY_OVERRIDE_DRAFT_PREFIX.length);
+      const info = descriptorByIdRef.current.get(id);
+      if (!info) continue;
+      const f = getDraft<FormState>(key);
+      setDraftedOverride(id, buildOverrideFromForm(id, info.game, f));
+      nextIds.add(id);
+    }
+    for (const prevId of draftedIdsRef.current) {
+      if (!nextIds.has(prevId)) setDraftedOverride(prevId, null);
+    }
+    draftedIdsRef.current = nextIds;
+  }, [dirtyKeys, getDraft]);
+
+
 
   // When the realtime override store changes for the selected artifact
   // and the user has no dirty edits, drop the cached draft so the next
