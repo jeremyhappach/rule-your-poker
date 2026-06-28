@@ -678,6 +678,9 @@ const Index = () => {
                       />
                     </div>
 
+                    {/* No Timers — global admin harness (sibling of Maintenance). */}
+                    <NoTimersSettingRow />
+
                     {/* Harnesses (master gate for all debug harnesses) */}
                     <div className="flex items-center justify-between py-2 bg-red-900/20 rounded-lg px-3 border border-red-600/30">
                       <div className="space-y-0.5">
