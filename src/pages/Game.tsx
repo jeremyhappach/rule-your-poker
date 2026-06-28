@@ -194,6 +194,7 @@ import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed, l
 import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
