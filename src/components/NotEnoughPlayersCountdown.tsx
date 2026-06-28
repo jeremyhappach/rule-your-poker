@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { handlePlayerRejoin } from "@/lib/playerStateEvaluation";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 
 interface NotEnoughPlayersCountdownProps {
   gameId: string;
