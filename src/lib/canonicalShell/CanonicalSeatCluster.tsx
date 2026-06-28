@@ -718,7 +718,7 @@ export function CanonicalSeatCluster({
     }
     if (effectiveNamePlacement === 'above-chip' && nameRow) {
       aboveChipNodes.push(
-        <div key="name" className="relative inline-flex items-center">
+        <div key="name" className="relative inline-flex items-center" style={namePlateOffsetStyle}>
           {nameRow}
           {isDealer && (
             <div
