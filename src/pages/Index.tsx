@@ -27,7 +27,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical, TimerOff } from "lucide-react";
+import { useNoTimersEnabled, setNoTimersEnabled } from "@/lib/geometryLab/noTimersStore";
 import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
 import {
   isWartimeEnabled,
