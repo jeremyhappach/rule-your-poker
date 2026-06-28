@@ -3464,6 +3464,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!showHighCardSelection) return;
     if (!cribbageState) return;
+    recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: true, next: false, callsite: 'cribbageState-arrived-effect', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
     setShowHighCardSelection(false);
   }, [showHighCardSelection, cribbageState]);
 
