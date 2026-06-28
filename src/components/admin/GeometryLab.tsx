@@ -489,9 +489,7 @@ function ShellGlobalSections() {
       <CollapsibleSection title="Table Demo">
         <TableDemoAdminSection />
       </CollapsibleSection>
-      <CollapsibleSection title="No Timers">
-        <NoTimersAdminSection />
-      </CollapsibleSection>
+      {/* No Timers moved to Admin Settings (near Under Maintenance). */}
       <CollapsibleSection title="Card Front Design">
         <CardFrontDesignPanel />
       </CollapsibleSection>
