@@ -23,6 +23,10 @@ export async function startCribbageRound(
   console.log('[CRIBBAGE] Starting cribbage round', { gameId, isFirstHand });
 
   try {
+    // Ensure harness cache is hydrated so deterministic deal harnesses
+    // (e.g. max_pegging_fan) are honored on the very first hand.
+    await ensureHarnessCacheLoaded();
+
     // Fetch game data
     const { data: game, error: gameError } = await supabase
       .from('games')
