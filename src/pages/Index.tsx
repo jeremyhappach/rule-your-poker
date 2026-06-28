@@ -1047,6 +1047,45 @@ const Index = () => {
   );
 };
 
+function NoTimersSettingRow() {
+  const enabled = useNoTimersEnabled();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex items-center justify-between py-2 bg-slate-800/40 rounded-lg px-3 border border-slate-500/30">
+      <div className="space-y-0.5">
+        <Label htmlFor="no-timers" className="flex items-center gap-2">
+          <TimerOff className="h-4 w-4 text-slate-300" />
+          No Timers
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Globally disables every timer/deadline auto-advance (client + server). Deadlines still write; flipping OFF restores normal behavior immediately.
+        </p>
+      </div>
+      <Switch
+        id="no-timers"
+        checked={enabled}
+        disabled={busy}
+        onCheckedChange={async (next) => {
+          setBusy(true);
+          const ok = await setNoTimersEnabled(next);
+          setBusy(false);
+          toast({
+            title: ok ? (next ? "No Timers Enabled" : "No Timers Disabled") : "Error",
+            description: ok
+              ? next
+                ? "All timer/deadline-driven auto-advances are suppressed."
+                : "Normal timer behavior restored on the next tick."
+              : "Failed to toggle No Timers.",
+            variant: ok ? "default" : "destructive",
+          });
+        }}
+        className="data-[state=checked]:bg-slate-300"
+      />
+    </div>
+  );
+}
+
 function WartimeDebugSettingRow() {
   const enabled = useSyncExternalStore(subscribeWartimeEnabled, isWartimeEnabled, isWartimeEnabled);
   const { toast } = useToast();
