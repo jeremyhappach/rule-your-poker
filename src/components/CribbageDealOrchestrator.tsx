@@ -6,13 +6,18 @@
  *
  *   expectedCount = cardsPerPlayer × seats.length
  *
- * (matches CARDS_PER_PLAYER[playerCount] in cribbageGameLogic.)
+ * Transport ownership split (post-contained-repair):
+ *   - Opponent recipients: from = dealer's canonical seat-cluster
+ *     anchor (`[data-card-anchor="seat-${dealerPos}"]`, emitted by
+ *     CanonicalSeatCluster). No Cribbage portal, no slot override.
+ *   - Self recipients: from = to = `hand-${selfPlayerId}`. The flight
+ *     resolves in place inside the Cribbage active-player pane, so
+ *     local cards drop directly into the active-hand box and never
+ *     traverse the felt.
  *
- * Self-recipient intents stamp `visibleFace` from the authoritative
- * `selfHand` so the in-flight asset is a real canonical face card
- * (rank + suit) instead of a plain white rectangle. Dispatch waits
- * until `selfHand.length >= cardsPerPlayer` so the visible faces are
- * deterministic.
+ * Self-hand anchor is portaled into the Cribbage-owned active pane
+ * (`[data-cribbage-active-pane-content]`). The 3-5-7 active-hand
+ * region is intentionally NOT consulted by Cribbage.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,9 +27,6 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
-import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
-import { SLOT } from '@/lib/canonicalShell/seatAnchors';
-import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 
@@ -59,11 +61,6 @@ export function CribbageDealOrchestrator({
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
-  const dealerIsSelf = dealerPlayerId === selfPlayerId;
-  const dealerSeatForOrigin = seats.find(s => s.playerId === dealerPlayerId) ?? null;
-  const dealerPositionForOrigin = dealerSeatForOrigin?.position ?? null;
-  const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
-  const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
 
   useEffect(() => {
@@ -89,41 +86,12 @@ export function CribbageDealOrchestrator({
       ? 'idx * inspectionMode.launchSpacingMs(800)'
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
 
-    // eslint-disable-next-line no-console
-    console.log('[GEOM STORE]', {
-      source: timing.source,
-      launchSpacingMs: timing.launchSpacingMs,
-      durationMs: timing.durationMs,
-      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
-      updatedAt: timing.updatedAt,
-      dbUpdatedAt: timing.dbUpdatedAt,
-      storeVersion: timing.storeVersion,
-      hydrated: timing.hydrated,
-      readAt: emitTime,
-      handContextId,
-    });
-
-    // eslint-disable-next-line no-console
-    console.log('[GEOM DEAL SETTINGS]', {
-      source: intentTimingSource,
-      launchSpacingMs: timing.launchSpacingMs,
-      durationMs: timing.durationMs,
-      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
-      effectiveStaggerMs: staggerMs,
-      effectiveDurationMs: durationMs,
-      inspectMode: inspect,
-      handContextId,
-      cardsPerPlayer,
-      seats: sorted.length,
-      expectedCards: cardsPerPlayer * sorted.length,
-      emitTime,
-      storeUpdatedAt: timing.updatedAt,
-      storeVersion: timing.storeVersion,
-      launchDelayFormula,
-    });
-
     const totalCount = cardsPerPlayer * sorted.length;
-    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
+    // Opponent flights launch from the dealer's canonical seat-cluster
+    // anchor (CanonicalSeatCluster emits [data-card-anchor="seat-${pos}"]
+    // for EVERY seat — including the local viewer at HOME). No Cribbage
+    // portal, no slot override.
+    const dealerOriginForOpponent: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
 
     const intents: CardTransportIntent[] = [];
     for (let round = 0; round < cardsPerPlayer; round++) {
@@ -132,17 +100,21 @@ export function CribbageDealOrchestrator({
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
         const launchDelayMs = idx * staggerMs;
-        // ONE TRANSPORT, ONE CARDBACK — all flights render the canonical
-        // cardback. The reveal moment is arrival, when the destination
-        // (opponent stack or self hand) claims ownership of the real card.
+        // Self-recipient: from == to (hand). Card resolves in place inside
+        // the Cribbage active-player pane — no felt traversal, no top-center
+        // origin, no 3-5-7 fallback.
+        const from: CardTransportIntent['from'] = isSelf
+          ? { kind: 'hand', playerId: selfPlayerId }
+          : dealerOriginForOpponent;
+        const to: CardTransportIntent['to'] = isSelf
+          ? { kind: 'hand', playerId: selfPlayerId }
+          : { kind: 'oppStack', position: r.position };
         intents.push({
           id: `${handContextId}#card-${idx}`,
           cardId: `${handContextId}#card-${idx}`,
           face: 'hidden',
-          from: dealerOrigin,
-          to: isSelf
-            ? { kind: 'hand', playerId: selfPlayerId }
-            : { kind: 'oppStack', position: r.position },
+          from,
+          to,
           durationMs,
           launchDelayMs,
           ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
@@ -177,45 +149,23 @@ export function CribbageDealOrchestrator({
 
     dispatchedRef.current = true;
     deal.beginDeal(totalCount);
-    // eslint-disable-next-line no-console
-    for (const it of intents) console.log('[INTENT STAMP]', {
-      intentId: it.id,
-      launchDelayMs: it.launchDelayMs,
-      durationMs: it.durationMs,
-      ownershipClaimDelayMs: it.ownershipClaimDelayMs,
-      launchSpacing: it.dealTimingSettings?.effectiveLaunchSpacingMs,
-      source: it.intentTimingSource,
-      storeLaunchSpacingMs: it.dealTimingStoreSnapshot?.launchSpacingMs,
-      storeDurationMs: it.dealTimingStoreSnapshot?.durationMs,
-      storeOwnershipClaimDelayMs: it.dealTimingStoreSnapshot?.ownershipClaimDelayMs,
-      storeUpdatedAt: it.dealTimingStoreSnapshot?.updatedAt,
-      storeVersion: it.dealTimingStoreSnapshot?.storeVersion,
-      launchDelayFormula: it.launchDelayFormula,
-      expectedStartTime: emitTime + (it.launchDelayMs ?? 0),
-      expectedArrivalTime: emitTime + (it.launchDelayMs ?? 0) + (it.durationMs ?? 0),
-      handContextId,
-    });
     ct.dispatchMany(intents);
-    if (typeof window !== 'undefined' && (window as unknown as { __DEAL_DEBUG?: boolean }).__DEAL_DEBUG) {
-      // eslint-disable-next-line no-console
-      console.log('[cribbage-deal] dispatched', {
-        handContextId,
-        dealerPlayerId: dealerPlayerId.slice(0, 8),
-        selfPlayerId: selfPlayerId.slice(0, 8),
-        dealerPosition: dealerSeat.position,
-        cardsPerPlayer,
-        totalCount,
-        intentCount: intents.length,
-      });
-    }
   }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated]);
 
-  // Portal canonical hand anchor into the active-player pane, near
-  // the TOP edge — cards land on top and fan grows downward.
+  // Portal canonical hand anchor into the Cribbage-owned active pane
+  // ([data-cribbage-active-pane-content]). Anchor is layout-inert
+  // (absolute, pointer-events:none) and sits at top-center of the pane
+  // so dropped cards land at the natural top-of-hand position.
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
-    setSelfHandRegion(el);
+    const find = () => document.querySelector('[data-cribbage-active-pane-content]') as HTMLElement | null;
+    setSelfHandRegion(find());
+    const observer = new MutationObserver(() => {
+      const next = find();
+      setSelfHandRegion(prev => (prev === next ? prev : next));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [handContextId, selfPlayerId]);
 
   const anchorEl = (
@@ -231,29 +181,10 @@ export function CribbageDealOrchestrator({
         pointerEvents: 'none',
       }}
       data-card-anchor={`hand-${selfPlayerId}`}
-      data-canonical-self-hand-anchor-position="top-of-pane"
+      data-canonical-self-hand-anchor-position="cribbage-active-pane-top"
       data-anchor-owner="CribbageDealOrchestrator.selfHandRegion"
     />
   );
-  const selfDealerOriginEl =
-    dealerIsSelf && dealerPositionForOrigin != null && selfDealerFelt && selfDealerFeltIsSurface ? (
-      <div
-        aria-hidden="true"
-        className={`absolute ${getCanonicalSlotPlacement(SLOT.HOME).className} pointer-events-none`}
-        style={{ width: 40, height: 40 }}
-        data-card-anchor={`seat-${dealerPositionForOrigin}`}
-        data-canonical-dealer-origin-self="cribbage"
-        data-canonical-shell-viewer-card-endpoint="cribbage-dealer-origin"
-        data-anchor-owner="CribbageDealOrchestrator.selfDealerFeltOrigin"
-      />
-    ) : null;
 
-  return (
-    <>
-      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl}
-      {selfDealerOriginEl && selfDealerFelt
-        ? createPortal(selfDealerOriginEl, selfDealerFelt)
-        : null}
-    </>
-  );
+  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : null;
 }
