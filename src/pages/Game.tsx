@@ -5612,6 +5612,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const autoFoldingRef = useRef(false);
   const countdownArmedRoundIdRef = useRef<string | null>(null);
   useEffect(() => {
+    // No-Timers global harness: timer-expiry auto-fold is forbidden.
+    // Deadlines still write; flipping the harness OFF restores normal
+    // behavior on the next deadline.
+    if (isNoTimersEnabledCached()) return;
     const isHolmGame = game?.game_type === 'holm-game';
 
     // Arm the timeout only after we have seen a positive countdown for the current round.
