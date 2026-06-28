@@ -6,6 +6,10 @@ import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
 import { bootstrapDealTiming } from "@/lib/geometryLab/dealTimingStore";
 import { bootstrapTableDemo } from "@/lib/geometryLab/tableDemoStore";
+// Side-effect import: registers the `no_timers` domain with the Geometry Lab
+// defaults registry before <GeometryLabDefaultsLoader /> performs its initial
+// fetch. No bootstrap fn — registration runs at module load.
+import "@/lib/geometryLab/noTimersStore";
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
