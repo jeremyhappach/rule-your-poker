@@ -28,6 +28,7 @@ import {
   type SizingMode,
 } from '@/lib/holm/showdownConfig';
 import { useDomainDraft } from '@/lib/geometryLab/GeometryLabDraftProvider';
+import { BufferedRatioInput } from './BufferedRatioInput';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
