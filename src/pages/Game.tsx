@@ -3438,6 +3438,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
+  useEffect(() => {
+    // No-Timers harness: suppress decision countdown surface + ticking.
+    if (isNoTimersEnabledCached()) {
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
+      setTimeLeft(null);
+      return;
+    }
     const is357TimerBlocked =
       game?.game_type === '3-5-7' ||
       game?.game_type === '3-5-7-game' ||
