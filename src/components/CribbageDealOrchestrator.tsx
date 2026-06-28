@@ -113,10 +113,14 @@ export function CribbageDealOrchestrator({
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
-    const dealerIsSelf = dealerPlayerId === selfPlayerId;
-    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
-      ? { kind: 'hand', playerId: selfPlayerId }
-      : { kind: 'seat', position: dealerSeat.position };
+    // ORIGIN = DEALER SEAT (always). Mirrors Holm/357 orchestrator
+    // contract: cards visibly originate from the dealer's seat
+    // regardless of whether the viewer is the dealer. The self-as-
+    // dealer case relies on the dealer seat cluster's canonical
+    // [data-card-anchor="seat-${position}"] anchor mounted in
+    // CanonicalSeatCluster — no separate "hand" origin fallback,
+    // which previously routed cards through a top-of-felt anchor.
+    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
     const intents: CardTransportIntent[] = [];
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (let off = 1; off <= sorted.length; off++) {
@@ -206,7 +210,11 @@ export function CribbageDealOrchestrator({
   // the TOP edge — cards land on top and fan grows downward.
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    // Cribbage's active-player hand region. Falls back to the legacy
+    // 3-5-7 selector for robustness during cross-game transitions.
+    const el =
+      (document.querySelector('[data-cribbage-active-pane-content]') as HTMLElement | null) ??
+      (document.querySelector('[data-357-active-hand-region]') as HTMLElement | null);
     setSelfHandRegion(el);
   }, [handContextId, selfPlayerId]);
 
