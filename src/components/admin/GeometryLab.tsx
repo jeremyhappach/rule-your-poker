@@ -489,6 +489,9 @@ function ShellGlobalSections() {
       <CollapsibleSection title="Table Demo">
         <TableDemoAdminSection />
       </CollapsibleSection>
+      <CollapsibleSection title="No Timers">
+        <NoTimersAdminSection />
+      </CollapsibleSection>
       <CollapsibleSection title="Card Front Design">
         <CardFrontDesignPanel />
       </CollapsibleSection>
