@@ -13090,6 +13090,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       {/* StartupFlightRecorderOverlay is mounted once at App.tsx; do not
           duplicate here. */}
+      <CribDealerDrawTraceOverlay gameId={gameId ?? null} />
     </VisualPreferencesProvider>
   );
 };
