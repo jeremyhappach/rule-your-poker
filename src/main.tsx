@@ -10,6 +10,10 @@ import { bootstrapTableDemo } from "@/lib/geometryLab/tableDemoStore";
 // defaults registry before <GeometryLabDefaultsLoader /> performs its initial
 // fetch. No bootstrap fn — registration runs at module load.
 import "@/lib/geometryLab/noTimersStore";
+// Side-effect import: registers `shell_nameplate` domain (global
+// Shell → Seat Cluster → Nameplate). Applies CSS-var defaults at
+// import time; the Geometry Lab loader fetches the committed row.
+import "@/lib/canonicalShell/shellNameplateConfig";
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
