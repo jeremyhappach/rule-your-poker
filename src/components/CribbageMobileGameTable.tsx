@@ -3082,6 +3082,7 @@ export const CribbageMobileGameTable = ({
       setHighCardCards([]);
       setHighCardWinnerPosition(null);
       setHighCardSyncedState(null);
+      recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: false, callsite: 'dealer-game-reset', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
       setShowHighCardSelection(false);
       announcedDealerResolvedRef.current = null;
       // Reset forward-only local round identity. Without this, the
