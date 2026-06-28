@@ -97,6 +97,8 @@ export const NotEnoughPlayersCountdown = ({
 
   // Countdown timer using interval for reliable ticking
   useEffect(() => {
+    // No-Timers harness: freeze the lobby revert countdown.
+    if (isNoTimersEnabledCached()) return;
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
