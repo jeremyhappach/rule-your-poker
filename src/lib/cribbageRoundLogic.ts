@@ -212,6 +212,9 @@ export async function startNextCribbageHand(
   console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId });
 
   try {
+    // Ensure harness cache hydrated before deterministic deals on subsequent hands.
+    await ensureHarnessCacheLoaded();
+
     // Calculate the new state with rotated dealer and preserved scores
     const newState = startNewHand(previousState, playerIds);
     
