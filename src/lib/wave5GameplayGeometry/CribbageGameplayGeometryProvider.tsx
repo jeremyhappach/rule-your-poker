@@ -55,7 +55,7 @@ import {
   getCribbageArtifactDescriptors,
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
-import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
+import { useDraftedGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 
 export interface CribbageGameplayGeometryContextValue {
@@ -185,7 +185,7 @@ export function CribbageGameplayGeometryProvider({
   const lastHashRef = useRef<string | null>(null);
 
   // Canonical descriptors — single source of truth.
-  const overrides = useGeometryOverrides();
+  const overrides = useDraftedGeometryOverrides();
   const canonicalDescriptors = useMemo(
     () =>
       applyGeometryOverrides(

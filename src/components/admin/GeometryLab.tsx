@@ -34,9 +34,12 @@ import { toast } from "sonner";
 import {
   useGeometryOverrides,
   setOverrideOptimistic,
+  setDraftedOverride,
+  clearAllDraftedOverrides,
   type GeometryOverride,
   type SizeMode,
 } from "@/lib/geometryLab/store";
+
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
 import {
   ARTIFACT_DESCRIPTOR_FACTORIES,
@@ -156,6 +159,41 @@ function buildSeedForm(
   };
 }
 
+/**
+ * Derive the canonical `GeometryOverride` payload a FormState would commit.
+ * Shared by the commit adapter (Apply) and the live-preview mirror effect
+ * so both paths resolve to byte-identical overrides — guaranteeing zero
+ * visual jump between draft preview and post-Apply committed state.
+ */
+function buildOverrideFromForm(
+  artifactId: string,
+  game: string,
+  f: FormState,
+): GeometryOverride {
+  const anchorX = num(f.anchorX);
+  const anchorY = num(f.anchorY);
+  const widthPct =
+    f.sizeMode === "heightDriven" ? null : num(f.widthPct);
+  const heightPct =
+    f.sizeMode === "widthDriven" ? null : num(f.heightPct);
+  const aspectRatio =
+    f.sizeMode === "rect" ? null : num(f.aspectRatio);
+  return {
+    artifact_id: artifactId,
+    game,
+    anchor_x: anchorX,
+    anchor_y: anchorY,
+    anchor_origin: f.anchorOrigin,
+    size_mode: f.sizeMode,
+    width_pct: widthPct,
+    height_pct: heightPct,
+    aspect_ratio: aspectRatio,
+  };
+}
+
+const GEOMETRY_OVERRIDE_DRAFT_PREFIX = "geometry_overrides:";
+
+
 
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
@@ -233,11 +271,13 @@ export function GeometryLab({ userId }: { userId: string }) {
     setDraft,
     resetDomain,
     isDomainDirty,
+    dirtyKeys,
     registerSeed,
     unregisterSeed,
     registerCommitAdapter,
     unregisterCommitAdapter,
   } = useGeometryLabDraft();
+
 
   // Refs let the seed/commit adapters always read the latest descriptor
   // and override snapshot without re-registering on every render.
@@ -269,24 +309,9 @@ export function GeometryLab({ userId }: { userId: string }) {
       const info = descriptorByIdRef.current.get(id);
       const g = info?.game ?? game;
       const f = value as FormState;
-      const anchorX = num(f.anchorX);
-      const anchorY = num(f.anchorY);
-      const widthPct =
-        f.sizeMode === "heightDriven" ? null : num(f.widthPct);
-      const heightPct =
-        f.sizeMode === "widthDriven" ? null : num(f.heightPct);
-      const aspectRatio =
-        f.sizeMode === "rect" ? null : num(f.aspectRatio);
+      const override = buildOverrideFromForm(id, g, f);
       const payload: Record<string, unknown> = {
-        artifact_id: id,
-        game: g,
-        anchor_x: anchorX,
-        anchor_y: anchorY,
-        anchor_origin: f.anchorOrigin,
-        size_mode: f.sizeMode,
-        width_pct: widthPct,
-        height_pct: heightPct,
-        aspect_ratio: aspectRatio,
+        ...override,
         updated_by: userIdRef.current,
         updated_at: new Date().toISOString(),
       };
@@ -306,27 +331,20 @@ export function GeometryLab({ userId }: { userId: string }) {
       // snapshot so the panel re-seeds with the just-applied value
       // without waiting for the realtime echo. The async refresh that
       // follows is idempotent.
-      setOverrideOptimistic(id, {
-        artifact_id: id,
-        game: g,
-        anchor_x: anchorX,
-        anchor_y: anchorY,
-        anchor_origin: f.anchorOrigin,
-        size_mode: f.sizeMode,
-        width_pct: widthPct,
-        height_pct: heightPct,
-        aspect_ratio: aspectRatio,
-      });
+      setOverrideOptimistic(id, override);
       logGeometryLab("draft_commit_succeeded", { artifactId: id });
       return { ok: true };
     });
   };
+
   // Register synchronously during render so getDraft below never falls
   // through to defaultsRegistry (these keys are external-table backed,
   // not system_settings backed, and would otherwise throw).
   if (descriptor) ensureRegistered(artifactId);
 
   // Unregister all on unmount so a closed modal does not leak adapters.
+  // Also clear any live drafted-overrides previews so the renderer
+  // collapses back to the committed snapshot on close/cancel/X.
   useEffect(() => {
     const set = registeredRef.current;
     return () => {
@@ -335,8 +353,37 @@ export function GeometryLab({ userId }: { userId: string }) {
         unregisterCommitAdapter(k);
       });
       set.clear();
+      clearAllDraftedOverrides();
     };
   }, [unregisterSeed, unregisterCommitAdapter]);
+
+  // Mirror dirty geometry_overrides:* drafts into the module-level
+  // drafted-overrides store so every gameplay-geometry provider that
+  // consumes `useDraftedGeometryOverrides()` re-resolves to the in-edit
+  // rect immediately — restoring the live-preview contract that the
+  // modal-wide draft refactor severed. Drafts win per artifact id. When
+  // a key stops being dirty (Cancel / Apply / Reset / value equals
+  // committed) we clear its drafted entry so the renderer collapses to
+  // the committed snapshot with zero visual jump.
+  const draftedIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const nextIds = new Set<string>();
+    for (const key of dirtyKeys) {
+      if (!key.startsWith(GEOMETRY_OVERRIDE_DRAFT_PREFIX)) continue;
+      const id = key.slice(GEOMETRY_OVERRIDE_DRAFT_PREFIX.length);
+      const info = descriptorByIdRef.current.get(id);
+      if (!info) continue;
+      const f = getDraft<FormState>(key);
+      setDraftedOverride(id, buildOverrideFromForm(id, info.game, f));
+      nextIds.add(id);
+    }
+    for (const prevId of draftedIdsRef.current) {
+      if (!nextIds.has(prevId)) setDraftedOverride(prevId, null);
+    }
+    draftedIdsRef.current = nextIds;
+  }, [dirtyKeys, getDraft]);
+
+
 
   // When the realtime override store changes for the selected artifact
   // and the user has no dirty edits, drop the cached draft so the next
