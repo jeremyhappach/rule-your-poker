@@ -53,6 +53,8 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
+import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from "@/lib/cribbageDealerDrawTrace";
+import CribDealerDrawTraceOverlay from "@/components/debug/CribDealerDrawTraceOverlay";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
@@ -84,9 +86,48 @@ type HighCardDealerSelectionShimProps = {
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   onWinnerPositionUpdate?: (position: number | null) => void;
+  /** Crib-dealer-draw-trace: gating-input snapshot from the mount site. */
+  cribTraceGating?: Record<string, unknown>;
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
-  useHighCardDealerSelection(props);
+  const _cribTraceInstanceId = useCribDealerDrawSurfaceTrace({
+    gameId: props.gameId,
+    surface: 'Game.HighCardDealerSelection',
+    gating: {
+      ...(props.cribTraceGating ?? {}),
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      syncedStateNullness: props.syncedState == null ? 'null' : 'non-null',
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      syncedWinnerPosition: props.syncedState?.winnerPosition ?? null,
+      syncedIsComplete: !!props.syncedState?.isComplete,
+    },
+  });
+  useHighCardDealerSelection({
+    gameId: props.gameId,
+    players: props.players,
+    onComplete: (pos: number) => {
+      recordCribDealerDraw({
+        gameId: props.gameId,
+        surface: 'Game.HighCardDealerSelection',
+        controllerInstanceId: _cribTraceInstanceId,
+        event: 'completion',
+        payload: {
+          winnerPosition: pos,
+          callbackTarget: 'Game.HighCardDealerSelection.props.onComplete',
+          handlerName: 'selectDealer',
+          gameStatusGate: 'dealer_selection',
+        },
+      });
+      props.onComplete(pos);
+    },
+    isHost: props.isHost,
+    allowBotDealers: props.allowBotDealers,
+    selectionVariant: props.selectionVariant,
+    syncedState: props.syncedState,
+    onCardsUpdate: props.onCardsUpdate,
+    onWinnerPositionUpdate: props.onWinnerPositionUpdate,
+  });
 
   // P-WAIT.C5: per-render trace — fires every render of the shim so
   // we can correlate cards-array transitions with parent re-renders
@@ -11278,7 +11319,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   syncedState={(game as any).dealer_selection_state ?? null}
                   onCardsUpdate={setDealerSelectionCards}
                   onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  cribTraceGating={{
+                    mountSite: 'Game.tsx:status-keyed-sibling-table',
+                    gameStatus: game.status,
+                    currentRoundId: currentRound?.id ?? null,
+                    gameType: game.game_type ?? null,
+                  }}
                 />
+
 
               </>
             )}
@@ -11689,6 +11737,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state ?? null}
                     onCardsUpdate={setDealerSelectionCards}
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                    cribTraceGating={{
+                      mountSite: 'Game.tsx:persistent-shell-preGameOverlay',
+                      gameStatus: game.status,
+                      currentRoundId: currentRound?.id ?? null,
+                      gameType: game.game_type ?? null,
+                    }}
                   />
                 )}
                 {/* DealerGameSetup overlay — gated on poker-shell only;
@@ -12217,6 +12271,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state ?? null}
                     onCardsUpdate={setDealerSelectionCards}
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                    cribTraceGating={{
+                      mountSite: 'Game.tsx:gin-rummy-dealer-overlay',
+                      gameStatus: game.status,
+                      currentRoundId: currentRound?.id ?? null,
+                      gameType: game.game_type ?? null,
+                    }}
                   />
                 )}
               </>
@@ -13049,6 +13109,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       {/* StartupFlightRecorderOverlay is mounted once at App.tsx; do not
           duplicate here. */}
+      <CribDealerDrawTraceOverlay gameId={gameId ?? null} />
     </VisualPreferencesProvider>
   );
 };

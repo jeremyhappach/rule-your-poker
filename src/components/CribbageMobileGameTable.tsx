@@ -27,6 +27,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
+import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from '@/lib/cribbageDealerDrawTrace';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
@@ -347,7 +348,25 @@ function CribbageDealerSelectionController(props: {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   onWinnerPositionUpdate: (position: number | null) => void;
   onComplete: (pos: number) => void;
+  surfaceTag: 'sessionPhase' | 'roundPhase';
+  gating: Record<string, unknown>;
 }) {
+  const surface =
+    props.surfaceTag === 'sessionPhase'
+      ? 'CribbageMobileGameTable.CribbageDealerSelectionController.sessionPhase'
+      : 'CribbageMobileGameTable.CribbageDealerSelectionController.roundPhase';
+  const controllerInstanceId = useCribDealerDrawSurfaceTrace({
+    gameId: props.gameId,
+    surface,
+    gating: {
+      ...props.gating,
+      isHost: props.isHost,
+      syncedStateNullness: props.syncedState == null ? 'null' : 'non-null',
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      syncedWinnerPosition: props.syncedState?.winnerPosition ?? null,
+      syncedIsComplete: !!props.syncedState?.isComplete,
+    },
+  });
   useHighCardDealerSelection({
     gameId: props.gameId,
     players: props.players,
@@ -357,7 +376,20 @@ function CribbageDealerSelectionController(props: {
     syncedState: props.syncedState,
     onCardsUpdate: props.onCardsUpdate,
     onWinnerPositionUpdate: props.onWinnerPositionUpdate,
-    onComplete: props.onComplete,
+    onComplete: (pos: number) => {
+      recordCribDealerDraw({
+        gameId: props.gameId,
+        surface,
+        controllerInstanceId,
+        event: 'completion',
+        payload: {
+          winnerPosition: pos,
+          callbackTarget: 'CribbageDealerSelectionController.props.onComplete',
+          gameStatusGate: props.surfaceTag === 'sessionPhase' ? 'cribbage_dealer_selection' : 'in_progress',
+        },
+      });
+      props.onComplete(pos);
+    },
   });
   return null;
 }
@@ -3050,6 +3082,7 @@ export const CribbageMobileGameTable = ({
       setHighCardCards([]);
       setHighCardWinnerPosition(null);
       setHighCardSyncedState(null);
+      recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: false, callsite: 'dealer-game-reset', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
       setShowHighCardSelection(false);
       announcedDealerResolvedRef.current = null;
       // Reset forward-only local round identity. Without this, the
@@ -3082,7 +3115,27 @@ export const CribbageMobileGameTable = ({
     const initGuardKey = buildBoundaryGuardKey(dealerGameId, fetchRoundId, fetchHandNumber);
     
     const loadOrInitializeState = async () => {
+      recordCribDealerDraw({
+        gameId,
+        surface: 'CribbageMobileGameTable.loadOrInitializeState',
+        event: 'entry',
+        payload: {
+          roundId: fetchRoundId,
+          handNumber: fetchHandNumber,
+          hasInitializedRef: hasInitializedRef.current,
+          initialLoadComplete,
+          isHost,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          showHighCardSelection,
+          isDealerSelection,
+          gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+        },
+      });
       if (hasInitializedRef.current || initialLoadComplete) {
+        recordCribDealerDraw({
+          gameId, surface: 'CribbageMobileGameTable.loadOrInitializeState', event: 'branch',
+          payload: { branch: 'short_circuit:already_initialized', roundId: fetchRoundId },
+        });
         console.log('[CRIBBAGE] Already initialized, skipping');
         return;
       }
@@ -3157,6 +3210,16 @@ export const CribbageMobileGameTable = ({
       });
 
       // If state already exists, use it (game already in progress or resumed)
+      recordCribDealerDraw({
+        gameId, surface: 'CribbageMobileGameTable.loadOrInitializeState', event: 'branch',
+        payload: {
+          branch: roundData?.cribbage_state ? 'existing_round_state' : (!roundData?.hand_number || (roundData?.hand_number ?? 0) <= 1 ? 'first_hand_selection' : 'initialized_new_state'),
+          roundId: fetchRoundId,
+          handNumber: roundData?.hand_number ?? null,
+          cribbageStatePresent: !!roundData?.cribbage_state,
+          cribbageStateNullness: roundData?.cribbage_state == null ? 'null' : 'non-null',
+        },
+      });
       if (roundData?.cribbage_state) {
         console.log('[CRIBBAGE] Using existing state from DB');
         const loadedState = roundData.cribbage_state as unknown as CribbageState;
@@ -3319,6 +3382,7 @@ export const CribbageMobileGameTable = ({
         }
         // Inject "new game starting" message into chat (idempotent per dealer_game_id)
         announceNewGameStarting();
+        recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: true, callsite: 'loadOrInitializeState:first_hand_selection', currentRoundId: fetchRoundId, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
         persistSyncDebugEvent({
@@ -3430,6 +3494,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!showHighCardSelection) return;
     if (!cribbageState) return;
+    recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: true, next: false, callsite: 'cribbageState-arrived-effect', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
     setShowHighCardSelection(false);
   }, [showHighCardSelection, cribbageState]);
 
@@ -3510,6 +3575,20 @@ export const CribbageMobileGameTable = ({
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
   const handleHighCardComplete = useCallback(async (winnerPosition: number) => {
+    recordCribDealerDraw({
+      gameId,
+      surface: 'CribbageMobileGameTable.handleHighCardComplete',
+      event: 'entry',
+      payload: {
+        winnerPosition,
+        callbackTarget: 'handleHighCardComplete',
+        handlerName: 'handleHighCardComplete',
+        isHost,
+        currentRoundId: currentRoundId ?? null,
+        gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+        cribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+      },
+    });
     const winnerPlayer = players.find(p => p.position === winnerPosition);
     if (!winnerPlayer) {
       console.error('[CRIBBAGE] High card winner position not found:', winnerPosition);
@@ -3521,6 +3600,7 @@ export const CribbageMobileGameTable = ({
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
+    recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: false, callsite: 'handleHighCardComplete', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
     setShowHighCardSelection(false);
     setInitialLoadComplete(true);
 
@@ -6348,6 +6428,17 @@ export const CribbageMobileGameTable = ({
                     syncedState={highCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
+                    surfaceTag="roundPhase"
+                    gating={{
+                      isHighCardMode,
+                      isDealerSelection,
+                      showHighCardSelection,
+                      effectiveShowHighCardSelection,
+                      gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+                      currentRoundId: currentRoundId ?? null,
+                      roundCribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+                      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                    }}
                     onComplete={(pos) => {
                       // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
                       emitCribbageHandoffTrace({
@@ -6373,6 +6464,17 @@ export const CribbageMobileGameTable = ({
                     syncedState={dealerSelectionSyncedState}
                     onCardsUpdate={onDealerSelectionCardsUpdate}
                     onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
+                    surfaceTag="sessionPhase"
+                    gating={{
+                      isHighCardMode,
+                      isDealerSelection,
+                      showHighCardSelection,
+                      effectiveShowHighCardSelection,
+                      gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+                      currentRoundId: currentRoundId ?? null,
+                      roundCribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+                      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                    }}
                     onComplete={onDealerSelectionComplete}
                   />
                 )}
