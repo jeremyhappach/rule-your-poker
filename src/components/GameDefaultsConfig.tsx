@@ -250,6 +250,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           .eq('game_type', defaultConfig.game_type);
 
         if (error) throw error;
+
+        // Reconcile the in-tab harness cache immediately on the
+        // initiating client. Realtime echo (now that game_defaults
+        // is in supabase_realtime) handles every other connected tab.
+        setHarnessCacheValue(
+          defaultConfig.game_type,
+          defaultConfig.debug_harness ?? 'none',
+        );
       }
       toast.success('Defaults saved successfully');
       onOpenChange(false);
