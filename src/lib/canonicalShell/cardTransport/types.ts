@@ -125,13 +125,14 @@ export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
 
 export function describeCardEndpoint(ep: CardEndpoint): string {
   switch (ep.kind) {
-    case 'dealer':    return `dealer:${ep.playerId}`;
-    case 'seat':      return `seat:${ep.position}`;
-    case 'oppStack':  return `opp-stack:${ep.position}`;
-    case 'hand':      return `hand:${ep.playerId}`;
-    case 'community': return `community:${ep.index}`;
-    case 'chucky':    return `chucky:${ep.index}`;
-    case 'stock':     return 'stock';
-    case 'discard':   return 'discard';
+    case 'dealer':         return `dealer:${ep.playerId}`;
+    case 'seat':           return `seat:${ep.position}`;
+    case 'oppStack':       return `opp-stack:${ep.position}`;
+    case 'hand':           return `hand:${ep.playerId}`;
+    case 'community':      return `community:${ep.index}`;
+    case 'chucky':         return `chucky:${ep.index}`;
+    case 'stock':          return 'stock';
+    case 'discard':        return 'discard';
+    case 'feltDealOrigin': return 'felt-deal-origin';
   }
 }
