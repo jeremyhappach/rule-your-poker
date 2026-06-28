@@ -11319,7 +11319,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   syncedState={(game as any).dealer_selection_state ?? null}
                   onCardsUpdate={setDealerSelectionCards}
                   onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  cribTraceGating={{
+                    mountSite: 'Game.tsx:status-keyed-sibling-table',
+                    gameStatus: game.status,
+                    currentRoundId: currentRound?.id ?? null,
+                    gameType: game.game_type ?? null,
+                  }}
                 />
+
 
               </>
             )}
