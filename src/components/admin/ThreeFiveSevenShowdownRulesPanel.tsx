@@ -35,6 +35,7 @@ import {
   type SizingMode,
 } from "@/lib/threeFiveSeven/showdownConfig";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
+import { BufferedRatioInput } from "./BufferedRatioInput";
 
 // ─── primitives ──────────────────────────────────────────────────────────
 
