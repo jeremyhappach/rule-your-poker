@@ -79,13 +79,18 @@ import {
   type RoundGeometryR3,
   type ShowdownRulesState,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  CRIBBAGE_PEGGING_ROW_SETTINGS_DEFAULTS,
+  CRIBBAGE_PEGGING_ROW_SETTINGS_KEY,
+  type CribbagePeggingRowSettings,
+} from "@/lib/cribbage/peggingRowSettings";
 
 // Non-anchored artifacts that the Lab picker still needs to surface so
 // their per-artifact overlap controls have a host section. The geometry
-// editor (anchor/size) auto-hides for these.
-const LAB_EXTRA_ARTIFACT_IDS: Partial<Record<GameKey, string[]>> = {
-  cribbage: ["cribbage.countingRow"],
-};
+// editor (anchor/size) auto-hides for these. (cribbage.countingRow is
+// now anchored — Wave 6 — so it no longer needs to live here.)
+const LAB_EXTRA_ARTIFACT_IDS: Partial<Record<GameKey, string[]>> = {};
+
 
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
@@ -934,6 +939,9 @@ const ARTIFACT_OVERLAP_KEYS: Record<string, string[]> = {
     "cardOverlap.cribbage.cribFan",
     "cardOverlap.cribbage.cribToCutGap",
   ],
+  // Pegging Row: explicit overlap is gated on Adaptive Fan being OFF.
+  // The render logic in ArtifactOverlapControls handles the gating.
+  "cribbage.peggingRow": ["cardOverlap.cribbage.pegging"],
 };
 
 
@@ -950,7 +958,8 @@ function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
   const domains = (keys ?? [])
     .map((k) => INDEPENDENT_OVERLAP_DOMAINS.find((d) => d.key === k))
     .filter((d): d is CardOverlapDomain => !!d);
-  if (domains.length === 0 && !bridge) return null;
+  const isPeggingRow = artifactId === "cribbage.peggingRow";
+  if (domains.length === 0 && !bridge && !isPeggingRow) return null;
   return (
     <div className="space-y-3 pt-2 border-t">
       <h3 className="font-semibold">Fan Overlap</h3>
@@ -958,15 +967,60 @@ function ArtifactOverlapControls({ artifactId }: { artifactId: string }) {
         Normalized to card width. <code>0.00</code> = edges touch ·{" "}
         <code>&gt; 0</code> overlap · <code>&lt; 0</code> gap.
       </p>
-      {domains.map((d) => (
-        <CardOverlapRow key={d.key} domain={d} />
-      ))}
+      {isPeggingRow ? (
+        <PeggingRowAdaptiveFanControls domains={domains} />
+      ) : (
+        domains.map((d) => <CardOverlapRow key={d.key} domain={d} />)
+      )}
       {bridge === "threeFiveSevenRoundRowOverlap" && (
         <ThreeFiveSevenWinnerOverlapBridge />
       )}
     </div>
   );
 }
+
+function PeggingRowAdaptiveFanControls({
+  domains,
+}: {
+  domains: CardOverlapDomain[];
+}) {
+  const { value, setValue } = useDomainDraft<CribbagePeggingRowSettings>(
+    CRIBBAGE_PEGGING_ROW_SETTINGS_KEY,
+    CRIBBAGE_PEGGING_ROW_SETTINGS_DEFAULTS,
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-2">
+        <Checkbox
+          id="cribbage-peggingrow-adaptive-fan"
+          checked={value.adaptiveFan}
+          onCheckedChange={(v) =>
+            setValue({ ...value, adaptiveFan: v === true })
+          }
+        />
+        <div className="space-y-1">
+          <Label
+            htmlFor="cribbage-peggingrow-adaptive-fan"
+            className="cursor-pointer text-sm font-medium"
+          >
+            Adaptive Fan
+          </Label>
+          <p className="text-[11px] text-muted-foreground">
+            When ON, the pegging row uses the adaptive HUDStack resolver
+            (current behaviour — overlap varies with viewport to fit the
+            row; cards keep their fixed proportional size). When OFF,
+            the explicit Fan Overlap below is the persisted setting.
+            Runtime consumption of this preference is deferred — see
+            <code> peggingRowSettings.ts</code>.
+          </p>
+        </div>
+      </div>
+      {!value.adaptiveFan &&
+        domains.map((d) => <CardOverlapRow key={d.key} domain={d} />)}
+    </div>
+  );
+}
+
 
 function ThreeFiveSevenWinnerOverlapBridge() {
   const { value, setValue } = useDomainDraft<ShowdownRulesState>(
