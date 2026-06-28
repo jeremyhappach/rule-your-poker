@@ -346,7 +346,15 @@ function advanceToCutting(state: CribbageState): CribbageState {
   const deck = createDeck().filter(
     c => !usedCards.has(`${c.rank}-${c.suit}`)
   );
-  const cutCard = deck[Math.floor(Math.random() * deck.length)];
+  // Debug Harness: deterministic cut when "Max Pegging Fan" is active.
+  // 4♠ never conflicts with the A/2/3 deal and is not a Jack (avoids
+  // gratuitous his-heels noise during pegging-fan tuning).
+  const harnessCutId = getActiveHarnessCached('cribbage');
+  const harnessCut =
+    harnessCutId === 'max_pegging_fan'
+      ? deck.find(c => c.rank === '4' && c.suit === 'spades')
+      : undefined;
+  const cutCard = harnessCut ?? deck[Math.floor(Math.random() * deck.length)];
   
   let newState: CribbageState = {
     ...state,
