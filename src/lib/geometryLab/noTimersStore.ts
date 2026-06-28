@@ -22,7 +22,9 @@ import {
   registerDomain,
   getSnapshot,
   subscribe,
+  _setFromLocalCommit,
 } from './defaultsRegistry';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NoTimersConfig {
   enabled: boolean;
@@ -69,4 +71,24 @@ export function useNoTimersEnabled(): boolean {
     () => getSnapshot<NoTimersConfig>(NO_TIMERS_KEY).enabled,
     () => getSnapshot<NoTimersConfig>(NO_TIMERS_KEY).enabled,
   );
+}
+
+/**
+ * Admin instant-write path (Admin Settings → No Timers row).
+ * Persists `{ enabled }` to `system_settings.key = 'no_timers'`, then
+ * optimistically updates the local snapshot so the UI reflects the new
+ * value without waiting for the realtime echo. The realtime channel
+ * owned by <GeometryLabDefaultsLoader /> will reconfirm to every client.
+ */
+export async function setNoTimersEnabled(enabled: boolean): Promise<boolean> {
+  const value: NoTimersConfig = { enabled };
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(
+      [{ key: NO_TIMERS_KEY, value: value as unknown as never }],
+      { onConflict: 'key' },
+    );
+  if (error) return false;
+  _setFromLocalCommit(NO_TIMERS_KEY, value);
+  return true;
 }
