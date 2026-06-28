@@ -22,8 +22,12 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { SLOT } from '@/lib/canonicalShell/seatAnchors';
+import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+
 
 interface SeatEntry {
   playerId: string;
@@ -55,6 +59,12 @@ export function CribbageDealOrchestrator({
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
+  const dealerIsSelf = dealerPlayerId === selfPlayerId;
+  const dealerSeatForOrigin = seats.find(s => s.playerId === dealerPlayerId) ?? null;
+  const dealerPositionForOrigin = dealerSeatForOrigin?.position ?? null;
+  const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
+  const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
+
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
@@ -113,10 +123,8 @@ export function CribbageDealOrchestrator({
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
-    const dealerIsSelf = dealerPlayerId === selfPlayerId;
-    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
-      ? { kind: 'hand', playerId: selfPlayerId }
-      : { kind: 'seat', position: dealerSeat.position };
+    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
+
     const intents: CardTransportIntent[] = [];
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (let off = 1; off <= sorted.length; off++) {
@@ -227,5 +235,25 @@ export function CribbageDealOrchestrator({
       data-anchor-owner="CribbageDealOrchestrator.selfHandRegion"
     />
   );
-  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
+  const selfDealerOriginEl =
+    dealerIsSelf && dealerPositionForOrigin != null && selfDealerFelt && selfDealerFeltIsSurface ? (
+      <div
+        aria-hidden="true"
+        className={`absolute ${getCanonicalSlotPlacement(SLOT.HOME).className} pointer-events-none`}
+        style={{ width: 40, height: 40 }}
+        data-card-anchor={`seat-${dealerPositionForOrigin}`}
+        data-canonical-dealer-origin-self="cribbage"
+        data-canonical-shell-viewer-card-endpoint="cribbage-dealer-origin"
+        data-anchor-owner="CribbageDealOrchestrator.selfDealerFeltOrigin"
+      />
+    ) : null;
+
+  return (
+    <>
+      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl}
+      {selfDealerOriginEl && selfDealerFelt
+        ? createPortal(selfDealerOriginEl, selfDealerFelt)
+        : null}
+    </>
+  );
 }
