@@ -2,6 +2,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
+import { ensureHarnessCacheLoaded } from './debugHarness/runtimeCache';
 import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
