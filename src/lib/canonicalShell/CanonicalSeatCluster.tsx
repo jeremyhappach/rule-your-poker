@@ -730,30 +730,11 @@ export function CanonicalSeatCluster({
         </div>,
       );
     }
-    if (effectiveNamePlacement === 'above-chip' && nameRow) {
-      aboveChipNodes.push(
-        <div key="name" className="relative inline-flex items-center" style={namePlateOffsetStyle}>
-          {nameRow}
-          {isDealer && (
-            <div
-              data-canonical-dealer-pip=""
-              data-dealer-pip-active="true"
-              aria-label="Dealer"
-              title="Dealer"
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2',
-                dealerInnerSideClass,
-                'inline-flex items-center justify-center rounded-full',
-                'bg-red-600 border border-white shadow',
-                'w-5 h-5 text-[10px] font-bold text-white leading-none pointer-events-none',
-              )}
-            >
-              D
-            </div>
-          )}
-        </div>,
-      );
-    }
+    // Nameplate is no longer stacked in the above-chip flow column —
+    // it is rendered in its own chip-center-anchored absolute layer
+    // (see render output below) so X/Y offsets describe the true
+    // chip-center → nameplate-center vector. Avatar continues to live
+    // in the above-chip column.
   }
 
   // Below-chip stack: score line (and children if growth DOWN).
