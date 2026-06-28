@@ -35,6 +35,7 @@ import {
   type SizingMode,
 } from "@/lib/threeFiveSeven/showdownConfig";
 import { useDomainDraft } from "@/lib/geometryLab/GeometryLabDraftProvider";
+import { BufferedRatioInput } from "./BufferedRatioInput";
 
 // ─── primitives ──────────────────────────────────────────────────────────
 
@@ -192,13 +193,13 @@ function RoundEditor({
       </div>
       <div>
         <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Row geometry</div>
-        <Row label="Overlap (fraction of card width)">
-          <NumInput
+        <Row label="Overlap (normalized ratio · fraction of card width)">
+          <BufferedRatioInput
             value={value.row.overlap}
-            step={0.05}
-            min={0}
+            min={-0.5}
             max={1}
-            onChange={(n) => onChange({ ...value, row: { ...value.row, overlap: n } })}
+            ariaLabel="3-5-7 round overlap"
+            onCommit={(n) => onChange({ ...value, row: { ...value.row, overlap: n } })}
           />
         </Row>
         <Row label="Total fan (degrees, first→last)">

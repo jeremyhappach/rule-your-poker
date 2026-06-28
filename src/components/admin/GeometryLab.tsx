@@ -62,6 +62,7 @@ import { TableDemoAdminSection } from "./TableDemoAdminSection";
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
+import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
   type CardOverlapDomain,
@@ -852,22 +853,19 @@ function CardOverlapRow({ domain }: { domain: CardOverlapDomain }) {
   const { value, setValue } = useDomainDraft<number>(domain.key, domain.default);
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <Label className="text-sm font-medium">{domain.label}</Label>
-        <span className="text-xs font-mono text-muted-foreground">
-          {value.toFixed(2)}
-        </span>
+        <BufferedRatioInput
+          value={value}
+          min={domain.min}
+          max={domain.max}
+          ariaLabel={domain.label}
+          onCommit={(n) => setValue(n)}
+        />
       </div>
-      <input
-        type="range"
-        min={domain.min}
-        max={domain.max}
-        step={domain.step}
-        value={value}
-        onChange={(e) => setValue(Number(e.target.value))}
-        className="w-full"
-      />
-      <p className="text-[11px] text-muted-foreground">{domain.help}</p>
+      <p className="text-[11px] text-muted-foreground">
+        {domain.help} Range [{domain.min}, {domain.max}].
+      </p>
     </div>
   );
 }
@@ -956,21 +954,16 @@ function ThreeFiveSevenWinnerOverlapBridge() {
         const v = value.rounds[k].row.overlap;
         return (
           <div key={k} className="space-y-1">
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-2">
               <Label className="text-sm font-medium">{label}</Label>
-              <span className="text-xs font-mono text-muted-foreground">
-                {v.toFixed(2)}
-              </span>
+              <BufferedRatioInput
+                value={v}
+                min={-0.5}
+                max={0.9}
+                ariaLabel={`${label} fan overlap`}
+                onCommit={(n) => patch(k, n)}
+              />
             </div>
-            <input
-              type="range"
-              min={-0.5}
-              max={0.9}
-              step={0.01}
-              value={v}
-              onChange={(e) => patch(k, Number(e.target.value))}
-              className="w-full"
-            />
           </div>
         );
       })}
