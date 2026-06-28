@@ -26,7 +26,16 @@ export type CardEndpoint =
   | { kind: 'community'; index: number }
   | { kind: 'chucky'; index: number }
   | { kind: 'stock' }
-  | { kind: 'discard' };
+  | { kind: 'discard' }
+  /**
+   * Canonical bottom-center felt deal origin — a static anchor mounted
+   * inside the canonical felt surface directly in front of the local
+   * viewer. Used as the SOURCE for every flight when the local viewer
+   * is the active dealer, so cards never originate from an ActivePlayer
+   * HUD/pane, opponent seat/nameplate/chip, or any already-landed
+   * card/cardback rect.
+   */
+  | { kind: 'feltDealOrigin' };
 
 export type CardFace = 'hidden' | 'visible';
 
