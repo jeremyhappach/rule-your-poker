@@ -720,10 +720,36 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
  * Advance to counting phase
  */
 function advanceToCounting(state: CribbageState): CribbageState {
+  // ─────────────────────────────────────────────────────────────────────
+  // Debug Harness: Cribbage "Max Pegging Fan" — terminal pegging hold.
+  // After all 8 cards have been played, freeze the live pegging
+  // presentation in place for Geometry Lab tuning. Do not advance to
+  // counting, do not clear/transfer pegging cards, do not start a new
+  // hand. Exiting the session/profile ends the harness.
+  // Implementation: keep phase='pegging' with the existing pegging row
+  // intact; null out currentTurnPlayerId so no further actions fire.
+  // ─────────────────────────────────────────────────────────────────────
+  if (getActiveHarnessCached('cribbage') === 'max_pegging_fan') {
+    const allCardsPlayed = Object.values(state.playerStates).every(
+      ps => ps.hand.length === 0
+    );
+    if (allCardsPlayed) {
+      return {
+        ...state,
+        phase: 'pegging',
+        pegging: {
+          ...state.pegging,
+          currentTurnPlayerId: null,
+        },
+      };
+    }
+  }
+
   // IMPORTANT: Do NOT apply hand/crib totals to pegScore here.
   // We only enter the counting *animation* phase and persist the scoring breakdown.
   // The UI will animate scores locally, then apply the final totals to the backend AFTER
   // the animation completes (or at the exact win moment) to prevent score "jump" spoilers.
+
   const playerHandScores: Record<string, ReturnType<typeof evaluateHand>> = {};
 
   for (const playerId of state.turnOrder) {
