@@ -19,6 +19,7 @@ import {
   endHolmTimerSegment,
   recordHolmTimerWrite,
 } from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
+import { useNoTimersEnabled } from "@/lib/geometryLab/noTimersStore";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
