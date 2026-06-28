@@ -34,9 +34,12 @@ import { toast } from "sonner";
 import {
   useGeometryOverrides,
   setOverrideOptimistic,
+  setDraftedOverride,
+  clearAllDraftedOverrides,
   type GeometryOverride,
   type SizeMode,
 } from "@/lib/geometryLab/store";
+
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
 import {
   ARTIFACT_DESCRIPTOR_FACTORIES,
