@@ -31,7 +31,7 @@ import {
   getDiceArtifactDescriptors,
   type DiceDescriptorOptions,
 } from "@/lib/dice/diceArtifactDescriptors";
-import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
+import { useDraftedGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 export interface DiceGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -65,7 +65,7 @@ export function DiceGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
-  const overrides = useGeometryOverrides();
+  const overrides = useDraftedGeometryOverrides();
   const descriptors = useMemo(
     () =>
       applyGeometryOverrides(

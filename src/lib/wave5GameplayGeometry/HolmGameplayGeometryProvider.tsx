@@ -31,7 +31,7 @@ import {
   getHolmArtifactDescriptors,
   type HolmDescriptorOptions,
 } from "@/lib/holm/holmArtifactDescriptors";
-import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
+import { useDraftedGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 export interface HolmGameplayGeometryContextValue {
@@ -74,7 +74,7 @@ export function HolmGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
-  const overrides = useGeometryOverrides();
+  const overrides = useDraftedGeometryOverrides();
   const descriptors = useMemo(
     () =>
       applyGeometryOverrides(
