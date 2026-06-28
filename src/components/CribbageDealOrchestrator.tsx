@@ -210,7 +210,11 @@ export function CribbageDealOrchestrator({
   // the TOP edge — cards land on top and fan grows downward.
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    // Cribbage's active-player hand region. Falls back to the legacy
+    // 3-5-7 selector for robustness during cross-game transitions.
+    const el =
+      (document.querySelector('[data-cribbage-active-pane-content]') as HTMLElement | null) ??
+      (document.querySelector('[data-357-active-hand-region]') as HTMLElement | null);
     setSelfHandRegion(el);
   }, [handContextId, selfPlayerId]);
 
