@@ -7,53 +7,35 @@
  * JSON:
  *
  *   {
- *     vAnchor:      'upper' | 'lower',
- *     hAnchor:      'outer' | 'center' | 'inner',
- *     xOffsetDia:   number,   // ratio of chip-circle DIAMETER (post-attachment)
- *     yOffsetDia:   number,   // ratio of chip-circle DIAMETER (post-attachment)
- *     maxWidthDia:  number,   // ratio of chip-circle DIAMETER
+ *     xOffsetDia:  number,   // chip-DIAMETER ratio
+ *     yOffsetDia:  number,   // chip-DIAMETER ratio
+ *     maxWidthDia: number,   // chip-DIAMETER ratio
  *   }
  *
- * Attachment contract:
- *   At zero offset, the nameplate's matching edge is TANGENT to the
- *   chip circle's selected edge.
+ * COORDINATE CONTRACT (truthful):
+ *   Origin     = chip-circle CENTER
+ *   Vector to  = nameplate VISUAL CENTER
+ *   Units      = chip-circle DIAMETER (viewport-stable)
  *
- *     Vertical Chip Anchor = Upper, Y=0
- *       → nameplate BOTTOM edge tangent to chip TOP edge
- *       → nameplate grows upward
- *     Vertical Chip Anchor = Lower, Y=0
- *       → nameplate TOP edge tangent to chip BOTTOM edge
- *       → nameplate grows downward
+ *   X = 0,  Y = 0  ⇒ nameplate center sits directly over chip center.
+ *   Y < 0          ⇒ nameplate moves UPWARD.
+ *   Y > 0          ⇒ nameplate moves DOWNWARD.
+ *   X < 0          ⇒ nameplate moves OUTWARD (mirrored both seat sides).
+ *   X > 0          ⇒ nameplate moves INWARD  (mirrored both seat sides).
+ *   Center-anchored slots (HOME=-1, BOTTOM_RAIL=-3) collapse the
+ *   horizontal axis to 0 because "inner / outer" have no meaning.
  *
- *     Horizontal Chip Anchor = Outer, X=0
- *       → nameplate INNER edge tangent to chip's OUTER (table-edge) rim
- *       → nameplate grows outward
- *     Horizontal Chip Anchor = Inner, X=0
- *       → nameplate OUTER edge tangent to chip's INNER (table-center) rim
- *       → nameplate grows inward
- *     Horizontal Chip Anchor = Center, X=0
- *       → nameplate CENTER aligns to chip-circle CENTER
- *
- *   "Inner" / "Outer" are MIRRORED automatically by seat side. The
- *   nameplate is never accidentally pinned by its left/start edge
- *   merely because it is rendered on one side of the table.
- *
- * Offset semantics (applied AFTER the selected edge/center attachment):
- *   X: negative = OUTWARD (away from table center)
- *      positive = INWARD  (toward table center)
- *      Mirrored automatically per seat side.
- *   Y: negative = UPWARD, positive = DOWNWARD.
- *   Units: normalized to the chip-circle DIAMETER (viewport-stable).
- *
- * Baseline preservation:
- *   Today's rendered placement is:
- *     - horizontally centered above the chip → hAnchor = 'center',
- *       xOffsetDia = 0
- *     - 2px gap between nameplate bottom edge and chip top edge (the
- *       legacy mb-[2px] cascade) → vAnchor = 'upper',
- *       yOffsetDia = -2/40 = -0.05
- *   The persisted defaults below fully describe that placement — no
- *   hidden legacy CSS placement is added on top.
+ * Baseline preservation (measured from today's rendered geometry, NOT
+ * a hidden legacy CSS offset):
+ *   Chip diameter: 40px (20px radius)
+ *   Pill height:  ≈ 14.5px (text-[10px] line-height 1.05 = 10.5px
+ *                 + py-[1px] = 2px + border 1px×2 = 2px)
+ *   Legacy gap between pill bottom edge and chip top edge: 2px
+ *   ⇒ nameplate center distance above chip center:
+ *       chipRadius (20) + gap (2) + pillHalfHeight (7.25) = 29.25px
+ *   ⇒ yOffsetDia = -29.25 / 40 ≈ -0.73
+ *   Horizontal: pill is currently chip-centered ⇒ xOffsetDia = 0
+ *   Max width: legacy max-w-[88px] = 88/40 = 2.2 dia
  *
  * Realtime: routed through GeometryLabDefaultsLoader's single channel
  * via registerDomain — every client receives admin saves automatically.
@@ -65,12 +47,7 @@
 
 import { registerDomain } from '@/lib/geometryLab/defaultsRegistry';
 
-export type ShellNameplateVAnchor = 'upper' | 'lower';
-export type ShellNameplateHAnchor = 'outer' | 'center' | 'inner';
-
 export interface ShellNameplateConfig {
-  vAnchor: ShellNameplateVAnchor;
-  hAnchor: ShellNameplateHAnchor;
   xOffsetDia: number;
   yOffsetDia: number;
   maxWidthDia: number;
@@ -78,15 +55,11 @@ export interface ShellNameplateConfig {
 
 export const SHELL_NAMEPLATE_KEY = 'shell_nameplate';
 
-// Seeded baseline reproduces today's "centered, 2px above chip" pill.
-//   Vertical: 'upper' (Y=0 ⇒ tangent to chip top) + Y = -2/40 = -0.05
-//   Horizontal: 'center' + X = 0
-//   Max width: 2.2 dia (= 88px @ 40px chip cell, legacy max-w-[88px])
+// Seeded baseline truthfully describes today's rendered placement
+// relative to chip-circle center (see header for derivation).
 export const DEFAULT_SHELL_NAMEPLATE: ShellNameplateConfig = {
-  vAnchor: 'upper',
-  hAnchor: 'center',
   xOffsetDia: 0,
-  yOffsetDia: -0.05,
+  yOffsetDia: -0.73,
   maxWidthDia: 2.2,
 };
 
@@ -102,16 +75,10 @@ function clamp(n: number, min: number, max: number): number {
 
 function sanitize(value: unknown): ShellNameplateConfig {
   const v = (value ?? {}) as Record<string, unknown>;
-  const vA = v.vAnchor === 'lower' ? 'lower' : 'upper';
-  const hARaw = v.hAnchor;
-  const hA: ShellNameplateHAnchor =
-    hARaw === 'outer' || hARaw === 'inner' ? hARaw : 'center';
   const x = Number(v.xOffsetDia);
   const y = Number(v.yOffsetDia);
   const w = Number(v.maxWidthDia);
   return {
-    vAnchor: vA,
-    hAnchor: hA,
     xOffsetDia: Number.isFinite(x)
       ? clamp(x, SHELL_NAMEPLATE_BOUNDS.offset.min, SHELL_NAMEPLATE_BOUNDS.offset.max)
       : DEFAULT_SHELL_NAMEPLATE.xOffsetDia,
@@ -150,7 +117,7 @@ function notify() {
 /**
  * Apply current effective values as CSS vars on <html>. Retained so
  * any legacy consumer reading the vars stays in sync; primary consumer
- * now subscribes to the store directly via useSyncExternalStore.
+ * subscribes to the store directly via useSyncExternalStore.
  */
 export function applyShellNameplateCssVars(c: ShellNameplateConfig): void {
   if (typeof document === 'undefined') return;
@@ -158,8 +125,6 @@ export function applyShellNameplateCssVars(c: ShellNameplateConfig): void {
   root.style.setProperty('--shell-nameplate-x-dia', String(c.xOffsetDia));
   root.style.setProperty('--shell-nameplate-y-dia', String(c.yOffsetDia));
   root.style.setProperty('--shell-nameplate-maxw-dia', String(c.maxWidthDia));
-  root.style.setProperty('--shell-nameplate-v-anchor', c.vAnchor);
-  root.style.setProperty('--shell-nameplate-h-anchor', c.hAnchor);
 }
 
 /** Admin draft preview: ephemeral, not persisted. */
