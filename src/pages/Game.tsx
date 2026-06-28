@@ -4285,6 +4285,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
   useEffect(() => {
+    // No-Timers harness: ante timer-expiry auto-sit-out is forbidden.
+    if (isNoTimersEnabledCached()) return;
     if (game?.is_paused) return;
     if (anteTimeLeft !== 0 || game?.status !== 'ante_decision' || !user) return;
 
