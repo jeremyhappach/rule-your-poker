@@ -235,5 +235,27 @@ export function CribbageDealOrchestrator({
       data-anchor-owner="CribbageDealOrchestrator.selfHandRegion"
     />
   );
-  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
+  const selfDealerOriginEl =
+    dealerIsSelf && dealerPositionForOrigin != null && selfDealerFelt && selfDealerFeltIsSurface ? (
+      <div
+        aria-hidden="true"
+        className={`absolute ${getCanonicalSlotPlacement(SLOT.HOME).className} pointer-events-none`}
+        style={{ width: 40, height: 40 }}
+        data-card-anchor={`seat-${dealerPositionForOrigin}`}
+        data-canonical-dealer-origin-self="cribbage"
+        data-canonical-shell-viewer-card-endpoint="cribbage-dealer-origin"
+        data-anchor-owner="CribbageDealOrchestrator.selfDealerFeltOrigin"
+      />
+    ) : null;
+
+  return (
+    <>
+      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl}
+      {selfDealerOriginEl && selfDealerFelt
+        ? createPortal(selfDealerOriginEl, selfDealerFelt)
+        : null}
+    </>
+  );
+}
+
 }
