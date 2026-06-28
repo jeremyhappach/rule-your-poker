@@ -275,17 +275,34 @@ function peggingRow(): ArtifactDescriptor {
   };
 }
 
+/**
+ * Wave 6 — Counting Row graduated from `flow` to `anchored` so the Geometry
+ * Lab can expose the full anchored artifact contract (anchorX/Y, origin,
+ * width/aspect). Defaults seeded from the previously resolved flow rect
+ * (~60vmin × 10vmin, centered in the play band, see test snapshots in
+ * `cribbageArtifactDescriptors.test.ts.snap` — w∈{60, 64.35}, h≈10,
+ * y∈{43.5, 45} which projects to anchorY ≈ 0.5 of availableGameplayViewport
+ * with anchorOrigin=center). Aspect 60/10 = 6 mirrors the prior preferredSize.
+ *
+ * No DOM today consumes the resolved counting-row rect (the renderer flows
+ * inline inside CribbageCountingPhase). Migrating composeMode therefore has
+ * no visible effect on the running table; the change exists to surface
+ * counting-row geometry in the Lab on the standard anchored editor.
+ */
 function countingRow(): ArtifactDescriptor {
   return {
     id: "cribbage.countingRow",
     owner: OWNER.cribbageCounting,
-    band: "play",
-    composeMode: "flow",
-    preferredSize: { width: vmin(60), height: vmin(10) },
-    minimumSize: { width: vmin(48), height: vmin(8) },
+    composeMode: "anchored",
+    preferredSize: { width: vmin(0), height: vmin(0) },
+    minimumSize: { width: vmin(0), height: vmin(0) },
     priority: 92,
     collapsePriority: "late",
-    safeAreaDependencies: ["play", "bottomHud"],
+    anchorX: 0.5,
+    anchorY: 0.5,
+    anchorOrigin: "center",
+    widthPct: 0.6,
+    aspectRatio: 6,
   };
 }
 
