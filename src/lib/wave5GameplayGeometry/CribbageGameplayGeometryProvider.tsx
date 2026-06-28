@@ -94,13 +94,15 @@ const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
   COUNTING_ROW_ID,
 ]);
 
-// Wave 5D — PeggingRow graduated to anchored. It remains in the leaf set so
-// the resolver solves its standalone anchored descriptor, but it is excluded
-// from the column group below (no flow participation, no XOR with counting).
+// Wave 5D — PeggingRow graduated to anchored. Wave 6 — CountingRow also
+// graduated to anchored. Both remain in the leaf set so the resolver
+// solves their standalone anchored descriptors, but they are excluded
+// from the column group (no flow participation).
 const COLUMN_GROUP_EXCLUDED_IDS = new Set<string>([
   PEGBOARD_ID,
   CRIB_CUT_GROUP_ID,
   PEGGING_ROW_ID,
+  COUNTING_ROW_ID,
 ]);
 
 function buildColumnGroup(
@@ -140,17 +142,8 @@ function buildColumnGroup(
     collapseOrder: 1,
   });
 
-  // Wave 5D — PeggingRow graduated to anchored. Only countingRow
-  // participates in the column flow now.
-  if (leavesById.has(COUNTING_ROW_ID)) {
-    columnChildren.push({
-      id: COUNTING_ROW_ID,
-      kind: "leaf",
-      leafRef: COUNTING_ROW_ID,
-      shrinkOrder: 5,
-      collapseOrder: "never",
-    });
-  }
+  // Wave 5D/6 — PeggingRow and CountingRow graduated to anchored. Neither
+  // participates in the column flow.
 
   return {
     id: GAMEPLAY_COLUMN_ID,
