@@ -3115,7 +3115,27 @@ export const CribbageMobileGameTable = ({
     const initGuardKey = buildBoundaryGuardKey(dealerGameId, fetchRoundId, fetchHandNumber);
     
     const loadOrInitializeState = async () => {
+      recordCribDealerDraw({
+        gameId,
+        surface: 'CribbageMobileGameTable.loadOrInitializeState',
+        event: 'entry',
+        payload: {
+          roundId: fetchRoundId,
+          handNumber: fetchHandNumber,
+          hasInitializedRef: hasInitializedRef.current,
+          initialLoadComplete,
+          isHost,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          showHighCardSelection,
+          isDealerSelection,
+          gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+        },
+      });
       if (hasInitializedRef.current || initialLoadComplete) {
+        recordCribDealerDraw({
+          gameId, surface: 'CribbageMobileGameTable.loadOrInitializeState', event: 'branch',
+          payload: { branch: 'short_circuit:already_initialized', roundId: fetchRoundId },
+        });
         console.log('[CRIBBAGE] Already initialized, skipping');
         return;
       }
