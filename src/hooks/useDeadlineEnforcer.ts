@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { isClientDeadlineEnforcementDisabled } from '@/lib/debugFlags';
+import { isNoTimersEnabledCached } from '@/lib/geometryLab/noTimersStore';
 
 /**
  * Smart deadline enforcer that polls the enforce-deadlines edge function.
