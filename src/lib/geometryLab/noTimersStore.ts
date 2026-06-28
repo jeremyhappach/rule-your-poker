@@ -85,7 +85,7 @@ export async function setNoTimersEnabled(enabled: boolean): Promise<boolean> {
   const { error } = await supabase
     .from('system_settings')
     .upsert(
-      { key: NO_TIMERS_KEY, value: value as unknown as Record<string, unknown> },
+      [{ key: NO_TIMERS_KEY, value: value as unknown as Record<string, unknown> }],
       { onConflict: 'key' },
     );
   if (error) return false;
