@@ -15,6 +15,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     if (isClientDeadlineEnforcementDisabled()) {
       return;
     }
+    if (isNoTimersEnabledCached()) {
+      return;
+    }
     if (!gameId) return;
     
     // Only enforce for active game states - must include ALL states with deadlines
