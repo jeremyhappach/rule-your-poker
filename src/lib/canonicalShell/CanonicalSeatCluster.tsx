@@ -806,6 +806,43 @@ export function CanonicalSeatCluster({
         </div>
       )}
 
+
+      {/* Chip-center-anchored nameplate layer. Sits on top of the chip
+          cell at chip-circle center plus the configured signed offsets
+          (X mirrored per seat side). Replaces the prior above-chip
+          stacked nameplate so stored values truthfully describe the
+          chip-center → nameplate-center vector. */}
+      {!hideChipBubble && effectiveNamePlacement === 'above-chip' && nameRow && (
+        <div
+          data-canonical-seat-nameplate-layer=""
+          className="pointer-events-none"
+          style={{
+            ...namePlateAnchoredStyle,
+            ...(transportSuppressed ? { visibility: 'hidden' as const } : null),
+          }}
+        >
+          <div className="relative inline-flex items-center">
+            {nameRow}
+            {isDealer && (
+              <div
+                data-canonical-dealer-pip=""
+                data-dealer-pip-active="true"
+                aria-label="Dealer"
+                title="Dealer"
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2',
+                  dealerInnerSideClass,
+                  'inline-flex items-center justify-center rounded-full',
+                  'bg-red-600 border border-white shadow',
+                  'w-5 h-5 text-[10px] font-bold text-white leading-none pointer-events-none',
+                )}
+              >
+                D
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {!hideChipBubble && (
         <div
           data-canonical-seat-pill=""
