@@ -59,7 +59,7 @@ import { useGeometryLabDraft } from "@/lib/geometryLab/GeometryLabDraftProvider"
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
-import { NoTimersAdminSection } from "./NoTimersAdminSection";
+// NoTimersAdminSection lives in Admin Settings; not mounted here.
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
