@@ -586,7 +586,7 @@ export function CanonicalSeatCluster({
     // (HOME=-1, BOTTOM_RAIL=-3, TOP_CENTER=-2) collapse to 0 because
     // "inward" has no horizontal meaning there.
     const chipDiameterPx = chipRadiusPx * 2;
-    const isCenterAnchoredSlot = slot === -1 || slot === -2 || slot === -3;
+    const isCenterAnchoredSlot = slot === -1 || slot === -3;
     const inwardCssSignForName = isCenterAnchoredSlot ? 0 : (isRightSideCanonicalSlot(slot) ? -1 : 1);
     const namePlateMaxWidthStyle: CSSProperties = {
       maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
