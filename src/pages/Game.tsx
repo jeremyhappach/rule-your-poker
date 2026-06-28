@@ -12271,6 +12271,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state ?? null}
                     onCardsUpdate={setDealerSelectionCards}
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                    cribTraceGating={{
+                      mountSite: 'Game.tsx:gin-rummy-dealer-overlay',
+                      gameStatus: game.status,
+                      currentRoundId: currentRound?.id ?? null,
+                      gameType: game.game_type ?? null,
+                    }}
                   />
                 )}
               </>
