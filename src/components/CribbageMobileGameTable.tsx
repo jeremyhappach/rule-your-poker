@@ -347,7 +347,25 @@ function CribbageDealerSelectionController(props: {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   onWinnerPositionUpdate: (position: number | null) => void;
   onComplete: (pos: number) => void;
+  surfaceTag: 'sessionPhase' | 'roundPhase';
+  gating: Record<string, unknown>;
 }) {
+  const surface =
+    props.surfaceTag === 'sessionPhase'
+      ? 'CribbageMobileGameTable.CribbageDealerSelectionController.sessionPhase'
+      : 'CribbageMobileGameTable.CribbageDealerSelectionController.roundPhase';
+  const controllerInstanceId = useCribDealerDrawSurfaceTrace({
+    gameId: props.gameId,
+    surface,
+    gating: {
+      ...props.gating,
+      isHost: props.isHost,
+      syncedStateNullness: props.syncedState == null ? 'null' : 'non-null',
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      syncedWinnerPosition: props.syncedState?.winnerPosition ?? null,
+      syncedIsComplete: !!props.syncedState?.isComplete,
+    },
+  });
   useHighCardDealerSelection({
     gameId: props.gameId,
     players: props.players,
@@ -357,7 +375,20 @@ function CribbageDealerSelectionController(props: {
     syncedState: props.syncedState,
     onCardsUpdate: props.onCardsUpdate,
     onWinnerPositionUpdate: props.onWinnerPositionUpdate,
-    onComplete: props.onComplete,
+    onComplete: (pos: number) => {
+      recordCribDealerDraw({
+        gameId: props.gameId,
+        surface,
+        controllerInstanceId,
+        event: 'completion',
+        payload: {
+          winnerPosition: pos,
+          callbackTarget: 'CribbageDealerSelectionController.props.onComplete',
+          gameStatusGate: props.surfaceTag === 'sessionPhase' ? 'cribbage_dealer_selection' : 'in_progress',
+        },
+      });
+      props.onComplete(pos);
+    },
   });
   return null;
 }
