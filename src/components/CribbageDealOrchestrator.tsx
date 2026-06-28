@@ -22,8 +22,12 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { SLOT } from '@/lib/canonicalShell/seatAnchors';
+import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+
 
 interface SeatEntry {
   playerId: string;
