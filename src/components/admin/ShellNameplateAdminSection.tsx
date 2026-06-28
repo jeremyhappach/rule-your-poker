@@ -1,19 +1,19 @@
 /**
  * Admin → Geometry Lab → Shell / Global → Seat Cluster → Nameplate.
  *
- * Edits the global `shell_nameplate` config. Coordinate origin is the
- * chip-circle CENTER and the vector points to the nameplate VISUAL
- * CENTER (see shellNameplateConfig.ts header). Live preview happens
- * in this admin's session through `previewShellNameplate(...)` so the
- * draft propagates to every CanonicalSeatCluster on the felt via
- * useSyncExternalStore. The footer **Apply Changes** commits via the
- * modal-wide draft pipeline (single `system_settings` upsert), and
- * the realtime channel pushes the new value to every other client.
+ * Five controls (in display order):
+ *   1. Anchor Start          (upper / lower / inner / outer)
+ *   2. Nameplate Attachment  (inner / center / outer)
+ *   3. X Offset              (chip diameters, signed; +inward / −outward)
+ *   4. Y Offset              (chip diameters, signed; +down / −up)
+ *   5. Max Width             (chip diameters)
  *
- * Controls:
- *   - X Offset      (chip-DIAMETER ratio, +inward / -outward; mirrored)
- *   - Y Offset      (chip-DIAMETER ratio, +down / -up)
- *   - Max Width     (chip-DIAMETER ratio)
+ * Inner/outer mirror automatically by opponent seat side. Live preview
+ * runs through `previewShellNameplate(...)` so every mounted
+ * CanonicalSeatCluster updates in place via useSyncExternalStore. The
+ * modal footer **Apply Changes** commits via the shared draft pipeline
+ * (single `system_settings` upsert) and the realtime channel pushes
+ * the value to every other client.
  */
 import { useEffect } from 'react';
 import { Label } from '@/components/ui/label';
@@ -22,10 +22,51 @@ import { BufferedRatioInput } from './BufferedRatioInput';
 import {
   DEFAULT_SHELL_NAMEPLATE,
   previewShellNameplate,
+  SHELL_NAMEPLATE_ANCHOR_OPTIONS,
+  SHELL_NAMEPLATE_ATTACHMENT_OPTIONS,
   SHELL_NAMEPLATE_BOUNDS,
   SHELL_NAMEPLATE_KEY,
+  type ShellNameplateAnchorStart,
+  type ShellNameplateAttachment,
   type ShellNameplateConfig,
 } from '@/lib/canonicalShell/shellNameplateConfig';
+import { cn } from '@/lib/utils';
+
+function SegmentedControl<T extends string>(props: {
+  ariaLabel: string;
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={props.ariaLabel}
+      className="inline-flex overflow-hidden rounded-md border border-border bg-background"
+    >
+      {props.options.map((opt) => {
+        const active = opt === props.value;
+        return (
+          <button
+            key={opt}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => props.onChange(opt)}
+            className={cn(
+              'px-2 py-1 text-[11px] uppercase tracking-wide transition-colors',
+              active
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ShellNameplateAdminSection() {
   const { value: draft, setValue, reset, dirty } = useDomainDraft<ShellNameplateConfig>(
@@ -33,14 +74,15 @@ export function ShellNameplateAdminSection() {
     DEFAULT_SHELL_NAMEPLATE,
   );
 
-  // Push draft into the live in-memory store for instant preview
-  // across every mounted CanonicalSeatCluster. On unmount, clear the
-  // preview so the committed snapshot is shown again.
   useEffect(() => { previewShellNameplate(draft); }, [draft]);
   useEffect(() => {
     return () => { previewShellNameplate(null); };
   }, []);
 
+  const setAnchor = (v: ShellNameplateAnchorStart) =>
+    setValue((d) => ({ ...d, anchorStart: v }));
+  const setAttachment = (v: ShellNameplateAttachment) =>
+    setValue((d) => ({ ...d, attachment: v }));
   const setX = (n: number) => setValue((d) => ({ ...d, xOffsetDia: n }));
   const setY = (n: number) => setValue((d) => ({ ...d, yOffsetDia: n }));
   const setW = (n: number) => setValue((d) => ({ ...d, maxWidthDia: n }));
@@ -54,18 +96,35 @@ export function ShellNameplateAdminSection() {
         </Label>
         <p className="text-xs text-muted-foreground">
           Global Shell defaults for the canonical opponent seat-cluster
-          nameplate. Coordinate origin is the <strong>chip-circle
-          center</strong>; the vector points to the <strong>nameplate
-          visual center</strong>. At <strong>X = 0, Y = 0</strong> the
-          nameplate sits directly over the chip center.{' '}
-          <strong>X</strong>: + inward / − outward (mirrored both seat
-          sides). <strong>Y</strong>: + down / − up. Units are chip
-          diameters. Click the modal footer <strong>Apply Changes</strong>{' '}
-          to persist and broadcast to every client.
+          nameplate. <strong>Anchor Start</strong> picks the reference
+          point on the chip-circle perimeter (upper / lower / inner /
+          outer). <strong>Attachment</strong> picks which horizontal
+          point of the pill pins to that anchor (inner / center /
+          outer). <strong>X / Y</strong> offsets are signed chip
+          diameters. Inner / outer mirror automatically by seat side.
+          Click <strong>Apply Changes</strong> to persist and broadcast.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs">Anchor Start</Label>
+          <SegmentedControl<ShellNameplateAnchorStart>
+            ariaLabel="Nameplate Anchor Start"
+            options={SHELL_NAMEPLATE_ANCHOR_OPTIONS}
+            value={draft.anchorStart}
+            onChange={setAnchor}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs">Nameplate Attachment</Label>
+          <SegmentedControl<ShellNameplateAttachment>
+            ariaLabel="Nameplate Attachment"
+            options={SHELL_NAMEPLATE_ATTACHMENT_OPTIONS}
+            value={draft.attachment}
+            onChange={setAttachment}
+          />
+        </div>
         <div className="flex items-center justify-between gap-2">
           <Label className="text-xs">Nameplate X Offset</Label>
           <BufferedRatioInput
@@ -107,7 +166,9 @@ export function ShellNameplateAdminSection() {
           className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => reset()}
         >
-          Reset section to defaults (x={DEFAULT_SHELL_NAMEPLATE.xOffsetDia},
+          Reset to defaults (anchor={DEFAULT_SHELL_NAMEPLATE.anchorStart},
+          attach={DEFAULT_SHELL_NAMEPLATE.attachment},
+          x={DEFAULT_SHELL_NAMEPLATE.xOffsetDia},
           y={DEFAULT_SHELL_NAMEPLATE.yOffsetDia},
           maxW={DEFAULT_SHELL_NAMEPLATE.maxWidthDia})
         </button>

@@ -579,15 +579,40 @@ export function CanonicalSeatCluster({
     ? 'right-0 translate-x-full'
     : 'left-0 -translate-x-full';
 
-  // Global Shell → Seat Cluster → Nameplate config drives signed X/Y
-  // offsets and max width, all chip-DIAMETER normalized. Coordinate
-  // origin is the CHIP-CIRCLE CENTER; the vector points to the
-  // NAMEPLATE VISUAL CENTER. Live preview is sourced via
-  // useSyncExternalStore so admin draft edits flow without re-mount.
-  //   X = 0, Y = 0 ⇒ nameplate center over chip center.
-  //   Y < 0 up, Y > 0 down.
-  //   X < 0 outward, X > 0 inward (mirrored per seat side).
-  //   Center-anchored slots (HOME=-1, BOTTOM_RAIL=-3) collapse X to 0.
+  // Global Shell → Seat Cluster → Nameplate placement.
+  //
+  // Three-step resolution (all values chip-DIAMETER normalized):
+  //   1. ANCHOR START — point on chip-circle perimeter (upper / lower
+  //      / inner / outer). Inner/outer mirror per seat side.
+  //   2. NAMEPLATE ATTACHMENT — horizontal pin point of the pill
+  //      (inner / center / outer). Inner/outer mirror per seat side.
+  //      Vertical pin is implied by anchor (upper→bottom edge,
+  //      lower→top edge, side→vertical center).
+  //   3. OFFSET — signed X/Y added in CSS pixels. +X = inward
+  //      (mirrored), +Y = down.
+  //   Center-anchored slots (HOME=-1, BOTTOM_RAIL=-3) collapse the
+  //   inner/outer axis to center, and X offset collapses to 0.
+  //
+  // EXACT MATH (R = chipRadiusPx, dia = 2·R, side ∈ {left,right},
+  //             inwardSign = side==='left' ? +1 : -1):
+  //   anchorX_css = anchor==='inner' ? +inwardSign·R
+  //               : anchor==='outer' ? -inwardSign·R
+  //               : 0
+  //   anchorY_css = anchor==='upper' ? -R
+  //               : anchor==='lower' ? +R
+  //               : 0
+  //   attachX_pct = attachment==='center' ? -50
+  //               : attachment==='inner'  ? (side==='right' ? 0  : -100)
+  //               : attachment==='outer'  ? (side==='right' ? -100 : 0)
+  //   attachY_pct = anchor==='upper' ? -100
+  //               : anchor==='lower' ? 0
+  //               : -50
+  //   dx_css = xOffsetDia · dia · inwardSign      (0 on center slots)
+  //   dy_css = yOffsetDia · dia
+  //   transform = translate(anchorX_css, anchorY_css)
+  //               translate(attachX_pct%, attachY_pct%)
+  //               translate(dx_css, dy_css)
+  //   element pinned at left:50%; top:50% (chip center origin).
   const namePlateCfg = useSyncExternalStore(
     subscribeShellNameplate,
     getShellNameplateConfig,
@@ -595,28 +620,46 @@ export function CanonicalSeatCluster({
   );
   const chipDiameterPx = chipRadiusPx * 2;
   const isCenterAnchoredSlot = slot === -1 || slot === -3;
-  // Seat-side sign so positive X is INWARD on both sides:
-  //   left-side slot (1,2)    → +x CSS is INWARD  → +1
-  //   right-side slot (3,4,5) → -x CSS is INWARD  → -1
-  //   center-anchored slot    →  0 (no inner/outer axis)
   const inwardCssSignForName = isCenterAnchoredSlot
     ? 0
     : (isRightSideCanonicalSlot(slot) ? -1 : 1);
+  const effectiveAnchor: 'upper' | 'lower' | 'inner' | 'outer' =
+    (isCenterAnchoredSlot && (namePlateCfg.anchorStart === 'inner' || namePlateCfg.anchorStart === 'outer'))
+      ? 'upper'
+      : namePlateCfg.anchorStart;
+  const effectiveAttachment: 'inner' | 'center' | 'outer' =
+    isCenterAnchoredSlot ? 'center' : namePlateCfg.attachment;
+
+  let anchorXcss = 0;
+  let anchorYcss = 0;
+  if (effectiveAnchor === 'inner') anchorXcss = inwardCssSignForName * chipRadiusPx;
+  else if (effectiveAnchor === 'outer') anchorXcss = -inwardCssSignForName * chipRadiusPx;
+  else if (effectiveAnchor === 'upper') anchorYcss = -chipRadiusPx;
+  else if (effectiveAnchor === 'lower') anchorYcss = chipRadiusPx;
+
+  let attachXpct = -50;
+  if (effectiveAttachment === 'inner') {
+    attachXpct = isRightSideCanonicalSlot(slot) ? 0 : -100;
+  } else if (effectiveAttachment === 'outer') {
+    attachXpct = isRightSideCanonicalSlot(slot) ? -100 : 0;
+  }
+  const attachYpct =
+    effectiveAnchor === 'upper' ? -100 :
+    effectiveAnchor === 'lower' ? 0 : -50;
+
+  const dxOffsetPx = namePlateCfg.xOffsetDia * chipDiameterPx * inwardCssSignForName;
+  const dyOffsetPx = namePlateCfg.yOffsetDia * chipDiameterPx;
+
   const namePlateMaxWidthStyle: CSSProperties = {
     maxWidth: `${namePlateCfg.maxWidthDia * chipDiameterPx}px`,
   };
-  const dxOffsetPx = namePlateCfg.xOffsetDia * chipDiameterPx * inwardCssSignForName;
-  const dyOffsetPx = namePlateCfg.yOffsetDia * chipDiameterPx;
-  // Chip-center → nameplate-center anchoring.
-  //   left/top = chip center; translate(-50%,-50%) centers the pill
-  //   on that point at zero offset; the signed offsets then move the
-  //   nameplate center by (X, Y) chip-diameters from chip center.
   const namePlateAnchoredStyle: CSSProperties = {
     position: 'absolute',
     left: '50%',
     top: '50%',
     transform:
-      `translate(-50%, -50%)` +
+      `translate(${anchorXcss}px, ${anchorYcss}px)` +
+      ` translate(${attachXpct}%, ${attachYpct}%)` +
       ` translate(${dxOffsetPx}px, ${dyOffsetPx}px)`,
   };
 
