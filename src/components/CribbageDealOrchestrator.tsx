@@ -59,6 +59,12 @@ export function CribbageDealOrchestrator({
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
+  const dealerIsSelf = dealerPlayerId === selfPlayerId;
+  const dealerSeatForOrigin = seats.find(s => s.playerId === dealerPlayerId) ?? null;
+  const dealerPositionForOrigin = dealerSeatForOrigin?.position ?? null;
+  const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
+  const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
+
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
