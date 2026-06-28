@@ -194,6 +194,7 @@ import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed, l
 import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
@@ -3437,6 +3438,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
+    // No-Timers harness: suppress decision countdown surface + ticking.
+    if (isNoTimersEnabledCached()) {
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
+      setTimeLeft(null);
+      return;
+    }
     const is357TimerBlocked =
       game?.game_type === '3-5-7' ||
       game?.game_type === '3-5-7-game' ||
@@ -3602,6 +3610,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
+    // No-Timers harness: freeze ante countdown.
+    if (isNoTimersEnabledCached()) return;
     if (anteTimeLeft === null || anteTimeLeft <= 0) return;
     // Don't count down if game is paused
     if (game?.is_paused) return;
@@ -4284,6 +4294,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
   useEffect(() => {
+    // No-Timers harness: ante timer-expiry auto-sit-out is forbidden.
+    if (isNoTimersEnabledCached()) return;
     if (game?.is_paused) return;
     if (anteTimeLeft !== 0 || game?.status !== 'ante_decision' || !user) return;
 
@@ -5611,6 +5623,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const autoFoldingRef = useRef(false);
   const countdownArmedRoundIdRef = useRef<string | null>(null);
   useEffect(() => {
+    // No-Timers global harness: timer-expiry auto-fold is forbidden.
+    // Deadlines still write; flipping the harness OFF restores normal
+    // behavior on the next deadline.
+    if (isNoTimersEnabledCached()) return;
     const isHolmGame = game?.game_type === 'holm-game';
 
     // Arm the timeout only after we have seen a positive countdown for the current round.

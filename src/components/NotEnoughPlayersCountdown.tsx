@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { handlePlayerRejoin } from "@/lib/playerStateEvaluation";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 
 interface NotEnoughPlayersCountdownProps {
   gameId: string;
@@ -96,6 +97,8 @@ export const NotEnoughPlayersCountdown = ({
 
   // Countdown timer using interval for reliable ticking
   useEffect(() => {
+    // No-Timers harness: freeze the lobby revert countdown.
+    if (isNoTimersEnabledCached()) return;
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -111,6 +114,7 @@ export const NotEnoughPlayersCountdown = ({
 
   // Handle revert to canonical waiting-table status when countdown reaches 0
   useEffect(() => {
+    if (isNoTimersEnabledCached()) return;
     if (countdown <= 0 && !hasEndedRef.current) {
       hasEndedRef.current = true;
       

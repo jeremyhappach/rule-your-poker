@@ -19,6 +19,7 @@ import {
   endHolmTimerSegment,
   recordHolmTimerWrite,
 } from "@/lib/canonicalShell/cardTransport/holmSelfTimerForensics";
+import { useNoTimersEnabled } from "@/lib/geometryLab/noTimersStore";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
@@ -44,6 +45,8 @@ export const MobilePlayerTimer = ({
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  // Hook must be called unconditionally; short-circuit happens below all hooks.
+  const noTimers = useNoTimersEnabled();
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
@@ -468,6 +471,13 @@ export const MobilePlayerTimer = ({
   // center is mathematically identical to the disc center at every
   // responsive size.
   const ringOuter = size + 8;
+
+  // No-Timers global harness: render bare children. No countdown surface
+  // is mounted. Deadlines continue to be written server-side so flipping
+  // the harness OFF restores normal behavior on the next deadline.
+  if (noTimers) {
+    return <>{children}</>;
+  }
 
   return (
     <div

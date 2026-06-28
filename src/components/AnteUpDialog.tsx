@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { logDebugEvent } from "@/lib/debugEventLogger";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 
 interface AnteUpDialogProps {
   gameId: string;
@@ -105,12 +106,14 @@ export const AnteUpDialog = ({
   }, []); // empty deps = true mount/unmount
 
   useEffect(() => {
+    if (isNoTimersEnabledCached()) return;
     if (timeLeft <= 0 && !hasDecided) {
       handleSitOut();
     }
   }, [timeLeft, hasDecided]);
 
   useEffect(() => {
+    if (isNoTimersEnabledCached()) return;
     const timer = setInterval(() => {
       setTimeLeft(prev => Math.max(0, prev - 1));
     }, 1000);

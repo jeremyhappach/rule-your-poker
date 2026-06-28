@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { nextEligibleUndecided } from "../_shared/seatRing.ts";
+import { isNoTimersEnabled } from "../_shared/noTimersPolicy.ts";
 
 /**
  * SLIM CLIENT-SIDE DEADLINE ENFORCER
@@ -164,6 +165,16 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // No-Timers global harness: short-circuit BEFORE any mutation.
+    // Deadlines remain intact in DB so flipping the harness OFF
+    // resumes normal enforcement on the next invocation.
+    if (await isNoTimersEnabled(supabase)) {
+      return new Response(
+        JSON.stringify({ success: true, disabled: true, reason: 'no_timers' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // DEBUG: allow temporarily disabling client-side enforcement to isolate race conditions.
