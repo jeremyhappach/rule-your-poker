@@ -79,6 +79,11 @@ import {
   type RoundGeometryR3,
   type ShowdownRulesState,
 } from "@/lib/threeFiveSeven/showdownConfig";
+import {
+  CRIBBAGE_PEGGING_ROW_SETTINGS_DEFAULTS,
+  CRIBBAGE_PEGGING_ROW_SETTINGS_KEY,
+  type CribbagePeggingRowSettings,
+} from "@/lib/cribbage/peggingRowSettings";
 
 // Non-anchored artifacts that the Lab picker still needs to surface so
 // their per-artifact overlap controls have a host section. The geometry
