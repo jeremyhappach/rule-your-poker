@@ -954,21 +954,16 @@ function ThreeFiveSevenWinnerOverlapBridge() {
         const v = value.rounds[k].row.overlap;
         return (
           <div key={k} className="space-y-1">
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-2">
               <Label className="text-sm font-medium">{label}</Label>
-              <span className="text-xs font-mono text-muted-foreground">
-                {v.toFixed(2)}
-              </span>
+              <BufferedRatioInput
+                value={v}
+                min={-0.5}
+                max={0.9}
+                ariaLabel={`${label} fan overlap`}
+                onCommit={(n) => patch(k, n)}
+              />
             </div>
-            <input
-              type="range"
-              min={-0.5}
-              max={0.9}
-              step={0.01}
-              value={v}
-              onChange={(e) => patch(k, Number(e.target.value))}
-              className="w-full"
-            />
           </div>
         );
       })}
