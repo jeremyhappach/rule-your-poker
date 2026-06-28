@@ -46,9 +46,17 @@ export interface ShellNameplateConfig {
 
 export const SHELL_NAMEPLATE_KEY = 'shell_nameplate';
 
+// Baseline contract (corrected):
+//   Offsets are measured from chip-circle CENTER → nameplate visual CENTER.
+//   X=0/Y=0 ⇒ nameplate center coincides with chip center.
+//   To reproduce today's "above-chip" rendered placement at first
+//   paint, seed Y to the measured chip-center → nameplate-center
+//   distance derived from the existing CSS cascade:
+//     chip half (20px) + gap (mb-[2px]) + half pill (~7.25px) ≈ 29.25px
+//     yOffsetDia = -29.25 / 40 ≈ -0.73
 export const DEFAULT_SHELL_NAMEPLATE: ShellNameplateConfig = {
   xOffsetDia: 0,
-  yOffsetDia: 0,
+  yOffsetDia: -0.73,
   maxWidthDia: 2.2, // 88px @ 40px chip cell — legacy max-w-[88px]
 };
 

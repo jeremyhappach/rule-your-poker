@@ -589,10 +589,21 @@ export function CanonicalSeatCluster({
   const namePlateMaxWidthStyle: CSSProperties = {
     maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
   };
-  const namePlateOffsetStyle: CSSProperties = {
+  // Chip-center-anchored placement contract:
+  //   The nameplate's VISUAL CENTER sits at chip-circle center plus
+  //   the signed (X,Y) offsets, expressed in chip DIAMETERS. X is
+  //   mirrored per seat side so +X is always inward toward the felt
+  //   center; Y is +down / -up. Default Y (-0.73) reproduces today's
+  //   above-chip rendered placement; X=Y=0 puts the nameplate center
+  //   directly over the chip center.
+  const namePlateAnchoredStyle: CSSProperties = {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
     transform:
-      `translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
-      ` calc(var(--shell-nameplate-y-dia, 0) * ${chipDiameterPx}px))`,
+      `translate(-50%, -50%)` +
+      ` translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
+      ` calc(var(--shell-nameplate-y-dia, -0.73) * ${chipDiameterPx}px))`,
   };
 
   // Build chip-cell contents and name row.
@@ -719,30 +730,11 @@ export function CanonicalSeatCluster({
         </div>,
       );
     }
-    if (effectiveNamePlacement === 'above-chip' && nameRow) {
-      aboveChipNodes.push(
-        <div key="name" className="relative inline-flex items-center" style={namePlateOffsetStyle}>
-          {nameRow}
-          {isDealer && (
-            <div
-              data-canonical-dealer-pip=""
-              data-dealer-pip-active="true"
-              aria-label="Dealer"
-              title="Dealer"
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2',
-                dealerInnerSideClass,
-                'inline-flex items-center justify-center rounded-full',
-                'bg-red-600 border border-white shadow',
-                'w-5 h-5 text-[10px] font-bold text-white leading-none pointer-events-none',
-              )}
-            >
-              D
-            </div>
-          )}
-        </div>,
-      );
-    }
+    // Nameplate is no longer stacked in the above-chip flow column —
+    // it is rendered in its own chip-center-anchored absolute layer
+    // (see render output below) so X/Y offsets describe the true
+    // chip-center → nameplate-center vector. Avatar continues to live
+    // in the above-chip column.
   }
 
   // Below-chip stack: score line (and children if growth DOWN).
@@ -814,6 +806,43 @@ export function CanonicalSeatCluster({
         </div>
       )}
 
+
+      {/* Chip-center-anchored nameplate layer. Sits on top of the chip
+          cell at chip-circle center plus the configured signed offsets
+          (X mirrored per seat side). Replaces the prior above-chip
+          stacked nameplate so stored values truthfully describe the
+          chip-center → nameplate-center vector. */}
+      {!hideChipBubble && effectiveNamePlacement === 'above-chip' && nameRow && (
+        <div
+          data-canonical-seat-nameplate-layer=""
+          className="pointer-events-none"
+          style={{
+            ...namePlateAnchoredStyle,
+            ...(transportSuppressed ? { visibility: 'hidden' as const } : null),
+          }}
+        >
+          <div className="relative inline-flex items-center">
+            {nameRow}
+            {isDealer && (
+              <div
+                data-canonical-dealer-pip=""
+                data-dealer-pip-active="true"
+                aria-label="Dealer"
+                title="Dealer"
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2',
+                  dealerInnerSideClass,
+                  'inline-flex items-center justify-center rounded-full',
+                  'bg-red-600 border border-white shadow',
+                  'w-5 h-5 text-[10px] font-bold text-white leading-none pointer-events-none',
+                )}
+              >
+                D
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {!hideChipBubble && (
         <div
           data-canonical-seat-pill=""

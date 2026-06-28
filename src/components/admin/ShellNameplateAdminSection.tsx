@@ -54,8 +54,10 @@ export function ShellNameplateAdminSection() {
         </Label>
         <p className="text-xs text-muted-foreground">
           Global Shell defaults for the canonical opponent seat-cluster
-          nameplate. Offsets are measured from the CENTER of the chip
-          circle in units of its DIAMETER. <strong>X</strong>: positive
+          nameplate. Offsets describe the vector from chip-circle CENTER
+          to nameplate visual CENTER, in units of the chip DIAMETER.
+          X=0, Y=0 places the nameplate center directly over the chip
+          center. <strong>X</strong>: positive
           = inward toward felt center (mirrored automatically by seat
           side). <strong>Y</strong>: positive = downward, negative =
           upward. <strong>Max Width</strong>: rendered text container
@@ -106,7 +108,7 @@ export function ShellNameplateAdminSection() {
           className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => reset()}
         >
-          Reset section to defaults (x=0, y=0, maxW=
+          Reset section to defaults (x=0, y={DEFAULT_SHELL_NAMEPLATE.yOffsetDia}, maxW=
           {DEFAULT_SHELL_NAMEPLATE.maxWidthDia})
         </button>
       </div>
