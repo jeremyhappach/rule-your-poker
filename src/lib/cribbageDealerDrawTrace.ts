@@ -133,6 +133,7 @@ export function recordCribDealerDraw(args: {
     persistSyncDebugEvent({
       gameId: args.gameId,
       gameType: 'cribbage',
+      handNumber: (args.payload?.handNumber as number | undefined) ?? 0,
       eventType: 'transition',
       severity: 'info',
       eventName: `cribDealerDraw:${args.surface}:${args.event}:${s}`,
