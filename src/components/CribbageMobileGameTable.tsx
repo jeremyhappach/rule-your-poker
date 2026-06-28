@@ -3210,6 +3210,16 @@ export const CribbageMobileGameTable = ({
       });
 
       // If state already exists, use it (game already in progress or resumed)
+      recordCribDealerDraw({
+        gameId, surface: 'CribbageMobileGameTable.loadOrInitializeState', event: 'branch',
+        payload: {
+          branch: roundData?.cribbage_state ? 'existing_round_state' : (!roundData?.hand_number || (roundData?.hand_number ?? 0) <= 1 ? 'first_hand_selection' : 'initialized_new_state'),
+          roundId: fetchRoundId,
+          handNumber: roundData?.hand_number ?? null,
+          cribbageStatePresent: !!roundData?.cribbage_state,
+          cribbageStateNullness: roundData?.cribbage_state == null ? 'null' : 'non-null',
+        },
+      });
       if (roundData?.cribbage_state) {
         console.log('[CRIBBAGE] Using existing state from DB');
         const loadedState = roundData.cribbage_state as unknown as CribbageState;
