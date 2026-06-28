@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { logDebugEvent } from "@/lib/debugEventLogger";
+import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 
 interface AnteUpDialogProps {
   gameId: string;
