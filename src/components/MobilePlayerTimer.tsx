@@ -45,12 +45,8 @@ export const MobilePlayerTimer = ({
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  // No-Timers global harness: render bare children, no countdown, no ring.
-  // Hooks below this point are not invoked when the harness is armed.
+  // Hook must be called unconditionally; short-circuit happens below all hooks.
   const noTimers = useNoTimersEnabled();
-  if (noTimers) {
-    return <>{children}</>;
-  }
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
