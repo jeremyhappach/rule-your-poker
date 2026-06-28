@@ -852,22 +852,19 @@ function CardOverlapRow({ domain }: { domain: CardOverlapDomain }) {
   const { value, setValue } = useDomainDraft<number>(domain.key, domain.default);
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <Label className="text-sm font-medium">{domain.label}</Label>
-        <span className="text-xs font-mono text-muted-foreground">
-          {value.toFixed(2)}
-        </span>
+        <BufferedRatioInput
+          value={value}
+          min={domain.min}
+          max={domain.max}
+          ariaLabel={domain.label}
+          onCommit={(n) => setValue(n)}
+        />
       </div>
-      <input
-        type="range"
-        min={domain.min}
-        max={domain.max}
-        step={domain.step}
-        value={value}
-        onChange={(e) => setValue(Number(e.target.value))}
-        className="w-full"
-      />
-      <p className="text-[11px] text-muted-foreground">{domain.help}</p>
+      <p className="text-[11px] text-muted-foreground">
+        {domain.help} Range [{domain.min}, {domain.max}].
+      </p>
     </div>
   );
 }
