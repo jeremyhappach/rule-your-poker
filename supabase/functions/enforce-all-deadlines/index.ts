@@ -268,6 +268,17 @@ serve(async (req) => {
     } catch (e) {
       console.warn('[CRON-ENFORCE] Failed to read debug_disable_enforcement (continuing):', e);
     }
+    // No-Timers global harness: short-circuit BEFORE any mutation.
+    // Existing deadlines stay intact so flipping OFF resumes normal
+    // cron enforcement on the next scheduled tick.
+    if (await isNoTimersEnabled(supabase)) {
+      console.log('[CRON-ENFORCE] Disabled via system_settings.no_timers', { cronRunId });
+      return new Response(
+        JSON.stringify({ success: true, disabled: true, reason: 'no_timers', cronRunId }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const now = new Date();
     const nowIso = now.toISOString();
 
