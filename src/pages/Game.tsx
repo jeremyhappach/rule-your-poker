@@ -3610,6 +3610,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
+    // No-Timers harness: freeze ante countdown.
+    if (isNoTimersEnabledCached()) return;
     if (anteTimeLeft === null || anteTimeLeft <= 0) return;
     // Don't count down if game is paused
     if (game?.is_paused) return;
