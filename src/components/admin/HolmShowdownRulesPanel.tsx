@@ -259,13 +259,13 @@ export function HolmShowdownRulesPanel() {
       </Section>
 
       <Section title="Row geometry">
-        <Row label="Overlap (fraction of card width)">
-          <NumInput
+        <Row label="Overlap (normalized ratio · fraction of card width)">
+          <BufferedRatioInput
             value={state.row.overlap}
-            step={0.05}
-            min={0}
+            min={-0.5}
             max={1}
-            onChange={(n) =>
+            ariaLabel="Holm showdown row overlap"
+            onCommit={(n) =>
               setValue({ ...state, row: { ...state.row, overlap: n } })
             }
           />
