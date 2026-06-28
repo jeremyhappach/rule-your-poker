@@ -27,6 +27,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
+import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from '@/lib/cribbageDealerDrawTrace';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
