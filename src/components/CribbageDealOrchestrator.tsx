@@ -123,10 +123,8 @@ export function CribbageDealOrchestrator({
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
-    const dealerIsSelf = dealerPlayerId === selfPlayerId;
-    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
-      ? { kind: 'hand', playerId: selfPlayerId }
-      : { kind: 'seat', position: dealerSeat.position };
+    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerSeat.position };
+
     const intents: CardTransportIntent[] = [];
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (let off = 1; off <= sorted.length; off++) {
