@@ -6380,6 +6380,17 @@ export const CribbageMobileGameTable = ({
                     syncedState={highCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
+                    surfaceTag="roundPhase"
+                    gating={{
+                      isHighCardMode,
+                      isDealerSelection,
+                      showHighCardSelection,
+                      effectiveShowHighCardSelection,
+                      gameStatus: (game as any)?.status ?? null,
+                      currentRoundId: currentRoundId ?? null,
+                      roundCribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+                      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                    }}
                     onComplete={(pos) => {
                       // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
                       emitCribbageHandoffTrace({
@@ -6405,6 +6416,17 @@ export const CribbageMobileGameTable = ({
                     syncedState={dealerSelectionSyncedState}
                     onCardsUpdate={onDealerSelectionCardsUpdate}
                     onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
+                    surfaceTag="sessionPhase"
+                    gating={{
+                      isHighCardMode,
+                      isDealerSelection,
+                      showHighCardSelection,
+                      effectiveShowHighCardSelection,
+                      gameStatus: (game as any)?.status ?? null,
+                      currentRoundId: currentRoundId ?? null,
+                      roundCribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+                      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                    }}
                     onComplete={onDealerSelectionComplete}
                   />
                 )}
