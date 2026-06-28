@@ -92,15 +92,44 @@ export function initializeCribbageGame(
   
   // Create and shuffle deck
   const deck = shuffleDeck(createDeck());
-  
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Debug Harness: Cribbage "Max Pegging Fan"
+  // Deterministic legal deal — P1 gets A♠ A♥ 2♠ 2♥ 3♠ 3♥, P2 gets
+  // A♦ A♣ 2♦ 2♣ 3♦ 3♣. Regardless of which two each player discards,
+  // the remaining 8 cards (max value 3 each) sum to ≤24, so neither
+  // player can exceed 31 mid-row — guaranteeing a maximum-length
+  // pegging fan for renderer/UI tuning. Crib discards are NOT forced.
+  // ───────────────────────────────────────────────────────────────────────
+  const harnessId = getActiveHarnessCached('cribbage');
+  const useMaxPeggingFanDeal =
+    harnessId === 'max_pegging_fan' &&
+    playerCount === 2 &&
+    cardsPerPlayer === 6;
+
+  const mk = (rank: string, suit: CribbageCard['suit']): CribbageCard => ({
+    suit,
+    rank,
+    value: rank === 'A' ? 1 : ['J', 'Q', 'K'].includes(rank) ? 10 : parseInt(rank, 10),
+  });
+  const maxPeggingHands: CribbageCard[][] = useMaxPeggingFanDeal
+    ? [
+        [mk('A', 'spades'), mk('A', 'hearts'), mk('2', 'spades'), mk('2', 'hearts'), mk('3', 'spades'), mk('3', 'hearts')],
+        [mk('A', 'diamonds'), mk('A', 'clubs'), mk('2', 'diamonds'), mk('2', 'clubs'), mk('3', 'diamonds'), mk('3', 'clubs')],
+      ]
+    : [];
+
   // Deal cards
   const playerStates: Record<string, CribbagePlayerState> = {};
   let cardIndex = 0;
-  
-  for (const playerId of playerIds) {
-    const hand = deck.slice(cardIndex, cardIndex + cardsPerPlayer);
+
+  for (let i = 0; i < playerIds.length; i++) {
+    const playerId = playerIds[i];
+    const hand = useMaxPeggingFanDeal
+      ? maxPeggingHands[i]
+      : deck.slice(cardIndex, cardIndex + cardsPerPlayer);
     cardIndex += cardsPerPlayer;
-    
+
     playerStates[playerId] = {
       playerId,
       hand,
@@ -119,7 +148,7 @@ export function initializeCribbageGame(
   // and replay transition. When 'none' this block is a no-op.
   // ───────────────────────────────────────────────────────────────────────
   if (
-    getActiveHarnessCached('cribbage') === 'near_double_skunk' &&
+    harnessId === 'near_double_skunk' &&
     playerIds.length >= 2
   ) {
     const seedHostId = hostPlayerId && playerIds.includes(hostPlayerId)
