@@ -119,13 +119,23 @@ export const INDEPENDENT_OVERLAP_DOMAINS: CardOverlapDomain[] = [
     cacheKey: 'ptp_cardOverlap_cribbage_cribToCutGap',
     min: -0.5, max: 2, step: 0.01,
   },
-  // NOTE: Cribbage pegging, Cribbage active-player hand, and Gin
-
-  // active-player hand are intentionally NOT registered here. They are
-  // HUDStack / adaptive-resolver contracts, not felt-artifact overlap
-  // values. See useCardRowLayout consumers in Wave4PeggingRowSlot,
-  // CribbageMobileCardsTab, and GinRummyMobileCardsTab.
+  {
+    key: 'cardOverlap.cribbage.pegging',
+    label: 'Cribbage pegging row · fan overlap',
+    help: 'Explicit fan overlap for the pegging row. Persisted today; consumed only when the Pegging Row "Adaptive Fan" preference is OFF. Default mirrors the current adaptive resolver preferredOverlapRatio (0.18).',
+    default: 0.18,
+    cacheKey: 'ptp_cardOverlap_cribbage_pegging',
+    min: -0.5, max: 0.9, step: 0.01,
+  },
+  // NOTE: Cribbage active-player hand and Gin active-player hand are
+  // intentionally NOT registered here. They are HUDStack / adaptive-
+  // resolver contracts, not felt-artifact overlap values. See
+  // useCardRowLayout consumers in CribbageMobileCardsTab and
+  // GinRummyMobileCardsTab. Cribbage pegging is registered above so the
+  // Lab UI can persist a manual override when Adaptive Fan is OFF; it is
+  // NOT yet consumed by Wave4PeggingRowSlot.
 ];
+
 
 // Register each domain at module import.
 for (const d of INDEPENDENT_OVERLAP_DOMAINS) {
