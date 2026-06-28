@@ -546,6 +546,16 @@ function ShellGlobalSections() {
       <CollapsibleSection title="Card Front Design">
         <CardFrontDesignPanel />
       </CollapsibleSection>
+      <CollapsibleSection title="Seat Cluster">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Nameplate
+            </h4>
+            <ShellNameplateAdminSection />
+          </div>
+        </div>
+      </CollapsibleSection>
       <CollapsibleSection title="HUD Stack">
         <p className="text-xs text-muted-foreground">
           Placeholder. Future Geometry Lab work: shell-owned HUD stack
