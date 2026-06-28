@@ -271,11 +271,13 @@ export function GeometryLab({ userId }: { userId: string }) {
     setDraft,
     resetDomain,
     isDomainDirty,
+    dirtyKeys,
     registerSeed,
     unregisterSeed,
     registerCommitAdapter,
     unregisterCommitAdapter,
   } = useGeometryLabDraft();
+
 
   // Refs let the seed/commit adapters always read the latest descriptor
   // and override snapshot without re-registering on every render.
