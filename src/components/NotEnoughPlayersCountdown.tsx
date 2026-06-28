@@ -114,6 +114,7 @@ export const NotEnoughPlayersCountdown = ({
 
   // Handle revert to canonical waiting-table status when countdown reaches 0
   useEffect(() => {
+    if (isNoTimersEnabledCached()) return;
     if (countdown <= 0 && !hasEndedRef.current) {
       hasEndedRef.current = true;
       
