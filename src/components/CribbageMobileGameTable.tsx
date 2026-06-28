@@ -3545,6 +3545,20 @@ export const CribbageMobileGameTable = ({
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
   const handleHighCardComplete = useCallback(async (winnerPosition: number) => {
+    recordCribDealerDraw({
+      gameId,
+      surface: 'CribbageMobileGameTable.handleHighCardComplete',
+      event: 'entry',
+      payload: {
+        winnerPosition,
+        callbackTarget: 'handleHighCardComplete',
+        handlerName: 'handleHighCardComplete',
+        isHost,
+        currentRoundId: currentRoundId ?? null,
+        gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other',
+        cribbageStateNullness: cribbageState == null ? 'null' : 'non-null',
+      },
+    });
     const winnerPlayer = players.find(p => p.position === winnerPosition);
     if (!winnerPlayer) {
       console.error('[CRIBBAGE] High card winner position not found:', winnerPosition);
@@ -3556,6 +3570,7 @@ export const CribbageMobileGameTable = ({
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
+    recordCribDealerDraw({ gameId, surface: 'CribbageMobileGameTable.setShowHighCardSelection', event: 'set', payload: { previous: showHighCardSelection, next: false, callsite: 'handleHighCardComplete', currentRoundId: currentRoundId ?? null, gameStatusHint: isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other' } });
     setShowHighCardSelection(false);
     setInitialLoadComplete(true);
 
