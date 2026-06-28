@@ -472,6 +472,13 @@ export const MobilePlayerTimer = ({
   // responsive size.
   const ringOuter = size + 8;
 
+  // No-Timers global harness: render bare children. No countdown surface
+  // is mounted. Deadlines continue to be written server-side so flipping
+  // the harness OFF restores normal behavior on the next deadline.
+  if (noTimers) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       ref={wrapperRef}
