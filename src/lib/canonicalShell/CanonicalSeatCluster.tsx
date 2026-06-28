@@ -40,7 +40,11 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { cloneElement, isValidElement, useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import {
+  getShellNameplateConfig,
+  subscribeShellNameplate,
+} from './shellNameplateConfig';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { cn } from '@/lib/utils';
 import {
@@ -575,35 +579,69 @@ export function CanonicalSeatCluster({
     ? 'right-0 translate-x-full'
     : 'left-0 -translate-x-full';
 
-  // Global Shell → Seat Cluster → Nameplate config drives max width
-  // and X/Y offsets (relative to the chip-circle DIAMETER). X is
-  // mirrored by side so positive = inward toward felt center for
-  // BOTH left- and right-side opponent seats. Center-anchored slots
-  // (HOME=-1, BOTTOM_RAIL=-3) collapse to 0 because "inward" has no
-  // horizontal meaning there. These are computed unconditionally so
-  // both the chip-cell render branch and the name-row wrapper below
-  // share the same offset/maxWidth styles.
+  // Global Shell → Seat Cluster → Nameplate config drives anchor
+  // selection, signed X/Y offsets, and max width (all chip-DIAMETER
+  // normalized). Live preview is sourced via useSyncExternalStore so
+  // admin draft edits are reflected immediately without re-mounting.
+  //
+  // Attachment contract — at zero offset, the chosen nameplate edge is
+  // tangent to the chip's matching edge; +X is INWARD (mirrored per
+  // seat side), +Y is DOWN. Center-anchored slots (HOME=-1,
+  // BOTTOM_RAIL=-3) collapse the horizontal axis to chip center
+  // because "inner / outer" have no meaning there.
+  const namePlateCfg = useSyncExternalStore(
+    subscribeShellNameplate,
+    getShellNameplateConfig,
+    getShellNameplateConfig,
+  );
   const chipDiameterPx = chipRadiusPx * 2;
   const isCenterAnchoredSlot = slot === -1 || slot === -3;
+  // Seat-side sign:
+  //   left-side slot (1,2)    → +x in CSS is INWARD  → inwardCssSign = +1
+  //   right-side slot (3,4,5) → -x in CSS is INWARD  → inwardCssSign = -1
+  //   center-anchored slot    → 0 (no horizontal inner/outer)
   const inwardCssSignForName = isCenterAnchoredSlot ? 0 : (isRightSideCanonicalSlot(slot) ? -1 : 1);
   const namePlateMaxWidthStyle: CSSProperties = {
-    maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
+    maxWidth: `${namePlateCfg.maxWidthDia * chipDiameterPx}px`,
   };
-  // Chip-center-anchored placement contract:
-  //   The nameplate's VISUAL CENTER sits at chip-circle center plus
-  //   the signed (X,Y) offsets, expressed in chip DIAMETERS. X is
-  //   mirrored per seat side so +X is always inward toward the felt
-  //   center; Y is +down / -up. Default Y (-0.73) reproduces today's
-  //   above-chip rendered placement; X=Y=0 puts the nameplate center
-  //   directly over the chip center.
+  // Resolve VERTICAL attachment: pin chip-edge in CSS space.
+  //   Upper: chip TOP edge = -chipRadius from chip center → translateY(-100%)
+  //          puts nameplate BOTTOM edge at that line, growing upward.
+  //   Lower: chip BOTTOM edge = +chipRadius from chip center → translateY(0%)
+  //          puts nameplate TOP edge at that line, growing downward.
+  const vTopOffsetPx =
+    namePlateCfg.vAnchor === 'upper' ? -chipRadiusPx : chipRadiusPx;
+  const vTranslatePct = namePlateCfg.vAnchor === 'upper' ? '-100%' : '0%';
+  // Resolve HORIZONTAL attachment in CSS space.
+  let hLeftOffsetPx = 0;
+  let hTranslatePct = '-50%';
+  if (isCenterAnchoredSlot || namePlateCfg.hAnchor === 'center') {
+    hLeftOffsetPx = 0;
+    hTranslatePct = '-50%';
+  } else {
+    // For right-side slots: OUTER = right edge of chip (positive CSS x);
+    //                       INNER = left edge of chip  (negative CSS x).
+    // For left-side slots:  OUTER = left edge of chip  (negative CSS x);
+    //                       INNER = right edge of chip (positive CSS x).
+    const outerSideCssSign = isRightSideCanonicalSlot(slot) ? 1 : -1;
+    const pinSign =
+      namePlateCfg.hAnchor === 'outer' ? outerSideCssSign : -outerSideCssSign;
+    hLeftOffsetPx = pinSign * chipRadiusPx;
+    // Pin the matching nameplate edge to the chip edge.
+    //   pinSign = +1 (pinning at right side of chip) → nameplate LEFT edge sits there → translateX(0%)
+    //   pinSign = -1 (pinning at left side of chip)  → nameplate RIGHT edge sits there → translateX(-100%)
+    hTranslatePct = pinSign > 0 ? '0%' : '-100%';
+  }
+  // Post-attachment signed offsets, in chip-diameter units.
+  const dxOffsetPx = namePlateCfg.xOffsetDia * chipDiameterPx * inwardCssSignForName;
+  const dyOffsetPx = namePlateCfg.yOffsetDia * chipDiameterPx;
   const namePlateAnchoredStyle: CSSProperties = {
     position: 'absolute',
-    left: '50%',
-    top: '50%',
+    left: `calc(50% + ${hLeftOffsetPx}px)`,
+    top: `calc(50% + ${vTopOffsetPx}px)`,
     transform:
-      `translate(-50%, -50%)` +
-      ` translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
-      ` calc(var(--shell-nameplate-y-dia, -0.73) * ${chipDiameterPx}px))`,
+      `translate(${hTranslatePct}, ${vTranslatePct})` +
+      ` translate(${dxOffsetPx}px, ${dyOffsetPx}px)`,
   };
 
   // Build chip-cell contents and name row.
