@@ -589,10 +589,21 @@ export function CanonicalSeatCluster({
   const namePlateMaxWidthStyle: CSSProperties = {
     maxWidth: `calc(var(--shell-nameplate-maxw-dia, 2.2) * ${chipDiameterPx}px)`,
   };
-  const namePlateOffsetStyle: CSSProperties = {
+  // Chip-center-anchored placement contract:
+  //   The nameplate's VISUAL CENTER sits at chip-circle center plus
+  //   the signed (X,Y) offsets, expressed in chip DIAMETERS. X is
+  //   mirrored per seat side so +X is always inward toward the felt
+  //   center; Y is +down / -up. Default Y (-0.73) reproduces today's
+  //   above-chip rendered placement; X=Y=0 puts the nameplate center
+  //   directly over the chip center.
+  const namePlateAnchoredStyle: CSSProperties = {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
     transform:
-      `translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
-      ` calc(var(--shell-nameplate-y-dia, 0) * ${chipDiameterPx}px))`,
+      `translate(-50%, -50%)` +
+      ` translate(calc(var(--shell-nameplate-x-dia, 0) * ${chipDiameterPx}px * ${inwardCssSignForName}),` +
+      ` calc(var(--shell-nameplate-y-dia, -0.73) * ${chipDiameterPx}px))`,
   };
 
   // Build chip-cell contents and name row.
