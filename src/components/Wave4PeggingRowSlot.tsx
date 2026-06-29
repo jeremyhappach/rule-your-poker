@@ -190,6 +190,8 @@ export function Wave4PeggingRowSlot({
     );
   }
 
+  if (!coordFrame) return null;
+
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
