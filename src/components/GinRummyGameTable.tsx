@@ -1303,13 +1303,16 @@ export const GinRummyGameTable = ({
           ginState: summarizeGinRunbackState(ginState),
           note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
         });
-        // Identity-bound bootstrap: only accept a snapshot whose handNumber
-        // matches the live incoming identity. Query is already filtered by
-        // roundId; this is the second axis of the identity contract.
+        // Site 6 admission — full 3-axis provenance.
         const expectedHand = currentHandNumberRef.current;
         const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
-        if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
-          recordGinRunbackTrace('bootstrap fetch result dropped', {
+        const fetchProvenance: GinPresentationIdentity | null =
+          dealerGameId && roundId && stateHand > 0
+            ? { dealerGameId, roundId, handNumber: stateHand }
+            : null;
+        const fetchMismatch = ginIdentityMismatchAxis(fetchProvenance, committedIdentityRef.current);
+        if (fetchMismatch) {
+          recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
             gameId,
             authIdentity: summarizeGinRunbackIdentity(authIdentity),
             currentRoundId: roundId,
@@ -1320,13 +1323,8 @@ export const GinRummyGameTable = ({
             viewState: summarizeGinRunbackState(viewState),
             ginState: summarizeGinRunbackState(ginState),
             applyState: 'dropped',
-            dropReason: 'bootstrap mismatch',
-            note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
-          });
-          ginTrace('gin.hydration load:identity-mismatch-dropped', {
-            elapsedMs: Math.round(performance.now() - startedAt),
-            expectedHand,
-            stateHand,
+            dropReason: `identity-mismatch:${fetchMismatch}`,
+            note: `payload=${ginIdentityKey(fetchProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
           });
           return;
         }
