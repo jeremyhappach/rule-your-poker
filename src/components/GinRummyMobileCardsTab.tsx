@@ -106,6 +106,14 @@ export const GinRummyMobileCardsTab = ({
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
+
+  // Single-owner discard contract: Take must be disabled until the
+  // opening discard intent for the current hand has settled.
+  const discardCardId = deal?.handContextId ? `${deal.handContextId}#discard` : null;
+  const discardRevealed = !deal || !discardCardId
+    ? true
+    : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(discardCardId);
+
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
 
   useEffect(() => {
