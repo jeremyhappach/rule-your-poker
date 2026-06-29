@@ -36,6 +36,16 @@ interface SeatEntry {
   position: number;
 }
 
+// ── Module-level opening-deal ownership registry ──
+// Canonical contract: ONE opening-deal manifest per full identity tuple
+// (encoded into handContextId = "<dealerGameId>#r<roundId>#h<handNumber>").
+// The orchestrator may unmount/remount many times within the same tuple
+// (e.g. presentation reset, viewState briefly clearing). Instance-local
+// dispatch refs are not safe — they reset on remount. This module-level
+// Set survives orchestrator instance lifetime, so a remount under the
+// same tuple observes the prior dispatch and skips beginDeal+dispatchMany.
+const dispatchedOpeningDealManifests = new Set<string>();
+
 const SYMBOL_TO_WORD: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
   '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
   spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
@@ -75,6 +85,20 @@ export function GinRummyDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
+    // Identity-bound opening-deal ownership: a remount under the same
+    // handContextId (full 3-axis identity tuple) must observe the prior
+    // dispatch and skip. This guards against orchestrator instance churn
+    // re-running beginDeal/dispatchMany for the same hand.
+    if (dispatchedOpeningDealManifests.has(handContextId)) {
+      dispatchedRef.current = true;
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        payloadPhase: 'deal_orchestrator',
+        skippedReason: 'identity-bound manifest already dispatched (remount under same tuple)',
+      });
+      return;
+    }
     if (!dealTimingHydrated) {
       recordGinRunbackTrace('DealRuntime dispatch skipped', {
         dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
@@ -234,6 +258,7 @@ export function GinRummyDealOrchestrator({
     );
 
     dispatchedRef.current = true;
+    dispatchedOpeningDealManifests.add(handContextId);
     recordGinRunbackTrace('DealRuntime dispatch', {
       dealRuntime: {
         handContextId,
