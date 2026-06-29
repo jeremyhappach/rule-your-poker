@@ -129,7 +129,7 @@ export const ThreeFiveSevenAnchoredSlot = forwardRef<
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
-  const h = toVmin(placement.rect.height, vmin​InPx);
+  const h = toVmin(placement.rect.height, vminInPx);
 
   return createPortal(
     <div
