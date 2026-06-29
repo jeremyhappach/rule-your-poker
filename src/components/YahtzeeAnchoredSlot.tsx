@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -18,6 +19,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useYahtzeeGameplayGeometry } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { AssignedRectPxProvider } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 
 export interface YahtzeeAnchoredSlotProps {
   artifactId: string;
