@@ -2556,7 +2556,7 @@ export const GinRummyGameTable = ({
           ) : null
         }
         pane={
-          <div className="w-full h-full overflow-hidden">
+          <div className="w-full h-full overflow-hidden" data-gin-active-pane-content="">
             {activeTab === 'cards' && currentPlayer && isPlayable && viewState && (
               <GinRummyMobileCardsTab
                 ginState={viewState}
