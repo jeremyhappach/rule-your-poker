@@ -203,17 +203,20 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
     );
   }
 
+  if (!coordFrame) return null;
+
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave4-cribcut-slot="resolved"
       data-artifact-id="cribbage.cribCutGroup"
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
@@ -226,13 +229,13 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
         alignItems: "center",
         justifyContent: "center",
         gap: "var(--cribcut-gap, 1rem)",
+        pointerEvents: "auto",
         ...(styleVars ?? {}),
       }}
-
-
     >
       {children}
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 
