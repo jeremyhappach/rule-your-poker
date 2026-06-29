@@ -67,6 +67,7 @@ import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesP
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
+import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
@@ -872,9 +873,13 @@ function GameSections(props: GameSectionsProps) {
 
 
       <CollapsibleSection title="Chip Ring Artifacts">
-        <p className="text-xs text-muted-foreground">
-          Future Geometry Lab work: dealer/buck/leg/chip-ring artifacts.
-        </p>
+        {props.game === "holm" ? (
+          <HolmBuckIndicatorPanel />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Future Geometry Lab work: dealer/buck/leg/chip-ring artifacts.
+          </p>
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection title="Showdown Rules">

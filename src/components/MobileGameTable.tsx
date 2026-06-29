@@ -101,6 +101,7 @@ import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
 import { useHolmShowdownConfig } from "@/lib/holm/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
+import { HolmBuckIndicatorRender } from "./HolmBuckIndicatorRender";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
@@ -10098,12 +10099,7 @@ export const MobileGameTable = ({
               style={{ transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
               data-buck-slot={buckSlot}
             >
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
-                <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
-                  <img alt="Buck" className="w-full h-full rounded-full object-cover" src="/lovable-uploads/7ca746e0-8bcb-4dcd-9d87-407f9457deb8.png" />
-                </div>
-              </div>
+              <HolmBuckIndicatorRender buckPosition={buckPosition} buckSlot={buckSlot} />
             </div>
           );
         })()}
