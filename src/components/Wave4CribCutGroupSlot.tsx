@@ -81,6 +81,7 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(CRIB_CUT_GROUP_ID);
