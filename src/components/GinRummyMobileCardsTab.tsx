@@ -85,18 +85,24 @@ export const GinRummyMobileCardsTab = ({
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
   const rawMyState = ginState.playerStates[currentPlayerId];
-  // Wave 2 canonical deal — during DEALING, render only the cards the
-  // shell transport has already settled for THIS player. Each settled
-  // self-recipient intent reveals one more card; READY/GAMEPLAY (or
-  // null runtime) → full hand (legacy instant path). The self-hand
-  // fills one card at a time, matching opponent stacks.
+  // Opening-deal prefix gate applies ONLY to the opening dealt-card
+  // sequence (cardsPerPlayer cards). Once authoritative hand membership
+  // exceeds the opening manifest size, the additional card was acquired
+  // via a gameplay action (e.g. take-upcard / draw-stock / draw-discard)
+  // and must render immediately — gameplay-acquired cards are NOT part
+  // of the opening-deal settlement ledger.
   const deal = useDealRuntime();
   const myState = useMemo(() => {
     if (!rawMyState) return rawMyState;
     if (!deal) return rawMyState;
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return rawMyState;
+    // Authoritative gameplay membership beyond opening size → render full hand.
+    if (rawMyState.hand.length > GIN_CARDS_PER_PLAYER) return rawMyState;
     if (deal.phase === 'PRE_DEAL') return { ...rawMyState, hand: [] };
-    const allowed = deal.getSettledCountForPlayer(currentPlayerId);
+    const allowed = Math.min(
+      deal.getSettledCountForPlayer(currentPlayerId),
+      GIN_CARDS_PER_PLAYER,
+    );
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
