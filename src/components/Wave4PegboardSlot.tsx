@@ -175,18 +175,21 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
     );
   }
 
+  if (!coordFrame) return null;
+
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
       data-gameplay-column-child="pegboard"
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
@@ -198,10 +201,12 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "stretch",
+        pointerEvents: "auto",
       }}
     >
       <div style={{ width: "100%" }}>{children}</div>
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 
