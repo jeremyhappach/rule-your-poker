@@ -1495,14 +1495,16 @@ export const GinRummyGameTable = ({
         });
         return;
       }
-      // ── Hand-number identity guard ──
-      // Reject any snapshot whose handNumber does not match the live incoming
-      // identity. Defense-in-depth against stale R{N} payloads slipping past
-      // the latch (e.g. realtime delivering a buffered event after rebind).
+      // Site 6 admission — full 3-axis provenance.
       const expectedHand = currentHandNumberRef.current;
       const stateHand = (state as { handNumber?: number } | null)?.handNumber ?? 0;
-      if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
-        recordGinRunbackTrace('applyState dropped', {
+      const rtProvenance: GinPresentationIdentity | null =
+        dealerGameId && roundId && stateHand > 0
+          ? { dealerGameId, roundId, handNumber: stateHand }
+          : null;
+      const rtMismatch = ginIdentityMismatchAxis(rtProvenance, committedIdentityRef.current);
+      if (rtMismatch) {
+        recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
           gameId,
           authIdentity: summarizeGinRunbackIdentity(authIdentity),
           currentRoundId: roundId,
@@ -1513,16 +1515,17 @@ export const GinRummyGameTable = ({
           viewState: summarizeGinRunbackState(viewState),
           ginState: summarizeGinRunbackState(ginState),
           applyState: 'dropped',
-          dropReason: 'hand mismatch',
-          note: `source=${source}`,
+          dropReason: `identity-mismatch:${rtMismatch}`,
+          note: `source=${source}; payload=${ginIdentityKey(rtProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
         });
         logDebugEvent({
           gameId, roundId, userId: currentUserId, clientRole: 'actor',
-          eventType: 'gin:identity_hand_drop',
+          eventType: 'gin:identity_provenance_drop',
           payload: ginStateSummary(state, {
             source,
-            expectedHand,
-            stateHand,
+            mismatchAxis: rtMismatch,
+            payload: ginIdentityKey(rtProvenance),
+            committed: ginIdentityKey(committedIdentityRef.current),
           }),
         });
         return;
