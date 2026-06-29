@@ -434,6 +434,17 @@ export function CanonicalSeatCluster({
     };
   }, [position]);
 
+  // HOOK ORDER INVARIANT: every hook in this component MUST run before
+  // any conditional early return. The shell nameplate config subscriber
+  // used to live further down (after the slot/self-suppression early
+  // returns), which produced React error #300 ("Rendered more hooks
+  // than during the previous render") whenever a seat flipped between
+  // rendered/null between phases. Keep this call here.
+  const namePlateCfg = useSyncExternalStore(
+    subscribeShellNameplate,
+    getShellNameplateConfig,
+    getShellNameplateConfig,
+  );
 
   if (slot === null || slot === undefined) return null;
 
@@ -444,6 +455,7 @@ export function CanonicalSeatCluster({
   if (!allowSelfRender && anchors?.viewerPosition != null && anchors.viewerPosition === position) {
     return null;
   }
+
 
 
   const isObserverProjection =
@@ -539,11 +551,8 @@ export function CanonicalSeatCluster({
   //               translate(attachX_pct%, attachY_pct%)
   //               translate(dx_css, dy_css)
   //   element pinned at left:50%; top:50% (chip center origin).
-  const namePlateCfg = useSyncExternalStore(
-    subscribeShellNameplate,
-    getShellNameplateConfig,
-    getShellNameplateConfig,
-  );
+  // (namePlateCfg is read at top of component to preserve hook order.)
+
   const chipDiameterPx = chipRadiusPx * 2;
   const isCenterAnchoredSlot = slot === -1 || slot === -3;
   const inwardCssSignForName = isCenterAnchoredSlot
