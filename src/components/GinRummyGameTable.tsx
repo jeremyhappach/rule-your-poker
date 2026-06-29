@@ -357,6 +357,12 @@ export const GinRummyGameTable = ({
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
+  // Refs mirror the live identity so callback closures (applyState, overlay
+  // effects, bootstrap load) can identity-gate without rebinding each render.
+  const currentRoundIdRef = useRef<string>(currentRoundId);
+  const currentHandNumberRef = useRef<number>(currentHandNumber);
+  useEffect(() => { currentRoundIdRef.current = currentRoundId; }, [currentRoundId]);
+  useEffect(() => { currentHandNumberRef.current = currentHandNumber; }, [currentHandNumber]);
   useEffect(() => {
     recordStartupValue('IDENTITY TIMELINE', 'GinRummyGameTable.identity', `${dealerGameId ?? '-'}|${roundId ?? '-'}|h${handNumber}`, {
       file: 'src/components/GinRummyGameTable.tsx',
