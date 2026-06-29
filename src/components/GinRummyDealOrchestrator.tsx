@@ -29,6 +29,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
+import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 
 interface SeatEntry {
   playerId: string;
@@ -74,13 +75,50 @@ export function GinRummyDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
-    if (!dealTimingHydrated) return;
-    if (!seats.length || cardsPerPlayer <= 0) return;
+    if (!dealTimingHydrated) {
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        payloadPhase: 'deal_orchestrator',
+        skippedReason: 'deal timing not hydrated',
+      });
+      return;
+    }
+    if (!seats.length || cardsPerPlayer <= 0) {
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        payloadPhase: 'deal_orchestrator',
+        skippedReason: 'missing seats/cardsPerPlayer',
+      });
+      return;
+    }
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     const nonDealerSeat = seats.find(s => s.playerId === nonDealerPlayerId);
-    if (!dealerSeat || !nonDealerSeat) return;
-    if (!selfHand || selfHand.length < cardsPerPlayer) return;
-    if (!discardTop) return;
+    if (!dealerSeat || !nonDealerSeat) {
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        skippedReason: 'missing dealer/nonDealer seat',
+      });
+      return;
+    }
+    if (!selfHand || selfHand.length < cardsPerPlayer) {
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        skippedReason: 'self hand below cardsPerPlayer',
+      });
+      return;
+    }
+    if (!discardTop) {
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        skippedReason: 'missing discardTop',
+      });
+      return;
+    }
 
     const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
@@ -196,6 +234,20 @@ export function GinRummyDealOrchestrator({
     );
 
     dispatchedRef.current = true;
+    recordGinRunbackTrace('DealRuntime dispatch', {
+      dealRuntime: {
+        handContextId,
+        phase: deal.phase,
+        expectedCount: intents.length,
+        settledCount: deal.settledCardIds.size,
+        dealerPlayerId,
+        nonDealerPlayerId,
+        selfPlayerId,
+      },
+      selfHandCount: selfHand.length,
+      opponentHandCount: cardsPerPlayer,
+      payloadPhase: 'deal_orchestrator',
+    });
     deal.beginDeal(intents.length);
     ct.dispatchMany(intents);
   }, [
@@ -209,10 +261,24 @@ export function GinRummyDealOrchestrator({
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
     const find = () => document.querySelector('[data-gin-active-pane-content]') as HTMLElement | null;
-    setSelfHandRegion(find());
+    const initial = find();
+    setSelfHandRegion(initial);
+    recordGinRunbackTrace('active-pane readiness', {
+      dealRuntime: deal ? { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size } : { handContextId, phase: null },
+      activePaneAnchorHostPresent: !!initial,
+      selfHandCount: selfHand?.length ?? null,
+    });
     const observer = new MutationObserver(() => {
       const next = find();
-      setSelfHandRegion(prev => (prev === next ? prev : next));
+      setSelfHandRegion(prev => {
+        if (prev === next) return prev;
+        recordGinRunbackTrace('active-pane readiness', {
+          dealRuntime: deal ? { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size } : { handContextId, phase: null },
+          activePaneAnchorHostPresent: !!next,
+          selfHandCount: selfHand?.length ?? null,
+        });
+        return next;
+      });
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();

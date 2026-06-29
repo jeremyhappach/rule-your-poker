@@ -15,6 +15,7 @@ import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrame
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
@@ -197,6 +198,37 @@ export const GinRummyFeltContent = ({
   const stockRevealed = !deal || !stockCardId
     ? true
     : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(stockCardId);
+
+  useEffect(() => {
+    recordGinRunbackTrace('upcard/stock/rail render gate', {
+      payloadHandNumber: ginState.handNumber ?? null,
+      payloadPhase: ginState.phase,
+      ginState: {
+        handNumber: ginState.handNumber ?? null,
+        phase: ginState.phase,
+        turnPhase: ginState.turnPhase,
+        actionCount: ginState.actionCount ?? null,
+      },
+      dealRuntime: deal ? {
+        handContextId: deal.handContextId,
+        phase: deal.phase,
+        expectedCount: deal.expectedCount,
+        settledCount: deal.settledCardIds.size,
+        discardCardId,
+        stockCardId,
+        discardRevealed,
+        stockRevealed,
+      } : null,
+      overlayPredicateInputs: {
+        hidePiles,
+        discardTopPresent: !!discardTopCard,
+        canDraw,
+        canTakeFirstDraw,
+        discardClickable,
+        stockClickable,
+      },
+    });
+  }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, discardCardId, stockCardId, discardRevealed, stockRevealed, hidePiles, !!discardTopCard, canDraw, canTakeFirstDraw, discardClickable, stockClickable]);
 
 
   return (

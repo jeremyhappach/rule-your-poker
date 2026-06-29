@@ -44,6 +44,7 @@ import {
   notifyCommunitySettleToSampler,
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
+import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -140,6 +141,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       identity: { hci: handContextId },
       payload: { gameType },
     });
+    if (gameType === 'gin-rummy') {
+      recordGinRunbackTrace('DealRuntime mount', {
+        dealRuntime: { handContextId, gameType, phase: 'PRE_DEAL', expectedCount: 0, settledCount: 0 },
+      });
+    }
     return () => {
       ffRecord({
         writerId: 'DealRuntime:unmount',
@@ -148,6 +154,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         identity: { hci: handContextId },
         payload: { gameType },
       });
+      if (gameType === 'gin-rummy') {
+        recordGinRunbackTrace('DealRuntime unmount', {
+          dealRuntime: { handContextId, gameType },
+        });
+      }
     };
   }, [handContextId, gameType]);
 
@@ -194,6 +205,20 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         next.add(cardId);
         const expected = expectedRef.current;
         const ready = expected > 0 && next.size >= expected;
+        if (gameType === 'gin-rummy') {
+          recordGinRunbackTrace('DealRuntime settle', {
+            dealRuntime: {
+              handContextId,
+              gameType,
+              cardId,
+              phase,
+              expectedCount: expected,
+              settledCount: next.size,
+              recipientPlayerId: intent.recipientPlayerId ?? null,
+              ready,
+            },
+          });
+        }
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
           dealSettled: ready,
@@ -223,6 +248,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
   }, [ctx, handContextId, gameType]);
 
   const beginDeal = useCallback((count: number) => {
+    if (gameType === 'gin-rummy') {
+      recordGinRunbackTrace('DealRuntime dispatch/beginDeal', {
+        dealRuntime: { handContextId, gameType, phase: 'DEALING', expectedCount: count, settledCount: 0 },
+      });
+    }
     setExpectedCount(count);
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
@@ -237,7 +267,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       dealSettled: false,
       enterGameplayCalledAt: null,
     });
-  }, [handContextId]);
+  }, [handContextId, gameType]);
 
   const beginWave = useCallback((addedCount: number) => {
     // Preserve settledCardIds / settledByRecipient — ownership is
@@ -363,13 +393,34 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
   }, [handContextId, phase]);
 
   const enterGameplay = useCallback(() => {
+    if (gameType === 'gin-rummy') {
+      recordGinRunbackTrace('DealRuntime enterGameplay', {
+        dealRuntime: { handContextId, gameType, phase: 'GAMEPLAY', expectedCount, settledCount: settledCardIds.size },
+      });
+    }
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     if (gameType === 'holm-game') {
       holmDealDbgRecordRuntime({ enterGameplayAt: performance.now(), phase: 'GAMEPLAY' });
       markHolmHandReady(handContextId);
     }
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
-  }, [gameType, handContextId]);
+  }, [gameType, handContextId, expectedCount, settledCardIds.size]);
+
+  useEffect(() => {
+    if (gameType !== 'gin-rummy') return;
+    recordGinRunbackTrace('DealRuntime phase', {
+      dealRuntime: {
+        handContextId,
+        gameType,
+        phase,
+        expectedCount,
+        settledCount: settledCardIds.size,
+        activeIntentsForHand,
+        dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
+        readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
+      },
+    });
+  }, [gameType, handContextId, phase, expectedCount, settledCardIds.size, activeIntentsForHand]);
 
   useEffect(() => {
     if (gameType !== 'holm-game') return;
