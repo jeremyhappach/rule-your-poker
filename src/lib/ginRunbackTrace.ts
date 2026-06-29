@@ -3,6 +3,10 @@ export type GinRunbackDropReason =
   | 'hand mismatch'
   | 'progress vector'
   | 'bootstrap mismatch'
+  | 'identity-mismatch:dealerGameId'
+  | 'identity-mismatch:roundId'
+  | 'identity-mismatch:handNumber'
+  | 'identity-mismatch:no-committed-identity'
   | 'other'
   | null;
 
