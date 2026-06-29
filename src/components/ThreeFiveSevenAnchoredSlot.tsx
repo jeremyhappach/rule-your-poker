@@ -124,18 +124,20 @@ export const ThreeFiveSevenAnchoredSlot = forwardRef<
   ]);
 
   if (!placement || !placement.visible || vminInPx <= 0) return null;
+  if (!coordFrame) return null;
 
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
-  const h = toVmin(placement.rect.height, vminInPx);
+  const h = toVmin(placement.rect.height, vmin​InPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave5-three-five-seven-slot={artifactId}
       data-artifact-id={artifactId}
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-three-five-seven-slot-fault-count={String(faults.length)}
       style={{
@@ -148,11 +150,13 @@ export const ThreeFiveSevenAnchoredSlot = forwardRef<
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        pointerEvents: "auto",
         ...innerStyle,
       }}
     >
       {children}
-    </div>
+    </div>,
+    coordFrame,
   );
 });
 
