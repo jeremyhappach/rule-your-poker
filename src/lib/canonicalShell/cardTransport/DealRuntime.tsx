@@ -286,6 +286,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       return next;
     });
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       cardsDispatched: addedCount,
