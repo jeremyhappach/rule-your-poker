@@ -2949,10 +2949,13 @@ export const GinRummyGameTable = ({
   }
 
 
-  // Wave 2 canonical deal — stable handContextId per (dealerGameId, handNumber).
-  // Remounts DealRuntime via key, naturally resetting phase + settledCardIds.
-  const handContextId = dealerGameId && handNumber > 0
-    ? `${dealerGameId}#h${handNumber}`
+  // Wave 2 canonical deal — handContextId encodes the full 3-axis identity
+  // tuple { dealerGameId, roundId, handNumber }. Any change in the tuple
+  // remounts DealRuntime via `key`, naturally resetting phase + settled
+  // ledger. Same-tuple orchestrator churn is deduped at the orchestrator
+  // by the module-level identity-bound opening-deal ownership registry.
+  const handContextId = dealerGameId && roundId && handNumber > 0
+    ? `${dealerGameId}#r${roundId}#h${handNumber}`
     : null;
 
   return (
