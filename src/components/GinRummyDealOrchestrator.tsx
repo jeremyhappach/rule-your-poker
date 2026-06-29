@@ -85,6 +85,20 @@ export function GinRummyDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
+    // Identity-bound opening-deal ownership: a remount under the same
+    // handContextId (full 3-axis identity tuple) must observe the prior
+    // dispatch and skip. This guards against orchestrator instance churn
+    // re-running beginDeal/dispatchMany for the same hand.
+    if (dispatchedOpeningDealManifests.has(handContextId)) {
+      dispatchedRef.current = true;
+      recordGinRunbackTrace('DealRuntime dispatch skipped', {
+        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
+        selfHandCount: selfHand?.length ?? null,
+        payloadPhase: 'deal_orchestrator',
+        skippedReason: 'identity-bound manifest already dispatched (remount under same tuple)',
+      });
+      return;
+    }
     if (!dealTimingHydrated) {
       recordGinRunbackTrace('DealRuntime dispatch skipped', {
         dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
