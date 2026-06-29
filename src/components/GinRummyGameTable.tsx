@@ -412,15 +412,6 @@ export const GinRummyGameTable = ({
           note: `from=${ginIdentityKey(prev)}; to=null; reason=identity-boundary`,
         });
         setAcceptedPresentation(null);
-        ginSync.reset(null);
-        setShowKnockOverlay(false);
-        setShowGinOverlay(false);
-        setStoredChipPositions(null);
-        setChipAnimTriggerId(null);
-        setChipAnimAmount(0);
-        prevPhaseRef.current = null;
-        ginOverlayFiredRef.current = false;
-        knockOverlayFiredRef.current = false;
         return null;
       }
       recordGinRunbackTrace('committedIdentity replaced', {
