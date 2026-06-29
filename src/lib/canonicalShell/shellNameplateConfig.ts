@@ -51,7 +51,7 @@
 
 import { registerDomain } from '@/lib/geometryLab/defaultsRegistry';
 
-export type ShellNameplateAnchorStart = 'upper' | 'lower' | 'inner' | 'outer';
+export type ShellNameplateAnchorStart = 'upper' | 'lower' | 'inner' | 'outer' | 'center';
 export type ShellNameplateAttachment = 'inner' | 'center' | 'outer';
 
 export interface ShellNameplateConfig {
