@@ -43,6 +43,7 @@ export const ThreeFiveSevenAnchoredSlot = forwardRef<
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useThreeFiveSevenGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
   useImperativeHandle(forwardedRef, () => ref.current as HTMLDivElement);
 
