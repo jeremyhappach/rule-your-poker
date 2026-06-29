@@ -449,16 +449,6 @@ export const GinRummyGameTable = ({
     setAcceptedPresentation({ identity, state });
   }, []);
 
-  const installCurrentPresentationState = useCallback((state: GinRummyState | null) => {
-    if (!state) {
-      setAcceptedPresentation(null);
-      return;
-    }
-    const identity = committedIdentityRef.current;
-    if (!identity || (state.handNumber ?? 0) !== identity.handNumber) return;
-    setAcceptedPresentation({ identity, state });
-  }, []);
-
   // DealRuntime/orchestrator blocked trace — fires once per render when
   // committedIdentity is null. Surfaces the explicit "neutral incoming"
   // contract in the runback pill.
@@ -583,9 +573,22 @@ export const GinRummyGameTable = ({
 
   // One render-owned envelope. Renderers and local action paths never mix a
   // state object from one holder with identity/provenance from another.
-  const viewState = renderAcceptedPresentation?.state ?? null;
-  const ginState = renderAcceptedPresentation?.state ?? null;
-  const setGinState = installCurrentPresentationState;
+  const acceptedPresentationMatches = ginIdentityEqual(renderAcceptedPresentation?.identity ?? null, renderCommittedIdentity);
+  const viewState = acceptedPresentationMatches ? renderAcceptedPresentation?.state ?? null : null;
+  const ginState = viewState;
+  const setGinState = useCallback((state: GinRummyState | null) => {
+    const sourceIdentity = renderCommittedIdentity;
+    const activeIdentity = committedIdentityRef.current;
+    if (!state) {
+      if (!activeIdentity || ginIdentityEqual(sourceIdentity, activeIdentity)) {
+        setAcceptedPresentation(null);
+      }
+      return;
+    }
+    if (!sourceIdentity || !ginIdentityEqual(sourceIdentity, activeIdentity)) return;
+    if ((state.handNumber ?? 0) !== sourceIdentity.handNumber) return;
+    setAcceptedPresentation({ identity: sourceIdentity, state });
+  }, [renderCommittedIdentity]);
   const lastAuthoritativeSignatureRef = useRef<string | null>(null);
   const localOptimisticSignatureRef = useRef<string | null>(null);
   const firstAcceptedCurrentRoundSnapshotRef = useRef(false);
