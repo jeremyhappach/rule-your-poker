@@ -5,7 +5,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
+import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
