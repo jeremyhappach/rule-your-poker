@@ -390,7 +390,25 @@ export function NeutralInterstitial({
     <div
       data-canonical-shell-interstitial-seats=""
       data-projection-mode={projectionMode}
-      className="absolute inset-0 z-20 pointer-events-none"
+      className="z-20 pointer-events-none"
+      style={{
+        // Canonical frame parity: this fallback interstitial layer must
+        // resolve seats against the same centered felt-frame rectangle as
+        // the shell pre-session layer and gameplay opponent layer.  The
+        // old `absolute inset-0` root inherited NeutralInterstitial's full
+        // slot width, so slot percentages (left-[4%], right-[4%], etc.)
+        // were evaluated against the viewport-sized shell column instead
+        // of `--shell-felt-w`, shifting the same player/seat before
+        // gameplay began.
+        position: 'absolute',
+        top: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 'var(--shell-felt-w)',
+        minWidth: 300,
+        height: 'var(--shell-felt-h)',
+        overflow: 'visible',
+      }}
     >
       {participants!.map(player => {
         const actualUsername =
