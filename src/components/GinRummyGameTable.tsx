@@ -1346,6 +1346,7 @@ export const GinRummyGameTable = ({
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
           setGinState(state);
+          setAcceptedProvenance(fetchProvenance);
           if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
             firstAcceptedCurrentRoundSnapshotRef.current = true;
             recordGinRunbackTrace('first accepted current-round snapshot', {
