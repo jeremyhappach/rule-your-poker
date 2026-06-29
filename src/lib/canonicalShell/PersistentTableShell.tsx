@@ -327,26 +327,25 @@ export function PersistentTableShell({
             <div
               data-canonical-shell-pre-session-seat-region=""
               style={{
-                // PARITY FIX: must match ShellOwnedFeltHost's canonical
-                // felt-frame rect EXACTLY so seat-ring percentages resolve
-                // against the same coordinate frame in pre-session and
-                // gameplay. Previously this used left:0/right:0 (full shell
-                // width), while gameplay opponent clusters resolved against
-                // `width: var(--shell-felt-w)` centered — producing a
-                // visible opponent-seat shift at the waiting → in_progress
-                // boundary.
+                // COORDINATE-FRAME CONTRACT: canonical opponent seat
+                // placement percentages must resolve against the full
+                // shell-children column width in every phase/family.
+                // The --shell-felt-w clamp is retained ONLY for the felt
+                // paint host (ShellOwnedFeltHost); it must NOT govern the
+                // seat-placement coordinate frame, or waiting clusters
+                // pull inward vs. gameplay.
                 position: 'absolute',
                 top: 'var(--play-top-safe-area, 0px)',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 'var(--shell-felt-w)',
-                minWidth: 300,
+                left: 0,
+                right: 0,
+                width: 'auto',
                 height: 'var(--shell-felt-h)',
                 overflow: 'visible',
                 pointerEvents: 'none',
                 zIndex: 2,
               }}
             >
+
               <PreSessionSeatLayer
                 participants={preSessionParticipants}
                 currentUserId={viewerUserId}
