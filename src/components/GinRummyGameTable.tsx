@@ -1348,8 +1348,7 @@ export const GinRummyGameTable = ({
         });
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
-          setGinState(state);
-          setAcceptedProvenance(fetchProvenance);
+          installAcceptedPresentation(fetchProvenance!, state);
           if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
             firstAcceptedCurrentRoundSnapshotRef.current = true;
             recordGinRunbackTrace('first accepted current-round snapshot', {
@@ -1576,8 +1575,7 @@ export const GinRummyGameTable = ({
       });
       if (result.accepted) {
         lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
-        setGinState(state);
-        setAcceptedProvenance(rtProvenance);
+        installAcceptedPresentation(rtProvenance!, state);
         if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
           firstAcceptedCurrentRoundSnapshotRef.current = true;
           recordGinRunbackTrace('first accepted current-round snapshot', {
@@ -2882,13 +2880,12 @@ export const GinRummyGameTable = ({
   // chip bubbles, identity row, announcement rail). The outer layout stays
   // mounted continuously from slot mount onward. Only the gameplay-specific
   // subtrees that REQUIRE a hydrated viewState are gated behind `isPlayable`.
-  // Plan A: subtree may render ONLY when (a) committedIdentity is set,
-  // (b) viewState exists, (c) the accepted-snapshot provenance exactly
-  // equals the current committedIdentity, (d) viewState is not stale.
+  // Plan A: subtree may render ONLY when the render-owned envelope exists
+  // and its identity exactly equals the current committedIdentity.
   // While ANY of these fails, no DealRuntime / orchestrator / felt /
   // overlay may render under a new identity.
-  const provenanceMatches = ginIdentityEqual(acceptedProvenance, committedIdentity);
-  const isPlayable = !!committedIdentity && !!viewState && provenanceMatches && !isStaleHandPresentation;
+  const acceptedPresentationMatches = ginIdentityEqual(renderAcceptedPresentation?.identity ?? null, renderCommittedIdentity);
+  const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
   setGinRunbackTraceContext({
     gameId,
     authIdentity: summarizeGinRunbackIdentity(authIdentity),
