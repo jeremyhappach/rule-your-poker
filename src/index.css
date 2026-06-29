@@ -269,3 +269,34 @@ All colors MUST be HSL.
     line-height: 1.05;
   }
 }
+
+/* Canonical felt-plate title/sub — default: single centered line, font-size
+ * shrinks responsively with container width via cqi. Wraps to a balanced
+ * 2-line max only when the clamped minimum still cannot fit. */
+.canonical-felt-plate-title {
+  font-size: clamp(0.72rem, 6cqi, 1.125rem);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.canonical-felt-plate-sub {
+  font-size: clamp(0.625rem, 3.2cqi, 0.75rem);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+@container (max-width: 220px) {
+  .canonical-felt-plate-title {
+    white-space: normal;
+    text-wrap: balance;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: clip;
+  }
+}
