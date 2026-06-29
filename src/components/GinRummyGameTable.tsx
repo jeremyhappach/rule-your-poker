@@ -590,8 +590,11 @@ export const GinRummyGameTable = ({
   // Sync framework is now fed directly by applyState (realtime/poll handler).
   // Local mutations feed it via ginSync.applyOptimistic() / updateState().
 
-  // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
-  const viewState = ginSync.presentationState;
+  // One render-owned envelope. Renderers and local action paths never mix a
+  // state object from one holder with identity/provenance from another.
+  const viewState = renderAcceptedPresentation?.state ?? null;
+  const ginState = renderAcceptedPresentation?.state ?? null;
+  const setGinState = installCurrentPresentationState;
   const lastAuthoritativeSignatureRef = useRef<string | null>(null);
   const localOptimisticSignatureRef = useRef<string | null>(null);
   const firstAcceptedCurrentRoundSnapshotRef = useRef(false);
@@ -662,8 +665,7 @@ export const GinRummyGameTable = ({
     });
     if (result.accepted) {
       lastAuthoritativeSignatureRef.current = signatureForGinRunback(bootstrapState);
-      setGinState(bootstrapState);
-      setAcceptedProvenance(payloadProvenance);
+      installAcceptedPresentation(payloadProvenance!, bootstrapState);
     }
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
