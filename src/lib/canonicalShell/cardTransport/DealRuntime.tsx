@@ -59,6 +59,8 @@ interface DealContextValue {
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
   readyReleased: boolean;
+  releaseEligible: boolean;
+  releaseBlockReason: 'wrong_phase' | 'waiting_for_expected_count' | 'waiting_for_settles' | 'waiting_for_intents' | 'release_fired' | 'unknown';
   timerAllowed: boolean;
   isSettled: (cardId: string) => boolean;
   /**
