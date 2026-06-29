@@ -524,9 +524,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       phase,
       expectedCount,
       settledCardIds,
-      dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
-      readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
-      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0),
+      dealSettled: dealSettledNow,
+      readyReleased,
+      releaseEligible,
+      releaseBlockReason,
+      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && dealSettledNow && activeIntentsForHand === 0),
       isSettled,
       getSettledCountForPlayer,
       getSettledCardIdsForPlayer,
@@ -538,7 +540,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       beginDealForHand,
       beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
