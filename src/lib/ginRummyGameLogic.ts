@@ -808,14 +808,18 @@ export function getDiscardTop(state: GinRummyState): GinRummyCard | null {
     : null;
 }
 
-/** Determine who deals next hand (loser of current hand, or non-dealer if void) */
+/**
+ * Determine who deals the next hand.
+ *
+ * Authoritative rule (Gin, server-stamped on the new round):
+ *   hand 1 dealer       = caller / existing first-dealer rule
+ *   hand N+1 dealer     = the OTHER active player from hand N
+ *
+ * Pure alternation within a dealer game — never inferred from the
+ * winner/loser of the previous hand and never from client-local
+ * hand parity. Result is persisted onto the newly-created round so
+ * every client's deal sequencing/origin consumes the same field.
+ */
 export function getNextDealer(state: GinRummyState): string {
-  if (!state.knockResult) {
-    // Void hand — dealer rotates
-    return state.nonDealerPlayerId;
-  }
-  // Loser deals next
-  return state.knockResult.winnerId === state.dealerPlayerId
-    ? state.nonDealerPlayerId
-    : state.dealerPlayerId;
+  return state.nonDealerPlayerId;
 }
