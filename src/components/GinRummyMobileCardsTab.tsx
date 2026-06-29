@@ -368,9 +368,14 @@ export const GinRummyMobileCardsTab = ({
       <div className="flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
-          <Button onClick={onPassFirstDraw} disabled={isProcessing} variant="outline" className="border-white/40 text-foreground px-4" size="sm">
-            Pass
-          </Button>
+          <>
+            <Button onClick={onTakeFirstDraw} disabled={isProcessing} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4" size="sm">
+              Take
+            </Button>
+            <Button onClick={onPassFirstDraw} disabled={isProcessing} variant="outline" className="border-white/40 text-foreground px-4" size="sm">
+              Pass
+            </Button>
+          </>
         )}
 
         {ginState.phase === 'first_draw' && !isMyTurn && (
