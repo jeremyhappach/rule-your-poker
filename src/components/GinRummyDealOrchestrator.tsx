@@ -36,6 +36,16 @@ interface SeatEntry {
   position: number;
 }
 
+// ── Module-level opening-deal ownership registry ──
+// Canonical contract: ONE opening-deal manifest per full identity tuple
+// (encoded into handContextId = "<dealerGameId>#r<roundId>#h<handNumber>").
+// The orchestrator may unmount/remount many times within the same tuple
+// (e.g. presentation reset, viewState briefly clearing). Instance-local
+// dispatch refs are not safe — they reset on remount. This module-level
+// Set survives orchestrator instance lifetime, so a remount under the
+// same tuple observes the prior dispatch and skips beginDeal+dispatchMany.
+const dispatchedOpeningDealManifests = new Set<string>();
+
 const SYMBOL_TO_WORD: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
   '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
   spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
