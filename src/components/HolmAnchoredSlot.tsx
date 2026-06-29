@@ -23,7 +23,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useHolmGameplayGeometry } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
-import { useShellFeltFrameElement } from "@/lib/canonicalShell/useShellFeltFrameElement";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { recordHolmTrace } from "@/lib/holm/holmTrace";
 
