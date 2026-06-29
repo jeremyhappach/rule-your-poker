@@ -396,7 +396,24 @@ export const GinRummyGameTable = ({
     lastObservedIdentityRef.current = authIdentity;
     if (!prev) return;
     if (!isIdentityForward(prev, authIdentity)) return;
+    // Handoff step 1: drop OUTGOING presentation immediately.
     setGinState(null);
+    // Handoff step 2: pre-advance the identity latch to the INCOMING round
+    // BEFORE `currentRoundId` state catches up. Any in-flight realtime/poll
+    // callbacks still closed over the outgoing round will fail the latch
+    // check in applyState and be dropped, so a stale R{N} payload cannot
+    // be accepted under R{N+1}.
+    if (authIdentity.roundId) {
+      roundIdLatchRef.current = authIdentity.roundId;
+    }
+    // Handoff step 3: clear overlay-fire latches so any pending overlay
+    // computed under the outgoing identity cannot fire under the incoming
+    // identity. Re-armed by the roundId-change reset effect.
+    ginOverlayFiredRef.current = false;
+    knockOverlayFiredRef.current = false;
+    prevPhaseRef.current = null;
+    setShowKnockOverlay(false);
+    setShowGinOverlay(false);
     const payload = {
       prevHand: prev.handNumber,
       nextHand: authIdentity.handNumber,
