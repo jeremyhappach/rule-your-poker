@@ -615,6 +615,28 @@ export const GinRummyGameTable = ({
       });
       return;
     }
+    // Site 6 admission — full 3-axis provenance.
+    const payloadProvenance: GinPresentationIdentity | null =
+      dealerGameId && propRoundId && bootstrapState.handNumber && bootstrapState.handNumber > 0
+        ? { dealerGameId, roundId: propRoundId, handNumber: bootstrapState.handNumber }
+        : null;
+    const mismatch = ginIdentityMismatchAxis(payloadProvenance, committedIdentityRef.current);
+    if (mismatch) {
+      recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
+        gameId,
+        currentRoundId: roundId,
+        currentHandNumber: handNumber,
+        payloadRoundId: propRoundId,
+        payloadHandNumber: bootstrapState.handNumber ?? null,
+        payloadPhase: bootstrapState.phase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        applyState: 'dropped',
+        dropReason: `identity-mismatch:${mismatch}`,
+        note: `payload=${ginIdentityKey(payloadProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
+      });
+      return;
+    }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
     recordGinRunbackTrace('bootstrapState apply result', {
       gameId,
@@ -640,6 +662,7 @@ export const GinRummyGameTable = ({
     if (result.accepted) {
       lastAuthoritativeSignatureRef.current = signatureForGinRunback(bootstrapState);
       setGinState(bootstrapState);
+      setAcceptedProvenance(payloadProvenance);
     }
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
