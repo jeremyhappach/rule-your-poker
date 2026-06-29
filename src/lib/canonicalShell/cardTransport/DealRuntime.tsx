@@ -59,6 +59,8 @@ interface DealContextValue {
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
   readyReleased: boolean;
+  releaseEligible: boolean;
+  releaseBlockReason: 'wrong_phase' | 'waiting_for_expected_count' | 'waiting_for_settles' | 'waiting_for_intents' | 'release_fired' | 'unknown';
   timerAllowed: boolean;
   isSettled: (cardId: string) => boolean;
   /**
@@ -121,6 +123,12 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
+  // Latched READY release flag — hand-scoped (DealRuntime is keyed by
+  // handContextId at the host) and idempotent. Set exactly once when
+  // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
+  // Reset to false on every beginDeal / beginWave / resetForHand /
+  // beginDealForHand / beginWaveForHand.
+  const [readyReleased, setReadyReleased] = useState(false);
   const ctx = useCardTransportInternal();
   const activeIntentsForHand = useMemo(
     () => (ctx?.__activeIntents ?? []).filter((intent) => {
@@ -258,6 +266,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       expectedCount: count,
@@ -279,6 +288,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       return next;
     });
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       cardsDispatched: addedCount,
@@ -301,6 +311,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
     setPhase('PRE_DEAL');
+    setReadyReleased(false);
     if (ctx) {
       try { ctx.dropIntentsNotMatchingHand(args.handContextId, 'holm_resetForHand'); } catch { /* noop */ }
     }
@@ -345,6 +356,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       expectedCount: count,
@@ -382,6 +394,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       return next;
     });
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       // dispatched = 0 added; transport accept events drive increments.
@@ -427,12 +440,48 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     return () => { clearHolmHandReady(handContextId); };
   }, [gameType, handContextId]);
 
+  // Deterministic READY release latch. Hand-scoped (DealRuntime keyed
+  // by handContextId at host), idempotent (setReadyReleased guard +
+  // useState identity), no animation callbacks, no closures over stale
+  // state — depends only on currently-rendered values.
+  const dealSettledNow = expectedCount > 0 && settledCardIds.size >= expectedCount;
+  const releaseEligible =
+    phase === 'READY' &&
+    dealSettledNow &&
+    activeIntentsForHand === 0;
+  const releaseBlockReason: 'wrong_phase' | 'waiting_for_expected_count' | 'waiting_for_settles' | 'waiting_for_intents' | 'release_fired' | 'unknown' =
+    readyReleased
+      ? 'release_fired'
+      : phase !== 'READY'
+        ? 'wrong_phase'
+        : expectedCount === 0
+          ? 'waiting_for_expected_count'
+          : settledCardIds.size < expectedCount
+            ? 'waiting_for_settles'
+            : activeIntentsForHand > 0
+              ? 'waiting_for_intents'
+              : 'unknown';
+
   useEffect(() => {
-    if (phase !== 'READY') return;
-    if (!(expectedCount > 0 && settledCardIds.size >= expectedCount)) return;
-    if (activeIntentsForHand !== 0) return;
+    if (!releaseEligible) return;
+    if (readyReleased) return;
+    setReadyReleased(true);
     dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
-  }, [phase, expectedCount, settledCardIds.size, activeIntentsForHand, handContextId]);
+    if (gameType === 'gin-rummy') {
+      recordGinRunbackTrace('DealRuntime READY released', {
+        dealRuntime: {
+          handContextId,
+          gameType,
+          phase,
+          expectedCount,
+          settledCount: settledCardIds.size,
+          activeIntentsForHand,
+          dealSettled: true,
+          readyReleased: true,
+        },
+      });
+    }
+  }, [releaseEligible, readyReleased, handContextId, gameType, phase, expectedCount, settledCardIds.size, activeIntentsForHand]);
 
   useEffect(() => {
     if (gameType !== 'holm-game') return;
@@ -475,9 +524,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       phase,
       expectedCount,
       settledCardIds,
-      dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
-      readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
-      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0),
+      dealSettled: dealSettledNow,
+      readyReleased,
+      releaseEligible,
+      releaseBlockReason,
+      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && dealSettledNow && activeIntentsForHand === 0),
       isSettled,
       getSettledCountForPlayer,
       getSettledCardIdsForPlayer,
@@ -489,7 +540,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       beginDealForHand,
       beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
