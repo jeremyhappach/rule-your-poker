@@ -438,12 +438,48 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     return () => { clearHolmHandReady(handContextId); };
   }, [gameType, handContextId]);
 
+  // Deterministic READY release latch. Hand-scoped (DealRuntime keyed
+  // by handContextId at host), idempotent (setReadyReleased guard +
+  // useState identity), no animation callbacks, no closures over stale
+  // state — depends only on currently-rendered values.
+  const dealSettledNow = expectedCount > 0 && settledCardIds.size >= expectedCount;
+  const releaseEligible =
+    phase === 'READY' &&
+    dealSettledNow &&
+    activeIntentsForHand === 0;
+  const releaseBlockReason: 'wrong_phase' | 'waiting_for_expected_count' | 'waiting_for_settles' | 'waiting_for_intents' | 'release_fired' | 'unknown' =
+    readyReleased
+      ? 'release_fired'
+      : phase !== 'READY'
+        ? 'wrong_phase'
+        : expectedCount === 0
+          ? 'waiting_for_expected_count'
+          : settledCardIds.size < expectedCount
+            ? 'waiting_for_settles'
+            : activeIntentsForHand > 0
+              ? 'waiting_for_intents'
+              : 'unknown';
+
   useEffect(() => {
-    if (phase !== 'READY') return;
-    if (!(expectedCount > 0 && settledCardIds.size >= expectedCount)) return;
-    if (activeIntentsForHand !== 0) return;
+    if (!releaseEligible) return;
+    if (readyReleased) return;
+    setReadyReleased(true);
     dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
-  }, [phase, expectedCount, settledCardIds.size, activeIntentsForHand, handContextId]);
+    if (gameType === 'gin-rummy') {
+      recordGinRunbackTrace('DealRuntime READY released', {
+        dealRuntime: {
+          handContextId,
+          gameType,
+          phase,
+          expectedCount,
+          settledCount: settledCardIds.size,
+          activeIntentsForHand,
+          dealSettled: true,
+          readyReleased: true,
+        },
+      });
+    }
+  }, [releaseEligible, readyReleased, handContextId, gameType, phase, expectedCount, settledCardIds.size, activeIntentsForHand]);
 
   useEffect(() => {
     if (gameType !== 'holm-game') return;
