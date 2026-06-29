@@ -394,10 +394,21 @@ export const GinRummyGameTable = ({
     !ginIdentityEqual(committedIdentity, incomingIdentity) &&
     isGinIdentityForward(committedIdentity, incomingIdentity);
   const renderCommittedIdentity = identityBoundaryPending ? null : committedIdentity;
-  const renderAcceptedPresentation = identityBoundaryPending ? null : acceptedPresentation;
+  // Hard contract: when renderCommittedIdentity is null we ALSO force
+  // renderAcceptedPresentation to null in the SAME render. No code path
+  // below may read an accepted presentation through a null committed
+  // identity, regardless of whether setAcceptedPresentation(null) has
+  // landed yet.
+  const renderAcceptedPresentation = !renderCommittedIdentity
+    ? null
+    : (identityBoundaryPending ? null : acceptedPresentation);
 
   // Atomic committedIdentity transitions. Every forward change to any axis
   // enters the same neutral boundary before the next tuple can render.
+  // The updater also schedules setAcceptedPresentation(null) so React
+  // batches identity-null + presentation-null into ONE re-render. There
+  // is no transient frame where committedIdentity=null and
+  // acceptedPresentation still holds an outgoing-hand state.
   useEffect(() => {
     if (!incomingIdentity) return;
     setCommittedIdentity((prev) => {

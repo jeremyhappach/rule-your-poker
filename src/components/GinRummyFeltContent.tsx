@@ -300,7 +300,7 @@ export const GinRummyFeltContent = ({
               before the upcard exists. Upcard face renders only once
               the discard intent has settled. */}
           <div className="flex flex-col items-center gap-0.5">
-            {discardTopCard && (discardRevealed || canTakeFirstDraw) ? (
+            {discardTopCard && discardRevealed ? (
               <button
                 onClick={discardClickable ? onDrawDiscard : undefined}
                 disabled={!discardClickable}
@@ -311,6 +311,15 @@ export const GinRummyFeltContent = ({
                 <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
               </button>
             ) : (
+              // Single-owner contract: before the opening discard intent
+              // settles (deal.isSettled(`${ctx}#discard`)), the upcard
+              // slot renders ONLY the empty placeholder. The static
+              // authoritative discard face must never coexist with an
+              // unresolved opening discard intent for the same hand —
+              // otherwise 10♦ would render statically AND get dealt onto
+              // itself by the transport flight. canTakeFirstDraw no
+              // longer bypasses discardRevealed; clickability is still
+              // gated by discardClickable below.
               <div
                 data-card-anchor="discard"
                 className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center"
