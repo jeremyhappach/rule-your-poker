@@ -9,6 +9,7 @@ import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -100,6 +101,33 @@ export const GinRummyMobileCardsTab = ({
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
+
+  useEffect(() => {
+    recordGinRunbackTrace('active-pane rail render gate', {
+      payloadHandNumber: ginState.handNumber ?? null,
+      payloadPhase: ginState.phase,
+      ginState: {
+        handNumber: ginState.handNumber ?? null,
+        phase: ginState.phase,
+        turnPhase: ginState.turnPhase,
+        actionCount: ginState.actionCount ?? null,
+      },
+      selfHandCount: myState?.hand?.length ?? null,
+      dealRuntime: deal ? {
+        handContextId: deal.handContextId,
+        phase: deal.phase,
+        expectedCount: deal.expectedCount,
+        settledCount: deal.settledCardIds.size,
+        settledForSelf: deal.getSettledCountForPlayer(currentPlayerId),
+      } : null,
+      overlayPredicateInputs: {
+        isMyTurn,
+        isProcessing,
+        rawSelfHandCount: rawMyState?.hand?.length ?? null,
+        renderedSelfHandCount: myState?.hand?.length ?? null,
+      },
+    });
+  }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
 
   // Track newly drawn card
   useEffect(() => {

@@ -91,6 +91,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { recordGinRunbackTrace, setGinRunbackTraceContext, type GinRunbackOverlayStateSource } from '@/lib/ginRunbackTrace';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -110,6 +111,30 @@ const traceGinAnnouncement = (event: string, payload: Record<string, unknown> = 
   } catch {
     // no-op: diagnostic only
   }
+};
+
+const summarizeGinRunbackState = (state: GinRummyState | null | undefined) => state ? ({
+  handNumber: state.handNumber ?? null,
+  phase: state.phase ?? null,
+  turnPhase: state.turnPhase ?? null,
+  actionCount: state.actionCount ?? null,
+  winnerPlayerId: state.winnerPlayerId ?? null,
+  knockResult: state.knockResult ? {
+    isGin: state.knockResult.isGin,
+    isUndercut: state.knockResult.isUndercut,
+    winnerId: state.knockResult.winnerId,
+  } : null,
+}) : null;
+
+const summarizeGinRunbackIdentity = (identity: AuthoritativeIdentity | null | undefined) => identity ? ({
+  dealerGameId: identity.dealerGameId ?? null,
+  roundId: identity.roundId ?? null,
+  handNumber: identity.handNumber ?? null,
+}) : null;
+
+const getGinRunbackHandCount = (state: GinRummyState | null | undefined, playerId: string | null | undefined) => {
+  if (!state || !playerId) return null;
+  return state.playerStates?.[playerId]?.hand?.length ?? null;
 };
 
 interface Player {
@@ -149,7 +174,7 @@ const SpadeIcon = ({ className }: { className?: string }) => (
 function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy">
       {children}
     </DealRuntime>
   );
@@ -304,6 +329,15 @@ export const GinRummyGameTable = ({
   // started by a peer client.
   const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
   useEffect(() => {
+    recordGinRunbackTrace('authIdentity observed', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      newRoundId: authIdentity?.roundId ?? null,
+      newHandNumber: authIdentity?.handNumber ?? null,
+      currentRoundId: propRoundId,
+      currentHandNumber: propHandNumber,
+      note: 'currentRoundId/currentHandNumber state not initialized yet; prop identity recorded here',
+    });
     recordStartupValue('IDENTITY TIMELINE', 'authIdentity available', authIdentity ? {
       dealerGameId: authIdentity.dealerGameId ?? null,
       roundId: authIdentity.roundId ?? null,
@@ -335,7 +369,31 @@ export const GinRummyGameTable = ({
     const incomingRoundId = useAuth ? authIdentity!.roundId! : propRoundId;
     const incomingHandNumber = Math.max(authHand, propHand, currentHandNumber);
     if (!incomingRoundId) return;
-    setCurrentHandNumber((prev) => (incomingHandNumber > prev ? incomingHandNumber : prev));
+    recordGinRunbackTrace('identity state update:evaluate', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      oldRoundId: currentRoundId,
+      newRoundId: incomingRoundId,
+      oldHandNumber: currentHandNumber,
+      newHandNumber: incomingHandNumber,
+      currentRoundId,
+      currentHandNumber,
+      note: `useAuth=${useAuth}`,
+    });
+    setCurrentHandNumber((prev) => {
+      const next = incomingHandNumber > prev ? incomingHandNumber : prev;
+      if (next !== prev) {
+        recordGinRunbackTrace('currentHandNumber state update', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          oldHandNumber: prev,
+          newHandNumber: next,
+          currentRoundId,
+          currentHandNumber: prev,
+        });
+      }
+      return next;
+    });
     setCurrentRoundId((prev) => {
       if (!prev) return incomingRoundId;
       if (prev === incomingRoundId) return prev;
@@ -349,7 +407,30 @@ export const GinRummyGameTable = ({
         handNumber: incomingHandNumber,
         roundId: incomingRoundId,
       };
-      if (isIdentityForward(prevIdent, nextIdent)) return incomingRoundId;
+      if (isIdentityForward(prevIdent, nextIdent)) {
+        recordGinRunbackTrace('currentRoundId state update', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          oldRoundId: prev,
+          newRoundId: incomingRoundId,
+          oldHandNumber: currentHandNumber,
+          newHandNumber: incomingHandNumber,
+          currentRoundId: prev,
+          currentHandNumber,
+        });
+        return incomingRoundId;
+      }
+      recordGinRunbackTrace('currentRoundId state update skipped', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        oldRoundId: prev,
+        newRoundId: incomingRoundId,
+        oldHandNumber: currentHandNumber,
+        newHandNumber: incomingHandNumber,
+        currentRoundId: prev,
+        currentHandNumber,
+        skippedReason: 'incoming identity is not forward',
+      });
       return prev;
     });
   }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber, dealerGameId]);
@@ -396,6 +477,18 @@ export const GinRummyGameTable = ({
     lastObservedIdentityRef.current = authIdentity;
     if (!prev) return;
     if (!isIdentityForward(prev, authIdentity)) return;
+    recordGinRunbackTrace('authIdentity advance', {
+      gameId,
+      oldRoundId: prev.roundId ?? null,
+      newRoundId: authIdentity.roundId ?? null,
+      oldHandNumber: prev.handNumber ?? null,
+      newHandNumber: authIdentity.handNumber ?? null,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId,
+      currentHandNumber,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+    });
     // Handoff step 1: drop OUTGOING presentation immediately.
     setGinState(null);
     // Handoff step 2: pre-advance the identity latch to the INCOMING round
@@ -405,6 +498,17 @@ export const GinRummyGameTable = ({
     // be accepted under R{N+1}.
     if (authIdentity.roundId) {
       roundIdLatchRef.current = authIdentity.roundId;
+      recordGinRunbackTrace('identity pre-advance', {
+        gameId,
+        oldRoundId: prev.roundId ?? null,
+        newRoundId: authIdentity.roundId,
+        oldHandNumber: prev.handNumber ?? null,
+        newHandNumber: authIdentity.handNumber ?? null,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId,
+        currentHandNumber,
+        note: `roundIdLatchRef=${authIdentity.roundId}`,
+      });
     }
     // Handoff step 3: clear overlay-fire latches so any pending overlay
     // computed under the outgoing identity cannot fire under the incoming
@@ -453,6 +557,13 @@ export const GinRummyGameTable = ({
 
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
+  const lastAuthoritativeSignatureRef = useRef<string | null>(null);
+  const localOptimisticSignatureRef = useRef<string | null>(null);
+  const firstAcceptedCurrentRoundSnapshotRef = useRef(false);
+  const signatureForGinRunback = useCallback((state: GinRummyState | null | undefined) => {
+    if (!state) return 'null';
+    return `${state.handNumber ?? 0}|${state.phase}|${state.turnPhase ?? ''}|${state.actionCount ?? 0}|${state.winnerPlayerId ?? ''}|${state.knockResult?.winnerId ?? ''}|${state.knockResult?.isGin ? 'gin' : 'nogin'}`;
+  }, []);
 
   const bootstrapAppliedRef = useRef(false);
   useEffect(() => {
@@ -471,6 +582,19 @@ export const GinRummyGameTable = ({
       return;
     }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    recordGinRunbackTrace('bootstrapState apply result', {
+      gameId,
+      currentRoundId: roundId,
+      currentHandNumber: handNumber,
+      payloadRoundId: roundId,
+      payloadHandNumber: bootstrapState.handNumber ?? null,
+      payloadPhase: bootstrapState.phase,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      applyState: result.accepted ? 'accepted' : 'dropped',
+      dropReason: result.accepted ? null : 'progress vector',
+      note: result.reason ?? null,
+    });
     recordStartupFlight('SYNC TIMELINE', 'bootstrapState receiveAuthoritativeUpdate returned', {
       file: 'src/components/GinRummyGameTable.tsx',
       function: 'bootstrapState apply useEffect',
@@ -479,7 +603,10 @@ export const GinRummyGameTable = ({
       newValue: { phase: bootstrapState.phase, handNumber: (bootstrapState as any)?.handNumber ?? null },
       result,
     });
-    if (result.accepted) setGinState(bootstrapState);
+    if (result.accepted) {
+      lastAuthoritativeSignatureRef.current = signatureForGinRunback(bootstrapState);
+      setGinState(bootstrapState);
+    }
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
       ginTrace('gin.receiveAuthoritativeUpdate first-accepted', {
@@ -774,6 +901,17 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     // Update identity latch FIRST — stale handlers check this before accepting
     roundIdLatchRef.current = roundId;
+    recordGinRunbackTrace('roundId reset effect / latch update', {
+      gameId,
+      newRoundId: roundId,
+      newHandNumber: handNumber,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId: roundId,
+      currentHandNumber: handNumber,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      note: `roundIdLatchRef=${roundId}`,
+    });
     // Reset sync framework — clears stale presentation/authoritative/freeze
     ginSync.reset(null);
     // Reset local state
@@ -853,7 +991,21 @@ export const GinRummyGameTable = ({
   // Play knock sound + show overlay when phase transitions to 'knocking'
   // Show gin overlay when knockResult indicates gin
   useEffect(() => {
-    if (!ginState) return;
+    if (!ginState) {
+      recordGinRunbackTrace('win-overlay predicate evaluation', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId,
+        currentHandNumber,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: null,
+        overlayPredicateInputs: { hasGinState: false },
+        overlayStateSource: 'null/bootstrap state',
+        overlayFired: false,
+        skippedReason: 'null ginState',
+      });
+      return;
+    }
     // ── Overlay identity boundary ──
     // Overlays may fire only from an accepted authoritative snapshot for the
     // CURRENT incoming identity. Stale ginState (prior hand), null/bootstrap
@@ -861,9 +1013,57 @@ export const GinRummyGameTable = ({
     // identity must not produce knock/gin overlays under R{N+1}.
     const stateHand = ginState.handNumber ?? 0;
     if (stateHand > 0 && currentHandNumber > 0 && stateHand !== currentHandNumber) {
+      recordGinRunbackTrace('win-overlay predicate evaluation', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId,
+        currentHandNumber,
+        payloadHandNumber: stateHand,
+        payloadPhase: ginState.phase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        overlayPredicateInputs: { stateHand, currentHandNumber, phase: ginState.phase },
+        overlayStateSource: 'stale presentation state',
+        overlayFired: false,
+        skippedReason: 'hand mismatch',
+      });
       return;
     }
     const currentPhase = ginState.phase;
+    const anyPlayerHasGin = ginState.playerStates && Object.values(ginState.playerStates).some(ps => ps.hasGin);
+    const overlaySignature = signatureForGinRunback(ginState);
+    const overlayStateSource: GinRunbackOverlayStateSource = !ginState
+      ? 'null/bootstrap state'
+      : overlaySignature === localOptimisticSignatureRef.current && overlaySignature !== lastAuthoritativeSignatureRef.current
+        ? 'local optimistic/pre-write state'
+        : overlaySignature === lastAuthoritativeSignatureRef.current
+          ? 'accepted authoritative snapshot'
+          : (stateHand > 0 && currentHandNumber > 0 && stateHand !== currentHandNumber)
+            ? 'stale presentation state'
+            : 'stale presentation state';
+    recordGinRunbackTrace('win-overlay predicate evaluation', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId,
+      currentHandNumber,
+      payloadHandNumber: stateHand,
+      payloadPhase: currentPhase,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      overlayPredicateInputs: {
+        phase: currentPhase,
+        prevPhase: prevPhaseRef.current,
+        showKnockOverlay,
+        showGinOverlay,
+        knockOverlayFired: knockOverlayFiredRef.current,
+        ginOverlayFired: ginOverlayFiredRef.current,
+        hasKnockResultGin: !!ginState.knockResult?.isGin,
+        anyPlayerHasGin,
+      },
+      overlayStateSource,
+      overlayFired: false,
+      skippedReason: 'predicate check only',
+    });
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
       traceGinAnnouncement('overlay:trigger', {
@@ -876,11 +1076,24 @@ export const GinRummyGameTable = ({
         handNumber: ginState.handNumber ?? handNumber,
       });
       knockOverlayFiredRef.current = true;
+      recordGinRunbackTrace('win-overlay fire', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId,
+        currentHandNumber,
+        payloadHandNumber: stateHand,
+        payloadPhase: currentPhase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        overlayPredicateInputs: { overlay: 'knock', phase: currentPhase, prevPhase: prevPhaseRef.current },
+        overlayStateSource,
+        overlayFired: true,
+        skippedReason: null,
+      });
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
     }
     // Detect gin: phase goes to scoring/complete with hasGin flag on a player
-    const anyPlayerHasGin = ginState.playerStates && Object.values(ginState.playerStates).some(ps => ps.hasGin);
     if (
       (currentPhase === 'scoring' || currentPhase === 'complete') &&
       prevPhaseRef.current !== 'scoring' &&
@@ -900,6 +1113,20 @@ export const GinRummyGameTable = ({
         handNumber: ginState.handNumber ?? handNumber,
       });
       ginOverlayFiredRef.current = true;
+      recordGinRunbackTrace('win-overlay fire', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId,
+        currentHandNumber,
+        payloadHandNumber: stateHand,
+        payloadPhase: currentPhase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        overlayPredicateInputs: { overlay: 'gin', phase: currentPhase, prevPhase: prevPhaseRef.current, hasKnockResultGin: !!ginState.knockResult?.isGin, anyPlayerHasGin },
+        overlayStateSource,
+        overlayFired: true,
+        skippedReason: null,
+      });
       setShowGinOverlay(true);
     }
 
@@ -983,6 +1210,15 @@ export const GinRummyGameTable = ({
     if (!roundId) return;
     const load = async () => {
       const startedAt = performance.now();
+      recordGinRunbackTrace('bootstrap fetch start', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId: roundId,
+        currentHandNumber: handNumber,
+        payloadRoundId: roundId,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+      });
       console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:start', {
         gameId,
         roundId: roundId?.slice(0, 8),
@@ -998,12 +1234,38 @@ export const GinRummyGameTable = ({
 
       if (!error && data?.gin_rummy_state) {
         const state = data.gin_rummy_state as unknown as GinRummyState;
+        recordGinRunbackTrace('bootstrap fetch result', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: handNumber,
+          payloadRoundId: roundId,
+          payloadHandNumber: state.handNumber ?? null,
+          payloadPhase: state.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
+        });
         // Identity-bound bootstrap: only accept a snapshot whose handNumber
         // matches the live incoming identity. Query is already filtered by
         // roundId; this is the second axis of the identity contract.
         const expectedHand = currentHandNumberRef.current;
         const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
         if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
+          recordGinRunbackTrace('bootstrap fetch result dropped', {
+            gameId,
+            authIdentity: summarizeGinRunbackIdentity(authIdentity),
+            currentRoundId: roundId,
+            currentHandNumber: expectedHand,
+            payloadRoundId: roundId,
+            payloadHandNumber: stateHand,
+            payloadPhase: state.phase,
+            viewState: summarizeGinRunbackState(viewState),
+            ginState: summarizeGinRunbackState(ginState),
+            applyState: 'dropped',
+            dropReason: 'bootstrap mismatch',
+            note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
+          });
           ginTrace('gin.hydration load:identity-mismatch-dropped', {
             elapsedMs: Math.round(performance.now() - startedAt),
             expectedHand,
@@ -1012,7 +1274,39 @@ export const GinRummyGameTable = ({
           return;
         }
         const result = ginSync.receiveAuthoritativeUpdate(state);
-        if (result.accepted) setGinState(state);
+        recordGinRunbackTrace('bootstrap fetch apply result', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: expectedHand,
+          payloadRoundId: roundId,
+          payloadHandNumber: stateHand,
+          payloadPhase: state.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          applyState: result.accepted ? 'accepted' : 'dropped',
+          dropReason: result.accepted ? null : 'progress vector',
+          note: result.reason ?? null,
+        });
+        if (result.accepted) {
+          lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
+          setGinState(state);
+          if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
+            firstAcceptedCurrentRoundSnapshotRef.current = true;
+            recordGinRunbackTrace('first accepted current-round snapshot', {
+              gameId,
+              authIdentity: summarizeGinRunbackIdentity(authIdentity),
+              currentRoundId: roundId,
+              currentHandNumber: expectedHand,
+              payloadRoundId: roundId,
+              payloadHandNumber: stateHand,
+              payloadPhase: state.phase,
+              viewState: summarizeGinRunbackState(viewState),
+              ginState: summarizeGinRunbackState(state),
+              applyState: 'accepted',
+            });
+          }
+        }
         console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:applied', {
           gameId,
           roundId: roundId?.slice(0, 8),
@@ -1028,6 +1322,17 @@ export const GinRummyGameTable = ({
           phase: state.phase,
         });
       } else {
+        recordGinRunbackTrace('bootstrap fetch empty', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: handNumber,
+          payloadRoundId: roundId,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          skippedReason: error?.message ?? 'empty gin_rummy_state',
+          note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
+        });
         console.warn('[GIN_RUNTIME_TIMELINE] viewState hydration load:empty', {
           gameId,
           roundId: roundId?.slice(0, 8),
@@ -1052,8 +1357,20 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     if (!roundId) return;
     let isActive = true;
+    recordGinRunbackTrace('realtime subscribe start', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId: roundId,
+      currentHandNumber: handNumber,
+      newRoundId: roundId,
+      newHandNumber: handNumber,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      note: `channel=gin-rummy-${roundId}`,
+    });
 
     const applyState = (state: GinRummyState, source: string) => {
+      const stateHandForTrace = (state as { handNumber?: number } | null)?.handNumber ?? 0;
       recordStartupFlight('SYNC TIMELINE', 'Gin applyState entered', {
         file: 'src/components/GinRummyGameTable.tsx',
         function: 'applyState',
@@ -1062,11 +1379,55 @@ export const GinRummyGameTable = ({
         phase: state.phase,
         handNumber: (state as any)?.handNumber ?? null,
       });
-      if (!isActive) return;
+      recordGinRunbackTrace('applyState entered', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId: roundId,
+        currentHandNumber: currentHandNumberRef.current,
+        payloadRoundId: roundId,
+        payloadHandNumber: stateHandForTrace,
+        payloadPhase: state.phase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        note: `source=${source}`,
+      });
+      if (!isActive) {
+        recordGinRunbackTrace('applyState dropped', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: currentHandNumberRef.current,
+          payloadRoundId: roundId,
+          payloadHandNumber: stateHandForTrace,
+          payloadPhase: state.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          applyState: 'dropped',
+          dropReason: 'other',
+          note: `source=${source}; inactive handler`,
+        });
+        return;
+      }
       // ── Identity latch guard ──
       // If the roundId for this handler no longer matches the live latch,
       // this is a stale tail-end event from a previous subscription/poll cycle.
       if (roundIdLatchRef.current !== roundId) {
+        recordGinRunbackTrace('applyState dropped', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          oldRoundId: roundId,
+          newRoundId: roundIdLatchRef.current,
+          currentRoundId: roundId,
+          currentHandNumber: currentHandNumberRef.current,
+          payloadRoundId: roundId,
+          payloadHandNumber: stateHandForTrace,
+          payloadPhase: state.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          applyState: 'dropped',
+          dropReason: 'round latch',
+          note: `source=${source}; handlerRoundId=${roundId}; latchRoundId=${roundIdLatchRef.current}`,
+        });
         logDebugEvent({
           gameId, roundId, userId: currentUserId, clientRole: 'actor',
           eventType: 'gin:identity_latch_drop',
@@ -1085,6 +1446,20 @@ export const GinRummyGameTable = ({
       const expectedHand = currentHandNumberRef.current;
       const stateHand = (state as { handNumber?: number } | null)?.handNumber ?? 0;
       if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
+        recordGinRunbackTrace('applyState dropped', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: expectedHand,
+          payloadRoundId: roundId,
+          payloadHandNumber: stateHand,
+          payloadPhase: state.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          applyState: 'dropped',
+          dropReason: 'hand mismatch',
+          note: `source=${source}`,
+        });
         logDebugEvent({
           gameId, roundId, userId: currentUserId, clientRole: 'actor',
           eventType: 'gin:identity_hand_drop',
@@ -1123,8 +1498,39 @@ export const GinRummyGameTable = ({
           comparison: result.comparison,
         }),
       });
+      recordGinRunbackTrace(result.accepted ? 'applyState accepted' : 'applyState dropped', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId: roundId,
+        currentHandNumber: expectedHand,
+        payloadRoundId: roundId,
+        payloadHandNumber: stateHand,
+        payloadPhase: state.phase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        applyState: result.accepted ? 'accepted' : 'dropped',
+        dropReason: result.accepted ? null : 'progress vector',
+        note: `source=${source}; reason=${result.reason ?? 'none'}; prev=${JSON.stringify(result.previousProgress ?? null)} incoming=${JSON.stringify(result.incomingProgress ?? null)}`,
+      });
       if (result.accepted) {
+        lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
         setGinState(state);
+        if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
+          firstAcceptedCurrentRoundSnapshotRef.current = true;
+          recordGinRunbackTrace('first accepted current-round snapshot', {
+            gameId,
+            authIdentity: summarizeGinRunbackIdentity(authIdentity),
+            currentRoundId: roundId,
+            currentHandNumber: expectedHand,
+            payloadRoundId: roundId,
+            payloadHandNumber: stateHand,
+            payloadPhase: state.phase,
+            viewState: summarizeGinRunbackState(viewState),
+            ginState: summarizeGinRunbackState(state),
+            applyState: 'accepted',
+            note: `source=${source}`,
+          });
+        }
         // NOTE: Match-win ownership inversion — we intentionally do NOT
         // call onGameCompleteRef.current() here when reaching
         // phase === 'complete' with a winnerPlayerId. The presentation
@@ -1179,6 +1585,16 @@ export const GinRummyGameTable = ({
         }
       )
       .subscribe((status) => {
+        recordGinRunbackTrace('realtime subscribe status', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId: roundId,
+          currentHandNumber: handNumber,
+          payloadRoundId: roundId,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          note: `channel=gin-rummy-${roundId}; status=${status}`,
+        });
         console.log('[GIN-RUMMY] Realtime subscription status:', status);
         recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable subscription status', {
           file: 'src/components/GinRummyGameTable.tsx',
@@ -1218,6 +1634,16 @@ export const GinRummyGameTable = ({
 
     return () => {
       isActive = false;
+      recordGinRunbackTrace('realtime unsubscribe', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        currentRoundId: roundId,
+        currentHandNumber: handNumber,
+        oldRoundId: roundId,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        note: `channel=gin-rummy-${roundId}`,
+      });
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       supabase.removeChannel(channel);
     };
@@ -1780,6 +2206,19 @@ export const GinRummyGameTable = ({
 
   useEffect(() => {
     if (!viewState || viewState.phase !== 'complete') return;
+    recordGinRunbackTrace('Hand N complete', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId,
+      currentHandNumber,
+      payloadRoundId: currentRoundId,
+      payloadHandNumber: viewState.handNumber ?? null,
+      payloadPhase: viewState.phase,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      selfHandCount: getGinRunbackHandCount(viewState, currentPlayerId),
+      opponentHandCount: getGinRunbackHandCount(viewState, opponentId),
+    });
     if (!dealerGameId) return;
     if (handCompletionInProgress.current) return;
 
@@ -2000,6 +2439,21 @@ export const GinRummyGameTable = ({
         const delay = !viewState.knockResult ? 1500 : isGin ? 5000 : 3000;
         await new Promise(resolve => setTimeout(resolve, delay));
         const result = await startNextGinRummyHand(gameId, dealerGameId, viewState);
+        recordGinRunbackTrace('startNextGinRummyHand result', {
+          gameId,
+          oldRoundId: currentRoundId,
+          newRoundId: result.roundId ?? null,
+          oldHandNumber: viewState.handNumber ?? null,
+          newHandNumber: result.handNumber ?? null,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId,
+          currentHandNumber,
+          payloadRoundId: result.roundId ?? null,
+          payloadHandNumber: result.handNumber ?? null,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(ginState),
+          note: `success=${result.success}; alreadyStarted=${result.alreadyStarted ?? false}; error=${result.error ?? 'none'}`,
+        });
         if (result.success) {
           console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
         }
@@ -2041,6 +2495,20 @@ export const GinRummyGameTable = ({
       payload: ginStateSummary(newState),
     });
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
+    localOptimisticSignatureRef.current = signatureForGinRunback(newState);
+    recordGinRunbackTrace('local optimistic/pre-write state', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId,
+      currentHandNumber,
+      payloadRoundId: roundId,
+      payloadHandNumber: newState.handNumber ?? null,
+      payloadPhase: newState.phase,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(newState),
+      overlayStateSource: 'local optimistic/pre-write state',
+      note: traceId ?? null,
+    });
     ginSync.applyOptimistic(newState);
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
@@ -2154,6 +2622,21 @@ export const GinRummyGameTable = ({
           roundId: currentRoundId,
           handNumber: newState.handNumber ?? handNumber,
         });
+        localOptimisticSignatureRef.current = signatureForGinRunback(newState);
+        recordGinRunbackTrace('win-overlay fire', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId,
+          currentHandNumber,
+          payloadRoundId: roundId,
+          payloadHandNumber: newState.handNumber ?? null,
+          payloadPhase: newState.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(newState),
+          overlayPredicateInputs: { overlay: 'gin', source: 'local-action' },
+          overlayStateSource: 'local optimistic/pre-write state',
+          overlayFired: true,
+        });
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
         // Write scoring state to DB so opponent sees gin phase and gets overlay too
@@ -2177,6 +2660,21 @@ export const GinRummyGameTable = ({
           propDealerGameId: dealerGameId,
           roundId: currentRoundId,
           handNumber: newState.handNumber ?? handNumber,
+        });
+        localOptimisticSignatureRef.current = signatureForGinRunback(newState);
+        recordGinRunbackTrace('win-overlay fire', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          currentRoundId,
+          currentHandNumber,
+          payloadRoundId: roundId,
+          payloadHandNumber: newState.handNumber ?? null,
+          payloadPhase: newState.phase,
+          viewState: summarizeGinRunbackState(viewState),
+          ginState: summarizeGinRunbackState(newState),
+          overlayPredicateInputs: { overlay: 'knock', source: 'local-action' },
+          overlayStateSource: 'local optimistic/pre-write state',
+          overlayFired: true,
         });
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
@@ -2322,6 +2820,41 @@ export const GinRummyGameTable = ({
   // mounted continuously from slot mount onward. Only the gameplay-specific
   // subtrees that REQUIRE a hydrated viewState are gated behind `isPlayable`.
   const isPlayable = !!viewState && !isStaleHandPresentation;
+  setGinRunbackTraceContext({
+    gameId,
+    authIdentity: summarizeGinRunbackIdentity(authIdentity),
+    currentRoundId,
+    currentHandNumber,
+    payloadRoundId: currentRoundId,
+    payloadHandNumber: viewState?.handNumber ?? null,
+    payloadPhase: viewState?.phase ?? null,
+    viewState: summarizeGinRunbackState(viewState),
+    ginState: summarizeGinRunbackState(ginState),
+    isStaleHandPresentation,
+    isPlayable,
+    selfHandCount: getGinRunbackHandCount(viewState, currentPlayerId),
+    opponentHandCount: getGinRunbackHandCount(viewState, opponentId),
+    activePaneAnchorHostPresent: typeof document === 'undefined' ? null : !!document.querySelector('[data-gin-active-pane-content]'),
+  });
+
+  useEffect(() => {
+    recordGinRunbackTrace('playable/render gate', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      currentRoundId,
+      currentHandNumber,
+      payloadRoundId: currentRoundId,
+      payloadHandNumber: viewState?.handNumber ?? null,
+      payloadPhase: viewState?.phase ?? null,
+      viewState: summarizeGinRunbackState(viewState),
+      ginState: summarizeGinRunbackState(ginState),
+      isStaleHandPresentation,
+      isPlayable,
+      selfHandCount: getGinRunbackHandCount(viewState, currentPlayerId),
+      opponentHandCount: getGinRunbackHandCount(viewState, opponentId),
+      activePaneAnchorHostPresent: typeof document === 'undefined' ? null : !!document.querySelector('[data-gin-active-pane-content]'),
+    });
+  }, [gameId, authIdentity?.roundId, authIdentity?.handNumber, currentRoundId, currentHandNumber, viewState?.handNumber, viewState?.phase, ginState?.handNumber, ginState?.phase, isStaleHandPresentation, isPlayable, currentPlayerId, opponentId]);
 
   if (!isPlayable && !placeholderPaintedRef.current) {
     placeholderPaintedRef.current = true;

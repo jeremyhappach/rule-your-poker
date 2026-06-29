@@ -47,6 +47,7 @@ import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import HolmTracePill from "@/components/HolmTracePill";
+import GinRunbackTracePill from "@/components/GinRunbackTracePill";
 import { R1SnapbackPill } from "@/lib/wartimeDebug/R1SnapbackPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
 import { Wave5GridOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5GridOverlay";
@@ -177,6 +178,7 @@ const App = () => {
 
               {/* HOLM TRACE PILL — temporary, self-gates on isHolmTraceActive(). */}
               <HolmTracePill />
+              <GinRunbackTracePill />
 
 
 
