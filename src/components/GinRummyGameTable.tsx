@@ -357,6 +357,12 @@ export const GinRummyGameTable = ({
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
+  // Refs mirror the live identity so callback closures (applyState, overlay
+  // effects, bootstrap load) can identity-gate without rebinding each render.
+  const currentRoundIdRef = useRef<string>(currentRoundId);
+  const currentHandNumberRef = useRef<number>(currentHandNumber);
+  useEffect(() => { currentRoundIdRef.current = currentRoundId; }, [currentRoundId]);
+  useEffect(() => { currentHandNumberRef.current = currentHandNumber; }, [currentHandNumber]);
   useEffect(() => {
     recordStartupValue('IDENTITY TIMELINE', 'GinRummyGameTable.identity', `${dealerGameId ?? '-'}|${roundId ?? '-'}|h${handNumber}`, {
       file: 'src/components/GinRummyGameTable.tsx',
@@ -390,7 +396,24 @@ export const GinRummyGameTable = ({
     lastObservedIdentityRef.current = authIdentity;
     if (!prev) return;
     if (!isIdentityForward(prev, authIdentity)) return;
+    // Handoff step 1: drop OUTGOING presentation immediately.
     setGinState(null);
+    // Handoff step 2: pre-advance the identity latch to the INCOMING round
+    // BEFORE `currentRoundId` state catches up. Any in-flight realtime/poll
+    // callbacks still closed over the outgoing round will fail the latch
+    // check in applyState and be dropped, so a stale R{N} payload cannot
+    // be accepted under R{N+1}.
+    if (authIdentity.roundId) {
+      roundIdLatchRef.current = authIdentity.roundId;
+    }
+    // Handoff step 3: clear overlay-fire latches so any pending overlay
+    // computed under the outgoing identity cannot fire under the incoming
+    // identity. Re-armed by the roundId-change reset effect.
+    ginOverlayFiredRef.current = false;
+    knockOverlayFiredRef.current = false;
+    prevPhaseRef.current = null;
+    setShowKnockOverlay(false);
+    setShowGinOverlay(false);
     const payload = {
       prevHand: prev.handNumber,
       nextHand: authIdentity.handNumber,
@@ -831,6 +854,15 @@ export const GinRummyGameTable = ({
   // Show gin overlay when knockResult indicates gin
   useEffect(() => {
     if (!ginState) return;
+    // ── Overlay identity boundary ──
+    // Overlays may fire only from an accepted authoritative snapshot for the
+    // CURRENT incoming identity. Stale ginState (prior hand), null/bootstrap
+    // ginState, and any state whose handNumber does not match the live
+    // identity must not produce knock/gin overlays under R{N+1}.
+    const stateHand = ginState.handNumber ?? 0;
+    if (stateHand > 0 && currentHandNumber > 0 && stateHand !== currentHandNumber) {
+      return;
+    }
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
@@ -966,8 +998,21 @@ export const GinRummyGameTable = ({
 
       if (!error && data?.gin_rummy_state) {
         const state = data.gin_rummy_state as unknown as GinRummyState;
+        // Identity-bound bootstrap: only accept a snapshot whose handNumber
+        // matches the live incoming identity. Query is already filtered by
+        // roundId; this is the second axis of the identity contract.
+        const expectedHand = currentHandNumberRef.current;
+        const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
+        if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
+          ginTrace('gin.hydration load:identity-mismatch-dropped', {
+            elapsedMs: Math.round(performance.now() - startedAt),
+            expectedHand,
+            stateHand,
+          });
+          return;
+        }
         const result = ginSync.receiveAuthoritativeUpdate(state);
-        setGinState(state);
+        if (result.accepted) setGinState(state);
         console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:applied', {
           gameId,
           roundId: roundId?.slice(0, 8),
@@ -1029,6 +1074,24 @@ export const GinRummyGameTable = ({
             source,
             handlerRoundId: roundId?.slice(0, 8),
             latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+          }),
+        });
+        return;
+      }
+      // ── Hand-number identity guard ──
+      // Reject any snapshot whose handNumber does not match the live incoming
+      // identity. Defense-in-depth against stale R{N} payloads slipping past
+      // the latch (e.g. realtime delivering a buffered event after rebind).
+      const expectedHand = currentHandNumberRef.current;
+      const stateHand = (state as { handNumber?: number } | null)?.handNumber ?? 0;
+      if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
+        logDebugEvent({
+          gameId, roundId, userId: currentUserId, clientRole: 'actor',
+          eventType: 'gin:identity_hand_drop',
+          payload: ginStateSummary(state, {
+            source,
+            expectedHand,
+            stateHand,
           }),
         });
         return;
