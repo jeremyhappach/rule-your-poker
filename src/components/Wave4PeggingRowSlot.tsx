@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -25,6 +26,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 // (Removed cardArtifactOverlap import — pegging row uses the adaptive
 // resolver default; not a manually tuned felt-artifact overlap value.)
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
