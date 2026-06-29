@@ -395,80 +395,6 @@ export function CanonicalSeatCluster({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // NAME PLATE INWARD CLAMP — name plates are always ABOVE the chip
-  // (vertical position invariant) and HORIZONTALLY biased toward felt
-  // center IFF the natural left-1/2 -translate-x-1/2 position would
-  // clip the outer rail. Affects ONLY `data-canonical-seat-name-row`
-  // via inline translateX; chip anchor, spotlight, decorations, card
-  // backs, dealer pip, and overlays are not touched.
-  const nameRowRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const MAX_BIAS_PX = 16;
-    const SAFETY_PX = 4;
-    const apply = () => {
-      const el = nameRowRef.current;
-      if (!el) return;
-      el.style.transform = '';
-      if (typeof document === 'undefined') return;
-      const chip = document.querySelector(
-        `[data-chip-center="${position}"]`,
-      ) as HTMLElement | null;
-      const felt =
-        (document.querySelector('[data-canonical-felt-surface]') as HTMLElement | null) ??
-        (document.querySelector('[data-canonical-shell-felt-frame]') as HTMLElement | null);
-      if (!chip || !felt) return;
-      const nameRect = el.getBoundingClientRect();
-      const chipRect = chip.getBoundingClientRect();
-      const feltRect = felt.getBoundingClientRect();
-      if (nameRect.width === 0 || feltRect.width === 0) return;
-
-      // Horizontal inward clamp — bias toward felt center if the natural
-      // centered position would clip the outer felt rail.
-      const chipCx = chipRect.left + chipRect.width / 2;
-      const feltCx = feltRect.left + feltRect.width / 2;
-      const inwardSign = feltCx >= chipCx ? 1 : -1;
-      const leftOverflow = feltRect.left + SAFETY_PX - nameRect.left;
-      const rightOverflow = nameRect.right - (feltRect.right - SAFETY_PX);
-      let shiftX = 0;
-      if (inwardSign > 0 && leftOverflow > 0) shiftX = leftOverflow;
-      else if (inwardSign < 0 && rightOverflow > 0) shiftX = -rightOverflow;
-      if (shiftX > MAX_BIAS_PX) shiftX = MAX_BIAS_PX;
-      else if (shiftX < -MAX_BIAS_PX) shiftX = -MAX_BIAS_PX;
-
-      // Vertical lift removed — top-seat clearance is now provided
-      // structurally by the admin top safe area. The name row stays at
-      // its natural fixed position above the chip.
-
-      const parts: string[] = [];
-      if (shiftX) parts.push(`translateX(${shiftX}px)`);
-      el.style.transform = parts.join(' ');
-
-    };
-    apply();
-    if (typeof window === 'undefined') return;
-    const el = nameRowRef.current;
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(apply);
-      if (el) ro.observe(el);
-      const felt =
-        document.querySelector('[data-canonical-felt-surface]') ??
-        document.querySelector('[data-canonical-shell-felt-frame]');
-      if (felt) ro.observe(felt as Element);
-      const header = document.querySelector('[data-canonical-shell-header]');
-      if (header) ro.observe(header as Element);
-    }
-    window.addEventListener('resize', apply);
-    window.addEventListener('orientationchange', apply);
-    window.addEventListener('scroll', apply, true);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener('resize', apply);
-      window.removeEventListener('orientationchange', apply);
-      window.removeEventListener('scroll', apply, true);
-    };
-  }, [position, name, slot]);
-
   // Live chip-disc radius measurement — used by the opponent-showdown
   // row to pin to the *visible* chip rim (inner-edge / outer-edge)
   // instead of assuming a fixed 20px half-width. Reads the actual
@@ -670,7 +596,6 @@ export function CanonicalSeatCluster({
   if (!hideChipBubble) {
     nameRow = namePlacement === 'none' ? null : (
       <div
-        ref={nameRowRef}
         data-canonical-seat-name-row=""
         className={cn(
           'inline-flex items-center gap-1 rounded-[3px] px-1 py-[1px]',
