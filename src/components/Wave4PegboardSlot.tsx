@@ -49,6 +49,7 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGBOARD_SLOT_ID);
