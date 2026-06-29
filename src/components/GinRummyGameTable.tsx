@@ -989,8 +989,21 @@ export const GinRummyGameTable = ({
 
       if (!error && data?.gin_rummy_state) {
         const state = data.gin_rummy_state as unknown as GinRummyState;
+        // Identity-bound bootstrap: only accept a snapshot whose handNumber
+        // matches the live incoming identity. Query is already filtered by
+        // roundId; this is the second axis of the identity contract.
+        const expectedHand = currentHandNumberRef.current;
+        const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
+        if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
+          ginTrace('gin.hydration load:identity-mismatch-dropped', {
+            elapsedMs: Math.round(performance.now() - startedAt),
+            expectedHand,
+            stateHand,
+          });
+          return;
+        }
         const result = ginSync.receiveAuthoritativeUpdate(state);
-        setGinState(state);
+        if (result.accepted) setGinState(state);
         console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:applied', {
           gameId,
           roundId: roundId?.slice(0, 8),
