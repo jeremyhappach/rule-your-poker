@@ -2969,7 +2969,7 @@ export const GinRummyGameTable = ({
   // is null → DealRuntimeMaybe does not mount DealRuntime and the
   // orchestrator gate (handContextId && ...) does not mount the
   // orchestrator. No opening-deal dispatch occurs.
-  const handContextId = committedIdentity ? ginIdentityKey(committedIdentity) : null;
+  const handContextId = renderCommittedIdentity ? ginIdentityKey(renderCommittedIdentity) : null;
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
