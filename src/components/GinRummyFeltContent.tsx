@@ -201,6 +201,19 @@ export const GinRummyFeltContent = ({
     ? true
     : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(stockCardId);
 
+  // Single-owner contract: while the opening discard intent is not
+  // settled (discardRevealed === false), no upcard click target may
+  // render and the Take CTA's underlying predicate must be false. The
+  // authoritative first-draw offer remains true in state — it is only
+  // GATED at the presentation layer until the transport settles.
+  const canTakeFirstDraw =
+    ginState.phase === 'first_draw' &&
+    ginState.firstDrawOfferedTo === currentPlayerId &&
+    !isProcessing &&
+    discardRevealed;
+  const discardClickable = (canDraw || canTakeFirstDraw) && discardRevealed;
+
+
   useEffect(() => {
     recordGinRunbackTrace('upcard/stock/rail render gate', {
       payloadHandNumber: ginState.handNumber ?? null,
