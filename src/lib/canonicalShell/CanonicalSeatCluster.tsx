@@ -623,7 +623,7 @@ export function CanonicalSeatCluster({
   const inwardCssSignForName = isCenterAnchoredSlot
     ? 0
     : (isRightSideCanonicalSlot(slot) ? -1 : 1);
-  const effectiveAnchor: 'upper' | 'lower' | 'inner' | 'outer' =
+  const effectiveAnchor: 'upper' | 'lower' | 'inner' | 'outer' | 'center' =
     (isCenterAnchoredSlot && (namePlateCfg.anchorStart === 'inner' || namePlateCfg.anchorStart === 'outer'))
       ? 'upper'
       : namePlateCfg.anchorStart;
