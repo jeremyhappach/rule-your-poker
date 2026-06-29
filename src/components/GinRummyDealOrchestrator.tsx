@@ -258,6 +258,7 @@ export function GinRummyDealOrchestrator({
     );
 
     dispatchedRef.current = true;
+    dispatchedOpeningDealManifests.add(handContextId);
     recordGinRunbackTrace('DealRuntime dispatch', {
       dealRuntime: {
         handContextId,
