@@ -101,6 +101,7 @@ import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import { useThreeFiveSevenShowdownConfig } from "@/lib/threeFiveSeven/showdownConfig";
 import { useHolmShowdownConfig } from "@/lib/holm/showdownConfig";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
+import { HolmBuckIndicatorRender } from "./HolmBuckIndicatorRender";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
