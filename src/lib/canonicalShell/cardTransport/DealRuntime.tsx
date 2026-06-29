@@ -392,6 +392,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       return next;
     });
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       // dispatched = 0 added; transport accept events drive increments.
