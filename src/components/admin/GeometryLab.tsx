@@ -67,6 +67,7 @@ import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesP
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
+import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
