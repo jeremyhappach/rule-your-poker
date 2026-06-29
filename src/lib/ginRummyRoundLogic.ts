@@ -363,11 +363,11 @@ export async function startNextGinRummyHand(
       return { success: false, error: 'Match already won' };
     }
 
-    // Rotate dealer (suppressed in two-action harness so the host stays dealer)
-    const harnessOn = isGinTwoActionHarnessEnabled();
-    const nextDealerId = harnessOn
-      ? previousState.dealerPlayerId
-      : getNextDealer(previousState);
+    // Server-authoritative pure alternation: every hand within the same
+    // dealerGameId past H1 swaps dealer/non-dealer. The harness no longer
+    // suppresses rotation — alternation is an invariant the client must
+    // consume from the persisted round, never recompute from parity.
+    const nextDealerId = getNextDealer(previousState);
     const nextNonDealerId = nextDealerId === previousState.dealerPlayerId
       ? previousState.nonDealerPlayerId
       : previousState.dealerPlayerId;

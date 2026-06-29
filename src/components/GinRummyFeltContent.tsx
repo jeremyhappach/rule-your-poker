@@ -176,9 +176,11 @@ export const GinRummyFeltContent = ({
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
+  // canTakeFirstDraw is computed AFTER discardRevealed below so the
+  // presentation-layer predicate is gated on the opening discard
+  // intent having settled. See single-owner contract comment.
   const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
-  const canTakeFirstDraw = ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && !isProcessing;
-  const discardClickable = canDraw || canTakeFirstDraw;
+  // Stock click target is unaffected by discard reveal.
   const stockClickable = canDraw;
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
@@ -198,6 +200,19 @@ export const GinRummyFeltContent = ({
   const stockRevealed = !deal || !stockCardId
     ? true
     : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(stockCardId);
+
+  // Single-owner contract: while the opening discard intent is not
+  // settled (discardRevealed === false), no upcard click target may
+  // render and the Take CTA's underlying predicate must be false. The
+  // authoritative first-draw offer remains true in state — it is only
+  // GATED at the presentation layer until the transport settles.
+  const canTakeFirstDraw =
+    ginState.phase === 'first_draw' &&
+    ginState.firstDrawOfferedTo === currentPlayerId &&
+    !isProcessing &&
+    discardRevealed;
+  const discardClickable = (canDraw || canTakeFirstDraw) && discardRevealed;
+
 
   useEffect(() => {
     recordGinRunbackTrace('upcard/stock/rail render gate', {

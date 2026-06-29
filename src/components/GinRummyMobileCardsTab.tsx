@@ -106,6 +106,14 @@ export const GinRummyMobileCardsTab = ({
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
+
+  // Single-owner discard contract: Take must be disabled until the
+  // opening discard intent for the current hand has settled.
+  const discardCardId = deal?.handContextId ? `${deal.handContextId}#discard` : null;
+  const discardRevealed = !deal || !discardCardId
+    ? true
+    : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(discardCardId);
+
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
 
   useEffect(() => {
@@ -403,10 +411,10 @@ export const GinRummyMobileCardsTab = ({
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
           <>
-            <Button onClick={onTakeFirstDraw} disabled={isProcessing} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4" size="sm">
+            <Button onClick={onTakeFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4 disabled:opacity-50" size="sm">
               Take
             </Button>
-            <Button onClick={onPassFirstDraw} disabled={isProcessing} variant="outline" className="border-white/40 text-foreground px-4" size="sm">
+            <Button onClick={onPassFirstDraw} disabled={isProcessing || !discardRevealed} variant="outline" className="border-white/40 text-foreground px-4 disabled:opacity-50" size="sm">
               Pass
             </Button>
           </>
