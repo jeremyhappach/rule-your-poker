@@ -99,6 +99,7 @@ import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { recordGinRunbackTrace, setGinRunbackTraceContext, type GinRunbackOverlayStateSource } from '@/lib/ginRunbackTrace';
+import { GinReadyReleasePill } from './GinReadyReleasePill';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
