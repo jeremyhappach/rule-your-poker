@@ -176,9 +176,11 @@ export const GinRummyFeltContent = ({
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
+  // canTakeFirstDraw is computed AFTER discardRevealed below so the
+  // presentation-layer predicate is gated on the opening discard
+  // intent having settled. See single-owner contract comment.
   const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
-  const canTakeFirstDraw = ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && !isProcessing;
-  const discardClickable = canDraw || canTakeFirstDraw;
+  // Stock click target is unaffected by discard reveal.
   const stockClickable = canDraw;
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
