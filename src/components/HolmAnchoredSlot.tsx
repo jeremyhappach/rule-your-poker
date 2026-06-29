@@ -44,14 +44,12 @@ export const HolmAnchoredSlot = forwardRef<HTMLDivElement, HolmAnchoredSlotProps
       useHolmGameplayGeometry();
     const ref = useRef<HTMLDivElement | null>(null);
     useImperativeHandle(forwardedRef, () => ref.current as HTMLDivElement);
-    // FRAME CONTRACT: Holm anchored artifacts use felt-frame coordinates
-    // (resolver computes left/top relative to [data-canonical-felt-surface]).
-    // To make resolved coords and rendered DOM coords share the same frame,
-    // we MUST portal the absolutely-positioned slot into the felt surface so
-    // it becomes the positioned ancestor. Without this, the slot anchors
-    // against [data-canonical-table-container], which has a different x/width
-    // origin and produces the "anchorX:0.5 renders left of felt center" bug.
-    const feltSurface = useShellFeltFrameElement(true);
+    // FRAME CONTRACT: Holm anchored artifacts use the canonical felt
+    // coordinate frame ([data-canonical-felt-coord-frame]) — a rect-equal
+    // sibling of [data-canonical-felt-surface]. Portaling here makes the
+    // resolved felt-local coords and the rendered DOM coords share one
+    // origin (anchorX=0.5 lands on felt centerline).
+    const feltSurface = useCanonicalFeltCoordFrameElement(true);
 
     const current = placementsById.get(artifactId);
     const lastValid = lastValidPlacementsById.get(artifactId);
