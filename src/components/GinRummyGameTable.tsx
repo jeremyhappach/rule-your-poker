@@ -2878,7 +2878,6 @@ export const GinRummyGameTable = ({
   // and its identity exactly equals the current committedIdentity.
   // While ANY of these fails, no DealRuntime / orchestrator / felt /
   // overlay may render under a new identity.
-  const acceptedPresentationMatches = ginIdentityEqual(renderAcceptedPresentation?.identity ?? null, renderCommittedIdentity);
   const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
   setGinRunbackTraceContext({
     gameId,
