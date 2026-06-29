@@ -283,18 +283,19 @@ export function CanonicalFeltSurface({
           data-canonical-felt-plate-variant={
             isDicePlate ? "dice" : isCribbage ? "cribbage" : "card"
           }
-          className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none"
+          className="absolute top-3 inset-x-0 px-4 z-20 flex flex-col items-center pointer-events-none"
+          style={{ containerType: 'inline-size' } as React.CSSProperties}
         >
           {isDicePlate ? (
-            <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+            <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
           ) : isCribbage ? (
             <>
-              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+              <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
                 ${anteAmount} {GAME_NAME_LABEL[gameKind]}
               </span>
-              <span className="text-white/40 text-xs font-medium whitespace-nowrap">
+              <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
                 {pointsToWin !== undefined ? `${pointsToWin} to win` : null}
                 {cribbageSkunk?.skunkEnabled && cribbageSkunk?.skunkThreshold !== undefined &&
                   ` • Skunk <${cribbageSkunk.skunkThreshold} (2x)`}
@@ -304,25 +305,25 @@ export function CanonicalFeltSurface({
             </>
           ) : gameKind === "gin-rummy" ? (
             <>
-              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+              <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
                 ${anteAmount} {GAME_NAME_LABEL[gameKind]}
               </span>
               {pointsToWin !== undefined && (
-                <span className="text-white/40 text-xs font-medium">
+                <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
                   {pointsToWin} pts to win
                 </span>
               )}
             </>
           ) : (
             <>
-              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+              <span data-canonical-felt-plate-title="" className="canonical-felt-plate-title block w-full text-center text-white/30 font-bold uppercase tracking-wider">
                 {GAME_NAME_LABEL[gameKind]}
               </span>
-              <span className="text-white/40 text-xs font-medium">
+              <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
                 {potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
               </span>
               {gameKind === "three-five-seven" && legsToWin !== undefined && (
-                <span className="text-white/40 text-xs font-medium">
+                <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
                   {legsToWin} legs to win
                 </span>
               )}
