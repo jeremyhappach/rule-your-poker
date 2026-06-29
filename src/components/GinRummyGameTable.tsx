@@ -2971,14 +2971,12 @@ export const GinRummyGameTable = ({
   }
 
 
-  // Wave 2 canonical deal — handContextId encodes the full 3-axis identity
-  // tuple { dealerGameId, roundId, handNumber }. Any change in the tuple
-  // remounts DealRuntime via `key`, naturally resetting phase + settled
-  // ledger. Same-tuple orchestrator churn is deduped at the orchestrator
-  // by the module-level identity-bound opening-deal ownership registry.
-  const handContextId = dealerGameId && roundId && handNumber > 0
-    ? `${dealerGameId}#r${roundId}#h${handNumber}`
-    : null;
+  // Plan A: handContextId is derived ONLY from committedIdentity. Never
+  // from prop+local+local. When committedIdentity is null, handContextId
+  // is null → DealRuntimeMaybe does not mount DealRuntime and the
+  // orchestrator gate (handContextId && ...) does not mount the
+  // orchestrator. No opening-deal dispatch occurs.
+  const handContextId = committedIdentity ? ginIdentityKey(committedIdentity) : null;
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
