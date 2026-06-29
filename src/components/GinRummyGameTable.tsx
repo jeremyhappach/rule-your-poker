@@ -5,6 +5,13 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
+import {
+  type GinPresentationIdentity,
+  ginIdentityEqual,
+  ginIdentityKey,
+  isGinIdentityForward,
+  ginIdentityMismatchAxis,
+} from '@/lib/ginRummy/presentationIdentity';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import {
   checkStaleHandRender,
