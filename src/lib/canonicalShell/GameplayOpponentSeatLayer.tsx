@@ -189,21 +189,22 @@ export function GameplayOpponentSeatLayer({
       data-canonical-seat-frame="shell-felt-frame"
       className="z-50 pointer-events-none"
       style={{
-        // Canonical frame parity: gameplay opponent seats must resolve
-        // against the same shell-owned felt-frame rect as pre-session /
-        // interstitial seats, regardless of where a game table happens to
-        // mount this layer.  The prior absolute/inset-0 root inherited
-        // Cribbage/Gin/Yahtzee local felt wrappers (missing the shell top
-        // safe-area and, for some games, using full viewport width), which
-        // made the same seat's chip/nameplate rect phase-dependent.
+        // COORDINATE-FRAME CONTRACT: opponent seat placement
+        // percentages must resolve against the full shell-children
+        // column width in every phase/family. The prior
+        // `width: var(--shell-felt-w); left:50%; translateX(-50%)`
+        // clamp duplicated the felt paint frame onto the seat
+        // coordinate frame and pulled seats inward vs. the
+        // MobileGameTable canonical clusters. --shell-felt-w stays
+        // owned by ShellOwnedFeltHost for the ellipse paint only.
         position: 'fixed',
         top: 'calc(var(--shell-header-h, 0px) + var(--play-top-safe-area, 0px))',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'var(--shell-felt-w)',
-        minWidth: 300,
+        left: 0,
+        right: 0,
+        width: 'auto',
         height: 'var(--shell-felt-h)',
         overflow: 'visible',
+
       }}
     >
       {participants.map((p) => {
