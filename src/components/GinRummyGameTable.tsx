@@ -447,11 +447,10 @@ export const GinRummyGameTable = ({
     setCommittedIdentity(incomingIdentity);
   }, [committedIdentity, incomingIdentity, gameId, authIdentity]);
 
-  // Reset sync framework on every committedIdentity transition.
-  useEffect(() => {
-    ginSyncResetGuardRef.current?.();
-  }, [committedIdentity?.dealerGameId, committedIdentity?.roundId, committedIdentity?.handNumber]);
-  const ginSyncResetGuardRef = useRef<(() => void) | null>(null);
+  // Note: sync-framework reset on identity change is handled by the
+  // existing `roundId`-keyed reset effect further below (alias of
+  // committedIdentity.roundId), so it fires automatically.
+
 
   // Aliases — all downstream references read these. NEVER read prop or
   // auth fragments directly for identity from this point onward.
