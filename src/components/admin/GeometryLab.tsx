@@ -872,9 +872,13 @@ function GameSections(props: GameSectionsProps) {
 
 
       <CollapsibleSection title="Chip Ring Artifacts">
-        <p className="text-xs text-muted-foreground">
-          Future Geometry Lab work: dealer/buck/leg/chip-ring artifacts.
-        </p>
+        {props.game === "holm" ? (
+          <HolmBuckIndicatorPanel />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Future Geometry Lab work: dealer/buck/leg/chip-ring artifacts.
+          </p>
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection title="Showdown Rules">
