@@ -121,6 +121,12 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
+  // Latched READY release flag — hand-scoped (DealRuntime is keyed by
+  // handContextId at the host) and idempotent. Set exactly once when
+  // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
+  // Reset to false on every beginDeal / beginWave / resetForHand /
+  // beginDealForHand / beginWaveForHand.
+  const [readyReleased, setReadyReleased] = useState(false);
   const ctx = useCardTransportInternal();
   const activeIntentsForHand = useMemo(
     () => (ctx?.__activeIntents ?? []).filter((intent) => {
