@@ -854,6 +854,15 @@ export const GinRummyGameTable = ({
   // Show gin overlay when knockResult indicates gin
   useEffect(() => {
     if (!ginState) return;
+    // ── Overlay identity boundary ──
+    // Overlays may fire only from an accepted authoritative snapshot for the
+    // CURRENT incoming identity. Stale ginState (prior hand), null/bootstrap
+    // ginState, and any state whose handNumber does not match the live
+    // identity must not produce knock/gin overlays under R{N+1}.
+    const stateHand = ginState.handNumber ?? 0;
+    if (stateHand > 0 && currentHandNumber > 0 && stateHand !== currentHandNumber) {
+      return;
+    }
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
