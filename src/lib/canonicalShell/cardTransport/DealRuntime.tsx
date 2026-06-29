@@ -309,6 +309,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
     setPhase('PRE_DEAL');
+    setReadyReleased(false);
     if (ctx) {
       try { ctx.dropIntentsNotMatchingHand(args.handContextId, 'holm_resetForHand'); } catch { /* noop */ }
     }
