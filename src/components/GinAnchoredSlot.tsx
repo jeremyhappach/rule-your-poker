@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -23,6 +24,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useGinRummyGameplayGeometry } from "@/lib/wave5GameplayGeometry/GinRummyGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 
 export interface GinAnchoredSlotProps {
   artifactId: string;
@@ -43,6 +45,7 @@ export function GinAnchoredSlot({
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useGinRummyGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(artifactId);
@@ -142,18 +145,20 @@ export function GinAnchoredSlot({
   ]);
 
   if (!placement || !placement.visible || vminInPx <= 0) return null;
+  if (!coordFrame) return null;
 
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave5-gin-slot={artifactId}
       data-artifact-id={artifactId}
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-gin-slot-fault-count={String(faults.length)}
       style={{
@@ -166,11 +171,13 @@ export function GinAnchoredSlot({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        pointerEvents: "auto",
         ...innerStyle,
       }}
     >
       {children}
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 

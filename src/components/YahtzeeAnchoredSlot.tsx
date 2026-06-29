@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -18,6 +19,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useYahtzeeGameplayGeometry } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { AssignedRectPxProvider } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 
 export interface YahtzeeAnchoredSlotProps {
   artifactId: string;
@@ -35,6 +37,7 @@ export function YahtzeeAnchoredSlot({
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useYahtzeeGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(artifactId);
@@ -114,18 +117,20 @@ export function YahtzeeAnchoredSlot({
   ]);
 
   if (!placement || !placement.visible || vminInPx <= 0) return null;
+  if (!coordFrame) return null;
 
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave5-yahtzee-slot={artifactId}
       data-artifact-id={artifactId}
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-yahtzee-slot-fault-count={String(faults.length)}
       style={{
@@ -138,6 +143,7 @@ export function YahtzeeAnchoredSlot({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        pointerEvents: "auto",
         ...innerStyle,
       }}
     >
@@ -146,7 +152,8 @@ export function YahtzeeAnchoredSlot({
       >
         {children}
       </AssignedRectPxProvider>
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 

@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -25,6 +26,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 // (Removed cardArtifactOverlap import — pegging row uses the adaptive
 // resolver default; not a manually tuned felt-artifact overlap value.)
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
@@ -63,6 +65,7 @@ export function Wave4PeggingRowSlot({
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useCribbageGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGGING_ROW_ID);
@@ -187,6 +190,8 @@ export function Wave4PeggingRowSlot({
     );
   }
 
+  if (!coordFrame) return null;
+
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
@@ -232,12 +237,13 @@ export function Wave4PeggingRowSlot({
   const cardHeightPx = fan?.cardHeight ?? cardCeilingHeightPx;
   const finalOverlap = fan?.overlapPx ?? 0;
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave4-pegging-row-slot="resolved"
       data-artifact-id="cribbage.peggingRow"
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-pegging-row-rect={`${x.toFixed(2)},${y.toFixed(2)},${w.toFixed(2)},${h.toFixed(2)}`}
       data-pegging-row-fault-count={String(faults.length)}
@@ -252,6 +258,7 @@ export function Wave4PeggingRowSlot({
         alignItems: "center",
         justifyContent: "center",
         gap: `${badgeGapPx}px`,
+        pointerEvents: "auto",
       }}
     >
       <div
@@ -305,7 +312,8 @@ export function Wave4PeggingRowSlot({
           />
         )}
       </div>
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 

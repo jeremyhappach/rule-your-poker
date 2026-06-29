@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -28,6 +29,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
@@ -47,6 +49,7 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGBOARD_SLOT_ID);
@@ -172,18 +175,21 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
     );
   }
 
+  if (!coordFrame) return null;
+
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
       data-gameplay-column-child="pegboard"
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
@@ -195,10 +201,12 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "stretch",
+        pointerEvents: "auto",
       }}
     >
       <div style={{ width: "100%" }}>{children}</div>
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 

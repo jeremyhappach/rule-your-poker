@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -16,6 +17,7 @@ import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeo
 import { useDiceGameplayGeometry } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { AssignedRectPxProvider } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
 
 export interface DiceAnchoredSlotProps {
   artifactId: string;
@@ -33,6 +35,7 @@ export function DiceAnchoredSlot({
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useDiceGameplayGeometry();
+  const coordFrame = useCanonicalFeltCoordFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(artifactId);
@@ -112,18 +115,20 @@ export function DiceAnchoredSlot({
   ]);
 
   if (!placement || !placement.visible || vminInPx <= 0) return null;
+  if (!coordFrame) return null;
 
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       data-wave5-dice-slot={artifactId}
       data-artifact-id={artifactId}
       data-placement-mode="anchored"
+      data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-dice-slot-fault-count={String(faults.length)}
       style={{
@@ -136,6 +141,7 @@ export function DiceAnchoredSlot({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        pointerEvents: "auto",
         ...innerStyle,
       }}
     >
@@ -144,7 +150,8 @@ export function DiceAnchoredSlot({
       >
         {children}
       </AssignedRectPxProvider>
-    </div>
+    </div>,
+    coordFrame,
   );
 }
 

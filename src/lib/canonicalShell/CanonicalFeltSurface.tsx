@@ -225,6 +225,20 @@ export function CanonicalFeltSurface({
             pointerEvents: 'none',
           }}
         />
+        {/* Canonical felt COORDINATE FRAME for gameplay artifacts.
+            Rect-equal sibling of the felt paint (absolute inset:0 inside
+            [data-canonical-felt-surface]). Every anchored gameplay slot
+            (Gin/Holm/357/Yahtzee/Dice/Wave4 cribbage family) portals
+            its absolutely-positioned wrapper into this frame so that
+            artifact coordinates (resolved against the felt surface)
+            and rendered DOM coordinates share one positioned ancestor.
+            Container is pointer-events:none; individual artifact
+            wrappers re-enable pointer-events:auto for clickables. */}
+        <div
+          data-canonical-felt-coord-frame=""
+          aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        />
       </div>
 
 

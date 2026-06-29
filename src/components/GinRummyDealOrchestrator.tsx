@@ -203,12 +203,19 @@ export function GinRummyDealOrchestrator({
     seats, cardsPerPlayer, selfHand, discardTop, cardBackColors, dealTimingHydrated,
   ]);
 
-  // Canonical 1×1 anchor portaled into the active-player pane near the
-  // TOP edge — cards land on top of the fan and grow downward.
+  // Canonical 1×1 anchor portaled into the Gin-owned active-player pane
+  // (`[data-gin-active-pane-content]`). Anchor is layout-inert and sits
+  // near the TOP of the pane so dropped cards land at top-of-fan.
   const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
-    setSelfHandRegion(el);
+    const find = () => document.querySelector('[data-gin-active-pane-content]') as HTMLElement | null;
+    setSelfHandRegion(find());
+    const observer = new MutationObserver(() => {
+      const next = find();
+      setSelfHandRegion(prev => (prev === next ? prev : next));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [handContextId, selfPlayerId]);
 
   const anchorEl = (
@@ -224,9 +231,9 @@ export function GinRummyDealOrchestrator({
         pointerEvents: 'none',
       }}
       data-card-anchor={`hand-${selfPlayerId}`}
-      data-canonical-self-hand-anchor-position="top-of-pane"
+      data-canonical-self-hand-anchor-position="gin-active-pane-top"
       data-anchor-owner="GinRummyDealOrchestrator.selfHandRegion"
     />
   );
-  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
+  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : null;
 }
