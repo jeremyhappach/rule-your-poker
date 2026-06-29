@@ -264,6 +264,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
     setPhase('DEALING');
+    setReadyReleased(false);
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
       expectedCount: count,
