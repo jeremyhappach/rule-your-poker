@@ -551,11 +551,8 @@ export function CanonicalSeatCluster({
   //               translate(attachX_pct%, attachY_pct%)
   //               translate(dx_css, dy_css)
   //   element pinned at left:50%; top:50% (chip center origin).
-  const namePlateCfg = useSyncExternalStore(
-    subscribeShellNameplate,
-    getShellNameplateConfig,
-    getShellNameplateConfig,
-  );
+  // (namePlateCfg is read at top of component to preserve hook order.)
+
   const chipDiameterPx = chipRadiusPx * 2;
   const isCenterAnchoredSlot = slot === -1 || slot === -3;
   const inwardCssSignForName = isCenterAnchoredSlot
