@@ -5,6 +5,13 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
+import {
+  type GinPresentationIdentity,
+  ginIdentityEqual,
+  ginIdentityKey,
+  isGinIdentityForward,
+  ginIdentityMismatchAxis,
+} from '@/lib/ginRummy/presentationIdentity';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import {
   checkStaleHandRender,
@@ -358,136 +365,119 @@ export const GinRummyGameTable = ({
   }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId]);
 
 
-  // ── Canonical 3-axis presentation identity ───────────────────────
-  // Single tuple { dealerGameId, roundId, handNumber }. Monotonic ONLY
-  // within a single dealerGameId. A dealerGameId change is a new sequence
-  // root — the incoming tuple is taken verbatim and outgoing presentation
-  // is cleared atomically. Math.max across dealer-games is forbidden.
-  const [currentRoundId, setCurrentRoundId] = useState<string>(propRoundId);
-  const [currentHandNumber, setCurrentHandNumber] = useState<number>(propHandNumber);
-  // Tracks the dealerGameId currently bound to (currentRoundId, currentHandNumber).
-  // Initialized lazily on first identity bind.
-  const boundDealerGameIdRef = useRef<string | null>(null);
+  // ── Canonical 3-axis presentation identity (Plan A) ─────────────
+  // ONE immutable object. All six audit sites read this (or null) — never
+  // a mix of prop/local/auth fragments. While null, NOTHING gameplay-shaped
+  // may mount: no DealRuntime, no orchestrator, no opening-deal dispatch,
+  // no felt/overlay render. Provenance is attached to every admitted
+  // authoritative snapshot at the admission boundary (acceptedProvenance).
+  const [committedIdentity, setCommittedIdentity] = useState<GinPresentationIdentity | null>(null);
+  const [acceptedProvenance, setAcceptedProvenance] = useState<GinPresentationIdentity | null>(null);
 
-  useEffect(() => {
+  // Compute the incoming complete tuple. If ANY axis is missing, return
+  // null — partial tuples never become committedIdentity.
+  const incomingIdentity = useMemo<GinPresentationIdentity | null>(() => {
     const propHand = propHandNumber ?? -1;
     const authHand = authIdentity?.handNumber ?? -1;
     const useAuth = authIdentity?.roundId != null && authHand >= propHand;
-    const incomingRoundId = useAuth ? authIdentity!.roundId! : propRoundId;
-    const incomingDealerGameId = useAuth
+    const r = useAuth ? authIdentity!.roundId! : propRoundId;
+    const dg = useAuth
       ? (authIdentity?.dealerGameId ?? dealerGameId ?? null)
       : (dealerGameId ?? null);
-    const incomingHandNumberRaw = useAuth ? authHand : propHand;
-    if (!incomingRoundId) return;
+    const h = useAuth ? authHand : propHand;
+    if (!r || !dg || !h || h <= 0) return null;
+    return { dealerGameId: dg, roundId: r, handNumber: h };
+  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, dealerGameId]);
 
-    const boundDealerGameId = boundDealerGameIdRef.current;
-    const isNewDealerGameRoot =
-      boundDealerGameId != null &&
-      incomingDealerGameId != null &&
-      boundDealerGameId !== incomingDealerGameId;
+  // Atomic committedIdentity transitions.
+  //   • first bind                  → commit verbatim
+  //   • same dealer-game + forward  → commit verbatim
+  //   • same dealer-game + regress  → ignore
+  //   • dealer-game changed         → set to null FIRST (drops ginState +
+  //                                    acceptedProvenance), the post-null
+  //                                    commit effect below installs the new
+  //                                    tuple on a subsequent commit. This
+  //                                    produces an explicit "neutral" frame
+  //                                    so no old viewState/overlay can render
+  //                                    under the new dealer-game root.
+  useEffect(() => {
+    if (!incomingIdentity) return;
+    setCommittedIdentity((prev) => {
+      if (ginIdentityEqual(prev, incomingIdentity)) return prev;
+      if (prev && prev.dealerGameId !== incomingIdentity.dealerGameId) {
+        recordGinRunbackTrace('committedIdentity replaced', {
+          gameId,
+          authIdentity: summarizeGinRunbackIdentity(authIdentity),
+          note: `from=${ginIdentityKey(prev)}; to=null; reason=dealer-game-root`,
+        });
+        // Drop outgoing presentation atomically with identity → null.
+        setGinState(null);
+        setAcceptedProvenance(null);
+        return null;
+      }
+      if (prev && !isGinIdentityForward(prev, incomingIdentity)) {
+        return prev;
+      }
+      recordGinRunbackTrace('committedIdentity replaced', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        note: `from=${ginIdentityKey(prev)}; to=${ginIdentityKey(incomingIdentity)}; reason=${prev ? 'forward' : 'first-bind'}`,
+      });
+      if (prev) {
+        // Identity advance within same dealer-game — drop outgoing
+        // presentation so no stale viewState renders under the new tuple
+        // before a matching authoritative snapshot is admitted.
+        setGinState(null);
+        setAcceptedProvenance(null);
+      }
+      return incomingIdentity;
+    });
+  }, [incomingIdentity, gameId, authIdentity]);
 
-    recordGinRunbackTrace('identity state update:evaluate', {
+  // Post-null commit: after a dealer-game-root null pass-through, install
+  // the complete new tuple on the next commit.
+  useEffect(() => {
+    if (committedIdentity != null) return;
+    if (!incomingIdentity) return;
+    recordGinRunbackTrace('committedIdentity replaced', {
       gameId,
       authIdentity: summarizeGinRunbackIdentity(authIdentity),
-      oldRoundId: currentRoundId,
-      newRoundId: incomingRoundId,
-      oldHandNumber: currentHandNumber,
-      newHandNumber: incomingHandNumberRaw,
-      currentRoundId,
-      currentHandNumber,
-      note: `useAuth=${useAuth}; boundDealerGameId=${boundDealerGameId ?? '-'}; incomingDealerGameId=${incomingDealerGameId ?? '-'}; isNewDealerGameRoot=${isNewDealerGameRoot}`,
+      note: `from=null; to=${ginIdentityKey(incomingIdentity)}; reason=post-null-commit`,
     });
+    setCommittedIdentity(incomingIdentity);
+  }, [committedIdentity, incomingIdentity, gameId, authIdentity]);
 
-    if (isNewDealerGameRoot) {
-      // Atomic sequence-root replacement — take incoming verbatim.
-      // No Math.max against the previous dealer-game's handNumber.
-      const nextHand = incomingHandNumberRaw > 0 ? incomingHandNumberRaw : 1;
-      boundDealerGameIdRef.current = incomingDealerGameId;
-      setCurrentRoundId(incomingRoundId);
-      setCurrentHandNumber(nextHand);
-      recordGinRunbackTrace('identity state update:dealer-game-root', {
-        gameId,
-        authIdentity: summarizeGinRunbackIdentity(authIdentity),
-        oldRoundId: currentRoundId,
-        newRoundId: incomingRoundId,
-        oldHandNumber: currentHandNumber,
-        newHandNumber: nextHand,
-        currentRoundId,
-        currentHandNumber,
-        note: `prev=${boundDealerGameId}; next=${incomingDealerGameId}`,
-      });
-      return;
-    }
+  // Note: sync-framework reset on identity change is handled by the
+  // existing `roundId`-keyed reset effect further below (alias of
+  // committedIdentity.roundId), so it fires automatically.
 
-    // Same dealerGameId (or first bind) — monotonic within tuple.
-    if (boundDealerGameId == null && incomingDealerGameId != null) {
-      boundDealerGameIdRef.current = incomingDealerGameId;
-    }
 
-    setCurrentHandNumber((prev) => {
-      const next = incomingHandNumberRaw > prev ? incomingHandNumberRaw : prev;
-      if (next !== prev) {
-        recordGinRunbackTrace('currentHandNumber state update', {
-          gameId,
-          authIdentity: summarizeGinRunbackIdentity(authIdentity),
-          oldHandNumber: prev,
-          newHandNumber: next,
-          currentRoundId,
-          currentHandNumber: prev,
-        });
-      }
-      return next;
+  // Aliases — all downstream references read these. NEVER read prop or
+  // auth fragments directly for identity from this point onward.
+  const roundId = committedIdentity?.roundId ?? '';
+  const handNumber = committedIdentity?.handNumber ?? 0;
+  const currentRoundId = roundId;
+  const currentHandNumber = handNumber;
+  // Refs mirror committedIdentity so callback closures (applyState,
+  // overlay effects, bootstrap load) can identity-gate without rebinding.
+  const currentRoundIdRef = useRef<string>(roundId);
+  const currentHandNumberRef = useRef<number>(handNumber);
+  const committedIdentityRef = useRef<GinPresentationIdentity | null>(committedIdentity);
+  useEffect(() => { currentRoundIdRef.current = roundId; }, [roundId]);
+  useEffect(() => { currentHandNumberRef.current = handNumber; }, [handNumber]);
+  useEffect(() => { committedIdentityRef.current = committedIdentity; }, [committedIdentity]);
+
+  // DealRuntime/orchestrator blocked trace — fires once per render when
+  // committedIdentity is null. Surfaces the explicit "neutral incoming"
+  // contract in the runback pill.
+  useEffect(() => {
+    if (committedIdentity != null) return;
+    recordGinRunbackTrace('DealRuntime blocked: no committed identity', {
+      gameId,
+      authIdentity: summarizeGinRunbackIdentity(authIdentity),
+      note: `incomingIdentity=${ginIdentityKey(incomingIdentity)}`,
     });
-    setCurrentRoundId((prev) => {
-      if (!prev) return incomingRoundId;
-      if (prev === incomingRoundId) return prev;
-      const prevIdent: AuthoritativeIdentity = {
-        dealerGameId: incomingDealerGameId,
-        handNumber: currentHandNumber,
-        roundId: prev,
-      };
-      const nextIdent: AuthoritativeIdentity = {
-        dealerGameId: incomingDealerGameId,
-        handNumber: incomingHandNumberRaw,
-        roundId: incomingRoundId,
-      };
-      if (isIdentityForward(prevIdent, nextIdent)) {
-        recordGinRunbackTrace('currentRoundId state update', {
-          gameId,
-          authIdentity: summarizeGinRunbackIdentity(authIdentity),
-          oldRoundId: prev,
-          newRoundId: incomingRoundId,
-          oldHandNumber: currentHandNumber,
-          newHandNumber: incomingHandNumberRaw,
-          currentRoundId: prev,
-          currentHandNumber,
-        });
-        return incomingRoundId;
-      }
-      recordGinRunbackTrace('currentRoundId state update skipped', {
-        gameId,
-        authIdentity: summarizeGinRunbackIdentity(authIdentity),
-        oldRoundId: prev,
-        newRoundId: incomingRoundId,
-        oldHandNumber: currentHandNumber,
-        newHandNumber: incomingHandNumberRaw,
-        currentRoundId: prev,
-        currentHandNumber,
-        skippedReason: 'incoming identity is not forward',
-      });
-      return prev;
-    });
-  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, currentHandNumber, dealerGameId]);
-
-  // Aliases — keep existing internal references pointing at the live monotonic identity.
-  const roundId = currentRoundId;
-  const handNumber = currentHandNumber;
-  // Refs mirror the live identity so callback closures (applyState, overlay
-  // effects, bootstrap load) can identity-gate without rebinding each render.
-  const currentRoundIdRef = useRef<string>(currentRoundId);
-  const currentHandNumberRef = useRef<number>(currentHandNumber);
-  useEffect(() => { currentRoundIdRef.current = currentRoundId; }, [currentRoundId]);
-  useEffect(() => { currentHandNumberRef.current = currentHandNumber; }, [currentHandNumber]);
+  }, [committedIdentity, incomingIdentity, gameId, authIdentity]);
   useEffect(() => {
     recordStartupValue('IDENTITY TIMELINE', 'GinRummyGameTable.identity', `${dealerGameId ?? '-'}|${roundId ?? '-'}|h${handNumber}`, {
       file: 'src/components/GinRummyGameTable.tsx',
@@ -625,6 +615,28 @@ export const GinRummyGameTable = ({
       });
       return;
     }
+    // Site 6 admission — full 3-axis provenance.
+    const payloadProvenance: GinPresentationIdentity | null =
+      dealerGameId && propRoundId && bootstrapState.handNumber && bootstrapState.handNumber > 0
+        ? { dealerGameId, roundId: propRoundId, handNumber: bootstrapState.handNumber }
+        : null;
+    const mismatch = ginIdentityMismatchAxis(payloadProvenance, committedIdentityRef.current);
+    if (mismatch) {
+      recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
+        gameId,
+        currentRoundId: roundId,
+        currentHandNumber: handNumber,
+        payloadRoundId: propRoundId,
+        payloadHandNumber: bootstrapState.handNumber ?? null,
+        payloadPhase: bootstrapState.phase,
+        viewState: summarizeGinRunbackState(viewState),
+        ginState: summarizeGinRunbackState(ginState),
+        applyState: 'dropped',
+        dropReason: `identity-mismatch:${mismatch}`,
+        note: `payload=${ginIdentityKey(payloadProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
+      });
+      return;
+    }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
     recordGinRunbackTrace('bootstrapState apply result', {
       gameId,
@@ -650,6 +662,7 @@ export const GinRummyGameTable = ({
     if (result.accepted) {
       lastAuthoritativeSignatureRef.current = signatureForGinRunback(bootstrapState);
       setGinState(bootstrapState);
+      setAcceptedProvenance(payloadProvenance);
     }
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
@@ -1290,13 +1303,16 @@ export const GinRummyGameTable = ({
           ginState: summarizeGinRunbackState(ginState),
           note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
         });
-        // Identity-bound bootstrap: only accept a snapshot whose handNumber
-        // matches the live incoming identity. Query is already filtered by
-        // roundId; this is the second axis of the identity contract.
+        // Site 6 admission — full 3-axis provenance.
         const expectedHand = currentHandNumberRef.current;
         const stateHand = (state as { handNumber?: number })?.handNumber ?? 0;
-        if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
-          recordGinRunbackTrace('bootstrap fetch result dropped', {
+        const fetchProvenance: GinPresentationIdentity | null =
+          dealerGameId && roundId && stateHand > 0
+            ? { dealerGameId, roundId, handNumber: stateHand }
+            : null;
+        const fetchMismatch = ginIdentityMismatchAxis(fetchProvenance, committedIdentityRef.current);
+        if (fetchMismatch) {
+          recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
             gameId,
             authIdentity: summarizeGinRunbackIdentity(authIdentity),
             currentRoundId: roundId,
@@ -1307,13 +1323,8 @@ export const GinRummyGameTable = ({
             viewState: summarizeGinRunbackState(viewState),
             ginState: summarizeGinRunbackState(ginState),
             applyState: 'dropped',
-            dropReason: 'bootstrap mismatch',
-            note: `elapsedMs=${Math.round(performance.now() - startedAt)}`,
-          });
-          ginTrace('gin.hydration load:identity-mismatch-dropped', {
-            elapsedMs: Math.round(performance.now() - startedAt),
-            expectedHand,
-            stateHand,
+            dropReason: `identity-mismatch:${fetchMismatch}`,
+            note: `payload=${ginIdentityKey(fetchProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
           });
           return;
         }
@@ -1335,6 +1346,7 @@ export const GinRummyGameTable = ({
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
           setGinState(state);
+          setAcceptedProvenance(fetchProvenance);
           if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
             firstAcceptedCurrentRoundSnapshotRef.current = true;
             recordGinRunbackTrace('first accepted current-round snapshot', {
@@ -1483,14 +1495,16 @@ export const GinRummyGameTable = ({
         });
         return;
       }
-      // ── Hand-number identity guard ──
-      // Reject any snapshot whose handNumber does not match the live incoming
-      // identity. Defense-in-depth against stale R{N} payloads slipping past
-      // the latch (e.g. realtime delivering a buffered event after rebind).
+      // Site 6 admission — full 3-axis provenance.
       const expectedHand = currentHandNumberRef.current;
       const stateHand = (state as { handNumber?: number } | null)?.handNumber ?? 0;
-      if (expectedHand > 0 && stateHand > 0 && stateHand !== expectedHand) {
-        recordGinRunbackTrace('applyState dropped', {
+      const rtProvenance: GinPresentationIdentity | null =
+        dealerGameId && roundId && stateHand > 0
+          ? { dealerGameId, roundId, handNumber: stateHand }
+          : null;
+      const rtMismatch = ginIdentityMismatchAxis(rtProvenance, committedIdentityRef.current);
+      if (rtMismatch) {
+        recordGinRunbackTrace('payload admission rejected (identity mismatch)', {
           gameId,
           authIdentity: summarizeGinRunbackIdentity(authIdentity),
           currentRoundId: roundId,
@@ -1501,16 +1515,17 @@ export const GinRummyGameTable = ({
           viewState: summarizeGinRunbackState(viewState),
           ginState: summarizeGinRunbackState(ginState),
           applyState: 'dropped',
-          dropReason: 'hand mismatch',
-          note: `source=${source}`,
+          dropReason: `identity-mismatch:${rtMismatch}`,
+          note: `source=${source}; payload=${ginIdentityKey(rtProvenance)}; committed=${ginIdentityKey(committedIdentityRef.current)}`,
         });
         logDebugEvent({
           gameId, roundId, userId: currentUserId, clientRole: 'actor',
-          eventType: 'gin:identity_hand_drop',
+          eventType: 'gin:identity_provenance_drop',
           payload: ginStateSummary(state, {
             source,
-            expectedHand,
-            stateHand,
+            mismatchAxis: rtMismatch,
+            payload: ginIdentityKey(rtProvenance),
+            committed: ginIdentityKey(committedIdentityRef.current),
           }),
         });
         return;
@@ -1559,6 +1574,7 @@ export const GinRummyGameTable = ({
       if (result.accepted) {
         lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
         setGinState(state);
+        setAcceptedProvenance(rtProvenance);
         if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
           firstAcceptedCurrentRoundSnapshotRef.current = true;
           recordGinRunbackTrace('first accepted current-round snapshot', {
@@ -2863,7 +2879,13 @@ export const GinRummyGameTable = ({
   // chip bubbles, identity row, announcement rail). The outer layout stays
   // mounted continuously from slot mount onward. Only the gameplay-specific
   // subtrees that REQUIRE a hydrated viewState are gated behind `isPlayable`.
-  const isPlayable = !!viewState && !isStaleHandPresentation;
+  // Plan A: subtree may render ONLY when (a) committedIdentity is set,
+  // (b) viewState exists, (c) the accepted-snapshot provenance exactly
+  // equals the current committedIdentity, (d) viewState is not stale.
+  // While ANY of these fails, no DealRuntime / orchestrator / felt /
+  // overlay may render under a new identity.
+  const provenanceMatches = ginIdentityEqual(acceptedProvenance, committedIdentity);
+  const isPlayable = !!committedIdentity && !!viewState && provenanceMatches && !isStaleHandPresentation;
   setGinRunbackTraceContext({
     gameId,
     authIdentity: summarizeGinRunbackIdentity(authIdentity),
@@ -2949,14 +2971,12 @@ export const GinRummyGameTable = ({
   }
 
 
-  // Wave 2 canonical deal — handContextId encodes the full 3-axis identity
-  // tuple { dealerGameId, roundId, handNumber }. Any change in the tuple
-  // remounts DealRuntime via `key`, naturally resetting phase + settled
-  // ledger. Same-tuple orchestrator churn is deduped at the orchestrator
-  // by the module-level identity-bound opening-deal ownership registry.
-  const handContextId = dealerGameId && roundId && handNumber > 0
-    ? `${dealerGameId}#r${roundId}#h${handNumber}`
-    : null;
+  // Plan A: handContextId is derived ONLY from committedIdentity. Never
+  // from prop+local+local. When committedIdentity is null, handContextId
+  // is null → DealRuntimeMaybe does not mount DealRuntime and the
+  // orchestrator gate (handContextId && ...) does not mount the
+  // orchestrator. No opening-deal dispatch occurs.
+  const handContextId = committedIdentity ? ginIdentityKey(committedIdentity) : null;
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
