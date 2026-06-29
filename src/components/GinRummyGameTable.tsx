@@ -358,30 +358,74 @@ export const GinRummyGameTable = ({
   }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId]);
 
 
-  // Monotonic forward-only round/hand identity. Parent props are advisory;
-  // authoritative identity wins whenever it is forward-of-or-equal.
+  // ── Canonical 3-axis presentation identity ───────────────────────
+  // Single tuple { dealerGameId, roundId, handNumber }. Monotonic ONLY
+  // within a single dealerGameId. A dealerGameId change is a new sequence
+  // root — the incoming tuple is taken verbatim and outgoing presentation
+  // is cleared atomically. Math.max across dealer-games is forbidden.
   const [currentRoundId, setCurrentRoundId] = useState<string>(propRoundId);
   const [currentHandNumber, setCurrentHandNumber] = useState<number>(propHandNumber);
+  // Tracks the dealerGameId currently bound to (currentRoundId, currentHandNumber).
+  // Initialized lazily on first identity bind.
+  const boundDealerGameIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const propHand = propHandNumber ?? -1;
     const authHand = authIdentity?.handNumber ?? -1;
     const useAuth = authIdentity?.roundId != null && authHand >= propHand;
     const incomingRoundId = useAuth ? authIdentity!.roundId! : propRoundId;
-    const incomingHandNumber = Math.max(authHand, propHand, currentHandNumber);
+    const incomingDealerGameId = useAuth
+      ? (authIdentity?.dealerGameId ?? dealerGameId ?? null)
+      : (dealerGameId ?? null);
+    const incomingHandNumberRaw = useAuth ? authHand : propHand;
     if (!incomingRoundId) return;
+
+    const boundDealerGameId = boundDealerGameIdRef.current;
+    const isNewDealerGameRoot =
+      boundDealerGameId != null &&
+      incomingDealerGameId != null &&
+      boundDealerGameId !== incomingDealerGameId;
+
     recordGinRunbackTrace('identity state update:evaluate', {
       gameId,
       authIdentity: summarizeGinRunbackIdentity(authIdentity),
       oldRoundId: currentRoundId,
       newRoundId: incomingRoundId,
       oldHandNumber: currentHandNumber,
-      newHandNumber: incomingHandNumber,
+      newHandNumber: incomingHandNumberRaw,
       currentRoundId,
       currentHandNumber,
-      note: `useAuth=${useAuth}`,
+      note: `useAuth=${useAuth}; boundDealerGameId=${boundDealerGameId ?? '-'}; incomingDealerGameId=${incomingDealerGameId ?? '-'}; isNewDealerGameRoot=${isNewDealerGameRoot}`,
     });
+
+    if (isNewDealerGameRoot) {
+      // Atomic sequence-root replacement — take incoming verbatim.
+      // No Math.max against the previous dealer-game's handNumber.
+      const nextHand = incomingHandNumberRaw > 0 ? incomingHandNumberRaw : 1;
+      boundDealerGameIdRef.current = incomingDealerGameId;
+      setCurrentRoundId(incomingRoundId);
+      setCurrentHandNumber(nextHand);
+      recordGinRunbackTrace('identity state update:dealer-game-root', {
+        gameId,
+        authIdentity: summarizeGinRunbackIdentity(authIdentity),
+        oldRoundId: currentRoundId,
+        newRoundId: incomingRoundId,
+        oldHandNumber: currentHandNumber,
+        newHandNumber: nextHand,
+        currentRoundId,
+        currentHandNumber,
+        note: `prev=${boundDealerGameId}; next=${incomingDealerGameId}`,
+      });
+      return;
+    }
+
+    // Same dealerGameId (or first bind) — monotonic within tuple.
+    if (boundDealerGameId == null && incomingDealerGameId != null) {
+      boundDealerGameIdRef.current = incomingDealerGameId;
+    }
+
     setCurrentHandNumber((prev) => {
-      const next = incomingHandNumber > prev ? incomingHandNumber : prev;
+      const next = incomingHandNumberRaw > prev ? incomingHandNumberRaw : prev;
       if (next !== prev) {
         recordGinRunbackTrace('currentHandNumber state update', {
           gameId,
@@ -398,13 +442,13 @@ export const GinRummyGameTable = ({
       if (!prev) return incomingRoundId;
       if (prev === incomingRoundId) return prev;
       const prevIdent: AuthoritativeIdentity = {
-        dealerGameId: dealerGameId ?? null,
+        dealerGameId: incomingDealerGameId,
         handNumber: currentHandNumber,
         roundId: prev,
       };
       const nextIdent: AuthoritativeIdentity = {
-        dealerGameId: dealerGameId ?? null,
-        handNumber: incomingHandNumber,
+        dealerGameId: incomingDealerGameId,
+        handNumber: incomingHandNumberRaw,
         roundId: incomingRoundId,
       };
       if (isIdentityForward(prevIdent, nextIdent)) {
@@ -414,7 +458,7 @@ export const GinRummyGameTable = ({
           oldRoundId: prev,
           newRoundId: incomingRoundId,
           oldHandNumber: currentHandNumber,
-          newHandNumber: incomingHandNumber,
+          newHandNumber: incomingHandNumberRaw,
           currentRoundId: prev,
           currentHandNumber,
         });
@@ -426,14 +470,14 @@ export const GinRummyGameTable = ({
         oldRoundId: prev,
         newRoundId: incomingRoundId,
         oldHandNumber: currentHandNumber,
-        newHandNumber: incomingHandNumber,
+        newHandNumber: incomingHandNumberRaw,
         currentRoundId: prev,
         currentHandNumber,
         skippedReason: 'incoming identity is not forward',
       });
       return prev;
     });
-  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber, dealerGameId]);
+  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, currentHandNumber, dealerGameId]);
 
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
