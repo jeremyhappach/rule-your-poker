@@ -23,6 +23,7 @@ import type { AnchorOrigin } from "@/lib/wave4LayoutResolver/types";
 
 const GEOMETRY_OVERRIDE_BROADCAST_CHANNEL = "geometry-overrides-live";
 const GEOMETRY_OVERRIDE_APPLIED_EVENT = "geometry_override_applied";
+const GEOMETRY_OVERRIDE_LOCAL_CHANNEL = "geometry-overrides-local-apply";
 
 function dispatchOverrideChanged() {
   try {
@@ -33,6 +34,17 @@ function dispatchOverrideChanged() {
       message: (err as Error)?.message ?? String(err),
     });
   }
+}
+
+function applyOverrideLive(raw: Record<string, unknown>, source: string) {
+  const override = rowToOverride(raw);
+  setOverrideOptimistic(override.artifact_id, override);
+  // eslint-disable-next-line no-console
+  console.info("geometrylab:overrides_live_applied", {
+    artifactId: override.artifact_id,
+    source,
+  });
+  dispatchOverrideChanged();
 }
 
 function rowToOverride(r: Record<string, unknown>): GeometryOverride {
@@ -76,6 +88,18 @@ async function refresh() {
 export async function broadcastGeometryOverrideApplied(
   override: GeometryOverride,
 ): Promise<void> {
+  try {
+    const localChannel = new BroadcastChannel(GEOMETRY_OVERRIDE_LOCAL_CHANNEL);
+    localChannel.postMessage({ type: GEOMETRY_OVERRIDE_APPLIED_EVENT, override });
+    localChannel.close();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("geometrylab:overrides_local_broadcast_failed", {
+      artifactId: override.artifact_id,
+      message: (err as Error)?.message ?? String(err),
+    });
+  }
+
   const channel = supabase.channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
     config: { broadcast: { self: false } },
   });
@@ -128,7 +152,14 @@ export function GeometryOverridesLoader() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "geometry_overrides" },
-        () => {
+        (payload) => {
+          const raw = (payload.new ?? payload.old) as
+            | Record<string, unknown>
+            | undefined;
+          if (raw?.artifact_id && payload.eventType !== "DELETE") {
+            applyOverrideLive(raw, "postgres_changes");
+            return;
+          }
           void refresh();
         },
       )
@@ -151,13 +182,7 @@ export function GeometryOverridesLoader() {
           const raw = (payload.payload as { override?: Record<string, unknown> } | undefined)
             ?.override;
           if (!raw) return;
-          const override = rowToOverride(raw);
-          setOverrideOptimistic(override.artifact_id, override);
-          // eslint-disable-next-line no-console
-          console.info("geometrylab:overrides_broadcast_applied", {
-            artifactId: override.artifact_id,
-          });
-          dispatchOverrideChanged();
+          applyOverrideLive(raw, "supabase_broadcast");
         },
       )
       .subscribe((status) => {
@@ -167,7 +192,27 @@ export function GeometryOverridesLoader() {
           status,
         });
       });
+    let localChannel: BroadcastChannel | null = null;
+    try {
+      localChannel = new BroadcastChannel(GEOMETRY_OVERRIDE_LOCAL_CHANNEL);
+      localChannel.onmessage = (event) => {
+        const data = event.data as
+          | { type?: string; override?: Record<string, unknown> }
+          | undefined;
+        if (data?.type !== GEOMETRY_OVERRIDE_APPLIED_EVENT || !data.override) {
+          return;
+        }
+        applyOverrideLive(data.override, "local_broadcast_channel");
+      };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("geometrylab:overrides_local_broadcast_bind_failed", {
+        message: (err as Error)?.message ?? String(err),
+      });
+    }
+
     return () => {
+      localChannel?.close();
       supabase.removeChannel(postgresChannel);
       supabase.removeChannel(broadcastChannel);
     };
