@@ -104,6 +104,13 @@ import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { recordGinRunbackTrace, setGinRunbackTraceContext, type GinRunbackOverlayStateSource } from '@/lib/ginRunbackTrace';
+import {
+  beginGinSelfDrawTrace,
+  clearCurrentGinSelfDrawTraceId,
+  recordGinSelfDrawEvent,
+  cardId,
+  cardIds,
+} from '@/lib/ginSelfDrawTrace';
 import { GinReadyReleasePill } from './GinReadyReleasePill';
 import {
   buildGinPileContext,
