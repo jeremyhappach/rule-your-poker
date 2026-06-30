@@ -1291,8 +1291,22 @@ export const GinRummyGameTable = ({
     if (actionKey === prevLastActionRef.current) return;
     prevLastActionRef.current = actionKey;
 
-    // Seated players see opponent draws; observers see both players' draws.
-    if (currentPlayerId && action.playerId === currentPlayerId) return;
+    // Seated players see opponent draws via the felt animation; their
+    // OWN draws use the self-draw animation (pile → active-pane box).
+    if (currentPlayerId && action.playerId === currentPlayerId) {
+      if (action.type === 'draw_stock') {
+        setSelfDrawSource('stock');
+        setSelfDrawCard(action.card ?? null);
+        setSelfDrawTriggerId(`self-draw-${actionKey}`);
+        setSelfDrawKey(k => k + 1);
+      } else if (action.type === 'draw_discard') {
+        setSelfDrawSource('discard');
+        setSelfDrawCard(action.card ?? null);
+        setSelfDrawTriggerId(`self-draw-${actionKey}`);
+        setSelfDrawKey(k => k + 1);
+      }
+      return;
+    }
     setOpponentDrawTargetSlot(playerSlotById.get(action.playerId) ?? null);
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
