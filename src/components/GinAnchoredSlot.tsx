@@ -175,6 +175,10 @@ export function GinAnchoredSlot({
       data-placement-mode="anchored"
       data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
+      data-placement-left-vmin={x.toFixed(4)}
+      data-placement-top-vmin={y.toFixed(4)}
+      data-placement-width-vmin={w.toFixed(4)}
+      data-placement-height-vmin={h.toFixed(4)}
       data-gin-slot-fault-count={String(faults.length)}
       onPointerDownCapture={onPointerDownCapture}
       onPointerDown={onPointerDown}
