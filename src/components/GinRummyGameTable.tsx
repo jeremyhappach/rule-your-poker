@@ -3293,7 +3293,7 @@ export const GinRummyGameTable = ({
 
 
   return (
-    <div className="h-full flex flex-col bg-transparent relative">
+    <div className="h-full flex flex-col bg-transparent relative" style={{ pointerEvents: 'none' }}>
     <DealRuntimeMaybe handContextId={handContextId}>
       <GinReadyReleasePill />
       {/* Felt Area - Upper Section with canonical oval table */}
@@ -3397,6 +3397,7 @@ export const GinRummyGameTable = ({
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
             {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
+              <div style={{ pointerEvents: 'auto' }}>
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -3410,6 +3411,7 @@ export const GinRummyGameTable = ({
                 }}
                 isProcessing={isProcessing}
               />
+              </div>
             )}
 
             {/* Knock Overlay — shown to all clients */}
@@ -3525,6 +3527,7 @@ export const GinRummyGameTable = ({
           waiting_for_player ambient emitted from this component). The
           row-2 local gold-plate fallback has been removed; the timer
           slot stays empty for Gin. */}
+      <div style={{ pointerEvents: 'auto', flex: '0 0 var(--shell-hud-h)', display: 'flex', flexDirection: 'column' }}>
       <ShellHudGrid
         timer={null}
 
@@ -3631,6 +3634,7 @@ export const GinRummyGameTable = ({
           </div>
         }
       />
+      </div>
     </DealRuntimeMaybe>
     </div>
 
