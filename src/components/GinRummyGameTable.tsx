@@ -3293,7 +3293,7 @@ export const GinRummyGameTable = ({
 
 
   return (
-    <div className="h-full flex flex-col bg-transparent relative">
+    <div className="h-full flex flex-col bg-transparent relative" style={{ pointerEvents: 'none' }}>
     <DealRuntimeMaybe handContextId={handContextId}>
       <GinReadyReleasePill />
       {/* Felt Area - Upper Section with canonical oval table */}
