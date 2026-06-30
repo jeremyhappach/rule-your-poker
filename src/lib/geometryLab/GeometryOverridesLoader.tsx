@@ -14,11 +14,26 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   setGeometryOverrides,
+  setOverrideOptimistic,
   type GeometryOverride,
   type GeometryOverridesMap,
   type SizeMode,
 } from "./store";
 import type { AnchorOrigin } from "@/lib/wave4LayoutResolver/types";
+
+const GEOMETRY_OVERRIDE_BROADCAST_CHANNEL = "geometry-overrides-live";
+const GEOMETRY_OVERRIDE_APPLIED_EVENT = "geometry_override_applied";
+
+function dispatchOverrideChanged() {
+  try {
+    window.dispatchEvent(new Event("geometry_override_changed"));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("geometrylab:overrides_event_dispatch_failed", {
+      message: (err as Error)?.message ?? String(err),
+    });
+  }
+}
 
 function rowToOverride(r: Record<string, unknown>): GeometryOverride {
   return {
@@ -55,26 +70,84 @@ async function refresh() {
   setGeometryOverrides(next);
   // eslint-disable-next-line no-console
   console.info("geometrylab:overrides_hot_reloaded", { count: next.size });
-  try {
-    window.dispatchEvent(new Event("geometry_override_changed"));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn("geometrylab:overrides_event_dispatch_failed", {
-      message: (err as Error)?.message ?? String(err),
+  dispatchOverrideChanged();
+}
+
+export async function broadcastGeometryOverrideApplied(
+  override: GeometryOverride,
+): Promise<void> {
+  const channel = supabase.channel("geometry-overrides-apply-sender", {
+    config: { broadcast: { self: false } },
+  });
+
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    const timeout = window.setTimeout(finish, 1500);
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        try {
+          await channel.send({
+            type: "broadcast",
+            event: GEOMETRY_OVERRIDE_APPLIED_EVENT,
+            payload: { override },
+          });
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("geometrylab:overrides_broadcast_failed", {
+            artifactId: override.artifact_id,
+            message: (err as Error)?.message ?? String(err),
+          });
+        } finally {
+          window.clearTimeout(timeout);
+          finish();
+        }
+      } else if (
+        status === "CHANNEL_ERROR" ||
+        status === "TIMED_OUT" ||
+        status === "CLOSED"
+      ) {
+        window.clearTimeout(timeout);
+        finish();
+      }
     });
-  }
+  });
+
+  supabase.removeChannel(channel);
 }
 
 export function GeometryOverridesLoader() {
   useEffect(() => {
     void refresh();
     const channel = supabase
-      .channel("geometry_overrides")
+      .channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
+        config: { broadcast: { self: false } },
+      })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "geometry_overrides" },
         () => {
           void refresh();
+        },
+      )
+      .on(
+        "broadcast",
+        { event: GEOMETRY_OVERRIDE_APPLIED_EVENT },
+        (payload) => {
+          const raw = (payload.payload as { override?: Record<string, unknown> } | undefined)
+            ?.override;
+          if (!raw) return;
+          const override = rowToOverride(raw);
+          setOverrideOptimistic(override.artifact_id, override);
+          // eslint-disable-next-line no-console
+          console.info("geometrylab:overrides_broadcast_applied", {
+            artifactId: override.artifact_id,
+          });
+          dispatchOverrideChanged();
         },
       )
       .subscribe((status) => {
