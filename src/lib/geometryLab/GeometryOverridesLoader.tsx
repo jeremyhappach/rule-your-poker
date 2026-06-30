@@ -76,7 +76,7 @@ async function refresh() {
 export async function broadcastGeometryOverrideApplied(
   override: GeometryOverride,
 ): Promise<void> {
-  const channel = supabase.channel("geometry-overrides-apply-sender", {
+  const channel = supabase.channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
     config: { broadcast: { self: false } },
   });
 
