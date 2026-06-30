@@ -333,7 +333,13 @@ export const CribbageMobileCardsTab = ({
     count: phaseCapacity,
     aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect
     minCardWidth: 24,
-    maxCardWidth: 120, // raised — pane usable rect is the true cap
+    // No artificial pixel ceiling. The pane usable rect (availableWidth)
+    // combined with phase capacity, fan policy, and aspect IS the cap —
+    // the resolver clamps height-bound via availableHeight when supplied
+    // and width-bound via availableWidth intrinsically. Passing the
+    // pane width here makes maxCardWidth a pane-relative no-op ceiling
+    // rather than a fixed design authority.
+    maxCardWidth: paneWidthPx ?? 9999,
     preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
