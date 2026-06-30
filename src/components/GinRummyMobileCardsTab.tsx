@@ -348,7 +348,7 @@ export const GinRummyMobileCardsTab = ({
                       )}
                       style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${m}px` }}
                     >
-                      <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} />
+                      <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} tier="large" />
                     </button>
                   );
                 })}
