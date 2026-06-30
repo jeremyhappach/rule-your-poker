@@ -89,7 +89,7 @@ export const GinRummyMobileCardsTab = ({
   onLayOffCardSelected,
   currentPlayer,
   gameId,
-  withheldDrawnCard,
+  withheldDrawnCards,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   
@@ -97,21 +97,22 @@ export const GinRummyMobileCardsTab = ({
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
-  // Withhold the freshly drawn card from the rendered hand while the
-  // self-draw transport animation is in flight. The card has been
+  // Withhold each freshly drawn card from the rendered hand while its
+  // own self-draw transport animation is in flight. The cards are
   // committed to ginState (so subsequent actions like discard remain
-  // legal) but we visually withhold its face until the flight settles,
-  // mirroring the opponent ownership-claim model.
+  // legal) but we visually withhold each face until its own flight
+  // settles, mirroring the opponent ownership-claim model.
   const rawMyState = useMemo(() => {
-    if (!rawMyStateAuthoritative || !withheldDrawnCard) return rawMyStateAuthoritative;
-    const idx = rawMyStateAuthoritative.hand.findIndex(
-      c => c.rank === withheldDrawnCard.rank && c.suit === withheldDrawnCard.suit,
-    );
-    if (idx === -1) return rawMyStateAuthoritative;
+    if (!rawMyStateAuthoritative) return rawMyStateAuthoritative;
+    if (!withheldDrawnCards || withheldDrawnCards.length === 0) return rawMyStateAuthoritative;
     const clipped = [...rawMyStateAuthoritative.hand];
-    clipped.splice(idx, 1);
+    for (const w of withheldDrawnCards) {
+      const idx = clipped.findIndex(c => c.rank === w.rank && c.suit === w.suit);
+      if (idx !== -1) clipped.splice(idx, 1);
+    }
+    if (clipped.length === rawMyStateAuthoritative.hand.length) return rawMyStateAuthoritative;
     return { ...rawMyStateAuthoritative, hand: clipped };
-  }, [rawMyStateAuthoritative, withheldDrawnCard]);
+  }, [rawMyStateAuthoritative, withheldDrawnCards]);
   // Opening-deal prefix gate applies ONLY to the opening dealt-card
   // sequence (cardsPerPlayer cards). Once authoritative hand membership
   // exceeds the opening manifest size, the additional card was acquired
