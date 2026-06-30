@@ -91,56 +91,23 @@ export function GinRummyDealOrchestrator({
     // re-running beginDeal/dispatchMany for the same hand.
     if (dispatchedOpeningDealManifests.has(handContextId)) {
       dispatchedRef.current = true;
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        payloadPhase: 'deal_orchestrator',
-        skippedReason: 'identity-bound manifest already dispatched (remount under same tuple)',
-      });
       return;
     }
     if (!dealTimingHydrated) {
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        payloadPhase: 'deal_orchestrator',
-        skippedReason: 'deal timing not hydrated',
-      });
       return;
     }
     if (!seats.length || cardsPerPlayer <= 0) {
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        payloadPhase: 'deal_orchestrator',
-        skippedReason: 'missing seats/cardsPerPlayer',
-      });
       return;
     }
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     const nonDealerSeat = seats.find(s => s.playerId === nonDealerPlayerId);
     if (!dealerSeat || !nonDealerSeat) {
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        skippedReason: 'missing dealer/nonDealer seat',
-      });
       return;
     }
     if (!selfHand || selfHand.length < cardsPerPlayer) {
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        skippedReason: 'self hand below cardsPerPlayer',
-      });
       return;
     }
     if (!discardTop) {
-      recordGinRunbackTrace('DealRuntime dispatch skipped', {
-        dealRuntime: { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size },
-        selfHandCount: selfHand?.length ?? null,
-        skippedReason: 'missing discardTop',
-      });
       return;
     }
 
@@ -259,20 +226,6 @@ export function GinRummyDealOrchestrator({
 
     dispatchedRef.current = true;
     dispatchedOpeningDealManifests.add(handContextId);
-    recordGinRunbackTrace('DealRuntime dispatch', {
-      dealRuntime: {
-        handContextId,
-        phase: deal.phase,
-        expectedCount: intents.length,
-        settledCount: deal.settledCardIds.size,
-        dealerPlayerId,
-        nonDealerPlayerId,
-        selfPlayerId,
-      },
-      selfHandCount: selfHand.length,
-      opponentHandCount: cardsPerPlayer,
-      payloadPhase: 'deal_orchestrator',
-    });
     deal.beginDeal(intents.length);
     ct.dispatchMany(intents);
   }, [
@@ -288,20 +241,10 @@ export function GinRummyDealOrchestrator({
     const find = () => document.querySelector('[data-gin-active-pane-content]') as HTMLElement | null;
     const initial = find();
     setSelfHandRegion(initial);
-    recordGinRunbackTrace('active-pane readiness', {
-      dealRuntime: deal ? { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size } : { handContextId, phase: null },
-      activePaneAnchorHostPresent: !!initial,
-      selfHandCount: selfHand?.length ?? null,
-    });
     const observer = new MutationObserver(() => {
       const next = find();
       setSelfHandRegion(prev => {
         if (prev === next) return prev;
-        recordGinRunbackTrace('active-pane readiness', {
-          dealRuntime: deal ? { handContextId, phase: deal.phase, expectedCount: deal.expectedCount, settledCount: deal.settledCardIds.size } : { handContextId, phase: null },
-          activePaneAnchorHostPresent: !!next,
-          selfHandCount: selfHand?.length ?? null,
-        });
         return next;
       });
     });

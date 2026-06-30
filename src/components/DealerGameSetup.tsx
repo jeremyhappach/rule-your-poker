@@ -1604,11 +1604,6 @@ const DealerGameSetupInner = ({
   const handleRunBack = () => {
     if (previousGameType && previousGameConfig) {
       if (previousGameType === 'gin-rummy') {
-        recordGinRunbackTrace('Run It Back tapped', {
-          gameId,
-          payloadPhase: 'dealer_config',
-          note: `dealerPlayerId=${dealerPlayerId}; previousGameType=${previousGameType}`,
-        });
       }
 
       // Use previous config and submit immediately

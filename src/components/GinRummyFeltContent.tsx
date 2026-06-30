@@ -269,15 +269,6 @@ export const GinRummyFeltContent = ({
     explicitPile?: GinPileTracePile,
   ) => {
     const pile = explicitPile ?? resolveGinPileFromEvent(event);
-    recordGinPileTrace(eventName, {
-      ...pileTraceContext,
-      pile,
-      layer,
-      ...describeGinPileEvent(event),
-      buttonDiagnostics: getGinPileButtonDiagnostics(getButtonForPile(pile)),
-      visibleChildDiagnostics: getGinPileButtonDiagnostics(getVisibleChildForPile(pile)),
-      source: 'GinRummyFeltContent',
-    });
   };
 
   const makeCapture = (layer: string, pile?: GinPileTracePile) =>
@@ -289,45 +280,10 @@ export const GinRummyFeltContent = ({
       recordPileDomEvent('PILE_EVENT_BUBBLE', layer, event, pile);
 
   const recordButtonRenderDiagnostics = (pile: Exclude<GinPileTracePile, 'unknown' | null>) => {
-    recordGinPileTrace('PILE_BUTTON_RENDER_DIAGNOSTICS', {
-      ...pileTraceContext,
-      pile,
-      layer: `${pile}-button`,
-      buttonDiagnostics: getGinPileButtonDiagnostics(getButtonForPile(pile)),
-      visibleChildDiagnostics: getGinPileButtonDiagnostics(getVisibleChildForPile(pile)),
-      handlerSelected: pile === 'stock'
-        ? (stockClickable ? 'onDrawStock' : null)
-        : (discardClickable ? (ginState.phase === 'first_draw' ? 'onTakeFirstDraw' : 'onDrawDiscard') : null),
-      source: 'GinRummyFeltContent render',
-    });
   };
 
   const handleStockButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
-    recordGinPileTrace('PILE_BUTTON_ONCLICK', {
-      ...pileTraceContext,
-      pile: 'stock',
-      layer: 'stock-button',
-      handlerName: 'stock button onClick',
-      handlerSelected: stockClickable ? 'onDrawStock' : null,
-      handlerInvoked: Boolean(stockClickable && onDrawStock),
-      ...describeGinPileEvent(event),
-      buttonDiagnostics: getGinPileButtonDiagnostics(stockButtonRef.current),
-      visibleChildDiagnostics: getGinPileButtonDiagnostics(stockVisibleChildRef.current),
-      source: 'GinRummyFeltContent',
-    });
     if (!stockClickable || !onDrawStock) {
-      recordGinPileTrace('ACTION_REJECTED', {
-        ...pileTraceContext,
-        pile: 'stock',
-        layer: 'stock-button',
-        handlerName: 'stock button onClick',
-        guardName: !stockClickable ? 'stockClickable' : 'onDrawStock',
-        guardValues: { stockClickable, onDrawStockPresent: !!onDrawStock },
-        ...describeGinPileEvent(event),
-        buttonDiagnostics: getGinPileButtonDiagnostics(stockButtonRef.current),
-        visibleChildDiagnostics: getGinPileButtonDiagnostics(stockVisibleChildRef.current),
-        source: 'GinRummyFeltContent',
-      });
       return;
     }
     onDrawStock();
@@ -335,31 +291,7 @@ export const GinRummyFeltContent = ({
 
   const handleDiscardButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
     const selected = ginState.phase === 'first_draw' ? 'onTakeFirstDraw' : 'onDrawDiscard';
-    recordGinPileTrace('PILE_BUTTON_ONCLICK', {
-      ...pileTraceContext,
-      pile: 'discard',
-      layer: 'discard-button',
-      handlerName: 'discard button onClick',
-      handlerSelected: discardClickable ? selected : null,
-      handlerInvoked: Boolean(discardClickable && onDrawDiscard),
-      ...describeGinPileEvent(event),
-      buttonDiagnostics: getGinPileButtonDiagnostics(discardButtonRef.current),
-      visibleChildDiagnostics: getGinPileButtonDiagnostics(discardVisibleChildRef.current),
-      source: 'GinRummyFeltContent',
-    });
     if (!discardClickable || !onDrawDiscard) {
-      recordGinPileTrace('ACTION_REJECTED', {
-        ...pileTraceContext,
-        pile: 'discard',
-        layer: 'discard-button',
-        handlerName: 'discard button onClick',
-        guardName: !discardClickable ? 'discardClickable' : 'onDrawDiscard',
-        guardValues: { discardClickable, onDrawDiscardPresent: !!onDrawDiscard },
-        ...describeGinPileEvent(event),
-        buttonDiagnostics: getGinPileButtonDiagnostics(discardButtonRef.current),
-        visibleChildDiagnostics: getGinPileButtonDiagnostics(discardVisibleChildRef.current),
-        source: 'GinRummyFeltContent',
-      });
       return;
     }
     onDrawDiscard();
@@ -367,39 +299,10 @@ export const GinRummyFeltContent = ({
 
 
   useEffect(() => {
-    setLatestGinPileTraceContext(pileTraceContext);
     if (!hidePiles) {
       recordButtonRenderDiagnostics('stock');
       recordButtonRenderDiagnostics('discard');
     }
-    recordGinRunbackTrace('upcard/stock/rail render gate', {
-      payloadHandNumber: ginState.handNumber ?? null,
-      payloadPhase: ginState.phase,
-      ginState: {
-        handNumber: ginState.handNumber ?? null,
-        phase: ginState.phase,
-        turnPhase: ginState.turnPhase,
-        actionCount: ginState.actionCount ?? null,
-      },
-      dealRuntime: deal ? {
-        handContextId: deal.handContextId,
-        phase: deal.phase,
-        expectedCount: deal.expectedCount,
-        settledCount: deal.settledCardIds.size,
-        discardCardId,
-        stockCardId,
-        discardRevealed,
-        stockRevealed,
-      } : null,
-      overlayPredicateInputs: {
-        hidePiles,
-        discardTopPresent: !!discardTopCard,
-        canDraw,
-        canTakeFirstDraw,
-        discardClickable,
-        stockClickable,
-      },
-    });
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, deal?.readyReleased, discardCardId, stockCardId, discardRevealed, stockRevealed, hidePiles, !!discardTopCard, canDraw, canTakeFirstDraw, discardClickable, stockClickable, isPlayable]);
 
 

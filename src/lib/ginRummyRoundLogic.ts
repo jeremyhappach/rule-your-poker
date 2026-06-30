@@ -360,14 +360,6 @@ export async function startNextGinRummyHand(
   alreadyStarted?: boolean;
 }> {
   console.log('[GIN-RUMMY] Starting next hand', { gameId, dealerGameId });
-  recordGinRunbackTrace('authoritative new round creation:start', {
-    gameId,
-    oldHandNumber: previousState.handNumber ?? null,
-    payloadHandNumber: previousState.handNumber ?? null,
-    payloadPhase: previousState.phase,
-    ginState: { handNumber: previousState.handNumber ?? null, phase: previousState.phase, actionCount: previousState.actionCount ?? null },
-    note: `dealerGameId=${dealerGameId}`,
-  });
 
   try {
     // Check if match is over (someone hit pointsToWin)
@@ -427,15 +419,6 @@ export async function startNextGinRummyHand(
     const handNumber = existingRounds && existingRounds.length > 0
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
-    recordGinRunbackTrace('authoritative new round creation:hand-number-resolved', {
-      gameId,
-      oldHandNumber: previousState.handNumber ?? null,
-      newHandNumber: handNumber,
-      payloadHandNumber: handNumber,
-      payloadPhase: newState.phase,
-      ginState: { handNumber, phase: newState.phase, actionCount: newState.actionCount ?? null },
-      note: `dealerGameId=${dealerGameId}`,
-    });
 
     // Stamp handNumber into state for the sync progress vector
     newState = { ...newState, handNumber };
@@ -467,17 +450,6 @@ export async function startNextGinRummyHand(
     if (!round) throw new Error('No data returned from round insert');
 
     const insertedHandNumber = round.hand_number ?? handNumber;
-    recordGinRunbackTrace('authoritative new round creation:inserted', {
-      gameId,
-      oldHandNumber: previousState.handNumber ?? null,
-      newRoundId: round.id ?? null,
-      newHandNumber: insertedHandNumber,
-      payloadRoundId: round.id ?? null,
-      payloadHandNumber: (round as any).gin_rummy_state?.handNumber ?? insertedHandNumber,
-      payloadPhase: (round as any).gin_rummy_state?.phase ?? newState.phase,
-      ginState: { roundId: round.id ?? null, handNumber: insertedHandNumber, phase: newState.phase, actionCount: newState.actionCount ?? null },
-      note: `dealerGameId=${dealerGameId}`,
-    });
 
     // Update game state
     await supabase
