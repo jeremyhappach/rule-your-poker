@@ -2306,8 +2306,7 @@ export const GinRummyGameTable = ({
 
   // Action handlers
   // Shared pre-hold path for every self-draw action (stock, discard, and
-  // take_first_draw upcard). Registers the pending-withheld intent and
-  // emits SELF_DRAW_ACTION_STARTED / SELF_DRAW_OPTIMISTIC_STATE *before*
+  // take_first_draw upcard). Registers the pending-withheld intent before
   // any optimistic state commit or async await, so the drawn card never
   // renders in the active hand until its transport settles.
   const beginSelfDrawPresentation = (args: {
@@ -2315,17 +2314,10 @@ export const GinRummyGameTable = ({
     selectedCard: GinRummyCard | null;
     preState: GinRummyState;
     newState: GinRummyState;
-  }): string => {
-    const { source, selectedCard, preState, newState } = args;
-    const preHandAuth = currentPlayerId
-      ? (preState.playerStates[currentPlayerId]?.hand ?? [])
-      : [];
-    const optHand = currentPlayerId
-      ? (newState.playerStates[currentPlayerId]?.hand ?? [])
-      : [];
+  }): void => {
+    const { source, newState } = args;
     const drawnCard = newState.lastAction?.card ?? null;
     const drawnId = cardId(drawnCard);
-    const optIds = cardIds(optHand);
     const _action = newState.lastAction!;
     const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
     const _intentId = `self-draw-${_actionKey}`;
