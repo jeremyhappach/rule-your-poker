@@ -881,6 +881,17 @@ function GameSections(props: GameSectionsProps) {
       </CollapsibleSection>
 
 
+      {getActiveHandLayoutSpec(props.game) && (
+        <CollapsibleSection title="Active Player Settings">
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Hand Layout
+            </h4>
+            <ActiveHandLayoutAdminSection game={props.game} />
+          </div>
+        </CollapsibleSection>
+      )}
+
       <CollapsibleSection title="Chip Ring Artifacts">
         {props.game === "holm" ? (
           <HolmBuckIndicatorPanel />
