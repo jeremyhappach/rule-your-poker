@@ -407,48 +407,67 @@ export const GinRummyGameTable = ({
     return { dealerGameId: dg, roundId: r, handNumber: h };
   }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, dealerGameId]);
 
-  // Gin Runback gate — when set (by DealerGameSetup at the Run It Back
-  // tap), forcibly null the render-owned identity/presentation. No
-  // subtree may infer outgoing-hand identity through this window.
+  // Gin Runback gate — outgoing-identity SUPPRESSION only.
+  // When DealerGameSetup invokes Run It Back, we capture the outgoing
+  // dealerGameId and visually suppress that dealer game's presentation.
+  // We do NOT block authoritative-snapshot admission, committedIdentity
+  // installation, DealRuntime mount/dispatch, orchestrator mount, or
+  // anchor creation. The incoming dealer game must be free to bootstrap,
+  // commit identity, mount DealRuntime, and dispatch its opening deal.
   const runbackPending = useGinRunbackPending(gameId);
 
-  const identityBoundaryPending = !!committedIdentity && !!incomingIdentity &&
-    !ginIdentityEqual(committedIdentity, incomingIdentity) &&
-    isGinIdentityForward(committedIdentity, incomingIdentity);
-  const renderCommittedIdentity = (runbackPending || identityBoundaryPending) ? null : committedIdentity;
-  // Hard contract: when renderCommittedIdentity is null we ALSO force
-  // renderAcceptedPresentation to null in the SAME render. No code path
-  // below may read an accepted presentation through a null committed
-  // identity, regardless of whether setAcceptedPresentation(null) has
-  // landed yet.
-  const renderAcceptedPresentation = !renderCommittedIdentity
-    ? null
-    : (identityBoundaryPending ? null : acceptedPresentation);
-
-  // Capture the outgoing dealerGameId at the moment runback begins.
-  // Release the gate only when committedIdentity (underlying state) has
-  // advanced to a NEW dealerGameId AND an accepted presentation matches
-  // that new full tuple. Never released by RPC resolve / poll / timeout.
-  const outgoingRunbackDealerGameIdRef = useRef<string | null>(null);
+  // Capture outgoing dealerGameId atomically when runback flips on.
+  // Stored in state (not ref) so render-time suppression updates in the
+  // same render that observes the new pending flag.
+  const [outgoingRunbackDealerGameId, setOutgoingRunbackDealerGameId] =
+    useState<string | null>(null);
   const prevRunbackPendingRef = useRef(false);
   useEffect(() => {
     if (runbackPending && !prevRunbackPendingRef.current) {
-      outgoingRunbackDealerGameIdRef.current = committedIdentity?.dealerGameId ?? null;
+      setOutgoingRunbackDealerGameId(committedIdentity?.dealerGameId ?? null);
     }
     if (!runbackPending && prevRunbackPendingRef.current) {
-      outgoingRunbackDealerGameIdRef.current = null;
+      setOutgoingRunbackDealerGameId(null);
     }
     prevRunbackPendingRef.current = runbackPending;
   }, [runbackPending, committedIdentity]);
+
+  // Auto-release the runback gate the moment committedIdentity belongs
+  // to a different dealer game than the outgoing one. Never gated on
+  // DealRuntime readiness, RPC resolve, poll, or timeout.
   useEffect(() => {
     if (!runbackPending) return;
     if (!committedIdentity) return;
-    if (!acceptedPresentation) return;
-    if (!ginIdentityEqual(committedIdentity, acceptedPresentation.identity)) return;
-    const outgoing = outgoingRunbackDealerGameIdRef.current;
-    if (outgoing !== null && committedIdentity.dealerGameId === outgoing) return;
+    if (
+      outgoingRunbackDealerGameId !== null &&
+      committedIdentity.dealerGameId === outgoingRunbackDealerGameId
+    ) return;
     clearGinRunback(gameId);
-  }, [runbackPending, committedIdentity, acceptedPresentation, gameId]);
+  }, [runbackPending, committedIdentity, outgoingRunbackDealerGameId, gameId]);
+
+  // identityBoundaryPending: one-frame neutral pass when committedIdentity
+  // and the freshly-computed incomingIdentity disagree on any axis. This
+  // is unrelated to runback and remains a hard render-side nuller so a
+  // stale tuple never paints under a new identity.
+  const identityBoundaryPending = !!committedIdentity && !!incomingIdentity &&
+    !ginIdentityEqual(committedIdentity, incomingIdentity) &&
+    isGinIdentityForward(committedIdentity, incomingIdentity);
+  const renderCommittedIdentity = identityBoundaryPending ? null : committedIdentity;
+  const renderAcceptedPresentation = !renderCommittedIdentity
+    ? null
+    : acceptedPresentation;
+
+  // Visual-only suppression: hide the outgoing dealer game's surfaces
+  // (self cards, opponent cardbacks, discard/upcard, stock, overlays,
+  // outcome content). Does NOT gate identity, DealRuntime, orchestrator,
+  // anchor, or admission. Auto-clears when committedIdentity moves to a
+  // different dealerGameId than the captured outgoing one.
+  const suppressOutgoingRunbackPresentation =
+    runbackPending && (
+      committedIdentity === null ||
+      (outgoingRunbackDealerGameId !== null &&
+        committedIdentity.dealerGameId === outgoingRunbackDealerGameId)
+    );
 
   // Atomic committedIdentity transitions. Every forward change to any axis
   // enters the same neutral boundary before the next tuple can render.
@@ -2937,6 +2956,11 @@ export const GinRummyGameTable = ({
   // While ANY of these fails, no DealRuntime / orchestrator / felt /
   // overlay may render under a new identity.
   const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
+  // Visible-playable applies outgoing-runback suppression to ALL Gin
+  // visual surfaces. DealRuntime + orchestrator + anchor are NOT gated
+  // by this — they continue to mount under handContextId so the incoming
+  // dealer game can dispatch its opening deal.
+  const visiblePlayable = isPlayable && !suppressOutgoingRunbackPresentation;
   setGinRunbackTraceContext({
     gameId,
     authIdentity: summarizeGinRunbackIdentity(authIdentity),
@@ -3055,7 +3079,7 @@ export const GinRummyGameTable = ({
             {/* Shell owns canonical felt. */}
 
             {/* Felt Content — requires hydrated viewState */}
-            {isPlayable && viewState && (
+            {visiblePlayable && viewState && (
               <GinRummyFeltContent
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
@@ -3111,7 +3135,7 @@ export const GinRummyGameTable = ({
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
-            {isPlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
+            {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -3128,7 +3152,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Knock Overlay — shown to all clients */}
-            {isPlayable && viewState && showKnockOverlay && (() => {
+            {visiblePlayable && viewState && showKnockOverlay && (() => {
               const knockerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked);
               if (!knockerEntry) return null;
               const [knockerId, knockerState] = knockerEntry;
@@ -3142,7 +3166,7 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Gin Overlay — cool blue with record scratch */}
-            {isPlayable && viewState && showGinOverlay && (() => {
+            {visiblePlayable && viewState && showGinOverlay && (() => {
               const ginnerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasGin);
               const winnerId = ginnerEntry?.[0]
                 || viewState.knockResult?.winnerId
@@ -3175,7 +3199,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {isPlayable && viewState && isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
+            {visiblePlayable && viewState && isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
@@ -3209,6 +3233,7 @@ export const GinRummyGameTable = ({
                 },
                 cardBacks: (p) => {
                   if (!viewState) return null;
+                  if (suppressOutgoingRunbackPresentation) return null;
                   const seatState = viewState.playerStates?.[p.id];
                   if (!seatState || seatState.hand.length === 0) return null;
                   const isOpponentSeat = !isObserver && p.id === opponentId;
@@ -3273,7 +3298,7 @@ export const GinRummyGameTable = ({
         }
         pane={
           <div className="relative w-full h-full overflow-hidden" data-gin-active-pane-content="">
-            {activeTab === 'cards' && currentPlayer && isPlayable && viewState && (
+            {activeTab === 'cards' && currentPlayer && visiblePlayable && viewState && (
               <GinRummyMobileCardsTab
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
@@ -3295,7 +3320,7 @@ export const GinRummyGameTable = ({
               />
             )}
 
-            {activeTab === 'cards' && currentPlayer && !isPlayable && (
+            {activeTab === 'cards' && currentPlayer && !visiblePlayable && (
               <div className="px-4 py-6">
                 <p className="text-muted-foreground text-sm text-center">
                   Preparing hand…
