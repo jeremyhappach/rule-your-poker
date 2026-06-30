@@ -1295,16 +1295,41 @@ export const GinRummyGameTable = ({
     // Seated players see opponent draws via the felt animation; their
     // OWN draws use the self-draw animation (pile → active-pane box).
     if (currentPlayerId && action.playerId === currentPlayerId) {
-      if (action.type === 'draw_stock') {
-        setSelfDrawSource('stock');
+      if (action.type === 'draw_stock' || action.type === 'draw_discard') {
+        const source = action.type === 'draw_stock' ? 'stock' : 'discard';
+        const intentId = `self-draw-${actionKey}`;
+        setSelfDrawSource(source);
         setSelfDrawCard(action.card ?? null);
-        setSelfDrawTriggerId(`self-draw-${actionKey}`);
+        setSelfDrawTriggerId(intentId);
         setSelfDrawKey(k => k + 1);
-      } else if (action.type === 'draw_discard') {
-        setSelfDrawSource('discard');
-        setSelfDrawCard(action.card ?? null);
-        setSelfDrawTriggerId(`self-draw-${actionKey}`);
-        setSelfDrawKey(k => k + 1);
+        // (4) TRANSPORT_INTENT — snapshot resolved anchors
+        const srcSel = source === 'stock' ? '[data-card-anchor="stock"]' : '[data-card-anchor="discard"]';
+        const srcEl = document.querySelector(srcSel) as HTMLElement | null;
+        const destEl = document.querySelector('[data-gin-active-pane-content]') as HTMLElement | null;
+        const authHand = viewState.playerStates?.[currentPlayerId]?.hand ?? [];
+        recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_INTENT', {
+          source,
+          drawnCardId: cardId(action.card ?? null),
+          srcSelector: srcSel,
+          srcRectPresent: !!srcEl,
+          destSelector: '[data-gin-active-pane-content]',
+          destHostPresent: !!destEl,
+          intentId,
+          actionKey,
+          tStartMs: performance.now(),
+          authHandIdsAtIntent: cardIds(authHand),
+        });
+        // (3) AUTHORITATIVE_STATE — record the lastAction-bearing state we now see
+        const drawnId = cardId(action.card ?? null);
+        recordGinSelfDrawEvent('SELF_DRAW_AUTHORITATIVE_STATE', {
+          authHandIds: cardIds(authHand),
+          drawnCardId: drawnId,
+          drawnPresent: drawnId ? cardIds(authHand).includes(drawnId) : null,
+          drawnIndex: drawnId ? cardIds(authHand).indexOf(drawnId) : -1,
+          actionCount: viewState.actionCount ?? null,
+          phase: viewState.phase,
+          turnPhase: viewState.turnPhase,
+        });
       }
       return;
     }
