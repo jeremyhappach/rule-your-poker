@@ -3023,6 +3023,27 @@ export const GinRummyGameTable = ({
 
             {/* Shell owns canonical felt. */}
 
+            {/* Persistent score rail — mounted continuously for the
+                lifetime of this Gin component instance. Driven by a
+                sticky match snapshot so it survives the identity-null
+                pass between hands within a dealer game (no remount, no
+                animate-from-zero blink). Match target denominator is
+                ginState.pointsToWin (authoritative 100). */}
+            {persistentMatchSnapshot && (
+              <GinAnchoredSlot artifactId="gin.pegboard">
+                <div className="w-full h-full flex items-center">
+                  <div className="w-full">
+                    <GinRummyPegBoard
+                      matchScores={persistentMatchSnapshot.matchScores}
+                      pointsToWin={persistentMatchSnapshot.pointsToWin}
+                      playerIds={persistentMatchSnapshot.playerIds}
+                      getPlayerUsername={getPlayerUsername}
+                    />
+                  </div>
+                </div>
+              </GinAnchoredSlot>
+            )}
+
             {/* Felt Content — requires hydrated viewState */}
             {visiblePlayable && viewState && (
               <GinRummyFeltContent
