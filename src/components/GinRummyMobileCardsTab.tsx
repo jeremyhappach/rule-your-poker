@@ -38,6 +38,9 @@ interface GinRummyMobileCardsTabProps {
   onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
+  /** When set, hide this card from the rendered hand until the self-draw
+   *  transport animation settles (mirrors opponent ownership model). */
+  withheldDrawnCard?: { rank: string; suit: string } | null;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
