@@ -1316,10 +1316,22 @@ export const GinRummyGameTable = ({
       if (action.type === 'draw_stock' || action.type === 'draw_discard') {
         const source = action.type === 'draw_stock' ? 'stock' : 'discard';
         const intentId = `self-draw-${actionKey}`;
-        setSelfDrawSource(source);
-        setSelfDrawCard(action.card ?? null);
-        setSelfDrawTriggerId(intentId);
-        setSelfDrawKey(k => k + 1);
+        const drawnCard = action.card ?? null;
+        const drawnId = cardId(drawnCard);
+        setSelfDrawIntents(prev => {
+          if (prev[intentId]) return prev;
+          return {
+            ...prev,
+            [intentId]: {
+              intentId,
+              source,
+              card: drawnCard,
+              drawnCardId: drawnId,
+              handContextId: handContextId ?? null,
+              actionKey,
+            },
+          };
+        });
         // (4) TRANSPORT_INTENT — snapshot resolved anchors
         const srcSel = source === 'stock' ? '[data-card-anchor="stock"]' : '[data-card-anchor="discard"]';
         const srcEl = document.querySelector(srcSel) as HTMLElement | null;
