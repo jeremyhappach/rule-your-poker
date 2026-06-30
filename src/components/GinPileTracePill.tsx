@@ -64,22 +64,23 @@ export function GinPileTracePill() {
       className="border border-border bg-background/95 text-foreground backdrop-blur-sm"
       style={{
         position: 'fixed',
-        right: 8,
         left: 8,
-        top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-        width: 'auto',
-        maxWidth: 'min(96vw, 680px)',
-        marginLeft: 'auto',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+        width: 'min(96vw, 520px)',
         zIndex: 2147483647,
-        maxHeight: '42dvh',
+        maxHeight: '38dvh',
         display: 'grid',
         gridTemplateRows: 'auto minmax(0, 1fr)',
         borderRadius: 8,
         boxShadow: '0 12px 30px hsl(var(--foreground) / 0.22)',
-        pointerEvents: 'auto',
+        // Panel body must NEVER intercept gameplay interaction. Only the
+        // explicit controls (header button, Copy, Clear) re-enable
+        // pointer-events. The textarea is read-only display and stays
+        // pointer-events:none so taps over it fall through to the felt.
+        pointerEvents: 'none',
       }}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1" style={{ pointerEvents: 'auto' }}>
         <button
           type="button"
           onClick={() => setExpanded(false)}
@@ -100,7 +101,8 @@ export function GinPileTracePill() {
         ref={areaRef}
         readOnly
         value={text || '(no Gin pile events yet)'}
-        className="h-full min-h-[180px] w-full resize-none bg-background p-2 font-mono text-[10px] leading-snug text-foreground outline-none"
+        className="h-full min-h-[180px] w-full resize-none bg-background/70 p-2 font-mono text-[10px] leading-snug text-foreground outline-none"
+        style={{ pointerEvents: 'none' }}
       />
     </section>
   );
