@@ -269,22 +269,30 @@ export const GinRummyFeltContent = ({
       {!hidePiles && (
         <GinAnchoredSlot
           artifactId="gin.stockDiscardGroup"
-          innerStyle={{ gap: '1rem' }}
+          zIndex={40}
+          innerStyle={{ gap: '1rem', pointerEvents: 'auto' }}
         >
-          {/* Stock Pile — anchor mounted always so transport can resolve
-              before the stock intent settles. CardBack hidden until the
-              stock-claim intent arrives (canonical deal). */}
-          <div className="flex flex-col items-center gap-0.5">
+          {/* Stock Pile — interactive wrapper is the single click owner.
+              Card-back / count span are pointer-events:none decorations. */}
+          <div className="flex flex-col items-center gap-0.5" style={{ pointerEvents: 'auto' }}>
             <button
+              type="button"
               onClick={stockClickable ? onDrawStock : undefined}
               disabled={!stockClickable}
               data-card-anchor="stock"
               className={`relative w-12 h-[68px] rounded-md transition-all ${
                 stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
               }`}
+              style={{
+                pointerEvents: stockClickable ? 'auto' : 'none',
+                zIndex: 30,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+              }}
             >
               {stockRevealed ? (
-                <>
+                <div style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}>
                   <CanonicalCardBack
                     widthPx={48}
                     heightPx={68}
@@ -292,10 +300,13 @@ export const GinRummyFeltContent = ({
                     radiusPx={6}
                     style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
                   />
-                  <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
+                    style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+                  >
                     {stockCount}
                   </span>
-                </>
+                </div>
               ) : null}
             </button>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`}>
@@ -303,11 +314,9 @@ export const GinRummyFeltContent = ({
             </span>
           </div>
 
-          {/* Discard Pile — anchor mounted always (wrapper carries
-              data-card-anchor) so the discard intent resolves geometry
-              before the upcard exists. Upcard face renders only once
-              the discard intent has settled. */}
-          <div className="flex flex-col items-center gap-0.5">
+          {/* Discard Pile — interactive wrapper is the single click owner.
+              Visible upcard is a pointer-events:none decoration. */}
+          <div className="flex flex-col items-center gap-0.5" style={{ pointerEvents: 'auto' }}>
             {discardTopCard && discardRevealed ? (
               <button
                 type="button"
@@ -328,18 +337,10 @@ export const GinRummyFeltContent = ({
                 </div>
               </button>
             ) : (
-              // Single-owner contract: before the opening discard intent
-              // settles (deal.isSettled(`${ctx}#discard`)), the upcard
-              // slot renders ONLY the empty placeholder. The static
-              // authoritative discard face must never coexist with an
-              // unresolved opening discard intent for the same hand —
-              // otherwise 10♦ would render statically AND get dealt onto
-              // itself by the transport flight. canTakeFirstDraw no
-              // longer bypasses discardRevealed; clickability is still
-              // gated by discardClickable below.
               <div
                 data-card-anchor="discard"
                 className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                style={{ pointerEvents: 'none' }}
               >
                 <span className="text-white/20 text-[8px]">{discardTopCard ? '' : 'Empty'}</span>
               </div>
