@@ -1610,6 +1610,21 @@ export const GinRummyGameTable = ({
         note: `source=${source}; reason=${result.reason ?? 'none'}; prev=${JSON.stringify(result.previousProgress ?? null)} incoming=${JSON.stringify(result.incomingProgress ?? null)}`,
       });
       if (result.accepted) {
+        recordGinPileTrace('AUTHORITATIVE_STATE_UPDATE', withLatestGinPileTraceContext({
+          pile: getLatestGinPileTraceContext().pile ?? 'unknown',
+          handlerName: 'applyState',
+          actionName: null,
+          source: `GinRummyGameTable.applyState:${source}`,
+          result: {
+            accepted: true,
+            source,
+            phase: state.phase,
+            turnPhase: state.turnPhase,
+            actionCount: state.actionCount ?? null,
+            handNumber: state.handNumber ?? null,
+            roundId,
+          },
+        }));
         lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
         installAcceptedPresentation(rtProvenance!, state);
         if (!firstAcceptedCurrentRoundSnapshotRef.current && stateHand === expectedHand) {
@@ -2697,6 +2712,23 @@ export const GinRummyGameTable = ({
       });
       // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
+      if (pileAction) {
+        recordGinPileTrace('AUTHORITATIVE_STATE_UPDATE', withLatestGinPileTraceContext({
+          pile: pileAction.pile,
+          actionName: pileAction.actionName,
+          handlerName: 'updateState',
+          handlerInvoked: true,
+          source: 'GinRummyGameTable.updateState local promote',
+          result: {
+            traceId: traceId ?? null,
+            phase: newState.phase,
+            turnPhase: newState.turnPhase,
+            actionCount: newState.actionCount ?? null,
+            handNumber: newState.handNumber ?? null,
+            roundId,
+          },
+        }));
+      }
     } catch (err) {
       if (pileAction) {
         recordGinPileTrace('ACTION_RPC_FAILED', withLatestGinPileTraceContext({
