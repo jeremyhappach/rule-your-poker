@@ -405,48 +405,9 @@ export const GinRummyGameTable = ({
     return { dealerGameId: dg, roundId: r, handNumber: h };
   }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, dealerGameId]);
 
-  // Gin Runback gate — outgoing-identity SUPPRESSION only.
-  // When DealerGameSetup invokes Run It Back, we capture the outgoing
-  // dealerGameId and visually suppress that dealer game's presentation.
-  // We do NOT block authoritative-snapshot admission, committedIdentity
-  // installation, DealRuntime mount/dispatch, orchestrator mount, or
-  // anchor creation. The incoming dealer game must be free to bootstrap,
-  // commit identity, mount DealRuntime, and dispatch its opening deal.
-  const runbackPending = useGinRunbackPending(gameId);
-
-  // Capture outgoing dealerGameId atomically when runback flips on.
-  // Stored in state (not ref) so render-time suppression updates in the
-  // same render that observes the new pending flag.
-  const [outgoingRunbackDealerGameId, setOutgoingRunbackDealerGameId] =
-    useState<string | null>(null);
-  const prevRunbackPendingRef = useRef(false);
-  useEffect(() => {
-    if (runbackPending && !prevRunbackPendingRef.current) {
-      setOutgoingRunbackDealerGameId(committedIdentity?.dealerGameId ?? null);
-    }
-    if (!runbackPending && prevRunbackPendingRef.current) {
-      setOutgoingRunbackDealerGameId(null);
-    }
-    prevRunbackPendingRef.current = runbackPending;
-  }, [runbackPending, committedIdentity]);
-
-  // Auto-release the runback gate the moment committedIdentity belongs
-  // to a different dealer game than the outgoing one. Never gated on
-  // DealRuntime readiness, RPC resolve, poll, or timeout.
-  useEffect(() => {
-    if (!runbackPending) return;
-    if (!committedIdentity) return;
-    if (
-      outgoingRunbackDealerGameId !== null &&
-      committedIdentity.dealerGameId === outgoingRunbackDealerGameId
-    ) return;
-    clearGinRunback(gameId);
-  }, [runbackPending, committedIdentity, outgoingRunbackDealerGameId, gameId]);
-
   // identityBoundaryPending: one-frame neutral pass when committedIdentity
-  // and the freshly-computed incomingIdentity disagree on any axis. This
-  // is unrelated to runback and remains a hard render-side nuller so a
-  // stale tuple never paints under a new identity.
+  // and the freshly-computed incomingIdentity disagree on any axis. Hard
+  // render-side nuller so a stale tuple never paints under a new identity.
   const identityBoundaryPending = !!committedIdentity && !!incomingIdentity &&
     !ginIdentityEqual(committedIdentity, incomingIdentity) &&
     isGinIdentityForward(committedIdentity, incomingIdentity);
@@ -455,17 +416,6 @@ export const GinRummyGameTable = ({
     ? null
     : acceptedPresentation;
 
-  // Visual-only suppression: hide the outgoing dealer game's surfaces
-  // (self cards, opponent cardbacks, discard/upcard, stock, overlays,
-  // outcome content). Does NOT gate identity, DealRuntime, orchestrator,
-  // anchor, or admission. Auto-clears when committedIdentity moves to a
-  // different dealerGameId than the captured outgoing one.
-  const suppressOutgoingRunbackPresentation =
-    runbackPending && (
-      committedIdentity === null ||
-      (outgoingRunbackDealerGameId !== null &&
-        committedIdentity.dealerGameId === outgoingRunbackDealerGameId)
-    );
 
   // Atomic committedIdentity transitions. Every forward change to any axis
   // enters the same neutral boundary before the next tuple can render.
