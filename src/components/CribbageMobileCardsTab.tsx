@@ -337,12 +337,19 @@ export const CribbageMobileCardsTab = ({
   // phase boundary. The measured hand-stage already excludes the tab
   // rail, action/instruction row, identity row, and horizontal safe inset.
   const phaseCapacity = isPreDiscard ? 6 : 4;
+  const activeHandPolicy = useActiveHandLayoutPolicy('cribbage');
   const handLayout = useMemo(
-    () => resolveCribActiveHandLayout(handStageRectPx, phaseCapacity),
-    [handStageRectPx, phaseCapacity],
+    () =>
+      resolveActiveHandLayout(
+        handStageRectPx,
+        phaseCapacity,
+        activeHandPolicy,
+        CRIB_ACTIVE_HAND_ASPECT,
+      ),
+    [handStageRectPx, phaseCapacity, activeHandPolicy],
   );
   const phaseLayoutKey = `${roundId ?? expectedRoundId ?? 'unknown-round'}:${isPreDiscard ? 'pre-discard' : 'post-discard'}`;
-  const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: CardRowLayout } | null>(null);
+  const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: ResolvedActiveHandRow } | null>(null);
   useEffect(() => {
     if (!handLayout) return;
     setLockedHandLayout(prev => (prev?.key === phaseLayoutKey ? prev : { key: phaseLayoutKey, layout: handLayout }));
