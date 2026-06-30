@@ -63,6 +63,13 @@ export const GinRummySelfDrawAnimation = ({
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
 
+  // Stabilize onSettled across parent re-renders so the 700ms transport
+  // timer isn't reset on every render of GinRummyGameTable. Without this,
+  // a busy parent (opponent turn ticks, presentation updates) keeps
+  // deferring settle indefinitely and the withheld card never releases.
+  const onSettledRef = useRef(onSettled);
+  useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
+
   useEffect(() => {
     if (!triggerId) return;
 
