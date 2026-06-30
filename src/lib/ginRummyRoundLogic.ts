@@ -109,22 +109,29 @@ export async function startGinRummyRound(
       throw new Error('Gin Rummy requires exactly 2 players');
     }
 
-    // Determine dealer and non-dealer.
-    // Near-Gin harness: force dealer = canonical SESSION HOST so the
-    // advantaged hand always lands on the host, identical on every client.
+    // Determine dealer and non-dealer using natural rotation.
+    // Near-Gin harness target = canonical SESSION HOST, decoupled from
+    // dealer/turn/seat order. The advantaged hand is assigned by
+    // dealHand based on hostPid, not by forcing host to be dealer.
     const dealerPosition = game.dealer_position || 1;
     const sortedPlayers = [...activePlayers].sort((a: any, b: any) => a.position - b.position);
-    let dealerPlayer: any = sortedPlayers.find((p: any) => p.position === dealerPosition)
+    const dealerPlayer: any = sortedPlayers.find((p: any) => p.position === dealerPosition)
       || sortedPlayers[0];
-    if (isGinTwoActionHarnessEnabled()) {
-      const hostPid = resolveSessionHostPlayerId(
-        { current_host: (game as any)?.current_host ?? null },
-        sortedPlayers,
-      );
-      const hostPlayer = sortedPlayers.find((p: any) => p.id === hostPid);
-      if (hostPlayer) dealerPlayer = hostPlayer;
-    }
     const nonDealerPlayer = sortedPlayers.find((p: any) => p.id !== dealerPlayer.id)!;
+
+    // Resolve harness target = session host. Fail-closed when no host
+    // can be resolved (do NOT silently target dealer).
+    const harnessTargetPlayerId = isGinTwoActionHarnessEnabled()
+      ? (() => {
+          const hostPid = resolveSessionHostPlayerId(
+            { current_host: (game as any)?.current_host ?? null },
+            sortedPlayers,
+          );
+          const hostSeated = hostPid
+            && (hostPid === dealerPlayer.id || hostPid === nonDealerPlayer.id);
+          return hostSeated ? hostPid : null;
+        })()
+      : null;
 
     const anteAmount = game.ante_amount || 1;
     const pointsToWin = isGinTwoActionHarnessEnabled() ? 50 : (game.points_to_win ?? 100);
@@ -136,7 +143,7 @@ export async function startGinRummyRound(
       anteAmount,
       pointsToWin,
     );
-    ginState = dealHand(ginState);
+    ginState = dealHand(ginState, harnessTargetPlayerId);
 
     const dealerGameId = game.current_game_uuid;
     if (!dealerGameId) {
@@ -380,7 +387,29 @@ export async function startNextGinRummyHand(
       previousState.pointsToWin,
       previousState.matchScores,
     );
-    newState = dealHand(newState);
+
+    // Harness target = canonical SESSION HOST. Resolved from games.current_host
+    // on every hand, decoupled from dealer rotation. Fail-closed when
+    // host cannot be resolved.
+    let harnessTargetPlayerId: string | null = null;
+    if (isGinTwoActionHarnessEnabled()) {
+      const { data: gameRow } = await supabase
+        .from('games')
+        .select('current_host')
+        .eq('id', gameId)
+        .maybeSingle();
+      const { data: playerRows } = await supabase
+        .from('players')
+        .select('id,user_id,is_bot,created_at')
+        .eq('game_id', gameId);
+      const hostPid = resolveSessionHostPlayerId(
+        { current_host: (gameRow as any)?.current_host ?? null },
+        (playerRows ?? []) as any[],
+      );
+      const hostSeated = hostPid && (hostPid === nextDealerId || hostPid === nextNonDealerId);
+      harnessTargetPlayerId = hostSeated ? hostPid : null;
+    }
+    newState = dealHand(newState, harnessTargetPlayerId);
 
     // Get next hand number (DB-First)
     const { data: existingRounds } = await supabase

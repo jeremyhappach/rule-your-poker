@@ -84,14 +84,27 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 
 // ─── Deal ───────────────────────────────────────────────────────
 
-/** Deal 10 cards to each player, place one face-up on discard pile, rest is stock */
-export function dealHand(state: GinRummyState): GinRummyState {
+/**
+ * Deal 10 cards to each player, place one face-up on discard pile, rest is stock.
+ *
+ * `harnessTargetPlayerId` (Near Gin harness only): the player who should
+ * receive the advantaged hand. Derived upstream from the canonical
+ * SESSION HOST — NOT from dealer / caller / turn order / seat order.
+ * When unresolvable, callers must pass undefined; this falls closed to
+ * the normal random deal rather than silently advantaging the dealer.
+ */
+export function dealHand(
+  state: GinRummyState,
+  harnessTargetPlayerId?: string | null,
+): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
 
-  // Debug: two-action harness (deterministic gin-on-upcard for both hands)
-  if (isGinTwoActionHarnessEnabled()) {
-    return dealTwoActionHarnessHand(state);
+  // Debug: two-action harness (deterministic gin-on-upcard). Only run
+  // the harness deal when a host target is resolvable — otherwise fall
+  // through to the normal random deal (fail-closed).
+  if (isGinTwoActionHarnessEnabled() && harnessTargetPlayerId) {
+    return dealTwoActionHarnessHand(state, harnessTargetPlayerId);
   }
 
   // Debug: rigged hands for testing knock/lay-off flow
@@ -197,12 +210,16 @@ function dealRiggedHand(state: GinRummyState, fullDeck: GinRummyCard[]): GinRumm
 }
 
 // ─── Debug: Two-Action Harness Deal ─────────────────────────────
-// Dealer (host):     A♠2♠3♠ 4♥5♥6♥ 7♦8♦9♦ K♣  (3 runs + K♣ deadwood = 10)
+// Target (host):     A♠2♠3♠ 4♥5♥6♥ 7♦8♦9♦ K♣  (3 runs + K♣ deadwood = 10)
 // Upcard:            10♦                       (completes 7♦8♦9♦10♦)
-// Non-dealer (bot):  K♥K♦K♠ A♣A♦ 2♣2♥ 3♦3♥ 4♣ (set meld K-K-K + 16 deadwood)
-// → Bot deadwood (16) > knock threshold; 10♦ adds 0 improvement → bot passes.
-// → Host takes 10♦, discards K♣ → 0 deadwood gin. Score: 25 + 16 = 41 pts.
-function dealTwoActionHarnessHand(state: GinRummyState): GinRummyState {
+// Non-target (bot):  K♥K♦K♠ A♣A♦ 2♣2♥ 3♦3♥ 4♣ (set meld K-K-K + 16 deadwood)
+// Target is the canonical SESSION HOST, NOT the dealer. The dealer
+// may be host or non-host depending on natural alternation; the
+// advantaged hand follows host identity, not dealer identity.
+function dealTwoActionHarnessHand(
+  state: GinRummyState,
+  harnessTargetPlayerId: string,
+): GinRummyState {
   const { dealerPlayerId, nonDealerPlayerId } = state;
   const c = (rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard => {
     let value: number;
@@ -212,7 +229,7 @@ function dealTwoActionHarnessHand(state: GinRummyState): GinRummyState {
     return { rank, suit, value };
   };
 
-  const dealerHand: GinRummyCard[] = [
+  const targetHand: GinRummyCard[] = [
     c('A', '♠'), c('2', '♠'), c('3', '♠'),
     c('4', '♥'), c('5', '♥'), c('6', '♥'),
     c('7', '♦'), c('8', '♦'), c('9', '♦'),
@@ -221,7 +238,7 @@ function dealTwoActionHarnessHand(state: GinRummyState): GinRummyState {
 
   const upCard: GinRummyCard = c('10', '♦');
 
-  const nonDealerHand: GinRummyCard[] = [
+  const otherHand: GinRummyCard[] = [
     c('K', '♥'), c('K', '♦'), c('K', '♠'), // set meld
     c('A', '♣'), c('A', '♦'),
     c('2', '♣'), c('2', '♥'),
@@ -232,11 +249,20 @@ function dealTwoActionHarnessHand(state: GinRummyState): GinRummyState {
   // Build stockpile from a fresh deck minus dealt cards + upcard.
   const fullDeck = createGinRummyDeck();
   const usedKeys = new Set(
-    [...dealerHand, ...nonDealerHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
+    [...targetHand, ...otherHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
   );
   const stockPile = fullDeck.filter(cd => !usedKeys.has(`${cd.rank}-${cd.suit}`));
 
-  console.log('[GIN-RUMMY DEBUG] Two-action harness active — dealer can gin by taking 10♦');
+  // Resolve who is target vs other. Fail-closed: caller must only pass
+  // a host id that matches one of the two seated players in this hand.
+  const targetIsDealer = harnessTargetPlayerId === dealerPlayerId;
+  const targetIsNonDealer = harnessTargetPlayerId === nonDealerPlayerId;
+  const dealerHand = targetIsDealer ? targetHand : otherHand;
+  const nonDealerHand = targetIsNonDealer ? targetHand : otherHand;
+
+  console.log(
+    `[GIN-RUMMY DEBUG] Two-action harness active — target=host (${targetIsDealer ? 'dealer' : targetIsNonDealer ? 'non-dealer' : 'NOT-SEATED'})`,
+  );
 
   return {
     ...state,

@@ -12,6 +12,10 @@ import {
   isGinIdentityForward,
   ginIdentityMismatchAxis,
 } from '@/lib/ginRummy/presentationIdentity';
+import {
+  useGinRunbackPending,
+  clearGinRunback,
+} from '@/lib/ginRummy/runbackGate';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import {
   checkStaleHandRender,
@@ -403,10 +407,15 @@ export const GinRummyGameTable = ({
     return { dealerGameId: dg, roundId: r, handNumber: h };
   }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, dealerGameId]);
 
+  // Gin Runback gate — when set (by DealerGameSetup at the Run It Back
+  // tap), forcibly null the render-owned identity/presentation. No
+  // subtree may infer outgoing-hand identity through this window.
+  const runbackPending = useGinRunbackPending(gameId);
+
   const identityBoundaryPending = !!committedIdentity && !!incomingIdentity &&
     !ginIdentityEqual(committedIdentity, incomingIdentity) &&
     isGinIdentityForward(committedIdentity, incomingIdentity);
-  const renderCommittedIdentity = identityBoundaryPending ? null : committedIdentity;
+  const renderCommittedIdentity = (runbackPending || identityBoundaryPending) ? null : committedIdentity;
   // Hard contract: when renderCommittedIdentity is null we ALSO force
   // renderAcceptedPresentation to null in the SAME render. No code path
   // below may read an accepted presentation through a null committed
@@ -415,6 +424,31 @@ export const GinRummyGameTable = ({
   const renderAcceptedPresentation = !renderCommittedIdentity
     ? null
     : (identityBoundaryPending ? null : acceptedPresentation);
+
+  // Capture the outgoing dealerGameId at the moment runback begins.
+  // Release the gate only when committedIdentity (underlying state) has
+  // advanced to a NEW dealerGameId AND an accepted presentation matches
+  // that new full tuple. Never released by RPC resolve / poll / timeout.
+  const outgoingRunbackDealerGameIdRef = useRef<string | null>(null);
+  const prevRunbackPendingRef = useRef(false);
+  useEffect(() => {
+    if (runbackPending && !prevRunbackPendingRef.current) {
+      outgoingRunbackDealerGameIdRef.current = committedIdentity?.dealerGameId ?? null;
+    }
+    if (!runbackPending && prevRunbackPendingRef.current) {
+      outgoingRunbackDealerGameIdRef.current = null;
+    }
+    prevRunbackPendingRef.current = runbackPending;
+  }, [runbackPending, committedIdentity]);
+  useEffect(() => {
+    if (!runbackPending) return;
+    if (!committedIdentity) return;
+    if (!acceptedPresentation) return;
+    if (!ginIdentityEqual(committedIdentity, acceptedPresentation.identity)) return;
+    const outgoing = outgoingRunbackDealerGameIdRef.current;
+    if (outgoing !== null && committedIdentity.dealerGameId === outgoing) return;
+    clearGinRunback(gameId);
+  }, [runbackPending, committedIdentity, acceptedPresentation, gameId]);
 
   // Atomic committedIdentity transitions. Every forward change to any axis
   // enters the same neutral boundary before the next tuple can render.
