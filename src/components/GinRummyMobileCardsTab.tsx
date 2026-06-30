@@ -45,9 +45,10 @@ interface GinRummyMobileCardsTabProps {
   onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
-  /** When set, hide this card from the rendered hand until the self-draw
-   *  transport animation settles (mirrors opponent ownership model). */
-  withheldDrawnCard?: { rank: string; suit: string } | null;
+  /** Cards to hide from the rendered hand while their self-draw
+   *  transport animations are in flight. Each entry is keyed by its
+   *  own intent and released independently on its own settle. */
+  withheldDrawnCards?: Array<{ rank: string; suit: string }>;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
