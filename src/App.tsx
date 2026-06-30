@@ -47,9 +47,6 @@ import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import HolmTracePill from "@/components/HolmTracePill";
-import GinRunbackTracePill from "@/components/GinRunbackTracePill";
-import GinPileTracePill from "@/components/GinPileTracePill";
-import GinSelfDrawTracePill from "@/components/GinSelfDrawTracePill";
 import { R1SnapbackPill } from "@/lib/wartimeDebug/R1SnapbackPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
 import { Wave5GridOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5GridOverlay";
@@ -157,7 +154,6 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
-                <GinPileTracePill />
                 <R1SnapbackPill />
 
 
@@ -181,8 +177,6 @@ const App = () => {
 
               {/* HOLM TRACE PILL — temporary, self-gates on isHolmTraceActive(). */}
               <HolmTracePill />
-              <GinRunbackTracePill />
-              <GinSelfDrawTracePill />
 
 
 
