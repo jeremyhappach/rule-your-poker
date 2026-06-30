@@ -119,7 +119,12 @@ export function getDebugPillsState(): Enabled {
   return state;
 }
 
+// TEMP: solo-focus on Gin Pile Trace — suppress every registry pill.
+// Remove this override to restore per-pill admin toggles.
+const SOLO_FOCUS_SUPPRESS_ALL = true;
+
 export function isDebugPillEnabled(key: DebugPillKey): boolean {
+  if (SOLO_FOCUS_SUPPRESS_ALL) return false;
   return !!state[key];
 }
 
