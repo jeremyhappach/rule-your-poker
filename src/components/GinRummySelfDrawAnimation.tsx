@@ -13,7 +13,7 @@
 // rebind pattern used by GinRummyDealOrchestrator: when the trigger fires
 // we snapshot pile rect + [data-gin-active-pane-content] rect once.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
