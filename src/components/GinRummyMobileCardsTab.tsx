@@ -10,6 +10,13 @@ import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/gin
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
+import {
+  cardId,
+  cardIds,
+  diffIds,
+  getCurrentGinSelfDrawTraceId,
+  recordGinSelfDrawEvent,
+} from '@/lib/ginSelfDrawTrace';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
