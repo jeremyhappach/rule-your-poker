@@ -47,6 +47,7 @@ import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
+import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
 import { recordGameResult, snapshotPlayerChips } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
@@ -2105,7 +2106,7 @@ export function YahtzeeGameTable({
               presentation={{
                 // Dice families have no dealer concept.
                 dealerPip: () => false,
-                chipValue: (p) => `$${formatChipValue(Math.round(p.chips))}`,
+                chipValue: (p) => formatChipBalance(p.chips),
                 scoreLine: (p) => {
                   const ps = viewState?.playerStates?.[p.id];
                   const total = ps ? getTotalScore(ps.scorecard) : 0;

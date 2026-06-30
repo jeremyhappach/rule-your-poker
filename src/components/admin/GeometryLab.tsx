@@ -67,6 +67,7 @@ import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesP
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
+import { ShellChipBalanceAdminSection } from "./ShellChipBalanceAdminSection";
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
@@ -554,6 +555,12 @@ function ShellGlobalSections() {
               Nameplate
             </h4>
             <ShellNameplateAdminSection />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Chip Balance
+            </h4>
+            <ShellChipBalanceAdminSection />
           </div>
         </div>
       </CollapsibleSection>

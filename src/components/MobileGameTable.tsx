@@ -150,6 +150,7 @@ import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices }
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
+import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import cubsLogo from "@/assets/cubs-logo.png";
 
 import React, {
@@ -6781,7 +6782,7 @@ export const MobileGameTable = ({
     // animation source. Hidden when emoticon overlay is active (the
     // overlay paints over the value).
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    const chipText = emoticonOverlays[player.id] ? '' : formatChipBalance(chipAmount ?? 0);
 
     // Holm polish: turn indication is the descending timer ring + table
     // spotlight only. No separate yellow chip-disc underlay/highlight.
@@ -7092,7 +7093,7 @@ export const MobileGameTable = ({
       : (player.profiles?.username || `P${player.position}`);
 
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    const chipText = emoticonOverlays[player.id] ? '' : formatChipBalance(chipAmount ?? 0);
 
     // 357 has no per-seat turn (decisions are simultaneous within the
     // round) — no status ring, no ActivePlayerHUD wrapper.
@@ -7351,7 +7352,7 @@ export const MobileGameTable = ({
       : (player.profiles?.username || `P${player.position}`);
 
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    const chipText = emoticonOverlays[player.id] ? '' : formatChipBalance(chipAmount ?? 0);
 
     const showTurnRing = isTheirTurn;
     const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
@@ -7515,7 +7516,7 @@ export const MobileGameTable = ({
       : (player.profiles?.username || `P${player.position}`);
 
     const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
-    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+    const chipText = emoticonOverlays[player.id] ? '' : formatChipBalance(chipAmount ?? 0);
 
     const showTurnRing = isTheirTurn;
     const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
@@ -10022,7 +10023,7 @@ export const MobileGameTable = ({
               const displayName = player.is_bot
                 ? getBotAlias(players, player.user_id)
                 : (player.profiles?.username || `P${player.position}`);
-              const chipText = `$${formatChipValue(Math.round(player.chips ?? 0))}`;
+              const chipText = formatChipBalance(player.chips ?? 0);
               return (
                 <CanonicalSeatCluster
                   key={player.id}

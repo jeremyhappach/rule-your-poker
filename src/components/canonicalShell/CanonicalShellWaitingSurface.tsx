@@ -56,6 +56,7 @@ import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
 import { derivePlayerStatus } from "@/lib/canonicalShell/participantStatus";
 import { getDisplayName } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
+import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import { cn } from "@/lib/utils";
 import {
   useWaitingMount,
@@ -280,7 +281,7 @@ function WaitingSurfaceBody({
           playerId: player.id,
           userId: player.user_id,
           name: player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player'),
-          chipValue: `$${formatChipValue(player.chips ?? 0)}`,
+          chipValue: formatChipBalance(player.chips ?? 0),
           status,
           seatAnchorSource: seatAnchorSourceLabel,
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
@@ -307,7 +308,7 @@ function WaitingSurfaceBody({
         chipRenderer: 'CanonicalSeatCluster',
         chipStyleSource: 'derivePlayerStatus → status palette',
         chipVariant: 'waiting',
-        chipValue: `$${formatChipValue(player.chips ?? 0)}`,
+        chipValue: formatChipBalance(player.chips ?? 0),
         status,
         projectionMode,
         isViewerSelf: player.user_id === currentUserId,
@@ -435,7 +436,7 @@ function WaitingSurfaceBody({
                             position={player.position}
                             name={label}
                             isDealer={false}
-                            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+                            chipValue={formatChipBalance(player.chips ?? 0)}
                             status={status}
                             ownerLabel="Shell:CanonicalShellWaitingSurface"
                             playerId={player.id}

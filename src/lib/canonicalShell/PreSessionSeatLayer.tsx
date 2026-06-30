@@ -36,7 +36,7 @@ import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
-import { formatChipValue } from '@/lib/utils';
+import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 
 export interface PreSessionParticipant {
   id: string;
@@ -107,7 +107,7 @@ export function PreSessionSeatLayer({
             slot={anchor.slot}
             position={player.position}
             name={label}
-            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+            chipValue={formatChipBalance(player.chips ?? 0)}
             status={status}
             statusRing={status}
             isDealer={false}

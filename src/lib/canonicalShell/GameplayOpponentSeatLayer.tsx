@@ -42,7 +42,7 @@ import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useCardRowLayout } from './useCardRowLayout';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
-import { formatChipValue } from '@/lib/utils';
+import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 import type { CanonicalSeatStatusRing } from './participantStatus';
 
 // Width budget for the gin variant card-back strip. Sourced from
@@ -90,7 +90,7 @@ export interface GameplayOpponentSeatLayerProps {
 }
 
 function defaultChipValue(n: number): string {
-  return `$${formatChipValue(Number.isFinite(n) ? n : 0)}`;
+  return formatChipBalance(Number.isFinite(n) ? n : 0);
 }
 
 interface ShellOpponentCardBacksProps {

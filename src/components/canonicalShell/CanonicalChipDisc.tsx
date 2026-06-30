@@ -27,16 +27,27 @@
  */
 
 import { ReactNode } from 'react';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useDeviceSize } from '@/hooks/useDeviceSize';
+import { CanonicalChipBalanceLabel } from './CanonicalChipBalanceLabel';
+import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 
 export type CanonicalChipDiscSize = 'gameplay' | 'gameplay-compact' | 'cluster';
 
 interface CanonicalChipDiscProps {
   /** Chip amount displayed inside the disc. Pass `null` to suppress the
    *  value (e.g. emoticon overlay active, or caller renders its own
-   *  value via children). */
+   *  value via `chipText` / children). */
   amount: number | null;
+  /**
+   * Pre-formatted balance text. When provided, takes precedence over
+   * `amount` and bypasses the built-in formatter. Used by
+   * CanonicalSeatCluster, which already owns chipValue string sourcing
+   * (lockedChips / displayedChips / player.chips / emoticon hide).
+   * The text is rendered through CanonicalChipBalanceLabel and obeys
+   * the global adaptive typography contract.
+   */
+  chipText?: string;
   /** Tailwind bg class for the disc fill — resolved by caller via status palette. Defaults to `bg-slate-300`. */
   bgClass?: string;
   /** Render the yellow turn-pulse ring as a sibling overlay. */
@@ -49,24 +60,32 @@ interface CanonicalChipDiscProps {
   clickable?: boolean;
   /** Optional click handler attached to the disc body. */
   onClick?: () => void;
-  /** Extra ring class(es) appended to the disc body (e.g. status-driven
-   *  colored rings from `getParticipantChipRingClass`). Independent of
-   *  `showTurnRing`, which paints a yellow sibling overlay. */
+  /** Extra ring class(es) appended to the disc body. */
   ringClass?: string;
-  /** Position number for the `data-chip-center` anchor attribute consumed by chip-fly origins. */
+  /** Position number for the `data-chip-center` anchor attribute. */
   positionAnchor?: number;
   /** Disc size preset — see file header. */
   size?: CanonicalChipDiscSize;
-  /** Force value text to red even when amount >= 0 (caller may have richer color rules). */
+  /** Force value text to red even when amount >= 0. */
   forceNegativeColor?: boolean;
-  /** Sibling overlays rendered INSIDE the disc body (ValueChangeFlash etc.). */
+  /** Sibling overlays rendered INSIDE the disc body. */
   children?: ReactNode;
-  /** Sibling overlays rendered ALONGSIDE the disc body inside the same relative wrapper (emoticon overlay etc.). */
+  /** Sibling overlays rendered ALONGSIDE the disc body. */
   overlay?: ReactNode;
+}
+
+// Diameter (CSS px) per preset → fed into the adaptive label so font
+// size is computed against the actual chip-circle size, not an
+// approximation. Must stay in sync with the discSize class below.
+function discDiameterPx(size: CanonicalChipDiscSize, isTablet: boolean): number {
+  if (size === 'cluster') return isTablet ? 44 : 40;       // w-11 / w-10
+  if (size === 'gameplay-compact') return 48;              // w-12
+  return isTablet ? 64 : 48;                                // w-16 / w-12
 }
 
 export const CanonicalChipDisc = ({
   amount,
+  chipText,
   bgClass = 'bg-slate-300',
   showTurnRing = false,
   pulseDisc = false,
@@ -83,19 +102,26 @@ export const CanonicalChipDisc = ({
   const { isTablet } = useDeviceSize();
 
   let discSize: string;
-  let valueTextSize: string;
   if (size === 'cluster') {
     discSize = isTablet ? 'w-11 h-11' : 'w-10 h-10';
-    valueTextSize = isTablet ? 'text-sm' : 'text-xs';
   } else if (size === 'gameplay' && isTablet) {
     discSize = 'w-16 h-16';
-    valueTextSize = 'text-base';
   } else {
     discSize = 'w-12 h-12';
-    valueTextSize = 'text-sm';
   }
 
-  const isNegative = forceNegativeColor || (amount !== null && amount < 0);
+  const diameterPx = discDiameterPx(size, isTablet);
+
+  // Resolve effective label text + negative coloring.
+  let labelText: string | null = null;
+  let isNegative = forceNegativeColor;
+  if (chipText !== undefined) {
+    labelText = chipText;
+    if (!forceNegativeColor && chipText.trim().startsWith('-')) isNegative = true;
+  } else if (amount !== null) {
+    labelText = formatChipBalance(amount);
+    if (!forceNegativeColor && amount < 0) isNegative = true;
+  }
 
   return (
     <div className={cn('relative', discSize)} data-chip-center={positionAnchor}>
@@ -116,16 +142,12 @@ export const CanonicalChipDisc = ({
           onClick && 'cursor-pointer pointer-events-auto',
         )}
       >
-        {amount !== null && (
-          <span
-            className={cn(
-              'font-bold leading-none',
-              valueTextSize,
-              isNegative ? 'text-red-600' : 'text-slate-800',
-            )}
-          >
-            ${formatChipValue(Math.round(amount))}
-          </span>
+        {labelText !== null && labelText !== '' && (
+          <CanonicalChipBalanceLabel
+            text={labelText}
+            diameterPx={diameterPx}
+            className={isNegative ? 'text-red-600' : 'text-slate-800'}
+          />
         )}
         {children}
       </div>
