@@ -2228,30 +2228,9 @@ export const GinRummyGameTable = ({
 
 
 
-  const getPileActionContext = useCallback((pile: GinPileTracePile, overrides: Record<string, unknown> = {}) => ({
-    ...buildGinPileContext({
-      ginState,
-      currentPlayerId,
-      handContextId,
-      isPlayable,
-      stockClickable: getLatestGinPileTraceContext().stockClickable,
-      discardClickable: getLatestGinPileTraceContext().discardClickable,
-      canDraw: getLatestGinPileTraceContext().canDraw,
-      canTakeFirstDraw: getLatestGinPileTraceContext().canTakeFirstDraw,
-      discardRevealed: getLatestGinPileTraceContext().discardRevealed,
-      stockRevealed: getLatestGinPileTraceContext().stockRevealed,
-      dealPhase: getLatestGinPileTraceContext().dealPhase,
-      dealSettled: getLatestGinPileTraceContext().dealSettled,
-      readyReleased: getLatestGinPileTraceContext().readyReleased,
-    }),
-    pile,
-    ...overrides,
-  }), [ginState, currentPlayerId, handContextId, isPlayable]);
-
   const updateState = async (
     newState: GinRummyState,
     traceId?: string,
-    pileAction?: { pile: GinPileTracePile; actionName: string },
   ) => {
     // Writer-audit gate: refuse to write if the framework says we cannot interact
     // (frozen / visual contract active / identity stale). Prevents stale local
