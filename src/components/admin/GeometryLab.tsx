@@ -69,6 +69,8 @@ import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
 import { ShellChipBalanceAdminSection } from "./ShellChipBalanceAdminSection";
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
+import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
+import { getActiveHandLayoutSpec } from "@/lib/activeHand/activeHandLayoutSettings";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
