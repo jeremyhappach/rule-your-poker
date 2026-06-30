@@ -310,13 +310,22 @@ export const GinRummyFeltContent = ({
           <div className="flex flex-col items-center gap-0.5">
             {discardTopCard && discardRevealed ? (
               <button
+                type="button"
                 onClick={discardClickable ? onDrawDiscard : undefined}
                 disabled={!discardClickable}
                 data-card-anchor="discard"
-                className={`rounded-md transition-all ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
-                style={{ pointerEvents: discardClickable ? 'auto' : undefined }}
+                className={`relative rounded-md transition-all ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+                style={{
+                  pointerEvents: discardClickable ? 'auto' : 'none',
+                  zIndex: 30,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
               >
-                <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
+                <div style={{ pointerEvents: 'none' }}>
+                  <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
+                </div>
               </button>
             ) : (
               // Single-owner contract: before the opening discard intent
