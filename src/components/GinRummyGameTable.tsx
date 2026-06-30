@@ -1317,7 +1317,7 @@ export const GinRummyGameTable = ({
         const source = action.type === 'draw_stock' ? 'stock' : 'discard';
         const intentId = `self-draw-${actionKey}`;
         const drawnCard = action.card ?? null;
-        const drawnId = cardId(drawnCard);
+        const drawnIdForIntent = cardId(drawnCard);
         setSelfDrawIntents(prev => {
           if (prev[intentId]) return prev;
           return {
@@ -1326,7 +1326,7 @@ export const GinRummyGameTable = ({
               intentId,
               source,
               card: drawnCard,
-              drawnCardId: drawnId,
+              drawnCardId: drawnIdForIntent,
               handContextId: handContextId ?? null,
               actionKey,
             },
@@ -1339,7 +1339,7 @@ export const GinRummyGameTable = ({
         const authHand = viewState.playerStates?.[currentPlayerId]?.hand ?? [];
         recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_INTENT', {
           source,
-          drawnCardId: cardId(action.card ?? null),
+          drawnCardId: drawnIdForIntent,
           srcSelector: srcSel,
           srcRectPresent: !!srcEl,
           destSelector: '[data-gin-active-pane-content]',
@@ -1350,12 +1350,11 @@ export const GinRummyGameTable = ({
           authHandIdsAtIntent: cardIds(authHand),
         });
         // (3) AUTHORITATIVE_STATE — record the lastAction-bearing state we now see
-        const drawnId = cardId(action.card ?? null);
         recordGinSelfDrawEvent('SELF_DRAW_AUTHORITATIVE_STATE', {
           authHandIds: cardIds(authHand),
-          drawnCardId: drawnId,
-          drawnPresent: drawnId ? cardIds(authHand).includes(drawnId) : null,
-          drawnIndex: drawnId ? cardIds(authHand).indexOf(drawnId) : -1,
+          drawnCardId: drawnIdForIntent,
+          drawnPresent: drawnIdForIntent ? cardIds(authHand).includes(drawnIdForIntent) : null,
+          drawnIndex: drawnIdForIntent ? cardIds(authHand).indexOf(drawnIdForIntent) : -1,
           actionCount: viewState.actionCount ?? null,
           phase: viewState.phase,
           turnPhase: viewState.turnPhase,
