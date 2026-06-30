@@ -2340,7 +2340,6 @@ export const GinRummyGameTable = ({
         actionKey: _actionKey,
       },
     });
-    return drawTraceId;
   };
 
   const handleDrawStock = async () => {
