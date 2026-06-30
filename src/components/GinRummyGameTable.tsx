@@ -2915,7 +2915,29 @@ export const GinRummyGameTable = ({
         handlerName: 'handleDrawDiscard', handlerInvoked: true, actionName: 'draw_discard',
         source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
       }));
+      const preHandAuth = ginState.playerStates[currentPlayerId]?.hand ?? [];
+      const topDiscard = ginState.discardPile?.[ginState.discardPile.length - 1] ?? null;
+      const drawTraceId = beginGinSelfDrawTrace('discard');
+      recordGinSelfDrawEvent('SELF_DRAW_ACTION_STARTED', {
+        source: 'discard',
+        selectedCard: cardId(topDiscard),
+        preAuthHandIds: cardIds(preHandAuth),
+        preRenderedHandIdsKnown: false,
+        handContextId,
+      });
       const newState = drawFromDiscard(ginState, currentPlayerId);
+      const optHand = newState.playerStates[currentPlayerId]?.hand ?? [];
+      const drawnCard = newState.lastAction?.card ?? null;
+      const drawnId = cardId(drawnCard);
+      const optIds = cardIds(optHand);
+      recordGinSelfDrawEvent('SELF_DRAW_OPTIMISTIC_STATE', {
+        drawnCardId: drawnId,
+        optimisticHandIds: optIds,
+        drawnPresent: drawnId ? optIds.includes(drawnId) : null,
+        drawnIndex: drawnId ? optIds.indexOf(drawnId) : -1,
+        actionCount: newState.actionCount ?? null,
+        phase: newState.phase, turnPhase: newState.turnPhase,
+      }, drawTraceId);
       await updateState(newState, tid, { pile: 'discard', actionName: 'draw_discard' });
     } catch (err) {
       recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
