@@ -2815,16 +2815,12 @@ export const GinRummyGameTable = ({
                 card={intent.card}
                 cardBackColors={cardBackColors}
                 onSettled={() => {
-                  const drawnId = intent.drawnCardId;
-                  const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
-                  const ids = cardIds(authHand);
                   setSelfDrawIntents(prev => {
                     if (!prev[intent.intentId]) return prev;
                     const next = { ...prev };
                     delete next[intent.intentId];
                     return next;
                   });
-                  clearCurrentGinSelfDrawTraceId();
                 }}
               />
             ))}
