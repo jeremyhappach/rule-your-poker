@@ -3178,7 +3178,7 @@ export const GinRummyGameTable = ({
                 },
                 cardBacks: (p) => {
                   if (!viewState) return null;
-                  if (suppressOutgoingRunbackPresentation) return null;
+                  
                   const seatState = viewState.playerStates?.[p.id];
                   if (!seatState || seatState.hand.length === 0) return null;
                   const isOpponentSeat = !isObserver && p.id === opponentId;
