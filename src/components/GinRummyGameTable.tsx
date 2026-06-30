@@ -3155,6 +3155,7 @@ export const GinRummyGameTable = ({
                 CanonicalSeatCluster per opponent and renders the
                 card-back strip from typed `cardBacks` data. */}
             <GinDealClippedOpponentSeatLayer
+              handContextId={handContextId}
               participants={(isObserver
                 ? activeSeatPlayers
                 : activeSeatPlayers.filter(p => p.id !== currentPlayerId)
