@@ -387,7 +387,29 @@ export async function startNextGinRummyHand(
       previousState.pointsToWin,
       previousState.matchScores,
     );
-    newState = dealHand(newState);
+
+    // Harness target = canonical SESSION HOST. Resolved from games.current_host
+    // on every hand, decoupled from dealer rotation. Fail-closed when
+    // host cannot be resolved.
+    let harnessTargetPlayerId: string | null = null;
+    if (isGinTwoActionHarnessEnabled()) {
+      const { data: gameRow } = await supabase
+        .from('games')
+        .select('current_host')
+        .eq('id', gameId)
+        .maybeSingle();
+      const { data: playerRows } = await supabase
+        .from('players')
+        .select('id,user_id,is_bot,created_at')
+        .eq('game_id', gameId);
+      const hostPid = resolveSessionHostPlayerId(
+        { current_host: (gameRow as any)?.current_host ?? null },
+        (playerRows ?? []) as any[],
+      );
+      const hostSeated = hostPid && (hostPid === nextDealerId || hostPid === nextNonDealerId);
+      harnessTargetPlayerId = hostSeated ? hostPid : null;
+    }
+    newState = dealHand(newState, harnessTargetPlayerId);
 
     // Get next hand number (DB-First)
     const { data: existingRounds } = await supabase
