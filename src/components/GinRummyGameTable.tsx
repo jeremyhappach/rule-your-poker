@@ -3009,45 +3009,15 @@ export const GinRummyGameTable = ({
         handlerName: 'handleDrawDiscard', handlerInvoked: true, actionName: 'draw_discard',
         source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
       }));
-      const preHandAuth = ginState.playerStates[currentPlayerId]?.hand ?? [];
+      const preState = ginState;
       const topDiscard = ginState.discardPile?.[ginState.discardPile.length - 1] ?? null;
-      const drawTraceId = beginGinSelfDrawTrace('discard');
-      recordGinSelfDrawEvent('SELF_DRAW_ACTION_STARTED', {
-        source: 'discard',
-        selectedCard: cardId(topDiscard),
-        preAuthHandIds: cardIds(preHandAuth),
-        preRenderedHandIdsKnown: false,
-        handContextId,
-      });
       const newState = drawFromDiscard(ginState, currentPlayerId);
-      const optHand = newState.playerStates[currentPlayerId]?.hand ?? [];
-      const drawnCard = newState.lastAction?.card ?? null;
-      const drawnId = cardId(drawnCard);
-      const optIds = cardIds(optHand);
-      // Synchronously register pending-withheld intent BEFORE any
-      // optimistic state update / async await — see handleDrawStock.
-      const _action = newState.lastAction!;
-      const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
-      const _intentId = `self-draw-${_actionKey}`;
-      setSelfDrawIntents(prev => prev[_intentId] ? prev : {
-        ...prev,
-        [_intentId]: {
-          intentId: _intentId,
-          source: 'discard',
-          card: drawnCard,
-          drawnCardId: drawnId,
-          handContextId: handContextId ?? null,
-          actionKey: _actionKey,
-        },
+      beginSelfDrawPresentation({
+        source: 'discard',
+        selectedCard: topDiscard,
+        preState,
+        newState,
       });
-      recordGinSelfDrawEvent('SELF_DRAW_OPTIMISTIC_STATE', {
-        drawnCardId: drawnId,
-        optimisticHandIds: optIds,
-        drawnPresent: drawnId ? optIds.includes(drawnId) : null,
-        drawnIndex: drawnId ? optIds.indexOf(drawnId) : -1,
-        actionCount: newState.actionCount ?? null,
-        phase: newState.phase, turnPhase: newState.turnPhase,
-      }, drawTraceId);
       await updateState(newState, tid, { pile: 'discard', actionName: 'draw_discard' });
     } catch (err) {
       recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
