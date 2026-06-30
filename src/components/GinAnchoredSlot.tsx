@@ -34,6 +34,10 @@ export interface GinAnchoredSlotProps {
   innerStyle?: CSSProperties;
   /** Renders nothing when no placement is available (no legacy fallback). */
   children: ReactNode;
+  onPointerDownCapture?: React.PointerEventHandler<HTMLDivElement>;
+  onPointerDown?: React.PointerEventHandler<HTMLDivElement>;
+  onClickCapture?: React.MouseEventHandler<HTMLDivElement>;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
 export function GinAnchoredSlot({
@@ -41,6 +45,10 @@ export function GinAnchoredSlot({
   zIndex = 20,
   innerStyle,
   children,
+  onPointerDownCapture,
+  onPointerDown,
+  onClickCapture,
+  onClick,
 }: GinAnchoredSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
@@ -161,6 +169,10 @@ export function GinAnchoredSlot({
       data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-gin-slot-fault-count={String(faults.length)}
+      onPointerDownCapture={onPointerDownCapture}
+      onPointerDown={onPointerDown}
+      onClickCapture={onClickCapture}
+      onClick={onClick}
       style={{
         position: "absolute",
         left: `${x}vmin`,
