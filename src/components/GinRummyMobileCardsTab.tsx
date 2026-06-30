@@ -196,7 +196,7 @@ export const GinRummyMobileCardsTab = ({
       const { added, removed } = diffIds(prev, renderedIds);
       const reasonParts: string[] = [];
       if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
-      else if (deal?.phase === 'OPENING_DEAL') reasonParts.push('deal:OPENING_DEAL settled-clip');
+      else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
       else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
       if (withheldDrawnCard) reasonParts.push('withheldDrawnCard active');
       recordGinSelfDrawEvent('SELF_DRAW_DISPLAY_DIFF', {
