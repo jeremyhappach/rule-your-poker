@@ -447,20 +447,21 @@ export const GinRummyFeltContent = ({
               onPointerDownCapture={makeCapture('stock-button', 'stock')}
               onPointerDown={makeBubble('stock-button', 'stock')}
               onClickCapture={makeCapture('stock-button', 'stock')}
-              onClick={stockClickable ? handleStockButtonClick : undefined}
-              disabled={!stockClickable}
+              onClick={handleStockButtonClick}
+              aria-disabled={!stockClickable}
               data-card-anchor="stock"
               data-gin-pile="stock"
               data-gin-pile-layer="button"
-              className={`relative w-12 h-[68px] rounded-md transition-all ${
+              className={`relative w-12 h-[68px] rounded-md transition-all block ${
                 stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
               }`}
               style={{
-                pointerEvents: stockClickable ? 'auto' : 'none',
+                pointerEvents: 'auto',
                 zIndex: 30,
                 padding: 0,
                 border: 'none',
                 background: 'transparent',
+                position: 'relative',
               }}
             >
               {stockRevealed ? (
@@ -468,10 +469,6 @@ export const GinRummyFeltContent = ({
                   ref={stockVisibleChildRef}
                   data-gin-pile="stock"
                   data-gin-pile-layer="visible-cardback-child"
-                  onPointerDownCapture={makeCapture('stock-visible-cardback-child', 'stock')}
-                  onPointerDown={makeBubble('stock-visible-cardback-child', 'stock')}
-                  onClickCapture={makeCapture('stock-visible-cardback-child', 'stock')}
-                  onClick={makeBubble('stock-visible-cardback-child', 'stock')}
                   style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
                 >
                   <CanonicalCardBack
@@ -490,13 +487,14 @@ export const GinRummyFeltContent = ({
                 </div>
               ) : null}
             </button>
-            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`}>
+            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
           </div>
 
-          {/* Discard Pile — interactive wrapper is the single click owner.
-              Visible upcard is a pointer-events:none decoration. */}
+          {/* Discard Pile — single always-mounted button owns the visible
+              card rect. Face vs empty-placeholder is a child swap inside
+              the button so the hit-test target rect stays stable. */}
           <div
             data-gin-pile="discard"
             data-gin-pile-layer="wrapper"
@@ -507,50 +505,48 @@ export const GinRummyFeltContent = ({
             onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
             onClick={makeBubble('discard-pile-wrapper', 'discard')}
           >
-            {discardTopCard && discardRevealed ? (
-              <button
-                ref={discardButtonRef}
-                type="button"
-                onPointerDownCapture={makeCapture('discard-button', 'discard')}
-                onPointerDown={makeBubble('discard-button', 'discard')}
-                onClickCapture={makeCapture('discard-button', 'discard')}
-                onClick={discardClickable ? handleDiscardButtonClick : undefined}
-                disabled={!discardClickable}
-                data-card-anchor="discard"
-                data-gin-pile="discard"
-                data-gin-pile-layer="button"
-                className={`relative rounded-md transition-all ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
-                style={{
-                  pointerEvents: discardClickable ? 'auto' : 'none',
-                  zIndex: 30,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                }}
-              >
+            <button
+              ref={discardButtonRef}
+              type="button"
+              onPointerDownCapture={makeCapture('discard-button', 'discard')}
+              onPointerDown={makeBubble('discard-button', 'discard')}
+              onClickCapture={makeCapture('discard-button', 'discard')}
+              onClick={handleDiscardButtonClick}
+              aria-disabled={!discardClickable}
+              data-card-anchor="discard"
+              data-gin-pile="discard"
+              data-gin-pile-layer="button"
+              className={`relative w-12 h-[68px] rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+              style={{
+                pointerEvents: 'auto',
+                zIndex: 30,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                position: 'relative',
+              }}
+            >
+              {discardTopCard && discardRevealed ? (
                 <div
                   ref={discardVisibleChildRef}
                   data-gin-pile="discard"
                   data-gin-pile-layer="visible-card-child"
-                  onPointerDownCapture={makeCapture('discard-visible-card-child', 'discard')}
-                  onPointerDown={makeBubble('discard-visible-card-child', 'discard')}
-                  onClickCapture={makeCapture('discard-visible-card-child', 'discard')}
-                  onClick={makeBubble('discard-visible-card-child', 'discard')}
-                  style={{ pointerEvents: 'none' }}
+                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
                 </div>
-              </button>
-            ) : (
-              <div
-                data-card-anchor="discard"
-                className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center"
-                style={{ pointerEvents: 'none' }}
-              >
-                <span className="text-white/20 text-[8px]">{discardTopCard ? '' : 'Empty'}</span>
-              </div>
-            )}
-            <span className="text-[8px] text-white/50">Discard</span>
+              ) : (
+                <div
+                  data-gin-pile="discard"
+                  data-gin-pile-layer="empty-placeholder-child"
+                  className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
+                >
+                  <span className="text-white/20 text-[8px]">Empty</span>
+                </div>
+              )}
+            </button>
+            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
 
         </GinAnchoredSlot>
