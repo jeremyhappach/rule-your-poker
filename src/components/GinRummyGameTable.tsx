@@ -66,6 +66,7 @@ import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
 import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
+import { GinRummySelfDrawAnimation } from './GinRummySelfDrawAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
