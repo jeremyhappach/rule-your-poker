@@ -138,13 +138,6 @@ export const GinRummyMobileCardsTab = ({
 
   useEffect(() => {
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
-      if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
-      else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
-      else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
-      if (withheldIds.length > 0) reasonParts.push(`withheldDrawnCards active (${withheldIds.length})`);
-      prevRenderedRef.current = renderedIds;
-    }
-  });
 
   // Track newly drawn card
   useEffect(() => {
