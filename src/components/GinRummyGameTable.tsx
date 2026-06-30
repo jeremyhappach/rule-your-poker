@@ -3003,6 +3003,22 @@ export const GinRummyGameTable = ({
       const drawnCard = newState.lastAction?.card ?? null;
       const drawnId = cardId(drawnCard);
       const optIds = cardIds(optHand);
+      // Synchronously register pending-withheld intent BEFORE any
+      // optimistic state update / async await — see handleDrawStock.
+      const _action = newState.lastAction!;
+      const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
+      const _intentId = `self-draw-${_actionKey}`;
+      setSelfDrawIntents(prev => prev[_intentId] ? prev : {
+        ...prev,
+        [_intentId]: {
+          intentId: _intentId,
+          source: 'discard',
+          card: drawnCard,
+          drawnCardId: drawnId,
+          handContextId: handContextId ?? null,
+          actionKey: _actionKey,
+        },
+      });
       recordGinSelfDrawEvent('SELF_DRAW_OPTIMISTIC_STATE', {
         drawnCardId: drawnId,
         optimisticHandIds: optIds,
