@@ -14,7 +14,14 @@
  * inside the felt container is safe.
  */
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type MouseEventHandler,
+  type PointerEventHandler,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
@@ -34,10 +41,10 @@ export interface GinAnchoredSlotProps {
   innerStyle?: CSSProperties;
   /** Renders nothing when no placement is available (no legacy fallback). */
   children: ReactNode;
-  onPointerDownCapture?: React.PointerEventHandler<HTMLDivElement>;
-  onPointerDown?: React.PointerEventHandler<HTMLDivElement>;
-  onClickCapture?: React.MouseEventHandler<HTMLDivElement>;
-  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onPointerDownCapture?: PointerEventHandler<HTMLDivElement>;
+  onPointerDown?: PointerEventHandler<HTMLDivElement>;
+  onClickCapture?: MouseEventHandler<HTMLDivElement>;
+  onClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 export function GinAnchoredSlot({
