@@ -12,33 +12,16 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // HUDStack-owned; adaptive resolver handles fan sizing.)
 
 /**
- * Discrete CribbagePlayingCard size ladder (width px → size token).
- * Kept in sync with sizeStyles in CribbagePlayingCard.tsx.
- * Wave 2C consumes useCardRowLayout to resolve a fluid cardWidth from
- * the pane budget, then nearest-snaps to this ladder so card
- * readability (font / suit sizing) stays on the discrete typographic
- * scale the component already supports — no fluid card mode added.
+ * Cribbage active-hand card sizing — phase-capacity contract.
+ *
+ * Card width is resolved fluidly from the pane usable rect against the
+ * MAX hand capacity for the phase (6 pre-discard, 4 post-discard), not
+ * the current rendered count. The result is applied via the rect-driven
+ * `widthPx` override on `CribbagePlayingCard`, which scales the
+ * canonical face primitive to the true rect. There is no discrete
+ * snap ladder — that produced a hard 48 px ceiling that under-sized
+ * the hand on every modern phone.
  */
-const CRIBBAGE_CARD_SIZE_LADDER: ReadonlyArray<{ size: 'xs' | 'sm' | 'md' | 'lg'; width: number }> = [
-  { size: 'xs', width: 24 },
-  { size: 'sm', width: 32 },
-  { size: 'md', width: 40 },
-  { size: 'lg', width: 48 },
-];
-
-function snapToCardSize(resolvedWidth: number): 'xs' | 'sm' | 'md' | 'lg' {
-  let best = CRIBBAGE_CARD_SIZE_LADDER[0];
-  let bestDelta = Math.abs(resolvedWidth - best.width);
-  for (let i = 1; i < CRIBBAGE_CARD_SIZE_LADDER.length; i++) {
-    const entry = CRIBBAGE_CARD_SIZE_LADDER[i];
-    const delta = Math.abs(resolvedWidth - entry.width);
-    if (delta < bestDelta) {
-      best = entry;
-      bestDelta = delta;
-    }
-  }
-  return best.size;
-}
 
 interface Player {
   id: string;
@@ -336,26 +319,26 @@ export const CribbageMobileCardsTab = ({
     return () => ro.disconnect();
   }, []);
 
+  // Phase-capacity sizing contract:
+  //   - Pre-discard: 6 cards in hand (max the phase will ever hold).
+  //   - Post-discard (pegging / counting / etc.): 4 — the full
+  //     post-discard capacity, NOT the current rendered count. Sizing
+  //     against current count would re-expand cards as they are played
+  //     (4 → 3 → 2 → 1), violating the locked-size contract.
+  // Card width is resolved ONCE against this capacity and applied via
+  // the rect-driven `widthPx` override (no discrete-ladder ceiling).
+  const phaseCapacity = isPreDiscard ? 6 : 4;
   const handLayout = useCardRowLayout({
     availableWidth: paneWidthPx ?? 0,
-    count: cardCount > 0 ? cardCount : 1,
-    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
+    count: phaseCapacity,
+    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect
     minCardWidth: 24,
-    maxCardWidth: 48,
+    maxCardWidth: 120, // raised — pane usable rect is the true cap
     preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
-  const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout
-    ? snapToCardSize(handLayout.cardWidth)
-    : 'md';
-  // Snap-aware overlap: scale the resolver's overlap fraction onto the
-  // snapped card width so adjacent cards remain visually consistent
-  // with the discrete render width (the resolver works in fluid px).
-  const snappedCardWidthPx =
-    CRIBBAGE_CARD_SIZE_LADDER.find(e => e.size === resolvedCardSize)?.width ?? 40;
-  const overlapPx = handLayout
-    ? Math.round((handLayout.overlapPx / Math.max(handLayout.cardWidth, 1)) * snappedCardWidthPx)
-    : 0;
+  const resolvedCardWidthPx = handLayout ? handLayout.cardWidth : 40;
+  const overlapPx = handLayout ? handLayout.overlapPx : 0;
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
@@ -456,7 +439,7 @@ export const CribbageMobileCardsTab = ({
                   marginLeft: index === 0 ? 0 : -overlapPx,
                 }}
               >
-                <CribbagePlayingCard card={card} size={resolvedCardSize} tier="large" />
+                <CribbagePlayingCard card={card} widthPx={resolvedCardWidthPx} tier="large" />
               </button>
             );
           })}
