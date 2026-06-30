@@ -124,7 +124,7 @@ export const GinRummySelfDrawAnimation = ({
       observer?.disconnect();
       clearTimeout(settleTimer);
     };
-  }, [triggerId, drawSource, onSettled]);
+  }, [triggerId, drawSource]);
 
   if (!visible || !snapshot) return null;
 
