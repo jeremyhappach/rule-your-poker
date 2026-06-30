@@ -169,6 +169,47 @@ export const GinRummyMobileCardsTab = ({
     });
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
 
+  // (6/7) RENDERED_HAND + DISPLAY_DIFF — emit whenever rendered self-hand changes.
+  const prevRenderedRef = useRef<string[]>([]);
+  useEffect(() => {
+    const rawAuthIds = cardIds(rawMyStateAuthoritative?.hand ?? []);
+    const displayIds = cardIds(rawMyState?.hand ?? []);
+    const renderedIds = cardIds(myState?.hand ?? []);
+    const drawnCardId = withheldDrawnCard ? cardId(withheldDrawnCard) : null;
+    const drawTraceId = getCurrentGinSelfDrawTraceId();
+    recordGinSelfDrawEvent('SELF_DRAW_RENDERED_HAND', {
+      drawnCardId,
+      rawAuthHandIds: rawAuthIds,
+      displayFilteredHandIds: displayIds,
+      renderedHandIds: renderedIds,
+      authoritativePresent: drawnCardId ? rawAuthIds.includes(drawnCardId) : null,
+      displayPresent: drawnCardId ? displayIds.includes(drawnCardId) : null,
+      renderedPresent: drawnCardId ? renderedIds.includes(drawnCardId) : null,
+      renderedIndex: drawnCardId ? renderedIds.indexOf(drawnCardId) : -1,
+      dealPhase: deal?.phase ?? null,
+      settledCount: deal?.getSettledCountForPlayer(currentPlayerId) ?? null,
+      withheldActive: !!withheldDrawnCard,
+      handContextId: deal?.handContextId ?? null,
+    }, drawTraceId);
+    const prev = prevRenderedRef.current;
+    if (prev.length !== renderedIds.length || prev.some((v, i) => v !== renderedIds[i])) {
+      const { added, removed } = diffIds(prev, renderedIds);
+      const reasonParts: string[] = [];
+      if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
+      else if (deal?.phase === 'OPENING_DEAL') reasonParts.push('deal:OPENING_DEAL settled-clip');
+      else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
+      if (withheldDrawnCard) reasonParts.push('withheldDrawnCard active');
+      recordGinSelfDrawEvent('SELF_DRAW_DISPLAY_DIFF', {
+        previousRenderedIds: prev,
+        nextRenderedIds: renderedIds,
+        added,
+        removed,
+        reason: reasonParts.join(' | ') || 'auth-change',
+      }, drawTraceId);
+      prevRenderedRef.current = renderedIds;
+    }
+  });
+
   // Track newly drawn card
   useEffect(() => {
     if (prevTurnPhaseRef.current === 'draw' && ginState.turnPhase === 'discard' && isMyTurn) {
