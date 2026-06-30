@@ -72,6 +72,7 @@ import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
 import { getActiveHandLayoutSpec } from "@/lib/activeHand/activeHandLayoutSettings";
 import { BufferedRatioInput } from "./BufferedRatioInput";
+import { broadcastGeometryOverrideApplied } from "@/lib/geometryLab/GeometryOverridesLoader";
 import {
   INDEPENDENT_OVERLAP_DOMAINS,
   type CardOverlapDomain,
@@ -342,6 +343,7 @@ export function GeometryLab({ userId }: { userId: string }) {
       // without waiting for the realtime echo. The async refresh that
       // follows is idempotent.
       setOverrideOptimistic(id, override);
+      void broadcastGeometryOverrideApplied(override);
       logGeometryLab("draft_commit_succeeded", { artifactId: id });
       return { ok: true };
     });

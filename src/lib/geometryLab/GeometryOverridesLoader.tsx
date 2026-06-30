@@ -14,11 +14,38 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   setGeometryOverrides,
+  setOverrideOptimistic,
   type GeometryOverride,
   type GeometryOverridesMap,
   type SizeMode,
 } from "./store";
 import type { AnchorOrigin } from "@/lib/wave4LayoutResolver/types";
+
+const GEOMETRY_OVERRIDE_BROADCAST_CHANNEL = "geometry-overrides-live";
+const GEOMETRY_OVERRIDE_APPLIED_EVENT = "geometry_override_applied";
+const GEOMETRY_OVERRIDE_LOCAL_CHANNEL = "geometry-overrides-local-apply";
+
+function dispatchOverrideChanged() {
+  try {
+    window.dispatchEvent(new Event("geometry_override_changed"));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("geometrylab:overrides_event_dispatch_failed", {
+      message: (err as Error)?.message ?? String(err),
+    });
+  }
+}
+
+function applyOverrideLive(raw: Record<string, unknown>, source: string) {
+  const override = rowToOverride(raw);
+  setOverrideOptimistic(override.artifact_id, override);
+  // eslint-disable-next-line no-console
+  console.info("geometrylab:overrides_live_applied", {
+    artifactId: override.artifact_id,
+    source,
+  });
+  dispatchOverrideChanged();
+}
 
 function rowToOverride(r: Record<string, unknown>): GeometryOverride {
   return {
@@ -55,34 +82,139 @@ async function refresh() {
   setGeometryOverrides(next);
   // eslint-disable-next-line no-console
   console.info("geometrylab:overrides_hot_reloaded", { count: next.size });
+  dispatchOverrideChanged();
+}
+
+export async function broadcastGeometryOverrideApplied(
+  override: GeometryOverride,
+): Promise<void> {
   try {
-    window.dispatchEvent(new Event("geometry_override_changed"));
+    const localChannel = new BroadcastChannel(GEOMETRY_OVERRIDE_LOCAL_CHANNEL);
+    localChannel.postMessage({ type: GEOMETRY_OVERRIDE_APPLIED_EVENT, override });
+    localChannel.close();
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.warn("geometrylab:overrides_event_dispatch_failed", {
+    console.warn("geometrylab:overrides_local_broadcast_failed", {
+      artifactId: override.artifact_id,
       message: (err as Error)?.message ?? String(err),
     });
   }
+
+  const channel = supabase.channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
+    config: { broadcast: { self: false } },
+  });
+
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    const timeout = window.setTimeout(finish, 1500);
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        try {
+          await channel.send({
+            type: "broadcast",
+            event: GEOMETRY_OVERRIDE_APPLIED_EVENT,
+            payload: { override },
+          });
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("geometrylab:overrides_broadcast_failed", {
+            artifactId: override.artifact_id,
+            message: (err as Error)?.message ?? String(err),
+          });
+        } finally {
+          window.clearTimeout(timeout);
+          finish();
+        }
+      } else if (
+        status === "CHANNEL_ERROR" ||
+        status === "TIMED_OUT" ||
+        status === "CLOSED"
+      ) {
+        window.clearTimeout(timeout);
+        finish();
+      }
+    });
+  });
+
+  supabase.removeChannel(channel);
 }
 
 export function GeometryOverridesLoader() {
   useEffect(() => {
     void refresh();
-    const channel = supabase
+    const postgresChannel = supabase
       .channel("geometry_overrides")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "geometry_overrides" },
-        () => {
+        (payload) => {
+          const raw = (payload.new ?? payload.old) as
+            | Record<string, unknown>
+            | undefined;
+          if (raw?.artifact_id && payload.eventType !== "DELETE") {
+            applyOverrideLive(raw, "postgres_changes");
+            return;
+          }
           void refresh();
         },
       )
       .subscribe((status) => {
         // eslint-disable-next-line no-console
-        console.info("geometrylab:subscription_status", { status });
+        console.info("geometrylab:subscription_status", {
+          channel: "postgres",
+          status,
+        });
       });
+
+    const broadcastChannel = supabase
+      .channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
+        config: { broadcast: { self: false } },
+      })
+      .on(
+        "broadcast",
+        { event: GEOMETRY_OVERRIDE_APPLIED_EVENT },
+        (payload) => {
+          const raw = (payload.payload as { override?: Record<string, unknown> } | undefined)
+            ?.override;
+          if (!raw) return;
+          applyOverrideLive(raw, "supabase_broadcast");
+        },
+      )
+      .subscribe((status) => {
+        // eslint-disable-next-line no-console
+        console.info("geometrylab:subscription_status", {
+          channel: "broadcast",
+          status,
+        });
+      });
+    let localChannel: BroadcastChannel | null = null;
+    try {
+      localChannel = new BroadcastChannel(GEOMETRY_OVERRIDE_LOCAL_CHANNEL);
+      localChannel.onmessage = (event) => {
+        const data = event.data as
+          | { type?: string; override?: Record<string, unknown> }
+          | undefined;
+        if (data?.type !== GEOMETRY_OVERRIDE_APPLIED_EVENT || !data.override) {
+          return;
+        }
+        applyOverrideLive(data.override, "local_broadcast_channel");
+      };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("geometrylab:overrides_local_broadcast_bind_failed", {
+        message: (err as Error)?.message ?? String(err),
+      });
+    }
+
     return () => {
-      supabase.removeChannel(channel);
+      localChannel?.close();
+      supabase.removeChannel(postgresChannel);
+      supabase.removeChannel(broadcastChannel);
     };
   }, []);
   return null;
