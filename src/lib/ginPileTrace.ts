@@ -80,6 +80,7 @@ const t0 = typeof performance !== 'undefined' && performance.now ? performance.n
 let seq = 0;
 let buffer: GinPileTraceEvent[] = [];
 let snapshot: GinPileTraceEvent[] = [];
+let latestContext: GinPileTraceContextSnapshot = { ...DEFAULT_CONTEXT };
 
 const DEFAULT_CONTEXT: GinPileTraceContextSnapshot = {
   handContextId: null,
@@ -141,6 +142,18 @@ export function recordGinPileTrace(eventName: string, input: GinPileTraceInput =
   });
   while (buffer.length > MAX_EVENTS) buffer.shift();
   notify();
+}
+
+export function setLatestGinPileTraceContext(context: GinPileTraceContextSnapshot): void {
+  latestContext = { ...context };
+}
+
+export function getLatestGinPileTraceContext(): GinPileTraceContextSnapshot {
+  return latestContext;
+}
+
+export function withLatestGinPileTraceContext(input: GinPileTraceInput = {}): GinPileTraceInput {
+  return { ...latestContext, ...input };
 }
 
 export function clearGinPileTrace(): void {
