@@ -336,26 +336,26 @@ export const CribbageMobileCardsTab = ({
     return () => ro.disconnect();
   }, []);
 
+  // Phase-capacity sizing contract:
+  //   - Pre-discard: 6 cards in hand (max the phase will ever hold).
+  //   - Post-discard (pegging / counting / etc.): 4 — the full
+  //     post-discard capacity, NOT the current rendered count. Sizing
+  //     against current count would re-expand cards as they are played
+  //     (4 → 3 → 2 → 1), violating the locked-size contract.
+  // Card width is resolved ONCE against this capacity and applied via
+  // the rect-driven `widthPx` override (no discrete-ladder ceiling).
+  const phaseCapacity = isPreDiscard ? 6 : 4;
   const handLayout = useCardRowLayout({
     availableWidth: paneWidthPx ?? 0,
-    count: cardCount > 0 ? cardCount : 1,
-    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
+    count: phaseCapacity,
+    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect
     minCardWidth: 24,
-    maxCardWidth: 48,
+    maxCardWidth: 120, // raised — pane usable rect is the true cap
     preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
-  const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout
-    ? snapToCardSize(handLayout.cardWidth)
-    : 'md';
-  // Snap-aware overlap: scale the resolver's overlap fraction onto the
-  // snapped card width so adjacent cards remain visually consistent
-  // with the discrete render width (the resolver works in fluid px).
-  const snappedCardWidthPx =
-    CRIBBAGE_CARD_SIZE_LADDER.find(e => e.size === resolvedCardSize)?.width ?? 40;
-  const overlapPx = handLayout
-    ? Math.round((handLayout.overlapPx / Math.max(handLayout.cardWidth, 1)) * snappedCardWidthPx)
-    : 0;
+  const resolvedCardWidthPx = handLayout ? handLayout.cardWidth : 40;
+  const overlapPx = handLayout ? handLayout.overlapPx : 0;
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
