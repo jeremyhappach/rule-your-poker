@@ -6,7 +6,7 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
-import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+import { useCardRowLayout, type CardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // (Removed cardArtifactOverlap import — Cribbage active-player hand is
 // HUDStack-owned; adaptive resolver handles fan sizing.)
@@ -16,11 +16,9 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
  *
  * Card width is resolved fluidly from the pane usable rect against the
  * MAX hand capacity for the phase (6 pre-discard, 4 post-discard), not
- * the current rendered count. The result is applied via the rect-driven
- * `widthPx` override on `CribbagePlayingCard`, which scales the
- * canonical face primitive to the true rect. There is no discrete
- * snap ladder — that produced a hard 48 px ceiling that under-sized
- * the hand on every modern phone.
+ * the current rendered count. The solver is bounded by BOTH the row
+ * fan width and the card height inside the active-pane usable rect;
+ * there is no arbitrary fixed pixel cap and no unbounded width.
  */
 
 interface Player {
@@ -286,6 +284,10 @@ export const CribbageMobileCardsTab = ({
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
   const cardCount = renderedHand.length;
 
+  const ACTIVE_HAND_HORIZONTAL_INSET_PX = 16; // mirrors root px-2 on both sides
+  const ACTIVE_HAND_ACTION_ROW_RESERVE_PX = 28; // mirrors min-h-[28] action row
+  const ACTIVE_HAND_FACE_SAFE_INSET_PX = 4;
+
   // ────────────────────────────────────────────────────────────────
   // Wave 2C — geometry-resolver consumer for the viewer hand row.
   //
@@ -295,14 +297,13 @@ export const CribbageMobileCardsTab = ({
   // outer width); the cards row cannot feed back into pane width, so
   // there is no measurement loop. Mirrors the 3-5-7 pattern.
   //
-  // After the geometry resolver returns a cardWidth, we nearest-snap
-  // to CribbagePlayingCard's discrete xs/sm/md/lg ladder. Overlap is
-  // applied as inline `marginLeft` on cards after the first, replacing
-  // both the count-keyed `scale-[…]` cascade and the legacy
+  // The resolved width is applied directly to CribbagePlayingCard.
+  // Overlap is applied as inline `marginLeft` on cards after the first,
+  // replacing both the count-keyed `scale-[…]` cascade and the legacy
   // `-space-x-3 / gap-1` overlap classes.
   // ────────────────────────────────────────────────────────────────
   const handRowRef = useRef<HTMLDivElement | null>(null);
-  const [paneWidthPx, setPaneWidthPx] = useState<number | null>(null);
+  const [paneRectPx, setPaneRectPx] = useState<{ width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const el = handRowRef.current;
     if (!el) return;
@@ -310,7 +311,14 @@ export const CribbageMobileCardsTab = ({
     if (!pane) return;
     const measure = () => {
       const w = pane.clientWidth;
-      setPaneWidthPx(prev => (prev !== null && Math.abs(prev - w) < 0.5 ? prev : w));
+      const h = pane.clientHeight;
+      setPaneRectPx(prev => (
+        prev !== null &&
+        Math.abs(prev.width - w) < 0.5 &&
+        Math.abs(prev.height - h) < 0.5
+          ? prev
+          : { width: w, height: h }
+      ));
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
@@ -325,26 +333,39 @@ export const CribbageMobileCardsTab = ({
   //     post-discard capacity, NOT the current rendered count. Sizing
   //     against current count would re-expand cards as they are played
   //     (4 → 3 → 2 → 1), violating the locked-size contract.
-  // Card width is resolved ONCE against this capacity and applied via
-  // the rect-driven `widthPx` override (no discrete-ladder ceiling).
+  // Card width is resolved against this capacity and locked once per
+  // phase boundary. The active-pane rect is reduced only by existing
+  // containment reservations: horizontal padding, action-row height,
+  // and a tiny face-safe inset so no rank/suit corner is clipped.
   const phaseCapacity = isPreDiscard ? 6 : 4;
+  const paneUsableWidthPx = paneRectPx
+    ? Math.max(0, paneRectPx.width - ACTIVE_HAND_HORIZONTAL_INSET_PX - ACTIVE_HAND_FACE_SAFE_INSET_PX * 2)
+    : 0;
+  const paneUsableHeightPx = paneRectPx
+    ? Math.max(0, paneRectPx.height - ACTIVE_HAND_ACTION_ROW_RESERVE_PX - ACTIVE_HAND_FACE_SAFE_INSET_PX * 2)
+    : 0;
   const handLayout = useCardRowLayout({
-    availableWidth: paneWidthPx ?? 0,
+    availableWidth: paneUsableWidthPx,
+    availableHeight: paneUsableHeightPx,
     count: phaseCapacity,
     aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect
     minCardWidth: 24,
-    // No artificial pixel ceiling. The pane usable rect (availableWidth)
-    // combined with phase capacity, fan policy, and aspect IS the cap —
-    // the resolver clamps height-bound via availableHeight when supplied
-    // and width-bound via availableWidth intrinsically. Passing the
-    // pane width here makes maxCardWidth a pane-relative no-op ceiling
-    // rather than a fixed design authority.
-    maxCardWidth: paneWidthPx ?? 9999,
+    // No arbitrary fixed cap: the pane usable width is only an absolute
+    // single-card ceiling; total fan width and card height are enforced
+    // by availableWidth + availableHeight above.
+    maxCardWidth: paneUsableWidthPx || 24,
     preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
     maxOverlapRatio: 0.9,
   });
-  const resolvedCardWidthPx = handLayout ? handLayout.cardWidth : 40;
-  const overlapPx = handLayout ? handLayout.overlapPx : 0;
+  const phaseLayoutKey = `${roundId ?? expectedRoundId ?? 'unknown-round'}:${isPreDiscard ? 'pre-discard' : 'post-discard'}`;
+  const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: CardRowLayout } | null>(null);
+  useEffect(() => {
+    if (!handLayout) return;
+    setLockedHandLayout(prev => (prev?.key === phaseLayoutKey ? prev : { key: phaseLayoutKey, layout: handLayout }));
+  }, [handLayout, phaseLayoutKey]);
+  const activeHandLayout = lockedHandLayout?.key === phaseLayoutKey ? lockedHandLayout.layout : handLayout;
+  const resolvedCardWidthPx = activeHandLayout ? activeHandLayout.cardWidth : 40;
+  const overlapPx = activeHandLayout ? activeHandLayout.overlapPx : 0;
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
@@ -404,7 +425,7 @@ export const CribbageMobileCardsTab = ({
     <div className="h-full px-2 flex flex-col">
       {/* Cards display — Wave 2C geometry consumer.
           Width budget = pane ([data-cribbage-active-pane-content]).
-          Card size = nearest-snapped from useCardRowLayout cardWidth.
+          Card size = pane-contained useCardRowLayout cardWidth.
           Overlap = inline marginLeft on cards after the first. */}
       <div className="flex items-center justify-center min-h-[92px] py-0">
         <div
