@@ -58,14 +58,28 @@ import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import { GeometryOverridesLoader } from '@/lib/geometryLab/GeometryOverridesLoader';
 import { GeometryLabDefaultsLoader } from '@/lib/geometryLab/GeometryLabDefaultsLoader';
 // Force domain registration at app boot so the defaults loader's initial
-// fetch + realtime routing include the 3-5-7 showdown rules domain even
-// before the Geometry Lab modal mounts.
+// fetch + realtime routing include every GeoLab-backed domain even before
+// the consumer component (game table, admin modal, etc.) first mounts.
+// Without these eager imports, a domain registered lazily would still be
+// covered by the loader's late-registration lazy fetch — but boot-time
+// registration is preferred because it consolidates everything into the
+// single initial bulk query.
 import '@/lib/threeFiveSeven/showdownConfig';
 import '@/lib/holm/showdownConfig';
 import '@/lib/cardFrontDesign/config';
 import '@/lib/geometryLab/cardArtifactOverlap';
 import '@/lib/geometryLab/overlayFlags';
+import '@/lib/geometryLab/noTimersStore';
+import '@/lib/geometryLab/dealTimingStore';
+import '@/lib/geometryLab/tableDemoStore';
+import '@/lib/canonicalShell/shellNameplateConfig';
+import '@/lib/canonicalShell/shellChipBalanceConfig';
+import '@/lib/canonicalShell/holmBuckIndicatorConfig';
+import '@/lib/canonicalShell/canonicalShellLayoutConfig';
+import '@/lib/cribbage/peggingRowSettings';
+import '@/lib/activeHand/activeHandLayoutSettings';
 import { SeatClusterInvariantMonitor } from '@/lib/canonicalShell/seatClusterInvariant';
+
 
 
 
