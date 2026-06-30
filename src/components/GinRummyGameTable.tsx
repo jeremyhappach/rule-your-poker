@@ -935,10 +935,21 @@ export const GinRummyGameTable = ({
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   // Self draw animation state — mirrors opponent transport, destination
   // resolves to the active-player box (`[data-gin-active-pane-content]`).
-  const [selfDrawTriggerId, setSelfDrawTriggerId] = useState<string | null>(null);
-  const [selfDrawSource, setSelfDrawSource] = useState<'stock' | 'discard'>('stock');
-  const [selfDrawCard, setSelfDrawCard] = useState<GinRummyCard | null>(null);
-  const [selfDrawKey, setSelfDrawKey] = useState(0);
+  //
+  // Keyed by intentId so each in-flight transport tracks its own card
+  // identity. The withheld-card display gate releases that exact card
+  // when its own SELF_DRAW_TRANSPORT_SETTLED fires — independent of any
+  // subsequent draw. This prevents the "one card behind" leak where a
+  // stale withholding from the prior draw kept the prior card hidden.
+  interface SelfDrawIntent {
+    intentId: string;
+    source: 'stock' | 'discard';
+    card: GinRummyCard | null;
+    drawnCardId: string | null;
+    handContextId: string | null;
+    actionKey: string;
+  }
+  const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
@@ -1305,10 +1316,22 @@ export const GinRummyGameTable = ({
       if (action.type === 'draw_stock' || action.type === 'draw_discard') {
         const source = action.type === 'draw_stock' ? 'stock' : 'discard';
         const intentId = `self-draw-${actionKey}`;
-        setSelfDrawSource(source);
-        setSelfDrawCard(action.card ?? null);
-        setSelfDrawTriggerId(intentId);
-        setSelfDrawKey(k => k + 1);
+        const drawnCard = action.card ?? null;
+        const drawnIdForIntent = cardId(drawnCard);
+        setSelfDrawIntents(prev => {
+          if (prev[intentId]) return prev;
+          return {
+            ...prev,
+            [intentId]: {
+              intentId,
+              source,
+              card: drawnCard,
+              drawnCardId: drawnIdForIntent,
+              handContextId: handContextId ?? null,
+              actionKey,
+            },
+          };
+        });
         // (4) TRANSPORT_INTENT — snapshot resolved anchors
         const srcSel = source === 'stock' ? '[data-card-anchor="stock"]' : '[data-card-anchor="discard"]';
         const srcEl = document.querySelector(srcSel) as HTMLElement | null;
@@ -1316,7 +1339,7 @@ export const GinRummyGameTable = ({
         const authHand = viewState.playerStates?.[currentPlayerId]?.hand ?? [];
         recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_INTENT', {
           source,
-          drawnCardId: cardId(action.card ?? null),
+          drawnCardId: drawnIdForIntent,
           srcSelector: srcSel,
           srcRectPresent: !!srcEl,
           destSelector: '[data-gin-active-pane-content]',
@@ -1327,12 +1350,11 @@ export const GinRummyGameTable = ({
           authHandIdsAtIntent: cardIds(authHand),
         });
         // (3) AUTHORITATIVE_STATE — record the lastAction-bearing state we now see
-        const drawnId = cardId(action.card ?? null);
         recordGinSelfDrawEvent('SELF_DRAW_AUTHORITATIVE_STATE', {
           authHandIds: cardIds(authHand),
-          drawnCardId: drawnId,
-          drawnPresent: drawnId ? cardIds(authHand).includes(drawnId) : null,
-          drawnIndex: drawnId ? cardIds(authHand).indexOf(drawnId) : -1,
+          drawnCardId: drawnIdForIntent,
+          drawnPresent: drawnIdForIntent ? cardIds(authHand).includes(drawnIdForIntent) : null,
+          drawnIndex: drawnIdForIntent ? cardIds(authHand).indexOf(drawnIdForIntent) : -1,
           actionCount: viewState.actionCount ?? null,
           phase: viewState.phase,
           turnPhase: viewState.turnPhase,
@@ -3490,28 +3512,38 @@ export const GinRummyGameTable = ({
               targetSlot={opponentDrawTargetSlot}
             />
 
-            {/* Self Draw Animation — pile → active-player box */}
-            <GinRummySelfDrawAnimation
-              key={`self-${selfDrawKey}`}
-              triggerId={selfDrawTriggerId}
-              drawSource={selfDrawSource}
-              card={selfDrawCard}
-              cardBackColors={cardBackColors}
-              onSettled={() => {
-                const drawnId = cardId(selfDrawCard);
-                const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
-                const ids = cardIds(authHand);
-                recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_SETTLED', {
-                  drawnCardId: drawnId,
-                  intentId: selfDrawTriggerId,
-                  tSettleMs: performance.now(),
-                  authContainsCard: drawnId ? ids.includes(drawnId) : null,
-                  authHandIdsAtSettle: ids,
-                });
-                setSelfDrawTriggerId(null);
-                clearCurrentGinSelfDrawTraceId();
-              }}
-            />
+            {/* Self Draw Animations — one per in-flight intent.
+                Each releases its OWN withheld card on settle. */}
+            {Object.values(selfDrawIntents).map(intent => (
+              <GinRummySelfDrawAnimation
+                key={intent.intentId}
+                triggerId={intent.intentId}
+                drawSource={intent.source}
+                card={intent.card}
+                cardBackColors={cardBackColors}
+                onSettled={() => {
+                  const drawnId = intent.drawnCardId;
+                  const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
+                  const ids = cardIds(authHand);
+                  recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_SETTLED', {
+                    drawnCardId: drawnId,
+                    intentId: intent.intentId,
+                    actionKey: intent.actionKey,
+                    handContextId: intent.handContextId,
+                    tSettleMs: performance.now(),
+                    authContainsCard: drawnId ? ids.includes(drawnId) : null,
+                    authHandIdsAtSettle: ids,
+                  });
+                  setSelfDrawIntents(prev => {
+                    if (!prev[intent.intentId]) return prev;
+                    const next = { ...prev };
+                    delete next[intent.intentId];
+                    return next;
+                  });
+                  clearCurrentGinSelfDrawTraceId();
+                }}
+              />
+            ))}
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
@@ -3700,11 +3732,10 @@ export const GinRummyGameTable = ({
                 onLayOffCardSelected={setLayOffSelectedCardIndex}
                 currentPlayer={currentPlayer}
                 gameId={gameId}
-                withheldDrawnCard={
-                  selfDrawTriggerId && selfDrawCard
-                    ? { rank: selfDrawCard.rank, suit: selfDrawCard.suit }
-                    : null
-                }
+                withheldDrawnCards={Object.values(selfDrawIntents)
+                  .map(i => i.card)
+                  .filter((c): c is GinRummyCard => !!c)
+                  .map(c => ({ rank: c.rank, suit: c.suit }))}
               />
             )}
 

@@ -13,7 +13,7 @@
 // rebind pattern used by GinRummyDealOrchestrator: when the trigger fires
 // we snapshot pile rect + [data-gin-active-pane-content] rect once.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
@@ -63,6 +63,13 @@ export const GinRummySelfDrawAnimation = ({
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
 
+  // Stabilize onSettled across parent re-renders so the 700ms transport
+  // timer isn't reset on every render of GinRummyGameTable. Without this,
+  // a busy parent (opponent turn ticks, presentation updates) keeps
+  // deferring settle indefinitely and the withheld card never releases.
+  const onSettledRef = useRef(onSettled);
+  useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
+
   useEffect(() => {
     if (!triggerId) return;
 
@@ -109,7 +116,7 @@ export const GinRummySelfDrawAnimation = ({
     const settleTimer = setTimeout(() => {
       setVisible(false);
       setSnapshot(null);
-      onSettled?.();
+      onSettledRef.current?.();
     }, 700);
 
     return () => {
@@ -117,7 +124,7 @@ export const GinRummySelfDrawAnimation = ({
       observer?.disconnect();
       clearTimeout(settleTimer);
     };
-  }, [triggerId, drawSource, onSettled]);
+  }, [triggerId, drawSource]);
 
   if (!visible || !snapshot) return null;
 

@@ -45,9 +45,10 @@ interface GinRummyMobileCardsTabProps {
   onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
-  /** When set, hide this card from the rendered hand until the self-draw
-   *  transport animation settles (mirrors opponent ownership model). */
-  withheldDrawnCard?: { rank: string; suit: string } | null;
+  /** Cards to hide from the rendered hand while their self-draw
+   *  transport animations are in flight. Each entry is keyed by its
+   *  own intent and released independently on its own settle. */
+  withheldDrawnCards?: Array<{ rank: string; suit: string }>;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
@@ -88,7 +89,7 @@ export const GinRummyMobileCardsTab = ({
   onLayOffCardSelected,
   currentPlayer,
   gameId,
-  withheldDrawnCard,
+  withheldDrawnCards,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   
@@ -96,21 +97,22 @@ export const GinRummyMobileCardsTab = ({
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
-  // Withhold the freshly drawn card from the rendered hand while the
-  // self-draw transport animation is in flight. The card has been
+  // Withhold each freshly drawn card from the rendered hand while its
+  // own self-draw transport animation is in flight. The cards are
   // committed to ginState (so subsequent actions like discard remain
-  // legal) but we visually withhold its face until the flight settles,
-  // mirroring the opponent ownership-claim model.
+  // legal) but we visually withhold each face until its own flight
+  // settles, mirroring the opponent ownership-claim model.
   const rawMyState = useMemo(() => {
-    if (!rawMyStateAuthoritative || !withheldDrawnCard) return rawMyStateAuthoritative;
-    const idx = rawMyStateAuthoritative.hand.findIndex(
-      c => c.rank === withheldDrawnCard.rank && c.suit === withheldDrawnCard.suit,
-    );
-    if (idx === -1) return rawMyStateAuthoritative;
+    if (!rawMyStateAuthoritative) return rawMyStateAuthoritative;
+    if (!withheldDrawnCards || withheldDrawnCards.length === 0) return rawMyStateAuthoritative;
     const clipped = [...rawMyStateAuthoritative.hand];
-    clipped.splice(idx, 1);
+    for (const w of withheldDrawnCards) {
+      const idx = clipped.findIndex(c => c.rank === w.rank && c.suit === w.suit);
+      if (idx !== -1) clipped.splice(idx, 1);
+    }
+    if (clipped.length === rawMyStateAuthoritative.hand.length) return rawMyStateAuthoritative;
     return { ...rawMyStateAuthoritative, hand: clipped };
-  }, [rawMyStateAuthoritative, withheldDrawnCard]);
+  }, [rawMyStateAuthoritative, withheldDrawnCards]);
   // Opening-deal prefix gate applies ONLY to the opening dealt-card
   // sequence (cardsPerPlayer cards). Once authoritative hand membership
   // exceeds the opening manifest size, the additional card was acquired
@@ -175,10 +177,12 @@ export const GinRummyMobileCardsTab = ({
     const rawAuthIds = cardIds(rawMyStateAuthoritative?.hand ?? []);
     const displayIds = cardIds(rawMyState?.hand ?? []);
     const renderedIds = cardIds(myState?.hand ?? []);
-    const drawnCardId = withheldDrawnCard ? cardId(withheldDrawnCard) : null;
+    const withheldIds = (withheldDrawnCards ?? []).map(c => `${c.rank}${c.suit}`);
+    const drawnCardId = withheldIds[withheldIds.length - 1] ?? null;
     const drawTraceId = getCurrentGinSelfDrawTraceId();
     recordGinSelfDrawEvent('SELF_DRAW_RENDERED_HAND', {
       drawnCardId,
+      withheldDrawnCardIds: withheldIds,
       rawAuthHandIds: rawAuthIds,
       displayFilteredHandIds: displayIds,
       renderedHandIds: renderedIds,
@@ -188,7 +192,8 @@ export const GinRummyMobileCardsTab = ({
       renderedIndex: drawnCardId ? renderedIds.indexOf(drawnCardId) : -1,
       dealPhase: deal?.phase ?? null,
       settledCount: deal?.getSettledCountForPlayer(currentPlayerId) ?? null,
-      withheldActive: !!withheldDrawnCard,
+      withheldActive: withheldIds.length > 0,
+      withheldCount: withheldIds.length,
       handContextId: deal?.handContextId ?? null,
     }, drawTraceId);
     const prev = prevRenderedRef.current;
@@ -198,7 +203,7 @@ export const GinRummyMobileCardsTab = ({
       if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
       else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
       else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
-      if (withheldDrawnCard) reasonParts.push('withheldDrawnCard active');
+      if (withheldIds.length > 0) reasonParts.push(`withheldDrawnCards active (${withheldIds.length})`);
       recordGinSelfDrawEvent('SELF_DRAW_DISPLAY_DIFF', {
         previousRenderedIds: prev,
         nextRenderedIds: renderedIds,
