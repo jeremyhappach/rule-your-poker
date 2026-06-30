@@ -627,6 +627,7 @@ export function CanonicalSeatCluster({
         <CanonicalChipDisc
           size="cluster"
           amount={null}
+          chipText={chipValue}
           bgClass={chipBgClass}
           ringClass={chipRingClass}
           folded={dimChip}
@@ -634,9 +635,6 @@ export function CanonicalSeatCluster({
           onClick={onChipClick}
           positionAnchor={position}
         >
-          <span className={cn('font-bold leading-none', chipFgClass)}>
-            {chipValue}
-          </span>
           {chipDiscChildren}
           {chipOverlay && (
             <div
