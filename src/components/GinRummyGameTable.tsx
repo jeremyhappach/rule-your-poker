@@ -1154,12 +1154,6 @@ export const GinRummyGameTable = ({
             },
           };
         });
-        // (4) TRANSPORT_INTENT — snapshot resolved anchors
-        const srcSel = source === 'stock' ? '[data-card-anchor="stock"]' : '[data-card-anchor="discard"]';
-        const srcEl = document.querySelector(srcSel) as HTMLElement | null;
-        const destEl = document.querySelector('[data-gin-active-pane-content]') as HTMLElement | null;
-        const authHand = viewState.playerStates?.[currentPlayerId]?.hand ?? [];
-        // (3) AUTHORITATIVE_STATE — record the lastAction-bearing state we now see
       }
       return;
     }
