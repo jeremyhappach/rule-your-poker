@@ -138,20 +138,6 @@ export const GinRummyMobileCardsTab = ({
 
   useEffect(() => {
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
-
-  // (6/7) RENDERED_HAND + DISPLAY_DIFF — emit whenever rendered self-hand changes.
-  const prevRenderedRef = useRef<string[]>([]);
-  useEffect(() => {
-    const rawAuthIds = cardIds(rawMyStateAuthoritative?.hand ?? []);
-    const displayIds = cardIds(rawMyState?.hand ?? []);
-    const renderedIds = cardIds(myState?.hand ?? []);
-    const withheldIds = (withheldDrawnCards ?? []).map(c => `${c.rank}${c.suit}`);
-    const drawnCardId = withheldIds[withheldIds.length - 1] ?? null;
-    const drawTraceId = getCurrentGinSelfDrawTraceId();
-    const prev = prevRenderedRef.current;
-    if (prev.length !== renderedIds.length || prev.some((v, i) => v !== renderedIds[i])) {
-      const { added, removed } = diffIds(prev, renderedIds);
-      const reasonParts: string[] = [];
       if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
       else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
       else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
