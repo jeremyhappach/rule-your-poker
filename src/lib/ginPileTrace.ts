@@ -80,7 +80,6 @@ const t0 = typeof performance !== 'undefined' && performance.now ? performance.n
 let seq = 0;
 let buffer: GinPileTraceEvent[] = [];
 let snapshot: GinPileTraceEvent[] = [];
-let latestContext: GinPileTraceContextSnapshot = { ...DEFAULT_CONTEXT };
 
 const DEFAULT_CONTEXT: GinPileTraceContextSnapshot = {
   handContextId: null,
@@ -99,6 +98,8 @@ const DEFAULT_CONTEXT: GinPileTraceContextSnapshot = {
   discardRevealed: null,
   stockRevealed: null,
 };
+
+let latestContext: GinPileTraceContextSnapshot = { ...DEFAULT_CONTEXT };
 
 const DEFAULT_EVENT: Omit<GinPileTraceEvent, 'seq' | 'timestamp' | 'tMs'> = {
   ...DEFAULT_CONTEXT,
