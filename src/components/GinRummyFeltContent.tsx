@@ -432,7 +432,7 @@ export const GinRummyFeltContent = ({
         <GinAnchoredSlot
           artifactId="gin.stockDiscardGroup"
           zIndex={40}
-          innerStyle={{ gap: '1rem', pointerEvents: 'auto' }}
+          innerStyle={{ gap: '1rem', pointerEvents: 'none' }}
           onPointerDownCapture={makeCapture('gin-anchored-slot-root')}
           onPointerDown={makeBubble('gin-anchored-slot-root')}
           onClickCapture={makeCapture('gin-anchored-slot-root')}
@@ -444,7 +444,7 @@ export const GinRummyFeltContent = ({
             data-gin-pile="stock"
             data-gin-pile-layer="wrapper"
             className="flex flex-col items-center gap-0.5"
-            style={{ pointerEvents: 'auto' }}
+            style={{ pointerEvents: 'none' }}
             onPointerDownCapture={makeCapture('stock-pile-wrapper', 'stock')}
             onPointerDown={makeBubble('stock-pile-wrapper', 'stock')}
             onClickCapture={makeCapture('stock-pile-wrapper', 'stock')}
@@ -457,6 +457,7 @@ export const GinRummyFeltContent = ({
                 position: 'relative',
                 width: PILE_CARD_WIDTH_PX,
                 aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
+                pointerEvents: 'none',
               }}
             >
               <button
@@ -517,7 +518,7 @@ export const GinRummyFeltContent = ({
             data-gin-pile="discard"
             data-gin-pile-layer="wrapper"
             className="flex flex-col items-center gap-0.5"
-            style={{ pointerEvents: 'auto' }}
+            style={{ pointerEvents: 'none' }}
             onPointerDownCapture={makeCapture('discard-pile-wrapper', 'discard')}
             onPointerDown={makeBubble('discard-pile-wrapper', 'discard')}
             onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
@@ -530,6 +531,7 @@ export const GinRummyFeltContent = ({
                 position: 'relative',
                 width: PILE_CARD_WIDTH_PX,
                 aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
+                pointerEvents: 'none',
               }}
             >
               <button
