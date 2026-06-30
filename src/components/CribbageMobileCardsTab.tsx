@@ -456,7 +456,7 @@ export const CribbageMobileCardsTab = ({
                   marginLeft: index === 0 ? 0 : -overlapPx,
                 }}
               >
-                <CribbagePlayingCard card={card} size={resolvedCardSize} />
+                <CribbagePlayingCard card={card} size={resolvedCardSize} tier="large" />
               </button>
             );
           })}

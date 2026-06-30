@@ -320,7 +320,7 @@ export const GinRummyMobileCardsTab = ({
                       className={cn(isLaidOff && "rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]")}
                       style={{ zIndex: ci, marginLeft: ci === 0 ? 0 : `${m}px` }}
                     >
-              <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} />
+              <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} tier="large" />
                     </div>
                   );
                 })}
@@ -348,7 +348,7 @@ export const GinRummyMobileCardsTab = ({
                       )}
                       style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${m}px` }}
                     >
-                      <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} />
+                      <CribbagePlayingCard card={toDisplayCard(card)} size={isLayingOff ? "md" : "lg"} tier="large" />
                     </button>
                   );
                 })}
@@ -394,7 +394,7 @@ export const GinRummyMobileCardsTab = ({
                   )}
                   style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${ginLgMarginPx}px` }}
                 >
-                  <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                  <CribbagePlayingCard card={toDisplayCard(card)} size="lg" tier="large" />
                 </button>
               );
             })}
