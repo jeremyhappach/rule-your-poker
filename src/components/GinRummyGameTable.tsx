@@ -1035,16 +1035,6 @@ export const GinRummyGameTable = ({
     }
     const currentPhase = ginState.phase;
     const anyPlayerHasGin = ginState.playerStates && Object.values(ginState.playerStates).some(ps => ps.hasGin);
-    const overlaySignature = signatureForGinRunback(ginState);
-    const overlayStateSource: GinRunbackOverlayStateSource = !ginState
-      ? 'null/bootstrap state'
-      : overlaySignature === localOptimisticSignatureRef.current && overlaySignature !== lastAuthoritativeSignatureRef.current
-        ? 'local optimistic/pre-write state'
-        : overlaySignature === lastAuthoritativeSignatureRef.current
-          ? 'accepted authoritative snapshot'
-          : (stateHand > 0 && currentHandNumber > 0 && stateHand !== currentHandNumber)
-            ? 'stale presentation state'
-            : 'stale presentation state';
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
       traceGinAnnouncement('overlay:trigger', {
