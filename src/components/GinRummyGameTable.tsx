@@ -935,10 +935,21 @@ export const GinRummyGameTable = ({
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   // Self draw animation state — mirrors opponent transport, destination
   // resolves to the active-player box (`[data-gin-active-pane-content]`).
-  const [selfDrawTriggerId, setSelfDrawTriggerId] = useState<string | null>(null);
-  const [selfDrawSource, setSelfDrawSource] = useState<'stock' | 'discard'>('stock');
-  const [selfDrawCard, setSelfDrawCard] = useState<GinRummyCard | null>(null);
-  const [selfDrawKey, setSelfDrawKey] = useState(0);
+  //
+  // Keyed by intentId so each in-flight transport tracks its own card
+  // identity. The withheld-card display gate releases that exact card
+  // when its own SELF_DRAW_TRANSPORT_SETTLED fires — independent of any
+  // subsequent draw. This prevents the "one card behind" leak where a
+  // stale withholding from the prior draw kept the prior card hidden.
+  interface SelfDrawIntent {
+    intentId: string;
+    source: 'stock' | 'discard';
+    card: GinRummyCard | null;
+    drawnCardId: string | null;
+    handContextId: string | null;
+    actionKey: string;
+  }
+  const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
