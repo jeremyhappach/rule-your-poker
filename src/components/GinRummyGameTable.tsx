@@ -3397,6 +3397,7 @@ export const GinRummyGameTable = ({
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
             {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
+              <div style={{ pointerEvents: 'auto' }}>
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -3410,6 +3411,7 @@ export const GinRummyGameTable = ({
                 }}
                 isProcessing={isProcessing}
               />
+              </div>
             )}
 
             {/* Knock Overlay — shown to all clients */}
