@@ -47,6 +47,15 @@ interface GinRummyFeltContentProps {
   handContextId?: string | null;
 }
 
+// Single authoritative resolved rect for Gin pile artifacts.
+// Wrapper, button (inset-0), and decorative card child all derive
+// width / aspect from these constants. Geometry-Lab driven sizing
+// can later replace these values; no per-artifact size constants
+// are duplicated in CSS or JSX below.
+const PILE_CARD_WIDTH_PX = 48;
+const PILE_CARD_ASPECT = 2 / 3; // width / height — matches CribbagePlayingCard 'lg' (48x72)
+const PILE_CARD_HEIGHT_PX = PILE_CARD_WIDTH_PX / PILE_CARD_ASPECT;
+
 const SYMBOL_TO_WORD: Record<string, string> = {
   '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
 };
@@ -441,52 +450,61 @@ export const GinRummyFeltContent = ({
             onClickCapture={makeCapture('stock-pile-wrapper', 'stock')}
             onClick={makeBubble('stock-pile-wrapper', 'stock')}
           >
-            <button
-              ref={stockButtonRef}
-              type="button"
-              onPointerDownCapture={makeCapture('stock-button', 'stock')}
-              onPointerDown={makeBubble('stock-button', 'stock')}
-              onClickCapture={makeCapture('stock-button', 'stock')}
-              onClick={handleStockButtonClick}
-              aria-disabled={!stockClickable}
-              data-card-anchor="stock"
+            <div
               data-gin-pile="stock"
-              data-gin-pile-layer="button"
-              className={`relative w-12 h-[68px] rounded-md transition-all block ${
-                stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
-              }`}
+              data-gin-pile-layer="card-rect-wrapper"
               style={{
-                pointerEvents: 'auto',
-                zIndex: 30,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
                 position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
               }}
             >
-              {stockRevealed ? (
-                <div
-                  ref={stockVisibleChildRef}
-                  data-gin-pile="stock"
-                  data-gin-pile-layer="visible-cardback-child"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                >
-                  <CanonicalCardBack
-                    widthPx={48}
-                    heightPx={68}
-                    variant="raised"
-                    radiusPx={6}
-                    style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
-                  />
-                  <span
-                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
-                    style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+              <button
+                ref={stockButtonRef}
+                type="button"
+                onPointerDownCapture={makeCapture('stock-button', 'stock')}
+                onPointerDown={makeBubble('stock-button', 'stock')}
+                onClickCapture={makeCapture('stock-button', 'stock')}
+                onClick={handleStockButtonClick}
+                aria-disabled={!stockClickable}
+                data-card-anchor="stock"
+                data-gin-pile="stock"
+                data-gin-pile-layer="button"
+                className={`absolute inset-0 rounded-md transition-all block ${
+                  stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
+                }`}
+                style={{
+                  pointerEvents: 'auto',
+                  zIndex: 30,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+              >
+                {stockRevealed ? (
+                  <div
+                    ref={stockVisibleChildRef}
+                    data-gin-pile="stock"
+                    data-gin-pile-layer="visible-cardback-child"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
                   >
-                    {stockCount}
-                  </span>
-                </div>
-              ) : null}
-            </button>
+                    <CanonicalCardBack
+                      widthPx={PILE_CARD_WIDTH_PX}
+                      heightPx={PILE_CARD_HEIGHT_PX}
+                      variant="raised"
+                      radiusPx={6}
+                      style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
+                    />
+                    <span
+                      className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
+                      style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+                    >
+                      {stockCount}
+                    </span>
+                  </div>
+                ) : null}
+              </button>
+            </div>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
@@ -505,47 +523,56 @@ export const GinRummyFeltContent = ({
             onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
             onClick={makeBubble('discard-pile-wrapper', 'discard')}
           >
-            <button
-              ref={discardButtonRef}
-              type="button"
-              onPointerDownCapture={makeCapture('discard-button', 'discard')}
-              onPointerDown={makeBubble('discard-button', 'discard')}
-              onClickCapture={makeCapture('discard-button', 'discard')}
-              onClick={handleDiscardButtonClick}
-              aria-disabled={!discardClickable}
-              data-card-anchor="discard"
+            <div
               data-gin-pile="discard"
-              data-gin-pile-layer="button"
-              className={`relative w-12 h-[68px] rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+              data-gin-pile-layer="card-rect-wrapper"
               style={{
-                pointerEvents: 'auto',
-                zIndex: 30,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
                 position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
               }}
             >
-              {discardTopCard && discardRevealed ? (
-                <div
-                  ref={discardVisibleChildRef}
-                  data-gin-pile="discard"
-                  data-gin-pile-layer="visible-card-child"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
-                </div>
-              ) : (
-                <div
-                  data-gin-pile="discard"
-                  data-gin-pile-layer="empty-placeholder-child"
-                  className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                >
-                  <span className="text-white/20 text-[8px]">Empty</span>
-                </div>
-              )}
-            </button>
+              <button
+                ref={discardButtonRef}
+                type="button"
+                onPointerDownCapture={makeCapture('discard-button', 'discard')}
+                onPointerDown={makeBubble('discard-button', 'discard')}
+                onClickCapture={makeCapture('discard-button', 'discard')}
+                onClick={handleDiscardButtonClick}
+                aria-disabled={!discardClickable}
+                data-card-anchor="discard"
+                data-gin-pile="discard"
+                data-gin-pile-layer="button"
+                className={`absolute inset-0 rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+                style={{
+                  pointerEvents: 'auto',
+                  zIndex: 30,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+              >
+                {discardTopCard && discardRevealed ? (
+                  <div
+                    ref={discardVisibleChildRef}
+                    data-gin-pile="discard"
+                    data-gin-pile-layer="visible-card-child"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" widthPx={PILE_CARD_WIDTH_PX} />
+                  </div>
+                ) : (
+                  <div
+                    data-gin-pile="discard"
+                    data-gin-pile-layer="empty-placeholder-child"
+                    className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
+                  >
+                    <span className="text-white/20 text-[8px]">Empty</span>
+                  </div>
+                )}
+              </button>
+            </div>
             <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
 
