@@ -56,6 +56,7 @@ import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
 import { derivePlayerStatus } from "@/lib/canonicalShell/participantStatus";
 import { getDisplayName } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
+import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import { cn } from "@/lib/utils";
 import {
   useWaitingMount,
