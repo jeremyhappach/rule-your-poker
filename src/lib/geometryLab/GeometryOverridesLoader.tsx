@@ -123,10 +123,8 @@ export async function broadcastGeometryOverrideApplied(
 export function GeometryOverridesLoader() {
   useEffect(() => {
     void refresh();
-    const channel = supabase
-      .channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
-        config: { broadcast: { self: false } },
-      })
+    const postgresChannel = supabase
+      .channel("geometry_overrides")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "geometry_overrides" },
@@ -134,6 +132,18 @@ export function GeometryOverridesLoader() {
           void refresh();
         },
       )
+      .subscribe((status) => {
+        // eslint-disable-next-line no-console
+        console.info("geometrylab:subscription_status", {
+          channel: "postgres",
+          status,
+        });
+      });
+
+    const broadcastChannel = supabase
+      .channel(GEOMETRY_OVERRIDE_BROADCAST_CHANNEL, {
+        config: { broadcast: { self: false } },
+      })
       .on(
         "broadcast",
         { event: GEOMETRY_OVERRIDE_APPLIED_EVENT },
@@ -152,10 +162,14 @@ export function GeometryOverridesLoader() {
       )
       .subscribe((status) => {
         // eslint-disable-next-line no-console
-        console.info("geometrylab:subscription_status", { status });
+        console.info("geometrylab:subscription_status", {
+          channel: "broadcast",
+          status,
+        });
       });
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(postgresChannel);
+      supabase.removeChannel(broadcastChannel);
     };
   }, []);
   return null;
