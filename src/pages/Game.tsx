@@ -12207,12 +12207,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // GIN RUMMY — unified single instance across dealer_selection, ante_decision, in_progress, game_over
-          // One persistent GinRummyGameTable prevents table surface changes across phases
-          const isGinRummyConfiguring = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
-          if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyConfiguring || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
-            const _ginEffRoundId = (isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : '';
-            const _ginEffDealerGameId = (isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null;
+          // GIN RUMMY — Gin-owned phases ONLY (active gameplay + terminal outcome).
+          // Configuring / game_selection / dealer_selection / ante_decision are shell-owned
+          // phases. Mounting Gin during them would leak old Gin state/refs/DealRuntime/portals
+          // across dealer games. Run It Back is a fresh game launch — old Gin table must not
+          // exist during shell-owned interstitial phases.
+          if (effectiveRenderGameType === 'gin-rummy' && (isInProgress || isGinRummyGameOver)) {
+            const _ginEffRoundId = currentRound?.id || '';
+            const _ginEffDealerGameId = currentRound?.dealer_game_id || null;
             Promise.resolve().then(() => {
               recordStartupValue('IDENTITY TIMELINE', 'propRoundId available', _ginEffRoundId, {
                 file: 'src/pages/Game.tsx',
@@ -12245,43 +12247,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   effectivePropDealerGameId={_ginEffDealerGameId}
                 />
                 <GinRummyGameTable
+                  key={_ginEffDealerGameId ?? 'none'}
                   gameId={gameId!}
                   roundId={_ginEffRoundId}
                   dealerGameId={_ginEffDealerGameId}
-                  handNumber={(isInProgress || isGinRummyGameOver) ? (currentRound?.hand_number ?? 1) : 0}
+                  handNumber={currentRound?.hand_number ?? 1}
                   players={players}
                   currentUserId={user?.id || ''}
                   dealerPosition={game.dealer_position || 1}
                   anteAmount={game.ante_amount || 1}
-                  pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
+                  pot={potForDisplay}
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
                   bootstrapState={
                     ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null
                   }
                 />
-                {/* Dealer selection overlay on the gin table */}
-                {isGinRummyDealerSelection && (
-                  <HighCardDealerSelection
-                    gameId={gameId!}
-                    players={players}
-                    onComplete={selectDealer}
-                    isHost={isCreator}
-                    allowBotDealers={allowBotDealers}
-                    syncedState={(game as any).dealer_selection_state ?? null}
-                    onCardsUpdate={setDealerSelectionCards}
-                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
-                    cribTraceGating={{
-                      mountSite: 'Game.tsx:gin-rummy-dealer-overlay',
-                      gameStatus: game.status,
-                      currentRoundId: currentRound?.id ?? null,
-                      gameType: game.game_type ?? null,
-                    }}
-                  />
-                )}
               </>
             );
           }
+
 
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
