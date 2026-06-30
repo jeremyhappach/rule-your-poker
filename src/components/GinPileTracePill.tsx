@@ -5,7 +5,6 @@ import {
   getGinPileTrace,
   subscribeGinPileTrace,
 } from '@/lib/ginPileTrace';
-import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 
 export function GinPileTracePill() {
   const records = useSyncExternalStore(
@@ -16,7 +15,6 @@ export function GinPileTracePill() {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
-  const inTray = useInDebugTray();
   const text = useMemo(() => formatGinPileTraceAsText(records), [records]);
 
   useEffect(() => {
@@ -36,17 +34,17 @@ export function GinPileTracePill() {
   };
 
   if (!expanded) {
-    const shellStyle: CSSProperties = inTray
-      ? { pointerEvents: 'auto', display: 'inline-block' }
-      : {
+    return (
+      <div
+        style={{
           position: 'fixed',
           right: 8,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+          top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
           zIndex: 2147483647,
           pointerEvents: 'auto',
-        };
-    return (
-      <div style={shellStyle} data-gin-pile-trace-pill="">
+        }}
+        data-gin-pile-trace-pill=""
+      >
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -68,12 +66,12 @@ export function GinPileTracePill() {
         position: 'fixed',
         right: 8,
         left: 8,
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
         width: 'auto',
         maxWidth: 'min(96vw, 680px)',
         marginLeft: 'auto',
         zIndex: 2147483647,
-        maxHeight: '48dvh',
+        maxHeight: '42dvh',
         display: 'grid',
         gridTemplateRows: 'auto minmax(0, 1fr)',
         borderRadius: 8,
