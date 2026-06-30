@@ -468,6 +468,12 @@ export const GinRummyGameTable = ({
   const handNumber = renderCommittedIdentity?.handNumber ?? 0;
   const currentRoundId = roundId;
   const currentHandNumber = handNumber;
+  // Plan A: handContextId is derived ONLY from committedIdentity. Never
+  // from prop+local+local. When committedIdentity is null, handContextId
+  // is null → DealRuntimeMaybe does not mount DealRuntime and the
+  // orchestrator gate (handContextId && ...) does not mount the
+  // orchestrator. No opening-deal dispatch occurs.
+  const handContextId = renderCommittedIdentity ? ginIdentityKey(renderCommittedIdentity) : null;
   // Refs mirror committedIdentity so callback closures (applyState,
   // overlay effects, bootstrap load) can identity-gate without rebinding.
   const currentRoundIdRef = useRef<string>(roundId);
@@ -610,6 +616,8 @@ export const GinRummyGameTable = ({
   const acceptedPresentationMatches = ginIdentityEqual(renderAcceptedPresentation?.identity ?? null, renderCommittedIdentity);
   const viewState = acceptedPresentationMatches ? renderAcceptedPresentation?.state ?? null : null;
   const ginState = viewState;
+  const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
+  const visiblePlayable = isPlayable;
   const setGinState = useCallback((state: GinRummyState | null) => {
     const sourceIdentity = renderCommittedIdentity;
     const activeIdentity = committedIdentityRef.current;
@@ -3144,8 +3152,6 @@ export const GinRummyGameTable = ({
   // and its identity exactly equals the current committedIdentity.
   // While ANY of these fails, no DealRuntime / orchestrator / felt /
   // overlay may render under a new identity.
-  const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
-  const visiblePlayable = isPlayable;
 
   setGinRunbackTraceContext({
     gameId,
@@ -3231,13 +3237,6 @@ export const GinRummyGameTable = ({
     }
   }
 
-
-  // Plan A: handContextId is derived ONLY from committedIdentity. Never
-  // from prop+local+local. When committedIdentity is null, handContextId
-  // is null → DealRuntimeMaybe does not mount DealRuntime and the
-  // orchestrator gate (handContextId && ...) does not mount the
-  // orchestrator. No opening-deal dispatch occurs.
-  const handContextId = renderCommittedIdentity ? ginIdentityKey(renderCommittedIdentity) : null;
 
   // Persistent match snapshot for the score rail. The rail is
   // persistent match state and must never blink/reset/remount during
