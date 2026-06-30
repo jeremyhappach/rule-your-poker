@@ -925,6 +925,12 @@ export const GinRummyGameTable = ({
   const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
   const [opponentDrawTargetSlot, setOpponentDrawTargetSlot] = useState<CanonicalSlot | null>(null);
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
+  // Self draw animation state — mirrors opponent transport, destination
+  // resolves to the active-player box (`[data-gin-active-pane-content]`).
+  const [selfDrawTriggerId, setSelfDrawTriggerId] = useState<string | null>(null);
+  const [selfDrawSource, setSelfDrawSource] = useState<'stock' | 'discard'>('stock');
+  const [selfDrawCard, setSelfDrawCard] = useState<GinRummyCard | null>(null);
+  const [selfDrawKey, setSelfDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
