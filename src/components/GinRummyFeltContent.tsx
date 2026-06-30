@@ -47,6 +47,15 @@ interface GinRummyFeltContentProps {
   handContextId?: string | null;
 }
 
+// Single authoritative resolved rect for Gin pile artifacts.
+// Wrapper, button (inset-0), and decorative card child all derive
+// width / aspect from these constants. Geometry-Lab driven sizing
+// can later replace these values; no per-artifact size constants
+// are duplicated in CSS or JSX below.
+const PILE_CARD_WIDTH_PX = 48;
+const PILE_CARD_ASPECT = 2 / 3; // width / height — matches CribbagePlayingCard 'lg' (48x72)
+const PILE_CARD_HEIGHT_PX = PILE_CARD_WIDTH_PX / PILE_CARD_ASPECT;
+
 const SYMBOL_TO_WORD: Record<string, string> = {
   '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
 };
