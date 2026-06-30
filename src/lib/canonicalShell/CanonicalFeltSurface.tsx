@@ -143,7 +143,7 @@ export function CanonicalFeltSurface({
   const useEllipseGeometry = geometryVariant === 'ellipse' || !isCribbage;
 
   const feltClass = useEllipseGeometry
-    ? "absolute inset-0 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
+    ? "absolute inset-0 rounded-[50%] border-2 border-amber-900 shadow-inner overflow-hidden"
     : "absolute inset-0 rounded-full border-2 border-white/80 overflow-hidden";
 
   const feltStyle: React.CSSProperties = useEllipseGeometry
