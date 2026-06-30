@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
@@ -6,7 +6,7 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
-import { useCardRowLayout, type CardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+import type { CardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // (Removed cardArtifactOverlap import — Cribbage active-player hand is
 // HUDStack-owned; adaptive resolver handles fan sizing.)
@@ -14,12 +14,64 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 /**
  * Cribbage active-hand card sizing — phase-capacity contract.
  *
- * Card width is resolved fluidly from the pane usable rect against the
+ * Card width is resolved fluidly from the measured hand-stage rect against the
  * MAX hand capacity for the phase (6 pre-discard, 4 post-discard), not
  * the current rendered count. The solver is bounded by BOTH the row
- * fan width and the card height inside the active-pane usable rect;
+ * width and the card height inside the active-hand stage;
  * there is no arbitrary fixed pixel cap and no unbounded width.
  */
+
+const CRIB_ACTIVE_HAND_ASPECT = 2 / 3;
+const CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX = 24;
+
+interface CribActiveHandStageRect {
+  width: number;
+  height: number;
+}
+
+function resolveCribActiveHandLayout(
+  stage: CribActiveHandStageRect | null,
+  capacity: number,
+): CardRowLayout | null {
+  if (!stage) return null;
+  if (!Number.isFinite(stage.width) || stage.width <= 0) return null;
+  if (!Number.isFinite(stage.height) || stage.height <= 0) return null;
+  if (!Number.isFinite(capacity) || capacity <= 0) return null;
+
+  const widthBoundAtZeroOverlap = stage.width / capacity;
+  const heightBound = stage.height * CRIB_ACTIVE_HAND_ASPECT;
+  const zeroOverlapCardWidth = Math.min(widthBoundAtZeroOverlap, heightBound);
+
+  if (zeroOverlapCardWidth >= CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX || capacity === 1) {
+    return {
+      cardWidth: zeroOverlapCardWidth,
+      cardHeight: zeroOverlapCardWidth / CRIB_ACTIVE_HAND_ASPECT,
+      overlapPx: 0,
+      totalWidth: zeroOverlapCardWidth * capacity,
+    };
+  }
+
+  const targetCardWidth = Math.min(
+    CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX,
+    heightBound,
+    stage.width,
+  );
+  if (!Number.isFinite(targetCardWidth) || targetCardWidth <= 0) return null;
+
+  const requiredOverlap = Math.max(
+    0,
+    (targetCardWidth * capacity - stage.width) / Math.max(1, capacity - 1),
+  );
+  const overlapPx = Math.min(targetCardWidth, requiredOverlap);
+  const totalWidth = targetCardWidth + (capacity - 1) * (targetCardWidth - overlapPx);
+
+  return {
+    cardWidth: targetCardWidth,
+    cardHeight: targetCardWidth / CRIB_ACTIVE_HAND_ASPECT,
+    overlapPx,
+    totalWidth,
+  };
+}
 
 interface Player {
   id: string;
@@ -284,35 +336,29 @@ export const CribbageMobileCardsTab = ({
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
   const cardCount = renderedHand.length;
 
-  const ACTIVE_HAND_HORIZONTAL_INSET_PX = 16; // mirrors root px-2 on both sides
-  const ACTIVE_HAND_ACTION_ROW_RESERVE_PX = 28; // mirrors min-h-[28] action row
-  const ACTIVE_HAND_FACE_SAFE_INSET_PX = 4;
-
   // ────────────────────────────────────────────────────────────────
   // Wave 2C — geometry-resolver consumer for the viewer hand row.
   //
-  // Budget owner: the shell-owned ShellHudGrid pane wrapper, marked
-  // by [data-cribbage-active-pane-content] in CribbageMobileGameTable.
-  // The pane is sized by the shell HUD grid (fixed row 4 height +
-  // outer width); the cards row cannot feed back into pane width, so
-  // there is no measurement loop. Mirrors the 3-5-7 pattern.
+  // Budget owner: the explicit shell-owned hand stage marked by
+  // [data-crib-active-hand-stage]. The stage is the only measured rect:
+  // below the active tab rail, above action/instruction/identity content,
+  // and inset horizontally by the active-pane safe padding.
   //
   // The resolved width is applied directly to CribbagePlayingCard.
   // Overlap is applied as inline `marginLeft` on cards after the first,
-  // replacing both the count-keyed `scale-[…]` cascade and the legacy
-  // `-space-x-3 / gap-1` overlap classes.
+  // but only as a last resort when a straight zero-overlap capacity row
+  // cannot meet the minimum readable width.
   // ────────────────────────────────────────────────────────────────
-  const handRowRef = useRef<HTMLDivElement | null>(null);
-  const [paneRectPx, setPaneRectPx] = useState<{ width: number; height: number } | null>(null);
+  const handStageRef = useRef<HTMLDivElement | null>(null);
+  const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
   useLayoutEffect(() => {
-    const el = handRowRef.current;
-    if (!el) return;
-    const pane = el.closest<HTMLElement>('[data-cribbage-active-pane-content]');
-    if (!pane) return;
+    const stage = handStageRef.current;
+    if (!stage) return;
     const measure = () => {
-      const w = pane.clientWidth;
-      const h = pane.clientHeight;
-      setPaneRectPx(prev => (
+      const rect = stage.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      setHandStageRectPx(prev => (
         prev !== null &&
         Math.abs(prev.width - w) < 0.5 &&
         Math.abs(prev.height - h) < 0.5
@@ -323,7 +369,7 @@ export const CribbageMobileCardsTab = ({
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(measure);
-    ro.observe(pane);
+    ro.observe(stage);
     return () => ro.disconnect();
   }, []);
 
@@ -334,29 +380,13 @@ export const CribbageMobileCardsTab = ({
   //     against current count would re-expand cards as they are played
   //     (4 → 3 → 2 → 1), violating the locked-size contract.
   // Card width is resolved against this capacity and locked once per
-  // phase boundary. The active-pane rect is reduced only by existing
-  // containment reservations: horizontal padding, action-row height,
-  // and a tiny face-safe inset so no rank/suit corner is clipped.
+  // phase boundary. The measured hand-stage already excludes the tab
+  // rail, action/instruction row, identity row, and horizontal safe inset.
   const phaseCapacity = isPreDiscard ? 6 : 4;
-  const paneUsableWidthPx = paneRectPx
-    ? Math.max(0, paneRectPx.width - ACTIVE_HAND_HORIZONTAL_INSET_PX - ACTIVE_HAND_FACE_SAFE_INSET_PX * 2)
-    : 0;
-  const paneUsableHeightPx = paneRectPx
-    ? Math.max(0, paneRectPx.height - ACTIVE_HAND_ACTION_ROW_RESERVE_PX - ACTIVE_HAND_FACE_SAFE_INSET_PX * 2)
-    : 0;
-  const handLayout = useCardRowLayout({
-    availableWidth: paneUsableWidthPx,
-    availableHeight: paneUsableHeightPx,
-    count: phaseCapacity,
-    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect
-    minCardWidth: 24,
-    // No arbitrary fixed cap: the pane usable width is only an absolute
-    // single-card ceiling; total fan width and card height are enforced
-    // by availableWidth + availableHeight above.
-    maxCardWidth: paneUsableWidthPx || 24,
-    preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
-    maxOverlapRatio: 0.9,
-  });
+  const handLayout = useMemo(
+    () => resolveCribActiveHandLayout(handStageRectPx, phaseCapacity),
+    [handStageRectPx, phaseCapacity],
+  );
   const phaseLayoutKey = `${roundId ?? expectedRoundId ?? 'unknown-round'}:${isPreDiscard ? 'pre-discard' : 'post-discard'}`;
   const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: CardRowLayout } | null>(null);
   useEffect(() => {
@@ -414,23 +444,27 @@ export const CribbageMobileCardsTab = ({
 
   if (activeHandBlocked) {
     return (
-      <div className="h-full px-2 flex flex-col">
-        <div className="flex items-center justify-center min-h-[92px] py-0" />
-        <div className="flex items-center justify-center min-h-[28px]" />
+      <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
+        <div data-crib-active-hand-stage="" className="overflow-hidden" />
+        <div className="flex items-center justify-center min-h-[28px] overflow-hidden" />
       </div>
     );
   }
 
   return (
-    <div className="h-full px-2 flex flex-col">
+    <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
       {/* Cards display — Wave 2C geometry consumer.
-          Width budget = pane ([data-cribbage-active-pane-content]).
-          Card size = pane-contained useCardRowLayout cardWidth.
+          Width/height budget = hand stage ([data-crib-active-hand-stage]).
+          Card size = stage-contained straight-row-first resolver.
           Overlap = inline marginLeft on cards after the first. */}
-      <div className="flex items-center justify-center min-h-[92px] py-0">
+      <div
+        ref={handStageRef}
+        data-crib-active-hand-stage=""
+        className="flex items-center justify-center overflow-hidden"
+      >
         <div
-          ref={handRowRef}
           className="flex justify-center origin-center"
+          style={{ width: activeHandLayout ? activeHandLayout.totalWidth : undefined }}
         >
           {renderedHand.map((card, index) => {
             const isSelected = selectedCards.includes(index);
@@ -475,7 +509,7 @@ export const CribbageMobileCardsTab = ({
 
 
       {/* Action area - tighter to cards */}
-      <div className="flex items-center justify-center min-h-[28px]">
+      <div className="flex items-center justify-center min-h-[28px] overflow-hidden">
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
