@@ -9,14 +9,6 @@ import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinR
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
-import {
-  cardId,
-  cardIds,
-  diffIds,
-  getCurrentGinSelfDrawTraceId,
-  recordGinSelfDrawEvent,
-} from '@/lib/ginSelfDrawTrace';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -145,75 +137,7 @@ export const GinRummyMobileCardsTab = ({
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
 
   useEffect(() => {
-    recordGinRunbackTrace('active-pane rail render gate', {
-      payloadHandNumber: ginState.handNumber ?? null,
-      payloadPhase: ginState.phase,
-      ginState: {
-        handNumber: ginState.handNumber ?? null,
-        phase: ginState.phase,
-        turnPhase: ginState.turnPhase,
-        actionCount: ginState.actionCount ?? null,
-      },
-      selfHandCount: myState?.hand?.length ?? null,
-      dealRuntime: deal ? {
-        handContextId: deal.handContextId,
-        phase: deal.phase,
-        expectedCount: deal.expectedCount,
-        settledCount: deal.settledCardIds.size,
-        settledForSelf: deal.getSettledCountForPlayer(currentPlayerId),
-      } : null,
-      overlayPredicateInputs: {
-        isMyTurn,
-        isProcessing,
-        rawSelfHandCount: rawMyState?.hand?.length ?? null,
-        renderedSelfHandCount: myState?.hand?.length ?? null,
-      },
-    });
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
-
-  // (6/7) RENDERED_HAND + DISPLAY_DIFF — emit whenever rendered self-hand changes.
-  const prevRenderedRef = useRef<string[]>([]);
-  useEffect(() => {
-    const rawAuthIds = cardIds(rawMyStateAuthoritative?.hand ?? []);
-    const displayIds = cardIds(rawMyState?.hand ?? []);
-    const renderedIds = cardIds(myState?.hand ?? []);
-    const withheldIds = (withheldDrawnCards ?? []).map(c => `${c.rank}${c.suit}`);
-    const drawnCardId = withheldIds[withheldIds.length - 1] ?? null;
-    const drawTraceId = getCurrentGinSelfDrawTraceId();
-    recordGinSelfDrawEvent('SELF_DRAW_RENDERED_HAND', {
-      drawnCardId,
-      withheldDrawnCardIds: withheldIds,
-      rawAuthHandIds: rawAuthIds,
-      displayFilteredHandIds: displayIds,
-      renderedHandIds: renderedIds,
-      authoritativePresent: drawnCardId ? rawAuthIds.includes(drawnCardId) : null,
-      displayPresent: drawnCardId ? displayIds.includes(drawnCardId) : null,
-      renderedPresent: drawnCardId ? renderedIds.includes(drawnCardId) : null,
-      renderedIndex: drawnCardId ? renderedIds.indexOf(drawnCardId) : -1,
-      dealPhase: deal?.phase ?? null,
-      settledCount: deal?.getSettledCountForPlayer(currentPlayerId) ?? null,
-      withheldActive: withheldIds.length > 0,
-      withheldCount: withheldIds.length,
-      handContextId: deal?.handContextId ?? null,
-    }, drawTraceId);
-    const prev = prevRenderedRef.current;
-    if (prev.length !== renderedIds.length || prev.some((v, i) => v !== renderedIds[i])) {
-      const { added, removed } = diffIds(prev, renderedIds);
-      const reasonParts: string[] = [];
-      if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
-      else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
-      else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
-      if (withheldIds.length > 0) reasonParts.push(`withheldDrawnCards active (${withheldIds.length})`);
-      recordGinSelfDrawEvent('SELF_DRAW_DISPLAY_DIFF', {
-        previousRenderedIds: prev,
-        nextRenderedIds: renderedIds,
-        added,
-        removed,
-        reason: reasonParts.join(' | ') || 'auth-change',
-      }, drawTraceId);
-      prevRenderedRef.current = renderedIds;
-    }
-  });
 
   // Track newly drawn card
   useEffect(() => {

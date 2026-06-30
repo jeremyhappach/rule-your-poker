@@ -44,7 +44,6 @@ import {
   notifyCommunitySettleToSampler,
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
-import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -150,9 +149,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       payload: { gameType },
     });
     if (gameType === 'gin-rummy') {
-      recordGinRunbackTrace('DealRuntime mount', {
-        dealRuntime: { handContextId, gameType, phase: 'PRE_DEAL', expectedCount: 0, settledCount: 0 },
-      });
     }
     return () => {
       ffRecord({
@@ -163,9 +159,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         payload: { gameType },
       });
       if (gameType === 'gin-rummy') {
-        recordGinRunbackTrace('DealRuntime unmount', {
-          dealRuntime: { handContextId, gameType },
-        });
       }
     };
   }, [handContextId, gameType]);
@@ -214,18 +207,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         const expected = expectedRef.current;
         const ready = expected > 0 && next.size >= expected;
         if (gameType === 'gin-rummy') {
-          recordGinRunbackTrace('DealRuntime settle', {
-            dealRuntime: {
-              handContextId,
-              gameType,
-              cardId,
-              phase,
-              expectedCount: expected,
-              settledCount: next.size,
-              recipientPlayerId: intent.recipientPlayerId ?? null,
-              ready,
-            },
-          });
         }
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
@@ -257,9 +238,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   const beginDeal = useCallback((count: number) => {
     if (gameType === 'gin-rummy') {
-      recordGinRunbackTrace('DealRuntime dispatch/beginDeal', {
-        dealRuntime: { handContextId, gameType, phase: 'DEALING', expectedCount: count, settledCount: 0 },
-      });
     }
     setExpectedCount(count);
     setSettledCardIds(new Set());
@@ -407,9 +385,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   const enterGameplay = useCallback(() => {
     if (gameType === 'gin-rummy') {
-      recordGinRunbackTrace('DealRuntime enterGameplay', {
-        dealRuntime: { handContextId, gameType, phase: 'GAMEPLAY', expectedCount, settledCount: settledCardIds.size },
-      });
     }
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     if (gameType === 'holm-game') {
@@ -421,18 +396,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   useEffect(() => {
     if (gameType !== 'gin-rummy') return;
-    recordGinRunbackTrace('DealRuntime phase', {
-      dealRuntime: {
-        handContextId,
-        gameType,
-        phase,
-        expectedCount,
-        settledCount: settledCardIds.size,
-        activeIntentsForHand,
-        dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
-        readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
-      },
-    });
   }, [gameType, handContextId, phase, expectedCount, settledCardIds.size, activeIntentsForHand]);
 
   useEffect(() => {
@@ -468,18 +431,6 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     setReadyReleased(true);
     dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
     if (gameType === 'gin-rummy') {
-      recordGinRunbackTrace('DealRuntime READY released', {
-        dealRuntime: {
-          handContextId,
-          gameType,
-          phase,
-          expectedCount,
-          settledCount: settledCardIds.size,
-          activeIntentsForHand,
-          dealSettled: true,
-          readyReleased: true,
-        },
-      });
     }
   }, [releaseEligible, readyReleased, handContextId, gameType, phase, expectedCount, settledCardIds.size, activeIntentsForHand]);
 
