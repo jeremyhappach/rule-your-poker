@@ -3202,9 +3202,18 @@ export const GinRummyGameTable = ({
         handlerName: 'handleTakeFirstDraw', handlerInvoked: true, actionName: 'take_first_draw',
         source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
       }));
+      const topDiscard = fresh.discardPile?.[fresh.discardPile.length - 1] ?? null;
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
-      // Longer optimistic guard — we're transitioning to discard phase, no bot race
-      // Optimistic guard handled by updateState → ginSync.applyOptimistic
+      // Route take_first_draw through the same shared pre-hold path as
+      // normal stock/discard so the upcard is synchronously withheld
+      // before the optimistic commit and released only on its matching
+      // transport settle.
+      beginSelfDrawPresentation({
+        source: 'discard',
+        selectedCard: topDiscard,
+        preState: fresh,
+        newState,
+      });
       await updateState(newState, tid, { pile: 'discard', actionName: 'take_first_draw' });
     } catch (err) {
       recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
