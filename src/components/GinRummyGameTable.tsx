@@ -199,24 +199,36 @@ function DealRuntimeMaybe({ handContextId, children }: { handContextId: string |
 function GinDealClippedOpponentSeatLayer(props: {
   participants: Array<{ id: string; position: number; name: string; chips: number }>;
   presentation: import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation;
+  handContextId: string | null;
 }) {
   const deal = useDealRuntime();
+  const { handContextId } = props;
   const wrapped = useMemo<import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation>(() => {
     const base = props.presentation;
     return {
       ...base,
       cardBacks: (p) => {
         const baseBacks = base.cardBacks?.(p) ?? null;
-        if (!baseBacks || !deal) return baseBacks;
-        if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return baseBacks;
-        if (deal.phase === 'PRE_DEAL') return { ...baseBacks, count: 0, visible: false };
-        const allowed = deal.getSettledCountForPlayer(p.id);
-        const clipped = Math.min(baseBacks.count, allowed);
-        if (clipped <= 0) return { ...baseBacks, count: 0, visible: false };
-        return { ...baseBacks, count: clipped };
+        if (!baseBacks) return baseBacks;
+        // Contract: no DealRuntime, no committed hand context, or hand
+        // context mismatch → opponent cardback count = 0. Prevents the
+        // duplicate-visual where the full authoritative opponent stack
+        // paints before/while the opening deal transports those same
+        // cards.
+        if (!deal || !handContextId || deal.handContextId !== handContextId) {
+          return { ...baseBacks, count: 0, visible: false };
+        }
+        // PRE_DEAL or DEALING → only show settled-at-destination count.
+        if (deal.phase === 'PRE_DEAL' || deal.phase === 'DEALING') {
+          const allowed = deal.getSettledCountForPlayer(p.id);
+          if (allowed <= 0) return { ...baseBacks, count: 0, visible: false };
+          return { ...baseBacks, count: Math.min(baseBacks.count, allowed) };
+        }
+        // READY or GAMEPLAY → authoritative opponent hand length.
+        return baseBacks;
       },
     };
-  }, [props.presentation, deal]);
+  }, [props.presentation, deal, handContextId]);
   return (
     <GameplayOpponentSeatLayer
       family="gin-rummy"
@@ -3143,6 +3155,7 @@ export const GinRummyGameTable = ({
                 CanonicalSeatCluster per opponent and renders the
                 card-back strip from typed `cardBacks` data. */}
             <GinDealClippedOpponentSeatLayer
+              handContextId={handContextId}
               participants={(isObserver
                 ? activeSeatPlayers
                 : activeSeatPlayers.filter(p => p.id !== currentPlayerId)
