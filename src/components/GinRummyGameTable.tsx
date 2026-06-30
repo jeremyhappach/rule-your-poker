@@ -2359,7 +2359,7 @@ export const GinRummyGameTable = ({
         preState,
         newState,
       });
-      await updateState(newState, tid, { pile: 'stock', actionName: 'draw_stock' });
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2391,7 +2391,7 @@ export const GinRummyGameTable = ({
         preState,
         newState,
       });
-      await updateState(newState, tid, { pile: 'discard', actionName: 'draw_discard' });
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -2510,7 +2510,7 @@ export const GinRummyGameTable = ({
         preState: fresh,
         newState,
       });
-      await updateState(newState, tid, { pile: 'discard', actionName: 'take_first_draw' });
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
