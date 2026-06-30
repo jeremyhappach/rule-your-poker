@@ -6,72 +6,26 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
-import type { CardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-// (Removed cardArtifactOverlap import — Cribbage active-player hand is
-// HUDStack-owned; adaptive resolver handles fan sizing.)
+import {
+  resolveActiveHandLayout,
+  useActiveHandLayoutPolicy,
+  type ResolvedActiveHandRow,
+} from '@/lib/activeHand/activeHandLayoutSettings';
 
 /**
- * Cribbage active-hand card sizing — phase-capacity contract.
+ * Cribbage active-hand card sizing — per-game policy contract.
  *
- * Card width is resolved fluidly from the measured hand-stage rect against the
- * MAX hand capacity for the phase (6 pre-discard, 4 post-discard), not
- * the current rendered count. The solver is bounded by BOTH the row
- * width and the card height inside the active-hand stage;
- * there is no arbitrary fixed pixel cap and no unbounded width.
+ * The resolver lives in `@/lib/activeHand/activeHandLayoutSettings` and
+ * is driven by the per-game `ActiveHandLayoutPolicy` (preferredOverlap,
+ * maxOverlap, minCardWidthPx) edited in Geometry Lab. Sizing runs
+ * against the measured `[data-crib-active-hand-stage]` rect and the
+ * MAX hand capacity for the phase (6 pre-discard, 4 post-discard), and
+ * is locked once per phase boundary.
  */
 
 const CRIB_ACTIVE_HAND_ASPECT = 2 / 3;
-const CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX = 24;
-
-interface CribActiveHandStageRect {
-  width: number;
-  height: number;
-}
-
-function resolveCribActiveHandLayout(
-  stage: CribActiveHandStageRect | null,
-  capacity: number,
-): CardRowLayout | null {
-  if (!stage) return null;
-  if (!Number.isFinite(stage.width) || stage.width <= 0) return null;
-  if (!Number.isFinite(stage.height) || stage.height <= 0) return null;
-  if (!Number.isFinite(capacity) || capacity <= 0) return null;
-
-  const widthBoundAtZeroOverlap = stage.width / capacity;
-  const heightBound = stage.height * CRIB_ACTIVE_HAND_ASPECT;
-  const zeroOverlapCardWidth = Math.min(widthBoundAtZeroOverlap, heightBound);
-
-  if (zeroOverlapCardWidth >= CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX || capacity === 1) {
-    return {
-      cardWidth: zeroOverlapCardWidth,
-      cardHeight: zeroOverlapCardWidth / CRIB_ACTIVE_HAND_ASPECT,
-      overlapPx: 0,
-      totalWidth: zeroOverlapCardWidth * capacity,
-    };
-  }
-
-  const targetCardWidth = Math.min(
-    CRIB_ACTIVE_HAND_MIN_READABLE_WIDTH_PX,
-    heightBound,
-    stage.width,
-  );
-  if (!Number.isFinite(targetCardWidth) || targetCardWidth <= 0) return null;
-
-  const requiredOverlap = Math.max(
-    0,
-    (targetCardWidth * capacity - stage.width) / Math.max(1, capacity - 1),
-  );
-  const overlapPx = Math.min(targetCardWidth, requiredOverlap);
-  const totalWidth = targetCardWidth + (capacity - 1) * (targetCardWidth - overlapPx);
-
-  return {
-    cardWidth: targetCardWidth,
-    cardHeight: targetCardWidth / CRIB_ACTIVE_HAND_ASPECT,
-    overlapPx,
-    totalWidth,
-  };
-}
+type CribActiveHandStageRect = { width: number; height: number };
 
 interface Player {
   id: string;
@@ -383,12 +337,19 @@ export const CribbageMobileCardsTab = ({
   // phase boundary. The measured hand-stage already excludes the tab
   // rail, action/instruction row, identity row, and horizontal safe inset.
   const phaseCapacity = isPreDiscard ? 6 : 4;
+  const activeHandPolicy = useActiveHandLayoutPolicy('cribbage');
   const handLayout = useMemo(
-    () => resolveCribActiveHandLayout(handStageRectPx, phaseCapacity),
-    [handStageRectPx, phaseCapacity],
+    () =>
+      resolveActiveHandLayout(
+        handStageRectPx,
+        phaseCapacity,
+        activeHandPolicy,
+        CRIB_ACTIVE_HAND_ASPECT,
+      ),
+    [handStageRectPx, phaseCapacity, activeHandPolicy],
   );
   const phaseLayoutKey = `${roundId ?? expectedRoundId ?? 'unknown-round'}:${isPreDiscard ? 'pre-discard' : 'post-discard'}`;
-  const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: CardRowLayout } | null>(null);
+  const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: ResolvedActiveHandRow } | null>(null);
   useEffect(() => {
     if (!handLayout) return;
     setLockedHandLayout(prev => (prev?.key === phaseLayoutKey ? prev : { key: phaseLayoutKey, layout: handLayout }));
