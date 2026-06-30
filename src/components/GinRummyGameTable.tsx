@@ -59,6 +59,8 @@ import {
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
+import { GinAnchoredSlot } from './GinAnchoredSlot';
+import { GinRummyPegBoard } from './GinRummyPegBoard';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
 import type { ReactNode } from 'react';
@@ -2998,6 +3000,28 @@ export const GinRummyGameTable = ({
   // orchestrator. No opening-deal dispatch occurs.
   const handContextId = renderCommittedIdentity ? ginIdentityKey(renderCommittedIdentity) : null;
 
+  // Persistent match snapshot for the score rail. The rail is
+  // persistent match state and must never blink/reset/remount during
+  // opening-deal phases or across the identity-null pass between
+  // hands. We seed it from the latest hydrated viewState and hold the
+  // last seen value via a ref so the renderer always has data once
+  // the first hand has hydrated.
+  const persistentMatchSnapshotRef = useRef<{
+    matchScores: Record<string, number>;
+    pointsToWin: number;
+    playerIds: [string, string];
+  } | null>(null);
+  const liveMatchSnapshot = viewState && currentPlayerId
+    ? {
+        matchScores: viewState.matchScores ?? {},
+        pointsToWin: viewState.pointsToWin ?? 100,
+        playerIds: [currentPlayerId, opponentId] as [string, string],
+      }
+    : null;
+  if (liveMatchSnapshot) persistentMatchSnapshotRef.current = liveMatchSnapshot;
+  const persistentMatchSnapshot = liveMatchSnapshot ?? persistentMatchSnapshotRef.current;
+
+
   return (
     <div className="h-full flex flex-col bg-transparent relative">
     <DealRuntimeMaybe handContextId={handContextId}>
@@ -3022,6 +3046,27 @@ export const GinRummyGameTable = ({
         >
 
             {/* Shell owns canonical felt. */}
+
+            {/* Persistent score rail — mounted continuously for the
+                lifetime of this Gin component instance. Driven by a
+                sticky match snapshot so it survives the identity-null
+                pass between hands within a dealer game (no remount, no
+                animate-from-zero blink). Match target denominator is
+                ginState.pointsToWin (authoritative 100). */}
+            {persistentMatchSnapshot && (
+              <GinAnchoredSlot artifactId="gin.pegboard">
+                <div className="w-full h-full flex items-center">
+                  <div className="w-full">
+                    <GinRummyPegBoard
+                      matchScores={persistentMatchSnapshot.matchScores}
+                      pointsToWin={persistentMatchSnapshot.pointsToWin}
+                      playerIds={persistentMatchSnapshot.playerIds}
+                      getPlayerUsername={getPlayerUsername}
+                    />
+                  </div>
+                </div>
+              </GinAnchoredSlot>
+            )}
 
             {/* Felt Content — requires hydrated viewState */}
             {visiblePlayable && viewState && (

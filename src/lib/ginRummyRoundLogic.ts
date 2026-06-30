@@ -134,7 +134,12 @@ export async function startGinRummyRound(
       : null;
 
     const anteAmount = game.ante_amount || 1;
-    const pointsToWin = isGinTwoActionHarnessEnabled() ? 50 : (game.points_to_win ?? 100);
+    // Authoritative Gin match target. Single source for both server
+    // terminal evaluation (createNextHand carries it forward via
+    // previousState.pointsToWin → matchWinner check) AND the client
+    // score-rail denominator. Default 100. Near-Gin harness must NEVER
+    // alter this target — it may only assign an advantaged hand.
+    const pointsToWin = game.points_to_win ?? 100;
 
     // Initialize and deal (handNumber set after DB query below)
     let ginState = createInitialGinRummyState(

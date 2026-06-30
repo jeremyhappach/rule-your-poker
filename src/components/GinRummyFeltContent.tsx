@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
-import { GinRummyPegBoard } from './GinRummyPegBoard';
+// Score rail is owned by GinRummyGameTable (persistent across hand
+// identity boundaries). Do not re-mount it here.
 import { GinAnchoredSlot } from './GinAnchoredSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
@@ -256,19 +257,11 @@ export const GinRummyFeltContent = ({
       />
 
 
-      {/* Wave 5D — gin.pegboard (anchored). */}
-      <GinAnchoredSlot artifactId="gin.pegboard">
-        <div className="w-full h-full flex items-center">
-          <div className="w-full">
-            <GinRummyPegBoard
-              ginState={ginState}
-              currentPlayerId={currentPlayerId}
-              opponentId={opponentId}
-              getPlayerUsername={getPlayerUsername}
-            />
-          </div>
-        </div>
-      </GinAnchoredSlot>
+      {/* Score rail (gin.pegboard) is mounted by GinRummyGameTable so
+          it remains visually stable across PRE_DEAL / DEALING / READY /
+          GAMEPLAY / first_draw / playing / scoring and across the
+          identity-boundary null pass between hands within a dealer
+          game. Do not re-mount here. */}
 
       {/* Wave 5D — gin.stockDiscardGroup (anchored). Stock + discard
           are siblings inside the group rect; their pixel sizes are
