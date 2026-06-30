@@ -103,22 +103,15 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
-import { recordGinRunbackTrace, setGinRunbackTraceContext, type GinRunbackOverlayStateSource } from '@/lib/ginRunbackTrace';
-import {
-  beginGinSelfDrawTrace,
-  clearCurrentGinSelfDrawTraceId,
-  recordGinSelfDrawEvent,
-  cardId,
-  cardIds,
-} from '@/lib/ginSelfDrawTrace';
-import { GinReadyReleasePill } from './GinReadyReleasePill';
-import {
-  buildGinPileContext,
-  getLatestGinPileTraceContext,
-  recordGinPileTrace,
-  withLatestGinPileTraceContext,
-  type GinPileTracePile,
-} from '@/lib/ginPileTrace';
+
+// Local card-id helpers (formerly in ginSelfDrawTrace) — used by the
+// self-draw withhold registry.
+const cardId = (c: { rank: string; suit: string } | null | undefined): string | null =>
+  c ? `${c.rank}${c.suit}` : null;
+const cardIds = (
+  hand: Array<{ rank: string; suit: string }> | null | undefined,
+): string[] => (hand ?? []).map(c => `${c.rank}${c.suit}`);
+
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
