@@ -363,6 +363,26 @@ export function PersistentTableShell({
               {children}
             </div>
           </PreSessionSeatOwnershipProvider>
+          {/* Shell-owned felt interaction layer. Rect-equal to
+              [data-canonical-felt-coord-frame], but stacked above normal
+              gameplay slot-content so opted-in felt controls can receive
+              hit-tests without changing global wrapper pointer-events or
+              moving noninteractive visual artifacts. Root is transparent;
+              individual controls explicitly opt into pointer-events:auto. */}
+          <div
+            data-canonical-felt-interaction-layer=""
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 'var(--play-top-safe-area, 0px)',
+              height: 'var(--shell-felt-h)',
+              width: 'var(--shell-felt-w)',
+              minWidth: 300,
+              transform: 'translateX(-50%)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
         </div>
       </div>
 

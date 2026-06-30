@@ -8,6 +8,7 @@ import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 // Score rail is owned by GinRummyGameTable (persistent across hand
 // identity boundaries). Do not re-mount it here.
 import { GinAnchoredSlot } from './GinAnchoredSlot';
+import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
@@ -425,9 +426,9 @@ export const GinRummyFeltContent = ({
           identity-boundary null pass between hands within a dealer
           game. Do not re-mount here. */}
 
-      {/* Wave 5D — gin.stockDiscardGroup (anchored). Stock + discard
-          are siblings inside the group rect; their pixel sizes are
-          preserved (size="lg") and the group rect was sized to fit. */}
+      {/* Wave 5D — gin.stockDiscardGroup (anchored visual layer). Stock +
+          discard visuals stay in the normal coord frame; matching buttons
+          are portaled separately to the shell interaction layer below. */}
       {!hidePiles && (
         <GinAnchoredSlot
           artifactId="gin.stockDiscardGroup"
@@ -438,8 +439,8 @@ export const GinRummyFeltContent = ({
           onClickCapture={makeCapture('gin-anchored-slot-root')}
           onClick={makeBubble('gin-anchored-slot-root')}
         >
-          {/* Stock Pile — interactive wrapper is the single click owner.
-              Card-back / count span are pointer-events:none decorations. */}
+          {/* Stock Pile — visual only. The click owner is in the shell
+              interaction layer and occupies this same card rect. */}
           <div
             data-gin-pile="stock"
             data-gin-pile-layer="wrapper"
@@ -453,6 +454,111 @@ export const GinRummyFeltContent = ({
             <div
               data-gin-pile="stock"
               data-gin-pile-layer="card-rect-wrapper"
+              style={{
+                position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
+                pointerEvents: 'none',
+              }}
+            >
+              {stockRevealed ? (
+                <div
+                  ref={stockVisibleChildRef}
+                  data-gin-pile="stock"
+                  data-gin-pile-layer="visible-cardback-child"
+                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
+                >
+                  <CanonicalCardBack
+                    widthPx={PILE_CARD_WIDTH_PX}
+                    heightPx={PILE_CARD_HEIGHT_PX}
+                    variant="raised"
+                    radiusPx={6}
+                    style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
+                  />
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
+                    style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+                  >
+                    {stockCount}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
+              {stockDanger ? 'Low!' : 'Stock'}
+            </span>
+          </div>
+
+          {/* Discard Pile — visual only. The click owner is in the shell
+              interaction layer and occupies this same card rect. */}
+          <div
+            data-gin-pile="discard"
+            data-gin-pile-layer="wrapper"
+            className="flex flex-col items-center gap-0.5"
+            style={{ pointerEvents: 'none' }}
+            onPointerDownCapture={makeCapture('discard-pile-wrapper', 'discard')}
+            onPointerDown={makeBubble('discard-pile-wrapper', 'discard')}
+            onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
+            onClick={makeBubble('discard-pile-wrapper', 'discard')}
+          >
+            <div
+              data-gin-pile="discard"
+              data-gin-pile-layer="card-rect-wrapper"
+              style={{
+                position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
+                pointerEvents: 'none',
+              }}
+            >
+              {discardTopCard && discardRevealed ? (
+                <div
+                  ref={discardVisibleChildRef}
+                  data-gin-pile="discard"
+                  data-gin-pile-layer="visible-card-child"
+                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" widthPx={PILE_CARD_WIDTH_PX} />
+                </div>
+              ) : (
+                <div
+                  data-gin-pile="discard"
+                  data-gin-pile-layer="empty-placeholder-child"
+                  className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
+                >
+                  <span className="text-white/20 text-[8px]">Empty</span>
+                </div>
+              )}
+            </div>
+            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
+          </div>
+
+        </GinAnchoredSlot>
+      )}
+
+      {/* Gin pile interaction layer — only stock/discard buttons move here.
+          The flex skeleton mirrors the visual slot so each button owns the
+          exact matching visible card rect while the shell layer wins
+          hit-testing over gameplay slot-content. */}
+      {!hidePiles && (
+        <GinAnchoredInteractionSlot
+          artifactId="gin.stockDiscardGroup"
+          innerStyle={{ gap: '1rem' }}
+          onPointerDownCapture={makeCapture('gin-pile-interaction-slot-root')}
+          onPointerDown={makeBubble('gin-pile-interaction-slot-root')}
+          onClickCapture={makeCapture('gin-pile-interaction-slot-root')}
+          onClick={makeBubble('gin-pile-interaction-slot-root')}
+        >
+          <div
+            data-gin-pile="stock"
+            data-gin-pile-layer="interaction-wrapper"
+            className="flex flex-col items-center gap-0.5"
+            style={{ pointerEvents: 'none' }}
+          >
+            <div
+              data-gin-pile="stock"
+              data-gin-pile-layer="interaction-card-rect-wrapper"
               style={{
                 position: 'relative',
                 width: PILE_CARD_WIDTH_PX,
@@ -476,57 +582,26 @@ export const GinRummyFeltContent = ({
                 }`}
                 style={{
                   pointerEvents: 'auto',
-                  zIndex: 30,
                   padding: 0,
                   border: 'none',
                   background: 'transparent',
                 }}
-              >
-                {stockRevealed ? (
-                  <div
-                    ref={stockVisibleChildRef}
-                    data-gin-pile="stock"
-                    data-gin-pile-layer="visible-cardback-child"
-                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                  >
-                    <CanonicalCardBack
-                      widthPx={PILE_CARD_WIDTH_PX}
-                      heightPx={PILE_CARD_HEIGHT_PX}
-                      variant="raised"
-                      radiusPx={6}
-                      style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
-                    />
-                    <span
-                      className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
-                      style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
-                    >
-                      {stockCount}
-                    </span>
-                  </div>
-                ) : null}
-              </button>
+              />
             </div>
-            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
+            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none', visibility: 'hidden' }}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
           </div>
 
-          {/* Discard Pile — single always-mounted button owns the visible
-              card rect. Face vs empty-placeholder is a child swap inside
-              the button so the hit-test target rect stays stable. */}
           <div
             data-gin-pile="discard"
-            data-gin-pile-layer="wrapper"
+            data-gin-pile-layer="interaction-wrapper"
             className="flex flex-col items-center gap-0.5"
             style={{ pointerEvents: 'none' }}
-            onPointerDownCapture={makeCapture('discard-pile-wrapper', 'discard')}
-            onPointerDown={makeBubble('discard-pile-wrapper', 'discard')}
-            onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
-            onClick={makeBubble('discard-pile-wrapper', 'discard')}
           >
             <div
               data-gin-pile="discard"
-              data-gin-pile-layer="card-rect-wrapper"
+              data-gin-pile-layer="interaction-card-rect-wrapper"
               style={{
                 position: 'relative',
                 width: PILE_CARD_WIDTH_PX,
@@ -548,37 +623,15 @@ export const GinRummyFeltContent = ({
                 className={`absolute inset-0 rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
                 style={{
                   pointerEvents: 'auto',
-                  zIndex: 30,
                   padding: 0,
                   border: 'none',
                   background: 'transparent',
                 }}
-              >
-                {discardTopCard && discardRevealed ? (
-                  <div
-                    ref={discardVisibleChildRef}
-                    data-gin-pile="discard"
-                    data-gin-pile-layer="visible-card-child"
-                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" widthPx={PILE_CARD_WIDTH_PX} />
-                  </div>
-                ) : (
-                  <div
-                    data-gin-pile="discard"
-                    data-gin-pile-layer="empty-placeholder-child"
-                    className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
-                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                  >
-                    <span className="text-white/20 text-[8px]">Empty</span>
-                  </div>
-                )}
-              </button>
+              />
             </div>
-            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
+            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none', visibility: 'hidden' }}>Discard</span>
           </div>
-
-        </GinAnchoredSlot>
+        </GinAnchoredInteractionSlot>
       )}
 
       {/* Wave 5D — gin.turnIndicator (anchored). */}
