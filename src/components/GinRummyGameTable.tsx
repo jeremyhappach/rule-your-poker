@@ -1611,7 +1611,7 @@ export const GinRummyGameTable = ({
       });
       if (result.accepted) {
         recordGinPileTrace('AUTHORITATIVE_STATE_UPDATE', withLatestGinPileTraceContext({
-          pile: getLatestGinPileTraceContext().pile ?? 'unknown',
+          pile: 'unknown',
           handlerName: 'applyState',
           actionName: null,
           source: `GinRummyGameTable.applyState:${source}`,
