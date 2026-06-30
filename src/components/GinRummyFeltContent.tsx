@@ -225,8 +225,6 @@ export const GinRummyFeltContent = ({
     discardRevealed;
   const discardClickable = (canDraw || canTakeFirstDraw) && discardRevealed;
 
-  const getVisibleChildForPile = (pile: GinPileTracePile) =>
-    pile === 'stock' ? stockVisibleChildRef.current : pile === 'discard' ? discardVisibleChildRef.current : null;
 
   const handleStockButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (!stockClickable || !onDrawStock) {
