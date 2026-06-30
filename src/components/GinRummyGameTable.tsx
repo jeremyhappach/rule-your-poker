@@ -3000,6 +3000,28 @@ export const GinRummyGameTable = ({
   // orchestrator. No opening-deal dispatch occurs.
   const handContextId = renderCommittedIdentity ? ginIdentityKey(renderCommittedIdentity) : null;
 
+  // Persistent match snapshot for the score rail. The rail is
+  // persistent match state and must never blink/reset/remount during
+  // opening-deal phases or across the identity-null pass between
+  // hands. We seed it from the latest hydrated viewState and hold the
+  // last seen value via a ref so the renderer always has data once
+  // the first hand has hydrated.
+  const persistentMatchSnapshotRef = useRef<{
+    matchScores: Record<string, number>;
+    pointsToWin: number;
+    playerIds: [string, string];
+  } | null>(null);
+  const liveMatchSnapshot = viewState && currentPlayerId
+    ? {
+        matchScores: viewState.matchScores ?? {},
+        pointsToWin: viewState.pointsToWin ?? 100,
+        playerIds: [currentPlayerId, opponentId] as [string, string],
+      }
+    : null;
+  if (liveMatchSnapshot) persistentMatchSnapshotRef.current = liveMatchSnapshot;
+  const persistentMatchSnapshot = liveMatchSnapshot ?? persistentMatchSnapshotRef.current;
+
+
   return (
     <div className="h-full flex flex-col bg-transparent relative">
     <DealRuntimeMaybe handContextId={handContextId}>
