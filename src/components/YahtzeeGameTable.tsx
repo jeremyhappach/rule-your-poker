@@ -2106,7 +2106,7 @@ export function YahtzeeGameTable({
               presentation={{
                 // Dice families have no dealer concept.
                 dealerPip: () => false,
-                chipValue: (p) => `$${formatChipValue(Math.round(p.chips))}`,
+                chipValue: (p) => formatChipBalance(p.chips),
                 scoreLine: (p) => {
                   const ps = viewState?.playerStates?.[p.id];
                   const total = ps ? getTotalScore(ps.scorecard) : 0;
