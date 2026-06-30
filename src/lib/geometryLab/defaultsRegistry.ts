@@ -62,6 +62,24 @@ interface DomainEntry<T = unknown> {
 
 const registry = new Map<string, DomainEntry>();
 
+/**
+ * Late-registration observers. The defaults loader subscribes here so it
+ * can issue a one-shot fetch for any domain that registers AFTER the
+ * loader's initial bulk fetch. Without this hook the loader's captured
+ * key set permanently excludes any module imported lazily (e.g. when
+ * the consumer component first mounts), and that domain would never
+ * receive its committed value or any remote realtime echoes. See
+ * GeometryLabDefaultsLoader for the consumer side.
+ */
+const registrationObservers = new Set<(key: string) => void>();
+
+export function _subscribeRegistrations(
+  observer: (key: string) => void,
+): () => void {
+  registrationObservers.add(observer);
+  return () => { registrationObservers.delete(observer); };
+}
+
 // ─── Registration ────────────────────────────────────────────────────────
 
 export function registerDomain<T>(spec: DomainSpec<T>): void {
@@ -96,7 +114,13 @@ export function registerDomain<T>(spec: DomainSpec<T>): void {
   registry.set(spec.key, entry as DomainEntry);
   // Apply side-effect for the seed/cache value too.
   try { spec.onApply?.(initial); } catch { /* noop */ }
+  // Notify the loader so it can lazily fetch this domain's committed
+  // value if the loader has already done its initial bulk fetch.
+  registrationObservers.forEach((o) => {
+    try { o(spec.key); } catch { /* one bad observer must not break others */ }
+  });
 }
+
 
 // ─── Read / subscribe ────────────────────────────────────────────────────
 
