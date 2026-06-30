@@ -44,7 +44,6 @@ import {
   notifyCommunitySettleToSampler,
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
-import { recordGinRunbackTrace } from '@/lib/ginRunbackTrace';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;

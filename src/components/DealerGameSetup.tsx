@@ -19,7 +19,6 @@ import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
-import { recordGinRunbackTrace } from "@/lib/ginRunbackTrace";
 
 import {
   useWaitingMount,

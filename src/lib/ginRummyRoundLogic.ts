@@ -18,7 +18,6 @@ import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
 import { isGinTwoActionHarnessEnabled } from './debugFlags';
-import { recordGinRunbackTrace } from './ginRunbackTrace';
 import { resolveSessionHostPlayerId } from './debugHarness/resolveHarnessHost';
 import { recordStartupFlight } from './startupFlightRecorder';
 
