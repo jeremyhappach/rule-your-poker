@@ -2904,11 +2904,8 @@ export const GinRummyGameTable = ({
   // While ANY of these fails, no DealRuntime / orchestrator / felt /
   // overlay may render under a new identity.
   const isPlayable = !!renderCommittedIdentity && !!renderAcceptedPresentation && acceptedPresentationMatches;
-  // Visible-playable applies outgoing-runback suppression to ALL Gin
-  // visual surfaces. DealRuntime + orchestrator + anchor are NOT gated
-  // by this — they continue to mount under handContextId so the incoming
-  // dealer game can dispatch its opening deal.
-  const visiblePlayable = isPlayable && !suppressOutgoingRunbackPresentation;
+  const visiblePlayable = isPlayable;
+
   setGinRunbackTraceContext({
     gameId,
     authIdentity: summarizeGinRunbackIdentity(authIdentity),
