@@ -523,47 +523,56 @@ export const GinRummyFeltContent = ({
             onClickCapture={makeCapture('discard-pile-wrapper', 'discard')}
             onClick={makeBubble('discard-pile-wrapper', 'discard')}
           >
-            <button
-              ref={discardButtonRef}
-              type="button"
-              onPointerDownCapture={makeCapture('discard-button', 'discard')}
-              onPointerDown={makeBubble('discard-button', 'discard')}
-              onClickCapture={makeCapture('discard-button', 'discard')}
-              onClick={handleDiscardButtonClick}
-              aria-disabled={!discardClickable}
-              data-card-anchor="discard"
+            <div
               data-gin-pile="discard"
-              data-gin-pile-layer="button"
-              className={`relative w-12 h-[68px] rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+              data-gin-pile-layer="card-rect-wrapper"
               style={{
-                pointerEvents: 'auto',
-                zIndex: 30,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
                 position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
               }}
             >
-              {discardTopCard && discardRevealed ? (
-                <div
-                  ref={discardVisibleChildRef}
-                  data-gin-pile="discard"
-                  data-gin-pile-layer="visible-card-child"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
-                </div>
-              ) : (
-                <div
-                  data-gin-pile="discard"
-                  data-gin-pile-layer="empty-placeholder-child"
-                  className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                >
-                  <span className="text-white/20 text-[8px]">Empty</span>
-                </div>
-              )}
-            </button>
+              <button
+                ref={discardButtonRef}
+                type="button"
+                onPointerDownCapture={makeCapture('discard-button', 'discard')}
+                onPointerDown={makeBubble('discard-button', 'discard')}
+                onClickCapture={makeCapture('discard-button', 'discard')}
+                onClick={handleDiscardButtonClick}
+                aria-disabled={!discardClickable}
+                data-card-anchor="discard"
+                data-gin-pile="discard"
+                data-gin-pile-layer="button"
+                className={`absolute inset-0 rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+                style={{
+                  pointerEvents: 'auto',
+                  zIndex: 30,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+              >
+                {discardTopCard && discardRevealed ? (
+                  <div
+                    ref={discardVisibleChildRef}
+                    data-gin-pile="discard"
+                    data-gin-pile-layer="visible-card-child"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" widthPx={PILE_CARD_WIDTH_PX} />
+                  </div>
+                ) : (
+                  <div
+                    data-gin-pile="discard"
+                    data-gin-pile-layer="empty-placeholder-child"
+                    className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
+                  >
+                    <span className="text-white/20 text-[8px]">Empty</span>
+                  </div>
+                )}
+              </button>
+            </div>
             <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
 
