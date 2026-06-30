@@ -177,10 +177,12 @@ export const GinRummyMobileCardsTab = ({
     const rawAuthIds = cardIds(rawMyStateAuthoritative?.hand ?? []);
     const displayIds = cardIds(rawMyState?.hand ?? []);
     const renderedIds = cardIds(myState?.hand ?? []);
-    const drawnCardId = withheldDrawnCard ? cardId(withheldDrawnCard) : null;
+    const withheldIds = (withheldDrawnCards ?? []).map(c => `${c.rank}${c.suit}`);
+    const drawnCardId = withheldIds[withheldIds.length - 1] ?? null;
     const drawTraceId = getCurrentGinSelfDrawTraceId();
     recordGinSelfDrawEvent('SELF_DRAW_RENDERED_HAND', {
       drawnCardId,
+      withheldDrawnCardIds: withheldIds,
       rawAuthHandIds: rawAuthIds,
       displayFilteredHandIds: displayIds,
       renderedHandIds: renderedIds,
@@ -190,7 +192,8 @@ export const GinRummyMobileCardsTab = ({
       renderedIndex: drawnCardId ? renderedIds.indexOf(drawnCardId) : -1,
       dealPhase: deal?.phase ?? null,
       settledCount: deal?.getSettledCountForPlayer(currentPlayerId) ?? null,
-      withheldActive: !!withheldDrawnCard,
+      withheldActive: withheldIds.length > 0,
+      withheldCount: withheldIds.length,
       handContextId: deal?.handContextId ?? null,
     }, drawTraceId);
     const prev = prevRenderedRef.current;
@@ -200,7 +203,7 @@ export const GinRummyMobileCardsTab = ({
       if (deal?.phase === 'PRE_DEAL') reasonParts.push('deal:PRE_DEAL→empty');
       else if (deal?.phase === 'DEALING') reasonParts.push('deal:DEALING settled-clip');
       else if (deal?.phase) reasonParts.push(`deal:${deal.phase} passthrough`);
-      if (withheldDrawnCard) reasonParts.push('withheldDrawnCard active');
+      if (withheldIds.length > 0) reasonParts.push(`withheldDrawnCards active (${withheldIds.length})`);
       recordGinSelfDrawEvent('SELF_DRAW_DISPLAY_DIFF', {
         previousRenderedIds: prev,
         nextRenderedIds: renderedIds,
