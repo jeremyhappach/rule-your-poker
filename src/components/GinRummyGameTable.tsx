@@ -3612,6 +3612,11 @@ export const GinRummyGameTable = ({
                 onLayOffCardSelected={setLayOffSelectedCardIndex}
                 currentPlayer={currentPlayer}
                 gameId={gameId}
+                withheldDrawnCard={
+                  selfDrawTriggerId && selfDrawCard
+                    ? { rank: selfDrawCard.rank, suit: selfDrawCard.suit }
+                    : null
+                }
               />
             )}
 
