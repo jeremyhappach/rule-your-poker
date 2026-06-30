@@ -368,25 +368,33 @@ export function ShellOwnedFeltHost({
       data-shell-felt-context={JSON.stringify(hostTrace)}
       aria-hidden="true"
       style={{
-        // STRUCTURAL play/HUD boundary enforcement.
+        // STRUCTURAL play/HUD boundary enforcement — VERTICAL ONLY.
         //
-        // The host wrapper is constrained to the GAMEPLAY REGION only
-        // (`--shell-play-h`), not the full row-2 (play + HUD). This
-        // means the felt physically cannot render into HUD territory:
-        // anything past the bottom of this box is clipped by
-        // `overflow: hidden`. The play/HUD boundary is therefore a
-        // hard structural edge, not a calculation we have to keep in
-        // sync with `--shell-hud-h`.
+        // The host wrapper is constrained to the GAMEPLAY REGION
+        // (`--shell-play-h`). Vertical clipping (HUD-leak boundary)
+        // is preserved via `clip-path: inset(0 -100vmax)` — top and
+        // bottom edges still clip at the play/HUD boundary so the
+        // felt cannot render into HUD territory.
         //
-        // DO NOT change to `inset: 0` — that would re-introduce the
-        // boundary violation where the felt visibly leaks behind the
-        // announcement rail / tabs.
+        // HORIZONTAL clipping is REMOVED. The geometry frame inside
+        // owns the resolved ellipse rect via `--shell-felt-w/h`
+        // (CSS-var driven; independent of this host's width), so
+        // making the paint host horizontally non-clipping does NOT
+        // change the ellipse rect, aspect, or center. It only stops
+        // intermediate shell wrappers from biting the rim if the
+        // felt frame ever extends past the host box.
+        //
+        // DO NOT switch to `overflow: hidden` — that re-introduces
+        // the horizontal clip. DO NOT widen the host or feed its
+        // width into ResponsiveGeometryProvider — geometry must
+        // stay derived from CSS tokens only.
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         height: 'var(--shell-play-h)',
-        overflow: 'hidden',
+        overflow: 'visible',
+        clipPath: 'inset(0 -100vmax)',
         zIndex: 0,
         pointerEvents: 'none',
       }}
