@@ -3512,28 +3512,38 @@ export const GinRummyGameTable = ({
               targetSlot={opponentDrawTargetSlot}
             />
 
-            {/* Self Draw Animation — pile → active-player box */}
-            <GinRummySelfDrawAnimation
-              key={`self-${selfDrawKey}`}
-              triggerId={selfDrawTriggerId}
-              drawSource={selfDrawSource}
-              card={selfDrawCard}
-              cardBackColors={cardBackColors}
-              onSettled={() => {
-                const drawnId = cardId(selfDrawCard);
-                const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
-                const ids = cardIds(authHand);
-                recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_SETTLED', {
-                  drawnCardId: drawnId,
-                  intentId: selfDrawTriggerId,
-                  tSettleMs: performance.now(),
-                  authContainsCard: drawnId ? ids.includes(drawnId) : null,
-                  authHandIdsAtSettle: ids,
-                });
-                setSelfDrawTriggerId(null);
-                clearCurrentGinSelfDrawTraceId();
-              }}
-            />
+            {/* Self Draw Animations — one per in-flight intent.
+                Each releases its OWN withheld card on settle. */}
+            {Object.values(selfDrawIntents).map(intent => (
+              <GinRummySelfDrawAnimation
+                key={intent.intentId}
+                triggerId={intent.intentId}
+                drawSource={intent.source}
+                card={intent.card}
+                cardBackColors={cardBackColors}
+                onSettled={() => {
+                  const drawnId = intent.drawnCardId;
+                  const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
+                  const ids = cardIds(authHand);
+                  recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_SETTLED', {
+                    drawnCardId: drawnId,
+                    intentId: intent.intentId,
+                    actionKey: intent.actionKey,
+                    handContextId: intent.handContextId,
+                    tSettleMs: performance.now(),
+                    authContainsCard: drawnId ? ids.includes(drawnId) : null,
+                    authHandIdsAtSettle: ids,
+                  });
+                  setSelfDrawIntents(prev => {
+                    if (!prev[intent.intentId]) return prev;
+                    const next = { ...prev };
+                    delete next[intent.intentId];
+                    return next;
+                  });
+                  clearCurrentGinSelfDrawTraceId();
+                }}
+              />
+            ))}
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
