@@ -2236,9 +2236,6 @@ export const GinRummyGameTable = ({
     // (frozen / visual contract active / identity stale). Prevents stale local
     // action paths from clobbering the new round after a peer advanced the hand.
     if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
-      if (pileAction) {
-        const guardName = isIdentityStaleRef.current ? 'isIdentityStale' : 'interactionsAllowed';
-      }
       persistSyncDebugEvent({
         gameId, gameType: 'gin-rummy',
         handNumber: currentHandNumber ?? null,
@@ -2254,8 +2251,6 @@ export const GinRummyGameTable = ({
       return;
     }
     setIsProcessing(true);
-    if (pileAction) {
-    }
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
       eventType: 'gin:optimistic_applied', traceId,
@@ -2277,8 +2272,6 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      if (pileAction) {
-      }
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_success', traceId,
@@ -2286,11 +2279,7 @@ export const GinRummyGameTable = ({
       });
       // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
-      if (pileAction) {
-      }
     } catch (err) {
-      if (pileAction) {
-      }
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_failure', traceId,
