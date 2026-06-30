@@ -3528,6 +3528,7 @@ export const GinRummyGameTable = ({
           row-2 local gold-plate fallback has been removed; the timer
           slot stays empty for Gin. */}
       <ShellHudGrid
+        rootStyle={{ pointerEvents: 'auto' }}
         timer={null}
 
         identity={
