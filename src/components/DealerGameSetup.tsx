@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
 import { recordGinRunbackTrace } from "@/lib/ginRunbackTrace";
-import { beginGinRunback } from "@/lib/ginRummy/runbackGate";
+
 import {
   useWaitingMount,
   recordSurfaceOwnership,
@@ -1604,18 +1604,13 @@ const DealerGameSetupInner = ({
   const handleRunBack = () => {
     if (previousGameType && previousGameConfig) {
       if (previousGameType === 'gin-rummy') {
-        // Begin the Gin presentation boundary IMMEDIATELY at action
-        // invocation — before the dealer-game RPC, before any new
-        // dealerGameId is known. While this gate is set, GinRummyGameTable
-        // forces an empty neutral surface; released only when a new
-        // committed identity with a different dealerGameId is accepted.
-        beginGinRunback(gameId);
         recordGinRunbackTrace('Run It Back tapped', {
           gameId,
           payloadPhase: 'dealer_config',
           note: `dealerPlayerId=${dealerPlayerId}; previousGameType=${previousGameType}`,
         });
       }
+
       // Use previous config and submit immediately
       // CRITICAL: Pass the game type directly to submit functions to avoid async state issues
       setSelectedGameType(previousGameType);
