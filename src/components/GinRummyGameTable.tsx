@@ -2841,6 +2841,60 @@ export const GinRummyGameTable = ({
   };
 
   // Action handlers
+  // Shared pre-hold path for every self-draw action (stock, discard, and
+  // take_first_draw upcard). Registers the pending-withheld intent and
+  // emits SELF_DRAW_ACTION_STARTED / SELF_DRAW_OPTIMISTIC_STATE *before*
+  // any optimistic state commit or async await, so the drawn card never
+  // renders in the active hand until its transport settles.
+  const beginSelfDrawPresentation = (args: {
+    source: 'stock' | 'discard';
+    selectedCard: GinRummyCard | null;
+    preState: GinRummyState;
+    newState: GinRummyState;
+  }): string => {
+    const { source, selectedCard, preState, newState } = args;
+    const preHandAuth = currentPlayerId
+      ? (preState.playerStates[currentPlayerId]?.hand ?? [])
+      : [];
+    const drawTraceId = beginGinSelfDrawTrace(source);
+    recordGinSelfDrawEvent('SELF_DRAW_ACTION_STARTED', {
+      source,
+      selectedCard: cardId(selectedCard),
+      preAuthHandIds: cardIds(preHandAuth),
+      preRenderedHandIdsKnown: false,
+      handContextId,
+    });
+    const optHand = currentPlayerId
+      ? (newState.playerStates[currentPlayerId]?.hand ?? [])
+      : [];
+    const drawnCard = newState.lastAction?.card ?? null;
+    const drawnId = cardId(drawnCard);
+    const optIds = cardIds(optHand);
+    const _action = newState.lastAction!;
+    const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
+    const _intentId = `self-draw-${_actionKey}`;
+    setSelfDrawIntents(prev => prev[_intentId] ? prev : {
+      ...prev,
+      [_intentId]: {
+        intentId: _intentId,
+        source,
+        card: drawnCard,
+        drawnCardId: drawnId,
+        handContextId: handContextId ?? null,
+        actionKey: _actionKey,
+      },
+    });
+    recordGinSelfDrawEvent('SELF_DRAW_OPTIMISTIC_STATE', {
+      drawnCardId: drawnId,
+      optimisticHandIds: optIds,
+      drawnPresent: drawnId ? optIds.includes(drawnId) : null,
+      drawnIndex: drawnId ? optIds.indexOf(drawnId) : -1,
+      actionCount: newState.actionCount ?? null,
+      phase: newState.phase, turnPhase: newState.turnPhase,
+    }, drawTraceId);
+    return drawTraceId;
+  };
+
   const handleDrawStock = async () => {
     const tid = newTraceId();
     recordGinPileTrace('STOCK_HANDLER_ENTERED', getPileActionContext('stock', {
