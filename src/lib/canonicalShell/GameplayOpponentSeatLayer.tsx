@@ -90,7 +90,7 @@ export interface GameplayOpponentSeatLayerProps {
 }
 
 function defaultChipValue(n: number): string {
-  return `$${formatChipValue(Number.isFinite(n) ? n : 0)}`;
+  return formatChipBalance(Number.isFinite(n) ? n : 0);
 }
 
 interface ShellOpponentCardBacksProps {
