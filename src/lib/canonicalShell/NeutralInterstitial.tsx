@@ -26,7 +26,7 @@ import { recordWartime } from '@/lib/wartimeDebug/core';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
-import { formatChipValue } from '@/lib/utils';
+import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import {
   useWaitingMount,
@@ -336,7 +336,7 @@ export function NeutralInterstitial({
           playerId: p.id,
           userId: p.user_id,
           name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
-          chipValue: `$${formatChipValue(p.chips ?? 0)}`,
+          chipValue: formatChipBalance(p.chips ?? 0),
           seatAnchorSource: seatAnchorSourceLabel,
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
@@ -362,7 +362,7 @@ export function NeutralInterstitial({
         chipRenderer: 'CanonicalSeatClusterDeferred',
         chipStyleSource: 'derivePlayerStatus → status palette',
         chipVariant: 'interstitial',
-        chipValue: `$${formatChipValue(p.chips ?? 0)}`,
+        chipValue: formatChipBalance(p.chips ?? 0),
         status: null,
         projectionMode,
         isViewerSelf: p.user_id === currentUserId,
@@ -422,7 +422,7 @@ export function NeutralInterstitial({
             key={player.id}
             position={player.position}
             name={label}
-            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+            chipValue={formatChipBalance(player.chips ?? 0)}
             status={status}
             playerId={player.id}
           />
