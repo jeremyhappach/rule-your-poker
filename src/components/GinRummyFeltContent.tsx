@@ -450,52 +450,61 @@ export const GinRummyFeltContent = ({
             onClickCapture={makeCapture('stock-pile-wrapper', 'stock')}
             onClick={makeBubble('stock-pile-wrapper', 'stock')}
           >
-            <button
-              ref={stockButtonRef}
-              type="button"
-              onPointerDownCapture={makeCapture('stock-button', 'stock')}
-              onPointerDown={makeBubble('stock-button', 'stock')}
-              onClickCapture={makeCapture('stock-button', 'stock')}
-              onClick={handleStockButtonClick}
-              aria-disabled={!stockClickable}
-              data-card-anchor="stock"
+            <div
               data-gin-pile="stock"
-              data-gin-pile-layer="button"
-              className={`relative w-12 h-[68px] rounded-md transition-all block ${
-                stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
-              }`}
+              data-gin-pile-layer="card-rect-wrapper"
               style={{
-                pointerEvents: 'auto',
-                zIndex: 30,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
                 position: 'relative',
+                width: PILE_CARD_WIDTH_PX,
+                aspectRatio: `${PILE_CARD_WIDTH_PX} / ${PILE_CARD_HEIGHT_PX}`,
               }}
             >
-              {stockRevealed ? (
-                <div
-                  ref={stockVisibleChildRef}
-                  data-gin-pile="stock"
-                  data-gin-pile-layer="visible-cardback-child"
-                  style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                >
-                  <CanonicalCardBack
-                    widthPx={48}
-                    heightPx={68}
-                    variant="raised"
-                    radiusPx={6}
-                    style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
-                  />
-                  <span
-                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
-                    style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+              <button
+                ref={stockButtonRef}
+                type="button"
+                onPointerDownCapture={makeCapture('stock-button', 'stock')}
+                onPointerDown={makeBubble('stock-button', 'stock')}
+                onClickCapture={makeCapture('stock-button', 'stock')}
+                onClick={handleStockButtonClick}
+                aria-disabled={!stockClickable}
+                data-card-anchor="stock"
+                data-gin-pile="stock"
+                data-gin-pile-layer="button"
+                className={`absolute inset-0 rounded-md transition-all block ${
+                  stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
+                }`}
+                style={{
+                  pointerEvents: 'auto',
+                  zIndex: 30,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+              >
+                {stockRevealed ? (
+                  <div
+                    ref={stockVisibleChildRef}
+                    data-gin-pile="stock"
+                    data-gin-pile-layer="visible-cardback-child"
+                    style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
                   >
-                    {stockCount}
-                  </span>
-                </div>
-              ) : null}
-            </button>
+                    <CanonicalCardBack
+                      widthPx={PILE_CARD_WIDTH_PX}
+                      heightPx={PILE_CARD_HEIGHT_PX}
+                      variant="raised"
+                      radiusPx={6}
+                      style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
+                    />
+                    <span
+                      className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
+                      style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+                    >
+                      {stockCount}
+                    </span>
+                  </div>
+                ) : null}
+              </button>
+            </div>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
