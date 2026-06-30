@@ -150,6 +150,7 @@ import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices }
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
+import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import cubsLogo from "@/assets/cubs-logo.png";
 
 import React, {
