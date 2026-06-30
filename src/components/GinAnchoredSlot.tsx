@@ -14,7 +14,14 @@
  * inside the felt container is safe.
  */
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type MouseEventHandler,
+  type PointerEventHandler,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
@@ -34,6 +41,10 @@ export interface GinAnchoredSlotProps {
   innerStyle?: CSSProperties;
   /** Renders nothing when no placement is available (no legacy fallback). */
   children: ReactNode;
+  onPointerDownCapture?: PointerEventHandler<HTMLDivElement>;
+  onPointerDown?: PointerEventHandler<HTMLDivElement>;
+  onClickCapture?: MouseEventHandler<HTMLDivElement>;
+  onClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 export function GinAnchoredSlot({
@@ -41,6 +52,10 @@ export function GinAnchoredSlot({
   zIndex = 20,
   innerStyle,
   children,
+  onPointerDownCapture,
+  onPointerDown,
+  onClickCapture,
+  onClick,
 }: GinAnchoredSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
@@ -161,6 +176,10 @@ export function GinAnchoredSlot({
       data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-gin-slot-fault-count={String(faults.length)}
+      onPointerDownCapture={onPointerDownCapture}
+      onPointerDown={onPointerDown}
+      onClickCapture={onClickCapture}
+      onClick={onClick}
       style={{
         position: "absolute",
         left: `${x}vmin`,
