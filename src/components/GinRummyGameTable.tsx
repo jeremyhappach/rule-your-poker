@@ -2831,7 +2831,28 @@ export const GinRummyGameTable = ({
         handlerName: 'handleDrawStock', handlerInvoked: true, actionName: 'draw_stock',
         source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
       }));
+      const preHandAuth = ginState.playerStates[currentPlayerId]?.hand ?? [];
+      const drawTraceId = beginGinSelfDrawTrace('stock');
+      recordGinSelfDrawEvent('SELF_DRAW_ACTION_STARTED', {
+        source: 'stock',
+        selectedCard: null,
+        preAuthHandIds: cardIds(preHandAuth),
+        preRenderedHandIdsKnown: false,
+        handContextId,
+      });
       const newState = drawFromStock(ginState, currentPlayerId);
+      const optHand = newState.playerStates[currentPlayerId]?.hand ?? [];
+      const drawnCard = newState.lastAction?.card ?? null;
+      const drawnId = cardId(drawnCard);
+      const optIds = cardIds(optHand);
+      recordGinSelfDrawEvent('SELF_DRAW_OPTIMISTIC_STATE', {
+        drawnCardId: drawnId,
+        optimisticHandIds: optIds,
+        drawnPresent: drawnId ? optIds.includes(drawnId) : null,
+        drawnIndex: drawnId ? optIds.indexOf(drawnId) : -1,
+        actionCount: newState.actionCount ?? null,
+        phase: newState.phase, turnPhase: newState.turnPhase,
+      }, drawTraceId);
       await updateState(newState, tid, { pile: 'stock', actionName: 'draw_stock' });
     } catch (err) {
       recordGinPileTrace('ACTION_REJECTED', getPileActionContext('stock', {
