@@ -84,14 +84,27 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 
 // ─── Deal ───────────────────────────────────────────────────────
 
-/** Deal 10 cards to each player, place one face-up on discard pile, rest is stock */
-export function dealHand(state: GinRummyState): GinRummyState {
+/**
+ * Deal 10 cards to each player, place one face-up on discard pile, rest is stock.
+ *
+ * `harnessTargetPlayerId` (Near Gin harness only): the player who should
+ * receive the advantaged hand. Derived upstream from the canonical
+ * SESSION HOST — NOT from dealer / caller / turn order / seat order.
+ * When unresolvable, callers must pass undefined; this falls closed to
+ * the normal random deal rather than silently advantaging the dealer.
+ */
+export function dealHand(
+  state: GinRummyState,
+  harnessTargetPlayerId?: string | null,
+): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
 
-  // Debug: two-action harness (deterministic gin-on-upcard for both hands)
-  if (isGinTwoActionHarnessEnabled()) {
-    return dealTwoActionHarnessHand(state);
+  // Debug: two-action harness (deterministic gin-on-upcard). Only run
+  // the harness deal when a host target is resolvable — otherwise fall
+  // through to the normal random deal (fail-closed).
+  if (isGinTwoActionHarnessEnabled() && harnessTargetPlayerId) {
+    return dealTwoActionHarnessHand(state, harnessTargetPlayerId);
   }
 
   // Debug: rigged hands for testing knock/lay-off flow
