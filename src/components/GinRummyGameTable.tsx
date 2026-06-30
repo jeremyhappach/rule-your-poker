@@ -3415,6 +3415,15 @@ export const GinRummyGameTable = ({
               targetSlot={opponentDrawTargetSlot}
             />
 
+            {/* Self Draw Animation — pile → active-player box */}
+            <GinRummySelfDrawAnimation
+              key={`self-${selfDrawKey}`}
+              triggerId={selfDrawTriggerId}
+              drawSource={selfDrawSource}
+              card={selfDrawCard}
+              cardBackColors={cardBackColors}
+            />
+
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
             {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
