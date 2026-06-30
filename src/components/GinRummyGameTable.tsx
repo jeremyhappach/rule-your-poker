@@ -59,6 +59,8 @@ import {
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
+import { GinAnchoredSlot } from './GinAnchoredSlot';
+import { GinRummyPegBoard } from './GinRummyPegBoard';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
 import type { ReactNode } from 'react';
