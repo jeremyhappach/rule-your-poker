@@ -3422,6 +3422,7 @@ export const GinRummyGameTable = ({
               drawSource={selfDrawSource}
               card={selfDrawCard}
               cardBackColors={cardBackColors}
+              onSettled={() => setSelfDrawTriggerId(null)}
             />
 
 
