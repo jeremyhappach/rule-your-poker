@@ -116,7 +116,7 @@ export const GinRummySelfDrawAnimation = ({
     const settleTimer = setTimeout(() => {
       setVisible(false);
       setSnapshot(null);
-      onSettled?.();
+      onSettledRef.current?.();
     }, 700);
 
     return () => {
