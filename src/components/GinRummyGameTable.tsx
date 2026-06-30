@@ -104,6 +104,13 @@ import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { recordGinRunbackTrace, setGinRunbackTraceContext, type GinRunbackOverlayStateSource } from '@/lib/ginRunbackTrace';
 import { GinReadyReleasePill } from './GinReadyReleasePill';
+import {
+  buildGinPileContext,
+  getLatestGinPileTraceContext,
+  recordGinPileTrace,
+  withLatestGinPileTraceContext,
+  type GinPileTracePile,
+} from '@/lib/ginPileTrace';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -2551,11 +2558,50 @@ export const GinRummyGameTable = ({
 
 
 
-  const updateState = async (newState: GinRummyState, traceId?: string) => {
+  const getPileActionContext = useCallback((pile: GinPileTracePile, overrides: Record<string, unknown> = {}) => ({
+    ...buildGinPileContext({
+      ginState,
+      currentPlayerId,
+      handContextId,
+      isPlayable,
+      stockClickable: getLatestGinPileTraceContext().stockClickable,
+      discardClickable: getLatestGinPileTraceContext().discardClickable,
+      canDraw: getLatestGinPileTraceContext().canDraw,
+      canTakeFirstDraw: getLatestGinPileTraceContext().canTakeFirstDraw,
+      discardRevealed: getLatestGinPileTraceContext().discardRevealed,
+      stockRevealed: getLatestGinPileTraceContext().stockRevealed,
+      dealPhase: getLatestGinPileTraceContext().dealPhase,
+      dealSettled: getLatestGinPileTraceContext().dealSettled,
+      readyReleased: getLatestGinPileTraceContext().readyReleased,
+    }),
+    pile,
+    ...overrides,
+  }), [ginState, currentPlayerId, handContextId, isPlayable]);
+
+  const updateState = async (
+    newState: GinRummyState,
+    traceId?: string,
+    pileAction?: { pile: GinPileTracePile; actionName: string },
+  ) => {
     // Writer-audit gate: refuse to write if the framework says we cannot interact
     // (frozen / visual contract active / identity stale). Prevents stale local
     // action paths from clobbering the new round after a peer advanced the hand.
     if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
+      if (pileAction) {
+        const guardName = isIdentityStaleRef.current ? 'isIdentityStale' : 'interactionsAllowed';
+        recordGinPileTrace('ACTION_REJECTED', withLatestGinPileTraceContext({
+          pile: pileAction.pile,
+          actionName: pileAction.actionName,
+          handlerName: 'updateState',
+          guardName,
+          guardValues: {
+            isIdentityStale: isIdentityStaleRef.current,
+            interactionsAllowed: interactionsAllowedRef.current,
+          },
+          source: 'GinRummyGameTable.updateState',
+          result: { traceId: traceId ?? null },
+        }));
+      }
       persistSyncDebugEvent({
         gameId, gameType: 'gin-rummy',
         handNumber: currentHandNumber ?? null,
@@ -2571,6 +2617,21 @@ export const GinRummyGameTable = ({
       return;
     }
     setIsProcessing(true);
+    if (pileAction) {
+      recordGinPileTrace('OPTIMISTIC_PRE_WRITE_INVOKED', withLatestGinPileTraceContext({
+        pile: pileAction.pile,
+        actionName: pileAction.actionName,
+        handlerName: 'updateState',
+        handlerInvoked: true,
+        source: 'GinRummyGameTable.updateState',
+        result: {
+          traceId: traceId ?? null,
+          nextPhase: newState.phase,
+          nextTurnPhase: newState.turnPhase,
+          nextActionCount: newState.actionCount ?? null,
+        },
+      }));
+    }
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
       eventType: 'gin:optimistic_applied', traceId,
@@ -2605,6 +2666,22 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
+      if (pileAction) {
+        recordGinPileTrace('ACTION_RPC_RESOLVED', withLatestGinPileTraceContext({
+          pile: pileAction.pile,
+          actionName: pileAction.actionName,
+          handlerName: 'updateState',
+          handlerInvoked: true,
+          source: 'GinRummyGameTable.updateState',
+          result: {
+            traceId: traceId ?? null,
+            roundId,
+            nextPhase: newState.phase,
+            nextTurnPhase: newState.turnPhase,
+            nextActionCount: newState.actionCount ?? null,
+          },
+        }));
+      }
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_success', traceId,
@@ -2613,6 +2690,17 @@ export const GinRummyGameTable = ({
       // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
     } catch (err) {
+      if (pileAction) {
+        recordGinPileTrace('ACTION_RPC_FAILED', withLatestGinPileTraceContext({
+          pile: pileAction.pile,
+          actionName: pileAction.actionName,
+          handlerName: 'updateState',
+          handlerInvoked: true,
+          source: 'GinRummyGameTable.updateState',
+          error: String((err as Error)?.message ?? err),
+          result: { traceId: traceId ?? null, roundId },
+        }));
+      }
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: 'gin:db_write_failure', traceId,
@@ -2640,32 +2728,126 @@ export const GinRummyGameTable = ({
   // Action handlers
   const handleDrawStock = async () => {
     const tid = newTraceId();
+    recordGinPileTrace('STOCK_HANDLER_ENTERED', getPileActionContext('stock', {
+      handlerName: 'handleDrawStock',
+      handlerSelected: 'handleDrawStock',
+      handlerInvoked: true,
+      actionName: 'draw_stock',
+      source: 'GinRummyGameTable.handleDrawStock',
+      result: { traceId: tid },
+    }));
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
       eventType: 'gin:input:draw_stock', traceId: tid,
       payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
     });
-    if (!ginState || !currentPlayerId || isProcessing) return;
+    if (!ginState) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('stock', {
+        handlerName: 'handleDrawStock', actionName: 'draw_stock', guardName: 'ginState',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
+      }));
+      return;
+    }
+    if (!currentPlayerId) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('stock', {
+        handlerName: 'handleDrawStock', actionName: 'draw_stock', guardName: 'currentPlayerId',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
+      }));
+      return;
+    }
+    if (isProcessing) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('stock', {
+        handlerName: 'handleDrawStock', actionName: 'draw_stock', guardName: 'isProcessing',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
+      }));
+      return;
+    }
     try {
+      recordGinPileTrace('DRAW_STOCK_ACTION_INVOKED', getPileActionContext('stock', {
+        handlerName: 'handleDrawStock', handlerInvoked: true, actionName: 'draw_stock',
+        source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
+      }));
       const newState = drawFromStock(ginState, currentPlayerId);
-      await updateState(newState, tid);
+      await updateState(newState, tid, { pile: 'stock', actionName: 'draw_stock' });
     } catch (err) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('stock', {
+        handlerName: 'handleDrawStock', actionName: 'draw_stock', guardName: 'drawFromStock',
+        guardValues: {
+          phase: ginState?.phase ?? null,
+          currentTurnPlayerId: ginState?.currentTurnPlayerId ?? null,
+          currentPlayerId: currentPlayerId ?? null,
+          turnPhase: ginState?.turnPhase ?? null,
+          stockCount: ginState?.stockPile?.length ?? null,
+        },
+        source: 'GinRummyGameTable.handleDrawStock', result: { traceId: tid },
+        error: String((err as Error)?.message ?? err),
+      }));
       toast.error((err as Error).message);
     }
   };
 
   const handleDrawDiscard = async () => {
     const tid = newTraceId();
+    recordGinPileTrace('DISCARD_HANDLER_ENTERED', getPileActionContext('discard', {
+      handlerName: 'handleDrawDiscard',
+      handlerSelected: 'handleDrawDiscard',
+      handlerInvoked: true,
+      actionName: 'draw_discard',
+      source: 'GinRummyGameTable.handleDrawDiscard',
+      result: { traceId: tid },
+    }));
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
       eventType: 'gin:input:draw_discard', traceId: tid,
       payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
     });
-    if (!ginState || !currentPlayerId || isProcessing) return;
+    if (!ginState) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleDrawDiscard', actionName: 'draw_discard', guardName: 'ginState',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
+      }));
+      return;
+    }
+    if (!currentPlayerId) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleDrawDiscard', actionName: 'draw_discard', guardName: 'currentPlayerId',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
+      }));
+      return;
+    }
+    if (isProcessing) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleDrawDiscard', actionName: 'draw_discard', guardName: 'isProcessing',
+        guardValues: { hasGinState: !!ginState, hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
+      }));
+      return;
+    }
     try {
+      recordGinPileTrace('DRAW_DISCARD_ACTION_INVOKED', getPileActionContext('discard', {
+        handlerName: 'handleDrawDiscard', handlerInvoked: true, actionName: 'draw_discard',
+        source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
+      }));
       const newState = drawFromDiscard(ginState, currentPlayerId);
-      await updateState(newState, tid);
+      await updateState(newState, tid, { pile: 'discard', actionName: 'draw_discard' });
     } catch (err) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleDrawDiscard', actionName: 'draw_discard', guardName: 'drawFromDiscard',
+        guardValues: {
+          phase: ginState?.phase ?? null,
+          currentTurnPlayerId: ginState?.currentTurnPlayerId ?? null,
+          currentPlayerId: currentPlayerId ?? null,
+          turnPhase: ginState?.turnPhase ?? null,
+          discardCount: ginState?.discardPile?.length ?? null,
+        },
+        source: 'GinRummyGameTable.handleDrawDiscard', result: { traceId: tid },
+        error: String((err as Error)?.message ?? err),
+      }));
       toast.error((err as Error).message);
     }
   };
@@ -2780,16 +2962,73 @@ export const GinRummyGameTable = ({
   };
 
   const handleTakeFirstDraw = async () => {
-    if (!currentPlayerId || isProcessing) return;
+    const tid = newTraceId();
+    recordGinPileTrace('TAKE_FIRST_DRAW_HANDLER_ENTERED', getPileActionContext('discard', {
+      handlerName: 'handleTakeFirstDraw',
+      handlerSelected: 'handleTakeFirstDraw',
+      handlerInvoked: true,
+      actionName: 'take_first_draw',
+      source: 'GinRummyGameTable.handleTakeFirstDraw',
+      result: { traceId: tid },
+    }));
+    if (!currentPlayerId) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'currentPlayerId',
+        guardValues: { hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+      }));
+      return;
+    }
+    if (isProcessing) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'isProcessing',
+        guardValues: { hasCurrentPlayerId: !!currentPlayerId, isProcessing },
+        source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+      }));
+      return;
+    }
     try {
       // Fetch fresh state from DB to prevent stale closure issues in multiplayer
       const fresh = await fetchFreshState();
-      if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
+      if (!fresh) {
+        recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+          handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'freshState',
+          guardValues: { freshPresent: !!fresh },
+          source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+        }));
+        return;
+      }
+      if (fresh.phase !== 'first_draw') {
+        recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+          handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'fresh.phase',
+          guardValues: { freshPhase: fresh.phase, expectedPhase: 'first_draw', freshOfferedTo: fresh.firstDrawOfferedTo, currentPlayerId },
+          source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+        }));
+        return;
+      }
+      if (fresh.firstDrawOfferedTo !== currentPlayerId) {
+        recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+          handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'fresh.firstDrawOfferedTo',
+          guardValues: { freshPhase: fresh.phase, freshOfferedTo: fresh.firstDrawOfferedTo, currentPlayerId },
+          source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+        }));
+        return;
+      }
+      recordGinPileTrace('DRAW_DISCARD_ACTION_INVOKED', getPileActionContext('discard', {
+        handlerName: 'handleTakeFirstDraw', handlerInvoked: true, actionName: 'take_first_draw',
+        source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+      }));
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
       // Longer optimistic guard — we're transitioning to discard phase, no bot race
       // Optimistic guard handled by updateState → ginSync.applyOptimistic
-      await updateState(newState);
+      await updateState(newState, tid, { pile: 'discard', actionName: 'take_first_draw' });
     } catch (err) {
+      recordGinPileTrace('ACTION_REJECTED', getPileActionContext('discard', {
+        handlerName: 'handleTakeFirstDraw', actionName: 'take_first_draw', guardName: 'takeFirstDrawCard',
+        guardValues: { currentPlayerId: currentPlayerId ?? null },
+        source: 'GinRummyGameTable.handleTakeFirstDraw', result: { traceId: tid },
+        error: String((err as Error)?.message ?? err),
+      }));
       toast.error((err as Error).message);
     }
   };
@@ -3085,6 +3324,7 @@ export const GinRummyGameTable = ({
                 onDrawStock={handleDrawStock}
                 onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
                 isProcessing={isProcessing}
+                isPlayable={isPlayable}
                 handContextId={handContextId}
               />
             )}
