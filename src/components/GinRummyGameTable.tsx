@@ -66,6 +66,7 @@ import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
 import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
+import { GinRummySelfDrawAnimation } from './GinRummySelfDrawAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
@@ -925,6 +926,12 @@ export const GinRummyGameTable = ({
   const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
   const [opponentDrawTargetSlot, setOpponentDrawTargetSlot] = useState<CanonicalSlot | null>(null);
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
+  // Self draw animation state — mirrors opponent transport, destination
+  // resolves to the active-player box (`[data-gin-active-pane-content]`).
+  const [selfDrawTriggerId, setSelfDrawTriggerId] = useState<string | null>(null);
+  const [selfDrawSource, setSelfDrawSource] = useState<'stock' | 'discard'>('stock');
+  const [selfDrawCard, setSelfDrawCard] = useState<GinRummyCard | null>(null);
+  const [selfDrawKey, setSelfDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
@@ -1285,8 +1292,22 @@ export const GinRummyGameTable = ({
     if (actionKey === prevLastActionRef.current) return;
     prevLastActionRef.current = actionKey;
 
-    // Seated players see opponent draws; observers see both players' draws.
-    if (currentPlayerId && action.playerId === currentPlayerId) return;
+    // Seated players see opponent draws via the felt animation; their
+    // OWN draws use the self-draw animation (pile → active-pane box).
+    if (currentPlayerId && action.playerId === currentPlayerId) {
+      if (action.type === 'draw_stock') {
+        setSelfDrawSource('stock');
+        setSelfDrawCard(action.card ?? null);
+        setSelfDrawTriggerId(`self-draw-${actionKey}`);
+        setSelfDrawKey(k => k + 1);
+      } else if (action.type === 'draw_discard') {
+        setSelfDrawSource('discard');
+        setSelfDrawCard(action.card ?? null);
+        setSelfDrawTriggerId(`self-draw-${actionKey}`);
+        setSelfDrawKey(k => k + 1);
+      }
+      return;
+    }
     setOpponentDrawTargetSlot(playerSlotById.get(action.playerId) ?? null);
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
@@ -3394,6 +3415,16 @@ export const GinRummyGameTable = ({
               targetSlot={opponentDrawTargetSlot}
             />
 
+            {/* Self Draw Animation — pile → active-player box */}
+            <GinRummySelfDrawAnimation
+              key={`self-${selfDrawKey}`}
+              triggerId={selfDrawTriggerId}
+              drawSource={selfDrawSource}
+              card={selfDrawCard}
+              cardBackColors={cardBackColors}
+              onSettled={() => setSelfDrawTriggerId(null)}
+            />
+
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
             {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
@@ -3581,6 +3612,11 @@ export const GinRummyGameTable = ({
                 onLayOffCardSelected={setLayOffSelectedCardIndex}
                 currentPlayer={currentPlayer}
                 gameId={gameId}
+                withheldDrawnCard={
+                  selfDrawTriggerId && selfDrawCard
+                    ? { rank: selfDrawCard.rank, suit: selfDrawCard.suit }
+                    : null
+                }
               />
             )}
 

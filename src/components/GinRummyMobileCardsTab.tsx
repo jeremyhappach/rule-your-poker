@@ -38,6 +38,9 @@ interface GinRummyMobileCardsTabProps {
   onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
+  /** When set, hide this card from the rendered hand until the self-draw
+   *  transport animation settles (mirrors opponent ownership model). */
+  withheldDrawnCard?: { rank: string; suit: string } | null;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
@@ -78,13 +81,29 @@ export const GinRummyMobileCardsTab = ({
   onLayOffCardSelected,
   currentPlayer,
   gameId,
+  withheldDrawnCard,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
-  const rawMyState = ginState.playerStates[currentPlayerId];
+  const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
+  // Withhold the freshly drawn card from the rendered hand while the
+  // self-draw transport animation is in flight. The card has been
+  // committed to ginState (so subsequent actions like discard remain
+  // legal) but we visually withhold its face until the flight settles,
+  // mirroring the opponent ownership-claim model.
+  const rawMyState = useMemo(() => {
+    if (!rawMyStateAuthoritative || !withheldDrawnCard) return rawMyStateAuthoritative;
+    const idx = rawMyStateAuthoritative.hand.findIndex(
+      c => c.rank === withheldDrawnCard.rank && c.suit === withheldDrawnCard.suit,
+    );
+    if (idx === -1) return rawMyStateAuthoritative;
+    const clipped = [...rawMyStateAuthoritative.hand];
+    clipped.splice(idx, 1);
+    return { ...rawMyStateAuthoritative, hand: clipped };
+  }, [rawMyStateAuthoritative, withheldDrawnCard]);
   // Opening-deal prefix gate applies ONLY to the opening dealt-card
   // sequence (cardsPerPlayer cards). Once authoritative hand membership
   // exceeds the opening manifest size, the additional card was acquired
