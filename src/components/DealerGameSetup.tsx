@@ -1604,6 +1604,12 @@ const DealerGameSetupInner = ({
   const handleRunBack = () => {
     if (previousGameType && previousGameConfig) {
       if (previousGameType === 'gin-rummy') {
+        // Begin the Gin presentation boundary IMMEDIATELY at action
+        // invocation — before the dealer-game RPC, before any new
+        // dealerGameId is known. While this gate is set, GinRummyGameTable
+        // forces an empty neutral surface; released only when a new
+        // committed identity with a different dealerGameId is accepted.
+        beginGinRunback(gameId);
         recordGinRunbackTrace('Run It Back tapped', {
           gameId,
           payloadPhase: 'dealer_config',
