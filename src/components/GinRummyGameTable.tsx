@@ -3490,7 +3490,20 @@ export const GinRummyGameTable = ({
               drawSource={selfDrawSource}
               card={selfDrawCard}
               cardBackColors={cardBackColors}
-              onSettled={() => setSelfDrawTriggerId(null)}
+              onSettled={() => {
+                const drawnId = cardId(selfDrawCard);
+                const authHand = viewState?.playerStates?.[currentPlayerId ?? '']?.hand ?? [];
+                const ids = cardIds(authHand);
+                recordGinSelfDrawEvent('SELF_DRAW_TRANSPORT_SETTLED', {
+                  drawnCardId: drawnId,
+                  intentId: selfDrawTriggerId,
+                  tSettleMs: performance.now(),
+                  authContainsCard: drawnId ? ids.includes(drawnId) : null,
+                  authHandIdsAtSettle: ids,
+                });
+                setSelfDrawTriggerId(null);
+                clearCurrentGinSelfDrawTraceId();
+              }}
             />
 
 
