@@ -75,6 +75,7 @@ import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
+import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
 // Wave 2E: discrete die size ladder (must match HorsesDie sizeClasses).
@@ -1995,14 +1996,14 @@ export function YahtzeeGameTable({
             // My turn (or sticky-latched within the turn-transition window):
             // show interactive scorecard ON the felt (anchored stage).
             return (
-              <YahtzeeAnchoredSlot
+              <YahtzeeAnchoredInteractionSlot
                 artifactId="yahtzee.scorecardStage"
                 innerStyle={{ alignItems: 'center', justifyContent: 'center' }}
               >
                 <div style={{ width: '100%', maxWidth: 340 }}>
                   {renderScorecard(myPlayer.id, true)}
                 </div>
-              </YahtzeeAnchoredSlot>
+              </YahtzeeAnchoredInteractionSlot>
             );
           }
 
