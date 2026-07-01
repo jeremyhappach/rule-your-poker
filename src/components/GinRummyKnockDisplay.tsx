@@ -187,18 +187,18 @@ export const GinRummyKnockDisplay = ({
     : null;
 
   return (
-    <GinAnchoredSlot
+    <GinAnchoredInteractionSlot
       artifactId="gin.knockDisplay"
-      zIndex={40}
       innerStyle={{
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
         gap: '0.5rem',
-        // Slot itself accepts pointer events so meld buttons in lay-off
-        // remain tappable. Non-interactive children (labels, deadwood)
-        // opt out via `pointer-events-none` classes below.
-        pointerEvents: 'auto',
+        // Interaction-layer slot: outer stays pointer-events:none;
+        // meld <button>s opt back in via `pointer-events-auto` when a
+        // lay-off card is selected AND canLayOff(...) matches. This
+        // mirrors the stock/discard interaction-layer contract so felt
+        // controls are hit-testable above every gameplay visual layer.
         padding: '0 0.5rem',
       }}
     >
