@@ -16,8 +16,21 @@
  *   - Server logic is untouched.
  */
 import { supabase } from '@/integrations/supabase/client';
+import {
+  chaosDeliver,
+  startChaosSession,
+  stopChaosSession,
+  updateChaosRole,
+  type ChaosClientRole,
+} from './networkSimChaos';
 
-export type NetworkSimMode = 'off' | 'moderate' | 'heavy' | 'reorder' | 'cross_country';
+export type NetworkSimMode =
+  | 'off'
+  | 'moderate'
+  | 'heavy'
+  | 'reorder'
+  | 'cross_country'
+  | 'cross_country_chaos';
 
 export const NETWORK_SIM_MODE_LABELS: Record<NetworkSimMode, string> = {
   off: 'Off',
@@ -25,6 +38,7 @@ export const NETWORK_SIM_MODE_LABELS: Record<NetworkSimMode, string> = {
   heavy: 'Heavy Lag',
   reorder: 'Reorder/Burst',
   cross_country: 'Cross-Country',
+  cross_country_chaos: 'Cross-Country Chaos',
 };
 
 interface ModeProfile {
