@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles DROP CONSTRAINT profiles_network_sim_mode_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_network_sim_mode_check CHECK (network_sim_mode = ANY (ARRAY['off'::text, 'moderate'::text, 'heavy'::text, 'reorder'::text, 'cross_country'::text, 'cross_country_chaos'::text]));
