@@ -121,6 +121,4 @@ export function useActiveHandCardRectPublisher(
       }
     };
   }, [game, rect?.cardWidthPx, rect?.cardHeightPx]);
-  // Suppress unused-var lint for `useState` importless setup guard.
-  void useState;
 }
