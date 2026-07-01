@@ -1693,8 +1693,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handNumber: number;
     seededAt: number;
   } | null>(null);
+
+  // P0 SHELL RECOVERY LEASE (INV-A, INV-B): while this Game route is
+  // mounted with an authoritative (gameId, userId) identity, hold a
+  // durable recovery lease. Transient disconnects, resubscribe failures,
+  // delayed snapshots, and Chaos recovery events MUST NOT route to lobby.
+  // Only explicit terminal reasons (recorded via recordTerminalRecovery
+  // at the actual navigate('/') call sites) may release the lease.
+  useEffect(() => {
+    if (!gameId || !user?.id) return;
+    acquireRecoveryLease(gameId, user.id);
+    return () => {
+      releaseRecoveryLease('unmount', { gameId, userId: user.id });
+    };
+  }, [gameId, user?.id]);
+
   useEffect(() => {
     if (!gameId || !user) return;
+
 
     let cancelled = false;
 
