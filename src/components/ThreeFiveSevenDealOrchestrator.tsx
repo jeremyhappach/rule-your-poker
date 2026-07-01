@@ -206,12 +206,24 @@ export function ThreeFiveSevenDealOrchestrator({
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
   ]);
 
+  // Committed active-hand card geometry, published by ActiveHandFan
+  // once the phase-locked layout resolves. When present, the landing
+  // anchor is sized to the exact final card rect so the transport
+  // runtime reads `to.w`/`to.h` == final card size and the flight
+  // lands directly into it (no post-settle snap). Fallback 1×1
+  // preserves prior behavior if the fan has not yet published.
+  const committedCardRect = useActiveHandCardRect('threeFiveSeven');
+  const anchorWidth = committedCardRect?.cardWidthPx ?? 1;
+  const anchorHeight = committedCardRect?.cardHeightPx ?? 1;
+
   return (
     <>
       {/* Canonical destination terminus for self-recipient intents —
           portaled into [data-357-active-hand-region] so resolved
           toRect lands on the visual active-player hand fan, NOT the
-          identity row at the bottom of MobileGameTable. */}
+          identity row at the bottom of MobileGameTable. Sized to the
+          committed final card rect so cards fly directly into their
+          final width/height. */}
       {selfHandRegion ? createPortal(
         <div
           aria-hidden="true"
@@ -219,8 +231,8 @@ export function ThreeFiveSevenDealOrchestrator({
             position: 'absolute',
             left: '50%',
             top: '15%',
-            width: 1,
-            height: 1,
+            width: anchorWidth,
+            height: anchorHeight,
             transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
           }}
@@ -228,6 +240,8 @@ export function ThreeFiveSevenDealOrchestrator({
           data-canonical-shell-viewer-card-endpoint="357-self-hand"
           data-canonical-self-hand-anchor-position="top-of-pane"
           data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfHandRegion"
+          data-committed-card-w={anchorWidth}
+          data-committed-card-h={anchorHeight}
         />
       , selfHandRegion) : null}
       {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
