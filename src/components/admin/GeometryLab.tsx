@@ -874,9 +874,15 @@ function GameSections(props: GameSectionsProps) {
 
         {/* Helper text is coupled to the stock pile (child, not an
             independently anchored artifact). Its controls surface here
-            under the Stock/Discard artifact block. */}
+            under the Stock/Discard artifact block. Wrapped in a bright
+            accent so the panel is obvious next to the geometry fields. */}
         {artifactId === "gin.stockDiscardGroup" && (
-          <GinHelperTextAdminSection />
+          <div
+            data-geolab-panel="gin-helper-text-inline"
+            className="rounded-md border-2 border-sky-500/60 bg-sky-500/5 p-2 mt-2"
+          >
+            <GinHelperTextAdminSection />
+          </div>
         )}
 
 
