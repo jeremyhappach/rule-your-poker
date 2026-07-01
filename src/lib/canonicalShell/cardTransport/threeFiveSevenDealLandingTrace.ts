@@ -43,8 +43,11 @@ const MAX = 80;
 const entries = new Map<string, ThreeFiveSevenDealLandingTraceEntry>();
 const order: string[] = [];
 const listeners = new Set<() => void>();
+let snapshotDirty = true;
+let cachedSnapshot: ThreeFiveSevenDealLandingTraceEntry[] = [];
 
 function emit() {
+  snapshotDirty = true;
   listeners.forEach((l) => {
     try { l(); } catch { /* noop */ }
   });
@@ -84,7 +87,10 @@ export function subscribe357DealLandingTrace(listener: () => void): () => void {
 }
 
 export function get357DealLandingTrace(): ThreeFiveSevenDealLandingTraceEntry[] {
-  return order.map((id) => entries.get(id)).filter(Boolean) as ThreeFiveSevenDealLandingTraceEntry[];
+  if (!snapshotDirty) return cachedSnapshot;
+  cachedSnapshot = order.map((id) => entries.get(id)).filter(Boolean) as ThreeFiveSevenDealLandingTraceEntry[];
+  snapshotDirty = false;
+  return cachedSnapshot;
 }
 
 export function clear357DealLandingTrace(): void {
