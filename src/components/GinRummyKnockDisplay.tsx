@@ -6,7 +6,7 @@ import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { cn } from '@/lib/utils';
 import { canLayOff } from '@/lib/ginRummyScoring';
-import { GinAnchoredSlot } from './GinAnchoredSlot';
+import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
 
 interface GinRummyKnockDisplayProps {
   ginState: GinRummyState;
