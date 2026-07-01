@@ -29,10 +29,7 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
   const denom = pointsToWin > 0 ? pointsToWin : 100;
 
   return (
-    <div
-      className="space-y-1 w-full"
-      data-canonical-score-rail-clearance="gin-rummy.pegboard"
-    >
+    <div className="space-y-1 w-full">
       {playerIds.map((pid, index) => {
         const score = matchScores[pid] || 0;
         // fill = clamp(playerMatchScore / matchTargetScore, 0, 1)

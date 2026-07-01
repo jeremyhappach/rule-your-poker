@@ -137,14 +137,6 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
   // diameter) until the first measurement lands so the initial render
   // is never blank.
   const [chipBubbleWidthPx, setChipBubbleWidthPx] = useState<number>(40);
-  // Canonical score-rail clearance cap (upper-right seats only). When
-  // an opponent occupies the upper-right quadrant of the felt, the
-  // opponent card-back fan must not intersect any element declared as
-  // `[data-canonical-score-rail-clearance]`. Available fan span is
-  // capped at 2 × (railLeftEdge − chipCenterX) so the symmetric fan
-  // stays clear of the rail; the resolver then tightens the fan
-  // step/overlap only. `null` = no clamp applies.
-  const [railClampPx, setRailClampPx] = useState<number | null>(null);
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const measure = () => {
@@ -158,51 +150,6 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
           Math.abs(prev - r.width) > 0.5 ? r.width : prev,
         );
       }
-      // Score-rail clearance — upper-right seats only.
-      const felt = document.querySelector(
-        '[data-canonical-felt-surface]',
-      ) as HTMLElement | null;
-      let nextClamp: number | null = null;
-      if (felt && r.width > 0) {
-        const feltRect = felt.getBoundingClientRect();
-        const chipCx = r.left + r.width / 2;
-        const chipCy = r.top + r.height / 2;
-        const feltCx = feltRect.left + feltRect.width / 2;
-        const feltCy = feltRect.top + feltRect.height / 2;
-        const isUpperRight = chipCx > feltCx && chipCy < feltCy;
-        if (isUpperRight) {
-          const rails = document.querySelectorAll(
-            '[data-canonical-score-rail-clearance]',
-          );
-          for (const el of Array.from(rails)) {
-            const rr = (el as HTMLElement).getBoundingClientRect();
-            if (rr.width <= 0 || rr.height <= 0) continue;
-            // Only rails whose vertical band overlaps the chip row are
-            // reachable by a horizontally-symmetric fan sitting just
-            // below the chip.
-            const verticallyRelevant =
-              rr.bottom >= r.top && rr.top <= r.bottom;
-            if (!verticallyRelevant) continue;
-            if (rr.left <= chipCx) continue; // rail already left of chip
-            const availableSpan = 2 * (rr.left - chipCx);
-            if (availableSpan < 0) continue;
-            nextClamp =
-              nextClamp == null
-                ? availableSpan
-                : Math.min(nextClamp, availableSpan);
-          }
-        }
-      }
-      setRailClampPx((prev) => {
-        if (prev == null && nextClamp == null) return prev;
-        if (
-          prev != null &&
-          nextClamp != null &&
-          Math.abs(prev - nextClamp) < 0.5
-        )
-          return prev;
-        return nextClamp;
-      });
     };
     measure();
     if (typeof window === 'undefined') return;
@@ -229,19 +176,14 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
   const preferredStepFrac = PREFERRED_STEP_FRACTION[variant];
 
   // Adaptive fan span policy:
-  //   configuredCap = chipBubbleWidthPx × (maxFanSpanPct / 100)
-  //   effectiveCap  = min(configuredCap, scoreRailClampPx?)
-  //   naturalStep   = cardWidth × preferredStepFrac
-  //   naturalSpan   = cardWidth + (count-1) × naturalStep
-  // If naturalSpan ≤ effectiveCap → keep the natural spread.
+  //   maxFanSpanPx = chipBubbleWidthPx × (maxFanSpanPct / 100)
+  //   naturalStep  = cardWidth × preferredStepFrac
+  //   naturalSpan  = cardWidth + (count-1) × naturalStep
+  // If naturalSpan ≤ maxFanSpanPx → keep the natural spread.
   // Otherwise, tighten step just enough to satisfy the cap. Step
   // may fall to 0 (fully stacked); no lower bound is enforced.
-  const configuredCapPx =
-    chipBubbleWidthPx * (cfg.maxFanSpanPct / 100);
   const maxFanSpanPx =
-    railClampPx != null
-      ? Math.min(configuredCapPx, railClampPx)
-      : configuredCapPx;
+    chipBubbleWidthPx * (cfg.maxFanSpanPct / 100);
   const naturalStep = cardWidth * preferredStepFrac;
   const naturalSpan =
     count > 0 ? cardWidth + (count - 1) * naturalStep : 0;

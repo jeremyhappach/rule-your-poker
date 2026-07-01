@@ -212,7 +212,6 @@ export const CribbagePegBoard = ({
   return (
     <div
       data-pegboard-sizing="rect-driven"
-      data-canonical-score-rail-clearance="cribbage.pegboard"
       data-pegboard-assigned-height-px={Math.round(assignedHeightPx)}
       data-pegboard-row-px={targetRowPx}
       data-pegboard-intrinsic-px={intrinsicHeightPx}
