@@ -10651,6 +10651,9 @@ export const MobileGameTable = ({
                                            />
                                          );
                                        })()}
+                                     </>
+                                    );
+                                 };
                                 return gameType === 'holm-game' ? (
                                   <UseHolmSelfHand
                                     currentPlayerId={currentPlayer?.id ?? ''}
