@@ -653,8 +653,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     >
       <div
         style={{
-          width: CARD_W,
-          height: CARD_H,
+          width: flyW,
+          height: flyH,
           borderRadius: 2,
           border: isHidden ? 'none' : '1px solid rgba(255,255,255,0.2)',
           boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
@@ -677,16 +677,16 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           // by shell; stamped cardBackColors on the intent are ignored
           // for paint purposes (kept on the intent for debug parity).
           <CanonicalCardBack
-            widthPx={CARD_W}
-            heightPx={CARD_H}
+            widthPx={flyW}
+            heightPx={flyH}
             variant="flat"
             radiusPx={2}
             style={{ width: '100%', height: '100%' }}
           />
         ) : vf ? (
           <>
-            <span style={{ fontSize: `${CARD_W * 0.55}px`, fontWeight: 900, lineHeight: 1, color: suitColor }}>{vf.rank}</span>
-            <span style={{ fontSize: `${CARD_W * 0.7}px`, lineHeight: 1, color: suitColor }}>{suitChar}</span>
+            <span style={{ fontSize: `${flyW * 0.55}px`, fontWeight: 900, lineHeight: 1, color: suitColor }}>{vf.rank}</span>
+            <span style={{ fontSize: `${flyW * 0.7}px`, lineHeight: 1, color: suitColor }}>{suitChar}</span>
           </>
         ) : null}
       </div>
