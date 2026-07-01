@@ -590,6 +590,49 @@ export function Use357SelfHand<T>({
     });
   }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase, sourceCards.length]);
   const forensicsId = `357Self:${currentPlayerId || 'unknown'}`;
+  const firstSettledRectRef = useRef<Set<string>>(new Set());
+  const firstResizeRectRef = useRef<Set<string>>(new Set());
+  const firstRectRef = useRef<Map<string, { w: number; h: number }>>(new Map());
+  useLayoutEffect(() => {
+    if (!deal?.handContextId || !currentPlayerId || typeof document === 'undefined') return;
+    const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
+    if (!region) return;
+    const nodes = Array.from(region.querySelectorAll<HTMLElement>('[data-playing-card-root]'));
+    const observers: ResizeObserver[] = [];
+    nodes.forEach((node, index) => {
+      const cardId = settledCardIds[index] ?? boundaryClaimedCardIds[index] ?? null;
+      if (!cardId) return;
+      const renderKey = `Use357SelfHand.PlayerHand|${baseHandContextId}|p:${currentPlayerId}|idx:${index}|render:${renderCountRef.current}`;
+      const rect = rectFromDomRect(node.getBoundingClientRect());
+      if (!firstSettledRectRef.current.has(cardId)) {
+        firstSettledRectRef.current.add(cardId);
+        firstRectRef.current.set(cardId, { w: rect.w, h: rect.h });
+        record357DealLandingTrace(cardId, {
+          handContextId: deal.handContextId,
+          recipientPlayerId: currentPlayerId,
+          renderedCardRectOnFirstSettledFrame: rect,
+          renderedActiveCardRenderKey: renderKey,
+        });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+          if (firstResizeRectRef.current.has(cardId)) return;
+          const next = rectFromDomRect(node.getBoundingClientRect());
+          const first = firstRectRef.current.get(cardId);
+          if (!first) return;
+          if (Math.abs(next.w - first.w) < 0.5 && Math.abs(next.h - first.h) < 0.5) return;
+          firstResizeRectRef.current.add(cardId);
+          record357DealLandingTrace(cardId, {
+            firstPostSettleResizeRect: next,
+            renderedActiveCardRenderKey: renderKey,
+          });
+        });
+        ro.observe(node);
+        observers.push(ro);
+      }
+    });
+    return () => observers.forEach((ro) => ro.disconnect());
+  }, [deal?.handContextId, currentPlayerId, baseHandContextId, settledCardIds.join('|'), boundaryClaimedCardIds.join('|'), effectiveCards.length]);
   useEffect(() => {
     if (!currentPlayerId) return;
     const region = typeof document !== 'undefined'
