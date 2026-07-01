@@ -68,6 +68,7 @@ import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
 import { ShellChipBalanceAdminSection } from "./ShellChipBalanceAdminSection";
+import { ShellOpponentCardBacksAdminSection } from "./ShellOpponentCardBacksAdminSection";
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
 import { GinHelperTextAdminSection } from "./GinHelperTextAdminSection";
