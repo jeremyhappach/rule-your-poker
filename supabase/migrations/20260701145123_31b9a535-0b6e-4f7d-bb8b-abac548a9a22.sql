@@ -1,0 +1,1 @@
+UPDATE public.system_settings SET value = jsonb_set(COALESCE(value, '{}'::jsonb), '{enabled}', 'true'::jsonb) WHERE key = 'debug_mode';
