@@ -27,6 +27,8 @@ import type { GameKey } from '@/lib/geometryLab/descriptorIndex';
 export interface ActiveHandCardRect {
   cardWidthPx: number;
   cardHeightPx: number;
+  publishedAt: number;
+  activeHandFanRenderKey?: string | null;
 }
 
 type Listener = () => void;
@@ -64,11 +66,17 @@ export function publishActiveHandCardRect(
   if (
     prev &&
     Math.abs(prev.cardWidthPx - rect.cardWidthPx) < 0.5 &&
-    Math.abs(prev.cardHeightPx - rect.cardHeightPx) < 0.5
+    Math.abs(prev.cardHeightPx - rect.cardHeightPx) < 0.5 &&
+    (prev.activeHandFanRenderKey ?? null) === (rect.activeHandFanRenderKey ?? null)
   ) {
     return;
   }
-  rects.set(game, { cardWidthPx: rect.cardWidthPx, cardHeightPx: rect.cardHeightPx });
+  rects.set(game, {
+    cardWidthPx: rect.cardWidthPx,
+    cardHeightPx: rect.cardHeightPx,
+    publishedAt: rect.publishedAt,
+    activeHandFanRenderKey: rect.activeHandFanRenderKey ?? null,
+  });
   notify(game);
 }
 
