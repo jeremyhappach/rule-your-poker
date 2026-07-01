@@ -15,10 +15,26 @@
  *   - Resolves `env(safe-area-inset-bottom)` once via a CSS probe and
  *     forwards it as `safeAreaBottomPx`.
  *
- * Used at the Holm / 3-5-7 active-self mount inside MobileGameTable
- * where the pane is not owned by this component but by the surrounding
- * active pane container. The card stage still remains a sibling of the
- * lower action / instruction / identity zone owned by the pane.
+ * Portal + phase-lock contract (v4 — 3-5-7 integration fix):
+ *   - `portalTargetSelector`: when set, the fan is rendered via
+ *     `createPortal` into the resolved ancestor (or, as a fallback,
+ *     `document.querySelector`). This lets the fan escape any
+ *     `transform:scale` / `w-auto` wrapper the surrounding UI applies
+ *     for legacy hand paths (e.g. 3-5-7 wraps `PlayerHand` in a
+ *     scale-[2.x] `w-auto` reserve box; the shared resolver already
+ *     sizes cards from the true pane rect and must NOT re-scale). The
+ *     portal target is used as the measurement target too — so `w`/`h`
+ *     are read from the un-transformed pane.
+ *   - `phaseLockKey`: once a nonzero pane rect is committed for a given
+ *     key, subsequent measurements while the key is unchanged are
+ *     IGNORED — contract 3+4 from the active-hand containment spec.
+ *     Delayed action-zone availability, sibling layout thrash, or
+ *     realtime observations cannot collapse or replace the committed
+ *     layout. Recompute only runs when the key changes (a real active
+ *     hand identity / phase boundary).
+ *   - Rendering is gated on a nonzero measured rect — the fan never
+ *     mounts children until it has a valid pane to size against
+ *     (contract 2).
  */
 
 import {
@@ -28,6 +44,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ActiveHandFan,
   type ActiveHandFanRenderContext,
@@ -72,6 +89,21 @@ export interface MeasuredActiveHandFanProps {
    * by transform:scale wrappers whose measured rect is post-transform.
    */
   measureAncestorSelector?: string;
+  /**
+   * Optional CSS selector — when set, the fan renders via createPortal
+   * into the nearest matching ancestor (or `document.querySelector`
+   * fallback) and measurement is done on that same portal target.
+   * Escapes surrounding `transform:scale` / `w-auto` wrappers.
+   */
+  portalTargetSelector?: string;
+  /**
+   * Identity/phase lock. Once a nonzero pane rect is committed for a
+   * given key, subsequent measurements while the key is unchanged are
+   * ignored — the committed layout survives sibling thrash, realtime
+   * observations, and delayed action-zone appearance. Recompute only
+   * runs on a real identity/phase change (new key).
+   */
+  phaseLockKey?: string;
   /** When set, overrides the ancestor measurement height. */
   overrideHeightPx?: number;
   /** When set, overrides the ancestor measurement width. */
@@ -88,6 +120,8 @@ export function MeasuredActiveHandFan({
   cards,
   capacity,
   measureAncestorSelector,
+  portalTargetSelector,
+  phaseLockKey,
   overrideHeightPx,
   overrideWidthPx,
   className,
@@ -100,58 +134,147 @@ export function MeasuredActiveHandFan({
   const [rect, setRect] = useState<PaneRect | null>(null);
   const [lowerZoneMinPx, setLowerZoneMinPx] = useState<number>(0);
   const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  // Phase-lock commit ledger — persists across effect re-runs.
+  const committedRef = useRef<{ key: string | null; rect: PaneRect | null }>({
+    key: null,
+    rect: null,
+  });
+
+  // Reset commit ledger when the phase-lock key changes so a real
+  // identity/phase boundary re-measures from a clean slate. Runs
+  // synchronously before the measurement effect below.
+  const activeLockKey = phaseLockKey ?? null;
+  if (committedRef.current.key !== activeLockKey) {
+    committedRef.current = { key: activeLockKey, rect: null };
+  }
 
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const target: HTMLElement =
-      (measureAncestorSelector &&
-        (host.closest(measureAncestorSelector) as HTMLElement | null)) ||
-      host;
+
+    let target: HTMLElement | null = null;
+    if (portalTargetSelector) {
+      target =
+        (host.closest(portalTargetSelector) as HTMLElement | null) ??
+        (typeof document !== 'undefined'
+          ? document.querySelector<HTMLElement>(portalTargetSelector)
+          : null);
+    } else if (measureAncestorSelector) {
+      target = host.closest(measureAncestorSelector) as HTMLElement | null;
+    }
+    const measureTarget: HTMLElement = target ?? host;
+
+    // Ensure the portal target establishes a containing block for the
+    // absolutely-positioned portal overlay.
+    if (portalTargetSelector && target && target !== host) {
+      try {
+        const cs = window.getComputedStyle(target);
+        if (cs.position === 'static' || !cs.position) {
+          target.style.position = 'relative';
+        }
+      } catch {
+        /* noop */
+      }
+      setPortalTarget(target);
+    } else {
+      setPortalTarget(null);
+    }
 
     const measure = () => {
-      const r = target.getBoundingClientRect();
+      const r = measureTarget.getBoundingClientRect();
       const w = overrideWidthPx ?? r.width;
       const h = overrideHeightPx ?? r.height;
-      setRect((prev) =>
-        prev &&
-        Math.abs(prev.width - w) < 0.5 &&
-        Math.abs(prev.height - h) < 0.5
-          ? prev
-          : { width: w, height: h },
-      );
+      const isNonzero = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
+
+      // Phase-lock: once a valid rect is committed for the current key,
+      // ignore subsequent updates until the key changes.
+      const lockedForCurrentKey =
+        !!activeLockKey &&
+        committedRef.current.key === activeLockKey &&
+        !!committedRef.current.rect;
+
+      if (!lockedForCurrentKey && isNonzero) {
+        committedRef.current = { key: activeLockKey, rect: { width: w, height: h } };
+        setRect((prev) =>
+          prev &&
+          Math.abs(prev.width - w) < 0.5 &&
+          Math.abs(prev.height - h) < 0.5
+            ? prev
+            : { width: w, height: h },
+        );
+      } else if (!activeLockKey && isNonzero) {
+        // No lock configured — behave as before (accept every valid rect).
+        setRect((prev) =>
+          prev &&
+          Math.abs(prev.width - w) < 0.5 &&
+          Math.abs(prev.height - h) < 0.5
+            ? prev
+            : { width: w, height: h },
+        );
+      }
 
       // Sum the rendered heights of every lower-zone marker inside the
-      // measured pane. Owners stamp their action/instruction/identity
-      // sibling(s) with `data-active-hand-lower-zone` so the resolver
-      // can guarantee containment.
-      const zones = target.querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR);
+      // measured pane. Under phase-lock we only escalate (never shrink)
+      // so a phase-committed reservation cannot be undone by transient
+      // action-strip absence.
+      const zones = measureTarget.querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR);
       let total = 0;
       zones.forEach((zone) => {
         const zr = zone.getBoundingClientRect();
         if (Number.isFinite(zr.height) && zr.height > 0) total += zr.height;
       });
-      setLowerZoneMinPx((prev) => (Math.abs(prev - total) < 0.5 ? prev : total));
+      setLowerZoneMinPx((prev) => {
+        if (activeLockKey && committedRef.current.key === activeLockKey) {
+          return total > prev + 0.5 ? total : prev;
+        }
+        return Math.abs(prev - total) < 0.5 ? prev : total;
+      });
     };
 
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(measure);
-    ro.observe(target);
-    target.querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR).forEach((el) => ro.observe(el));
+    ro.observe(measureTarget);
+    measureTarget
+      .querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR)
+      .forEach((el) => ro.observe(el));
 
     // Watch for lower-zone nodes appearing / disappearing so the
     // reservation stays in sync with phase-driven action visibility.
+    // Under phase-lock, the resolver rejects shrinking updates.
     const mo = new MutationObserver(() => measure());
-    mo.observe(target, { childList: true, subtree: true });
+    mo.observe(measureTarget, { childList: true, subtree: true });
 
     return () => {
       ro.disconnect();
       mo.disconnect();
     };
-  }, [measureAncestorSelector, overrideHeightPx, overrideWidthPx]);
+  }, [
+    measureAncestorSelector,
+    portalTargetSelector,
+    overrideHeightPx,
+    overrideWidthPx,
+    activeLockKey,
+  ]);
 
   const paneRect = useMemo(() => rect, [rect]);
+  const isReady = !!(paneRect && paneRect.width > 0 && paneRect.height > 0);
+
+  const fan = (
+    <ActiveHandFan
+      game={game}
+      cards={cards}
+      capacity={capacity}
+      paneRect={paneRect}
+      lowerZoneMinPx={lowerZoneMinPx}
+      safeAreaBottomPx={safeAreaBottomPx}
+      applyFan={applyFan}
+      renderCard={renderCard}
+      dataAttribute={dataAttribute}
+    />
+  );
 
   return (
     <div
@@ -159,18 +282,30 @@ export function MeasuredActiveHandFan({
       className={className}
       style={{ width: '100%', height: '100%', ...style }}
       data-measured-active-hand-fan={game}
+      data-measured-active-hand-fan-locked={activeLockKey ?? undefined}
     >
-      <ActiveHandFan
-        game={game}
-        cards={cards}
-        capacity={capacity}
-        paneRect={paneRect}
-        lowerZoneMinPx={lowerZoneMinPx}
-        safeAreaBottomPx={safeAreaBottomPx}
-        applyFan={applyFan}
-        renderCard={renderCard}
-        dataAttribute={dataAttribute}
-      />
+      {portalTargetSelector && portalTarget
+        ? isReady
+          ? createPortal(
+              <div
+                data-measured-active-hand-fan-portal={game}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                }}
+              >
+                {fan}
+              </div>,
+              portalTarget,
+            )
+          : null
+        : isReady
+          ? fan
+          : null}
     </div>
   );
 }
