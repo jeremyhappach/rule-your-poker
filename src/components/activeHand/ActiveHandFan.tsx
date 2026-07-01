@@ -33,6 +33,7 @@ import {
   type ActiveHandStageRect,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import { useActiveHandCardRectPublisher } from '@/lib/activeHand/activeHandCardRectStore';
 
 const DEFAULT_ASPECT = 2 / 3;
 
