@@ -113,6 +113,8 @@ export interface MeasuredActiveHandFanProps {
   applyFan?: boolean;
   renderCard?: (ctx: ActiveHandFanRenderContext) => React.ReactNode;
   dataAttribute?: string;
+  activeHandFanRenderKey?: string | null;
+  cardIds?: string[];
 }
 
 export function MeasuredActiveHandFan({
@@ -129,6 +131,8 @@ export function MeasuredActiveHandFan({
   applyFan,
   renderCard,
   dataAttribute,
+  activeHandFanRenderKey,
+  cardIds,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [rect, setRect] = useState<PaneRect | null>(null);
@@ -273,6 +277,8 @@ export function MeasuredActiveHandFan({
       applyFan={applyFan}
       renderCard={renderCard}
       dataAttribute={dataAttribute}
+      activeHandFanRenderKey={activeHandFanRenderKey}
+      cardIds={cardIds}
     />
   );
 

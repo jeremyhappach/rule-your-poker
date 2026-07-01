@@ -112,6 +112,12 @@ export interface CardTransportIntent {
   cardBackColors?: { color: string; darkColor: string };
   /** Optional smoke metadata for dealer-origin audits. */
   dealerIsSelf?: boolean;
+  /** Trace-only: render key for the active hand layout that published final geometry. */
+  activeHandFanRenderKey?: string | null;
+  /** Trace-only: timestamp from activeHandCardRectStore for final layout publication. */
+  activeHandFinalLayoutPublishedAt?: number | null;
+  /** Trace-only: whether the self-hand endpoint was still using provisional 1×1 geometry. */
+  dealLandingFallbackUsed?: boolean | null;
   /**
    * Optional — when `face: 'visible'`, render the flying card with this
    * concrete rank/suit so the in-flight asset matches the canonical
