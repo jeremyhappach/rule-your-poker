@@ -237,6 +237,6 @@ export const GinRummyKnockDisplay = ({
           <span className="text-white/25"> (to {ginState.pointsToWin})</span>
         </p>
       )}
-    </GinAnchoredSlot>
+    </GinAnchoredInteractionSlot>
   );
 };
