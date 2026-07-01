@@ -396,6 +396,27 @@ export const GinRummyFeltContent = ({
             <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
 
+          {/* Helper text — child of the FULL Stock + Discard cluster
+              slot (union of stock + discard rects). Placement selects
+              the cluster edge; offsetPct is measured from that edge
+              in units of the resolved pile-card size. Follows every
+              cluster placement change automatically through the same
+              reactive path as gin.pegboard:
+                useDraftedGeometryOverrides
+                → GinRummyGameplayGeometryProvider re-resolves
+                → GinAnchoredSlot re-renders with new rect
+                → this child repositions relative to that new rect. */}
+          {helperTextNode ? (
+            <div
+              data-gin-helper-text=""
+              data-gin-helper-placement={helperTextSettings.placement}
+              className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
+              style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+            >
+              {helperTextNode}
+            </div>
+          ) : null}
+
         </GinAnchoredSlot>
       )}
 
