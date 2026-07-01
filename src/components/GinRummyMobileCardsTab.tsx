@@ -90,6 +90,27 @@ export const GinRummyMobileCardsTab = ({
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
+  // Shared active-hand stage (measured once, drives ActiveHandFan resolver).
+  const ginHandStageRef = useRef<HTMLDivElement | null>(null);
+  const [ginHandStageRectPx, setGinHandStageRectPx] = useState<{ width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ginHandStageRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setGinHandStageRectPx(prev =>
+        prev && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+          ? prev
+          : { width: r.width, height: r.height },
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
   // Withhold each freshly drawn card from the rendered hand while its
   // own self-draw transport animation is in flight. The cards are
