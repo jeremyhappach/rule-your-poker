@@ -246,6 +246,38 @@ export const GinRummyFeltContent = ({
   };
 
 
+  // Helper text — coupled to the stock pile as a child. Placement +
+  // Offset come from the GeometryLab-backed helperTextSettings domain.
+  // Content is context-conditional. It is NOT an independently
+  // anchored felt artifact; it follows Stock X/Y automatically.
+  const helperTextSettings = useGinHelperTextSettings();
+  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings);
+  let helperTextNode: React.ReactNode = null;
+  if (!hidePiles) {
+    if (ginState.phase === 'playing') {
+      helperTextNode = isMyTurn ? (
+        <span className="text-poker-gold font-bold animate-pulse">
+          {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
+        </span>
+      ) : (
+        <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
+      );
+    } else if (ginState.phase === 'first_draw') {
+      helperTextNode =
+        ginState.firstDrawOfferedTo === currentPlayerId ? (
+          <span className="text-poker-gold font-bold animate-pulse">
+            {ginState.firstDrawPassed.length === 0
+              ? 'Take the upcard or pass?'
+              : 'Opponent passed — take or pass?'}
+          </span>
+        ) : (
+          <span>
+            {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
+          </span>
+        );
+    }
+  }
+
 
   return (
     <div
