@@ -453,7 +453,7 @@ export const GinRummyFeltContent = ({
                 data-gin-pile="stock"
                 data-gin-pile-layer="button"
                 className={`absolute inset-0 rounded-md transition-all block ${
-                  stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
+                  stockClickable ? 'cursor-pointer active:scale-95' : ''
                 }`}
                 style={{
                   pointerEvents: 'auto',
