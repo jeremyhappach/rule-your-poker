@@ -11,6 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import {
+  acquireRecoveryLease,
+  releaseRecoveryLease,
+  recordTerminalRecovery,
+  recordRecoveryTransition,
+} from "@/lib/sessionRecoveryLease";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
