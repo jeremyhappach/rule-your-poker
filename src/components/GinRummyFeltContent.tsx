@@ -8,6 +8,10 @@ import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 // Score rail is owned by GinRummyGameTable (persistent across hand
 // identity boundaries). Do not re-mount it here.
 import { GinAnchoredSlot } from './GinAnchoredSlot';
+import {
+  resolveGinHelperTextStyle,
+  useGinHelperTextSettings,
+} from '@/lib/ginRummy/helperTextSettings';
 import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
@@ -242,6 +246,38 @@ export const GinRummyFeltContent = ({
   };
 
 
+  // Helper text — coupled to the stock pile as a child. Placement +
+  // Offset come from the GeometryLab-backed helperTextSettings domain.
+  // Content is context-conditional. It is NOT an independently
+  // anchored felt artifact; it follows Stock X/Y automatically.
+  const helperTextSettings = useGinHelperTextSettings();
+  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings);
+  let helperTextNode: React.ReactNode = null;
+  if (!hidePiles) {
+    if (ginState.phase === 'playing') {
+      helperTextNode = isMyTurn ? (
+        <span className="text-poker-gold font-bold animate-pulse">
+          {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
+        </span>
+      ) : (
+        <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
+      );
+    } else if (ginState.phase === 'first_draw') {
+      helperTextNode =
+        ginState.firstDrawOfferedTo === currentPlayerId ? (
+          <span className="text-poker-gold font-bold animate-pulse">
+            {ginState.firstDrawPassed.length === 0
+              ? 'Take the upcard or pass?'
+              : 'Opponent passed — take or pass?'}
+          </span>
+        ) : (
+          <span>
+            {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
+          </span>
+        );
+    }
+  }
+
 
   return (
     <div
@@ -308,6 +344,16 @@ export const GinRummyFeltContent = ({
                   >
                     {stockCount}
                   </span>
+                </div>
+              ) : null}
+              {helperTextNode ? (
+                <div
+                  data-gin-helper-text=""
+                  data-gin-helper-placement={helperTextSettings.placement}
+                  className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
+                  style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+                >
+                  {helperTextNode}
                 </div>
               ) : null}
             </div>
@@ -444,38 +490,8 @@ export const GinRummyFeltContent = ({
         </GinAnchoredInteractionSlot>
       )}
 
-      {/* Wave 5D — gin.turnIndicator (anchored). */}
-      {!hidePiles && (
-        <GinAnchoredSlot artifactId="gin.turnIndicator">
-          <div className="w-full text-center">
-            {ginState.phase === 'playing' && (
-              <p className="text-[10px] text-white/80">
-                {isMyTurn ? (
-                  <span className="text-poker-gold font-bold animate-pulse">
-                    {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
-                  </span>
-                ) : (
-                  <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
-                )}
-              </p>
-            )}
-
-            {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && (
-              <p className="text-[11px] text-poker-gold font-bold animate-pulse">
-                {ginState.firstDrawPassed.length === 0
-                  ? 'Take the upcard or pass?'
-                  : 'Opponent passed — take or pass?'}
-              </p>
-            )}
-
-            {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo !== currentPlayerId && (
-              <p className="text-[10px] text-white/60">
-                {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
-              </p>
-            )}
-          </div>
-        </GinAnchoredSlot>
-      )}
+      {/* gin.turnIndicator retired — helper text is now a child of the
+          stock pile (see the stock card-rect-wrapper above). */}
     </div>
   );
 };

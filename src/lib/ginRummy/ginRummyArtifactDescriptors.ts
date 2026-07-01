@@ -9,7 +9,6 @@
  * Migrated this wave:
  *   - gin.pegboard
  *   - gin.stockDiscardGroup
- *   - gin.turnIndicator
  *   - gin.knockDisplay
  *
  * NOT migrated (intentionally — shell / lifecycle / seat-projected):
@@ -17,6 +16,10 @@
  *   - gin.knockOverlay / gin.ginOverlay
  *   - gin.opponentCardBacksCluster
  *   - gin.opponentDrawAnimation
+ *
+ * Retired (coupled to another artifact, not independently anchored):
+ *   - gin.turnIndicator — now a child of the stock pile; see
+ *     `helperTextSettings`.
  */
 
 import type { ArtifactDescriptor } from "@/lib/wave4LayoutResolver";
@@ -78,22 +81,9 @@ function stockDiscardGroup(): ArtifactDescriptor {
   };
 }
 
-function turnIndicator(): ArtifactDescriptor {
-  return {
-    id: "gin.turnIndicator",
-    owner: OWNER.felt,
-    composeMode: "anchored",
-    preferredSize: { width: vmin(0), height: vmin(0) },
-    minimumSize: { width: vmin(0), height: vmin(0) },
-    priority: 70,
-    collapsePriority: "never",
-    anchorX: 0.5,
-    anchorY: 0.72,
-    anchorOrigin: "center",
-    widthPct: 0.8,
-    aspectRatio: 0.8 / 0.06,
-  };
-}
+// gin.turnIndicator retired — helper text is now coupled to the stock
+// pile as a child (see helperTextSettings). It is not an independently
+// anchored artifact and has no descriptor.
 
 function knockDisplay(): ArtifactDescriptor {
   return {
@@ -119,7 +109,6 @@ export function getGinRummyArtifactDescriptors(
   ds.push(pegboard());
   if (!opts.hidePiles) {
     ds.push(stockDiscardGroup());
-    ds.push(turnIndicator());
   }
   if (opts.knockDisplayVisible) {
     ds.push(knockDisplay());
