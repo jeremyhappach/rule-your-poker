@@ -16,6 +16,8 @@ import {
   isCribDealerDrawTraceEnabled,
   type CribDealerDrawEvent,
 } from '@/lib/cribbageDealerDrawTrace';
+import { useHideDebugUI } from '@/lib/debugUIVisibility';
+
 
 interface Props {
   gameId: string | null | undefined;
