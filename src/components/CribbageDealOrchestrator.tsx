@@ -46,6 +46,10 @@ export interface CribbageDealOrchestratorProps {
   cardsPerPlayer: number;
   /** Authoritative local hand. Required to stamp visibleFace. */
   selfHand: CribbageCard[];
+  /** Optional ledger keys — fall back to handContextId / 0 when unknown. */
+  dealerGameId?: string;
+  roundId?: string;
+  handNumber?: number;
 }
 
 export function CribbageDealOrchestrator({
