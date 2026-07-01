@@ -45,7 +45,7 @@ const ENTRIES: ArtifactPresentationEntry[] = [
   // Gin Rummy
   { artifactId: "gin.pegboard", label: "Pegboard", category: "central", sortOrder: 10 },
   { artifactId: "gin.stockDiscardGroup", label: "Stock + Discard", category: "central", sortOrder: 20 },
-  { artifactId: "gin.turnIndicator", label: "Turn Indicator", category: "central", sortOrder: 30 },
+  // gin.turnIndicator retired — helper text is coupled to gin.stockDiscardGroup.
   { artifactId: "gin.knockDisplay", label: "Knock Display", category: "overlay", sortOrder: 40 },
 
   // Yahtzee
