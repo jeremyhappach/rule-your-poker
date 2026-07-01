@@ -872,17 +872,12 @@ function GameSections(props: GameSectionsProps) {
             artifacts that own a persisted fan-overlap value. */}
         <ArtifactOverlapControls artifactId={artifactId} />
 
-        {/* Helper text is coupled to the stock pile (child, not an
-            independently anchored artifact). Its controls surface here
-            under the Stock/Discard artifact block. Wrapped in a bright
-            accent so the panel is obvious next to the geometry fields. */}
+        {/* Gin → Gameplay Artifacts → Stock + Discard → Helper Text.
+            Helper text is coupled to the cluster (child of the
+            Stock + Discard slot), not an independently anchored
+            artifact. Its only controls are Placement + Offset. */}
         {artifactId === "gin.stockDiscardGroup" && (
-          <div
-            data-geolab-panel="gin-helper-text-inline"
-            className="rounded-md border-2 border-sky-500/60 bg-sky-500/5 p-2 mt-2"
-          >
-            <GinHelperTextAdminSection />
-          </div>
+          <GinHelperTextAdminSection />
         )}
 
 
@@ -896,18 +891,6 @@ function GameSections(props: GameSectionsProps) {
 
       </CollapsibleSection>
 
-      {props.game === "ginRummy" && (
-        <CollapsibleSection title="Gin · Stock/Discard Helper Text">
-          <p className="text-[11px] text-muted-foreground">
-            Top-level shortcut to the helper-text coupling controls.
-            Same domain as the panel that appears under Gameplay
-            Artifacts → Stock + Discard. Draft → Apply → Cancel behaves
-            like every other GeoLab domain; remote realtime changes
-            update the mounted helper text immediately.
-          </p>
-          <GinHelperTextAdminSection />
-        </CollapsibleSection>
-      )}
 
 
 
