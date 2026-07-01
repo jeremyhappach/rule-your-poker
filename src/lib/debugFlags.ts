@@ -96,6 +96,24 @@ export function isGinTwoActionHarnessEnabled(): boolean {
 }
 
 /**
+ * Gin Rummy "Opponent Instant Knock" harness — first-hand deterministic
+ * deal that hands the opponent bot a hand 1 pip away from gin, with the
+ * exposed upcard (4♣) completing a run. Ordinary bot decision logic then
+ * naturally takes the upcard → discards K♥ → knocks with A♠ deadwood = 1,
+ * exercising the real reveal / layoff / scoring / next-hand lifecycle.
+ *
+ * Contract:
+ *  - Only fires on the initial deal (startGinRummyRound). createNextHand
+ *    does NOT consult this flag → hand 2+ is ordinary Gin.
+ *  - Fails closed unless the session host is also the dealer AND the
+ *    opponent (non-dealer) is not the host.
+ *  - Match target and all other rules unchanged.
+ */
+export function isGinOpponentInstantKnockHarnessEnabled(): boolean {
+  return getActiveHarnessCached('gin-rummy') === 'opponent_instant_knock';
+}
+
+/**
  * Forces Yahtzee bot to always pursue a large straight (1-2-3-4-5 or 2-3-4-5-6).
  * This creates deterministic selective hold patterns for debugging held-dice ordering.
  * Enable via ?debug_yahtzee_straight=1 or localStorage ptp_debug_yahtzee_straight = "1"
