@@ -2730,16 +2730,19 @@ export const GinRummyGameTable = ({
                 ginState.pointsToWin (authoritative 100). */}
             {persistentMatchSnapshot && (
               <GinAnchoredSlot artifactId="gin.pegboard">
-                <div className="w-full h-full flex items-center">
-                  <div className="w-full">
-                    <GinRummyPegBoard
-                      matchScores={persistentMatchSnapshot.matchScores}
-                      pointsToWin={persistentMatchSnapshot.pointsToWin}
-                      playerIds={persistentMatchSnapshot.playerIds}
-                      getPlayerUsername={getPlayerUsername}
-                    />
-                  </div>
-                </div>
+                {/* Direct mount — no w-full wrappers. GinAnchoredSlot
+                    applies flex + justify-center + align-center on a
+                    rect that already encodes the resolved GeoLab anchor
+                    (anchorX + anchorOrigin from the descriptor). An
+                    intrinsic-width child therefore centers its own
+                    rendered assembly width on the anchor. No mx-auto,
+                    no w-fit, no spacer, no pixel translate. */}
+                <GinRummyPegBoard
+                  matchScores={persistentMatchSnapshot.matchScores}
+                  pointsToWin={persistentMatchSnapshot.pointsToWin}
+                  playerIds={persistentMatchSnapshot.playerIds}
+                  getPlayerUsername={getPlayerUsername}
+                />
               </GinAnchoredSlot>
             )}
 
