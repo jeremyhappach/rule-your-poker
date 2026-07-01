@@ -41,8 +41,8 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
 
         return (
           <div key={pid} className="flex items-center gap-1.5">
-            {/* Player name */}
-            <span className="text-[9px] text-white/80 w-12 truncate text-right font-medium">
+            {/* Player name (left gutter) */}
+            <span className="text-[9px] text-white/80 w-12 shrink-0 truncate text-right font-medium">
               {displayName}
             </span>
 
@@ -59,6 +59,13 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
                 </span>
               </div>
             </div>
+
+            {/* Symmetric right spacer — mirrors the left name gutter
+                (w-12 + gap-1.5) so the [name + track] assembly's
+                measured bounds center on the slot's X anchor instead
+                of biasing to one side. Presentation-only; does not
+                change rail width, anchor, scores, or logic. */}
+            <span aria-hidden="true" className="w-12 shrink-0" />
           </div>
         );
       })}
