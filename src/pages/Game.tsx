@@ -4446,9 +4446,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       if (!freshGame || freshGame.status !== 'session_ended') {
         console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
+        recordRecoveryTransition('membership-validating', { gameId, reason: 'session-ended-suppressed', freshStatus: freshGame?.status ?? null });
         return;
       }
+      recordTerminalRecovery('session-ended-confirmed', { gameId });
+      releaseRecoveryLease('session-ended-confirmed', { gameId });
       navigate('/');
+
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
   }, [game?.status, gameId, navigate]);
