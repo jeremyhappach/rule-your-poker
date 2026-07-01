@@ -195,7 +195,10 @@ export const GinRummyKnockDisplay = ({
         alignItems: 'center',
         justifyContent: 'flex-start',
         gap: '0.5rem',
-        pointerEvents: 'none',
+        // Slot itself accepts pointer events so meld buttons in lay-off
+        // remain tappable. Non-interactive children (labels, deadwood)
+        // opt out via `pointer-events-none` classes below.
+        pointerEvents: 'auto',
         padding: '0 0.5rem',
       }}
     >
