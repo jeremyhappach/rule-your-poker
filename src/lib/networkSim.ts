@@ -16,8 +16,21 @@
  *   - Server logic is untouched.
  */
 import { supabase } from '@/integrations/supabase/client';
+import {
+  chaosDeliver,
+  startChaosSession,
+  stopChaosSession,
+  updateChaosRole,
+  type ChaosClientRole,
+} from './networkSimChaos';
 
-export type NetworkSimMode = 'off' | 'moderate' | 'heavy' | 'reorder' | 'cross_country';
+export type NetworkSimMode =
+  | 'off'
+  | 'moderate'
+  | 'heavy'
+  | 'reorder'
+  | 'cross_country'
+  | 'cross_country_chaos';
 
 export const NETWORK_SIM_MODE_LABELS: Record<NetworkSimMode, string> = {
   off: 'Off',
@@ -25,6 +38,7 @@ export const NETWORK_SIM_MODE_LABELS: Record<NetworkSimMode, string> = {
   heavy: 'Heavy Lag',
   reorder: 'Reorder/Burst',
   cross_country: 'Cross-Country',
+  cross_country_chaos: 'Cross-Country Chaos',
 };
 
 interface ModeProfile {
@@ -40,6 +54,8 @@ const PROFILES: Record<NetworkSimMode, ModeProfile> = {
   heavy:         { baseMs: 500, jitterMs: 250, spikeChance: 0,    spikeMs: 0 },
   reorder:       { baseMs: 0,   jitterMs: 600, spikeChance: 0,    spikeMs: 0 },
   cross_country: { baseMs: 250, jitterMs: 100, spikeChance: 0.10, spikeMs: 1200 },
+  // chaos delivery bypasses PROFILES — see chaosDeliver().
+  cross_country_chaos: { baseMs: 0, jitterMs: 0, spikeChance: 0, spikeMs: 0 },
 };
 
 // ── Global runtime state (set by NetworkSimProvider) ──────────────
@@ -62,7 +78,24 @@ const state: RuntimeState = {
 };
 
 export function configureNetworkSim(partial: Partial<RuntimeState>): void {
+  const prevMode = state.mode;
   Object.assign(state, partial);
+  const nextMode = state.mode;
+  if (prevMode !== nextMode) {
+    if (nextMode === 'cross_country_chaos') {
+      const seedStr = typeof window !== 'undefined' ? window.localStorage.getItem('ptp_chaos_seed') : null;
+      const seed = seedStr ? Number(seedStr) >>> 0 : undefined;
+      const clientKey = state.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
+      startChaosSession({ seed, clientKey });
+    } else if (prevMode === 'cross_country_chaos') {
+      stopChaosSession();
+    }
+  }
+}
+
+/** Optional hint so the chaos generator can bias per-role randomization. */
+export function setChaosClientRole(role: ChaosClientRole): void {
+  updateChaosRole(role);
 }
 
 export function getNetworkSimMode(): NetworkSimMode {
@@ -153,6 +186,10 @@ export function simulateRealtime<T>(source: string, callback: (payload: T) => vo
     const mode = state.mode;
     if (mode === 'off') {
       callback(payload);
+      return;
+    }
+    if (mode === 'cross_country_chaos') {
+      chaosDeliver(source, payload, callback);
       return;
     }
 

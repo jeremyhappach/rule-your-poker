@@ -29,6 +29,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
 
 
 interface SeatEntry {
@@ -45,6 +46,10 @@ export interface CribbageDealOrchestratorProps {
   cardsPerPlayer: number;
   /** Authoritative local hand. Required to stamp visibleFace. */
   selfHand: CribbageCard[];
+  /** Optional ledger keys — fall back to handContextId / 0 when unknown. */
+  dealerGameId?: string;
+  roundId?: string;
+  handNumber?: number;
 }
 
 export function CribbageDealOrchestrator({
@@ -54,6 +59,9 @@ export function CribbageDealOrchestrator({
   seats,
   cardsPerPlayer,
   selfHand,
+  dealerGameId,
+  roundId,
+  handNumber,
 }: CribbageDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -149,8 +157,37 @@ export function CribbageDealOrchestrator({
 
     dispatchedRef.current = true;
     deal.beginDeal(totalCount);
+
+    // Record each intent in the deal-transport idempotency ledger.
+    // Record-only: does not suppress or repair. Callers inspect the
+    // ledger via exportDealTransportLedgerJson().
+    const ledgerDealerGameId = dealerGameId ?? handContextId;
+    const ledgerRoundId = roundId ?? handContextId;
+    const ledgerHandNumber = handNumber ?? 0;
+    for (const intent of intents) {
+      const destination =
+        intent.to.kind === 'hand'
+          ? `hand:${intent.to.playerId}`
+          : intent.to.kind === 'oppStack'
+          ? `oppStack:${intent.to.position}`
+          : `other:${intent.to.kind}`;
+      recordDealTransportDispatch({
+        dealerGameId: ledgerDealerGameId,
+        roundId: ledgerRoundId,
+        handNumber: ledgerHandNumber,
+        cardId: intent.cardId ?? intent.id,
+        recipientPlayerId: intent.recipientPlayerId ?? '',
+        destination,
+        transportInstanceId: intent.id,
+        source: 'CribbageDealOrchestrator',
+        reason: 'initial-deal',
+        origin: 'authoritative',
+        precedingEvent: 'none',
+      });
+    }
+
     ct.dispatchMany(intents);
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dealerGameId, roundId, handNumber]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
   // ([data-cribbage-active-pane-content]). Anchor is layout-inert
