@@ -70,6 +70,7 @@ import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
 import { ShellChipBalanceAdminSection } from "./ShellChipBalanceAdminSection";
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
+import { GinHelperTextAdminSection } from "./GinHelperTextAdminSection";
 import { getActiveHandLayoutSpec } from "@/lib/activeHand/activeHandLayoutSettings";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import { broadcastGeometryOverrideApplied } from "@/lib/geometryLab/GeometryOverridesLoader";
@@ -870,6 +871,13 @@ function GameSections(props: GameSectionsProps) {
         {/* Per-artifact felt-overlap controls — visible only for the
             artifacts that own a persisted fan-overlap value. */}
         <ArtifactOverlapControls artifactId={artifactId} />
+
+        {/* Helper text is coupled to the stock pile (child, not an
+            independently anchored artifact). Its controls surface here
+            under the Stock/Discard artifact block. */}
+        {artifactId === "gin.stockDiscardGroup" && (
+          <GinHelperTextAdminSection />
+        )}
 
 
         {/* Visualization toggles */}
