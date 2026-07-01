@@ -149,6 +149,7 @@ export const PlayingCard = ({
   isWild = false,
   tier = 'medium',
   faceFillPx,
+  activeHandShell = false,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const { isTablet } = useDeviceSize();
