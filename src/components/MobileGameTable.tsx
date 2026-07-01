@@ -10445,7 +10445,18 @@ export const MobileGameTable = ({
 
                     return (
                       <div className={cn(
-                        "flex flex-col items-center",
+                        // Composition contract: the active-hand region must
+                        // grow to fill the pane so the action strip below
+                        // is anchored to the pane bottom (sibling of this
+                        // wrapper). Combined with the
+                        // `data-active-hand-lower-zone` tag on the action
+                        // strip, the shared resolver escalates its
+                        // reservation to `max(authored, measured + safe)`
+                        // and the portaled fan's `stageRect.bottom` lands
+                        // above the action strip by the authored
+                        // inter-zone clearance — cards can no longer
+                        // overlap Drop/Stay.
+                        "flex flex-col items-center flex-1 w-full min-h-0",
                         gameType !== "holm-game" ? "gap-0" : "gap-0",
                       )}>
                         {showDealerSelectionCards ? (
@@ -10708,7 +10719,9 @@ export const MobileGameTable = ({
                     );
                   })()}
 
-                  <div className={cn(
+                  <div
+                    data-active-hand-lower-zone=""
+                    className={cn(
                     // Stable allocation: this strip swaps between buttons,
                     // badges, auto-fold label, and pre-decision checkboxes
                     // across the hand lifecycle. The geometry contract
@@ -10717,7 +10730,13 @@ export const MobileGameTable = ({
                     // reserve the height of the *tallest* variant
                     // (auto-fold label ≈ 52px mobile, ≈ 64px tablet) so
                     // every transition centers content inside a fixed box.
-                    "flex items-center justify-center",
+                    // Tagged `data-active-hand-lower-zone` so the shared
+                    // active-hand resolver measures its rendered height
+                    // and escalates the pane reservation — the portaled
+                    // fan's stageRect.bottom is derived from that same
+                    // reservation, guaranteeing cards never overlap the
+                    // action controls.
+                    "flex items-center justify-center flex-shrink-0",
                     isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
 
