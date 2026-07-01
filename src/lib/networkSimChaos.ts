@@ -379,6 +379,30 @@ export function clearChaosTimeline(): void {
   timeline.length = 0;
 }
 
+/**
+ * Append a SESSION_RECOVERY event to the chaos timeline unconditionally
+ * (chaos session need not be active). Used by the session recovery lease
+ * so every recovery transition is auditable/exportable.
+ */
+export function appendSessionRecoveryEvent(detail: Record<string, unknown>): void {
+  const now = Date.now();
+  const s = activeSession;
+  timeline.push({
+    ts: now,
+    sessionMs: s ? now - s.startedAt : 0,
+    clientKey: s?.clientKey ?? 'no-chaos-session',
+    role: s?.role ?? 'unknown',
+    clientClass: s?.clientClass ?? 'desktop-like',
+    seed: s?.seed ?? 0,
+    phaseIndex: s?.phaseIndex ?? -1,
+    type: 'session_recovery',
+    source: (detail.kind as string) ?? 'session_recovery',
+    detail,
+  });
+  if (timeline.length > TIMELINE_CAP) timeline.splice(0, timeline.length - TIMELINE_CAP);
+}
+
+
 export function exportChaosTimelineJson(): string {
   const profile = activeSession?.profile ?? null;
   return JSON.stringify(
