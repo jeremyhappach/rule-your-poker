@@ -73,7 +73,9 @@ export type ChaosEventType =
   | 'disconnect_start'
   | 'reconnect'
   | 'snapshot_recovery'
-  | 'phase_boundary';
+  | 'phase_boundary'
+  | 'session_recovery';
+
 
 export interface ChaosTimelineEvent {
   ts: number;
