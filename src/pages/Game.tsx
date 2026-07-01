@@ -11,6 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import {
+  acquireRecoveryLease,
+  releaseRecoveryLease,
+  recordTerminalRecovery,
+  recordRecoveryTransition,
+} from "@/lib/sessionRecoveryLease";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -1687,8 +1693,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handNumber: number;
     seededAt: number;
   } | null>(null);
+
+  // P0 SHELL RECOVERY LEASE (INV-A, INV-B): while this Game route is
+  // mounted with an authoritative (gameId, userId) identity, hold a
+  // durable recovery lease. Transient disconnects, resubscribe failures,
+  // delayed snapshots, and Chaos recovery events MUST NOT route to lobby.
+  // Only explicit terminal reasons (recorded via recordTerminalRecovery
+  // at the actual navigate('/') call sites) may release the lease.
+  useEffect(() => {
+    if (!gameId || !user?.id) return;
+    acquireRecoveryLease(gameId, user.id);
+    return () => {
+      releaseRecoveryLease('unmount', { gameId, userId: user.id });
+    };
+  }, [gameId, user?.id]);
+
   useEffect(() => {
     if (!gameId || !user) return;
+
 
     let cancelled = false;
 
@@ -1760,8 +1782,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         duration: 3000,
       });
       setTimeout(() => {
+        recordTerminalRecovery('game-missing-confirmed', { gameId, strikes: missingGameStrikesRef.current });
+        releaseRecoveryLease('confirmed-unavailable', { gameId });
         navigate('/');
       }, 2000);
+
     };
 
     checkGameExists();
@@ -1955,6 +1980,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId!)
         .maybeSingle();
       if (!stillThere) {
+        recordTerminalRecovery('completed-teardown', { gameId, source: 'stand-up-cleanup' });
+        releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
       }
     }
@@ -1965,9 +1992,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // If user is an observer (not a player), just navigate back to lobby
     if (!currentPlayer) {
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'observer-leave' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
       return;
     }
+
     
     // Check if host is leaving during waiting phase - delete the entire game
     // CRITICAL: NEVER delete real_money games - archive them instead
@@ -1993,9 +2023,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
         }
       }
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'host-leave-waiting' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
       return;
     }
+
     
     // Snapshot this player's chips before they leave (for real money games)
     if (game?.real_money) {
@@ -2033,9 +2066,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else {
       // Fire-and-forget: check if session needs cleanup after we leave
       checkAndCleanupAfterPlayerLeave(gameId!);
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'leave-game-now' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
     }
   };
+
   
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
@@ -4410,9 +4446,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       if (!freshGame || freshGame.status !== 'session_ended') {
         console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
+        recordRecoveryTransition('membership-validating', { gameId, reason: 'session-ended-suppressed', freshStatus: freshGame?.status ?? null });
         return;
       }
+      recordTerminalRecovery('session-ended-confirmed', { gameId });
+      releaseRecoveryLease('session-ended-confirmed', { gameId });
       navigate('/');
+
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
   }, [game?.status, gameId, navigate]);
@@ -8070,9 +8110,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId);
 
       gameOverTransitionRef.current = false;
+      recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'pending-session-end' });
+      releaseRecoveryLease('session-ended-confirmed', { gameId });
       setTimeout(() => navigate('/'), 2000);
       return;
     }
+
 
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
@@ -8178,6 +8221,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           })
           .eq('id', gameId);
         
+        recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'real-money-archive' });
+        releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       } else if (!hasHistory) {
         // No hands played - DELETE the empty session instead of marking completed
@@ -8204,6 +8249,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await supabase.from('rounds').delete().eq('game_id', gameId);
         await supabase.from('players').delete().eq('game_id', gameId);
         await supabase.from('games').delete().eq('id', gameId);
+        recordTerminalRecovery('completed-teardown', { gameId, source: 'empty-session-delete' });
+        releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
       } else {
         // Has game history - end session normally with game_over_at set
@@ -8224,6 +8271,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('id', gameId);
         
         // Navigate after brief delay
+        recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'no-active-humans-with-history' });
+        releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       }
       return;
