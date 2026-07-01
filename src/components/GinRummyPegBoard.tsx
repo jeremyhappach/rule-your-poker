@@ -29,13 +29,17 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
   const denom = pointsToWin > 0 ? pointsToWin : 100;
 
   return (
-    // Intrinsic-width wrapper: children keep their existing internal
-    // widths (name gutter + track + score value). The wrapper sizes to
-    // its measured children and centers within the slot via mx-auto,
-    // so the complete visual assembly — not just the rail track — is
-    // centered on the slot's .5 X anchor. No pixel constant, no
-    // spacer, no reserved width, no reflow.
-    <div className="space-y-1 w-fit mx-auto">
+    // Intrinsic-width assembly. The parent GinAnchoredSlot renders a
+    // rect that encodes the resolved GeoLab anchor (anchorX +
+    // anchorOrigin) with flex + justify-center + align-center, so an
+    // intrinsic-width child is positioned by the anchor math on its
+    // own complete rendered width — not on the track alone. We must
+    // NOT set w-full (would stretch and left-bias the assembly) nor
+    // w-fit/mx-auto (forbidden). Being a flex item of the slot with
+    // no explicit width, this block shrinks to its widest row's
+    // intrinsic width: name gutter + gap + rail track. Rows and
+    // track pin their pre-change widths with flex-shrink-0.
+    <div className="space-y-1">
       {playerIds.map((pid, index) => {
         const score = matchScores[pid] || 0;
         const percentage = Math.max(0, Math.min(100, (score / denom) * 100));
@@ -43,11 +47,15 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
         const barWidth = score === 0 ? 0 : Math.max(12, percentage);
 
         return (
-          <div key={pid} className="flex items-center gap-1.5">
+          <div key={pid} className="flex items-center gap-1.5 flex-nowrap">
             <span className="text-[9px] text-white/80 w-12 shrink-0 truncate text-right font-medium">
               {displayName}
             </span>
-            <div className="h-3.5 bg-white/20 rounded-full overflow-hidden relative" style={{ width: '160px' }}>
+            <div
+              className="h-3.5 bg-white/20 rounded-full overflow-hidden relative shrink-0"
+              style={{ width: '160px', flex: '0 0 160px' }}
+            >
+
               <div
                 className={`h-full ${PLAYER_COLORS[index]} transition-all duration-500 rounded-full relative`}
                 style={{ width: `${barWidth}%` }}
