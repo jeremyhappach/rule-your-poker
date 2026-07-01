@@ -8221,6 +8221,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           })
           .eq('id', gameId);
         
+        recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'real-money-archive' });
+        releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       } else if (!hasHistory) {
         // No hands played - DELETE the empty session instead of marking completed
