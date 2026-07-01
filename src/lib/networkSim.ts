@@ -54,6 +54,8 @@ const PROFILES: Record<NetworkSimMode, ModeProfile> = {
   heavy:         { baseMs: 500, jitterMs: 250, spikeChance: 0,    spikeMs: 0 },
   reorder:       { baseMs: 0,   jitterMs: 600, spikeChance: 0,    spikeMs: 0 },
   cross_country: { baseMs: 250, jitterMs: 100, spikeChance: 0.10, spikeMs: 1200 },
+  // chaos delivery bypasses PROFILES — see chaosDeliver().
+  cross_country_chaos: { baseMs: 0, jitterMs: 0, spikeChance: 0, spikeMs: 0 },
 };
 
 // ── Global runtime state (set by NetworkSimProvider) ──────────────
