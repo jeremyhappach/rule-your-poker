@@ -349,16 +349,20 @@ export const GinRummyFeltContent = ({
                   </span>
                 </div>
               ) : null}
-              {helperTextNode ? (
-                <div
-                  data-gin-helper-text=""
-                  data-gin-helper-placement={helperTextSettings.placement}
-                  className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
-                  style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
-                >
-                  {helperTextNode}
-                </div>
-              ) : null}
+            </div>
+            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
+              {stockDanger ? 'Low!' : 'Stock'}
+            </span>
+          </div>
+
+          {/* Helper text — child of the FULL Stock + Discard cluster
+              slot (not of stock alone). Anchored against the cluster
+              rect (union of stock + discard) via absolute positioning
+              inside GinAnchoredSlot. Follows cluster placement moves
+              automatically through the same reactive path as every
+              other anchored artifact (useGinRummyGameplayGeometry →
+              useDraftedGeometryOverrides). */}
+          {helperTextNodePlaceholder}
             </div>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
