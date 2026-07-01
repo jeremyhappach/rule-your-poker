@@ -2066,9 +2066,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else {
       // Fire-and-forget: check if session needs cleanup after we leave
       checkAndCleanupAfterPlayerLeave(gameId!);
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'leave-game-now' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
     }
   };
+
   
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
