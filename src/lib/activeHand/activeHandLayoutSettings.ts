@@ -444,13 +444,15 @@ export function resolveActiveHandFromPane(
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
+  overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
   const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
-    computeStageRectFromPane(paneRect, policy);
+    computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
   return { ...row, reservedLowerZonePx, interZoneClearancePx };
 }
+
