@@ -1980,6 +1980,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId!)
         .maybeSingle();
       if (!stillThere) {
+        recordTerminalRecovery('completed-teardown', { gameId, source: 'stand-up-cleanup' });
+        releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
       }
     }
@@ -1990,9 +1992,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // If user is an observer (not a player), just navigate back to lobby
     if (!currentPlayer) {
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'observer-leave' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
       return;
     }
+
     
     // Check if host is leaving during waiting phase - delete the entire game
     // CRITICAL: NEVER delete real_money games - archive them instead
