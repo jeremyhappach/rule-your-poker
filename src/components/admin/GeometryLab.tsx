@@ -896,6 +896,21 @@ function GameSections(props: GameSectionsProps) {
 
       </CollapsibleSection>
 
+      {props.game === "ginRummy" && (
+        <CollapsibleSection title="Gin · Stock/Discard Helper Text">
+          <p className="text-[11px] text-muted-foreground">
+            Top-level shortcut to the helper-text coupling controls.
+            Same domain as the panel that appears under Gameplay
+            Artifacts → Stock + Discard. Draft → Apply → Cancel behaves
+            like every other GeoLab domain; remote realtime changes
+            update the mounted helper text immediately.
+          </p>
+          <GinHelperTextAdminSection />
+        </CollapsibleSection>
+      )}
+
+
+
 
       {getActiveHandLayoutSpec(props.game) && (
         <CollapsibleSection title="Active Player Settings">
