@@ -10614,11 +10614,11 @@ export const MobileGameTable = ({
                                                ? 2
                                                : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7);
                                            return (
-                                             <ActiveHandFan
+                                             <MeasuredActiveHandFan
                                                game={activeGame}
                                                cards={effectiveCards}
                                                capacity={capacity}
-                                               paneRect={activeSelfPaneRect357}
+                                               measureAncestorSelector="[data-357-active-pane-content],[data-holm-active-hand-region]"
                                                applyFan
                                              />
                                            );
