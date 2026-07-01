@@ -8110,9 +8110,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId);
 
       gameOverTransitionRef.current = false;
+      recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'pending-session-end' });
+      releaseRecoveryLease('session-ended-confirmed', { gameId });
       setTimeout(() => navigate('/'), 2000);
       return;
     }
+
 
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
