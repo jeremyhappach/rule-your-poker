@@ -10614,15 +10614,43 @@ export const MobileGameTable = ({
                                                ? 2
                                                : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7);
                                            return (
-                                             <MeasuredActiveHandFan
-                                               game={activeGame}
-                                               cards={effectiveCards}
-                                               capacity={capacity}
-                                               measureAncestorSelector="[data-357-active-pane-content],[data-holm-active-hand-region]"
-                                               applyFan
-                                             />
-                                           );
-                                         }
+                                              activeGame === 'threeFiveSeven' ? (
+                                                // 3-5-7 active-self hand:
+                                                //   • The legacy PlayerHand branch (used during
+                                                //     staged deal / round 3 / winner reveal / solo)
+                                                //     is intentionally wrapped in a scale-[2.x]
+                                                //     `w-auto` reserve box. That wrapper stack is
+                                                //     WRONG for the shared resolver: the resolver
+                                                //     already sizes cards from the true pane
+                                                //     rect, and measuring through a scaled `w-auto`
+                                                //     ancestor produces a circular-width shrink
+                                                //     that collapses the fan the moment sibling
+                                                //     controls appear.
+                                                //   • Portal into `[data-357-active-pane-content]`
+                                                //     so the fan is measured + rendered against the
+                                                //     un-transformed pane. Phase-lock the committed
+                                                //     rect to `{dealerGameId∥handContextId, round,
+                                                //     player}` so later action-zone appearance or
+                                                //     sibling thrash never re-collapses it.
+                                                <MeasuredActiveHandFan
+                                                  game={activeGame}
+                                                  cards={effectiveCards}
+                                                  capacity={capacity}
+                                                  portalTargetSelector="[data-357-active-pane-content]"
+                                                  phaseLockKey={`357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`}
+                                                  applyFan
+                                                />
+                                              ) : (
+                                                <MeasuredActiveHandFan
+                                                  game={activeGame}
+                                                  cards={effectiveCards}
+                                                  capacity={capacity}
+                                                  measureAncestorSelector="[data-357-active-pane-content],[data-holm-active-hand-region]"
+                                                  applyFan
+                                                />
+                                              )
+                                            );
+                                          }
                                          return (
                                            <PlayerHand
                                              cards={effectiveCards}
