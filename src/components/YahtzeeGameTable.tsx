@@ -1996,14 +1996,14 @@ export function YahtzeeGameTable({
             // My turn (or sticky-latched within the turn-transition window):
             // show interactive scorecard ON the felt (anchored stage).
             return (
-              <YahtzeeAnchoredSlot
+              <YahtzeeAnchoredInteractionSlot
                 artifactId="yahtzee.scorecardStage"
                 innerStyle={{ alignItems: 'center', justifyContent: 'center' }}
               >
                 <div style={{ width: '100%', maxWidth: 340 }}>
                   {renderScorecard(myPlayer.id, true)}
                 </div>
-              </YahtzeeAnchoredSlot>
+              </YahtzeeAnchoredInteractionSlot>
             );
           }
 
