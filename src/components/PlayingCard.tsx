@@ -308,7 +308,7 @@ export const PlayingCard = ({
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-id={`${card.rank}-${card.suit}`}
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200 overflow-hidden`}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
