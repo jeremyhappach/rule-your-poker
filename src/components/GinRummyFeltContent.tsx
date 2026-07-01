@@ -491,7 +491,7 @@ export const GinRummyFeltContent = ({
                 data-card-anchor="discard"
                 data-gin-pile="discard"
                 data-gin-pile-layer="button"
-                className={`absolute inset-0 rounded-md transition-all block ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+                className={`absolute inset-0 rounded-md transition-all block ${discardClickable ? 'cursor-pointer active:scale-95' : ''}`}
                 style={{
                   pointerEvents: 'auto',
                   padding: 0,
