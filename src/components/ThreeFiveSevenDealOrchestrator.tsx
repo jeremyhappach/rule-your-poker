@@ -51,6 +51,7 @@ import {
   record357DiagnosticViolation,
   type CardHiddenReason,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
+import { useActiveHandCardRect } from '@/lib/activeHand/activeHandCardRectStore';
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
