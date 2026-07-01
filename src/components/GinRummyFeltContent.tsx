@@ -8,6 +8,10 @@ import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 // Score rail is owned by GinRummyGameTable (persistent across hand
 // identity boundaries). Do not re-mount it here.
 import { GinAnchoredSlot } from './GinAnchoredSlot';
+import {
+  resolveGinHelperTextStyle,
+  useGinHelperTextSettings,
+} from '@/lib/ginRummy/helperTextSettings';
 import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
