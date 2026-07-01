@@ -346,6 +346,16 @@ export const GinRummyFeltContent = ({
                   </span>
                 </div>
               ) : null}
+              {helperTextNode ? (
+                <div
+                  data-gin-helper-text=""
+                  data-gin-helper-placement={helperTextSettings.placement}
+                  className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
+                  style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+                >
+                  {helperTextNode}
+                </div>
+              ) : null}
             </div>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
