@@ -251,7 +251,10 @@ export const GinRummyFeltContent = ({
   // Content is context-conditional. It is NOT an independently
   // anchored felt artifact; it follows Stock X/Y automatically.
   const helperTextSettings = useGinHelperTextSettings();
-  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings);
+  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings, {
+    widthPx: PILE_CARD_WIDTH_PX,
+    heightPx: PILE_CARD_HEIGHT_PX,
+  });
   let helperTextNode: React.ReactNode = null;
   if (!hidePiles) {
     if (ginState.phase === 'playing') {
@@ -346,21 +349,12 @@ export const GinRummyFeltContent = ({
                   </span>
                 </div>
               ) : null}
-              {helperTextNode ? (
-                <div
-                  data-gin-helper-text=""
-                  data-gin-helper-placement={helperTextSettings.placement}
-                  className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
-                  style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
-                >
-                  {helperTextNode}
-                </div>
-              ) : null}
             </div>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
           </div>
+
 
           {/* Discard Pile — visual only. The click owner is in the shell
               interaction layer and occupies this same card rect. */}
@@ -401,6 +395,27 @@ export const GinRummyFeltContent = ({
             </div>
             <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
+
+          {/* Helper text — child of the FULL Stock + Discard cluster
+              slot (union of stock + discard rects). Placement selects
+              the cluster edge; offsetPct is measured from that edge
+              in units of the resolved pile-card size. Follows every
+              cluster placement change automatically through the same
+              reactive path as gin.pegboard:
+                useDraftedGeometryOverrides
+                → GinRummyGameplayGeometryProvider re-resolves
+                → GinAnchoredSlot re-renders with new rect
+                → this child repositions relative to that new rect. */}
+          {helperTextNode ? (
+            <div
+              data-gin-helper-text=""
+              data-gin-helper-placement={helperTextSettings.placement}
+              className="text-[10px] text-white/85 whitespace-nowrap text-center pointer-events-none"
+              style={{ ...helperTextStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+            >
+              {helperTextNode}
+            </div>
+          ) : null}
 
         </GinAnchoredSlot>
       )}

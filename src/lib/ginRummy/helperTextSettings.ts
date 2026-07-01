@@ -76,42 +76,53 @@ export function useGinHelperTextSettings(): GinHelperTextSettings {
 
 /**
  * Compute the absolutely-positioned style for the helper text element
- * relative to its stock-pile parent wrapper. The parent must be
- * `position: relative` and sized to the resolved stock-pile card rect.
- * Percentage offsets resolve against the parent — which IS the card
- * rect — so offsetPct is "% of resolved stock-pile card size" by
- * definition, with no need to thread pixel measurements through.
+ * relative to the FULL Stock + Discard cluster slot (the anchored rect
+ * owned by `gin.stockDiscardGroup`). The parent must be
+ * `position: relative` and sized to the cluster's assigned rect —
+ * i.e. `union(stockPileRect, discardPileRect)`, which is exactly the
+ * slot produced by `GinAnchoredSlot artifactId="gin.stockDiscardGroup"`.
+ *
+ * Above/Below → horizontally centered on cluster, offset from the
+ *   selected cluster edge by `offsetPct × pileCardHeightPx`.
+ * Left/Right → vertically centered on cluster, offset from the
+ *   selected cluster edge by `offsetPct × pileCardWidthPx`.
+ *
+ * There is a single offset scalar. No independent X/Y. No independent
+ * helper-text anchor — placement selects the cluster edge, and the
+ * helper text follows every cluster placement change automatically.
  */
 export function resolveGinHelperTextStyle(
   s: GinHelperTextSettings,
+  pileCardSizePx: { widthPx: number; heightPx: number },
 ): React.CSSProperties {
-  const off = `${(s.offsetPct * 100).toFixed(4)}%`;
+  const dxPx = s.offsetPct * pileCardSizePx.widthPx;
+  const dyPx = s.offsetPct * pileCardSizePx.heightPx;
   switch (s.placement) {
     case 'Above':
       return {
         position: 'absolute',
-        bottom: `calc(100% + ${off})`,
+        bottom: `calc(100% + ${dyPx.toFixed(3)}px)`,
         left: '50%',
         transform: 'translateX(-50%)',
       };
     case 'Below':
       return {
         position: 'absolute',
-        top: `calc(100% + ${off})`,
+        top: `calc(100% + ${dyPx.toFixed(3)}px)`,
         left: '50%',
         transform: 'translateX(-50%)',
       };
     case 'Left':
       return {
         position: 'absolute',
-        right: `calc(100% + ${off})`,
+        right: `calc(100% + ${dxPx.toFixed(3)}px)`,
         top: '50%',
         transform: 'translateY(-50%)',
       };
     case 'Right':
       return {
         position: 'absolute',
-        left: `calc(100% + ${off})`,
+        left: `calc(100% + ${dxPx.toFixed(3)}px)`,
         top: '50%',
         transform: 'translateY(-50%)',
       };
