@@ -432,49 +432,41 @@ export const CribbageMobileCardsTab = ({
         data-crib-active-hand-stage=""
         className="flex items-center justify-center overflow-hidden"
       >
-        <div
-          className="flex justify-center origin-center"
-          style={{ width: activeHandLayout ? activeHandLayout.totalWidth : undefined }}
-        >
-          {renderedHand.map((card, index) => {
+        <ActiveHandFan
+          game="cribbage"
+          cards={renderedHand.map(toDisplayCard)}
+          capacity={phaseCapacity}
+          stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
+          applyFan
+          renderCard={({ index, card_node }) => {
+            const card = renderedHand[index];
+            if (!card) return null;
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
-
             return (
               <button
-                key={index}
                 onClick={() => handleCardClick(index)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
                 className={cn(
                   "transition-all duration-200 rounded relative",
-                  // Explicit transform for selected vs not-selected states
-                  // This ensures deselecting a card returns it to translateY(0)
                   isSelected
                     ? "-translate-y-3 ring-2 ring-poker-gold z-10"
                     : "translate-y-0",
-                  // iOS can "stick" :hover after a tap; only apply hover transforms on fine-pointer hover devices.
-                  isMyTurn &&
-                    isPlayable &&
-                    !isSelected &&
+                  isMyTurn && isPlayable && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
-                  cribbageState.phase === 'discarding' &&
-                    !haveDiscarded &&
-                    !isSelected &&
+                  cribbageState.phase === 'discarding' && !haveDiscarded && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
-                style={{
-                  zIndex: isSelected ? 10 : index,
-                  marginLeft: index === 0 ? 0 : -overlapPx,
-                }}
+                style={{ zIndex: isSelected ? 10 : index }}
               >
-                <CribbagePlayingCard card={card} widthPx={resolvedCardWidthPx} tier="large" />
+                {card_node}
               </button>
             );
-          })}
-        </div>
+          }}
+        />
       </div>
 
 
