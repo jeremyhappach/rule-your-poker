@@ -368,38 +368,54 @@ export const GinRummyMobileCardsTab = ({
           </div>
         </div>
       ) : (
-        /* ── NORMAL PLAY VIEW: Flat horizontal row ── */
+        /* ── NORMAL PLAY VIEW: shared active-hand fan ── */
         <>
           <div className="flex items-center pl-2 pt-1">
             <span className="text-sm font-mono font-bold text-muted-foreground tracking-wide">
               DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
             </span>
           </div>
-          <div className="flex items-start justify-center py-1 overflow-visible">
-            {flatSortedHand.map(({ card, originalIndex, meldGroup }, ci) => {
-              const isSelected = selectedCardIndex === originalIndex;
-              const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-              const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-              const isMeld = meldGroup >= 0;
-              return (
-                <button
-                  key={`${card.rank}-${card.suit}-${originalIndex}`}
-                  onClick={() => handleCardClick(originalIndex)}
-                  onPointerUp={(e) => e.currentTarget.blur()}
-                  disabled={isProcessing || !canSelect}
-                  className={cn(
-                    "transition-all duration-200 rounded relative",
-                    isMeld ? "opacity-100" : "opacity-80",
-                    isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                    canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
-                    isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                  )}
-                  style={{ zIndex: isSelected ? 20 : ci, marginLeft: ci === 0 ? 0 : `${ginLgMarginPx}px` }}
-                >
-                  <CribbagePlayingCard card={toDisplayCard(card)} size="lg" tier="large" />
-                </button>
-              );
-            })}
+          <div
+            ref={ginHandStageRef}
+            data-gin-active-hand-stage=""
+            className="flex-1 min-h-0 flex items-start justify-center py-1 overflow-visible"
+          >
+            <ActiveHandFan
+              game="ginRummy"
+              cards={flatSortedHand.map(({ card }) => ({
+                suit: card.suit as CanonicalCardType['suit'],
+                rank: card.rank as CanonicalCardType['rank'],
+              }))}
+              capacity={GIN_CARDS_PER_PLAYER + 1}
+              stageRect={ginHandStageRectPx}
+              applyFan
+              renderCard={({ index, card_node }) => {
+                const item = flatSortedHand[index];
+                if (!item) return null;
+                const { card, originalIndex, meldGroup } = item;
+                const isSelected = selectedCardIndex === originalIndex;
+                const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+                const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+                const isMeld = meldGroup >= 0;
+                return (
+                  <button
+                    onClick={() => handleCardClick(originalIndex)}
+                    onPointerUp={(e) => e.currentTarget.blur()}
+                    disabled={isProcessing || !canSelect}
+                    className={cn(
+                      "transition-all duration-200 rounded relative",
+                      isMeld ? "opacity-100" : "opacity-80",
+                      isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                      canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                      isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+                    )}
+                    style={{ zIndex: isSelected ? 20 : index }}
+                  >
+                    {card_node}
+                  </button>
+                );
+              }}
+            />
           </div>
         </>
       )}
