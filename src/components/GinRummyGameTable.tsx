@@ -2730,13 +2730,10 @@ export const GinRummyGameTable = ({
                 ginState.pointsToWin (authoritative 100). */}
             {persistentMatchSnapshot && (
               <GinAnchoredSlot artifactId="gin.pegboard">
-                {/* Direct mount — no w-full wrappers. GinAnchoredSlot
-                    applies flex + justify-center + align-center on a
-                    rect that already encodes the resolved GeoLab anchor
-                    (anchorX + anchorOrigin from the descriptor). An
-                    intrinsic-width child therefore centers its own
-                    rendered assembly width on the anchor. No mx-auto,
-                    no w-fit, no spacer, no pixel translate. */}
+                {/* Direct mount. GinRummyPegBoard preserves the original
+                    full-width internal rail layout, then measures the
+                    visible label/track bounds and translates that visual
+                    assembly onto the resolved GeoLab anchor. */}
                 <GinRummyPegBoard
                   matchScores={persistentMatchSnapshot.matchScores}
                   pointsToWin={persistentMatchSnapshot.pointsToWin}
