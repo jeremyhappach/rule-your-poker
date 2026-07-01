@@ -78,7 +78,24 @@ const state: RuntimeState = {
 };
 
 export function configureNetworkSim(partial: Partial<RuntimeState>): void {
+  const prevMode = state.mode;
   Object.assign(state, partial);
+  const nextMode = state.mode;
+  if (prevMode !== nextMode) {
+    if (nextMode === 'cross_country_chaos') {
+      const seedStr = typeof window !== 'undefined' ? window.localStorage.getItem('ptp_chaos_seed') : null;
+      const seed = seedStr ? Number(seedStr) >>> 0 : undefined;
+      const clientKey = state.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
+      startChaosSession({ seed, clientKey });
+    } else if (prevMode === 'cross_country_chaos') {
+      stopChaosSession();
+    }
+  }
+}
+
+/** Optional hint so the chaos generator can bias per-role randomization. */
+export function setChaosClientRole(role: ChaosClientRole): void {
+  updateChaosRole(role);
 }
 
 export function getNetworkSimMode(): NetworkSimMode {
