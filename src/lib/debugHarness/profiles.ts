@@ -73,6 +73,11 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       label: 'Near Gin',
       description: 'Deterministic two-action gin-on-upcard with match target lowered to 50.',
     },
+    {
+      id: 'opponent_instant_knock',
+      label: 'Opponent Instant Knock',
+      description: 'Hand 1 only: deterministic deal where opponent bot (non-host, non-dealer) takes exposed 4♣, discards K♥, knocks with A♠ = 1 deadwood — exercises real reveal/layoff/scoring flow. Ordinary Gin resumes on hand 2.',
+    },
   ],
   yahtzee: [
     NONE_HARNESS,
