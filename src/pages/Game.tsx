@@ -2023,9 +2023,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
         }
       }
+      recordTerminalRecovery('explicit-leave', { gameId, source: 'host-leave-waiting' });
+      releaseRecoveryLease('explicit-leave', { gameId });
       navigate('/');
       return;
     }
+
     
     // Snapshot this player's chips before they leave (for real money games)
     if (game?.real_money) {
