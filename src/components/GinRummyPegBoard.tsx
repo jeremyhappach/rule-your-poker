@@ -29,43 +29,34 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
   const denom = pointsToWin > 0 ? pointsToWin : 100;
 
   return (
-    <div className="space-y-1 w-full">
+    // Pure translation: internal assembly (name gutter + track + score)
+    // is unchanged in width and layout. Shift the entire cluster left
+    // by half the left-gutter footprint (w-12 = 48px + gap-1.5 = 6px
+    // → 54px total, half = 27px) so its visual midpoint aligns with
+    // the slot's .5 X anchor. No reflow, no reserved space, no width
+    // change.
+    <div className="space-y-1 w-full" style={{ transform: 'translateX(-27px)' }}>
       {playerIds.map((pid, index) => {
         const score = matchScores[pid] || 0;
-        // fill = clamp(playerMatchScore / matchTargetScore, 0, 1)
         const percentage = Math.max(0, Math.min(100, (score / denom) * 100));
         const displayName = getPlayerUsername(pid);
-        // Visual: keep a small minimum stub once score > 0 so the
-        // colored fill is visible. Denominator is unchanged.
         const barWidth = score === 0 ? 0 : Math.max(12, percentage);
 
         return (
           <div key={pid} className="flex items-center gap-1.5">
-            {/* Player name (left gutter) */}
             <span className="text-[9px] text-white/80 w-12 shrink-0 truncate text-right font-medium">
               {displayName}
             </span>
-
-            {/* Track */}
             <div className="flex-1 h-3.5 bg-white/20 rounded-full overflow-hidden relative">
-              {/* Progress fill */}
               <div
                 className={`h-full ${PLAYER_COLORS[index]} transition-all duration-500 rounded-full relative`}
                 style={{ width: `${barWidth}%` }}
               >
-                {/* Score overlaid inside the fill, left-aligned */}
                 <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-white drop-shadow-sm leading-none">
                   {score}
                 </span>
               </div>
             </div>
-
-            {/* Symmetric right spacer — mirrors the left name gutter
-                (w-12 + gap-1.5) so the [name + track] assembly's
-                measured bounds center on the slot's X anchor instead
-                of biasing to one side. Presentation-only; does not
-                change rail width, anchor, scores, or logic. */}
-            <span aria-hidden="true" className="w-12 shrink-0" />
           </div>
         );
       })}
