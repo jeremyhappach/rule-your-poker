@@ -127,6 +127,8 @@ export function ActiveHandFan({
   aspect = DEFAULT_ASPECT,
   renderCard,
   applyFan = true,
+  lowerZoneMinPx,
+  safeAreaBottomPx,
   className,
   style,
   dataAttribute,
@@ -135,9 +137,14 @@ export function ActiveHandFan({
 
   const resolvedStageRect: ActiveHandStageRect | null = useMemo(() => {
     if (stageRect) return stageRect;
-    if (paneRect) return computeStageRectFromPane(paneRect, policy).stageRect;
+    if (paneRect)
+      return computeStageRectFromPane(paneRect, policy, {
+        measuredLowerZoneMinPx: lowerZoneMinPx,
+        safeAreaBottomPx,
+      }).stageRect;
     return null;
-  }, [stageRect, paneRect, policy]);
+  }, [stageRect, paneRect, policy, lowerZoneMinPx, safeAreaBottomPx]);
+
 
   const layout: ResolvedActiveHandRow | null = useMemo(
     () => resolveActiveHandLayout(resolvedStageRect, Math.max(1, capacity), policy, aspect),
