@@ -8249,6 +8249,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await supabase.from('rounds').delete().eq('game_id', gameId);
         await supabase.from('players').delete().eq('game_id', gameId);
         await supabase.from('games').delete().eq('id', gameId);
+        recordTerminalRecovery('completed-teardown', { gameId, source: 'empty-session-delete' });
+        releaseRecoveryLease('completed-teardown', { gameId });
         navigate('/');
       } else {
         // Has game history - end session normally with game_over_at set
