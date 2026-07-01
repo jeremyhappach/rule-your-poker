@@ -1,32 +1,37 @@
 /**
- * useGlobalDebugMode — admin-controlled master gate for all debug
- * harnesses. Persisted in system_settings (key='debug_mode').
+ * useHarnessesMode — admin-controlled master gate for debug harness
+ * *execution*. Persisted in system_settings (key='harnesses_mode').
  *
- * Toggling OFF does NOT clear any per-game harness selection — it only
- * flips the execution gate (see runtimeCache.getActiveHarnessCached).
+ * Independent of Global Debug Mode (which controls debug UI visibility).
+ * Toggling OFF does NOT clear per-game harness selections — only flips
+ * the execution gate consulted by `getActiveHarnessCached`.
+ *
+ * `useGlobalDebugMode` is exported as an alias to preserve existing
+ * import sites; the "Harnesses" toggle in Admin has always driven this
+ * gate under the hood.
  */
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ensureHarnessCacheLoaded,
-  isGlobalDebugModeCached,
-  isGlobalDebugModeLoaded,
-  subscribeGlobalDebugMode,
+  isHarnessesModeCached,
+  isHarnessesModeLoaded,
+  subscribeHarnessesMode,
 } from './runtimeCache';
 
-export function useGlobalDebugMode() {
-  const [enabled, setEnabled] = useState<boolean>(isGlobalDebugModeCached());
-  const [loading, setLoading] = useState<boolean>(!isGlobalDebugModeLoaded());
+export function useHarnessesMode() {
+  const [enabled, setEnabled] = useState<boolean>(isHarnessesModeCached());
+  const [loading, setLoading] = useState<boolean>(!isHarnessesModeLoaded());
 
   useEffect(() => {
     let cancelled = false;
     void ensureHarnessCacheLoaded().then(() => {
       if (cancelled) return;
-      setEnabled(isGlobalDebugModeCached());
+      setEnabled(isHarnessesModeCached());
       setLoading(false);
     });
-    const unsub = subscribeGlobalDebugMode((v) => {
+    const unsub = subscribeHarnessesMode((v) => {
       if (!cancelled) setEnabled(v);
     });
     return () => {
@@ -39,14 +44,13 @@ export function useGlobalDebugMode() {
     const { error } = await supabase
       .from('system_settings')
       .update({ value: { enabled: next }, updated_at: new Date().toISOString() })
-      .eq('key', 'debug_mode');
+      .eq('key', 'harnesses_mode');
     if (error) {
-      // Row may not exist yet (fresh project) — insert it.
       const { error: insErr } = await supabase
         .from('system_settings')
-        .insert({ key: 'debug_mode', value: { enabled: next } });
+        .insert({ key: 'harnesses_mode', value: { enabled: next } });
       if (insErr) {
-        console.error('[GLOBAL_DEBUG_MODE] toggle failed:', error, insErr);
+        console.error('[HARNESSES_MODE] toggle failed:', error, insErr);
         return false;
       }
     }
@@ -56,3 +60,6 @@ export function useGlobalDebugMode() {
 
   return { enabled, loading, toggle };
 }
+
+/** @deprecated Alias — the "Harnesses" toggle drives harnesses_mode, not debug_mode. */
+export const useGlobalDebugMode = useHarnessesMode;
