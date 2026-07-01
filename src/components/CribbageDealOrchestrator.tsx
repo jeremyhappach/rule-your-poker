@@ -59,6 +59,9 @@ export function CribbageDealOrchestrator({
   seats,
   cardsPerPlayer,
   selfHand,
+  dealerGameId,
+  roundId,
+  handNumber,
 }: CribbageDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
