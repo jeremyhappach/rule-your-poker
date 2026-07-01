@@ -71,7 +71,19 @@ interface PlayingCardProps {
    * face typography always flows through the tier/deck-mode resolver.
    */
   faceFillPx?: number;
+  /**
+   * Canonical Active Player Hand physical shell (Holm parity):
+   * shared corner radius, border, inner highlight, drop shadow, and
+   * material surface. Applied whenever the card is rendered inside a
+   * shared `<ActiveHandFan/>` regardless of game. Face-content sizing
+   * (`small`/`medium`/`large`) is unaffected.
+   */
+  activeHandShell?: boolean;
 }
+
+/** Extra classes applied when `activeHandShell` is true. */
+const ACTIVE_HAND_SHELL_CLASS =
+  'rounded-[10%] border border-white/70 ring-1 ring-black/10 shadow-[0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.55)] bg-gradient-to-b from-white to-slate-100';
 
 
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
