@@ -36,20 +36,35 @@
  * viewerPosition === position).
  */
 
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
-import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
-import { useCardRowLayout } from './useCardRowLayout';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { formatChipBalance } from '@/lib/canonicalShell/chipBalanceFormat';
 import type { CanonicalSeatStatusRing } from './participantStatus';
+import {
+  getShellOpponentCardBacksConfig,
+  subscribeShellOpponentCardBacks,
+} from './shellOpponentCardBacksConfig';
 
-// Width budget for the gin variant card-back strip. Sourced from
-// canonical screenWidth (no DOM measurement; cannot self-feed).
-const OPPONENT_STRIP_WIDTH_FRACTION = 0.22;
-const OPPONENT_STRIP_MIN_WIDTH_PX = 56;
-const OPPONENT_STRIP_MAX_WIDTH_PX = 180;
+// Canonical (viewport-stable) card-back sizing per variant. Card size
+// and aspect ratio are fixed by contract — the adaptive fan policy
+// tightens overlap only, never shrinks cards.
+const CANONICAL_CARDBACK_SIZE = {
+  cribbage: { widthPx: 16, heightPx: 24 },
+  gin: { widthPx: 18, heightPx: 26 },
+} as const;
+
+// Preferred (natural) gap between adjacent card centers as a fraction
+// of card width. When the fan fits inside the max-span cap this is
+// what the row renders; if it overflows, the resolver tightens the
+// step down to whatever fraction is needed to satisfy the cap
+// (0 = fully stacked). No lower bound.
+const PREFERRED_STEP_FRACTION = {
+  cribbage: 0.625, // ≈ current `-space-x-1.5` at 16px
+  gin: 0.55,       // legibility-first natural spread
+} as const;
 
 export type SeatStatusRing = CanonicalSeatStatusRing;
 
