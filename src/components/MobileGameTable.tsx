@@ -10445,7 +10445,18 @@ export const MobileGameTable = ({
 
                     return (
                       <div className={cn(
-                        "flex flex-col items-center",
+                        // Composition contract: the active-hand region must
+                        // grow to fill the pane so the action strip below
+                        // is anchored to the pane bottom (sibling of this
+                        // wrapper). Combined with the
+                        // `data-active-hand-lower-zone` tag on the action
+                        // strip, the shared resolver escalates its
+                        // reservation to `max(authored, measured + safe)`
+                        // and the portaled fan's `stageRect.bottom` lands
+                        // above the action strip by the authored
+                        // inter-zone clearance — cards can no longer
+                        // overlap Drop/Stay.
+                        "flex flex-col items-center flex-1 w-full min-h-0",
                         gameType !== "holm-game" ? "gap-0" : "gap-0",
                       )}>
                         {showDealerSelectionCards ? (
