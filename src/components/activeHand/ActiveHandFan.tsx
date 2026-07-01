@@ -81,8 +81,24 @@ export interface ActiveHandFanProps {
    * with a subtle arch/rotation per card. Default: true.
    */
   applyFan?: boolean;
+  /**
+   * Runtime-measured minimum rendered height of the sibling lower zone
+   * (action / instruction / identity). When provided together with
+   * `paneRect`, the resolver escalates its reservation to
+   * `max(authored, measured + safeArea)` so the sibling zone is never
+   * pushed below the mobile viewport. Ignored when `stageRect` is
+   * provided directly (stage already excludes the lower zone).
+   */
+  lowerZoneMinPx?: number;
+  /**
+   * Extra bottom safe-area allowance in px. Added to `lowerZoneMinPx`
+   * when the resolver reserves the lower zone. Typically the resolved
+   * value of `env(safe-area-inset-bottom)`.
+   */
+  safeAreaBottomPx?: number;
   className?: string;
   style?: CSSProperties;
+
   /**
    * Optional data attribute for outer-container introspection. Defaults
    * to `data-active-hand-fan="{game}"`.
@@ -111,6 +127,8 @@ export function ActiveHandFan({
   aspect = DEFAULT_ASPECT,
   renderCard,
   applyFan = true,
+  lowerZoneMinPx,
+  safeAreaBottomPx,
   className,
   style,
   dataAttribute,
@@ -119,9 +137,14 @@ export function ActiveHandFan({
 
   const resolvedStageRect: ActiveHandStageRect | null = useMemo(() => {
     if (stageRect) return stageRect;
-    if (paneRect) return computeStageRectFromPane(paneRect, policy).stageRect;
+    if (paneRect)
+      return computeStageRectFromPane(paneRect, policy, {
+        measuredLowerZoneMinPx: lowerZoneMinPx,
+        safeAreaBottomPx,
+      }).stageRect;
     return null;
-  }, [stageRect, paneRect, policy]);
+  }, [stageRect, paneRect, policy, lowerZoneMinPx, safeAreaBottomPx]);
+
 
   const layout: ResolvedActiveHandRow | null = useMemo(
     () => resolveActiveHandLayout(resolvedStageRect, Math.max(1, capacity), policy, aspect),

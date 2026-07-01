@@ -316,6 +316,26 @@ export interface ResolvedActiveHandRow {
 }
 
 /**
+ * Optional overrides consumed by the pane-based resolver.
+ *
+ * `measuredLowerZoneMinPx` is the runtime-measured minimum rendered
+ * height of the sibling lower zone (action / instruction / identity)
+ * that the pane owner reserves as `max-content` next to the hand
+ * stage. `safeAreaBottomPx` is the resolved
+ * `env(safe-area-inset-bottom)` allowance so devices with a home-bar /
+ * gesture area cannot clip the identity row.
+ *
+ * Resolved reservation used by the resolver:
+ *   `max(paneH × reservedLowerZonePctOfPane, measuredLowerZoneMinPx + safeAreaBottomPx)`
+ *
+ * Never falls below the authored reservation.
+ */
+export interface PaneReservationOverrides {
+  measuredLowerZoneMinPx?: number;
+  safeAreaBottomPx?: number;
+}
+
+/**
  * Compute the hand-stage rect from the pane rect + authored reservations.
  * Owners can call this to size the lower zone sibling in the same
  * space the resolver uses.
@@ -323,10 +343,16 @@ export interface ResolvedActiveHandRow {
 export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
+  overrides?: PaneReservationOverrides,
 ): { stageRect: ActiveHandStageRect; reservedLowerZonePx: number; interZoneClearancePx: number } {
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
-  const reservedLowerZonePx = paneH * policy.reservedLowerZonePctOfPane;
+  const authoredReserved = paneH * policy.reservedLowerZonePctOfPane;
+  const measured = Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0);
+  const safeArea = Math.max(0, overrides?.safeAreaBottomPx ?? 0);
+  // Never below authored; escalate to actual rendered minimum + safe-area
+  // when the lower zone is taller than the authored reservation.
+  const reservedLowerZonePx = Math.max(authoredReserved, measured + safeArea);
   const interZoneClearancePx = paneH * policy.interZoneClearancePctOfPane;
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
@@ -342,6 +368,7 @@ export function computeStageRectFromPane(
     interZoneClearancePx,
   };
 }
+
 
 /**
  * Legacy signature (accepts a pre-computed stage rect). Retained for
@@ -417,13 +444,15 @@ export function resolveActiveHandFromPane(
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
+  overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
   const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
-    computeStageRectFromPane(paneRect, policy);
+    computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
   return { ...row, reservedLowerZonePx, interZoneClearancePx };
 }
+

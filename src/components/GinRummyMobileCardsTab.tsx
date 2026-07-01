@@ -442,7 +442,7 @@ export const GinRummyMobileCardsTab = ({
       )}
 
       {/* ── Action area ── */}
-      <div className="flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+      <div data-active-hand-lower-zone="" className="flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
           <>

@@ -471,7 +471,7 @@ export const CribbageMobileCardsTab = ({
 
 
       {/* Action area - tighter to cards */}
-      <div className="flex items-center justify-center min-h-[28px] overflow-hidden">
+      <div data-active-hand-lower-zone="" className="flex items-center justify-center min-h-[28px] overflow-hidden">
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
