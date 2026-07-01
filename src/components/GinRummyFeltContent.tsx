@@ -251,7 +251,10 @@ export const GinRummyFeltContent = ({
   // Content is context-conditional. It is NOT an independently
   // anchored felt artifact; it follows Stock X/Y automatically.
   const helperTextSettings = useGinHelperTextSettings();
-  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings);
+  const helperTextStyle = resolveGinHelperTextStyle(helperTextSettings, {
+    widthPx: PILE_CARD_WIDTH_PX,
+    heightPx: PILE_CARD_HEIGHT_PX,
+  });
   let helperTextNode: React.ReactNode = null;
   if (!hidePiles) {
     if (ginState.phase === 'playing') {
