@@ -29,13 +29,13 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
   const denom = pointsToWin > 0 ? pointsToWin : 100;
 
   return (
-    // Pure translation: internal assembly (name gutter + track + score)
-    // is unchanged in width and layout. Shift the entire cluster left
-    // by half the left-gutter footprint (w-12 = 48px + gap-1.5 = 6px
-    // → 54px total, half = 27px) so its visual midpoint aligns with
-    // the slot's .5 X anchor. No reflow, no reserved space, no width
-    // change.
-    <div className="space-y-1 w-full" style={{ transform: 'translateX(-27px)' }}>
+    // Intrinsic-width wrapper: children keep their existing internal
+    // widths (name gutter + track + score value). The wrapper sizes to
+    // its measured children and centers within the slot via mx-auto,
+    // so the complete visual assembly — not just the rail track — is
+    // centered on the slot's .5 X anchor. No pixel constant, no
+    // spacer, no reserved width, no reflow.
+    <div className="space-y-1 w-fit mx-auto">
       {playerIds.map((pid, index) => {
         const score = matchScores[pid] || 0;
         const percentage = Math.max(0, Math.min(100, (score / denom) * 100));
@@ -47,7 +47,7 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
             <span className="text-[9px] text-white/80 w-12 shrink-0 truncate text-right font-medium">
               {displayName}
             </span>
-            <div className="flex-1 h-3.5 bg-white/20 rounded-full overflow-hidden relative">
+            <div className="h-3.5 bg-white/20 rounded-full overflow-hidden relative" style={{ width: '160px' }}>
               <div
                 className={`h-full ${PLAYER_COLORS[index]} transition-all duration-500 rounded-full relative`}
                 style={{ width: `${barWidth}%` }}
@@ -61,5 +61,6 @@ export const GinRummyPegBoard = (props: GinRummyPegBoardProps) => {
         );
       })}
     </div>
+
   );
 };
