@@ -10719,7 +10719,9 @@ export const MobileGameTable = ({
                     );
                   })()}
 
-                  <div className={cn(
+                  <div
+                    data-active-hand-lower-zone=""
+                    className={cn(
                     // Stable allocation: this strip swaps between buttons,
                     // badges, auto-fold label, and pre-decision checkboxes
                     // across the hand lifecycle. The geometry contract
@@ -10728,7 +10730,13 @@ export const MobileGameTable = ({
                     // reserve the height of the *tallest* variant
                     // (auto-fold label ≈ 52px mobile, ≈ 64px tablet) so
                     // every transition centers content inside a fixed box.
-                    "flex items-center justify-center",
+                    // Tagged `data-active-hand-lower-zone` so the shared
+                    // active-hand resolver measures its rendered height
+                    // and escalates the pane reservation — the portaled
+                    // fan's stageRect.bottom is derived from that same
+                    // reservation, guaranteeing cards never overlap the
+                    // action controls.
+                    "flex items-center justify-center flex-shrink-0",
                     isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
 
