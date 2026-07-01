@@ -68,6 +68,7 @@ import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
 import { ShellChipBalanceAdminSection } from "./ShellChipBalanceAdminSection";
+import { ShellOpponentCardBacksAdminSection } from "./ShellOpponentCardBacksAdminSection";
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
 import { GinHelperTextAdminSection } from "./GinHelperTextAdminSection";
@@ -572,6 +573,12 @@ function ShellGlobalSections() {
               Chip Balance
             </h4>
             <ShellChipBalanceAdminSection />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Opponent Card Backs
+            </h4>
+            <ShellOpponentCardBacksAdminSection />
           </div>
         </div>
       </CollapsibleSection>
