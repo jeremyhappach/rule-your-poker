@@ -530,6 +530,22 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordLaunch(card.intent.cardId, now);
     }
+    if (isThreeFiveSevenSelfHandIntent(card.intent)) {
+      const container = containerRef.current;
+      const currentTo = container ? resolveCardEndpoint(card.intent.to, container) : card.to;
+      record357DealLandingTrace(card.intent.cardId, {
+        intentId: card.intent.id,
+        handContextId: card.intent.handContextId ?? null,
+        transportLaunchTimestamp: now,
+        finalLayoutPublishedTimestamp: currentTo?.finalLayoutPublishedAt ?? card.intent.activeHandFinalLayoutPublishedAt ?? null,
+        anchorRectAtLaunch: currentTo?.viewportRect ?? null,
+        flyingCardDestinationRectAtLaunch: endpointAsDestinationRect(card.to),
+        fallbackUsed: currentTo?.fallbackUsed ?? card.intent.dealLandingFallbackUsed ?? !useFinalRect,
+        activeHandFanRenderKey: card.intent.activeHandFanRenderKey ?? null,
+        transportAnchorRenderKey: currentTo?.renderKey ?? card.to.renderKey ?? null,
+        flyingCardRenderKey: `FlyingCard|${card.intent.id}`,
+      });
+    }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF LAUNCH]', {
       intentId: card.intent.id,
