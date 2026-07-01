@@ -8271,6 +8271,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('id', gameId);
         
         // Navigate after brief delay
+        recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'no-active-humans-with-history' });
+        releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       }
       return;
