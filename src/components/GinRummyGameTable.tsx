@@ -2820,9 +2820,16 @@ export const GinRummyGameTable = ({
             ))}
 
 
-            {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
+            {/* Knock/Gin Felt Display — shows only the OPPONENT's cards
+                on the felt. Mounted as a direct child of the geometry
+                provider (no wrapper div) so its GinAnchoredSlot portal
+                is the sole owner of position/size — same reactive
+                mounted-consumer path as gin.pegboard and
+                gin.stockDiscardGroup:
+                  useDraftedGeometryOverrides
+                  → GinRummyGameplayGeometryProvider re-resolves
+                  → GinAnchoredSlot re-renders with new rect. */}
             {visiblePlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
-              <div style={{ pointerEvents: 'auto' }}>
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -2836,7 +2843,6 @@ export const GinRummyGameTable = ({
                 }}
                 isProcessing={isProcessing}
               />
-              </div>
             )}
 
             {/* Knock Overlay — shown to all clients */}
