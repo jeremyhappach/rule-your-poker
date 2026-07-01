@@ -874,9 +874,15 @@ function GameSections(props: GameSectionsProps) {
 
         {/* Helper text is coupled to the stock pile (child, not an
             independently anchored artifact). Its controls surface here
-            under the Stock/Discard artifact block. */}
+            under the Stock/Discard artifact block. Wrapped in a bright
+            accent so the panel is obvious next to the geometry fields. */}
         {artifactId === "gin.stockDiscardGroup" && (
-          <GinHelperTextAdminSection />
+          <div
+            data-geolab-panel="gin-helper-text-inline"
+            className="rounded-md border-2 border-sky-500/60 bg-sky-500/5 p-2 mt-2"
+          >
+            <GinHelperTextAdminSection />
+          </div>
         )}
 
 
@@ -889,6 +895,21 @@ function GameSections(props: GameSectionsProps) {
         </div>
 
       </CollapsibleSection>
+
+      {props.game === "ginRummy" && (
+        <CollapsibleSection title="Gin · Stock/Discard Helper Text">
+          <p className="text-[11px] text-muted-foreground">
+            Top-level shortcut to the helper-text coupling controls.
+            Same domain as the panel that appears under Gameplay
+            Artifacts → Stock + Discard. Draft → Apply → Cancel behaves
+            like every other GeoLab domain; remote realtime changes
+            update the mounted helper text immediately.
+          </p>
+          <GinHelperTextAdminSection />
+        </CollapsibleSection>
+      )}
+
+
 
 
       {getActiveHandLayoutSpec(props.game) && (
