@@ -188,6 +188,10 @@ export function simulateRealtime<T>(source: string, callback: (payload: T) => vo
       callback(payload);
       return;
     }
+    if (mode === 'cross_country_chaos') {
+      chaosDeliver(source, payload, callback);
+      return;
+    }
 
     const profile = PROFILES[mode];
     const originalTs = Date.now();
