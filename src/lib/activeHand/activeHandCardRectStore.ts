@@ -21,7 +21,7 @@
  * value.
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import type { GameKey } from '@/lib/geometryLab/descriptorIndex';
 
 export interface ActiveHandCardRect {
