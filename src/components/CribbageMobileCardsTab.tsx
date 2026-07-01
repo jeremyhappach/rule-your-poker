@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
-import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -12,6 +11,19 @@ import {
   useActiveHandLayoutPolicy,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import type { Card as CardType } from '@/lib/cardUtils';
+import { SUIT_SYMBOLS } from '@/lib/cardUtils';
+
+const CRIB_SUIT_MAP: Record<string, CardType['suit']> = {
+  hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs', spades: 'spades',
+  '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs', '♠': 'spades',
+  H: 'hearts', D: 'diamonds', C: 'clubs', S: 'spades',
+};
+const toDisplayCard = (c: CribbageCard): CardType => ({
+  suit: CRIB_SUIT_MAP[c.suit as string] ?? (c.suit as CardType['suit']),
+  rank: c.rank as CardType['rank'],
+});
 
 /**
  * Cribbage active-hand card sizing — per-game policy contract.
