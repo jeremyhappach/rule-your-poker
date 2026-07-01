@@ -434,6 +434,20 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     : '';
   const suitColor = vf && (vf.suit === 'hearts' || vf.suit === 'diamonds') ? '#ef4444' : '#111827';
 
+  // Consume the resolved destination card geometry when the landing
+  // anchor is sized to the final rendered card rect (deal orchestrators
+  // that publish through activeHandCardRectStore stamp the anchor
+  // width/height to the committed active-hand card size). Fall back to
+  // the canonical constants when the destination is a 1×1 point anchor.
+  const FINAL_SIZE_MIN_PX = 8;
+  const useFinalRect =
+    Number.isFinite(card.to.w) &&
+    Number.isFinite(card.to.h) &&
+    card.to.w >= FINAL_SIZE_MIN_PX &&
+    card.to.h >= FINAL_SIZE_MIN_PX;
+  const flyW = useFinalRect ? card.to.w : CARD_W;
+  const flyH = useFinalRect ? card.to.h : CARD_H;
+
   const logActualLaunch = (source: 'animationstart' | 'timer-fallback') => {
     if (launchLoggedRef.current) return;
     launchLoggedRef.current = true;
