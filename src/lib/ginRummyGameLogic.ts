@@ -96,9 +96,17 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 export function dealHand(
   state: GinRummyState,
   harnessTargetPlayerId?: string | null,
+  opponentInstantKnockOpponentId?: string | null,
 ): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
+
+  // Debug: Opponent Instant Knock harness (first-hand only, gated by
+  // caller passing opponentInstantKnockOpponentId — createNextHand never
+  // passes it, so hand 2+ falls through to the normal deal).
+  if (isGinOpponentInstantKnockHarnessEnabled() && opponentInstantKnockOpponentId) {
+    return dealOpponentInstantKnockHand(state, opponentInstantKnockOpponentId);
+  }
 
   // Debug: two-action harness (deterministic gin-on-upcard). Only run
   // the harness deal when a host target is resolvable — otherwise fall
