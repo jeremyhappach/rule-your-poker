@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
-import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -12,6 +11,16 @@ import {
   useActiveHandLayoutPolicy,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import type { Card as CardType } from '@/lib/cardUtils';
+
+const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
+  hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
+};
+const toDisplayCard = (c: CribbageCard): CardType => ({
+  suit: (CRIB_SUIT_TO_SYMBOL[c.suit as string] ?? (c.suit as unknown as CardType['suit'])),
+  rank: c.rank as CardType['rank'],
+});
 
 /**
  * Cribbage active-hand card sizing — per-game policy contract.
@@ -423,49 +432,41 @@ export const CribbageMobileCardsTab = ({
         data-crib-active-hand-stage=""
         className="flex items-center justify-center overflow-hidden"
       >
-        <div
-          className="flex justify-center origin-center"
-          style={{ width: activeHandLayout ? activeHandLayout.totalWidth : undefined }}
-        >
-          {renderedHand.map((card, index) => {
+        <ActiveHandFan
+          game="cribbage"
+          cards={renderedHand.map(toDisplayCard)}
+          capacity={phaseCapacity}
+          stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
+          applyFan
+          renderCard={({ index, card_node }) => {
+            const card = renderedHand[index];
+            if (!card) return null;
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
-
             return (
               <button
-                key={index}
                 onClick={() => handleCardClick(index)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
                 className={cn(
                   "transition-all duration-200 rounded relative",
-                  // Explicit transform for selected vs not-selected states
-                  // This ensures deselecting a card returns it to translateY(0)
                   isSelected
                     ? "-translate-y-3 ring-2 ring-poker-gold z-10"
                     : "translate-y-0",
-                  // iOS can "stick" :hover after a tap; only apply hover transforms on fine-pointer hover devices.
-                  isMyTurn &&
-                    isPlayable &&
-                    !isSelected &&
+                  isMyTurn && isPlayable && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
-                  cribbageState.phase === 'discarding' &&
-                    !haveDiscarded &&
-                    !isSelected &&
+                  cribbageState.phase === 'discarding' && !haveDiscarded && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
-                style={{
-                  zIndex: isSelected ? 10 : index,
-                  marginLeft: index === 0 ? 0 : -overlapPx,
-                }}
+                style={{ zIndex: isSelected ? 10 : index }}
               >
-                <CribbagePlayingCard card={card} widthPx={resolvedCardWidthPx} tier="large" />
+                {card_node}
               </button>
             );
-          })}
-        </div>
+          }}
+        />
       </div>
 
 
