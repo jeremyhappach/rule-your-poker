@@ -17,7 +17,7 @@ import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
-import { isGinTwoActionHarnessEnabled } from './debugFlags';
+import { isGinTwoActionHarnessEnabled, isGinOpponentInstantKnockHarnessEnabled } from './debugFlags';
 import { resolveSessionHostPlayerId } from './debugHarness/resolveHarnessHost';
 import { recordStartupFlight } from './startupFlightRecorder';
 
