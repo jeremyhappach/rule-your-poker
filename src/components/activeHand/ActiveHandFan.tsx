@@ -33,6 +33,7 @@ import {
   type ActiveHandStageRect,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import { useActiveHandCardRectPublisher } from '@/lib/activeHand/activeHandCardRectStore';
 
 const DEFAULT_ASPECT = 2 / 3;
 
@@ -150,6 +151,19 @@ export function ActiveHandFan({
     () => resolveActiveHandLayout(resolvedStageRect, Math.max(1, capacity), policy, aspect),
     [resolvedStageRect, capacity, policy, aspect],
   );
+
+  // Publish the resolved final card geometry so deal-transport destination
+  // anchors (e.g. ThreeFiveSevenDealOrchestrator) can size their landing
+  // anchors to the exact final card rect — cards fly directly into their
+  // final size, with no post-settle snap.
+  const publishRect = useMemo(
+    () =>
+      layout && layout.cardWidth > 0 && layout.cardHeight > 0
+        ? { cardWidthPx: layout.cardWidth, cardHeightPx: layout.cardHeight }
+        : null,
+    [layout?.cardWidth, layout?.cardHeight],
+  );
+  useActiveHandCardRectPublisher(game, publishRect);
 
   if (!layout || cards.length === 0) {
     return (
