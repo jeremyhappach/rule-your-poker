@@ -524,14 +524,20 @@ function CollapsibleSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <details className="border rounded-md group/section">
+    <details
+      className="border rounded-md group/section"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-sm flex items-center justify-between">
         <span>{title}</span>
         <span className="text-base leading-none text-muted-foreground group-[[open]]/section:hidden">+</span>
         <span className="text-base leading-none text-muted-foreground hidden group-[[open]]/section:inline">−</span>
       </summary>
-      <div className="px-3 pb-3 pt-1 space-y-3">{children}</div>
+      {open && <div className="px-3 pb-3 pt-1 space-y-3">{children}</div>}
     </details>
   );
 }
