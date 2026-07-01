@@ -17,7 +17,7 @@ import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
-import { isGinTwoActionHarnessEnabled } from './debugFlags';
+import { isGinTwoActionHarnessEnabled, isGinOpponentInstantKnockHarnessEnabled } from './debugFlags';
 import { resolveSessionHostPlayerId } from './debugHarness/resolveHarnessHost';
 import { recordStartupFlight } from './startupFlightRecorder';
 
@@ -132,6 +132,23 @@ export async function startGinRummyRound(
         })()
       : null;
 
+    // Opponent Instant Knock harness (first-hand only): resolve the
+    // non-host, non-dealer bot as the opponent id that gets the
+    // near-gin hand. Fails closed unless host === dealer AND opponent
+    // (non-dealer) !== host — matches the spec exactly.
+    const opponentInstantKnockOpponentId = isGinOpponentInstantKnockHarnessEnabled()
+      ? (() => {
+          const hostPid = resolveSessionHostPlayerId(
+            { current_host: (game as any)?.current_host ?? null },
+            sortedPlayers,
+          );
+          if (!hostPid) return null;
+          if (hostPid !== dealerPlayer.id) return null; // host must be dealer
+          if (nonDealerPlayer.id === hostPid) return null; // non-dealer must be non-host
+          return nonDealerPlayer.id;
+        })()
+      : null;
+
     const anteAmount = game.ante_amount || 1;
     // Authoritative Gin match target. Single source for both server
     // terminal evaluation (createNextHand carries it forward via
@@ -147,7 +164,7 @@ export async function startGinRummyRound(
       anteAmount,
       pointsToWin,
     );
-    ginState = dealHand(ginState, harnessTargetPlayerId);
+    ginState = dealHand(ginState, harnessTargetPlayerId, opponentInstantKnockOpponentId);
 
     const dealerGameId = game.current_game_uuid;
     if (!dealerGameId) {

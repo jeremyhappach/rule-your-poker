@@ -21,7 +21,7 @@ import {
   sumDeadwood,
   canDrawFromStock,
 } from './ginRummyScoring';
-import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled } from './debugFlags';
+import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled, isGinOpponentInstantKnockHarnessEnabled } from './debugFlags';
 
 /** Bump the monotonic action counter used by the anti-regression framework. */
 function bumpAction(state: GinRummyState): number {
@@ -96,9 +96,17 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 export function dealHand(
   state: GinRummyState,
   harnessTargetPlayerId?: string | null,
+  opponentInstantKnockOpponentId?: string | null,
 ): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
+
+  // Debug: Opponent Instant Knock harness (first-hand only, gated by
+  // caller passing opponentInstantKnockOpponentId — createNextHand never
+  // passes it, so hand 2+ falls through to the normal deal).
+  if (isGinOpponentInstantKnockHarnessEnabled() && opponentInstantKnockOpponentId) {
+    return dealOpponentInstantKnockHand(state, opponentInstantKnockOpponentId);
+  }
 
   // Debug: two-action harness (deterministic gin-on-upcard). Only run
   // the harness deal when a host target is resolvable — otherwise fall
@@ -286,6 +294,93 @@ function dealTwoActionHarnessHand(
     firstDrawPassed: [],
   };
 }
+
+// ─── Debug: Opponent Instant Knock Harness Deal ─────────────────
+// Opponent (non-dealer, non-host bot) hand:
+//   3♦ 4♦ 5♦   (run)      → meld
+//   9♠ 9♥ 9♦   (set)      → meld
+//   2♣ 3♣                 (needs 4♣ to complete run)
+//   A♠                    (1 deadwood)
+//   K♥                    (10 deadwood — will be discarded after taking 4♣)
+// Upcard: 4♣  (completes 2♣3♣4♣ run → opponent's deadwood drops to A♠ = 1 → auto-knock)
+//
+// Local (dealer, host) hand contains 2♦, A♣, 9♣ per spec; remaining
+// filler cards are isolated (no accidental melds), scattered suits.
+function dealOpponentInstantKnockHand(
+  state: GinRummyState,
+  opponentPlayerId: string,
+): GinRummyState {
+  const { dealerPlayerId, nonDealerPlayerId } = state;
+  const c = (rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard => {
+    let value: number;
+    if (rank === 'A') value = 1;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { rank, suit, value };
+  };
+
+  const opponentHand: GinRummyCard[] = [
+    c('3', '♦'), c('4', '♦'), c('5', '♦'),
+    c('9', '♠'), c('9', '♥'), c('9', '♦'),
+    c('2', '♣'), c('3', '♣'),
+    c('A', '♠'),
+    c('K', '♥'),
+  ];
+
+  const upCard: GinRummyCard = c('4', '♣');
+
+  // Local hand (10 cards, includes 2♦ + A♣ + 9♣ per spec).
+  // Fillers are isolated: no set (all unique ranks except intentional pair),
+  // no 3-in-a-row same-suit run.
+  const localHand: GinRummyCard[] = [
+    c('2', '♦'), c('A', '♣'), c('9', '♣'),
+    c('7', '♥'), c('8', '♥'),
+    c('J', '♠'), c('Q', '♦'),
+    c('6', '♣'), c('10', '♥'), c('K', '♦'),
+  ];
+
+  const fullDeck = createGinRummyDeck();
+  const usedKeys = new Set(
+    [...opponentHand, ...localHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
+  );
+  const stockPile = fullDeck.filter(cd => !usedKeys.has(`${cd.rank}-${cd.suit}`));
+
+  // Opponent is the non-dealer (first actor); local user is the dealer.
+  // If the caller mis-identified opponent (i.e. opponent === dealer),
+  // fall back to assigning by matching id to seat rather than silently
+  // swapping identities.
+  const opponentIsNonDealer = opponentPlayerId === nonDealerPlayerId;
+  const opponentIsDealer = opponentPlayerId === dealerPlayerId;
+  const dealerHand = opponentIsDealer ? opponentHand : localHand;
+  const nonDealerHand = opponentIsNonDealer ? opponentHand : localHand;
+
+  console.log(
+    `[GIN-RUMMY DEBUG] Opponent Instant Knock harness active — opponent=${opponentIsNonDealer ? 'non-dealer' : opponentIsDealer ? 'dealer' : 'NOT-SEATED'}, upcard=4♣`,
+  );
+
+  return {
+    ...state,
+    phase: 'first_draw',
+    playerStates: {
+      [dealerPlayerId]: {
+        ...state.playerStates[dealerPlayerId],
+        hand: dealerHand,
+      },
+      [nonDealerPlayerId]: {
+        ...state.playerStates[nonDealerPlayerId],
+        hand: nonDealerHand,
+      },
+    },
+    stockPile,
+    discardPile: [upCard],
+    currentTurnPlayerId: nonDealerPlayerId,
+    turnPhase: 'draw',
+    drawSource: null,
+    firstDrawOfferedTo: nonDealerPlayerId,
+    firstDrawPassed: [],
+  };
+}
+
 // Non-dealer may take the face-up card or pass.
 // If non-dealer passes, dealer may take it or pass.
 // If both pass, non-dealer draws from stock and normal play begins.
