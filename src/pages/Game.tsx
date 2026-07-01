@@ -1782,8 +1782,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         duration: 3000,
       });
       setTimeout(() => {
+        recordTerminalRecovery('game-missing-confirmed', { gameId, strikes: missingGameStrikesRef.current });
+        releaseRecoveryLease('confirmed-unavailable', { gameId });
         navigate('/');
       }, 2000);
+
     };
 
     checkGameExists();
