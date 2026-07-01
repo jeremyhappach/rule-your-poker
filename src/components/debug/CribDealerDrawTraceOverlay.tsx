@@ -16,6 +16,8 @@ import {
   isCribDealerDrawTraceEnabled,
   type CribDealerDrawEvent,
 } from '@/lib/cribbageDealerDrawTrace';
+import { useHideDebugUI } from '@/lib/debugUIVisibility';
+
 
 interface Props {
   gameId: string | null | undefined;
@@ -31,7 +33,8 @@ const SURFACE_SHORT: Record<string, string> = {
 };
 
 export default function CribDealerDrawTraceOverlay({ gameId }: Props) {
-  if (!isCribDealerDrawTraceEnabled() || !gameId) return null;
+  const hidden = useHideDebugUI();
+  if (hidden || !isCribDealerDrawTraceEnabled() || !gameId) return null;
   // eslint-disable-next-line react-hooks/rules-of-hooks
   return <Overlay gameId={gameId} />;
 }
