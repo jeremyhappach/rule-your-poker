@@ -121,59 +121,106 @@ interface ShellOpponentCardBacksProps {
 }
 
 function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardBacksProps) {
-  // Hooks must run unconditionally — both branches read geometry tokens
-  // even though only the gin branch consumes the layout.
-  const geo = useGeometryTokensOptional();
-  const screenWidth = geo?.screenWidth ?? 0;
-  const rawBudget = screenWidth * OPPONENT_STRIP_WIDTH_FRACTION;
-  const availableWidth = screenWidth > 0
-    ? Math.max(OPPONENT_STRIP_MIN_WIDTH_PX, Math.min(OPPONENT_STRIP_MAX_WIDTH_PX, rawBudget))
-    : 0;
-  const layout = useCardRowLayout({
-    availableWidth,
-    count,
-    minCardWidth: 10,
-    maxCardWidth: 18,
-    preferredOverlapRatio: 0.45,
-    maxOverlapRatio: 0.7,
-  });
+  // Subscribe to the global Shell / Opponent Card Backs config
+  // (Geometry Lab → Seat Cluster → Opponent Card Backs). The authored
+  // maxFanSpanPct is the source of truth; runtime pixels are derived
+  // from the canonical chip-bubble width at layout time.
+  const cfg = useSyncExternalStore(
+    subscribeShellOpponentCardBacks,
+    getShellOpponentCardBacksConfig,
+    getShellOpponentCardBacksConfig,
+  );
+
+  // Live-measure the canonical chip bubble
+  // ([data-chip-center="${position}"]) — the sole basis for the
+  // maxFanSpan pixel resolution. Falls back to 40px (baseline chip
+  // diameter) until the first measurement lands so the initial render
+  // is never blank.
+  const [chipBubbleWidthPx, setChipBubbleWidthPx] = useState<number>(40);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const measure = () => {
+      const chip = document.querySelector(
+        `[data-chip-center="${position}"]`,
+      ) as HTMLElement | null;
+      if (!chip) return;
+      const r = chip.getBoundingClientRect();
+      if (r.width > 0) {
+        setChipBubbleWidthPx((prev) =>
+          Math.abs(prev - r.width) > 0.5 ? r.width : prev,
+        );
+      }
+    };
+    measure();
+    if (typeof window === 'undefined') return;
+    let ro: ResizeObserver | null = null;
+    const chip = document.querySelector(
+      `[data-chip-center="${position}"]`,
+    ) as HTMLElement | null;
+    if (chip && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure);
+      ro.observe(chip);
+    }
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [position]);
+
+  // Canonical (fixed) size — variant-owned. No shrink-to-fit.
+  const { widthPx: cardWidth, heightPx: cardHeight } =
+    CANONICAL_CARDBACK_SIZE[variant];
+  const preferredStepFrac = PREFERRED_STEP_FRACTION[variant];
+
+  // Adaptive fan span policy:
+  //   maxFanSpanPx = chipBubbleWidthPx × (maxFanSpanPct / 100)
+  //   naturalStep  = cardWidth × preferredStepFrac
+  //   naturalSpan  = cardWidth + (count-1) × naturalStep
+  // If naturalSpan ≤ maxFanSpanPx → keep the natural spread.
+  // Otherwise, tighten step just enough to satisfy the cap. Step
+  // may fall to 0 (fully stacked); no lower bound is enforced.
+  const maxFanSpanPx =
+    chipBubbleWidthPx * (cfg.maxFanSpanPct / 100);
+  const naturalStep = cardWidth * preferredStepFrac;
+  const naturalSpan =
+    count > 0 ? cardWidth + (count - 1) * naturalStep : 0;
+  const step =
+    count > 1 && naturalSpan > maxFanSpanPx
+      ? Math.max(0, (maxFanSpanPx - cardWidth) / (count - 1))
+      : naturalStep;
+  const totalWidth =
+    count > 0 ? cardWidth + (count - 1) * step : 0;
+  // step < cardWidth → overlap; overlapPx applied as negative marginLeft
+  // to every non-leading card (identical accounting to the prior
+  // useCardRowLayout output).
+  const overlapPx = cardWidth - step;
 
   // Always render the anchor wrapper — card transport endpoints must
-  // resolve even before the first card has settled (count=0).
+  // resolve even before the first card has settled (count=0). Center
+  // the fan on the existing opponent-card anchor via mx-auto.
   const anchorProps = {
     'data-card-anchor': `opp-stack-${position}`,
   } as const;
 
-  if (variant === 'cribbage') {
-    return (
-      <div {...anchorProps} className="flex -space-x-1.5 mt-1 justify-center min-w-[1rem] min-h-[1.5rem]">
-        {Array.from({ length: count }).map((_, i) => (
-          <CanonicalCardBack key={i} widthPx={16} heightPx={24} />
-        ))}
-      </div>
-    );
-  }
-
-  // gin variant
-  if (!layout) {
-    return (
-      <div {...anchorProps} className="flex -space-x-3 mt-1 min-w-[0.875rem] min-h-[1.25rem]">
-        {Array.from({ length: count }).map((_, i) => (
-          <CanonicalCardBack key={i} widthPx={14} heightPx={20} />
-        ))}
-      </div>
-    );
-  }
   return (
-    <div {...anchorProps} className="flex mt-1" style={{ width: layout.totalWidth, minHeight: layout.cardHeight }}>
+    <div
+      {...anchorProps}
+      className="flex mt-1 mx-auto"
+      style={{
+        width: totalWidth || cardWidth,
+        minHeight: cardHeight,
+      }}
+    >
       {Array.from({ length: count }).map((_, i) => (
         <CanonicalCardBack
           key={i}
-          widthPx={layout.cardWidth}
-          heightPx={layout.cardHeight}
+          widthPx={cardWidth}
+          heightPx={cardHeight}
           className="shrink-0"
-
-          style={{ marginLeft: i === 0 ? 0 : -layout.overlapPx }}
+          style={{ marginLeft: i === 0 ? 0 : -overlapPx }}
         />
       ))}
     </div>
