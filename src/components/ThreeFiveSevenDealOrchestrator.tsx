@@ -31,7 +31,7 @@
  *   <Use357SelfHand currentPlayerId cards baseline render={(cards)=>...}/>
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -52,6 +52,10 @@ import {
   type CardHiddenReason,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
 import { useActiveHandCardRect } from '@/lib/activeHand/activeHandCardRectStore';
+import {
+  record357DealLandingTrace,
+  rectFromDomRect,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
@@ -101,6 +105,15 @@ export function ThreeFiveSevenDealOrchestrator({
     const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
     setSelfHandRegion(el);
   }, [waveContextId, selfPlayerId]);
+
+  // Trace-only: current committed active-hand card geometry published by
+  // ActiveHandFan. If absent, the existing 1×1 endpoint fallback remains
+  // visible in the landing trace (behavior unchanged in this pass).
+  const committedCardRect = useActiveHandCardRect('threeFiveSeven');
+  const anchorWidth = committedCardRect?.cardWidthPx ?? 1;
+  const anchorHeight = committedCardRect?.cardHeightPx ?? 1;
+  const fallbackUsed = !committedCardRect || anchorWidth < 8 || anchorHeight < 8;
+  const transportAnchorRenderKey = `357-anchor|${waveContextId}|p:${selfPlayerId}|${anchorWidth.toFixed(2)}x${anchorHeight.toFixed(2)}|pub:${committedCardRect?.publishedAt ?? 'none'}`;
 
   useEffect(() => {
     if (!deal) return;
@@ -191,10 +204,29 @@ export function ThreeFiveSevenDealOrchestrator({
           expectedArrivalTime: emitTime + launchDelayMs + durationMs,
           handContextId: waveContextId,
           recipientPlayerId: r.playerId,
+          activeHandFanRenderKey: isSelf ? (committedCardRect?.activeHandFanRenderKey ?? null) : null,
+          activeHandFinalLayoutPublishedAt: isSelf ? (committedCardRect?.publishedAt ?? null) : null,
+          dealLandingFallbackUsed: isSelf ? fallbackUsed : null,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
           dealerIsSelf,
           // visibleFace intentionally omitted — all deal flights are hidden.
         });
+        if (isSelf) {
+          record357DealLandingTrace(cardId, {
+            intentId: cardId,
+            handContextId: waveContextId,
+            handIdentity: waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId,
+            roundIdentity: waveContextId.match(/#r(\d+)$/)?.[1] ?? null,
+            recipientPlayerId: selfPlayerId,
+            finalLayoutPublishedTimestamp: committedCardRect?.publishedAt ?? null,
+            fallbackUsed,
+            activeHandFanRenderKey: committedCardRect?.activeHandFanRenderKey ?? null,
+            transportAnchorRenderKey,
+            publishedCardRect: committedCardRect
+              ? { cardWidthPx: committedCardRect.cardWidthPx, cardHeightPx: committedCardRect.cardHeightPx }
+              : null,
+          });
+        }
       }
     }
 
@@ -204,17 +236,8 @@ export function ThreeFiveSevenDealOrchestrator({
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
+    committedCardRect, fallbackUsed, transportAnchorRenderKey,
   ]);
-
-  // Committed active-hand card geometry, published by ActiveHandFan
-  // once the phase-locked layout resolves. When present, the landing
-  // anchor is sized to the exact final card rect so the transport
-  // runtime reads `to.w`/`to.h` == final card size and the flight
-  // lands directly into it (no post-settle snap). Fallback 1×1
-  // preserves prior behavior if the fan has not yet published.
-  const committedCardRect = useActiveHandCardRect('threeFiveSeven');
-  const anchorWidth = committedCardRect?.cardWidthPx ?? 1;
-  const anchorHeight = committedCardRect?.cardHeightPx ?? 1;
 
   return (
     <>
@@ -242,6 +265,10 @@ export function ThreeFiveSevenDealOrchestrator({
           data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfHandRegion"
           data-committed-card-w={anchorWidth}
           data-committed-card-h={anchorHeight}
+          data-final-layout-published-at={committedCardRect?.publishedAt ?? ''}
+          data-active-hand-fan-render-key={committedCardRect?.activeHandFanRenderKey ?? ''}
+          data-357-transport-anchor-render-key={transportAnchorRenderKey}
+          data-357-fallback-used={fallbackUsed ? 'true' : 'false'}
         />
       , selfHandRegion) : null}
       {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
@@ -563,6 +590,49 @@ export function Use357SelfHand<T>({
     });
   }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase, sourceCards.length]);
   const forensicsId = `357Self:${currentPlayerId || 'unknown'}`;
+  const firstSettledRectRef = useRef<Set<string>>(new Set());
+  const firstResizeRectRef = useRef<Set<string>>(new Set());
+  const firstRectRef = useRef<Map<string, { w: number; h: number }>>(new Map());
+  useLayoutEffect(() => {
+    if (!deal?.handContextId || !currentPlayerId || typeof document === 'undefined') return;
+    const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
+    if (!region) return;
+    const nodes = Array.from(region.querySelectorAll<HTMLElement>('[data-playing-card-root]'));
+    const observers: ResizeObserver[] = [];
+    nodes.forEach((node, index) => {
+      const cardId = settledCardIds[index] ?? boundaryClaimedCardIds[index] ?? null;
+      if (!cardId) return;
+      const renderKey = `Use357SelfHand.PlayerHand|${baseHandContextId}|p:${currentPlayerId}|idx:${index}|render:${renderCountRef.current}`;
+      const rect = rectFromDomRect(node.getBoundingClientRect());
+      if (!firstSettledRectRef.current.has(cardId)) {
+        firstSettledRectRef.current.add(cardId);
+        firstRectRef.current.set(cardId, { w: rect.w, h: rect.h });
+        record357DealLandingTrace(cardId, {
+          handContextId: deal.handContextId,
+          recipientPlayerId: currentPlayerId,
+          renderedCardRectOnFirstSettledFrame: rect,
+          renderedActiveCardRenderKey: renderKey,
+        });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+          if (firstResizeRectRef.current.has(cardId)) return;
+          const next = rectFromDomRect(node.getBoundingClientRect());
+          const first = firstRectRef.current.get(cardId);
+          if (!first) return;
+          if (Math.abs(next.w - first.w) < 0.5 && Math.abs(next.h - first.h) < 0.5) return;
+          firstResizeRectRef.current.add(cardId);
+          record357DealLandingTrace(cardId, {
+            firstPostSettleResizeRect: next,
+            renderedActiveCardRenderKey: renderKey,
+          });
+        });
+        ro.observe(node);
+        observers.push(ro);
+      }
+    });
+    return () => observers.forEach((ro) => ro.disconnect());
+  }, [deal?.handContextId, currentPlayerId, baseHandContextId, settledCardIds.join('|'), boundaryClaimedCardIds.join('|'), effectiveCards.length]);
   useEffect(() => {
     if (!currentPlayerId) return;
     const region = typeof document !== 'undefined'

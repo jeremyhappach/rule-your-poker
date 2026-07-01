@@ -47,6 +47,7 @@ import {
   type CardTransportDbgSample,
 } from './cardTransportDbg';
 import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
+import { record357DealLandingTrace } from './threeFiveSevenDealLandingTrace';
 import { holmTimelineRecordArrival, holmTimelineRecordClaim, holmTimelineRecordLaunch } from './holmCardTimeline';
 import { updateHolmTransportInventory, registerHolmCardOwner, unregisterHolmCardOwner } from './holmCardOwnership';
 
@@ -77,6 +78,19 @@ function isHolmTimelineCardId(cardId: string): boolean {
 function cardIndexFromIntentId(intentId: string): number | null {
   const m = intentId.match(/#card-(\d+)$/);
   return m ? Number(m[1]) : null;
+}
+
+function isThreeFiveSevenSelfHandIntent(intent: ActiveCardIntent): boolean {
+  return intent.to.kind === 'hand' && /#h\d+#r\d+$/.test(intent.handContextId ?? '');
+}
+
+function endpointAsDestinationRect(ep: ResolvedCardEndpoint) {
+  return {
+    x: +(ep.x - ep.w / 2).toFixed(2),
+    y: +(ep.y - ep.h / 2).toFixed(2),
+    w: +ep.w.toFixed(2),
+    h: +ep.h.toFixed(2),
+  };
 }
 
 interface RuntimeCard {
@@ -286,6 +300,21 @@ export function CardTransportRuntime({
           const r = resolvedRef.current.get(intent.id);
           if (!r) return;
           r.launched = true;
+          if (isThreeFiveSevenSelfHandIntent(intent)) {
+            const currentTo = resolveCardEndpoint(intent.to, container) ?? r.to;
+            record357DealLandingTrace(intent.cardId, {
+              intentId: intent.id,
+              handContextId: intent.handContextId ?? null,
+              transportLaunchTimestamp: performance.now(),
+              finalLayoutPublishedTimestamp: currentTo.finalLayoutPublishedAt ?? intent.activeHandFinalLayoutPublishedAt ?? null,
+              anchorRectAtLaunch: currentTo.viewportRect,
+              flyingCardDestinationRectAtLaunch: endpointAsDestinationRect(r.to),
+              fallbackUsed: currentTo.fallbackUsed ?? intent.dealLandingFallbackUsed ?? null,
+              activeHandFanRenderKey: intent.activeHandFanRenderKey ?? null,
+              transportAnchorRenderKey: currentTo.renderKey ?? r.to.renderKey ?? null,
+              flyingCardRenderKey: `FlyingCard|${intent.id}`,
+            });
+          }
           cardTransportDbgUpsert(intent.id, {
             transportMounted: true,
             transportVisible: true,
@@ -297,6 +326,21 @@ export function CardTransportRuntime({
         }, delayMs);
         launchTimersRef.current.set(intent.id, tLaunch);
       } else {
+        if (isThreeFiveSevenSelfHandIntent(intent)) {
+          const currentTo = resolveCardEndpoint(intent.to, container) ?? to;
+          record357DealLandingTrace(intent.cardId, {
+            intentId: intent.id,
+            handContextId: intent.handContextId ?? null,
+            transportLaunchTimestamp: performance.now(),
+            finalLayoutPublishedTimestamp: currentTo.finalLayoutPublishedAt ?? intent.activeHandFinalLayoutPublishedAt ?? null,
+            anchorRectAtLaunch: currentTo.viewportRect,
+            flyingCardDestinationRectAtLaunch: endpointAsDestinationRect(to),
+            fallbackUsed: currentTo.fallbackUsed ?? intent.dealLandingFallbackUsed ?? null,
+            activeHandFanRenderKey: intent.activeHandFanRenderKey ?? null,
+            transportAnchorRenderKey: currentTo.renderKey ?? to.renderKey ?? null,
+            flyingCardRenderKey: `FlyingCard|${intent.id}`,
+          });
+        }
         cardTransportDbgUpsert(intent.id, {
           transportMounted: true,
           transportVisible: true,
@@ -485,6 +529,22 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     });
     if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordLaunch(card.intent.cardId, now);
+    }
+    if (isThreeFiveSevenSelfHandIntent(card.intent)) {
+      const container = containerRef.current;
+      const currentTo = container ? resolveCardEndpoint(card.intent.to, container) : card.to;
+      record357DealLandingTrace(card.intent.cardId, {
+        intentId: card.intent.id,
+        handContextId: card.intent.handContextId ?? null,
+        transportLaunchTimestamp: now,
+        finalLayoutPublishedTimestamp: currentTo?.finalLayoutPublishedAt ?? card.intent.activeHandFinalLayoutPublishedAt ?? null,
+        anchorRectAtLaunch: currentTo?.viewportRect ?? null,
+        flyingCardDestinationRectAtLaunch: endpointAsDestinationRect(card.to),
+        fallbackUsed: currentTo?.fallbackUsed ?? card.intent.dealLandingFallbackUsed ?? !useFinalRect,
+        activeHandFanRenderKey: card.intent.activeHandFanRenderKey ?? null,
+        transportAnchorRenderKey: currentTo?.renderKey ?? card.to.renderKey ?? null,
+        flyingCardRenderKey: `FlyingCard|${card.intent.id}`,
+      });
     }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF LAUNCH]', {

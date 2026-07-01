@@ -21,7 +21,7 @@
  *     content — those remain owned by the calling pane.
  */
 
-import { useMemo, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { PlayingCard, getCardSize } from '@/components/PlayingCard';
 import type { Card as CardType } from '@/lib/cardUtils';
 import type { CardFrontTierKey } from '@/lib/cardFrontDesign/config';
@@ -34,6 +34,10 @@ import {
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { useActiveHandCardRectPublisher } from '@/lib/activeHand/activeHandCardRectStore';
+import {
+  record357DealLandingTrace,
+  rectFromDomRect,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
 
 const DEFAULT_ASPECT = 2 / 3;
 
@@ -105,6 +109,10 @@ export interface ActiveHandFanProps {
    * to `data-active-hand-fan="{game}"`.
    */
   dataAttribute?: string;
+  /** Trace-only owner key for the committed ActiveHandFan layout. */
+  activeHandFanRenderKey?: string | null;
+  /** Trace-only card ids matching `cards` order after transport ownership claim. */
+  cardIds?: string[];
 }
 
 /**
@@ -133,7 +141,13 @@ export function ActiveHandFan({
   className,
   style,
   dataAttribute,
+  activeHandFanRenderKey,
+  cardIds,
 }: ActiveHandFanProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const firstSettledRecordedRef = useRef<Set<string>>(new Set());
+  const resizeLoggedRef = useRef<Set<string>>(new Set());
+  const firstRectRef = useRef<Map<string, { w: number; h: number }>>(new Map());
   const policy = useActiveHandLayoutPolicy(game);
 
   const resolvedStageRect: ActiveHandStageRect | null = useMemo(() => {
@@ -159,11 +173,59 @@ export function ActiveHandFan({
   const publishRect = useMemo(
     () =>
       layout && layout.cardWidth > 0 && layout.cardHeight > 0
-        ? { cardWidthPx: layout.cardWidth, cardHeightPx: layout.cardHeight }
+        ? {
+            cardWidthPx: layout.cardWidth,
+            cardHeightPx: layout.cardHeight,
+            publishedAt: performance.now(),
+            activeHandFanRenderKey: activeHandFanRenderKey ?? null,
+          }
         : null,
-    [layout?.cardWidth, layout?.cardHeight],
+    [layout?.cardWidth, layout?.cardHeight, activeHandFanRenderKey],
   );
   useActiveHandCardRectPublisher(game, publishRect);
+
+  useLayoutEffect(() => {
+    if (game !== 'threeFiveSeven') return;
+    const root = rootRef.current;
+    if (!root) return;
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>('[data-357-deal-card-id]'));
+    const observers: ResizeObserver[] = [];
+    nodes.forEach((wrapper) => {
+      const cardId = wrapper.getAttribute('data-357-deal-card-id');
+      if (!cardId) return;
+      const target = wrapper.querySelector<HTMLElement>('[data-playing-card-root]') ?? wrapper;
+      const renderKey = wrapper.getAttribute('data-357-rendered-active-card-render-key') ?? null;
+      const r = target.getBoundingClientRect();
+      const rect = rectFromDomRect(r);
+      if (!firstSettledRecordedRef.current.has(cardId)) {
+        firstSettledRecordedRef.current.add(cardId);
+        firstRectRef.current.set(cardId, { w: rect.w, h: rect.h });
+        record357DealLandingTrace(cardId, {
+          renderedCardRectOnFirstSettledFrame: rect,
+          renderedActiveCardRenderKey: renderKey,
+          activeHandFanRenderKey: activeHandFanRenderKey ?? null,
+        });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+          if (resizeLoggedRef.current.has(cardId)) return;
+          const next = rectFromDomRect(target.getBoundingClientRect());
+          const first = firstRectRef.current.get(cardId);
+          if (!first) return;
+          if (Math.abs(next.w - first.w) < 0.5 && Math.abs(next.h - first.h) < 0.5) return;
+          resizeLoggedRef.current.add(cardId);
+          record357DealLandingTrace(cardId, {
+            firstPostSettleResizeRect: next,
+            renderedActiveCardRenderKey: renderKey,
+            activeHandFanRenderKey: activeHandFanRenderKey ?? null,
+          });
+        });
+        ro.observe(target);
+        observers.push(ro);
+      }
+    });
+    return () => observers.forEach((ro) => ro.disconnect());
+  }, [game, cards.length, activeHandFanRenderKey, cardIds?.join('|')]);
 
   if (!layout || cards.length === 0) {
     return (
@@ -186,6 +248,7 @@ export function ActiveHandFan({
 
   return (
     <div
+      ref={rootRef}
       {...{ [dataAttribute ?? `data-active-hand-fan`]: game }}
       className={className}
       style={{
@@ -231,10 +294,16 @@ export function ActiveHandFan({
               }}
             />
           );
+          const traceCardId = cardIds?.[index] ?? null;
+          const renderedActiveCardRenderKey = traceCardId
+            ? `${activeHandFanRenderKey ?? 'ActiveHandFan'}|card:${traceCardId}|idx:${index}`
+            : null;
           if (renderCard) {
             return (
               <div
                 key={`${card.rank}-${card.suit}-${index}`}
+                data-357-deal-card-id={traceCardId ?? undefined}
+                data-357-rendered-active-card-render-key={renderedActiveCardRenderKey ?? undefined}
                 style={{ marginLeft, zIndex: index }}
               >
                 {renderCard({
@@ -253,6 +322,8 @@ export function ActiveHandFan({
           return (
             <div
               key={`${card.rank}-${card.suit}-${index}`}
+              data-357-deal-card-id={traceCardId ?? undefined}
+              data-357-rendered-active-card-render-key={renderedActiveCardRenderKey ?? undefined}
               style={{ marginLeft, zIndex: index }}
             >
               {cardNode}

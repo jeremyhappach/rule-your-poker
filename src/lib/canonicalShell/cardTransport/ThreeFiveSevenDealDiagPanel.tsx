@@ -30,6 +30,11 @@ import {
   type CardTransportDbgEntry,
   type DealDbgEntry,
 } from './cardTransportDbg';
+import {
+  get357DealLandingTrace,
+  subscribe357DealLandingTrace,
+  type ThreeFiveSevenDealLandingTraceEntry,
+} from './threeFiveSevenDealLandingTrace';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
@@ -147,6 +152,11 @@ function card0Record(ctRecords: CardTransportDbgEntry[], handCtx: string | null)
   return ctRecords.find((r) => r.handContextId === r1Ctx && /#card-0$/.test(r.intentId)) ?? null;
 }
 
+function traceCardIndex(r: ThreeFiveSevenDealLandingTraceEntry): number {
+  const m = r.cardId.match(/#card-(\d+)$/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
 interface DerivedTimer {
   phase: string;
   cardsExpected: number;
@@ -204,6 +214,7 @@ export function ThreeFiveSevenDealDiagPanel() {
 
   const deals = useSyncExternalStore(subscribeDealDbg, getDealDbg, getDealDbg);
   const cts = useSyncExternalStore(subscribeCardTransportDbg, getCardTransportDbg, getCardTransportDbg);
+  const landingTrace = useSyncExternalStore(subscribe357DealLandingTrace, get357DealLandingTrace, get357DealLandingTrace);
   const transitions = useSyncExternalStore(subscribeTransitions, getTransitions, getTransitions);
 
   // Force-refresh DOM probes every 250ms while expanded.
@@ -224,6 +235,11 @@ export function ThreeFiveSevenDealDiagPanel() {
   const selfOwn = useMemo(() => selfHandRecord(latest), [latest]);
   const card0 = useMemo(() => card0Record(cts, latest?.handContextId ?? null), [cts, latest?.handContextId]);
   const timer = useMemo(() => deriveTimer(latest), [latest]);
+  const latestLandingTrace = useMemo(() => {
+    const hand = latest?.handContextId ?? null;
+    const scoped = hand ? landingTrace.filter((r) => r.handContextId === hand) : landingTrace;
+    return [...scoped].sort((a, b) => traceCardIndex(a) - traceCardIndex(b));
+  }, [landingTrace, latest?.handContextId]);
 
   if (!enabled) return null;
 
@@ -345,6 +361,7 @@ export function ThreeFiveSevenDealDiagPanel() {
                 timerOwner: { renderedTimerComponent, timerSource: timer.timerSource, usesDealRuntime, phase: timer.phase, is357, legacyTimerCount: legacyTimerEls.length, canonicalRailMounted: !!timerRailEl },
               },
               transitions: [...transitions],
+              landingTrace: latestLandingTrace,
               allDeals: deals,
               cardTransport: cts,
             };
@@ -545,6 +562,47 @@ export function ThreeFiveSevenDealDiagPanel() {
             {timer.phase === 'DEALING' && (timerRailEl || legacyTimerEls.length) ? (
               <div style={{ ...violation, padding: '3px 2px' }}>⚠ phase=DEALING but a timer DOM element is rendered ({renderedTimerComponent})</div>
             ) : null}
+          </div>
+
+          {/* Section 6 — Self-card landing trace */}
+          <div style={sect}>
+            <div style={sectTitle}>6 · SELF DEAL LANDING TRACE ({latestLandingTrace.length})</div>
+            {latestLandingTrace.length === 0 ? (
+              <div style={{ opacity: 0.6, padding: '0 6px' }}>(no self-card landing trace yet)</div>
+            ) : (
+              <div style={{ maxHeight: 260, overflow: 'auto', padding: '0 4px' }}>
+                {latestLandingTrace.map((r) => {
+                  const hasFinalBeforeLaunch =
+                    typeof r.transportLaunchTimestamp === 'number' &&
+                    typeof r.finalLayoutPublishedTimestamp === 'number' &&
+                    r.finalLayoutPublishedTimestamp <= r.transportLaunchTimestamp;
+                  const noFallback = r.fallbackUsed === false;
+                  const invariantPass = hasFinalBeforeLaunch && noFallback;
+                  const rect = (v: typeof r.anchorRectAtLaunch) => v
+                    ? `x=${v.x} y=${v.y} ${v.w}×${v.h}`
+                    : '—';
+                  return (
+                    <div key={r.cardId} style={{ borderBottom: '1px dashed #2a2a2a', padding: '4px 0' }}>
+                      <div style={{ color: invariantPass ? '#7CFC00' : '#ff6b6b', fontWeight: 800 }}>
+                        card {traceCardIndex(r)} · {invariantPass ? '✓ invariant' : '⚠ launch before committed final rect / fallback'}
+                      </div>
+                      <div style={rowStyle}><span style={k}>cardId</span><span style={v}>{r.cardId}</span></div>
+                      <div style={rowStyle}><span style={k}>hand / round</span><span style={v}>{r.handIdentity ?? '∅'} / {r.roundIdentity ?? '∅'}</span></div>
+                      <div style={rowStyle}><span style={k}>launch / final-pub</span><span style={hasFinalBeforeLaunch ? ok : violation}>{fmtAbs(r.transportLaunchTimestamp)} / {fmtAbs(r.finalLayoutPublishedTimestamp)}</span></div>
+                      <div style={rowStyle}><span style={k}>fallbackUsed</span><span style={noFallback ? ok : violation}>{String(r.fallbackUsed ?? '∅')}</span></div>
+                      <div style={rowStyle}><span style={k}>anchorRect@launch</span><span style={v}>{rect(r.anchorRectAtLaunch)}</span></div>
+                      <div style={rowStyle}><span style={k}>FlyingCard dest@launch</span><span style={v}>{rect(r.flyingCardDestinationRectAtLaunch)}</span></div>
+                      <div style={rowStyle}><span style={k}>settled card rect</span><span style={v}>{rect(r.renderedCardRectOnFirstSettledFrame)}</span></div>
+                      <div style={rowStyle}><span style={k}>post-settle resize</span><span style={r.firstPostSettleResizeRect ? violation : ok}>{rect(r.firstPostSettleResizeRect)}</span></div>
+                      <div style={{ opacity: 0.82, paddingLeft: 2 }}>ActiveHandFan={r.activeHandFanRenderKey ?? '∅'}</div>
+                      <div style={{ opacity: 0.82, paddingLeft: 2 }}>anchor={r.transportAnchorRenderKey ?? '∅'}</div>
+                      <div style={{ opacity: 0.82, paddingLeft: 2 }}>FlyingCard={r.flyingCardRenderKey ?? '∅'}</div>
+                      <div style={{ opacity: 0.82, paddingLeft: 2 }}>rendered={r.renderedActiveCardRenderKey ?? '∅'}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       ) : null}

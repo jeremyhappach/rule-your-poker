@@ -32,6 +32,9 @@ export interface ResolvedCardEndpoint {
   owner: string | null;
   parent: string | null;
   viewportRect: { x: number; y: number; w: number; h: number };
+  renderKey?: string | null;
+  finalLayoutPublishedAt?: number | null;
+  fallbackUsed?: boolean | null;
 }
 
 interface AnchorCandidate { selector: string; label: string; }
@@ -87,6 +90,9 @@ export function resolveCardEndpoint(
     if (!el) continue;
     const r = el.getBoundingClientRect();
     const parent = el.parentElement;
+    const publishedRaw = el.getAttribute('data-final-layout-published-at');
+    const publishedAt = publishedRaw == null ? null : Number(publishedRaw);
+    const fallbackRaw = el.getAttribute('data-357-fallback-used');
     return {
       x: r.left - cRect.left + r.width / 2,
       y: r.top - cRect.top + r.height / 2,
@@ -107,6 +113,9 @@ export function resolveCardEndpoint(
               : parent.getAttribute('data-owner-label') ?? parent.tagName.toLowerCase()
         : null,
       viewportRect: { x: r.left, y: r.top, w: r.width, h: r.height },
+      renderKey: el.getAttribute('data-357-transport-anchor-render-key') ?? null,
+      finalLayoutPublishedAt: Number.isFinite(publishedAt) ? publishedAt : null,
+      fallbackUsed: fallbackRaw == null ? null : fallbackRaw === 'true',
     };
   }
   return null;

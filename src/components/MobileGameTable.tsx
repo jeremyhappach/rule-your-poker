@@ -10649,6 +10649,8 @@ export const MobileGameTable = ({
                                                   capacity={capacity}
                                                   portalTargetSelector="[data-357-active-pane-content]"
                                                   phaseLockKey={`357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`}
+                                                  activeHandFanRenderKey={`ActiveHandFan|357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                  cardIds={boundary.rawClaimedCardIds}
                                                   applyFan
                                                 />
                                               ) : (
