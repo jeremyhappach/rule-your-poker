@@ -5234,6 +5234,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Without this guard, the effect would fire makeBotDecisions for a
           // HUMAN seat whenever current_turn_position transitioned through it,
           // mislabeling the attempt as "bot action" in the trace.
+          // FINAL-BOUNDARY GUARD SCOPING:
+          // This guard was designed for Holm's single-actor, ordered
+          // decision model where current_turn_position is always the
+          // authoritative next-to-act bot. In 3-5-7 all undecided bots
+          // decide simultaneously and `current_turn_position` is null
+          // (there is no per-seat turn). Applying the guard to 3-5-7
+          // rejects every dispatch with `no-actor-at-position`, so bots
+          // never live-decide and cron catches the round up later.
+          // Restrict the guard to Holm — makeBotDecisions itself scopes
+          // to bots with current_decision IS NULL for 3-5-7.
           const botActor = playersRef.current.find(p => p.position === capturedTurnPosition) ?? null;
           const authSnap = latestAuthoritativeTurnRef.current;
           const authoritativePos = authSnap?.currentTurnPosition ?? (isHolmGame ? null : currentRound?.current_turn_position ?? null);
@@ -5246,7 +5256,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // snapshot. Wait for the next holmAuthorityTick instead of spinning.
           const epochDrifted = isHolmGame && (authorityEpochNow !== capturedAuthorityEpoch || authorityRoundIdNow !== capturedRoundId);
 
-          if (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked || epochDrifted) {
+          if (isHolmGame && (!botActor || !actorIsBot || !authorityMatchesActor || decisionAlreadyLocked || epochDrifted)) {
             console.log('[BOT TRIGGER] final-boundary guard rejected', {
               capturedTurnPosition,
               capturedAuthorityEpoch,

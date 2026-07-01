@@ -178,7 +178,14 @@ export function ActiveHandFan({
         width: resolvedStageRect?.width,
         height: resolvedStageRect?.height,
         display: 'flex',
-        alignItems: 'center',
+        // Composition contract: cards hug the bottom of the resolved
+        // stage so the visible gap between the fan and the sibling
+        // action zone equals the authored `interZoneClearancePctOfPane`
+        // alone (not ½·stageHeight + clearance). The stage rect already
+        // excludes the reserved lower zone + inter-zone clearance, so
+        // aligning cards to flex-end lands them one clearance above the
+        // action strip.
+        alignItems: 'flex-end',
         justifyContent: 'center',
         ...style,
       }}
