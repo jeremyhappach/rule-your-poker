@@ -1138,3 +1138,204 @@ export const PlayerHand = ({
 
 };
 
+type HolmDealGeometryProbeProps = {
+  active: boolean;
+  rootRef: React.MutableRefObject<HTMLDivElement | null>;
+  baseHandContextId?: string | null;
+  holmSizeSource: 'expectedCardCount' | 'sortedCards' | 'claimedCards' | 'visibleCards' | 'fallback';
+  holmCapacityUsed: number;
+  holmVisibleCountUsed: number;
+  holmStagedCapacity: number | null;
+  holmVisibleIds: string[];
+  holmFinalSlotList: string[];
+  expectedCardCount?: number;
+  cardsLength: number;
+  sortedCardsLength: number;
+  claimedCardIds: readonly string[] | null;
+  cardSize: string;
+  dyn357CardWidth: number | null;
+  static357R1OverlapPx: number;
+  defaultFanStep: number;
+  v4R1TotalFanDeg: number;
+  safeWrapperScale: number;
+  holmLastHandKeyRef: React.MutableRefObject<string | null>;
+  holmPrevGeomRef: React.MutableRefObject<Record<string, unknown> | null>;
+  holmSettledRectsRef: React.MutableRefObject<Map<string, { x: number; y: number; w: number; h: number; rot: number }>>;
+  holmSizeSourceEmittedForRef: React.MutableRefObject<string | null>;
+};
+
+const HolmDealGeometryProbe: React.FC<HolmDealGeometryProbeProps> = (props) => {
+  const {
+    active, rootRef, baseHandContextId,
+    holmSizeSource, holmCapacityUsed, holmVisibleCountUsed, holmStagedCapacity,
+    holmVisibleIds, holmFinalSlotList,
+    expectedCardCount, cardsLength, sortedCardsLength, claimedCardIds,
+    cardSize, dyn357CardWidth, static357R1OverlapPx,
+    defaultFanStep, v4R1TotalFanDeg, safeWrapperScale,
+    holmLastHandKeyRef, holmPrevGeomRef, holmSettledRectsRef, holmSizeSourceEmittedForRef,
+  } = props;
+
+  useLayoutEffect(() => {
+    if (!active) return;
+    if (!isHolmTraceArmed()) return;
+    const root = rootRef.current;
+    if (!root) return;
+
+    const lc = getLifecycleContext();
+    const seatCluster = root.closest<HTMLElement>('[data-canonical-seat-cluster]');
+    const pane = root.closest<HTMLElement>('[data-holm-active-pane-content]');
+    const handAnchor = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position]')
+      : null;
+    const handContextId = baseHandContextId
+      ?? handAnchor?.getAttribute('data-card-anchor')
+      ?? null;
+    const playerId = seatCluster?.getAttribute('data-player-id') ?? null;
+    const paneRect = pane?.getBoundingClientRect() ?? null;
+    const availWidth = pane?.clientWidth ?? 0;
+    const availHeight = paneRect?.height ?? 0;
+
+    const identity = {
+      dealerGameId: lc.dealerGameId,
+      roundId: lc.roundId,
+      handNumber: (lc as any).handNumber ?? null,
+      handContextId,
+      playerId,
+    };
+    const handKey = `${identity.dealerGameId}|${identity.roundId}|${identity.handContextId}|${identity.playerId}`;
+
+    if (holmLastHandKeyRef.current !== handKey) {
+      holmLastHandKeyRef.current = handKey;
+      holmPrevGeomRef.current = null;
+      holmSettledRectsRef.current = new Map();
+      holmSizeSourceEmittedForRef.current = null;
+    }
+
+    if (holmSizeSourceEmittedForRef.current !== handKey) {
+      holmSizeSourceEmittedForRef.current = handKey;
+      recordHolmTrace(
+        'HOLM_ACTIVE_HAND_DEAL_SIZE_SOURCE',
+        `size-source=${holmSizeSource} cap=${holmCapacityUsed}`,
+        {
+          identity,
+          source: holmSizeSource,
+          capacityUsed: holmCapacityUsed,
+          expectedCardCount: expectedCardCount ?? null,
+          cardsLength,
+          sortedCardsLength,
+          claimedCardIds,
+          holmStagedCapacity,
+        },
+      );
+    }
+
+    const cardNodes = Array.from(
+      root.querySelectorAll<HTMLElement>('[data-playing-card-root], [data-card-id]'),
+    );
+    const perCard = cardNodes.map((node, i) => {
+      const r = node.getBoundingClientRect();
+      const cardId = node.getAttribute('data-card-id')
+        ?? node.getAttribute('data-card-transport-card-id')
+        ?? holmVisibleIds[i]
+        ?? `<idx-${i}>`;
+      const style = node.getAttribute('style') ?? '';
+      const m = /rotate\(([-\d.]+)deg\)/.exec(style);
+      const rotationDeg = m ? Number(m[1]) : 0;
+      return {
+        slotIndex: i,
+        cardId,
+        rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+        rotationDeg,
+      };
+    });
+
+    const overlapPx = static357R1OverlapPx;
+    const resolvedSlots = Array.from({ length: holmCapacityUsed }, (_, displayIndex) => {
+      const n = holmStagedCapacity ?? sortedCardsLength;
+      const rotationDeg = defaultFanStep * (displayIndex - (n - 1) / 2);
+      const dom = perCard[displayIndex] ?? null;
+      return {
+        slotIndex: displayIndex,
+        cardId: holmFinalSlotList[displayIndex],
+        rotationDeg,
+        x: dom?.rect.x ?? null,
+        y: dom?.rect.y ?? null,
+        width: dom?.rect.w ?? null,
+        height: dom?.rect.h ?? null,
+      };
+    });
+
+    const violations: Array<{ cardId: string; from: unknown; to: unknown }> = [];
+    for (const c of perCard) {
+      const prev = holmSettledRectsRef.current.get(c.cardId);
+      const next = {
+        x: Math.round(c.rect.x * 100) / 100,
+        y: Math.round(c.rect.y * 100) / 100,
+        w: Math.round(c.rect.w * 100) / 100,
+        h: Math.round(c.rect.h * 100) / 100,
+        rot: Math.round(c.rotationDeg * 100) / 100,
+      };
+      if (prev) {
+        const changed =
+          prev.w !== next.w
+          || prev.h !== next.h
+          || Math.abs(prev.x - next.x) > 0.5
+          || Math.abs(prev.y - next.y) > 0.5
+          || Math.abs(prev.rot - next.rot) > 0.1;
+        if (changed) violations.push({ cardId: c.cardId, from: prev, to: next });
+      }
+      holmSettledRectsRef.current.set(c.cardId, next);
+    }
+    if (violations.length > 0) {
+      recordHolmTrace(
+        'RESIZE_VIOLATION',
+        `resize x${violations.length} of settled cards`,
+        { identity, violations, handComplete: perCard.length >= holmCapacityUsed },
+      );
+    }
+
+    const snapshot: Record<string, unknown> = {
+      identity,
+      expectedFinalCapacity: expectedCardCount ?? holmCapacityUsed,
+      currentVisibleCount: perCard.length,
+      arrivedCardIds: perCard.map(c => c.cardId),
+      finalSlotList: holmFinalSlotList,
+      sizingInputs: {
+        capacityUsed: holmCapacityUsed,
+        visibleCountUsed: holmVisibleCountUsed,
+        cardSize,
+        faceFillPx: dyn357CardWidth,
+        overlapPx,
+        defaultFanStepDeg: defaultFanStep,
+        v4R1TotalFanDeg,
+        availableWidthPx: availWidth,
+        availableHeightPx: availHeight,
+        wrapperScale: safeWrapperScale,
+      },
+      resolvedSlots,
+      renderedRects: perCard,
+    };
+
+    const prev = holmPrevGeomRef.current;
+    const diff: Record<string, { from: unknown; to: unknown }> = {};
+    const compareKeys = ['currentVisibleCount', 'sizingInputs', 'resolvedSlots'];
+    if (prev) {
+      for (const k of compareKeys) {
+        const a = JSON.stringify((prev as any)[k]);
+        const b = JSON.stringify((snapshot as any)[k]);
+        if (a !== b) diff[k] = { from: (prev as any)[k], to: (snapshot as any)[k] };
+      }
+    }
+    holmPrevGeomRef.current = snapshot;
+
+    recordHolmTrace(
+      'HOLM_ACTIVE_HAND_DEAL_GEOMETRY',
+      `visible=${perCard.length}/${holmCapacityUsed} src=${holmSizeSource}`,
+      { snapshot, diff: prev ? diff : { _initial: true } },
+    );
+  });
+
+  return null;
+};
+
+
