@@ -188,10 +188,9 @@ const App = () => {
               >
                 <Wave5GridOverlayToggle />
               </div>
+              {/* YAHTZEE REORDER HARNESS PILL — self-gates. */}
+              <YahtzeeReorderHarnessPill />
 
-              {/* HOLM TRACE PILL — temporary, self-gates on isHolmTraceActive(). */}
-              <HolmTracePill />
-              <HolmPresentationLedgerPill />
 
 
 
