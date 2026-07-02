@@ -18,8 +18,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, AuthChangeEvent } from "@supabase/supabase-js";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
+import {
+  noteAuthRedirectAttempt,
+  recordAuthStateChange,
+  recordRouteRedirect,
+} from "@/lib/authEjectionLedger";
+import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
 
 const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
+
 
 interface AuthGuardOptions {
   /** Additional context for trace events */
