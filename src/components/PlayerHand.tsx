@@ -15,6 +15,8 @@ import {
   useHolmShowdownConfig,
 } from "@/lib/holm/showdownConfig";
 import { supabase } from "@/integrations/supabase/client";
+import { recordHolmTrace, isHolmTraceArmed } from "@/lib/holm/holmTrace";
+import { getLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import {
   recordThreeFiveSevenHandRender,
   unregisterThreeFiveSevenHandRender,
