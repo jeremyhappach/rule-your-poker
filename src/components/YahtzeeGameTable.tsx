@@ -1027,7 +1027,20 @@ export function YahtzeeGameTable({
     };
     console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
     yahtzeeSync.applyOptimistic(scoredState);
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_DISPATCHED', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
     await updateYahtzeeState(currentRoundId, scoredState);
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
+    requestYahtzeeReorderTraceHold(2000, `authority-arrival:${category}`);
 
     // Wait 2 seconds so both players can see the selection highlighted
     await new Promise(r => setTimeout(r, 2000));
