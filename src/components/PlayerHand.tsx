@@ -1209,11 +1209,59 @@ export const PlayerHand = ({
           slotCount={displayCardCount}
           claimedCardIds={claimedCardIds ?? null}
           perCard={holmFaceStatePerCard}
+      {/* Inert reservation slots for Holm active-self staged deal — occupy
+          layout for unarrived final slots WITHOUT painting a card back /
+          canonical card back / flip-capable card. Preserves the locked
+          four-slot geometry before card 1 and while cards.length <
+          expectedCardCount. */}
+      {isHolmActiveSelf &&
+        holmStagedCapacity != null &&
+        sortedCardsWithIndices.length < holmStagedCapacity
+        ? Array.from(
+            { length: holmStagedCapacity - sortedCardsWithIndices.length },
+            (_, i) => (
+              <div
+                key={`holm-reservation-${i}`}
+                aria-hidden="true"
+                data-holm-reservation-slot={String(sortedCardsWithIndices.length + i)}
+                className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+                style={{
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                  width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
+                }}
+              >
+                {/* Sized spacer only; no card surface. Uses PlayingCard's
+                    size classes for width/height parity with the arrived
+                    face-up cards so the fan slot geometry stays locked. */}
+                <div className={
+                  cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
+                  : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
+                  : cardSize === 'md' ? 'w-7 h-10 sm:w-8 sm:h-12'
+                  : 'w-6 h-9 sm:w-7 sm:h-10'
+                } />
+              </div>
+            ),
+          )
+        : null}
+      <HolmDealGeometryProbe {...holmTraceProps} />
+      {isHolmActiveSelf ? (
+        <HolmFaceStateProbe
+          renderBranch="main"
+          baseHandContextId={baseHandContextId}
+          dealPhase={dealPhase}
+          forceHiddenFaces={forceHiddenFaces}
+          expectedCardCount={expectedCardCount ?? null}
+          arrivedCount={cards.length}
+          slotCount={displayCardCount}
+          claimedCardIds={claimedCardIds ?? null}
+          perCard={holmFaceStatePerCard}
           faceHistoryRef={holmFaceHistoryRef}
           handKeyRef={holmLastHandKeyRef}
           sourceBranchLabel="main-face-branch"
         />
       ) : null}
+
     </div>
   );
 
