@@ -85,6 +85,7 @@ export function getYahtzeeReorderHarnessSnapshot(): {
   totalRolls: number;
   eligibility: HarnessState['eligibility'];
   armedAtMs: number | null;
+  runId: string | null;
 } {
   return {
     status: state.status,
@@ -92,6 +93,7 @@ export function getYahtzeeReorderHarnessSnapshot(): {
     totalRolls: SCENARIO.length,
     eligibility: { ...state.eligibility },
     armedAtMs: state.armedAtMs,
+    runId: state.runId,
   };
 }
 
@@ -107,7 +109,7 @@ export function isYahtzeeReorderHarnessArmed(): boolean {
   return state.status === 'armed' || state.status === 'in_progress';
 }
 
-export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string } {
+export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string; runId?: string } {
   const el = state.eligibility;
   if (!el.isYahtzeeTurn) return { ok: false, reason: 'not in a Yahtzee turn' };
   if (!el.isLocalTurn) return { ok: false, reason: 'not your turn' };
@@ -116,14 +118,16 @@ export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string } {
   state.nextRollIdx = 0;
   state.status = 'armed';
   state.armedAtMs = Date.now();
+  state.runId = `yhz-reorder-${state.armedAtMs}-${Math.random().toString(36).slice(2, 8)}`;
   notify();
-  return { ok: true };
+  return { ok: true, runId: state.runId };
 }
 
 export function resetYahtzeeReorderHarness(reason: 'manual' | 'complete' | 'cancel' = 'manual'): void {
   state.queue = [];
   state.nextRollIdx = 0;
   state.status = reason === 'complete' ? 'completed' : reason === 'cancel' ? 'cancelled' : 'idle';
+  // Preserve runId so post-completion snapshots still identify the run.
   notify();
 }
 
