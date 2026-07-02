@@ -51,7 +51,11 @@ import {
 } from './ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import type { GameKey } from '@/lib/geometryLab/descriptorIndex';
-import type { ActiveHandStageRect } from '@/lib/activeHand/activeHandLayoutSettings';
+import {
+  resolveActiveHandFromPane,
+  useActiveHandLayoutPolicy,
+  type ActiveHandStageRect,
+} from '@/lib/activeHand/activeHandLayoutSettings';
 
 type PaneRect = ActiveHandStageRect;
 
@@ -139,11 +143,17 @@ export function MeasuredActiveHandFan({
   const [lowerZoneMinPx, setLowerZoneMinPx] = useState<number>(0);
   const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const policy = useActiveHandLayoutPolicy(game);
 
   // Phase-lock commit ledger — persists across effect re-runs.
-  const committedRef = useRef<{ key: string | null; rect: PaneRect | null }>({
+  const committedRef = useRef<{
+    key: string | null;
+    rect: PaneRect | null;
+    lowerZoneMinPx: number;
+  }>({
     key: null,
     rect: null,
+    lowerZoneMinPx: 0,
   });
 
   // Reset commit ledger when the phase-lock key changes so a real
@@ -151,7 +161,7 @@ export function MeasuredActiveHandFan({
   // synchronously before the measurement effect below.
   const activeLockKey = phaseLockKey ?? null;
   if (committedRef.current.key !== activeLockKey) {
-    committedRef.current = { key: activeLockKey, rect: null };
+    committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
 
   useLayoutEffect(() => {
@@ -192,15 +202,62 @@ export function MeasuredActiveHandFan({
       const h = overrideHeightPx ?? r.height;
       const isNonzero = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
 
+      // Sum the rendered heights of every lower-zone marker inside the
+      // measured pane BEFORE committing the first visible rect. This keeps
+      // the initial ActiveHandFan render from using a disposable pane-only
+      // layout that later changes once actions/identity have been measured.
+      const zones = measureTarget.querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR);
+      let totalLowerZonePx = 0;
+      zones.forEach((zone) => {
+        const zr = zone.getBoundingClientRect();
+        if (Number.isFinite(zr.height) && zr.height > 0) totalLowerZonePx += zr.height;
+      });
+
+      const candidateRect = isNonzero ? { width: w, height: h } : null;
+      const candidateLayout = candidateRect
+        ? resolveActiveHandFromPane(
+            candidateRect,
+            Math.max(1, capacity),
+            policy,
+            2 / 3,
+            { measuredLowerZoneMinPx: totalLowerZonePx, safeAreaBottomPx },
+          )
+        : null;
+      const candidateValid = !!candidateLayout;
+
       // Phase-lock: once a valid rect is committed for the current key,
-      // ignore subsequent updates until the key changes.
+      // ignore growth updates until the key changes. A later measurement
+      // may replace the commit only if the current commit no longer fits
+      // the latest protected composition budget (e.g. a real shrink), never
+      // merely because a parent settles larger after cards landed.
+      const committed = committedRef.current;
       const lockedForCurrentKey =
         !!activeLockKey &&
-        committedRef.current.key === activeLockKey &&
-        !!committedRef.current.rect;
+        committed.key === activeLockKey &&
+        !!committed.rect;
+      const committedLayout = committed.rect
+        ? resolveActiveHandFromPane(
+            committed.rect,
+            Math.max(1, capacity),
+            policy,
+            2 / 3,
+            { measuredLowerZoneMinPx: committed.lowerZoneMinPx, safeAreaBottomPx },
+          )
+        : null;
+      const committedInvalid = !!(
+        lockedForCurrentKey &&
+        candidateLayout &&
+        (!committedLayout ||
+          committedLayout.stageRect.width > candidateLayout.stageRect.width + 0.5 ||
+          committedLayout.stageRect.height > candidateLayout.stageRect.height + 0.5)
+      );
 
-      if (!lockedForCurrentKey && isNonzero) {
-        committedRef.current = { key: activeLockKey, rect: { width: w, height: h } };
+      if (candidateValid && (!lockedForCurrentKey || committedInvalid)) {
+        committedRef.current = {
+          key: activeLockKey,
+          rect: candidateRect,
+          lowerZoneMinPx: totalLowerZonePx,
+        };
         setRect((prev) =>
           prev &&
           Math.abs(prev.width - w) < 0.5 &&
@@ -208,7 +265,10 @@ export function MeasuredActiveHandFan({
             ? prev
             : { width: w, height: h },
         );
-      } else if (!activeLockKey && isNonzero) {
+        setLowerZoneMinPx((prev) =>
+          Math.abs(prev - totalLowerZonePx) < 0.5 ? prev : totalLowerZonePx,
+        );
+      } else if (!activeLockKey && candidateValid) {
         // No lock configured — behave as before (accept every valid rect).
         setRect((prev) =>
           prev &&
@@ -217,24 +277,10 @@ export function MeasuredActiveHandFan({
             ? prev
             : { width: w, height: h },
         );
+        setLowerZoneMinPx((prev) =>
+          Math.abs(prev - totalLowerZonePx) < 0.5 ? prev : totalLowerZonePx,
+        );
       }
-
-      // Sum the rendered heights of every lower-zone marker inside the
-      // measured pane. Under phase-lock we only escalate (never shrink)
-      // so a phase-committed reservation cannot be undone by transient
-      // action-strip absence.
-      const zones = measureTarget.querySelectorAll<HTMLElement>(LOWER_ZONE_SELECTOR);
-      let total = 0;
-      zones.forEach((zone) => {
-        const zr = zone.getBoundingClientRect();
-        if (Number.isFinite(zr.height) && zr.height > 0) total += zr.height;
-      });
-      setLowerZoneMinPx((prev) => {
-        if (activeLockKey && committedRef.current.key === activeLockKey) {
-          return total > prev + 0.5 ? total : prev;
-        }
-        return Math.abs(prev - total) < 0.5 ? prev : total;
-      });
     };
 
     measure();
@@ -261,9 +307,17 @@ export function MeasuredActiveHandFan({
     overrideHeightPx,
     overrideWidthPx,
     activeLockKey,
+    capacity,
+    policy,
+    safeAreaBottomPx,
   ]);
 
-  const paneRect = useMemo(() => rect, [rect]);
+  const paneRect = useMemo(() => {
+    if (!activeLockKey) return rect;
+    return committedRef.current.key === activeLockKey && committedRef.current.rect
+      ? rect
+      : null;
+  }, [rect, activeLockKey]);
   const isReady = !!(paneRect && paneRect.width > 0 && paneRect.height > 0);
 
   const fan = (
