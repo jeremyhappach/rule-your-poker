@@ -300,12 +300,18 @@ export const PlayerHand = ({
   // arriving card would trigger a resize of previously landed cards.
   // Restricted to Holm active-self visible-face rendering — showdown /
   // hidden-back paths return earlier and other games are unchanged.
+  // Holm active-self staged-deal capacity is the AUTHORITATIVE final hand
+  // capacity provided via expectedCardCount by MobileGameTable.activeSelfHand
+  // (= cardsPerPlayer). It is latched for the whole staged deal — while the
+  // hand is incomplete we must NEVER fall back to sortedCards/visible/claimed
+  // counts, otherwise per-slot size/overlap/fan reflow every time a new card
+  // arrives. Use expectedCardCount whenever it is >= currently-rendered count.
   const holmStagedCapacity =
     isHolmGame &&
     !isOpponentExposedShowdown &&
     !forceHiddenFaces &&
     typeof expectedCardCount === 'number' &&
-    expectedCardCount > cards.length
+    expectedCardCount >= Math.max(1, cards.length)
       ? expectedCardCount
       : null;
   const displayCardCount =
