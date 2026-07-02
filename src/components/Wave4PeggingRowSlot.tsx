@@ -297,9 +297,22 @@ export function Wave4PeggingRowSlot({
           <span className="text-2xl font-bold text-poker-gold">{count}</span>
         </div>
         <div className="flex -space-x-4 justify-center">
-          {playedCards.map((pc, i) => (
-            <CribbagePlayingCard key={i} card={pc.card} size="md" />
-          ))}
+          {playedCards.map((pc, i) => {
+            const inactive =
+              activePlayerId != null &&
+              pc.playerId != null &&
+              pc.playerId !== activePlayerId;
+            return (
+              <div
+                key={i}
+                className={inactive ? 'crib-inactive-pegged-card' : undefined}
+                data-crib-pegged-inactive={inactive ? 'true' : 'false'}
+              >
+                <CribbagePlayingCard card={pc.card} size="md" />
+              </div>
+            );
+          })}
+
           {playedCards.length === 0 && showEmptyPlaceholder && (
             <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
           )}
