@@ -10916,89 +10916,29 @@ export const MobileGameTable = ({
                                            effectiveCards.length > 0 &&
                                            !(isCurrentPlayerWinner && winningCardHighlights.hasHighlights) &&
                                            !(gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7);
-                                         if (isVisibleGameplay) {
-                                           const activeGame: import('@/lib/geometryLab/descriptorIndex').GameKey =
-                                             gameType === 'holm-game' ? 'holm' : 'threeFiveSeven';
-                                           const capacity =
-                                             gameType === 'holm-game'
-                                               ? 2
-                                               : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7);
-                                           return (
-                                              activeGame === 'threeFiveSeven' ? (
-                                                // 3-5-7 active-self hand:
-                                                //   • The legacy PlayerHand branch (used during
-                                                //     staged deal / round 3 / winner reveal / solo)
-                                                //     is intentionally wrapped in a scale-[2.x]
-                                                //     `w-auto` reserve box. That wrapper stack is
-                                                //     WRONG for the shared resolver: the resolver
-                                                //     already sizes cards from the true pane
-                                                //     rect, and measuring through a scaled `w-auto`
-                                                //     ancestor produces a circular-width shrink
-                                                //     that collapses the fan the moment sibling
-                                                //     controls appear.
-                                                //   • Portal into `[data-357-active-pane-content]`
-                                                //     so the fan is measured + rendered against the
-                                                //     un-transformed pane. Phase-lock the committed
-                                                //     rect to `{dealerGameId∥handContextId, round,
-                                                //     player}` so later action-zone appearance or
-                                                //     sibling thrash never re-collapses it.
-                                                <MeasuredActiveHandFan
-                                                  game={activeGame}
-                                                  cards={effectiveCards}
-                                                  capacity={capacity}
-                                                  portalTargetSelector="[data-357-active-pane-content]"
-                                                  phaseLockKey={`357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`}
-                                                  activeHandFanRenderKey={`ActiveHandFan|357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                  cardIds={boundary.rawClaimedCardIds}
-                                                  applyFan
-                                                />
-                                              ) : (
-                                                 // Holm active-self hand:
-                                                 //   Same pane-composition
-                                                 //   contract as 3-5-7 —
-                                                 //   portal into the
-                                                 //   `[data-holm-active-pane-content]`
-                                                 //   wrapper (which contains
-                                                 //   BOTH the hand region and
-                                                 //   the `data-active-hand-lower-zone`
-                                                 //   action strip) so the
-                                                 //   resolver's lower-zone
-                                                 //   reservation actually
-                                                 //   escalates and cards
-                                                 //   cannot expand into the
-                                                 //   action zone. Phase-lock
-                                                 //   the committed rect to
-                                                 //   the full current hand
-                                                 //   identity so later
-                                                 //   ancestor measurements
-                                                 //   (once `flex-1` fills)
-                                                 //   cannot enlarge the
-                                                 //   stage.
-                                                 <MeasuredActiveHandFan
-                                                   game={activeGame}
-                                                   cards={effectiveCards}
-                                                   capacity={capacity}
-                                                   portalTargetSelector="[data-holm-active-pane-content]"
-                                                     phaseLockKey={`holm|owner:${holmPresentationOwner.identity.key}`}
-                                                     activeHandFanRenderKey={`ActiveHandFan|holm|owner:${holmPresentationOwner.identity.key}`}
+                                          if (isVisibleGameplay && gameType !== 'holm-game') {
+                                            const activeGame: import('@/lib/geometryLab/descriptorIndex').GameKey = 'threeFiveSeven';
+                                            const capacity =
+                                              currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7;
+                                            return (
+                                               // 3-5-7 active-self hand — see prior notes.
+                                               // Holm reverted to legacy PlayerHand path below
+                                               // (see rollback: Holm active-self renderer
+                                               // unmount/remount regression under the
+                                               // MeasuredActiveHandFan integration).
+                                               <MeasuredActiveHandFan
+                                                 game={activeGame}
+                                                 cards={effectiveCards}
+                                                 capacity={capacity}
+                                                 portalTargetSelector="[data-357-active-pane-content]"
+                                                 phaseLockKey={`357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`}
+                                                 activeHandFanRenderKey={`ActiveHandFan|357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                 cardIds={boundary.rawClaimedCardIds}
+                                                 applyFan
+                                               />
+                                             );
+                                           }
 
-                                                    cardIds={boundary.rawClaimedCardIds}
-                                                    applyFan
-                                                    externalCommitRef={holmPresentationOwner.activeHandCommitRef}
-                                                    holmLedgerIdentity={{
-                                                      dealerGameId: holmDealerGameId ?? null,
-                                                      roundId: handContextId ?? null,
-                                                      handNumber: currentRound ?? null,
-                                                      handContextId: boundary.baseHandContextId ?? handContextId ?? null,
-                                                      playerId: currentPlayer?.id ?? null,
-                                                      branch: 'holm.activeSelf',
-                                                    }}
-                                                  />
-
-                                               )
-
-                                            );
-                                          }
                                          return (
                                            <PlayerHand
                                              cards={effectiveCards}
