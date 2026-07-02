@@ -341,6 +341,7 @@ export function exportYahtzeeReorderTraceJSON(): string {
       exportedAt: Date.now(),
       active,
       currentRollNumber,
+      lifecycle: lifecycleEvents,
       presentation: presentationEvents,
       violations: violationEvents,
     },
