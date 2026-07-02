@@ -645,6 +645,7 @@ function useHolmHandPresentationOwner({
   const foldedRef = useRef(false);
   const tabledLogicalRegistryRef = useRef<Set<string>>(new Set());
   const tabledAnimationKeysRef = useRef<Set<string>>(new Set());
+  const winChipFiredRef = useRef(false);
   const lastIdentityRef = useRef<HolmPersistentPresentationIdentity | null>(null);
 
   const identity = useMemo<HolmPersistentPresentationIdentity>(() => {
@@ -676,6 +677,7 @@ function useHolmHandPresentationOwner({
     foldedRef.current = false;
     tabledLogicalRegistryRef.current.clear();
     tabledAnimationKeysRef.current.clear();
+    winChipFiredRef.current = false;
     lastIdentityRef.current = identity;
   } else {
     lastIdentityRef.current = identity;
@@ -692,14 +694,55 @@ function useHolmHandPresentationOwner({
     return true;
   }, []);
 
+  const markWinChipFiredOnce = useCallback((): boolean => {
+    if (winChipFiredRef.current) return false;
+    winChipFiredRef.current = true;
+    return true;
+  }, []);
+
+  /**
+   * Returns a ledger identity that never loses roundId/handNumber/handContextId
+   * during solo/Chucky/result/win transitions. Callers may pass through their
+   * current live values; nulls are backfilled from the persistent owner
+   * identity so downstream ledgers and animation logical keys remain stable.
+   */
+  const resolveLedgerIdentity = useCallback(
+    (live: {
+      dealerGameId?: string | null;
+      roundId?: string | null;
+      handNumber?: number | null;
+      handContextId?: string | null;
+      playerId?: string | null;
+    }): {
+      dealerGameId: string | null;
+      roundId: string | null;
+      handNumber: number | null;
+      handContextId: string | null;
+      playerId: string | null;
+    } => {
+      const baseCtx = identity.baseHandContextId === 'no-runtime' ? null : identity.baseHandContextId;
+      return {
+        dealerGameId: live.dealerGameId ?? identity.dealerGameId,
+        roundId: live.roundId ?? identity.roundId ?? baseCtx,
+        handNumber: live.handNumber ?? identity.handNumber,
+        handContextId: live.handContextId ?? baseCtx ?? identity.roundId,
+        playerId: live.playerId ?? identity.localPlayerId,
+      };
+    },
+    [identity],
+  );
+
   return {
     identity,
     activeHandCommitRef,
     foldedRef,
     tabledLogicalRegistryRef,
     markTabledAnimationOnce,
+    markWinChipFiredOnce,
+    resolveLedgerIdentity,
   };
 }
+
 
 function UseHolmSelfHand<T>({
   currentPlayerId,
@@ -8379,13 +8422,14 @@ export const MobileGameTable = ({
             }
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
-            holmLedgerIdentity={{
+            holmLedgerIdentity={holmPresentationOwner.resolveLedgerIdentity({
               dealerGameId: holmDealerGameId ?? null,
               roundId: handContextId ?? null,
               handNumber: currentRound ?? null,
               handContextId: handContextId ?? null,
               playerId: currentPlayer?.id ?? null,
-            }}
+            })}
+
             onAnimationStart={() => {
               // POT-OUT animation starting - mark active and use snapped pot
               setPotOutAnimationActive(true);
@@ -9896,8 +9940,18 @@ export const MobileGameTable = ({
                 const isSoloPlayerWinner = winnerPlayerId === loneSoloPlayer.id;
                 const hasHighlights = isSoloPlayerWinner && winningCardHighlights.hasHighlights;
 
-                const shouldAnimate = !soloVsChuckyAnimatedRef.current;
+                const loneFanAnimationKey = `holm-lone-player-fan|${soloVsChuckyPlayerIdLocked ?? 'no-owner'}`;
+                const ownerAllowsAnimation = holmPresentationOwner.markTabledAnimationOnce(loneFanAnimationKey);
+                const shouldAnimate = ownerAllowsAnimation && !soloVsChuckyAnimatedRef.current;
                 if (shouldAnimate) soloVsChuckyAnimatedRef.current = true;
+
+                const loneFanLedgerIdentity = holmPresentationOwner.resolveLedgerIdentity({
+                  dealerGameId: holmDealerGameId ?? null,
+                  roundId: handContextId ?? null,
+                  handNumber: currentRound ?? null,
+                  handContextId: handContextId ?? null,
+                  playerId: soloVsChuckyPlayerIdLocked ?? null,
+                });
 
                 return (
                   <HolmAnchoredSlot
@@ -9923,14 +9977,9 @@ export const MobileGameTable = ({
                       getFourColorSuit={getFourColorSuit}
                       animate={shouldAnimate}
                       ownerPlayerId={soloVsChuckyPlayerIdLocked ?? null}
-                      holmLedgerIdentity={{
-                        dealerGameId: holmDealerGameId ?? null,
-                        roundId: handContextId ?? null,
-                        handNumber: currentRound ?? null,
-                        handContextId: handContextId ?? null,
-                        playerId: soloVsChuckyPlayerIdLocked ?? null,
-                      }}
+                      holmLedgerIdentity={loneFanLedgerIdentity}
                     />
+
                     <style>{`
                       @keyframes holmSoloTableSlide {
                         0% { opacity: 0; transform: translateY(120px) scale(0.8); }
