@@ -10882,35 +10882,66 @@ export const MobileGameTable = ({
                                            renderReason={`self-rendered count=${effectiveCards.length}`}
                                          />
                                        ))}
-                                       {(() => {
-                                         const isVisibleGameplay =
-                                           !is357Staged && !isHolmStaged &&
-                                           dealPhase !== 'PRE_DEAL' && dealPhase !== 'DEALING' &&
-                                           effectiveCards.length > 0 &&
-                                           !(isCurrentPlayerWinner && winningCardHighlights.hasHighlights) &&
-                                           !(gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7);
-                                          if (isVisibleGameplay && gameType !== 'holm-game') {
-                                            const activeGame: import('@/lib/geometryLab/descriptorIndex').GameKey = 'threeFiveSeven';
-                                            const capacity =
-                                              currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7;
-                                            return (
-                                               // 3-5-7 active-self hand — see prior notes.
-                                               // Holm reverted to legacy PlayerHand path below
-                                               // (see rollback: Holm active-self renderer
-                                               // unmount/remount regression under the
-                                               // MeasuredActiveHandFan integration).
-                                               <MeasuredActiveHandFan
-                                                 game={activeGame}
-                                                 cards={effectiveCards}
-                                                 capacity={capacity}
-                                                 portalTargetSelector="[data-357-active-pane-content]"
-                                                 phaseLockKey={`357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`}
-                                                 activeHandFanRenderKey={`ActiveHandFan|357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                 cardIds={boundary.rawClaimedCardIds}
-                                                 applyFan
-                                               />
-                                             );
-                                           }
+                                        {(() => {
+                                          // 3-5-7 active-self renderer routing.
+                                          //
+                                          // INVARIANT (requirement 1 & 2): once a local 3-5-7 card
+                                          // has resolved/landed at its committed geometry, it may
+                                          // never grow afterward. MeasuredActiveHandFan locks the
+                                          // stage / per-card / fan geometry per full 357 hand
+                                          // identity + numbered round stage via `phaseLockKey`.
+                                          // We must NOT fall back to the legacy PlayerHand path
+                                          // mid-hand for 357 — that path is count/scale-derived and
+                                          // is the source of the "explode after fold / action
+                                          // resolution" defect.
+                                          //
+                                          // For 357: only the initial staged-deal window
+                                          // (PRE_DEAL/DEALING) and the explicit R3 7-card
+                                          // showSeparated layout still use PlayerHand. Every other
+                                          // state (fold, timeout, sitting out, opponent action,
+                                          // scoring/announcement, result transition, winner
+                                          // reveal) stays on MeasuredActiveHandFan.
+                                          const is357R3Separated =
+                                            gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7;
+                                          const isVisibleGameplay357 =
+                                            gameType !== 'holm-game' &&
+                                            !is357Staged &&
+                                            dealPhase !== 'PRE_DEAL' && dealPhase !== 'DEALING' &&
+                                            effectiveCards.length > 0 &&
+                                            !is357R3Separated;
+                                          const isVisibleGameplayHolm =
+                                            gameType === 'holm-game' &&
+                                            !isHolmStaged &&
+                                            dealPhase !== 'PRE_DEAL' && dealPhase !== 'DEALING' &&
+                                            effectiveCards.length > 0 &&
+                                            !(isCurrentPlayerWinner && winningCardHighlights.hasHighlights);
+                                          const isVisibleGameplay = isVisibleGameplay357 || isVisibleGameplayHolm;
+                                           if (isVisibleGameplay && gameType !== 'holm-game') {
+                                             const activeGame: import('@/lib/geometryLab/descriptorIndex').GameKey = 'threeFiveSeven';
+                                             const capacity =
+                                               currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7;
+                                             // Full 357 hand identity for lock + retirement:
+                                             //   base hand context + numbered round stage (3s/5s/7s)
+                                             //   + player id. `key` forces React to retire the prior
+                                             //   instance on any identity change (round boundary
+                                             //   3s→5s or 5s→7s, or hand boundary) BEFORE the
+                                             //   successor renders — no prior cards, transforms,
+                                             //   slot locks, or cached scale survive the boundary.
+                                             const identityKey = `357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`;
+                                             return (
+                                                <MeasuredActiveHandFan
+                                                  key={identityKey}
+                                                  game={activeGame}
+                                                  cards={effectiveCards}
+                                                  capacity={capacity}
+                                                  portalTargetSelector="[data-357-active-pane-content]"
+                                                  phaseLockKey={identityKey}
+                                                  activeHandFanRenderKey={`ActiveHandFan|${identityKey}`}
+                                                  cardIds={boundary.rawClaimedCardIds}
+                                                  applyFan
+                                                />
+                                              );
+                                            }
 
                                          return (
                                            <PlayerHand
