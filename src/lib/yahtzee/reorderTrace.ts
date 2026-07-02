@@ -54,12 +54,62 @@ const MAX_EVENTS = 400;
 const presentationEvents: YahtzeeDiePresentationEvent[] = [];
 const violationEvents: YahtzeeReorderViolationEvent[] = [];
 
+export type YahtzeeReorderHarnessLifecycleKind =
+  | 'YAHTZEE_REORDER_HARNESS_ARMED'
+  | 'YAHTZEE_REORDER_HARNESS_WAITING'
+  | 'YAHTZEE_REORDER_HARNESS_STARTED'
+  | 'YAHTZEE_REORDER_HARNESS_STEP'
+  | 'YAHTZEE_REORDER_HARNESS_COMPLETED'
+  | 'YAHTZEE_REORDER_HARNESS_REJECTED'
+  | 'YAHTZEE_REORDER_HARNESS_DISARMED';
+
+export type YahtzeeReorderHarnessLifecycleEvent = {
+  ts: number;
+  kind: YahtzeeReorderHarnessLifecycleKind;
+  runId: string | null;
+  detail: Record<string, unknown>;
+};
+
+const lifecycleEvents: YahtzeeReorderHarnessLifecycleEvent[] = [];
+
 let active = false;
 let currentRollNumber: number | null = null;
 
 // Previous snapshot per physical dieId for delta detection.
 const prevByDieId: Map<number, YahtzeeDieSnapshot> = new Map();
 let prevHeldOrder: number[] = []; // dieIds in held-row order
+
+export function emitYahtzeeReorderHarnessLifecycle(
+  kind: YahtzeeReorderHarnessLifecycleKind,
+  runId: string | null,
+  detail: Record<string, unknown> = {},
+): void {
+  const ev: YahtzeeReorderHarnessLifecycleEvent = {
+    ts: Date.now(),
+    kind,
+    runId,
+    detail,
+  };
+  lifecycleEvents.push(ev);
+  if (lifecycleEvents.length > MAX_EVENTS) {
+    lifecycleEvents.splice(0, lifecycleEvents.length - MAX_EVENTS);
+  }
+  notify();
+}
+
+export function getYahtzeeReorderLifecycleEvents(): readonly YahtzeeReorderHarnessLifecycleEvent[] {
+  return lifecycleEvents;
+}
+
+export function clearYahtzeeReorderTrace(): void {
+  presentationEvents.length = 0;
+  violationEvents.length = 0;
+  lifecycleEvents.length = 0;
+  prevByDieId.clear();
+  prevHeldOrder = [];
+  currentRollNumber = null;
+  notify();
+}
 
 const listeners = new Set<() => void>();
 function notify(): void {
