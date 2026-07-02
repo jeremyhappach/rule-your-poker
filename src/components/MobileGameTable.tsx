@@ -10740,9 +10740,17 @@ export const MobileGameTable = ({
                                                      phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
                                                      activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
 
-                                                   cardIds={boundary.rawClaimedCardIds}
-                                                   applyFan
-                                                 />
+                                                    cardIds={boundary.rawClaimedCardIds}
+                                                    applyFan
+                                                    holmLedgerIdentity={{
+                                                      dealerGameId: holmDealerGameId ?? null,
+                                                      roundId: handContextId ?? null,
+                                                      handNumber: currentRound ?? null,
+                                                      handContextId: boundary.baseHandContextId ?? handContextId ?? null,
+                                                      playerId: currentPlayer?.id ?? null,
+                                                      branch: 'holm.activeSelf',
+                                                    }}
+                                                  />
                                                )
 
                                             );
