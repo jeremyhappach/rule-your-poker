@@ -68,7 +68,9 @@ export function Wave4PeggingRowSlot({
   count,
   playedCards,
   showEmptyPlaceholder,
+  activePlayerId = null,
 }: Wave4PeggingRowSlotProps) {
+
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useCribbageGameplayGeometry();
