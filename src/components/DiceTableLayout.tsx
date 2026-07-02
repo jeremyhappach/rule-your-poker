@@ -1787,7 +1787,7 @@ export function DiceTableLayout({
     if (effectivelyHeld && !heldPos) {
       const heldSourceDice = usePreRollLayout
         ? layoutHeldDice
-        : orderedDice.filter((dieItem) => dieItem.die.isHeld);
+        : orderedDice.filter((dieItem) => dieItem.die.isHeld).sort(canonicalHeldSort);
       const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
       if (heldIdx >= 0) {
         const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
@@ -1800,9 +1800,11 @@ export function DiceTableLayout({
     // FIX B2: Final render-boundary mutual exclusion rule.
     // If authoritative/presentation says die is held AND it's not currently animating fly-in,
     // it must NEVER render in scatter — not even for a single frame.
-    // Force it into the held row with a fallback position if needed.
+    // Force it into the held row with a fallback position (in canonical committed order).
     if (!isHeldInLayout && actuallyHeld && !isThisDieAnimating && !usePreRollLayout) {
-      const heldSourceDice = orderedDice.filter((dieItem) => dieItem.die.isHeld);
+      const heldSourceDice = orderedDice
+        .filter((dieItem) => dieItem.die.isHeld)
+        .sort(canonicalHeldSort);
       const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
       if (heldIdx >= 0) {
         const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
