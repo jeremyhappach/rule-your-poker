@@ -52,7 +52,9 @@ export type YahtzeeReorderViolation =
   | 'DIE_DISAPPEARED_AFTER_LAND'
   | 'DIE_REORDERED_AFTER_HOLD'
   | 'DIE_RENDER_NODE_REPLACED'
-  | 'DIE_SCATTERED_ROW_LOST';
+  | 'DIE_SCATTERED_ROW_LOST'
+  | 'CATEGORY_SELECTION_HELD_ORDER_DRIFT'
+  | 'CATEGORY_SELECTION_DIE_OWNER_SWAP';
 
 export function emitYahtzeeReorderViolation(
   kind: YahtzeeReorderViolation,
@@ -99,7 +101,13 @@ export type YahtzeeReorderHarnessLifecycleKind =
   | 'POST_PAINT_CAPTURED'
   | 'ANIMATION_SETTLED'
   | 'ANIMATION_SETTLE_TIMEOUT'
-  | 'STEP_ADVANCE';
+  | 'STEP_ADVANCE'
+  | 'YAHTZEE_CATEGORY_SELECTION_INTENT'
+  | 'YAHTZEE_CATEGORY_SELECTION_PREVIEW'
+  | 'YAHTZEE_CATEGORY_SELECTION_DISPATCHED'
+  | 'YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL'
+  | 'YAHTZEE_CATEGORY_SELECTION_PRESENTATION_COMMIT'
+  | 'YAHTZEE_REORDER_TRACE_HOLD_REQUESTED';
 
 export type YahtzeeReorderHarnessLifecycleEvent = {
   ts: number;
@@ -443,4 +451,317 @@ export function exportYahtzeeReorderTraceJSON(): string {
     null,
     2,
   );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Category-selection boundary instrumentation.
+//
+// Passive-observer add-on: samples mounted [data-die-idx] nodes at each of
+// the five defined boundaries and emits a lifecycle event whose detail
+// carries everything needed to prove whether the held row / renderer
+// ownership stays stable across the interaction. Also raises drift and
+// owner-swap violations when detected.
+// ────────────────────────────────────────────────────────────────
+
+type CategoryBoundaryKind =
+  | 'YAHTZEE_CATEGORY_SELECTION_INTENT'
+  | 'YAHTZEE_CATEGORY_SELECTION_PREVIEW'
+  | 'YAHTZEE_CATEGORY_SELECTION_DISPATCHED'
+  | 'YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL'
+  | 'YAHTZEE_CATEGORY_SELECTION_PRESENTATION_COMMIT';
+
+type CategoryBoundaryOwnerRecord = {
+  dieId: number;
+  reactKey: string | null;
+  parentTag: string | null;
+  parentDataAttrs: Record<string, string> | null;
+  phaseBranch: string | null;
+  rendererInputSource: string | null;
+  renderer: string; // normal | freeze | score-preview | score-result | transport | unknown
+};
+
+let prevCategoryOwnerByDieId: Map<number, CategoryBoundaryOwnerRecord> | null = null;
+
+function classifyRenderer(el: HTMLElement | null): string {
+  if (!el) return 'unknown';
+  const check = (node: HTMLElement | null, matches: (n: HTMLElement) => boolean): boolean => {
+    let cur: HTMLElement | null = node;
+    for (let i = 0; i < 8 && cur; i += 1) {
+      if (matches(cur)) return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  };
+  if (check(el, (n) => n.getAttribute('data-die-render-path') === 'freeze')) return 'freeze';
+  if (check(el, (n) => n.getAttribute('data-die-render-path') === 'fly-in')) return 'transport';
+  if (check(el, (n) => (n.getAttribute('data-testid') || '').includes('score-preview'))) return 'score-preview';
+  if (check(el, (n) => (n.getAttribute('data-testid') || '').includes('score-result'))) return 'score-result';
+  if (check(el, (n) => n.getAttribute('data-die-phase-branch') === 'freeze')) return 'freeze';
+  return 'normal';
+}
+
+function collectParentDataAttrs(el: HTMLElement | null): Record<string, string> | null {
+  if (!el || !el.parentElement) return null;
+  const out: Record<string, string> = {};
+  for (const attr of Array.from(el.parentElement.attributes)) {
+    if (attr.name.startsWith('data-')) out[attr.name] = attr.value;
+  }
+  return out;
+}
+
+type DomDieSample = {
+  dieId: number;
+  value: number;
+  held: boolean;
+  sourceRow: YahtzeeDieSourceRow;
+  indexInRow: number;
+  globalRenderIndex: number;
+  reactKey: string | null;
+  rect: { x: number; y: number; w: number; h: number } | null;
+  phaseBranch: string | null;
+  rendererInputOrder: number[] | null;
+  rendererInputSource: string | null;
+  renderer: string;
+  parentTag: string | null;
+  parentDataAttrs: Record<string, string> | null;
+};
+
+function sampleDomDiceForBoundary(): DomDieSample[] {
+  if (typeof document === 'undefined') return [];
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-die-idx]'));
+  return nodes.map((el, globalIdx) => {
+    const rawRow = el.getAttribute('data-die-row');
+    const row: YahtzeeDieSourceRow =
+      rawRow === 'held' ? 'held'
+        : rawRow === 'result' ? 'result'
+          : rawRow === 'roll' || rawRow === 'animating' ? 'roll'
+            : 'other';
+    const siblings = Array.from(
+      (el.parentElement ?? document).querySelectorAll<HTMLElement>('[data-die-idx]'),
+    );
+    const rect = el.getBoundingClientRect();
+    return {
+      dieId: Number(el.getAttribute('data-die-idx') ?? -1),
+      value: Number(el.getAttribute('data-die-value') ?? 0),
+      held: el.getAttribute('data-die-held') === 'true',
+      sourceRow: row,
+      indexInRow: siblings.indexOf(el),
+      globalRenderIndex: globalIdx,
+      reactKey: el.getAttribute('data-die-react-key') ?? `die-${el.getAttribute('data-die-idx')}`,
+      rect:
+        rect && rect.width > 0
+          ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height }
+          : null,
+      phaseBranch: el.getAttribute('data-die-phase-branch'),
+      rendererInputOrder: (el.getAttribute('data-die-renderer-input-order') ?? '')
+        .split(',')
+        .filter((s) => s.length > 0)
+        .map((s) => Number(s)),
+      rendererInputSource: el.getAttribute('data-die-renderer-input-source'),
+      renderer: classifyRenderer(el),
+      parentTag: el.parentElement ? el.parentElement.tagName.toLowerCase() : null,
+      parentDataAttrs: collectParentDataAttrs(el),
+    };
+  });
+}
+
+export type YahtzeeCategoryBoundaryContext = {
+  category?: string | null;
+  actor?: 'local' | 'remote' | 'bot' | 'unknown';
+  actorPlayerId?: string | null;
+  playerId?: string | null;
+  rollNumber?: number | null;
+  extra?: Record<string, unknown>;
+};
+
+export function emitYahtzeeCategorySelectionBoundary(
+  kind: CategoryBoundaryKind,
+  ctx: YahtzeeCategoryBoundaryContext = {},
+): void {
+  if (!active) return;
+  const ts = Date.now();
+  const dom = sampleDomDiceForBoundary();
+
+  // Committed held order (value ASC, dieId ASC) using DOM values.
+  const heldSnaps = dom.filter((d) => d.held);
+  const heldSetSignature = heldSnaps
+    .map((d) => d.dieId)
+    .slice()
+    .sort((a, b) => a - b)
+    .join(',');
+  const committedOrder = heldSnaps
+    .slice()
+    .sort((a, b) => (a.value - b.value) || (a.dieId - b.dieId))
+    .map((d) => d.dieId);
+  const domHeldOrder = heldSnaps
+    .slice()
+    .sort((a, b) => a.indexInRow - b.indexInRow)
+    .map((d) => d.dieId);
+  const rendererInputOrder = heldSnaps
+    .map((d) => d.rendererInputOrder)
+    .find((o) => o && o.length > 0) ?? [];
+
+  // Local trusted committed order (recorded during passive observer) for
+  // comparison — use committedHeldOrder captured in this module when
+  // signature matches.
+  const trustedCommitted =
+    committedHeldSig === heldSetSignature ? committedHeldOrder.slice() : committedOrder.slice();
+
+  // Drift detection: DOM order deviates from trusted committed order
+  // while signature and per-die values are unchanged.
+  const heldValuesStable = trustedCommitted.every(
+    (id) => committedHeldValues.get(id) === undefined ||
+            committedHeldValues.get(id) === (heldSnaps.find((d) => d.dieId === id)?.value ?? null),
+  );
+  if (
+    trustedCommitted.length > 0 &&
+    heldValuesStable &&
+    (domHeldOrder.length !== trustedCommitted.length ||
+      domHeldOrder.some((id, i) => id !== trustedCommitted[i]))
+  ) {
+    pushViolation({
+      ts,
+      kind: 'CATEGORY_SELECTION_HELD_ORDER_DRIFT',
+      dieId: null,
+      rollNumber: currentRollNumber,
+      detail: {
+        boundary: kind,
+        category: ctx.category ?? null,
+        heldSetSignature,
+        committed: trustedCommitted,
+        domOrder: domHeldOrder,
+        rendererInputOrder,
+      },
+    });
+  }
+
+  // Owner-swap detection vs previous boundary snapshot.
+  const nextOwnerByDieId = new Map<number, CategoryBoundaryOwnerRecord>();
+  for (const d of dom) {
+    nextOwnerByDieId.set(d.dieId, {
+      dieId: d.dieId,
+      reactKey: d.reactKey,
+      parentTag: d.parentTag,
+      parentDataAttrs: d.parentDataAttrs,
+      phaseBranch: d.phaseBranch,
+      rendererInputSource: d.rendererInputSource,
+      renderer: d.renderer,
+    });
+  }
+  if (prevCategoryOwnerByDieId) {
+    for (const [dieId, prev] of prevCategoryOwnerByDieId) {
+      const next = nextOwnerByDieId.get(dieId);
+      if (!next) continue;
+      // Only meaningful for held dice — but a swap on any is worth logging.
+      const heldNow = dom.find((d) => d.dieId === dieId)?.held;
+      if (!heldNow) continue;
+      const keyChanged = prev.reactKey !== next.reactKey;
+      const rendererChanged = prev.renderer !== next.renderer;
+      const parentChanged =
+        prev.parentTag !== next.parentTag ||
+        JSON.stringify(prev.parentDataAttrs) !== JSON.stringify(next.parentDataAttrs);
+      if (keyChanged || rendererChanged || parentChanged) {
+        pushViolation({
+          ts,
+          kind: 'CATEGORY_SELECTION_DIE_OWNER_SWAP',
+          dieId,
+          rollNumber: currentRollNumber,
+          detail: {
+            boundary: kind,
+            category: ctx.category ?? null,
+            prev,
+            next,
+            keyChanged,
+            rendererChanged,
+            parentChanged,
+          },
+        });
+      }
+    }
+  }
+  prevCategoryOwnerByDieId = nextOwnerByDieId;
+
+  const renderers = Array.from(new Set(dom.map((d) => d.renderer)));
+  const phaseBranches = Array.from(
+    new Set(dom.map((d) => d.phaseBranch).filter((v): v is string => !!v)),
+  );
+
+  const detail: Record<string, unknown> = {
+    boundary: kind,
+    category: ctx.category ?? null,
+    actor: ctx.actor ?? 'unknown',
+    actorPlayerId: ctx.actorPlayerId ?? null,
+    playerId: ctx.playerId ?? null,
+    rollNumber: ctx.rollNumber ?? currentRollNumber,
+    heldSetSignature,
+    committedOrder: trustedCommitted,
+    localDerivedCommittedOrder: committedOrder,
+    domHeldOrder,
+    rendererInputOrder,
+    rendererInputSources: Array.from(
+      new Set(dom.map((d) => d.rendererInputSource).filter((v): v is string => !!v)),
+    ),
+    phaseBranches,
+    renderers,
+    dice: dom.map((d) => ({
+      dieId: d.dieId,
+      value: d.value,
+      held: d.held,
+      sourceRow: d.sourceRow,
+      indexInRow: d.indexInRow,
+      globalRenderIndex: d.globalRenderIndex,
+      reactKey: d.reactKey,
+      rect: d.rect,
+      phaseBranch: d.phaseBranch,
+      renderer: d.renderer,
+      parentTag: d.parentTag,
+      parentDataAttrs: d.parentDataAttrs,
+    })),
+    ...(ctx.extra ?? {}),
+  };
+
+  const ev: YahtzeeReorderHarnessLifecycleEvent = {
+    ts,
+    kind,
+    runId: null,
+    detail,
+  };
+  lifecycleEvents.push(ev);
+  if (lifecycleEvents.length > MAX_EVENTS) {
+    lifecycleEvents.splice(0, lifecycleEvents.length - MAX_EVENTS);
+  }
+  notify();
+}
+
+// ────────────────────────────────────────────────────────────────
+// Trace-hold API: informational request to keep the passive observer
+// armed for at least `holdMs` after `startTs`. The passive observer
+// itself is user-STOP driven and does not auto-disarm, so this is a
+// declarative marker recorded into lifecycle so trace consumers can
+// prove the required capture window covered the requested boundary
+// tail (e.g. category authoritative result + 2s animation).
+// ────────────────────────────────────────────────────────────────
+let traceHoldUntil = 0;
+export function requestYahtzeeReorderTraceHold(
+  holdMs: number,
+  reason: string,
+): void {
+  const now = Date.now();
+  const until = now + Math.max(0, holdMs);
+  if (until > traceHoldUntil) traceHoldUntil = until;
+  const ev: YahtzeeReorderHarnessLifecycleEvent = {
+    ts: now,
+    kind: 'YAHTZEE_REORDER_TRACE_HOLD_REQUESTED',
+    runId: null,
+    detail: { holdMs, until: traceHoldUntil, reason },
+  };
+  lifecycleEvents.push(ev);
+  if (lifecycleEvents.length > MAX_EVENTS) {
+    lifecycleEvents.splice(0, lifecycleEvents.length - MAX_EVENTS);
+  }
+  notify();
+}
+
+export function getYahtzeeReorderTraceHoldUntil(): number {
+  return traceHoldUntil;
 }

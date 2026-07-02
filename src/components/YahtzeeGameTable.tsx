@@ -58,6 +58,10 @@ import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
+import {
+  emitYahtzeeCategorySelectionBoundary,
+  requestYahtzeeReorderTraceHold,
+} from "@/lib/yahtzee/reorderTrace";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
@@ -721,9 +725,17 @@ export function YahtzeeGameTable({
     if (!optimisticScore || !viewState) return;
     const ps = viewState.playerStates[optimisticScore.playerId];
     if (ps?.scorecard.scores[optimisticScore.category] !== undefined) {
+      emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PRESENTATION_COMMIT', {
+        category: optimisticScore.category,
+        actor: optimisticScore.playerId === myPlayer?.id ? 'local' : 'remote',
+        actorPlayerId: optimisticScore.playerId,
+        playerId: optimisticScore.playerId,
+        extra: { scoredValue: ps.scorecard.scores[optimisticScore.category] },
+      });
+      requestYahtzeeReorderTraceHold(2000, `presentation-commit:${optimisticScore.category}`);
       setOptimisticScore(null);
     }
-  }, [viewState?.playerStates, optimisticScore]);
+  }, [viewState?.playerStates, optimisticScore, myPlayer?.id]);
 
   /* ---- Detect Yahtzee rolls & upper bonus from presentation state changes ---- */
   // Framework cutover: side-effects that drive UI overlays MUST follow the
@@ -793,6 +805,14 @@ export function YahtzeeGameTable({
 
     if (newCat) {
       // Opponent just scored this category — show highlight
+      emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+        category: newCat,
+        actor: currentTurnPlayerId === myPlayer?.id ? 'local' : 'remote',
+        actorPlayerId: currentTurnPlayerId,
+        playerId: currentTurnPlayerId,
+        extra: { scoredValue: currentScores[newCat] },
+      });
+      requestYahtzeeReorderTraceHold(2000, `remote-authority-arrival:${newCat}`);
       setLastScoredCategory(newCat);
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
@@ -953,6 +973,14 @@ export function YahtzeeGameTable({
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_INTENT', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+      rollNumber: 3 - myPs.rollsRemaining,
+    });
+
     const diceValues = myPs.dice.map(d => d.value);
 
     // Enforce Joker rules: restrict category choices when applicable
@@ -974,6 +1002,13 @@ export function YahtzeeGameTable({
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs) return;
+
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PREVIEW', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
 
     // Highlight the chosen category and pause for clarity
     setScoringInProgress(true);
@@ -1008,7 +1043,20 @@ export function YahtzeeGameTable({
     };
     console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
     yahtzeeSync.applyOptimistic(scoredState);
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_DISPATCHED', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
     await updateYahtzeeState(currentRoundId, scoredState);
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
+    requestYahtzeeReorderTraceHold(2000, `authority-arrival:${category}`);
 
     // Wait 2 seconds so both players can see the selection highlighted
     await new Promise(r => setTimeout(r, 2000));
@@ -1640,6 +1688,19 @@ export function YahtzeeGameTable({
         const category = isYahtzeeStraightDebugEnabled() ? getDebugStraightCategoryChoice(ps) : getBotCategoryChoice(ps);
         console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)), turnIdentity });
 
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_INTENT', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PREVIEW', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
         setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: botPlayerId });
 
@@ -1649,7 +1710,20 @@ export function YahtzeeGameTable({
         ps = scoreYahtzeeCategory(ps, category);
         state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
         yahtzeeSync.applyOptimistic(state);
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_DISPATCHED', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
         await updateYahtzeeState(currentRoundId, state);
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+        requestYahtzeeReorderTraceHold(2000, `bot-authority-arrival:${category}`);
 
         await new Promise(r => setTimeout(r, 2000));
         if (isCancelled('after-score-wait')) {
