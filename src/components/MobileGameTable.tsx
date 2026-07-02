@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { MeasuredActiveHandFan } from "./activeHand/MeasuredActiveHandFan";
+import { HolmActivePaneGeometryPill } from "./HolmActivePaneGeometryPill";
+
 import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import { DealerIndicator } from "./canonicalShell/DealerIndicator";
