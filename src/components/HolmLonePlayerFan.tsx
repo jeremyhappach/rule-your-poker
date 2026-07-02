@@ -76,6 +76,37 @@ export function HolmLonePlayerFan({
     return () => ro.disconnect();
   }, []);
 
+  // TABLED_CARD_OWNERSHIP: create/unmount for lone-player tabled fan.
+  const cardIdsKey = sortedCards.map((s) => `${s.card.rank}${s.card.suit}`).join(',');
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    sortedCards.forEach((s) => {
+      noteTabledCardOwnership('create', holmLedgerIdentity, {
+        ownerPlayerId,
+        cardId: `${s.card.rank}${s.card.suit}`,
+        destination: 'holm.lonePlayerTabledCardsStage',
+        sourceBranch: 'HolmLonePlayerFan',
+        component: 'HolmLonePlayerFan',
+        gameTypeGuardOk: true,
+        transportType: animate ? 'solo-slide' : null,
+      });
+    });
+    return () => {
+      if (!holmLedgerIdentity) return;
+      sortedCards.forEach((s) => {
+        noteTabledCardOwnership('unmount', holmLedgerIdentity, {
+          ownerPlayerId,
+          cardId: `${s.card.rank}${s.card.suit}`,
+          destination: 'holm.lonePlayerTabledCardsStage',
+          sourceBranch: 'HolmLonePlayerFan',
+          component: 'HolmLonePlayerFan',
+        });
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardIdsKey, ownerPlayerId, holmLedgerIdentity?.handContextId]);
+
+
   const count = sortedCards.length;
   const fanOverlap = useCardOverlap('cardOverlap.holm.lonePlayerFan');
   const layout =
