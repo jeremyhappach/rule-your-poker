@@ -170,3 +170,26 @@ export function advanceYahtzeeReorderHarnessRoll(): void {
   }
   notify();
 }
+
+const TOTAL_FORCED_VALUES = SCENARIO.reduce(
+  (n, row) => n + row.filter((v) => typeof v === 'number').length,
+  0,
+);
+
+export function getYahtzeeReorderTotalForcedValues(): number {
+  return TOTAL_FORCED_VALUES;
+}
+
+export function getYahtzeeReorderConsumedForcedValues(): number {
+  if (state.queue.length === 0) {
+    // Not currently armed — either idle (0 consumed) or terminal (all consumed
+    // for completed; partial only if externally cancelled, in which case we
+    // report 0 to avoid leaking stale queue state).
+    return state.status === 'completed' ? TOTAL_FORCED_VALUES : 0;
+  }
+  const remaining = state.queue.reduce(
+    (n, row) => n + row.filter((v) => typeof v === 'number').length,
+    0,
+  );
+  return TOTAL_FORCED_VALUES - remaining;
+}
