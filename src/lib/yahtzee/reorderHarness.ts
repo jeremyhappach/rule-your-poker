@@ -28,13 +28,10 @@ export type YahtzeeReorderHarnessStatus =
 
 interface HarnessState {
   status: YahtzeeReorderHarnessStatus;
-  // Per-roll forced values, indexed by [rollNumber][dieIndex]. `null` slots
-  // mean "held — do not consume, do not overwrite" (a safety belt: the real
-  // reducer already preserves held values, but the queue never hands one out
-  // for a held die).
   queue: (number | null)[][];
   nextRollIdx: number;
   armedAtMs: number | null;
+  runId: string | null;
   eligibility: {
     isYahtzeeTurn: boolean;
     isLocalTurn: boolean;
@@ -55,6 +52,7 @@ const state: HarnessState = {
   queue: [],
   nextRollIdx: 0,
   armedAtMs: null,
+  runId: null,
   eligibility: {
     isYahtzeeTurn: false,
     isLocalTurn: false,
