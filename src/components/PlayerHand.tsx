@@ -292,7 +292,22 @@ export const PlayerHand = ({
     return RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank];
   });
   
-  const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
+  // Holm staged-deal sizing capacity: while cards are being dealt in one
+  // at a time, size/overlap/fan must resolve from the FINAL hand capacity
+  // (expectedCardCount), not the currently-visible count. Otherwise each
+  // arriving card would trigger a resize of previously landed cards.
+  // Restricted to Holm active-self visible-face rendering — showdown /
+  // hidden-back paths return earlier and other games are unchanged.
+  const holmStagedCapacity =
+    isHolmGame &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    typeof expectedCardCount === 'number' &&
+    expectedCardCount > cards.length
+      ? expectedCardCount
+      : null;
+  const displayCardCount =
+    holmStagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
   const cardSize = getCardSize(displayCardCount);
 
   // Round 1 (3-5-7) on mobile: cards were getting too wide when scaled.
@@ -1002,7 +1017,7 @@ export const PlayerHand = ({
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-        const n = sortedCardsWithIndices.length;
+        const n = holmStagedCapacity ?? sortedCardsWithIndices.length;
         const rotationDeg = useV4FanR1
           ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n) * v4R1FanSign
           : defaultFanStep * (displayIndex - (n - 1) / 2);
