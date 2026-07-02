@@ -41,7 +41,6 @@ import {
 } from "@/lib/holm/holmTrace";
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import HolmTracePill from "@/components/HolmTracePill";
-import HolmPresentationLedgerPill from "@/components/HolmPresentationLedgerPill";
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
