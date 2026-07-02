@@ -10607,7 +10607,7 @@ export const MobileGameTable = ({
                               className={cn(
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
                                 isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
-                                (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : '',
+                                (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' || holmSelfFoldedLatched ? 'opacity-40 grayscale-[30%]' : '',
                                 currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
