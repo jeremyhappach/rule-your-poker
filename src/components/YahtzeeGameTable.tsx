@@ -725,9 +725,17 @@ export function YahtzeeGameTable({
     if (!optimisticScore || !viewState) return;
     const ps = viewState.playerStates[optimisticScore.playerId];
     if (ps?.scorecard.scores[optimisticScore.category] !== undefined) {
+      emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PRESENTATION_COMMIT', {
+        category: optimisticScore.category,
+        actor: optimisticScore.playerId === myPlayer?.id ? 'local' : 'remote',
+        actorPlayerId: optimisticScore.playerId,
+        playerId: optimisticScore.playerId,
+        extra: { scoredValue: ps.scorecard.scores[optimisticScore.category] },
+      });
+      requestYahtzeeReorderTraceHold(2000, `presentation-commit:${optimisticScore.category}`);
       setOptimisticScore(null);
     }
-  }, [viewState?.playerStates, optimisticScore]);
+  }, [viewState?.playerStates, optimisticScore, myPlayer?.id]);
 
   /* ---- Detect Yahtzee rolls & upper bonus from presentation state changes ---- */
   // Framework cutover: side-effects that drive UI overlays MUST follow the
