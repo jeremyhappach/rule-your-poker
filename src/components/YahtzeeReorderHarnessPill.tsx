@@ -103,6 +103,12 @@ function sampleMountedDice(): SampledDie[] {
         el.getAttribute('data-die-transform-owner') ??
         null,
       reactKey: el.getAttribute('data-die-react-key') ?? `die-${dieId}`,
+      rendererInputOrder: (el.getAttribute('data-die-renderer-input-order') ?? '')
+        .split(',')
+        .filter((s) => s.length > 0)
+        .map((s) => Number(s)),
+      rendererInputSource: el.getAttribute('data-die-renderer-input-source'),
+      phaseBranch: el.getAttribute('data-die-phase-branch'),
       node: el,
     };
   });

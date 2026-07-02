@@ -1731,6 +1731,28 @@ export function DiceTableLayout({
     stableHeldRegistryEntries.map(([dieIndex], slotIndex) => [dieIndex, slotIndex]),
   );
 
+  // ── SHARED COMMITTED HELD-ROW ORDER (single render-source boundary) ──
+  // Every render path below (normal held layer + freeze path) must iterate
+  // held dice through this ordering so the React .map() order = DOM child
+  // order = committed canonical order (value ASC, dieId ASC).
+  // Scatter/unheld items follow in physical order — their relative DOM
+  // position is irrelevant because they are placed by transform.
+  const isHeldForCommittedOrder = (item: (typeof orderedDice)[number]) => {
+    const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
+    return usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+      ? preRollHeld
+      : item.die.isHeld;
+  };
+  const committedHeldItems = orderedDice
+    .filter(isHeldForCommittedOrder)
+    .sort((a, b) =>
+      a.die.value !== b.die.value
+        ? a.die.value - b.die.value
+        : a.originalIndex - b.originalIndex,
+    );
+  const nonHeldItems = orderedDice.filter((item) => !isHeldForCommittedOrder(item));
+  const committedHeldLayerIterationOrder = [...committedHeldItems, ...nonHeldItems];
+
   const renderDieForLayer = (item: (typeof orderedDice)[number], targetLayer: "held" | "scatter") => {
     const sccDie = item.die as SCCDieType;
     const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
@@ -1846,6 +1868,10 @@ export function DiceTableLayout({
         data-die-react-key={reactKey}
         data-die-transform-owner={transformOwner}
         data-die-slot-index={slotIndexInHeldRow ?? ""}
+        data-die-renderer-input-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+        data-die-renderer-input-source="committedHeldLayerIterationOrder"
+        data-die-committed-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+        data-die-phase-branch={usePreRollLayout ? "pre-roll" : (isAnimatingFlyIn ? "fly-in" : "normal")}
         className={cn(
           "absolute will-change-transform",
           !shouldSkipTransition && !useInstantTransform && "transition-transform duration-300 ease-out",
@@ -1900,7 +1926,7 @@ export function DiceTableLayout({
   if (shouldUseFreezePresentation) {
     return (
       <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
-        {orderedDice.map((item) => {
+        {committedHeldLayerIterationOrder.map((item) => {
           const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
           if (!frozenEntry) return null;
 
@@ -1930,6 +1956,10 @@ export function DiceTableLayout({
               data-die-layer-z={30}
               data-die-react-key={`die-${item.originalIndex}`}
               data-die-transform-owner="freeze"
+              data-die-renderer-input-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+              data-die-renderer-input-source="committedHeldLayerIterationOrder"
+              data-die-committed-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+              data-die-phase-branch="freeze"
               className="absolute will-change-transform"
               style={{
                 left: '50%',
@@ -1981,7 +2011,7 @@ export function DiceTableLayout({
       )}
 
       <div className="absolute inset-0 z-30 pointer-events-none" data-dice-layer="held" data-layer-z={30}>
-        {orderedDice.map((item) => renderDieForLayer(item, "held"))}
+        {committedHeldLayerIterationOrder.map((item) => renderDieForLayer(item, "held"))}
       </div>
     </div>
   );
