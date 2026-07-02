@@ -43,6 +43,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type CSSProperties,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -63,6 +64,12 @@ import {
 } from '@/lib/holm/holmPresentationLedger';
 
 type PaneRect = ActiveHandStageRect;
+
+export interface MeasuredActiveHandFanCommit {
+  key: string | null;
+  rect: PaneRect | null;
+  lowerZoneMinPx: number;
+}
 
 const LOWER_ZONE_SELECTOR = '[data-active-hand-lower-zone]';
 
@@ -136,6 +143,8 @@ export interface MeasuredActiveHandFanProps {
     playerId?: string | null;
     branch?: string;
   };
+  /** Optional persistent owner storage; preserves the committed layout across same-hand remounts. */
+  externalCommitRef?: MutableRefObject<MeasuredActiveHandFanCommit>;
 }
 
 export function MeasuredActiveHandFan({
@@ -155,29 +164,31 @@ export function MeasuredActiveHandFan({
   activeHandFanRenderKey,
   cardIds,
   holmLedgerIdentity,
+  externalCommitRef,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const [rect, setRect] = useState<PaneRect | null>(null);
-  const [lowerZoneMinPx, setLowerZoneMinPx] = useState<number>(0);
+  const activeLockKey = phaseLockKey ?? null;
+  const [rect, setRect] = useState<PaneRect | null>(() =>
+    externalCommitRef?.current.key === activeLockKey ? externalCommitRef.current.rect : null,
+  );
+  const [lowerZoneMinPx, setLowerZoneMinPx] = useState<number>(() =>
+    externalCommitRef?.current.key === activeLockKey ? externalCommitRef.current.lowerZoneMinPx : 0,
+  );
   const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const policy = useActiveHandLayoutPolicy(game);
 
   // Phase-lock commit ledger — persists across effect re-runs.
-  const committedRef = useRef<{
-    key: string | null;
-    rect: PaneRect | null;
-    lowerZoneMinPx: number;
-  }>({
+  const localCommittedRef = useRef<MeasuredActiveHandFanCommit>({
     key: null,
     rect: null,
     lowerZoneMinPx: 0,
   });
+  const committedRef = externalCommitRef ?? localCommittedRef;
 
   // Reset commit ledger when the phase-lock key changes so a real
   // identity/phase boundary re-measures from a clean slate. Runs
   // synchronously before the measurement effect below.
-  const activeLockKey = phaseLockKey ?? null;
   if (committedRef.current.key !== activeLockKey) {
     if (holmLedgerIdentity) {
       recordHolmLedger('ACTIVE_HAND_LAYOUT', 'phaseLockKey-reset', holmLedgerIdentity, {
@@ -189,6 +200,22 @@ export function MeasuredActiveHandFan({
     }
     committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
+
+  useEffect(() => {
+    const committed = committedRef.current;
+    if (!activeLockKey || committed.key !== activeLockKey || !committed.rect) return;
+    setRect((prev) =>
+      prev &&
+      Math.abs(prev.width - committed.rect!.width) < 0.5 &&
+      Math.abs(prev.height - committed.rect!.height) < 0.5
+        ? prev
+        : committed.rect,
+    );
+    setLowerZoneMinPx((prev) =>
+      Math.abs(prev - committed.lowerZoneMinPx) < 0.5 ? prev : committed.lowerZoneMinPx,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLockKey]);
 
   // ACTIVE_SELF_LIFECYCLE: mount/unmount + card identity change.
   const mountRectRef = useRef<{ w: number; h: number } | null>(null);
