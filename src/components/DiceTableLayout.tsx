@@ -1516,7 +1516,7 @@ export function DiceTableLayout({
       if (effectivelyHeld2 && !heldPos2) {
         const heldSourceDice = usePreRollLayout
           ? layoutHeldDice
-          : orderedDice.filter((d) => d.die.isHeld);
+          : orderedDice.filter((d) => d.die.isHeld).sort(canonicalHeldSort);
         const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
         if (heldIdx >= 0) {
           const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
