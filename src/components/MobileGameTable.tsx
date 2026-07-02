@@ -3861,10 +3861,28 @@ export const MobileGameTable = ({
       holmSelfFoldedForHandRef.current = holmSelfCurrentHandCtx;
     }
   }, [gameType, currentPlayer?.current_decision, holmSelfCurrentHandCtx]);
+
+  // Persistent Holm hand-presentation owner. Its refs live at the
+  // parent-scope so committed active-hand layout, folded state, and
+  // tabled/win identity survive any child remount within the same
+  // `{ dealerGameId, roundId, handNumber, baseHandContextId,
+  // localPlayerId }` identity (betting → fold → solo/lone-player
+  // tabled → Chucky → result → win).
+  const holmPresentationOwner = useHolmHandPresentationOwner({
+    enabled: gameType === 'holm-game',
+    dealerGameId: holmDealerGameId ?? null,
+    roundId: handContextId ?? null,
+    handNumber: currentRound ?? null,
+    baseHandContextId: handContextId ?? null,
+    localPlayerId: currentPlayer?.id ?? null,
+    localDecision: currentPlayer?.current_decision ?? null,
+  });
   const holmSelfFoldedLatched =
     gameType === 'holm-game' &&
-    holmSelfCurrentHandCtx != null &&
-    holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
+    ((holmSelfCurrentHandCtx != null &&
+      holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx) ||
+      holmPresentationOwner.foldedRef.current);
+
 
 
 
