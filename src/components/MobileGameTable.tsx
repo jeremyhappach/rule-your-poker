@@ -10654,14 +10654,38 @@ export const MobileGameTable = ({
                                                   applyFan
                                                 />
                                               ) : (
-                                                <MeasuredActiveHandFan
-                                                  game={activeGame}
-                                                  cards={effectiveCards}
-                                                  capacity={capacity}
-                                                  measureAncestorSelector="[data-357-active-pane-content],[data-holm-active-hand-region]"
-                                                  applyFan
-                                                />
-                                              )
+                                                 // Holm active-self hand:
+                                                 //   Same pane-composition
+                                                 //   contract as 3-5-7 —
+                                                 //   portal into the
+                                                 //   `[data-holm-active-pane-content]`
+                                                 //   wrapper (which contains
+                                                 //   BOTH the hand region and
+                                                 //   the `data-active-hand-lower-zone`
+                                                 //   action strip) so the
+                                                 //   resolver's lower-zone
+                                                 //   reservation actually
+                                                 //   escalates and cards
+                                                 //   cannot expand into the
+                                                 //   action zone. Phase-lock
+                                                 //   the committed rect to
+                                                 //   the current hand identity
+                                                 //   so later ancestor
+                                                 //   measurements (once
+                                                 //   `flex-1` fills) cannot
+                                                 //   enlarge the stage.
+                                                 <MeasuredActiveHandFan
+                                                   game={activeGame}
+                                                   cards={effectiveCards}
+                                                   capacity={capacity}
+                                                   portalTargetSelector="[data-holm-active-pane-content]"
+                                                   phaseLockKey={`holm|${boundary.baseHandContextId}|p${currentPlayer?.id ?? 'noP'}`}
+                                                   activeHandFanRenderKey={`ActiveHandFan|holm|${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                   cardIds={boundary.rawClaimedCardIds}
+                                                   applyFan
+                                                 />
+                                               )
+
                                             );
                                           }
                                          return (
