@@ -349,8 +349,8 @@ export function MeasuredActiveHandFan({
           : willAccept
             ? (lockedForCurrentKey ? 'committed-invalidated' : 'first-commit')
             : (lockedForCurrentKey ? 'locked-skip' : 'no-change');
-        const priorCardSize = committedLayout?.cardSize ?? null;
-        const nextCardSize = candidateLayout?.cardSize ?? null;
+        const priorCardSize = committedLayout ? { width: committedLayout.cardWidth, height: committedLayout.cardHeight } : null;
+        const nextCardSize = candidateLayout ? { width: candidateLayout.cardWidth, height: candidateLayout.cardHeight } : null;
         const sizeChangedAfterCommit = !!(
           lockedForCurrentKey && priorCardSize && nextCardSize &&
           (Math.abs(priorCardSize.width - nextCardSize.width) > 0.5 ||
