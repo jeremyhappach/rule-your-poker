@@ -10917,12 +10917,19 @@ export const MobileGameTable = ({
                                              cards={effectiveCards}
                                              isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
                                              expectedCardCount={
-                                               is357Staged || isHolmStaged
-                                                 ? undefined
-                                                 : (effectiveCards.length === 0
-                                                   ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
-                                                   : undefined)
-                                             }
+                                                // Holm active-self: authoritative final hand
+                                                // capacity (cardsPerPlayer=4). Latch for the entire
+                                                // staged deal so first-card size/overlap/fan resolves
+                                                // from the FINAL slot count — never from
+                                                // sortedCards/visible/claimed counts.
+                                                gameType === 'holm-game'
+                                                  ? 4
+                                                  : is357Staged
+                                                    ? undefined
+                                                    : (effectiveCards.length === 0
+                                                      ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
+                                                      : undefined)
+                                              }
                                              highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
                                              kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
                                              hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
