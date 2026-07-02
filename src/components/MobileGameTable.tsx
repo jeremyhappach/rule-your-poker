@@ -3757,6 +3757,29 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+
+  // HOLM: monotonic folded-latch for the local self hand.
+  // Once `current_decision === 'fold'` is observed for a given
+  // handContextId, keep the folded dim on the active self subtree for
+  // the ENTIRETY of that hand — including win/result/announcement
+  // phases where a generic reveal/tabled/winner branch could otherwise
+  // revive the hand to full opacity. The ref clears naturally on the
+  // next handContextId boundary because the derived boolean below
+  // compares against the current `handContextId`.
+  const holmSelfCurrentHandCtx = handContextId ?? null;
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!holmSelfCurrentHandCtx) return;
+    if (currentPlayer?.current_decision === 'fold') {
+      holmSelfFoldedForHandRef.current = holmSelfCurrentHandCtx;
+    }
+  }, [gameType, currentPlayer?.current_decision, holmSelfCurrentHandCtx]);
+  const holmSelfFoldedLatched =
+    gameType === 'holm-game' &&
+    holmSelfCurrentHandCtx != null &&
+    holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
+
+
   
   // CRITICAL FIX: Use handContextId to validate current player cards.
   // During hand transitions, playerCards may briefly contain stale data from the previous hand.
