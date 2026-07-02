@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { recordHolmLedger, recordHolmLedgerViolation, type HolmLedgerIdentity } from '@/lib/holm/holmPresentationLedger';
+import { useShellOverlayPortal } from '@/lib/canonicalShell/ShellOverlayMounts';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
