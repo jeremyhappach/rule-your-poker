@@ -14,6 +14,14 @@ import "@/lib/geometryLab/noTimersStore";
 // Shell → Seat Cluster → Nameplate). Applies CSS-var defaults at
 // import time; the Geometry Lab loader fetches the committed row.
 import "@/lib/canonicalShell/shellNameplateConfig";
+import {
+  installAuthEjectionHistoryListener,
+  recordAuthStateChange,
+} from "@/lib/authEjectionLedger";
+
+// Wartime: install the auth-ejection ledger history listener BEFORE any
+// route mounts so a redirect to /auth is captured with pre-teardown context.
+installAuthEjectionHistoryListener();
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
@@ -21,6 +29,7 @@ import "@/lib/canonicalShell/shellNameplateConfig";
 bootstrapCanonicalShellLayout();
 bootstrapDealTiming();
 bootstrapTableDemo();
+
 
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
