@@ -179,8 +179,60 @@ export function MeasuredActiveHandFan({
   // synchronously before the measurement effect below.
   const activeLockKey = phaseLockKey ?? null;
   if (committedRef.current.key !== activeLockKey) {
+    if (holmLedgerIdentity) {
+      recordHolmLedger('ACTIVE_HAND_LAYOUT', 'phaseLockKey-reset', holmLedgerIdentity, {
+        prevKey: committedRef.current.key,
+        nextKey: activeLockKey,
+        branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        game,
+      });
+    }
     committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
+
+  // ACTIVE_SELF_LIFECYCLE: mount/unmount + card identity change.
+  const mountRectRef = useRef<{ w: number; h: number } | null>(null);
+  const cardIdsKey = (cardIds ?? []).join(',');
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    const host = hostRef.current;
+    const r = host?.getBoundingClientRect();
+    mountRectRef.current = r ? { w: r.width, h: r.height } : null;
+    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'mount', holmLedgerIdentity, {
+      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+      component: 'MeasuredActiveHandFan',
+      phaseLockKey: activeLockKey,
+      renderKey: activeHandFanRenderKey ?? null,
+      cardCount: cards.length,
+      cardIds: cardIdsKey,
+      hostRect: mountRectRef.current,
+      game,
+    });
+    return () => {
+      const rr = host?.getBoundingClientRect();
+      recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'unmount', holmLedgerIdentity, {
+        branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        component: 'MeasuredActiveHandFan',
+        phaseLockKey: activeLockKey,
+        renderKey: activeHandFanRenderKey ?? null,
+        hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
+        mountRect: mountRectRef.current,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLockKey]);
+
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'cardIds-change', holmLedgerIdentity, {
+      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+      cardCount: cards.length,
+      cardIds: cardIdsKey,
+      renderKey: activeHandFanRenderKey ?? null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardIdsKey]);
+
 
   useLayoutEffect(() => {
     const host = hostRef.current;
