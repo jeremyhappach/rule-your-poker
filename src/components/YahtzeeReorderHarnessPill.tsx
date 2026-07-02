@@ -402,7 +402,7 @@ export function YahtzeeReorderHarnessPill() {
     setYahtzeeReorderTraceActive(true);
     const armed = armYahtzeeReorderHarness();
     const localCancel = cancelRef.current;
-    void runScenarioAsync(armed.runId, localCancel).finally(() => {
+    void runPassiveObserverAsync(armed.runId, localCancel).finally(() => {
       setYahtzeeReorderTraceActive(false);
       setSnap(getYahtzeeReorderHarnessSnapshot());
       setTraceSnap(getYahtzeeReorderTraceSnapshot());
