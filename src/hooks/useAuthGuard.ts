@@ -102,6 +102,28 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
     function redirectToAuth(reason: string) {
       if (!mounted) return;
       const currentPath = window.location.pathname;
+      // Wartime: probe for suspicious redirect (valid session or lease).
+      supabase.auth.getSession().then(({ data: { session: probe } }) => {
+        const lease = getActiveRecoveryLease();
+        noteAuthRedirectAttempt({
+          caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
+          hasValidSession: !!probe && (probe.expires_at ?? 0) * 1000 > Date.now(),
+          hasWaitingTableMembership: false,
+          hasActiveRecoveryLease: !!lease,
+          userId: probe?.user?.id ?? user?.id ?? null,
+          dealerGameId: lease?.gameId ?? null,
+          guardInputs: { reason, currentPath, pageLabel },
+          note: "redirectToAuth probe",
+        });
+      }).catch(() => { /* noop */ });
+      recordRouteRedirect({
+        from: currentPath,
+        to: "/auth",
+        reason,
+        caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
+        dealerGameId: getActiveRecoveryLease()?.gameId ?? null,
+        playerId: user?.id ?? null,
+      });
       traceAuthEvent("app-unexpected-navigation-login", {
         previousRoute: currentPath,
         nextRoute: "/auth",
@@ -111,6 +133,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
       sessionStorage.setItem("redirectAfterAuth", currentPath);
       navigate("/auth");
     }
+
 
     async function verifySessionOrRedirect(trigger: string) {
       // Double-check: maybe the token refreshed by now
