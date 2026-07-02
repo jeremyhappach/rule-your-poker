@@ -1257,6 +1257,40 @@ export const PlayerHand = ({
             ),
           )
         : null}
+      {/* 3-5-7 active-self staged-deal reservation slots — mirror the
+          Holm contract. Reserve invisible layout for unarrived slots so
+          the fan geometry (size / overlap / fan / rotation) is locked
+          BEFORE card 1 arrives, and later arrivals only fill precomputed
+          slots. No card backs, no flip-capable placeholders. */}
+      {is357Game &&
+        !isOpponentExposedShowdown &&
+        !forceHiddenFaces &&
+        three57StagedCapacity != null &&
+        sortedCardsWithIndices.length < three57StagedCapacity
+        ? Array.from(
+            { length: three57StagedCapacity - sortedCardsWithIndices.length },
+            (_, i) => (
+              <div
+                key={`three57-reservation-${i}`}
+                aria-hidden="true"
+                data-three57-reservation-slot={String(sortedCardsWithIndices.length + i)}
+                className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+                style={{
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                  width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
+                }}
+              >
+                <div className={
+                  cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
+                  : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
+                  : cardSize === 'md' ? 'w-7 h-10 sm:w-8 sm:h-12'
+                  : 'w-6 h-9 sm:w-7 sm:h-10'
+                } />
+              </div>
+            ),
+          )
+        : null}
 
       <HolmDealGeometryProbe {...holmTraceProps} />
       {isHolmActiveSelf ? (
