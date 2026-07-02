@@ -138,6 +138,26 @@ export function HolmLonePlayerFan({
     },
   });
 
+  if (holmLedgerIdentity) {
+    recordHolmLedger(
+      'TABLED_CARD_OWNERSHIP',
+      layout ? 'render' : 'suppress',
+      holmLedgerIdentity,
+      {
+        sourceBranch: 'HolmLonePlayerFan',
+        component: 'HolmLonePlayerFan',
+        cardCount: count,
+        cardIds: cardIdsKey,
+        wrapperW: size.w,
+        wrapperH: size.h,
+        animate,
+        isSoloPlayerWinner,
+        hasHighlights,
+      },
+    );
+  }
+
+
   return (
     <div
       ref={wrapperRef}
