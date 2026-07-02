@@ -682,8 +682,23 @@ export const PlayerHand = ({
 
 
   // Render card backs for hidden cards
-  if (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
+  // EXCEPTION — Holm local active-self staged dealing: while cards.length <
+  // expectedCardCount for the active self, we must NOT paint visible card
+  // backs and then swap to face-up when a card lands (that produces the
+  // documented back→face flip). Fall through to the main-face branch, which
+  // renders only truly arrived cards face-up and (below) inert reservation
+  // slots for the unarrived positions to preserve the four-slot geometry.
+  const _isHolmActiveSelfStagedPreArrival =
+    isHolmGame &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    !isHidden &&
+    cards.length === 0 &&
+    typeof expectedCardCount === 'number' &&
+    expectedCardCount > 0;
+  if (!_isHolmActiveSelfStagedPreArrival && (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))) {
     const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
+
     
     
     // For 3-5-7 games with multiple cards, use fanned arc layout
@@ -1182,6 +1197,39 @@ export const PlayerHand = ({
         }
         return cardEl;
       })}
+      {/* Inert reservation slots for Holm active-self staged deal — occupy
+          layout for unarrived final slots WITHOUT painting a card back /
+          canonical card back / flip-capable card. Preserves the locked
+          four-slot geometry before card 1 and while cards.length <
+          expectedCardCount. */}
+      {isHolmActiveSelf &&
+        holmStagedCapacity != null &&
+        sortedCardsWithIndices.length < holmStagedCapacity
+        ? Array.from(
+            { length: holmStagedCapacity - sortedCardsWithIndices.length },
+            (_, i) => (
+              <div
+                key={`holm-reservation-${i}`}
+                aria-hidden="true"
+                data-holm-reservation-slot={String(sortedCardsWithIndices.length + i)}
+                className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+                style={{
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                  width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
+                }}
+              >
+                <div className={
+                  cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
+                  : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
+                  : cardSize === 'md' ? 'w-7 h-10 sm:w-8 sm:h-12'
+                  : 'w-6 h-9 sm:w-7 sm:h-10'
+                } />
+              </div>
+            ),
+          )
+        : null}
+
       <HolmDealGeometryProbe {...holmTraceProps} />
       {isHolmActiveSelf ? (
         <HolmFaceStateProbe
@@ -1199,6 +1247,7 @@ export const PlayerHand = ({
           sourceBranchLabel="main-face-branch"
         />
       ) : null}
+
     </div>
   );
 
