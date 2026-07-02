@@ -254,22 +254,23 @@ export function ActiveHandFan({
       style={{
         width: resolvedStageRect?.width,
         height: resolvedStageRect?.height,
-        display: 'flex',
-        // Composition contract: cards hug the bottom of the resolved
-        // stage so the visible gap between the fan and the sibling
-        // action zone equals the authored `interZoneClearancePctOfPane`
-        // alone (not ½·stageHeight + clearance). The stage rect already
-        // excludes the reserved lower zone + inter-zone clearance, so
-        // aligning cards to flex-end lands them one clearance above the
-        // action strip.
-        alignItems: 'flex-end',
-        justifyContent: 'center',
+        // The resolver already validates the transformed fan bounds
+        // (rotated cards + overlap + shell shadow allowance) against this
+        // stage. Position the raw row from the resolver offsets instead
+        // of centering unrotated row math, otherwise a later visually
+        // larger fan can clip despite the nominal row fitting.
+        position: 'relative',
+        overflow: 'visible',
         ...style,
       }}
     >
       <div
         style={{
           width: layout.totalWidth,
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transform: `translate(${layout.rowOffsetX.toFixed(3)}px, ${layout.rowOffsetY.toFixed(3)}px)`,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'flex-end',
