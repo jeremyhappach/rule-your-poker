@@ -9729,6 +9729,14 @@ export const MobileGameTable = ({
                       isFourColor={deckColorMode === 'four_color'}
                       getFourColorSuit={getFourColorSuit}
                       animate={shouldAnimate}
+                      ownerPlayerId={soloVsChuckyPlayerIdLocked ?? null}
+                      holmLedgerIdentity={{
+                        dealerGameId: holmDealerGameId ?? null,
+                        roundId: handContextId ?? null,
+                        handNumber: currentRound ?? null,
+                        handContextId: handContextId ?? null,
+                        playerId: soloVsChuckyPlayerIdLocked ?? null,
+                      }}
                     />
                     <style>{`
                       @keyframes holmSoloTableSlide {
