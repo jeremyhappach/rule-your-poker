@@ -7,6 +7,12 @@
 
 import { YahtzeeDie, YahtzeePlayerState, YahtzeeState, YahtzeeCategory } from './yahtzeeTypes';
 import { createEmptyScorecard, scoreCategory, isScorecardComplete } from './yahtzeeScoring';
+import {
+  advanceYahtzeeReorderHarnessRoll,
+  consumeYahtzeeReorderHarnessValue,
+  isYahtzeeReorderHarnessArmed,
+} from './yahtzee/reorderHarness';
+
 
 /** Create initial dice (5 unrolled dice) */
 export function createInitialYahtzeeDice(): YahtzeeDie[] {
@@ -32,10 +38,16 @@ function rollDie(): number {
 export function rollYahtzeeDice(state: YahtzeePlayerState): YahtzeePlayerState {
   if (state.rollsRemaining <= 0) return state;
 
-  const newDice = state.dice.map(die => ({
-    value: die.isHeld ? die.value : rollDie(),
-    isHeld: die.isHeld,
-  }));
+  const harnessArmed = isYahtzeeReorderHarnessArmed();
+  const newDice = state.dice.map((die, dieIndex) => {
+    if (die.isHeld) return { value: die.value, isHeld: true };
+    let value: number | null = null;
+    if (harnessArmed) value = consumeYahtzeeReorderHarnessValue(dieIndex);
+    if (value == null) value = rollDie();
+    return { value, isHeld: false };
+  });
+
+  if (harnessArmed) advanceYahtzeeReorderHarnessRoll();
 
   // rollKey is managed by the caller (YahtzeeGameTable) — do NOT generate here
   return {
@@ -44,6 +56,7 @@ export function rollYahtzeeDice(state: YahtzeePlayerState): YahtzeePlayerState {
     rollsRemaining: state.rollsRemaining - 1,
   };
 }
+
 
 /** Toggle hold on a die (only between rolls, not before first roll) */
 export function toggleYahtzeeHold(state: YahtzeePlayerState, dieIndex: number): YahtzeePlayerState {

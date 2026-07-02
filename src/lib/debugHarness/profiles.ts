@@ -86,7 +86,13 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       label: 'Near Win',
       description: '12 of 13 categories pre-filled — one chance roll triggers real end-of-game.',
     },
+    {
+      id: 'reorder_probe',
+      label: 'Reorder Probe',
+      description: 'Non-host deterministic 3-roll sequence exercising real hold/reroll/render path: roll1=[5,2,3,4,2], hold first four, roll2 rerolls die4→2, roll3 rerolls die4→1. Emits YAHTZEE_DIE_PRESENTATION trace with violation detection.',
+    },
   ],
+
   'ship-captain-crew': [
     NONE_HARNESS,
     {

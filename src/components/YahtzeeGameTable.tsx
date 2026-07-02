@@ -576,6 +576,19 @@ export function YahtzeeGameTable({
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
 
+  // Publish reorder-harness eligibility so the pill can self-gate arming.
+  useEffect(() => {
+    void import('@/lib/yahtzee/reorderHarness').then((m) => {
+      m.setYahtzeeReorderHarnessEligibility({
+        isYahtzeeTurn: gamePhase === 'playing',
+        isLocalTurn: !!isMyTurn,
+        isNonHost: !isHost,
+        playerId: myPlayer?.id ?? null,
+      });
+    });
+  }, [gamePhase, isMyTurn, isHost, myPlayer?.id]);
+
+
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
 
