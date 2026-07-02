@@ -1,29 +1,32 @@
 /**
  * YahtzeeReorderHarnessPill — labeled "YAHTZEE REORDER HARNESS".
  *
- * Auto-arms the deterministic 3-roll scenario as soon as the local player is
- * a non-host on an eligible Yahtzee turn. Exposes a visible status panel and
- * a Clear Yahtzee Trace control. No manual Arm button — auto-arm is the
- * intended activation path.
+ * Manual-run only. Always-enabled "Run YAHTZEE REORDER HARNESS" button.
+ * No auto-arm, no eligibility/role/turn gating, no waiting states.
  *
- * Emits lifecycle events via `reorderTrace`:
- *   YAHTZEE_REORDER_HARNESS_ARMED     (immediately on arm)
- *   YAHTZEE_REORDER_HARNESS_WAITING   (eligibility unmet, with blocking reason)
- *   YAHTZEE_REORDER_HARNESS_STARTED   (first real forced value consumed)
- *   YAHTZEE_REORDER_HARNESS_STEP      (each subsequent forced value consumed)
- *   YAHTZEE_REORDER_HARNESS_COMPLETED (all 7 forced values consumed)
- *   YAHTZEE_REORDER_HARNESS_REJECTED  (arm refused, with reason)
+ * On click:
+ *   - mint a new run id
+ *   - arm the deterministic scenario
+ *   - execute it synchronously against the pure Yahtzee reducer
+ *     (`rollYahtzeeDice` / `toggleYahtzeeHold`), emitting one
+ *     presentation snapshot + STEP lifecycle event per stage
+ *   - lifecycle: MANUAL_START → STEP × N → COMPLETE (or ERROR)
  *
- * Trace events are NEVER cleared automatically. Only the explicit
- * "Clear Yahtzee Trace" control erases them.
+ * Scenario:
+ *   1. initial [5,2,3,4,2]
+ *   2. hold physical dice 0..3
+ *   3. reroll die 4 → 2
+ *   4. reroll die 4 → 1
+ *
+ * The presentation ledger and violation detector run as before; snapshots
+ * are synthesized from reducer output (no DOM sampling required).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   armYahtzeeReorderHarness,
   getYahtzeeReorderConsumedForcedValues,
   getYahtzeeReorderHarnessSnapshot,
   getYahtzeeReorderTotalForcedValues,
-  isYahtzeeReorderHarnessArmed,
   resetYahtzeeReorderHarness,
   subscribeYahtzeeReorderHarness,
 } from '@/lib/yahtzee/reorderHarness';
@@ -37,132 +40,138 @@ import {
   setYahtzeeReorderTraceRoll,
   subscribeYahtzeeReorderTrace,
   type YahtzeeDieInput,
-  type YahtzeeDieSourceRow,
 } from '@/lib/yahtzee/reorderTrace';
+import {
+  createInitialPlayerState,
+  rollYahtzeeDice,
+  toggleYahtzeeHold,
+} from '@/lib/yahtzeeGameLogic';
+import type { YahtzeePlayerState } from '@/lib/yahtzeeTypes';
 
-function readAttr(el: HTMLElement, name: string): string | null {
-  return el.getAttribute(name);
-}
-function classifyRow(rowAttr: string | null): YahtzeeDieSourceRow {
-  if (rowAttr === 'held') return 'held';
-  if (rowAttr === 'result' || rowAttr === 'scored') return 'result';
-  if (rowAttr === 'scatter' || rowAttr === 'roll' || rowAttr === 'animating')
-    return 'roll';
-  return 'other';
-}
-
-function sampleAndEmit(reason: string): void {
-  const nodes = Array.from(
-    document.querySelectorAll<HTMLElement>('[data-die-idx]'),
-  );
-  if (nodes.length === 0) return;
-
-  const perRow: Record<string, HTMLElement[]> = {};
-  nodes.forEach((el) => {
-    const row = readAttr(el, 'data-die-row') ?? 'other';
-    if (!perRow[row]) perRow[row] = [];
-    perRow[row].push(el);
+// ────────────────────────────────────────────────────────────────
+// Snapshot synthesis from reducer output
+// ────────────────────────────────────────────────────────────────
+function snapshotDiceFromState(ps: YahtzeePlayerState): YahtzeeDieInput[] {
+  // Held row first (in physical die-id order), then roll row.
+  const heldIds: number[] = [];
+  const rollIds: number[] = [];
+  ps.dice.forEach((d, i) => {
+    if (d.isHeld) heldIds.push(i);
+    else rollIds.push(i);
   });
+  const ordered = [...heldIds, ...rollIds];
 
-  const inputs: YahtzeeDieInput[] = nodes.map((el, globalIdx) => {
-    const dieId = Number(readAttr(el, 'data-die-idx') ?? -1);
-    const value = Number(readAttr(el, 'data-die-value') ?? 0);
-    const heldAttr = readAttr(el, 'data-die-held');
-    const held = heldAttr === 'true';
-    const rowAttr = readAttr(el, 'data-die-row');
-    const sourceRow = classifyRow(rowAttr);
-    const rowArr = perRow[rowAttr ?? 'other'] ?? [];
-    const indexInRow = rowArr.indexOf(el);
-    const rect = el.getBoundingClientRect();
-    const reactKey = readAttr(el, 'data-die-react-key');
-    const animationPhase =
-      readAttr(el, 'data-die-transform-owner') ?? readAttr(el, 'data-die-layer');
-    const colorToken =
-      readAttr(el, 'data-die-color-token') ?? (el.className || null);
-    let computedColor: string | null = null;
-    try {
-      const cs = window.getComputedStyle(el);
-      computedColor = cs.backgroundColor || cs.color || null;
-    } catch {
-      computedColor = null;
-    }
+  return ordered.map((dieId, globalIdx) => {
+    const d = ps.dice[dieId];
+    const isHeld = d.isHeld;
+    const rowIds = isHeld ? heldIds : rollIds;
+    const indexInRow = rowIds.indexOf(dieId);
     return {
       dieId,
-      value,
-      held,
-      colorToken,
-      computedColor,
-      sourceRow,
+      value: d.value,
+      held: isHeld,
+      colorToken: isHeld ? 'harness:held' : 'harness:roll',
+      computedColor: null,
+      sourceRow: isHeld ? 'held' : 'roll',
       indexInRow,
       globalRenderIndex: globalIdx,
-      rect: {
-        x: Math.round(rect.left * 100) / 100,
-        y: Math.round(rect.top * 100) / 100,
-        w: Math.round(rect.width * 100) / 100,
-        h: Math.round(rect.height * 100) / 100,
-      },
-      animationPhase,
-      reactKey,
+      rect: null,
+      animationPhase: `reducer:rollsRemaining=${ps.rollsRemaining}`,
+      reactKey: `die-${dieId}`,
     };
   });
-
-  emitYahtzeeDiePresentation(reason, inputs);
 }
 
-function useReorderSampler(active: boolean): void {
-  useEffect(() => {
-    if (!active) return;
-    let raf = 0;
-    let stopped = false;
-    let mo: MutationObserver | null = null;
+// ────────────────────────────────────────────────────────────────
+// Scenario runner
+// ────────────────────────────────────────────────────────────────
+function runScenario(runId: string): void {
+  const totalForced = getYahtzeeReorderTotalForcedValues();
 
-    const schedule = (reason: string) => {
-      if (stopped) return;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => sampleAndEmit(reason));
-    };
+  emitYahtzeeReorderHarnessLifecycle(
+    'YAHTZEE_REORDER_HARNESS_MANUAL_START',
+    runId,
+    { totalForcedValues: totalForced },
+  );
 
-    schedule('sampler:init');
+  try {
+    // Step 1: initial roll [5,2,3,4,2]
+    setYahtzeeReorderTraceRoll(1);
+    let ps: YahtzeePlayerState = createInitialPlayerState();
+    ps = rollYahtzeeDice(ps);
+    emitYahtzeeDiePresentation('harness:roll-1', snapshotDiceFromState(ps));
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_STEP',
+      runId,
+      {
+        step: 'roll-1',
+        values: ps.dice.map((d) => d.value),
+        consumed: getYahtzeeReorderConsumedForcedValues(),
+        totalForcedValues: totalForced,
+      },
+    );
 
-    mo = new MutationObserver(() => schedule('sampler:mutation'));
-    mo.observe(document.body, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: [
-        'data-die-idx',
-        'data-die-value',
-        'data-die-held',
-        'data-die-held-layout',
-        'data-die-row',
-        'data-die-react-key',
-        'data-die-transform-owner',
-        'data-die-layer',
-        'data-die-color-token',
-        'class',
-        'style',
-      ],
-    });
+    // Step 2: hold physical dice 0..3
+    for (const idx of [0, 1, 2, 3]) {
+      ps = toggleYahtzeeHold(ps, idx);
+    }
+    emitYahtzeeDiePresentation('harness:hold-0-3', snapshotDiceFromState(ps));
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_STEP',
+      runId,
+      {
+        step: 'hold-0-3',
+        heldMask: ps.dice.map((d) => d.isHeld),
+      },
+    );
 
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(raf);
-      mo?.disconnect();
-    };
-  }, [active]);
-}
+    // Step 3: reroll — die 4 → 2
+    setYahtzeeReorderTraceRoll(2);
+    ps = rollYahtzeeDice(ps);
+    emitYahtzeeDiePresentation('harness:roll-2', snapshotDiceFromState(ps));
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_STEP',
+      runId,
+      {
+        step: 'roll-2',
+        values: ps.dice.map((d) => d.value),
+        consumed: getYahtzeeReorderConsumedForcedValues(),
+        totalForcedValues: totalForced,
+      },
+    );
 
-function blockingReason(el: {
-  isYahtzeeTurn: boolean;
-  isLocalTurn: boolean;
-  isNonHost: boolean;
-  playerId: string | null;
-}): string | null {
-  if (!el.isYahtzeeTurn) return 'not in a Yahtzee turn';
-  if (!el.isLocalTurn) return 'not your turn';
-  if (!el.isNonHost) return 'local player is host';
-  if (!el.playerId) return 'no local player id';
-  return null;
+    // Step 4: reroll — die 4 → 1
+    setYahtzeeReorderTraceRoll(3);
+    ps = rollYahtzeeDice(ps);
+    emitYahtzeeDiePresentation('harness:roll-3', snapshotDiceFromState(ps));
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_STEP',
+      runId,
+      {
+        step: 'roll-3',
+        values: ps.dice.map((d) => d.value),
+        consumed: getYahtzeeReorderConsumedForcedValues(),
+        totalForcedValues: totalForced,
+      },
+    );
+
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_COMPLETE',
+      runId,
+      {
+        finalValues: ps.dice.map((d) => d.value),
+        finalHeld: ps.dice.map((d) => d.isHeld),
+        consumed: getYahtzeeReorderConsumedForcedValues(),
+        totalForcedValues: totalForced,
+      },
+    );
+  } catch (err) {
+    emitYahtzeeReorderHarnessLifecycle(
+      'YAHTZEE_REORDER_HARNESS_ERROR',
+      runId,
+      { message: err instanceof Error ? err.message : String(err) },
+    );
+  }
 }
 
 export function YahtzeeReorderHarnessPill() {
@@ -182,146 +191,25 @@ export function YahtzeeReorderHarnessPill() {
     );
   }, []);
 
-  useEffect(() => {
-    setYahtzeeReorderTraceRoll(snap.nextRollIdx + 1);
-  }, [snap.nextRollIdx]);
-
-  // ============================================================
-  // Auto-arm + lifecycle emission
-  // ============================================================
-  const prevStatusRef = useRef(snap.status);
-  const prevConsumedRef = useRef(0);
-  const lastWaitingReasonRef = useRef<string | null>(null);
-  const clearedRef = useRef(false); // suppress auto-arm after explicit Clear until eligibility toggles
-
-  useEffect(() => {
-    const reason = blockingReason(snap.eligibility);
-    const eligible = reason === null;
-
-    // WAITING emit (only when reason changes and no active/prior run visible)
-    if (
-      !eligible &&
-      snap.status === 'idle' &&
-      snap.runId === null &&
-      reason !== lastWaitingReasonRef.current
-    ) {
-      lastWaitingReasonRef.current = reason;
-      emitYahtzeeReorderHarnessLifecycle(
-        'YAHTZEE_REORDER_HARNESS_WAITING',
-        null,
-        { reason, eligibility: snap.eligibility },
-      );
-    }
-
-    // Re-enable auto-arm once eligibility becomes true after a Clear.
-    if (eligible) clearedRef.current = false;
-
-    // AUTO-ARM: eligible, idle, no prior run, not suppressed.
-    if (
-      eligible &&
-      snap.status === 'idle' &&
-      snap.runId === null &&
-      !clearedRef.current
-    ) {
-      setYahtzeeReorderTraceActive(true);
-      const res = armYahtzeeReorderHarness();
-      const fresh = getYahtzeeReorderHarnessSnapshot();
-      if (res.ok) {
-        emitYahtzeeReorderHarnessLifecycle(
-          'YAHTZEE_REORDER_HARNESS_ARMED',
-          res.runId ?? fresh.runId,
-          {
-            eligibility: fresh.eligibility,
-            totalForcedValues: getYahtzeeReorderTotalForcedValues(),
-            totalRolls: fresh.totalRolls,
-          },
-        );
-      } else {
-        setYahtzeeReorderTraceActive(false);
-        emitYahtzeeReorderHarnessLifecycle(
-          'YAHTZEE_REORDER_HARNESS_REJECTED',
-          null,
-          { reason: res.reason ?? 'unknown', eligibility: fresh.eligibility },
-        );
-      }
-      setSnap(fresh);
+  const handleRun = useCallback(() => {
+    setYahtzeeReorderTraceActive(true);
+    const armed = armYahtzeeReorderHarness();
+    try {
+      runScenario(armed.runId);
+    } finally {
+      // Consuming the queue transitions the harness to `completed` via
+      // `advanceYahtzeeReorderHarnessRoll`; the runId is preserved.
+      // Turn the sampler off but keep every event in place.
+      setYahtzeeReorderTraceActive(false);
+      setSnap(getYahtzeeReorderHarnessSnapshot());
       setTraceSnap(getYahtzeeReorderTraceSnapshot());
     }
-  }, [snap.eligibility, snap.status, snap.runId]);
-
-  // Status transition + STEP emission (armed → in_progress → completed)
-  useEffect(() => {
-    const prev = prevStatusRef.current;
-    const now = snap.status;
-    const consumedNow = getYahtzeeReorderConsumedForcedValues();
-    const consumedPrev = prevConsumedRef.current;
-
-    if (prev !== 'in_progress' && now === 'in_progress') {
-      emitYahtzeeReorderHarnessLifecycle(
-        'YAHTZEE_REORDER_HARNESS_STARTED',
-        snap.runId,
-        {
-          consumed: consumedNow,
-          totalForcedValues: getYahtzeeReorderTotalForcedValues(),
-          rollIdx: snap.nextRollIdx,
-        },
-      );
-    } else if (now === 'in_progress' && consumedNow > consumedPrev) {
-      emitYahtzeeReorderHarnessLifecycle(
-        'YAHTZEE_REORDER_HARNESS_STEP',
-        snap.runId,
-        {
-          consumed: consumedNow,
-          totalForcedValues: getYahtzeeReorderTotalForcedValues(),
-          rollIdx: snap.nextRollIdx,
-        },
-      );
-    }
-
-    if (prev !== 'completed' && now === 'completed') {
-      emitYahtzeeReorderHarnessLifecycle(
-        'YAHTZEE_REORDER_HARNESS_COMPLETED',
-        snap.runId,
-        {
-          consumed: consumedNow,
-          totalForcedValues: getYahtzeeReorderTotalForcedValues(),
-        },
-      );
-      // Stop the sampler but KEEP trace events intact.
-      setYahtzeeReorderTraceActive(false);
-    }
-
-    prevStatusRef.current = now;
-    prevConsumedRef.current = consumedNow;
-  }, [snap.status, snap.nextRollIdx, snap.runId]);
-
-  const traceActive = traceSnap.active;
-  useReorderSampler(traceActive);
-
-  const handleDisarm = useCallback(() => {
-    if (isYahtzeeReorderHarnessArmed()) {
-      resetYahtzeeReorderHarness('cancel');
-      emitYahtzeeReorderHarnessLifecycle(
-        'YAHTZEE_REORDER_HARNESS_DISARMED',
-        snap.runId,
-        { manual: true },
-      );
-    }
-    setYahtzeeReorderTraceActive(false);
-    clearedRef.current = true;
-    setSnap(getYahtzeeReorderHarnessSnapshot());
-    setTraceSnap(getYahtzeeReorderTraceSnapshot());
-  }, [snap.runId]);
+  }, []);
 
   const handleClearTrace = useCallback(() => {
-    // Explicit erase — only path that clears events.
     resetYahtzeeReorderHarness('manual');
     setYahtzeeReorderTraceActive(false);
     clearYahtzeeReorderTrace();
-    clearedRef.current = true;
-    lastWaitingReasonRef.current = null;
-    prevStatusRef.current = 'idle';
-    prevConsumedRef.current = 0;
     setSnap(getYahtzeeReorderHarnessSnapshot());
     setTraceSnap(getYahtzeeReorderTraceSnapshot());
   }, []);
@@ -346,26 +234,6 @@ export function YahtzeeReorderHarnessPill() {
     }
   }, []);
 
-  // ============================================================
-  // Visibility: show whenever there's any Yahtzee context OR trace history.
-  // ============================================================
-  const hasHistory =
-    traceSnap.lifecycle.length > 0 ||
-    traceSnap.presentation.length > 0 ||
-    traceSnap.violations.length > 0;
-  const anyContext =
-    snap.eligibility.isYahtzeeTurn ||
-    isYahtzeeReorderHarnessArmed() ||
-    traceActive ||
-    hasHistory ||
-    snap.status === 'completed' ||
-    snap.status === 'cancelled';
-  if (!anyContext) return null;
-
-  // ============================================================
-  // Status line
-  // ============================================================
-  const reason = blockingReason(snap.eligibility);
   const totalForced = getYahtzeeReorderTotalForcedValues();
   const consumed = getYahtzeeReorderConsumedForcedValues();
 
@@ -374,20 +242,17 @@ export function YahtzeeReorderHarnessPill() {
   if (snap.status === 'completed') {
     statusLine = 'COMPLETED';
     statusColor = '#B5FFB5';
-  } else if (snap.status === 'cancelled') {
-    statusLine = 'REJECTED:cancelled';
-    statusColor = '#FF8B8B';
   } else if (snap.status === 'in_progress') {
-    statusLine = `RUNNING step ${consumed} of ${totalForced}`;
+    statusLine = `RUNNING ${consumed}/${totalForced}`;
     statusColor = '#FFD580';
   } else if (snap.status === 'armed') {
-    statusLine = 'AUTO-ARMED';
-    statusColor = '#B5FFB5';
-  } else if (reason) {
-    statusLine = `WAITING FOR ELIGIBLE NON-HOST YAHTZEE TURN (${reason})`;
+    statusLine = 'ARMED';
     statusColor = '#FFD580';
+  } else if (snap.status === 'cancelled') {
+    statusLine = 'CLEARED';
+    statusColor = '#CFCFCF';
   } else {
-    statusLine = 'AUTO-ARMED';
+    statusLine = 'IDLE — click Run to execute scenario';
     statusColor = '#B5FFB5';
   }
 
@@ -430,15 +295,7 @@ export function YahtzeeReorderHarnessPill() {
         YAHTZEE REORDER HARNESS
       </div>
       <div style={{ fontWeight: 700 }}>{statusLine}</div>
-      <div style={{ color: '#CFCFCF' }}>
-        run:{snap.runId ?? '—'}
-      </div>
-      <div style={{ color: '#CFCFCF' }}>
-        elig: turn={String(snap.eligibility.isYahtzeeTurn)} local=
-        {String(snap.eligibility.isLocalTurn)} nonHost=
-        {String(snap.eligibility.isNonHost)} pid=
-        {snap.eligibility.playerId ?? '—'}
-      </div>
+      <div style={{ color: '#CFCFCF' }}>run:{snap.runId ?? '—'}</div>
       <div style={{ color: '#CFCFCF' }}>
         lc:{traceSnap.lifecycle.length} ev:{traceSnap.presentation.length} v:
         <span
@@ -450,11 +307,11 @@ export function YahtzeeReorderHarnessPill() {
         </span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button type="button" onClick={handleCopy} style={btnPrimary}>
-          COPY
+        <button type="button" onClick={handleRun} style={btnPrimary}>
+          Run YAHTZEE REORDER HARNESS
         </button>
-        <button type="button" onClick={handleDisarm} style={btn}>
-          DISARM
+        <button type="button" onClick={handleCopy} style={btn}>
+          COPY
         </button>
         <button
           type="button"
