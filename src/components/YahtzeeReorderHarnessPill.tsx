@@ -53,12 +53,6 @@ import {
   type YahtzeeDieInput,
   type YahtzeeDieSourceRow,
 } from '@/lib/yahtzee/reorderTrace';
-import {
-  createInitialPlayerState,
-  rollYahtzeeDice,
-  toggleYahtzeeHold,
-} from '@/lib/yahtzeeGameLogic';
-import type { YahtzeePlayerState } from '@/lib/yahtzeeTypes';
 
 // ────────────────────────────────────────────────────────────────
 // DOM sampling — real mounted Yahtzee dice
@@ -246,175 +240,120 @@ function detectCrossStepViolations(
   }
 }
 
+
 // ────────────────────────────────────────────────────────────────
-// Reducer-derived synthetic snapshot (used when DOM is empty)
+// Passive continuous observer — records every mounted die on every
+// frame (and on every DOM mutation) until STOP. Survives arbitrary
+// opponent / self roll lifecycles.
 // ────────────────────────────────────────────────────────────────
-function synthesizeFromReducer(ps: YahtzeePlayerState): YahtzeeDieInput[] {
-  const heldIds: number[] = [];
-  const rollIds: number[] = [];
-  ps.dice.forEach((d, i) => {
-    if (d.isHeld) heldIds.push(i);
-    else rollIds.push(i);
-  });
-  const ordered = [...heldIds, ...rollIds];
-  return ordered.map((dieId, globalIdx) => {
-    const d = ps.dice[dieId];
-    const isHeld = d.isHeld;
-    const rowIds = isHeld ? heldIds : rollIds;
-    return {
-      dieId,
-      value: d.value,
-      held: isHeld,
-      colorToken: isHeld ? 'harness:held' : 'harness:roll',
-      computedColor: null,
-      sourceRow: isHeld ? 'held' : 'roll',
-      indexInRow: rowIds.indexOf(dieId),
-      globalRenderIndex: globalIdx,
-      rect: null,
-      animationPhase: `reducer:rollsRemaining=${ps.rollsRemaining}`,
-      reactKey: `die-${dieId}`,
-    };
-  });
+function sampleSignature(dice: SampledDie[]): string {
+  return dice
+    .map((d) => {
+      const r = d.rect
+        ? `${Math.round(d.rect.x)},${Math.round(d.rect.y)},${Math.round(
+            d.rect.w,
+          )},${Math.round(d.rect.h)}`
+        : 'null';
+      return [
+        d.dieId,
+        d.value,
+        d.held ? 1 : 0,
+        d.sourceRow,
+        d.indexInRow,
+        d.globalRenderIndex,
+        d.reactKey,
+        d.animationPhase ?? '',
+        r,
+      ].join('|');
+    })
+    .join(';');
 }
 
-// ────────────────────────────────────────────────────────────────
-// Async scenario runner
-// ────────────────────────────────────────────────────────────────
-async function runStep(
-  runId: string,
-  step: string,
-  dispatch: () => YahtzeePlayerState,
-  prevSampleRef: { current: SampledDie[] | null },
-  opts: { heldFrozen: boolean; settleTimeoutMs: number },
-  cancelRef: { current: boolean },
-): Promise<YahtzeePlayerState | null> {
-  if (cancelRef.current) return null;
-  emitYahtzeeReorderHarnessLifecycle('ACTION_DISPATCHED', runId, { step });
-  const ps = dispatch();
-  emitYahtzeeReorderHarnessLifecycle('REDUCER_COMMITTED', runId, {
-    step,
-    values: ps.dice.map((d) => d.value),
-    held: ps.dice.map((d) => d.isHeld),
-    rollsRemaining: ps.rollsRemaining,
-  });
-
-  await waitTwoFrames();
-  if (cancelRef.current) return null;
-
-  const sampled = sampleMountedDice();
-  emitYahtzeeReorderHarnessLifecycle('DOM_MOUNTED', runId, {
-    step,
-    domDieCount: sampled.length,
-    hasRealNodes: sampled.length > 0,
-  });
-
-  const inputs: YahtzeeDieInput[] =
-    sampled.length > 0
-      ? sampled.map(({ node: _n, ...rest }) => {
-          void _n;
-          return rest;
-        })
-      : synthesizeFromReducer(ps);
-  emitYahtzeeDiePresentation(`harness:${step}`, inputs);
-  emitYahtzeeReorderHarnessLifecycle('POST_PAINT_CAPTURED', runId, {
-    step,
-    sampledDice: inputs.length,
-    domSourced: sampled.length > 0,
-  });
-
-  detectCrossStepViolations(prevSampleRef.current, sampled, {
-    step,
-    heldFrozen: opts.heldFrozen,
-  });
-  prevSampleRef.current = sampled;
-
-  const settle = await waitForSettleOrTimeout(
-    runId,
-    step,
-    opts.settleTimeoutMs,
-  );
-  if (settle === 'settled') {
-    emitYahtzeeReorderHarnessLifecycle('ANIMATION_SETTLED', runId, { step });
-  }
-
-  emitYahtzeeReorderHarnessLifecycle('STEP_ADVANCE', runId, { step });
-  return ps;
-}
-
-async function runScenarioAsync(
+async function runPassiveObserverAsync(
   runId: string,
   cancelRef: { current: boolean },
 ): Promise<void> {
-  const totalForced = getYahtzeeReorderTotalForcedValues();
   emitYahtzeeReorderHarnessLifecycle(
     'YAHTZEE_REORDER_HARNESS_MANUAL_START',
     runId,
-    { totalForcedValues: totalForced },
+    { mode: 'passive-observer' },
   );
 
   const prevSampleRef: { current: SampledDie[] | null } = { current: null };
-  let ps: YahtzeePlayerState = createInitialPlayerState();
+  let prevSig = '';
+  let tick = 0;
+  let mutationBump = 0;
+
+  const mo =
+    typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(() => {
+          mutationBump += 1;
+        })
+      : null;
+  const moRoot =
+    typeof document !== 'undefined' ? document.body : null;
+  if (mo && moRoot) {
+    mo.observe(moRoot, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: [
+        'data-die-idx',
+        'data-die-value',
+        'data-die-held',
+        'data-die-row',
+        'data-die-render-path',
+        'data-die-transform-owner',
+      ],
+    });
+  }
 
   try {
-    // Step 1
-    setYahtzeeReorderTraceRoll(1);
-    const s1 = await runStep(
-      runId,
-      'roll-1',
-      () => (ps = rollYahtzeeDice(ps)),
-      prevSampleRef,
-      { heldFrozen: false, settleTimeoutMs: 1500 },
-      cancelRef,
-    );
-    if (!s1 || cancelRef.current) return;
+    while (!cancelRef.current) {
+      tick += 1;
+      const sampled = sampleMountedDice();
+      const sig = sampleSignature(sampled);
+      const bumped = mutationBump;
+      mutationBump = 0;
+      const changed = sig !== prevSig;
 
-    // Step 2 — hold 0..3 in one committed pass
-    const s2 = await runStep(
-      runId,
-      'hold-0-3',
-      () => {
-        for (const idx of [0, 1, 2, 3]) ps = toggleYahtzeeHold(ps, idx);
-        return ps;
-      },
-      prevSampleRef,
-      { heldFrozen: false, settleTimeoutMs: 800 },
-      cancelRef,
-    );
-    if (!s2 || cancelRef.current) return;
+      if (changed || bumped > 0 || tick % 60 === 0) {
+        emitYahtzeeReorderHarnessLifecycle('DOM_MOUNTED', runId, {
+          step: `passive:t${tick}`,
+          domDieCount: sampled.length,
+          hasRealNodes: sampled.length > 0,
+          mutationBumps: bumped,
+          changed,
+        });
 
-    // Step 3
-    setYahtzeeReorderTraceRoll(2);
-    const s3 = await runStep(
-      runId,
-      'roll-2',
-      () => (ps = rollYahtzeeDice(ps)),
-      prevSampleRef,
-      { heldFrozen: true, settleTimeoutMs: 1500 },
-      cancelRef,
-    );
-    if (!s3 || cancelRef.current) return;
+        const inputs: YahtzeeDieInput[] = sampled.map(
+          ({ node: _n, ...rest }) => {
+            void _n;
+            return rest;
+          },
+        );
+        emitYahtzeeDiePresentation(`passive:t${tick}`, inputs);
+        emitYahtzeeReorderHarnessLifecycle('POST_PAINT_CAPTURED', runId, {
+          step: `passive:t${tick}`,
+          sampledDice: inputs.length,
+          domSourced: sampled.length > 0,
+        });
 
-    // Step 4
-    setYahtzeeReorderTraceRoll(3);
-    const s4 = await runStep(
-      runId,
-      'roll-3',
-      () => (ps = rollYahtzeeDice(ps)),
-      prevSampleRef,
-      { heldFrozen: true, settleTimeoutMs: 1500 },
-      cancelRef,
-    );
-    if (!s4 || cancelRef.current) return;
+        detectCrossStepViolations(prevSampleRef.current, sampled, {
+          step: `passive:t${tick}`,
+          heldFrozen: false,
+        });
+        prevSampleRef.current = sampled;
+        prevSig = sig;
+      }
+
+      await nextFrame();
+    }
 
     emitYahtzeeReorderHarnessLifecycle(
-      'YAHTZEE_REORDER_HARNESS_COMPLETE',
+      'YAHTZEE_REORDER_HARNESS_STOPPED',
       runId,
-      {
-        finalValues: ps.dice.map((d) => d.value),
-        finalHeld: ps.dice.map((d) => d.isHeld),
-        consumed: getYahtzeeReorderConsumedForcedValues(),
-        totalForcedValues: totalForced,
-      },
+      { reason: 'user-stop', ticks: tick },
     );
   } catch (err) {
     emitYahtzeeReorderHarnessLifecycle(
@@ -422,6 +361,8 @@ async function runScenarioAsync(
       runId,
       { message: err instanceof Error ? err.message : String(err) },
     );
+  } finally {
+    mo?.disconnect();
   }
 }
 
@@ -461,7 +402,7 @@ export function YahtzeeReorderHarnessPill() {
     setYahtzeeReorderTraceActive(true);
     const armed = armYahtzeeReorderHarness();
     const localCancel = cancelRef.current;
-    void runScenarioAsync(armed.runId, localCancel).finally(() => {
+    void runPassiveObserverAsync(armed.runId, localCancel).finally(() => {
       setYahtzeeReorderTraceActive(false);
       setSnap(getYahtzeeReorderHarnessSnapshot());
       setTraceSnap(getYahtzeeReorderTraceSnapshot());
@@ -511,22 +452,19 @@ export function YahtzeeReorderHarnessPill() {
 
   if (!enabled) return null;
 
-  const totalForced = getYahtzeeReorderTotalForcedValues();
-  const consumed = getYahtzeeReorderConsumedForcedValues();
-
   let statusLine: string;
   let statusColor: string;
   if (running) {
-    statusLine = `RUNNING ${consumed}/${totalForced}`;
+    statusLine = `RECORDING — ${traceSnap.presentation.length} snaps`;
     statusColor = '#FFD580';
-  } else if (snap.status === 'completed') {
-    statusLine = 'COMPLETED';
-    statusColor = '#B5FFB5';
   } else if (snap.status === 'cancelled') {
-    statusLine = 'STOPPED';
+    statusLine = `STOPPED — ${traceSnap.presentation.length} snaps captured`;
     statusColor = '#CFCFCF';
+  } else if (traceSnap.presentation.length > 0) {
+    statusLine = `IDLE — ${traceSnap.presentation.length} snaps buffered`;
+    statusColor = '#B5FFB5';
   } else {
-    statusLine = 'IDLE — click RUN to execute scenario';
+    statusLine = 'IDLE — click RUN to record dice';
     statusColor = '#B5FFB5';
   }
 
