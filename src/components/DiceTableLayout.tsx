@@ -1065,10 +1065,20 @@ export function DiceTableLayout({
     console.warn('[DiceTableLayout] Empty orderedDice - this may cause visual flicker');
   }
   
-  // Separate held and unheld dice
-  const heldDice = orderedDice.filter(d => d.die.isHeld);
+  // Separate held and unheld dice.
+  // CANONICAL HELD-ROW POLICY: held dice are always sorted by (value ASC, dieId ASC).
+  // Every downstream layout consumer (heldPositions, heldPositionByOriginalIndex, fallback
+  // held-position derivations, and heldSlotIndexByDie) reads from this ordering, so a die's
+  // horizontal slot is solely a function of its position in the committed canonical order.
+  // This prevents a category-selection / authority-arrival render from silently switching
+  // the row into physical/insertion order via a `held:layout` fallback.
+  const canonicalHeldSort = (
+    a: (typeof orderedDice)[number],
+    b: (typeof orderedDice)[number],
+  ) => (a.die.value !== b.die.value ? a.die.value - b.die.value : a.originalIndex - b.originalIndex);
+  const heldDice = orderedDice.filter(d => d.die.isHeld).sort(canonicalHeldSort);
   const unheldDice = orderedDice.filter(d => !d.die.isHeld);
-  
+
   const heldCount = heldDice.length;
   const unheldCount = unheldDice.length;
   
@@ -1217,11 +1227,13 @@ export function DiceTableLayout({
   let layoutUnheldDice: typeof orderedDice;
   
   if (usePreRollLayout) {
-    // During animation: use the pre-roll held state for layout
-    layoutHeldDice = orderedDice.filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex]);
+    // During animation: use the pre-roll held state for layout (canonicalized).
+    layoutHeldDice = orderedDice
+      .filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex])
+      .sort(canonicalHeldSort);
     layoutUnheldDice = orderedDice.filter((d) => !heldMaskBeforeComplete?.[d.originalIndex]);
   } else {
-    // Normal: use actual isHeld state
+    // Normal: use actual isHeld state (already canonicalized above)
     layoutHeldDice = heldDice;
     layoutUnheldDice = unheldDice;
   }
@@ -1382,7 +1394,7 @@ export function DiceTableLayout({
         (() => {
           const heldSourceDice = usePreRollLayout
             ? layoutHeldDice
-            : orderedDice.filter((d) => d.die.isHeld);
+            : orderedDice.filter((d) => d.die.isHeld).sort(canonicalHeldSort);
           const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
           if (heldIdx < 0) return undefined;
           return getHeldPositions(heldSourceDice.length, dieWidth, gap)[heldIdx];
@@ -1504,7 +1516,7 @@ export function DiceTableLayout({
       if (effectivelyHeld2 && !heldPos2) {
         const heldSourceDice = usePreRollLayout
           ? layoutHeldDice
-          : orderedDice.filter((d) => d.die.isHeld);
+          : orderedDice.filter((d) => d.die.isHeld).sort(canonicalHeldSort);
         const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
         if (heldIdx >= 0) {
           const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
@@ -1775,7 +1787,7 @@ export function DiceTableLayout({
     if (effectivelyHeld && !heldPos) {
       const heldSourceDice = usePreRollLayout
         ? layoutHeldDice
-        : orderedDice.filter((dieItem) => dieItem.die.isHeld);
+        : orderedDice.filter((dieItem) => dieItem.die.isHeld).sort(canonicalHeldSort);
       const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
       if (heldIdx >= 0) {
         const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
@@ -1788,9 +1800,11 @@ export function DiceTableLayout({
     // FIX B2: Final render-boundary mutual exclusion rule.
     // If authoritative/presentation says die is held AND it's not currently animating fly-in,
     // it must NEVER render in scatter — not even for a single frame.
-    // Force it into the held row with a fallback position if needed.
+    // Force it into the held row with a fallback position (in canonical committed order).
     if (!isHeldInLayout && actuallyHeld && !isThisDieAnimating && !usePreRollLayout) {
-      const heldSourceDice = orderedDice.filter((dieItem) => dieItem.die.isHeld);
+      const heldSourceDice = orderedDice
+        .filter((dieItem) => dieItem.die.isHeld)
+        .sort(canonicalHeldSort);
       const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
       if (heldIdx >= 0) {
         const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
