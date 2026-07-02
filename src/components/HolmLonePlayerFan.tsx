@@ -41,6 +41,8 @@ export interface HolmLonePlayerFanProps {
   isFourColor: boolean;
   getFourColorSuit: (suit: string) => FourColorConfig | null | undefined;
   animate: boolean;
+  holmLedgerIdentity?: HolmLedgerIdentity;
+  ownerPlayerId?: string | null;
 }
 
 export function HolmLonePlayerFan({
@@ -52,6 +54,8 @@ export function HolmLonePlayerFan({
   isFourColor,
   getFourColorSuit,
   animate,
+  holmLedgerIdentity,
+  ownerPlayerId = null,
 }: HolmLonePlayerFanProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
