@@ -682,8 +682,23 @@ export const PlayerHand = ({
 
 
   // Render card backs for hidden cards
-  if (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
+  // EXCEPTION — Holm local active-self staged dealing: while cards.length <
+  // expectedCardCount for the active self, we must NOT paint visible card
+  // backs and then swap to face-up when a card lands (that produces the
+  // documented back→face flip). Fall through to the main-face branch, which
+  // renders only truly arrived cards face-up and (below) inert reservation
+  // slots for the unarrived positions to preserve the four-slot geometry.
+  const _isHolmActiveSelfStagedPreArrival =
+    isHolmGame &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    !isHidden &&
+    cards.length === 0 &&
+    typeof expectedCardCount === 'number' &&
+    expectedCardCount > 0;
+  if (!_isHolmActiveSelfStagedPreArrival && (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))) {
     const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
+
     
     
     // For 3-5-7 games with multiple cards, use fanned arc layout
