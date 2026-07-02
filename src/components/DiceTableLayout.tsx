@@ -1731,6 +1731,28 @@ export function DiceTableLayout({
     stableHeldRegistryEntries.map(([dieIndex], slotIndex) => [dieIndex, slotIndex]),
   );
 
+  // ── SHARED COMMITTED HELD-ROW ORDER (single render-source boundary) ──
+  // Every render path below (normal held layer + freeze path) must iterate
+  // held dice through this ordering so the React .map() order = DOM child
+  // order = committed canonical order (value ASC, dieId ASC).
+  // Scatter/unheld items follow in physical order — their relative DOM
+  // position is irrelevant because they are placed by transform.
+  const isHeldForCommittedOrder = (item: (typeof orderedDice)[number]) => {
+    const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
+    return usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+      ? preRollHeld
+      : item.die.isHeld;
+  };
+  const committedHeldItems = orderedDice
+    .filter(isHeldForCommittedOrder)
+    .sort((a, b) =>
+      a.die.value !== b.die.value
+        ? a.die.value - b.die.value
+        : a.originalIndex - b.originalIndex,
+    );
+  const nonHeldItems = orderedDice.filter((item) => !isHeldForCommittedOrder(item));
+  const committedHeldLayerIterationOrder = [...committedHeldItems, ...nonHeldItems];
+
   const renderDieForLayer = (item: (typeof orderedDice)[number], targetLayer: "held" | "scatter") => {
     const sccDie = item.die as SCCDieType;
     const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
