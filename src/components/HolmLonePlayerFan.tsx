@@ -24,6 +24,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
+import { noteTabledCardOwnership, recordHolmLedger, type HolmLedgerIdentity } from "@/lib/holm/holmPresentationLedger";
 
 type Card = { rank: string; suit: string };
 
