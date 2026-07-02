@@ -4968,6 +4968,90 @@ export const MobileGameTable = ({
   // re-mounting the frozen terminal cards while celebration ends.
   const isCurrentPlayerSoloVsChucky = _rawIsCurrentPlayerSoloVsChucky;
 
+  // HOLM_PRESENTATION_LEDGER — FOLD_PRESENTATION derivation trace.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    try {
+      const applied =
+        ((isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') ||
+          currentPlayer?.current_decision === 'fold' ||
+          holmSelfFoldedLatched)
+          ? 'opacity-40 grayscale-[30%]'
+          : null;
+      recordFoldPresentation(
+        {
+          dealerGameId: holmDealerGameId ?? null,
+          roundId: handContextId ?? null,
+          handNumber: currentRound ?? null,
+          handContextId: holmSelfCurrentHandCtx ?? handContextId ?? null,
+          playerId: currentPlayer?.id ?? null,
+        },
+        {
+          authoritativeDecision: currentPlayer?.current_decision ?? null,
+          optimisticDecision: null,
+          latchValue: holmSelfFoldedLatched ? 'fold' : null,
+          activeRenderBranch: 'MobileGameTable.activeSelfHand',
+          appliedDimClass: applied,
+          appliedDimValue: applied ? 0.4 : 1,
+          precedenceOrder: ['announcement-stay-loser', 'decision-fold', 'latched-fold'],
+        },
+      );
+    } catch { /* noop */ }
+  }, [
+    gameType,
+    currentPlayer?.current_decision,
+    holmSelfFoldedLatched,
+    isShowingAnnouncement,
+    winnerPlayerId,
+    isCurrentPlayerWinner,
+    holmSelfCurrentHandCtx,
+    handContextId,
+    currentRound,
+    currentPlayer?.id,
+    holmDealerGameId,
+  ]);
+
+  // HOLM_PRESENTATION_LEDGER — SOLO_CHUCKY_SNAPSHOT.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    try {
+      recordHolmLedger(
+        'SOLO_CHUCKY_SNAPSHOT',
+        'transition',
+        {
+          dealerGameId: holmDealerGameId ?? null,
+          roundId: handContextId ?? null,
+          handNumber: currentRound ?? null,
+          handContextId: holmSelfCurrentHandCtx ?? handContextId ?? null,
+          playerId: currentPlayer?.id ?? null,
+        },
+        {
+          isCurrentPlayerSoloVsChucky,
+          isShowingAnnouncement,
+          winnerPlayerId,
+          isCurrentPlayerWinner,
+          selfDecision: currentPlayer?.current_decision ?? null,
+          selfFoldedLatched: holmSelfFoldedLatched,
+        },
+      );
+    } catch { /* noop */ }
+  }, [
+    gameType,
+    isCurrentPlayerSoloVsChucky,
+    isShowingAnnouncement,
+    winnerPlayerId,
+    isCurrentPlayerWinner,
+    holmSelfFoldedLatched,
+    currentPlayer?.current_decision,
+    holmSelfCurrentHandCtx,
+    handContextId,
+    currentRound,
+    currentPlayer?.id,
+    holmDealerGameId,
+  ]);
+
+
+
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
