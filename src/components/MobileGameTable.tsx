@@ -8191,7 +8191,7 @@ export const MobileGameTable = ({
               roundId: handContextId ?? null,
               handNumber: currentRound ?? null,
               handContextId: handContextId ?? null,
-              playerId: currentPlayerId ?? null,
+              playerId: currentPlayer?.id ?? null,
             }}
             onAnimationStart={() => {
               // POT-OUT animation starting - mark active and use snapped pot
