@@ -3502,6 +3502,28 @@ export const MobileGameTable = ({
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
     stayedPlayersCount >= 2 && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+
+  // HOLM: monotonic folded-latch for the local self hand.
+  // Once we observe `current_decision === 'fold'` for a given
+  // handContextId, keep the folded dim on the active self subtree for
+  // the ENTIRETY of that hand — including win/result/announcement
+  // phases where a generic reveal/tabled/winner branch could otherwise
+  // revive the hand to full opacity. Cleared automatically on the next
+  // handContextId boundary.
+  const holmSelfFoldedForHandRef = useRef<string | null>(null);
+  const holmSelfCurrentHandCtx = handContextId ?? null;
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!holmSelfCurrentHandCtx) return;
+    if (currentPlayer?.current_decision === 'fold') {
+      holmSelfFoldedForHandRef.current = holmSelfCurrentHandCtx;
+    }
+  }, [gameType, currentPlayer?.current_decision, holmSelfCurrentHandCtx]);
+  const holmSelfFoldedLatched =
+    gameType === 'holm-game' &&
+    holmSelfCurrentHandCtx != null &&
+    holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
+
   
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
