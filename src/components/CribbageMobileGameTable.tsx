@@ -5334,7 +5334,7 @@ export const CribbageMobileGameTable = ({
       
       // CRITICAL: Create a NEW round record for the next hand.
       // This ensures event logging is properly scoped to (dealer_game_id, hand_number).
-      const result = await startNextCribbageHand(gameId, dealerGameId, countedState, playerIds);
+      const result = await startNextCribbageHand(gameId, dealerGameId, countedState, playerIds, writeRoundId ?? null);
       
       if (!result.success) {
         // Check if it's a winner detection case
