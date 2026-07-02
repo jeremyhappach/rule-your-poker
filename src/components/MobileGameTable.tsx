@@ -129,6 +129,7 @@ import {
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
 import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
+import { recordFoldPresentation, recordHolmLedger } from "@/lib/holm/holmPresentationLedger";
 import {
   HolmDealOrchestrator,
   HolmDealRuntimeMaybe,
