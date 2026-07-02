@@ -8,7 +8,11 @@ import { cn } from '@/lib/utils';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import { MeasuredActiveHandFan } from './activeHand/MeasuredActiveHandFan';
+import {
+  computeStageRectFromPane,
+  useActiveHandLayoutPolicy,
+} from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
@@ -90,26 +94,18 @@ export const GinRummyMobileCardsTab = ({
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
-  // Shared active-hand stage (measured once, drives ActiveHandFan resolver).
-  const ginHandStageRef = useRef<HTMLDivElement | null>(null);
-  const [ginHandStageRectPx, setGinHandStageRectPx] = useState<{ width: number; height: number } | null>(null);
-  useLayoutEffect(() => {
-    const el = ginHandStageRef.current;
-    if (!el) return;
-    const measure = () => {
-      const r = el.getBoundingClientRect();
-      setGinHandStageRectPx(prev =>
-        prev && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
-          ? prev
-          : { width: r.width, height: r.height },
-      );
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // Shared active-hand policy for instrumentation. The pane composition
+  // itself is now owned by MeasuredActiveHandFan (portal + pane-based
+  // reservation math) — no more independent stageRect measurement here.
+  const ginPolicy = useActiveHandLayoutPolicy('ginRummy');
+  // Bumped whenever the committed policy value changes (proves GeoLab
+  // Apply + realtime remote updates reach the active-hand render path).
+  const ginPolicyRevisionRef = useRef(0);
+  const [ginPolicyRevision, setGinPolicyRevision] = useState(0);
+  useEffect(() => {
+    ginPolicyRevisionRef.current += 1;
+    setGinPolicyRevision(ginPolicyRevisionRef.current);
+  }, [ginPolicy]);
 
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
   // Withhold each freshly drawn card from the rendered hand while its
@@ -324,7 +320,7 @@ export const GinRummyMobileCardsTab = ({
 
 
   return (
-    <div className="h-full px-2 flex flex-col">
+    <div className="relative h-full px-2 flex flex-col">
 
       {/* ── POST-KNOCK VIEW: Melds left-justified, deadwood right-justified, wraps naturally ── */}
       {inPostKnock ? (
@@ -396,48 +392,65 @@ export const GinRummyMobileCardsTab = ({
               DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
             </span>
           </div>
+          {/*
+            Pane-owned composition: the middle spacer occupies remaining
+            vertical space between the DW label and the sibling action
+            zone so the action zone is bottom-anchored. The active-hand
+            fan is portaled INTO `[data-gin-active-pane-content]` by
+            MeasuredActiveHandFan, which measures the un-transformed
+            pane rect and every `[data-active-hand-lower-zone]` sibling
+            (below), then derives:
+                stageRect.height = paneH·maxHeightPct
+                                     bounded by paneH − reserved − clearance
+                reserved  = max(paneH·reservedLowerZonePct,
+                                measured lower zone + safe area)
+                clearance = paneH · interZoneClearancePctOfPane
+            Cards align flex-end inside stageRect, so their bottom edge
+            sits exactly `clearance` px above the action zone. Tuning
+            `interZoneClearancePctOfPane` now visibly repositions the
+            gap — no independent Gin action-zone layout path remains.
+          */}
           <div
-            ref={ginHandStageRef}
-            data-gin-active-hand-stage=""
-            className="flex-1 min-h-0 flex items-start justify-center py-1 overflow-visible"
-          >
-            <ActiveHandFan
-              game="ginRummy"
-              cards={flatSortedHand.map(({ card }) => ({
-                suit: card.suit as CanonicalCardType['suit'],
-                rank: card.rank as CanonicalCardType['rank'],
-              }))}
-              capacity={GIN_CARDS_PER_PLAYER + 1}
-              stageRect={ginHandStageRectPx}
-              applyFan
-              renderCard={({ index, card_node }) => {
-                const item = flatSortedHand[index];
-                if (!item) return null;
-                const { card, originalIndex, meldGroup } = item;
-                const isSelected = selectedCardIndex === originalIndex;
-                const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-                const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-                const isMeld = meldGroup >= 0;
-                return (
-                  <button
-                    onClick={() => handleCardClick(originalIndex)}
-                    onPointerUp={(e) => e.currentTarget.blur()}
-                    disabled={isProcessing || !canSelect}
-                    className={cn(
-                      "transition-all duration-200 rounded relative",
-                      isMeld ? "opacity-100" : "opacity-80",
-                      isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                      canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
-                      isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                    )}
-                    style={{ zIndex: isSelected ? 20 : index }}
-                  >
-                    {card_node}
-                  </button>
-                );
-              }}
-            />
-          </div>
+            data-gin-active-hand-stage-spacer=""
+            className="flex-1 min-h-0"
+          />
+          <MeasuredActiveHandFan
+            game="ginRummy"
+            cards={flatSortedHand.map(({ card }) => ({
+              suit: card.suit as CanonicalCardType['suit'],
+              rank: card.rank as CanonicalCardType['rank'],
+            }))}
+            capacity={GIN_CARDS_PER_PLAYER + 1}
+            portalTargetSelector="[data-gin-active-pane-content]"
+            phaseLockKey={`gin|h${ginState.handNumber}|ph:${ginState.phase}|tp:${ginState.turnPhase}|p:${currentPlayerId}`}
+            applyFan
+            renderCard={({ index, card_node }) => {
+              const item = flatSortedHand[index];
+              if (!item) return null;
+              const { card, originalIndex, meldGroup } = item;
+              const isSelected = selectedCardIndex === originalIndex;
+              const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+              const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+              const isMeld = meldGroup >= 0;
+              return (
+                <button
+                  onClick={() => handleCardClick(originalIndex)}
+                  onPointerUp={(e) => e.currentTarget.blur()}
+                  disabled={isProcessing || !canSelect}
+                  className={cn(
+                    "transition-all duration-200 rounded relative pointer-events-auto",
+                    isMeld ? "opacity-100" : "opacity-80",
+                    isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                    canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                    isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+                  )}
+                  style={{ zIndex: isSelected ? 20 : index }}
+                >
+                  {card_node}
+                </button>
+              );
+            }}
+          />
         </>
       )}
 
@@ -519,6 +532,129 @@ export const GinRummyMobileCardsTab = ({
           </p>
         )}
       </div>
+      <GinActivePaneGeometryPill
+        policy={ginPolicy}
+        policyRevision={ginPolicyRevision}
+      />
     </div>
   );
 };
+
+// ─── Instrumentation ────────────────────────────────────────────────
+// Temporary on-screen Gin active-pane geometry pill. Hidden by default;
+// enable by appending `?ginGeom=1` to the URL, or set
+// `localStorage.ptp_ginGeom = '1'`. Also exposes the same snapshot on
+// `window.__ptp_ginPaneGeom` for export.
+function GinActivePaneGeometryPill({
+  policy,
+  policyRevision,
+}: {
+  policy: ReturnType<typeof useActiveHandLayoutPolicy>;
+  policyRevision: number;
+}) {
+  const [enabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get('ginGeom') === '1') return true;
+      return window.localStorage?.getItem('ptp_ginGeom') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [snap, setSnap] = useState<{
+    paneTop: number;
+    paneBottom: number;
+    paneH: number;
+    stageTop: number;
+    stageBottom: number;
+    stageH: number;
+    resolvedClearancePx: number;
+    reservedLowerZonePx: number;
+    actionZoneComputedTop: number;
+    actionZoneActualTop: number;
+    actionZoneH: number;
+    delta: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!enabled && typeof window !== 'undefined' && !(window as any).__ptp_ginPaneGeomAlwaysCompute) {
+      // Still compute & publish to window for headless export, but
+      // don't render. Cheap; runs only when a pane exists.
+    }
+    const compute = () => {
+      const pane = document.querySelector<HTMLElement>('[data-gin-active-pane-content]');
+      if (!pane) return;
+      const paneRect = pane.getBoundingClientRect();
+      const action = pane.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
+      const actionRect = action?.getBoundingClientRect() ?? null;
+      const measuredLowerZoneMinPx = actionRect ? actionRect.height : 0;
+      const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
+        computeStageRectFromPane(
+          { width: paneRect.width, height: paneRect.height },
+          policy,
+          { measuredLowerZoneMinPx, safeAreaBottomPx: 0 },
+        );
+      const stageTop = paneRect.top;
+      const stageBottom = stageTop + stageRect.height;
+      const actionZoneComputedTop = stageBottom + interZoneClearancePx;
+      const actionZoneActualTop = actionRect ? actionRect.top : NaN;
+      const next = {
+        paneTop: paneRect.top,
+        paneBottom: paneRect.bottom,
+        paneH: paneRect.height,
+        stageTop,
+        stageBottom,
+        stageH: stageRect.height,
+        resolvedClearancePx: interZoneClearancePx,
+        reservedLowerZonePx,
+        actionZoneComputedTop,
+        actionZoneActualTop,
+        actionZoneH: actionRect?.height ?? 0,
+        delta: Number.isFinite(actionZoneActualTop)
+          ? actionZoneActualTop - actionZoneComputedTop
+          : NaN,
+      };
+      if (typeof window !== 'undefined') {
+        (window as any).__ptp_ginPaneGeom = { ...next, policy, policyRevision };
+      }
+      setSnap(next);
+    };
+    compute();
+    if (typeof ResizeObserver === 'undefined') return;
+    const pane = document.querySelector<HTMLElement>('[data-gin-active-pane-content]');
+    if (!pane) return;
+    const ro = new ResizeObserver(compute);
+    ro.observe(pane);
+    const action = pane.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
+    if (action) ro.observe(action);
+    const mo = new MutationObserver(compute);
+    mo.observe(pane, { childList: true, subtree: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [enabled, policy, policyRevision]);
+
+  if (!enabled || !snap) return null;
+  const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : '—');
+  return (
+    <div
+      data-gin-active-pane-geom-pill=""
+      className="pointer-events-none absolute left-1 bottom-1 z-[9999] rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-emerald-300 shadow"
+      style={{ maxWidth: 220 }}
+    >
+      <div className="text-emerald-200">gin pane geom · rev {policyRevision}</div>
+      <div>pane H: {fmt(snap.paneH)}</div>
+      <div>stage T/B: {fmt(snap.stageTop)} / {fmt(snap.stageBottom)}</div>
+      <div>stage H: {fmt(snap.stageH)}</div>
+      <div>clearance: {fmt(snap.resolvedClearancePx)}</div>
+      <div>reserved LZ: {fmt(snap.reservedLowerZonePx)}</div>
+      <div>action ⌐ top (calc): {fmt(snap.actionZoneComputedTop)}</div>
+      <div>action ⌐ top (actual): {fmt(snap.actionZoneActualTop)}</div>
+      <div className={Math.abs(snap.delta) < 2 ? 'text-emerald-300' : 'text-amber-300'}>
+        Δ: {fmt(snap.delta)}px
+      </div>
+    </div>
+  );
+}
