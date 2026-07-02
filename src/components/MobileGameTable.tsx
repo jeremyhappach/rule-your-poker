@@ -10175,81 +10175,54 @@ export const MobileGameTable = ({
           );
         })()}
 
-        
-        {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
-        {/* This displays during the pot-to-winner animation so cards are visible */}
-        {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
-        {/* SKIP if cards are already tabled via solo vs Chucky - they're already in position */}
-        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && !isHolmMultiPlayerShowdown && (
-          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
-            <div 
-              className="flex"
-              style={{
-                animation: 'holmTableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
-                willChange: 'transform, opacity',
-              }}
-            >
-              {winnerCards.map((card, index) => {
-                const isFourColor = deckColorMode === 'four_color';
-                const fourColorConfig = getFourColorSuit(card.suit);
-                const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
-                const twoColorTextStyle = !isFourColor 
-                  ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
-                  : {};
-                const isHighlighted = winningCardHighlights.playerIndices.includes(index);
-                const isKicker = winningCardHighlights.kickerPlayerIndices.includes(index);
-                
-                // Apply lift effect for highlighted cards (same as PlayingCard component)
-                const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
-                
-                return (
-                  <div 
-                    key={index} 
-                    className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg transition-transform duration-200 ${
-                      isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
-                      isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
-                      'border-green-500'
-                    }`}
-                    style={{ 
-                      backgroundColor: cardBg, 
-                      ...twoColorTextStyle,
-                      transform: liftTransform || undefined,
-                      marginLeft: index > 0 ? '-12px' : '0'
-                    }}
-                  >
-                    <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                      {card.rank}
-                    </span>
-                    {!isFourColor && (
-                      <span className="text-2xl leading-none -mt-0.5">
-                        {card.suit}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <style>{`
-              @keyframes holmTableSpinIn {
-                0% {
-                  opacity: 0;
-                  transform: translateY(240px) scale(0.3) rotate(0deg);
-                }
-                40% {
-                  opacity: 1;
-                  transform: translateY(100px) scale(0.7) rotate(270deg);
-                }
-                70% {
-                  transform: translateY(30px) scale(0.9) rotate(540deg);
-                }
-                100% {
-                  opacity: 1;
-                  transform: translateY(0) scale(1) rotate(720deg);
-                }
-              }
-            `}</style>
-          </div>
-        )}
+
+        {/* WINNER-CARD PRESENTATION DISPATCHER — canonical selection boundary.
+            Holm's opponent cards are canonically tabled by the seat-cluster
+            showdown row; there is no separate outward-spin winner-card path.
+            The 3-5-7 "winner chose to show" outward-tabling stage lives above
+            (gated `gameType !== 'holm-game'`). This block is retained purely
+            as an instrumentation seam so the runtime dispatcher decision is
+            visible on the ledger and any future re-introduction of a bespoke
+            winner-card mount for Holm is caught here first.
+        */}
+        {(() => {
+          const wantsHolmWinnerCards =
+            gameType === 'holm-game'
+            && holmWinPotTriggerIdGated
+            && !!winnerPlayerId
+            && winnerCards.length > 0
+            && winnerPlayerId !== currentPlayer?.id
+            && !isSoloVsChucky
+            && !isHolmMultiPlayerShowdown;
+          if (wantsHolmWinnerCards) {
+            try {
+              recordHolmLedger(
+                'WINNER_CARD_PRESENTATION_SELECT',
+                'select',
+                holmPresentationOwner.resolveLedgerIdentity({
+                  dealerGameId: holmDealerGameId ?? null,
+                  roundId: handContextId ?? null,
+                  handNumber: currentRound ?? null,
+                  handContextId: handContextId ?? null,
+                  playerId: winnerPlayerId,
+                }),
+                {
+                  gameType,
+                  selectedMode: 'canonical-seat-cluster-showdown-row',
+                  rejectedMode: '357-style-outward-tabled-spin',
+                  rejectionReason:
+                    'Holm opponent cards are already canonically tabled; no bespoke winner-card mount is eligible for gameType=holm-game.',
+                  winnerPlayerId,
+                  winnerCardsCount: winnerCards.length,
+                  ownerKey: holmPresentationOwner.identity.key,
+                },
+              );
+            } catch { /* noop */ }
+          }
+          return null;
+        })()}
+
+
         
         {/* PR-B: single seat-rendering path.
             Every occupied seat resolves through the shell-owned

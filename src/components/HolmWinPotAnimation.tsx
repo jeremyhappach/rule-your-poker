@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { recordHolmLedger, recordHolmLedgerViolation, type HolmLedgerIdentity } from '@/lib/holm/holmPresentationLedger';
+import { useShellOverlayPortal } from '@/lib/canonicalShell/ShellOverlayMounts';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
@@ -298,20 +299,17 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       };
     }
     recordHolmLedger('WIN_CHIP_LAYER', 'mount', holmLedgerIdentity, {
-      mountPath: 'HolmWinPotAnimation (fixed, inline)',
-      portalTarget: 'inline (React fragment)',
-      zIndex: 1000,
-      positionMode: 'fixed',
+      mountPath: 'HolmWinPotAnimation (portalled → shell-overlay settlement layer)',
+      portalTarget: 'ShellOverlayMounts[settlement]',
+      layerOwner: 'canonical-shell/ShellOverlayLayers',
+      layerName: 'settlement',
+      positionMode: 'fixed (viewport)',
       animationCount: animations.length,
-      containerAncestry: ancestry.slice(0, 6),
+      containerAncestry: ancestry.slice(0, 8),
       overlapSample,
     });
     if (overlapSample && overlapSample.overlaps === true) {
-      // Not a guaranteed violation, but flags potential z-order concern.
-      const zIdx = parseInt(String(overlapSample.seatDiscZ ?? '0'), 10);
-      if (Number.isFinite(zIdx) && zIdx >= 1000) {
-        recordHolmLedgerViolation('WIN_CHIP_LAYER', 'seat-chip-may-outpaint', holmLedgerIdentity, overlapSample);
-      }
+      recordHolmLedgerViolation('WIN_CHIP_LAYER', 'seat-chip-overlap-detected', holmLedgerIdentity, overlapSample);
     }
     return () => {
       recordHolmLedger('WIN_CHIP_LAYER', 'unmount', holmLedgerIdentity, {
@@ -321,10 +319,11 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animations.length, triggerId]);
 
+  const portalToSettlement = useShellOverlayPortal('settlement');
+
   if (animations.length === 0) return null;
 
-
-  return (
+  const rendered = (
     <>
       {animations.map((anim) => {
         const deltaX = anim.toX - anim.fromX;
@@ -339,7 +338,9 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
               left: anim.viewportLeft + anim.fromX,
               top: anim.viewportTop + anim.fromY,
               transform: 'translate(-50%, -50%)',
-              zIndex: 1000,
+              // No hard-coded z here — the shell overlay 'settlement' layer
+              // owns the paint order (above SeatAnchorLayer, below HUD /
+              // modals / announcements). See SHELL_OVERLAY_Z.
             }}
           >
 
@@ -351,7 +352,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
             >
               <span className="text-black text-xs font-black drop-shadow-sm">${formatChipValue(anim.amount)}</span>
             </div>
-            
+
             <style dangerouslySetInnerHTML={{ __html: `
               @keyframes holmWinPot-${animKey.replace(/[^a-zA-Z0-9]/g, '_')} {
                 0% {
@@ -397,6 +398,13 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       })}
     </>
   );
+
+  // Portal into the shell-owned 'settlement' overlay layer so paint order is
+  // structurally above canonical seat-cluster artifacts (SeatAnchorLayer) and
+  // below HUD, modals, and announcements. Falls back to inline render only if
+  // the shell overlay provider is not mounted (non-canonical embed).
+  const portalled = portalToSettlement(rendered);
+  return portalled ?? rendered;
 };
 
 export default HolmWinPotAnimation;
