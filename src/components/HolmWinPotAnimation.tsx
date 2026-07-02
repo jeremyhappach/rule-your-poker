@@ -299,20 +299,17 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       };
     }
     recordHolmLedger('WIN_CHIP_LAYER', 'mount', holmLedgerIdentity, {
-      mountPath: 'HolmWinPotAnimation (fixed, inline)',
-      portalTarget: 'inline (React fragment)',
-      zIndex: 1000,
-      positionMode: 'fixed',
+      mountPath: 'HolmWinPotAnimation (portalled → shell-overlay settlement layer)',
+      portalTarget: 'ShellOverlayMounts[settlement]',
+      layerOwner: 'canonical-shell/ShellOverlayLayers',
+      layerName: 'settlement',
+      positionMode: 'fixed (viewport)',
       animationCount: animations.length,
-      containerAncestry: ancestry.slice(0, 6),
+      containerAncestry: ancestry.slice(0, 8),
       overlapSample,
     });
     if (overlapSample && overlapSample.overlaps === true) {
-      // Not a guaranteed violation, but flags potential z-order concern.
-      const zIdx = parseInt(String(overlapSample.seatDiscZ ?? '0'), 10);
-      if (Number.isFinite(zIdx) && zIdx >= 1000) {
-        recordHolmLedgerViolation('WIN_CHIP_LAYER', 'seat-chip-may-outpaint', holmLedgerIdentity, overlapSample);
-      }
+      recordHolmLedgerViolation('WIN_CHIP_LAYER', 'seat-chip-overlap-detected', holmLedgerIdentity, overlapSample);
     }
     return () => {
       recordHolmLedger('WIN_CHIP_LAYER', 'unmount', holmLedgerIdentity, {
