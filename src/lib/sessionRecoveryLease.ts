@@ -20,6 +20,8 @@
  */
 
 import { appendSessionRecoveryEvent } from './networkSimChaos';
+import { recordSessionRecoveryLease } from './authEjectionLedger';
+
 
 export type TerminalRecoveryReason =
   | 'explicit-leave'
