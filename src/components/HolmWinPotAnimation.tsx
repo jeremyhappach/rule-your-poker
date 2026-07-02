@@ -258,7 +258,71 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerId]);
 
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    if (animations.length === 0) return;
+    // Compute stacking-context ancestry for the portal parent (document.body).
+    // These animations are rendered in-place via `position: fixed`, so their
+    // stacking parent is the nearest containing block with a transform,
+    // filter, will-change, or contain style set on an ancestor.
+    let target: Element | null = containerRef.current ?? null;
+    const ancestry: string[] = [];
+    let hop = 0;
+    while (target && hop < 20) {
+      const cs = getComputedStyle(target);
+      ancestry.push(`${(target as HTMLElement).tagName}#${(target as HTMLElement).id || ''}.${(target as HTMLElement).className?.toString?.().slice(0, 40) || ''} z=${cs.zIndex} pos=${cs.position} tx=${cs.transform !== 'none' ? 'y' : 'n'}`);
+      target = target.parentElement;
+      hop += 1;
+    }
+    // Measure overlap with nearest canonical seat chip disc for the first animation.
+    let overlapSample: null | Record<string, unknown> = null;
+    const seatDisc = document.querySelector('[data-canonical-seat-chip-disc]') as HTMLElement | null;
+    if (seatDisc) {
+      const dr = seatDisc.getBoundingClientRect();
+      const first = animations[0];
+      const overlapRect = {
+        left: first.viewportLeft + first.fromX - 20,
+        top: first.viewportTop + first.fromY - 20,
+        right: first.viewportLeft + first.fromX + 20,
+        bottom: first.viewportTop + first.fromY + 20,
+      };
+      const overlaps =
+        overlapRect.left < dr.right &&
+        overlapRect.right > dr.left &&
+        overlapRect.top < dr.bottom &&
+        overlapRect.bottom > dr.top;
+      overlapSample = {
+        overlaps,
+        seatDiscZ: getComputedStyle(seatDisc).zIndex,
+        seatDiscRect: { x: dr.left, y: dr.top, w: dr.width, h: dr.height },
+      };
+    }
+    recordHolmLedger('WIN_CHIP_LAYER', 'mount', holmLedgerIdentity, {
+      mountPath: 'HolmWinPotAnimation (fixed, inline)',
+      portalTarget: 'inline (React fragment)',
+      zIndex: 1000,
+      positionMode: 'fixed',
+      animationCount: animations.length,
+      containerAncestry: ancestry.slice(0, 6),
+      overlapSample,
+    });
+    if (overlapSample && overlapSample.overlaps === true) {
+      // Not a guaranteed violation, but flags potential z-order concern.
+      const zIdx = parseInt(String(overlapSample.seatDiscZ ?? '0'), 10);
+      if (Number.isFinite(zIdx) && zIdx >= 1000) {
+        recordHolmLedgerViolation('WIN_CHIP_LAYER', 'seat-chip-may-outpaint', holmLedgerIdentity, overlapSample);
+      }
+    }
+    return () => {
+      recordHolmLedger('WIN_CHIP_LAYER', 'unmount', holmLedgerIdentity, {
+        mountPath: 'HolmWinPotAnimation',
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animations.length, triggerId]);
+
   if (animations.length === 0) return null;
+
 
   return (
     <>
