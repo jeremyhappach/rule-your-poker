@@ -7,7 +7,7 @@
  *
  * Surfaces: initial/current pane rect, committed stage bottom, lower-zone
  * reservation, resolved clearance, applied card scale (via
- * policy.cardWidthPctOfPane), action-zone actual top, and phase-lock key.
+ * policy.maxWidthPctOfPane), action-zone actual top, and phase-lock key.
  */
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
@@ -30,7 +30,7 @@ interface Snap {
   actionZoneActualTop: number;
   actionZoneH: number;
   delta: number;
-  cardWidthPctOfPane: number;
+  maxWidthPctOfPane: number;
   phaseLockKey: string | null;
   fanCommittedRectH: number;
   fanCommittedRectW: number;
@@ -98,7 +98,7 @@ export function HolmActivePaneGeometryPill() {
         delta: Number.isFinite(actionZoneActualTop)
           ? actionZoneActualTop - actionZoneComputedTop
           : NaN,
-        cardWidthPctOfPane: policy.cardWidthPctOfPane,
+        maxWidthPctOfPane: policy.maxWidthPctOfPane,
         phaseLockKey,
         fanCommittedRectH: committedRect?.height ?? 0,
         fanCommittedRectW: committedRect?.width ?? 0,
@@ -152,7 +152,7 @@ export function HolmActivePaneGeometryPill() {
       <div className={Math.abs(snap.delta) < 2 ? 'text-emerald-300' : 'text-amber-300'}>
         Δ: {fmt(snap.delta)}px
       </div>
-      <div>card % pane: {fmt(snap.cardWidthPctOfPane)}</div>
+      <div>card % pane: {fmt(snap.maxWidthPctOfPane)}</div>
       <div>fan committed W×H: {fmt(snap.fanCommittedRectW)}×{fmt(snap.fanCommittedRectH)}</div>
       <div className="truncate">lockKey: {snap.phaseLockKey ?? '—'}</div>
     </div>
