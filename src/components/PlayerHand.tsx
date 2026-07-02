@@ -351,10 +351,14 @@ export const PlayerHand = ({
   // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
   const holmActiveSelfRef = useRef<HTMLDivElement | null>(null);
+  const holmHiddenBranchRef = useRef<HTMLDivElement | null>(null);
   const holmPrevGeomRef = useRef<Record<string, unknown> | null>(null);
   const holmSizeSourceEmittedForRef = useRef<string | null>(null);
   const holmSettledRectsRef = useRef<Map<string, { x: number; y: number; w: number; h: number; rot: number }>>(new Map());
   const holmLastHandKeyRef = useRef<string | null>(null);
+  // Per-card face-mode history for FACE_REVEAL_AFTER_LAND_VIOLATION detection.
+  // key = cardId, value = { lastFace: 'face'|'back', landed: boolean }
+  const holmFaceHistoryRef = useRef<Map<string, { lastFace: 'face' | 'back'; landed: boolean }>>(new Map());
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   const forensicsId = `PlayerHand:${instanceIdRef.current}`;
@@ -690,6 +694,8 @@ export const PlayerHand = ({
     const startAngle = -arcSpread / 2;
     const angleStep = count > 1 ? arcSpread / (count - 1) : 0;
     
+    const _holmHiddenFaceEmit =
+      isHolmGame && !isOpponentExposedShowdown;
     return (
       <div className="flex justify-center relative" ref={is357Game ? measureRef : undefined} style={{ minHeight: '60px' }}>
         {Array.from({ length: count }, (_, index) => {
@@ -715,6 +721,29 @@ export const PlayerHand = ({
             />
           );
         })}
+        {_holmHiddenFaceEmit ? (
+          <HolmFaceStateProbe
+            renderBranch="hidden"
+            baseHandContextId={baseHandContextId}
+            dealPhase={dealPhase}
+            forceHiddenFaces={forceHiddenFaces}
+            expectedCardCount={expectedCardCount ?? null}
+            arrivedCount={cards.length}
+            slotCount={count}
+            claimedCardIds={claimedCardIds ?? null}
+            perCard={Array.from({ length: count }, (_, i) => ({
+              slotIndex: i,
+              cardId: `<hidden-slot-${i}>`,
+              faceMode: 'back' as const,
+              transportPhase: 'armed' as const,
+              landed: false,
+              settled: false,
+            }))}
+            faceHistoryRef={holmFaceHistoryRef}
+            handKeyRef={holmLastHandKeyRef}
+            sourceBranchLabel="hidden-back-branch"
+          />
+        ) : null}
       </div>
     );
   }
@@ -1077,6 +1106,27 @@ export const PlayerHand = ({
     holmSizeSourceEmittedForRef,
   } as const;
 
+  // Per-card face-state descriptors for the main render branch (Holm active-self).
+  const holmFaceStatePerCard = isHolmActiveSelf
+    ? sortedCardsWithIndices.map(({ card, originalIndex }, displayIndex) => {
+        const explicitId = (card as any).id ?? (card as any).cardId;
+        const cardId = explicitId != null
+          ? String(explicitId)
+          : `${baseHandContextId ?? 'no-base'}#${card.rank}-${card.suit}-${originalIndex}`;
+        const isClaimed = claimedCardIds
+          ? claimedCardIds.includes(cardId) || claimedCardIds.includes(String(explicitId ?? ''))
+          : false;
+        return {
+          slotIndex: displayIndex,
+          cardId,
+          faceMode: (forceHiddenFaces ? 'back' : 'face') as 'face' | 'back',
+          transportPhase: (isClaimed ? 'settled' : 'landed') as 'armed' | 'in-flight' | 'landed' | 'settled',
+          landed: true,
+          settled: isClaimed,
+        };
+      })
+    : [];
+
   return (
     <div
       className="flex"
@@ -1133,6 +1183,22 @@ export const PlayerHand = ({
         return cardEl;
       })}
       <HolmDealGeometryProbe {...holmTraceProps} />
+      {isHolmActiveSelf ? (
+        <HolmFaceStateProbe
+          renderBranch="main"
+          baseHandContextId={baseHandContextId}
+          dealPhase={dealPhase}
+          forceHiddenFaces={forceHiddenFaces}
+          expectedCardCount={expectedCardCount ?? null}
+          arrivedCount={cards.length}
+          slotCount={displayCardCount}
+          claimedCardIds={claimedCardIds ?? null}
+          perCard={holmFaceStatePerCard}
+          faceHistoryRef={holmFaceHistoryRef}
+          handKeyRef={holmLastHandKeyRef}
+          sourceBranchLabel="main-face-branch"
+        />
+      ) : null}
     </div>
   );
 
@@ -1337,5 +1403,135 @@ const HolmDealGeometryProbe: React.FC<HolmDealGeometryProbeProps> = (props) => {
 
   return null;
 };
+
+type HolmFaceStateProbePerCard = {
+  slotIndex: number;
+  cardId: string;
+  faceMode: 'face' | 'back';
+  transportPhase: 'armed' | 'in-flight' | 'landed' | 'settled';
+  landed: boolean;
+  settled: boolean;
+};
+
+type HolmFaceStateProbeProps = {
+  renderBranch: 'hidden' | 'main';
+  baseHandContextId?: string | null;
+  dealPhase: string | null;
+  forceHiddenFaces: boolean;
+  expectedCardCount: number | null;
+  arrivedCount: number;
+  slotCount: number;
+  claimedCardIds: readonly string[] | null;
+  perCard: HolmFaceStateProbePerCard[];
+  faceHistoryRef: React.MutableRefObject<Map<string, { lastFace: 'face' | 'back'; landed: boolean }>>;
+  handKeyRef: React.MutableRefObject<string | null>;
+  sourceBranchLabel: string;
+};
+
+const HolmFaceStateProbe: React.FC<HolmFaceStateProbeProps> = ({
+  renderBranch, baseHandContextId, dealPhase, forceHiddenFaces,
+  expectedCardCount, arrivedCount, slotCount, claimedCardIds,
+  perCard, faceHistoryRef, handKeyRef, sourceBranchLabel,
+}) => {
+  useEffect(() => {
+    if (!isHolmTraceArmed()) return;
+    const lc = getLifecycleContext();
+    const handAnchor = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position]')
+      : null;
+    const seatCluster = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-holm-active-self-fan-root]')?.closest<HTMLElement>('[data-canonical-seat-cluster]') ?? null
+      : null;
+    const handContextId = baseHandContextId
+      ?? handAnchor?.getAttribute('data-card-anchor')
+      ?? null;
+    const playerId = seatCluster?.getAttribute('data-player-id') ?? null;
+    const identity = {
+      dealerGameId: lc.dealerGameId,
+      roundId: lc.roundId,
+      handNumber: (lc as any).handNumber ?? null,
+      handContextId,
+      playerId,
+    };
+    const handKey = `${identity.dealerGameId}|${identity.roundId}|${identity.handContextId}|${identity.playerId}`;
+    // Reset face history on hand boundary.
+    if (handKeyRef.current !== handKey) {
+      // handKeyRef is also owned by the geometry probe; only clear the face
+      // history when the key actually changed, and don't fight the geometry
+      // probe over the ref value.
+      faceHistoryRef.current = new Map();
+    }
+
+    const violations: Array<{
+      cardId: string;
+      prevFace: 'face' | 'back';
+      nextFace: 'face' | 'back';
+      reason: string;
+    }> = [];
+    const perCardEmit = perCard.map((c) => {
+      const prev = faceHistoryRef.current.get(c.cardId);
+      const prevFace = prev?.lastFace ?? null;
+      const wasLanded = prev?.landed ?? false;
+      let changeReason: string | null = null;
+      if (prevFace !== null && prevFace !== c.faceMode) {
+        if (prevFace === 'back' && c.faceMode === 'face' && wasLanded) {
+          changeReason = `reveal-after-land forceHiddenFaces:${forceHiddenFaces} dealPhase:${dealPhase ?? 'null'}`;
+          violations.push({
+            cardId: c.cardId,
+            prevFace,
+            nextFace: c.faceMode,
+            reason: changeReason,
+          });
+        } else {
+          changeReason = `face-change branch:${renderBranch} forceHiddenFaces:${forceHiddenFaces}`;
+        }
+      }
+      faceHistoryRef.current.set(c.cardId, {
+        lastFace: c.faceMode,
+        landed: wasLanded || c.landed,
+      });
+      return {
+        slotIndex: c.slotIndex,
+        cardId: c.cardId,
+        faceMode: c.faceMode,
+        prevFaceMode: prevFace,
+        changeReason,
+        transportPhase: c.transportPhase,
+        landed: c.landed,
+        settled: c.settled,
+      };
+    });
+
+    recordHolmTrace(
+      'HOLM_STAGED_DEAL_FACE_STATE',
+      `branch=${renderBranch} slots=${slotCount} arrived=${arrivedCount}/${expectedCardCount ?? '?'}`,
+      {
+        identity,
+        renderBranch,
+        sourceBranch: sourceBranchLabel,
+        inputs: {
+          dealPhase,
+          forceHiddenFaces,
+          expectedCardCount,
+          arrivedCount,
+          slotCount,
+          claimedCardIds,
+        },
+        perCard: perCardEmit,
+      },
+    );
+
+    if (violations.length > 0) {
+      recordHolmTrace(
+        'FACE_REVEAL_AFTER_LAND_VIOLATION',
+        `reveal-after-land x${violations.length}`,
+        { identity, renderBranch, violations, dealPhase, forceHiddenFaces },
+      );
+    }
+  });
+
+  return null;
+};
+
 
 
