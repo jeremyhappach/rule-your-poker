@@ -1404,4 +1404,134 @@ const HolmDealGeometryProbe: React.FC<HolmDealGeometryProbeProps> = (props) => {
   return null;
 };
 
+type HolmFaceStateProbePerCard = {
+  slotIndex: number;
+  cardId: string;
+  faceMode: 'face' | 'back';
+  transportPhase: 'armed' | 'in-flight' | 'landed' | 'settled';
+  landed: boolean;
+  settled: boolean;
+};
+
+type HolmFaceStateProbeProps = {
+  renderBranch: 'hidden' | 'main';
+  baseHandContextId?: string | null;
+  dealPhase: string | null;
+  forceHiddenFaces: boolean;
+  expectedCardCount: number | null;
+  arrivedCount: number;
+  slotCount: number;
+  claimedCardIds: readonly string[] | null;
+  perCard: HolmFaceStateProbePerCard[];
+  faceHistoryRef: React.MutableRefObject<Map<string, { lastFace: 'face' | 'back'; landed: boolean }>>;
+  handKeyRef: React.MutableRefObject<string | null>;
+  sourceBranchLabel: string;
+};
+
+const HolmFaceStateProbe: React.FC<HolmFaceStateProbeProps> = ({
+  renderBranch, baseHandContextId, dealPhase, forceHiddenFaces,
+  expectedCardCount, arrivedCount, slotCount, claimedCardIds,
+  perCard, faceHistoryRef, handKeyRef, sourceBranchLabel,
+}) => {
+  useEffect(() => {
+    if (!isHolmTraceArmed()) return;
+    const lc = getLifecycleContext();
+    const handAnchor = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position]')
+      : null;
+    const seatCluster = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-holm-active-self-fan-root]')?.closest<HTMLElement>('[data-canonical-seat-cluster]') ?? null
+      : null;
+    const handContextId = baseHandContextId
+      ?? handAnchor?.getAttribute('data-card-anchor')
+      ?? null;
+    const playerId = seatCluster?.getAttribute('data-player-id') ?? null;
+    const identity = {
+      dealerGameId: lc.dealerGameId,
+      roundId: lc.roundId,
+      handNumber: (lc as any).handNumber ?? null,
+      handContextId,
+      playerId,
+    };
+    const handKey = `${identity.dealerGameId}|${identity.roundId}|${identity.handContextId}|${identity.playerId}`;
+    // Reset face history on hand boundary.
+    if (handKeyRef.current !== handKey) {
+      // handKeyRef is also owned by the geometry probe; only clear the face
+      // history when the key actually changed, and don't fight the geometry
+      // probe over the ref value.
+      faceHistoryRef.current = new Map();
+    }
+
+    const violations: Array<{
+      cardId: string;
+      prevFace: 'face' | 'back';
+      nextFace: 'face' | 'back';
+      reason: string;
+    }> = [];
+    const perCardEmit = perCard.map((c) => {
+      const prev = faceHistoryRef.current.get(c.cardId);
+      const prevFace = prev?.lastFace ?? null;
+      const wasLanded = prev?.landed ?? false;
+      let changeReason: string | null = null;
+      if (prevFace !== null && prevFace !== c.faceMode) {
+        if (prevFace === 'back' && c.faceMode === 'face' && wasLanded) {
+          changeReason = `reveal-after-land forceHiddenFaces:${forceHiddenFaces} dealPhase:${dealPhase ?? 'null'}`;
+          violations.push({
+            cardId: c.cardId,
+            prevFace,
+            nextFace: c.faceMode,
+            reason: changeReason,
+          });
+        } else {
+          changeReason = `face-change branch:${renderBranch} forceHiddenFaces:${forceHiddenFaces}`;
+        }
+      }
+      faceHistoryRef.current.set(c.cardId, {
+        lastFace: c.faceMode,
+        landed: wasLanded || c.landed,
+      });
+      return {
+        slotIndex: c.slotIndex,
+        cardId: c.cardId,
+        faceMode: c.faceMode,
+        prevFaceMode: prevFace,
+        changeReason,
+        transportPhase: c.transportPhase,
+        landed: c.landed,
+        settled: c.settled,
+      };
+    });
+
+    recordHolmTrace(
+      'HOLM_STAGED_DEAL_FACE_STATE',
+      `branch=${renderBranch} slots=${slotCount} arrived=${arrivedCount}/${expectedCardCount ?? '?'}`,
+      {
+        identity,
+        renderBranch,
+        sourceBranch: sourceBranchLabel,
+        inputs: {
+          dealPhase,
+          forceHiddenFaces,
+          expectedCardCount,
+          arrivedCount,
+          slotCount,
+          claimedCardIds,
+        },
+        perCard: perCardEmit,
+      },
+    );
+
+    if (violations.length > 0) {
+      recordHolmTrace(
+        'FACE_REVEAL_AFTER_LAND_VIOLATION',
+        `reveal-after-land x${violations.length}`,
+        { identity, renderBranch, violations, dealPhase, forceHiddenFaces },
+      );
+    }
+  });
+
+  return null;
+};
+
+
 
