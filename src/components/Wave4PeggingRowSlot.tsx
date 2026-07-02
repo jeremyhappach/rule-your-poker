@@ -163,53 +163,28 @@ export function Wave4PeggingRowSlot({
     assignedRect.height,
   ]);
 
-  if (!placement || !placement.visible || vminInPx <= 0) {
-    // Legacy fallback — pre-measurement only.
-    return (
-      <div
-        ref={ref}
-        data-wave4-pegging-row-slot="fallback"
-        data-pegging-row-fault-count={String(faults.length)}
-        className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3"
-      >
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] text-white/60">Count</span>
-          <span className="text-2xl font-bold text-poker-gold">{count}</span>
-        </div>
-        <div className="flex -space-x-4 justify-center">
-          {playedCards.map((pc, i) => (
-            <CribbagePlayingCard key={i} card={pc.card} size="md" />
-          ))}
-          {playedCards.length === 0 && showEmptyPlaceholder && (
-            <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
-          )}
-        </div>
-      </div>
-    );
-  }
+  const hasPlacement = !!placement && !!placement.visible && vminInPx > 0;
 
-  if (!overflowFrame) return null;
+  const x = hasPlacement ? toVmin(placement!.rect.x, vminInPx) : 0;
+  const y = hasPlacement ? toVmin(placement!.rect.y, vminInPx) : 0;
+  const w = hasPlacement ? toVmin(placement!.rect.width, vminInPx) : 0;
+  const h = hasPlacement ? toVmin(placement!.rect.height, vminInPx) : 0;
 
-  const x = toVmin(placement.rect.x, vminInPx);
-  const y = toVmin(placement.rect.y, vminInPx);
-  const w = toVmin(placement.rect.width, vminInPx);
-  const h = toVmin(placement.rect.height, vminInPx);
-
-  // Rect-driven sizing. Row rect is authoritative; cards adapt.
-  const rowHeightPx =
-    placement.rect.height.unit === "px"
-      ? placement.rect.height.value
-      : placement.rect.height.value * vminInPx;
-  const rowWidthPx =
-    placement.rect.width.unit === "px"
-      ? placement.rect.width.value
-      : placement.rect.width.value * vminInPx;
+  const rowHeightPx = hasPlacement
+    ? (placement!.rect.height.unit === "px"
+        ? placement!.rect.height.value
+        : placement!.rect.height.value * vminInPx)
+    : 0;
+  const rowWidthPx = hasPlacement
+    ? (placement!.rect.width.unit === "px"
+        ? placement!.rect.width.value
+        : placement!.rect.width.value * vminInPx)
+    : 0;
 
   const cardCeilingHeightPx = Math.max(0, rowHeightPx * CARD_HEIGHT_RATIO);
   const cardCeilingWidthPx = cardCeilingHeightPx * CARD_ASPECT_WH;
   const badgeGapPx = rowHeightPx * BADGE_GAP_RATIO;
 
-  // Badge typography — derived from row height so it grows with the row.
   const countFontPx = Math.max(12, rowHeightPx * 0.4);
   const labelFontPx = Math.max(8, rowHeightPx * 0.16);
   const badgeWidthPx = Math.max(countFontPx * 1.8, 32);
@@ -217,11 +192,6 @@ export function Wave4PeggingRowSlot({
   const visibleCardCount =
     playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
 
-  // Adaptive pegging fan — threshold-free, progressive-compression
-  // resolver with explicit overflow policy. Card WIDTH is fixed at the
-  // rect-driven ceiling; only overlap adapts. If the readable-overlap
-  // floor is reached, the fan is allowed to overhang the available
-  // span (rendered above the felt rim via the overflow frame).
   const availableSpanPx = Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx);
   const fan = resolvePeggingFanLayout({
     availableSpanPx,
@@ -234,10 +204,6 @@ export function Wave4PeggingRowSlot({
   const cardHeightPx = fan.cardHeightPx;
   const finalOverlap = fan.overlapPx;
 
-  // Publish latest diagnostics for CRIB_PEG_HAND_FAN_LAYOUT export.
-  // Passive, single-slot global — inspect via
-  //   window.__CRIB_PEG_HAND_FAN_LAYOUT_LATEST
-  // or copy the on-DOM `data-crib-peg-fan-*` attributes.
   const clippingAncestor = useMemo(() => {
     if (typeof window === "undefined") return null;
     const node = ref.current;
@@ -267,6 +233,7 @@ export function Wave4PeggingRowSlot({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!hasPlacement) return;
     const payload = {
       kind: "CRIB_PEG_HAND_FAN_LAYOUT" as const,
       timestamp: Date.now(),
@@ -289,6 +256,7 @@ export function Wave4PeggingRowSlot({
       __CRIB_PEG_HAND_FAN_LAYOUT_LATEST?: typeof payload;
     }).__CRIB_PEG_HAND_FAN_LAYOUT_LATEST = payload;
   }, [
+    hasPlacement,
     visibleCardCount,
     fan.cardWidthPx,
     fan.cardHeightPx,
@@ -303,6 +271,34 @@ export function Wave4PeggingRowSlot({
     fan.overhangPerSidePx,
     clippingAncestor,
   ]);
+
+  if (!hasPlacement) {
+    // Legacy fallback — pre-measurement only.
+    return (
+      <div
+        ref={ref}
+        data-wave4-pegging-row-slot="fallback"
+        data-pegging-row-fault-count={String(faults.length)}
+        className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3"
+      >
+        <div className="flex flex-col items-center">
+          <span className="text-[10px] text-white/60">Count</span>
+          <span className="text-2xl font-bold text-poker-gold">{count}</span>
+        </div>
+        <div className="flex -space-x-4 justify-center">
+          {playedCards.map((pc, i) => (
+            <CribbagePlayingCard key={i} card={pc.card} size="md" />
+          ))}
+          {playedCards.length === 0 && showEmptyPlaceholder && (
+            <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!overflowFrame) return null;
+
 
   return createPortal(
     <div
