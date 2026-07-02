@@ -108,7 +108,13 @@ let currentRollNumber: number | null = null;
 
 // Previous snapshot per physical dieId for delta detection.
 const prevByDieId: Map<number, YahtzeeDieSnapshot> = new Map();
-let prevHeldOrder: number[] = []; // dieIds in held-row order
+
+// Committed held-row canonical order: derived once per held-set signature
+// using (value ASC, dieId ASC) and then held stable until the set or a
+// held die's value legitimately changes. `null` = no commit yet.
+let committedHeldSig: string | null = null;
+let committedHeldOrder: number[] = []; // dieIds in committed canonical order
+let committedHeldValues: Map<number, number> = new Map(); // dieId -> value at commit
 
 export function emitYahtzeeReorderHarnessLifecycle(
   kind: YahtzeeReorderHarnessLifecycleKind,
