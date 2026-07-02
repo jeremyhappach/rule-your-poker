@@ -392,48 +392,65 @@ export const GinRummyMobileCardsTab = ({
               DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
             </span>
           </div>
+          {/*
+            Pane-owned composition: the middle spacer occupies remaining
+            vertical space between the DW label and the sibling action
+            zone so the action zone is bottom-anchored. The active-hand
+            fan is portaled INTO `[data-gin-active-pane-content]` by
+            MeasuredActiveHandFan, which measures the un-transformed
+            pane rect and every `[data-active-hand-lower-zone]` sibling
+            (below), then derives:
+                stageRect.height = paneH·maxHeightPct
+                                     bounded by paneH − reserved − clearance
+                reserved  = max(paneH·reservedLowerZonePct,
+                                measured lower zone + safe area)
+                clearance = paneH · interZoneClearancePctOfPane
+            Cards align flex-end inside stageRect, so their bottom edge
+            sits exactly `clearance` px above the action zone. Tuning
+            `interZoneClearancePctOfPane` now visibly repositions the
+            gap — no independent Gin action-zone layout path remains.
+          */}
           <div
-            ref={ginHandStageRef}
-            data-gin-active-hand-stage=""
-            className="flex-1 min-h-0 flex items-start justify-center py-1 overflow-visible"
-          >
-            <ActiveHandFan
-              game="ginRummy"
-              cards={flatSortedHand.map(({ card }) => ({
-                suit: card.suit as CanonicalCardType['suit'],
-                rank: card.rank as CanonicalCardType['rank'],
-              }))}
-              capacity={GIN_CARDS_PER_PLAYER + 1}
-              stageRect={ginHandStageRectPx}
-              applyFan
-              renderCard={({ index, card_node }) => {
-                const item = flatSortedHand[index];
-                if (!item) return null;
-                const { card, originalIndex, meldGroup } = item;
-                const isSelected = selectedCardIndex === originalIndex;
-                const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-                const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-                const isMeld = meldGroup >= 0;
-                return (
-                  <button
-                    onClick={() => handleCardClick(originalIndex)}
-                    onPointerUp={(e) => e.currentTarget.blur()}
-                    disabled={isProcessing || !canSelect}
-                    className={cn(
-                      "transition-all duration-200 rounded relative",
-                      isMeld ? "opacity-100" : "opacity-80",
-                      isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                      canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
-                      isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                    )}
-                    style={{ zIndex: isSelected ? 20 : index }}
-                  >
-                    {card_node}
-                  </button>
-                );
-              }}
-            />
-          </div>
+            data-gin-active-hand-stage-spacer=""
+            className="flex-1 min-h-0"
+          />
+          <MeasuredActiveHandFan
+            game="ginRummy"
+            cards={flatSortedHand.map(({ card }) => ({
+              suit: card.suit as CanonicalCardType['suit'],
+              rank: card.rank as CanonicalCardType['rank'],
+            }))}
+            capacity={GIN_CARDS_PER_PLAYER + 1}
+            portalTargetSelector="[data-gin-active-pane-content]"
+            phaseLockKey={`gin|h${ginState.handNumber}|ph:${ginState.phase}|tp:${ginState.turnPhase}|p:${currentPlayerId}`}
+            applyFan
+            renderCard={({ index, card_node }) => {
+              const item = flatSortedHand[index];
+              if (!item) return null;
+              const { card, originalIndex, meldGroup } = item;
+              const isSelected = selectedCardIndex === originalIndex;
+              const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+              const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+              const isMeld = meldGroup >= 0;
+              return (
+                <button
+                  onClick={() => handleCardClick(originalIndex)}
+                  onPointerUp={(e) => e.currentTarget.blur()}
+                  disabled={isProcessing || !canSelect}
+                  className={cn(
+                    "transition-all duration-200 rounded relative pointer-events-auto",
+                    isMeld ? "opacity-100" : "opacity-80",
+                    isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                    canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                    isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+                  )}
+                  style={{ zIndex: isSelected ? 20 : index }}
+                >
+                  {card_node}
+                </button>
+              );
+            }}
+          />
         </>
       )}
 
