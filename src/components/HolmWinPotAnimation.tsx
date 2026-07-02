@@ -33,6 +33,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   containerRef,
   onAnimationStart,
   onAnimationComplete,
+  holmLedgerIdentity,
 }) => {
   const [animations, setAnimations] = useState<{ position: number; fromX: number; fromY: number; toX: number; toY: number; amount: number; viewportLeft: number; viewportTop: number }[]>([]);
   const lockedAmountRef = useRef<number>(amount);
