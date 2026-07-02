@@ -300,3 +300,13 @@ All colors MUST be HSL.
     text-overflow: clip;
   }
 }
+
+/* Cribbage — inactive pegged/tabled card cluster token.
+ * Applied to played cards belonging to non-active seats so the
+ * active-seat spotlight clearly wins visual hierarchy. Subtle enough
+ * to keep every card fully legible. Does NOT affect position,
+ * opacity transitions, transport, reveal, scoring, or hit targets. */
+.crib-inactive-pegged-card {
+  opacity: 0.82;
+  filter: brightness(0.9) saturate(0.95);
+}
