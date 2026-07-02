@@ -241,6 +241,29 @@ export function CanonicalFeltSurface({
         />
       </div>
 
+      {/* Canonical felt OVERFLOW frame — rect-equal sibling of the felt
+          surface, but rendered OUTSIDE the surface's `overflow:hidden`
+          ellipse. Consumers that need to render card-hand overhang
+          beyond the rail/felt boundary (e.g. wide pegging fans) portal
+          into this frame instead of the coord frame. Same coordinate
+          origin — anchored placements resolved against the felt rect
+          apply unchanged. Vertical clipping to the play region is
+          still enforced by the shell felt host (clip-path inset).
+          Pointer-events off by default; individual artifacts re-enable
+          on their own wrappers. Z-index sits above the felt paint but
+          below HUD/modals. */}
+      <div
+        data-canonical-felt-overflow-frame=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 21,
+          overflow: 'visible',
+        }}
+      />
+
 
       {/* Waiting-phase plate — permanent "P-Town Poker" branding on
           the felt while no game is in progress. Uses the same plate
