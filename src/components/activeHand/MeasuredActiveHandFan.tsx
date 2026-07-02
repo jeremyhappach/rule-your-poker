@@ -209,6 +209,14 @@ export function MeasuredActiveHandFan({
         game,
       });
     }
+    if (three57LedgerIdentity) {
+      recordThree57Lifecycle('phase-lock-reset', three57LedgerIdentity, {
+        prevKey: committedRef.current.key,
+        nextKey: activeLockKey,
+        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        game,
+      });
+    }
     committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
 
