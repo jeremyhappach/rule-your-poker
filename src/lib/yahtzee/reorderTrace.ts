@@ -40,7 +40,26 @@ export type YahtzeeReorderViolation =
   | 'HELD_ROW_ORDER_CHANGED'
   | 'DIE_ROW_CHANGED_WITHOUT_HOLD_OR_RELEASE'
   | 'DIE_IDENTITY_REPLACED'
-  | 'DIE_POSITION_CHANGED_WITHOUT_EXPECTED_CAUSE';
+  | 'DIE_POSITION_CHANGED_WITHOUT_EXPECTED_CAUSE'
+  | 'DIE_DISAPPEARED_AFTER_LAND'
+  | 'DIE_REORDERED_AFTER_HOLD'
+  | 'DIE_RENDER_NODE_REPLACED'
+  | 'DIE_SCATTERED_ROW_LOST';
+
+export function emitYahtzeeReorderViolation(
+  kind: YahtzeeReorderViolation,
+  dieId: number | null,
+  detail: Record<string, unknown>,
+): void {
+  pushViolation({
+    ts: Date.now(),
+    kind,
+    dieId,
+    rollNumber: currentRollNumber,
+    detail,
+  });
+  notify();
+}
 
 export type YahtzeeReorderViolationEvent = {
   ts: number;
