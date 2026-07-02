@@ -3779,12 +3779,7 @@ export const MobileGameTable = ({
     holmSelfCurrentHandCtx != null &&
     holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
 
-  // FOLD_PRESENTATION derivation trace.
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    try {
-      const applied = ((isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' || holmSelfFoldedLatched) ? 'opacity-40 grayscale-[30%]' : null;
-      recordFoldPresentation({
+
         dealerGameId: holmDealerGameId ?? null,
         roundId: handContextId ?? null,
         handNumber: currentRound ?? null,
