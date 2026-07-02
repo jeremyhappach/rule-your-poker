@@ -1021,6 +1021,7 @@ export const PlayerHand = ({
             isWild={isWild}
             faceFillPx={dynActive ? dyn357!.cardWidth : undefined}
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+            activeHandShell={isHolmGame && !isOpponentExposedShowdown && !forceHiddenFaces}
             style={composeStyle({
               transform: `rotate(${rotationDeg}deg)`,
             }, true, displayIndex)}
