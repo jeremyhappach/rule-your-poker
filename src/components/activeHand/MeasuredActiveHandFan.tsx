@@ -240,42 +240,77 @@ export function MeasuredActiveHandFan({
   const mountRectRef = useRef<{ w: number; h: number } | null>(null);
   const cardIdsKey = (cardIds ?? []).join(',');
   useEffect(() => {
-    if (!holmLedgerIdentity) return;
     const host = hostRef.current;
     const r = host?.getBoundingClientRect();
     mountRectRef.current = r ? { w: r.width, h: r.height } : null;
-    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'mount', holmLedgerIdentity, {
-      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-      component: 'MeasuredActiveHandFan',
-      phaseLockKey: activeLockKey,
-      renderKey: activeHandFanRenderKey ?? null,
-      cardCount: cards.length,
-      cardIds: cardIdsKey,
-      hostRect: mountRectRef.current,
-      game,
-    });
-    return () => {
-      const rr = host?.getBoundingClientRect();
-      recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'unmount', holmLedgerIdentity, {
+    if (holmLedgerIdentity) {
+      recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'mount', holmLedgerIdentity, {
         branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
         component: 'MeasuredActiveHandFan',
         phaseLockKey: activeLockKey,
         renderKey: activeHandFanRenderKey ?? null,
-        hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
-        mountRect: mountRectRef.current,
+        cardCount: cards.length,
+        cardIds: cardIdsKey,
+        hostRect: mountRectRef.current,
+        game,
       });
+    }
+    if (three57LedgerIdentity) {
+      recordThree57Lifecycle('mount', three57LedgerIdentity, {
+        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        component: 'MeasuredActiveHandFan',
+        phaseLockKey: activeLockKey,
+        renderKey: activeHandFanRenderKey ?? null,
+        cardCount: cards.length,
+        cardIds: cardIdsKey,
+        hostRect: mountRectRef.current,
+        game,
+      });
+    }
+    return () => {
+      const rr = host?.getBoundingClientRect();
+      if (holmLedgerIdentity) {
+        recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'unmount', holmLedgerIdentity, {
+          branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+          component: 'MeasuredActiveHandFan',
+          phaseLockKey: activeLockKey,
+          renderKey: activeHandFanRenderKey ?? null,
+          hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
+          mountRect: mountRectRef.current,
+        });
+      }
+      if (three57LedgerIdentity) {
+        recordThree57Lifecycle('unmount', three57LedgerIdentity, {
+          branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+          component: 'MeasuredActiveHandFan',
+          phaseLockKey: activeLockKey,
+          renderKey: activeHandFanRenderKey ?? null,
+          hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
+          mountRect: mountRectRef.current,
+        });
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLockKey]);
 
   useEffect(() => {
-    if (!holmLedgerIdentity) return;
-    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'cardIds-change', holmLedgerIdentity, {
-      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-      cardCount: cards.length,
-      cardIds: cardIdsKey,
-      renderKey: activeHandFanRenderKey ?? null,
-    });
+    if (holmLedgerIdentity) {
+      recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'cardIds-change', holmLedgerIdentity, {
+        branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        cardCount: cards.length,
+        cardIds: cardIdsKey,
+        renderKey: activeHandFanRenderKey ?? null,
+      });
+    }
+    if (three57LedgerIdentity) {
+      recordThree57Lifecycle('render', three57LedgerIdentity, {
+        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        reason: 'cardIds-change',
+        cardCount: cards.length,
+        cardIds: cardIdsKey,
+        renderKey: activeHandFanRenderKey ?? null,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardIdsKey]);
 
