@@ -104,14 +104,22 @@ export function releaseRecoveryLease(
   extra?: Record<string, unknown>,
 ): void {
   if (!currentLease) return;
+  const prior = currentLease;
   appendSessionRecoveryEvent({
     kind: 'lease-released',
     reason,
     lease: currentLease,
     ...(extra ?? {}),
   });
+  recordSessionRecoveryLease({
+    action: 'release',
+    reason,
+    oldDealerGameId: prior.gameId,
+    detail: { ...(extra ?? {}), userId: prior.userId, mountId: prior.mountId },
+  });
   currentLease = null;
 }
+
 
 export function getActiveRecoveryLease(): LeaseIdentity | null {
   return currentLease;
