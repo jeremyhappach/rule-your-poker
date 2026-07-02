@@ -174,6 +174,7 @@ export function MeasuredActiveHandFan({
   activeHandFanRenderKey,
   cardIds,
   holmLedgerIdentity,
+  three57LedgerIdentity,
   externalCommitRef,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
