@@ -987,6 +987,13 @@ export function YahtzeeGameTable({
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs) return;
 
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PREVIEW', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+    });
+
     // Highlight the chosen category and pause for clarity
     setScoringInProgress(true);
     setLastScoredCategory(category);
