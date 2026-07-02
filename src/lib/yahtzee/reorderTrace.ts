@@ -31,6 +31,13 @@ export type YahtzeeDieSnapshot = {
   rect: { x: number; y: number; w: number; h: number } | null;
   animationPhase: string | null; // e.g. 'settled' | 'in-flight' | 'armed'
   reactKey: string | null;
+  // Temporary render-source boundary audit fields (populated from
+  // DOM data-die-* attributes when available). Prove that the renderer
+  // actually iterated the committed canonical order and did not fall
+  // back to physical / insertion / animation-array order.
+  rendererInputOrder: number[] | null;
+  rendererInputSource: string | null;
+  phaseBranch: string | null;
   previous: null | Omit<YahtzeeDieSnapshot, 'previous'>;
 };
 
