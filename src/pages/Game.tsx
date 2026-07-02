@@ -2373,7 +2373,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const isHolm = game?.game_type === 'holm-game';
     setHolmTraceActive(isHolm);
-    return () => setHolmTraceActive(false);
+    setHolmLedgerActive(isHolm);
+    return () => {
+      setHolmTraceActive(false);
+      setHolmLedgerActive(false);
+    };
   }, [game?.game_type, game?.id]);
 
 
