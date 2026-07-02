@@ -402,17 +402,26 @@ export function Wave4PeggingRowSlot({
           flexShrink: 0,
         }}
       >
-        {playedCards.map((pc, i) => (
-          <div
-            key={i}
-            style={{
-              marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
-              flexShrink: 0,
-            }}
-          >
-            <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
-          </div>
-        ))}
+        {playedCards.map((pc, i) => {
+          const inactive =
+            activePlayerId != null &&
+            pc.playerId != null &&
+            pc.playerId !== activePlayerId;
+          return (
+            <div
+              key={i}
+              className={inactive ? 'crib-inactive-pegged-card' : undefined}
+              data-crib-pegged-inactive={inactive ? 'true' : 'false'}
+              style={{
+                marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
+                flexShrink: 0,
+              }}
+            >
+              <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
+            </div>
+          );
+        })}
+
         {playedCards.length === 0 && showEmptyPlaceholder && (
           <div
             className="border border-dashed border-white/20 rounded"
