@@ -10917,19 +10917,26 @@ export const MobileGameTable = ({
                                              cards={effectiveCards}
                                              isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
                                              expectedCardCount={
-                                                // Holm active-self: authoritative final hand
-                                                // capacity (cardsPerPlayer=4). Latch for the entire
-                                                // staged deal so first-card size/overlap/fan resolves
-                                                // from the FINAL slot count — never from
-                                                // sortedCards/visible/claimed counts.
-                                                gameType === 'holm-game'
-                                                  ? 4
-                                                  : is357Staged
-                                                    ? undefined
-                                                    : (effectiveCards.length === 0
-                                                      ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
-                                                      : undefined)
-                                              }
+                                                 // Holm active-self: authoritative final hand
+                                                 // capacity (cardsPerPlayer=4). Latch for the entire
+                                                 // staged deal so first-card size/overlap/fan resolves
+                                                 // from the FINAL slot count — never from
+                                                 // sortedCards/visible/claimed counts.
+                                                 //
+                                                 // 3-5-7 active-self staged deal: same contract.
+                                                 // Pass the round's authoritative final capacity
+                                                 // (3/5/7) BEFORE card 1 arrives so PlayerHand
+                                                 // locks slot geometry to that capacity and
+                                                 // reserves invisible slots for unarrived cards
+                                                 // (no visible backs, no post-land resize).
+                                                 gameType === 'holm-game'
+                                                   ? 4
+                                                   : is357
+                                                     ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
+                                                     : (effectiveCards.length === 0
+                                                       ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
+                                                       : undefined)
+                                               }
                                              highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
                                              kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
                                              hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
