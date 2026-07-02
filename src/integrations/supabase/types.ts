@@ -1379,6 +1379,7 @@ export type Database = {
           id: string
           pending_turn_position: number | null
           pot: number | null
+          predecessor_round_id: string | null
           presentation_fallback_at: string | null
           presentation_generation: number
           round_number: number
@@ -1405,6 +1406,7 @@ export type Database = {
           id?: string
           pending_turn_position?: number | null
           pot?: number | null
+          predecessor_round_id?: string | null
           presentation_fallback_at?: string | null
           presentation_generation?: number
           round_number: number
@@ -1431,6 +1433,7 @@ export type Database = {
           id?: string
           pending_turn_position?: number | null
           pot?: number | null
+          predecessor_round_id?: string | null
           presentation_fallback_at?: string | null
           presentation_generation?: number
           round_number?: number
@@ -1450,6 +1453,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_predecessor_round_id_fkey"
+            columns: ["predecessor_round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -1784,6 +1794,14 @@ export type Database = {
       }
       cribbage_apply_discard: {
         Args: { _card_indices: number[]; _player_id: string; _round_id: string }
+        Returns: Json
+      }
+      cribbage_create_next_hand: {
+        Args: {
+          _cribbage_state: Json
+          _player_cards: Json
+          _predecessor_round_id: string
+        }
         Returns: Json
       }
       decrement_player_chips: {

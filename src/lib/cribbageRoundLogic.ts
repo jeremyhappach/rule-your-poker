@@ -199,17 +199,22 @@ export async function startCribbageRound(
 
 /**
  * Start a new cribbage hand after counting phase completes.
- * 
- * CRITICAL: This creates a NEW round record with incremented hand_number.
- * This ensures event logging is properly scoped to (dealer_game_id, hand_number).
+ *
+ * Server-authoritative: successor-round creation runs inside the
+ * `cribbage_create_next_hand` RPC, which locks the predecessor row,
+ * dedupes concurrent callers via the `predecessor_round_id` unique
+ * index, inserts the new round + player_cards, and advances
+ * games.total_hands atomically. The client no longer computes hand_number
+ * or writes the round row directly.
  */
 export async function startNextCribbageHand(
   gameId: string,
   dealerGameId: string,
   previousState: CribbageState,
-  playerIds: string[]
+  playerIds: string[],
+  predecessorRoundId: string | null
 ): Promise<{ success: boolean; roundId?: string; handNumber?: number; newState?: CribbageState; error?: string; alreadyStarted?: boolean }> {
-  console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId });
+  console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId, predecessorRoundId });
 
   try {
     // Ensure harness cache hydrated before deterministic deals on subsequent hands.
@@ -217,117 +222,71 @@ export async function startNextCribbageHand(
 
     // Calculate the new state with rotated dealer and preserved scores
     const newState = startNewHand(previousState, playerIds);
-    
-    // Check if the new state indicates a winner (safety check from startNewHand)
+
+    // Safety check: winner detected without needing a new hand.
     if (newState.phase === 'complete' && newState.winnerPlayerId) {
       console.log('[CRIBBAGE] startNextCribbageHand detected winner from startNewHand', {
         winnerId: newState.winnerPlayerId,
       });
-      return { 
-        success: true, 
-        newState, 
-        error: 'Winner detected - no new hand needed' 
+      return {
+        success: true,
+        newState,
+        error: 'Winner detected - no new hand needed',
       };
     }
 
-    // Get the next hand number
-    const { data: existingRounds } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('hand_number', { ascending: false })
-      .limit(1);
-
-    const handNumber = existingRounds && existingRounds.length > 0
-      ? (existingRounds[0].hand_number || 0) + 1
-      : 1;
-
-    console.log('[CRIBBAGE] Creating new round for hand', { handNumber, dealerGameId });
-
-    // Create a NEW round record for this hand.
-    // ATOMIC GUARD: The unique index (dealer_game_id, hand_number, round_number) ensures
-    // only one client successfully inserts. Other clients will get a conflict error.
-    const { data: round, error: roundError } = await supabase
-      .from('rounds')
-      .insert({
-        game_id: gameId,
-        dealer_game_id: dealerGameId,
-        round_number: 1, // Cribbage uses single round per hand
-        hand_number: handNumber,
-        cards_dealt: 6,
-        pot: 0,
-        status: 'betting',
-        cribbage_state: newState as any,
-      })
-      .select()
-      .single();
-
-    // Check for unique constraint violation (duplicate key) - another client already created the round
-    if (roundError) {
-      if (roundError.code === '23505' || roundError.message?.includes('duplicate key')) {
-        console.log('[CRIBBAGE] Round already exists for this hand (atomic guard), another client won the race');
-        // Return success but indicate another client handled it
-        return { success: true, alreadyStarted: true };
-      }
-      throw new Error(`Failed to create round: ${roundError?.message}`);
+    if (!predecessorRoundId) {
+      throw new Error('startNextCribbageHand requires predecessorRoundId (server dedupe key)');
     }
 
-    if (!round) {
-      throw new Error('Failed to create round: no data returned');
+    const playerCardsPayload = playerIds
+      .map((pid) => {
+        const ps = newState.playerStates[pid];
+        return ps ? { player_id: pid, cards: ps.hand } : null;
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
+    const { data, error } = await supabase.rpc('cribbage_create_next_hand' as any, {
+      _predecessor_round_id: predecessorRoundId,
+      _cribbage_state: newState as any,
+      _player_cards: playerCardsPayload as any,
+    });
+
+    if (error) {
+      throw new Error(`cribbage_create_next_hand RPC failed: ${error.message}`);
     }
 
-    // DB-First pattern: Use the RETURNED hand_number from insert, not the calculated value
-    // This ensures games.total_hands is always in sync with actual round records
-    const insertedHandNumber = round.hand_number ?? handNumber;
-    
-    // Update game with authoritative hand number from the insert response
-    await supabase
-      .from('games')
-      .update({
-        total_hands: insertedHandNumber,
-        is_first_hand: false,
-      })
-      .eq('id', gameId);
+    const result = (data ?? {}) as { round_id?: string; hand_number?: number; deduped?: boolean };
+    if (!result.round_id) {
+      throw new Error('cribbage_create_next_hand returned no round_id');
+    }
 
-    // Store player cards for the new hand
-    for (const playerId of playerIds) {
-      const playerState = newState.playerStates[playerId];
-      if (playerState) {
-        try {
-          const { error } = await supabase
-            .from('player_cards')
-            .upsert(
-              {
-                player_id: playerId,
-                round_id: round.id,
-                cards: playerState.hand as any,
-              },
-              {
-                onConflict: 'player_id,round_id',
-              }
-            );
-          if (error) {
-            console.warn('[CRIBBAGE] Failed to store player cards (next hand):', playerId, error.message);
-          }
-        } catch (err) {
-          console.warn('[CRIBBAGE] Error storing player cards (next hand):', playerId, err);
-        }
-      }
+    if (result.deduped) {
+      console.log('[CRIBBAGE] Next hand already existed (server dedupe)', {
+        roundId: result.round_id,
+        handNumber: result.hand_number,
+        predecessorRoundId,
+      });
+      return {
+        success: true,
+        alreadyStarted: true,
+        roundId: result.round_id,
+        handNumber: result.hand_number,
+      };
     }
 
     console.log('[CRIBBAGE] Next hand started successfully', {
-      roundId: round.id,
-      handNumber: insertedHandNumber,
+      roundId: result.round_id,
+      handNumber: result.hand_number,
       newDealerId: newState.dealerPlayerId,
     });
 
-    return { 
-      success: true, 
-      roundId: round.id, 
-      handNumber: insertedHandNumber, 
-      newState 
+    return {
+      success: true,
+      roundId: result.round_id,
+      handNumber: result.hand_number,
+      newState,
     };
-
   } catch (error: any) {
     console.error('[CRIBBAGE] Error starting next hand:', error);
     return { success: false, error: error.message };
