@@ -9939,8 +9939,18 @@ export const MobileGameTable = ({
                 const isSoloPlayerWinner = winnerPlayerId === loneSoloPlayer.id;
                 const hasHighlights = isSoloPlayerWinner && winningCardHighlights.hasHighlights;
 
-                const shouldAnimate = !soloVsChuckyAnimatedRef.current;
+                const loneFanAnimationKey = `holm-lone-player-fan|${soloVsChuckyPlayerIdLocked ?? 'no-owner'}`;
+                const ownerAllowsAnimation = holmPresentationOwner.markTabledAnimationOnce(loneFanAnimationKey);
+                const shouldAnimate = ownerAllowsAnimation && !soloVsChuckyAnimatedRef.current;
                 if (shouldAnimate) soloVsChuckyAnimatedRef.current = true;
+
+                const loneFanLedgerIdentity = holmPresentationOwner.resolveLedgerIdentity({
+                  dealerGameId: holmDealerGameId ?? null,
+                  roundId: handContextId ?? null,
+                  handNumber: currentRound ?? null,
+                  handContextId: handContextId ?? null,
+                  playerId: soloVsChuckyPlayerIdLocked ?? null,
+                });
 
                 return (
                   <HolmAnchoredSlot
@@ -9966,14 +9976,9 @@ export const MobileGameTable = ({
                       getFourColorSuit={getFourColorSuit}
                       animate={shouldAnimate}
                       ownerPlayerId={soloVsChuckyPlayerIdLocked ?? null}
-                      holmLedgerIdentity={{
-                        dealerGameId: holmDealerGameId ?? null,
-                        roundId: handContextId ?? null,
-                        handNumber: currentRound ?? null,
-                        handContextId: handContextId ?? null,
-                        playerId: soloVsChuckyPlayerIdLocked ?? null,
-                      }}
+                      holmLedgerIdentity={loneFanLedgerIdentity}
                     />
+
                     <style>{`
                       @keyframes holmSoloTableSlide {
                         0% { opacity: 0; transform: translateY(120px) scale(0.8); }
