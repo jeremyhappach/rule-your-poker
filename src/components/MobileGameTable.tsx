@@ -1127,6 +1127,12 @@ export const MobileGameTable = ({
   const _ttPlay = usePlayGeometry();
   const _ttShowdownCfg = useThreeFiveSevenShowdownConfig();
   const opponentShowdownPlacementPx = useMemo(() => {
+    // Hard gate: this placement drives the 3-5-7 bespoke opponent
+    // outward-show geometry. It must never be reachable for other
+    // game types (e.g. Holm) — even though the seat dispatcher
+    // already routes by game_type, callers reading this memo
+    // unconditionally must see `undefined` outside 3-5-7.
+    if (!__is357GameType(gameType)) return undefined;
     const p = _ttShowdownCfg.placement;
     const w = _ttPlay.width || 0;
     const h = _ttPlay.height || 0;
@@ -1137,6 +1143,7 @@ export const MobileGameTable = ({
       dyPx: (p.yPctOfFelt / 100) * h,
     };
   }, [
+    gameType,
     _ttShowdownCfg.placement.attachment,
     _ttShowdownCfg.placement.sprawlDirection,
     _ttShowdownCfg.placement.xPctOfFelt,
@@ -1144,6 +1151,7 @@ export const MobileGameTable = ({
     _ttPlay.width,
     _ttPlay.height,
   ]);
+
 
   // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
   // single shared placement object resolves to felt-relative pixels
@@ -9885,7 +9893,7 @@ export const MobileGameTable = ({
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
         {/* SKIP if cards are already tabled via solo vs Chucky - they're already in position */}
-        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
+        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && !isHolmMultiPlayerShowdown && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div 
               className="flex"
@@ -10684,8 +10692,9 @@ export const MobileGameTable = ({
                                                    cards={effectiveCards}
                                                    capacity={capacity}
                                                    portalTargetSelector="[data-holm-active-pane-content]"
-                                                    phaseLockKey={`holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                    activeHandFanRenderKey={`ActiveHandFan|holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+
                                                    cardIds={boundary.rawClaimedCardIds}
                                                    applyFan
                                                  />

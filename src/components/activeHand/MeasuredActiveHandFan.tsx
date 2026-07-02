@@ -213,6 +213,21 @@ export function MeasuredActiveHandFan({
         if (Number.isFinite(zr.height) && zr.height > 0) totalLowerZonePx += zr.height;
       });
 
+      // Guard: if lower-zone markers exist in DOM but none have laid out
+      // yet (measured 0), defer committing. Committing now would resolve a
+      // stageRect that ignores the pending action strip, then the next
+      // observation would grow into it — the exact small→large jump we
+      // must prevent. ResizeObserver / MutationObserver will re-fire once
+      // the strip has real height.
+      const committedNow = committedRef.current;
+      const alreadyCommittedForKey =
+        !!activeLockKey &&
+        committedNow.key === activeLockKey &&
+        !!committedNow.rect;
+      if (zones.length > 0 && totalLowerZonePx <= 0 && !alreadyCommittedForKey) {
+        return;
+      }
+
       const candidateRect = isNonzero ? { width: w, height: h } : null;
       const candidateLayout = candidateRect
         ? resolveActiveHandFromPane(
@@ -282,6 +297,7 @@ export function MeasuredActiveHandFan({
         );
       }
     };
+
 
     measure();
     if (typeof ResizeObserver === 'undefined') return;
