@@ -33,6 +33,11 @@ import { CribbagePlayingCard } from "./CribbagePlayingCard";
 
 export interface PeggingRowPlayedCard {
   card: CribbageCard;
+  /** Player who tabled this card. When provided together with an
+   *  `activePlayerId` on the slot, cards belonging to non-active seats
+   *  receive the shared `.crib-inactive-pegged-card` dim token so the
+   *  active-seat spotlight wins visual hierarchy. */
+  playerId?: string | null;
 }
 
 export interface Wave4PeggingRowSlotProps {
@@ -44,7 +49,11 @@ export interface Wave4PeggingRowSlotProps {
   count: number;
   playedCards: ReadonlyArray<PeggingRowPlayedCard>;
   showEmptyPlaceholder: boolean;
+  /** Cribbage active-turn player id. Used only to select which pegged
+   *  cards receive the mild inactive dim token. */
+  activePlayerId?: string | null;
 }
+
 
 const PEGGING_ROW_ID = "cribbage.peggingRow";
 
@@ -59,7 +68,9 @@ export function Wave4PeggingRowSlot({
   count,
   playedCards,
   showEmptyPlaceholder,
+  activePlayerId = null,
 }: Wave4PeggingRowSlotProps) {
+
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useCribbageGameplayGeometry();
@@ -286,9 +297,22 @@ export function Wave4PeggingRowSlot({
           <span className="text-2xl font-bold text-poker-gold">{count}</span>
         </div>
         <div className="flex -space-x-4 justify-center">
-          {playedCards.map((pc, i) => (
-            <CribbagePlayingCard key={i} card={pc.card} size="md" />
-          ))}
+          {playedCards.map((pc, i) => {
+            const inactive =
+              activePlayerId != null &&
+              pc.playerId != null &&
+              pc.playerId !== activePlayerId;
+            return (
+              <div
+                key={i}
+                className={inactive ? 'crib-inactive-pegged-card' : undefined}
+                data-crib-pegged-inactive={inactive ? 'true' : 'false'}
+              >
+                <CribbagePlayingCard card={pc.card} size="md" />
+              </div>
+            );
+          })}
+
           {playedCards.length === 0 && showEmptyPlaceholder && (
             <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
           )}
@@ -378,17 +402,26 @@ export function Wave4PeggingRowSlot({
           flexShrink: 0,
         }}
       >
-        {playedCards.map((pc, i) => (
-          <div
-            key={i}
-            style={{
-              marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
-              flexShrink: 0,
-            }}
-          >
-            <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
-          </div>
-        ))}
+        {playedCards.map((pc, i) => {
+          const inactive =
+            activePlayerId != null &&
+            pc.playerId != null &&
+            pc.playerId !== activePlayerId;
+          return (
+            <div
+              key={i}
+              className={inactive ? 'crib-inactive-pegged-card' : undefined}
+              data-crib-pegged-inactive={inactive ? 'true' : 'false'}
+              style={{
+                marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
+                flexShrink: 0,
+              }}
+            >
+              <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
+            </div>
+          );
+        })}
+
         {playedCards.length === 0 && showEmptyPlaceholder && (
           <div
             className="border border-dashed border-white/20 rounded"
