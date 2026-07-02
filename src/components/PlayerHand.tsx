@@ -351,10 +351,14 @@ export const PlayerHand = ({
   // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
   const holmActiveSelfRef = useRef<HTMLDivElement | null>(null);
+  const holmHiddenBranchRef = useRef<HTMLDivElement | null>(null);
   const holmPrevGeomRef = useRef<Record<string, unknown> | null>(null);
   const holmSizeSourceEmittedForRef = useRef<string | null>(null);
   const holmSettledRectsRef = useRef<Map<string, { x: number; y: number; w: number; h: number; rot: number }>>(new Map());
   const holmLastHandKeyRef = useRef<string | null>(null);
+  // Per-card face-mode history for FACE_REVEAL_AFTER_LAND_VIOLATION detection.
+  // key = cardId, value = { lastFace: 'face'|'back', landed: boolean }
+  const holmFaceHistoryRef = useRef<Map<string, { lastFace: 'face' | 'back'; landed: boolean }>>(new Map());
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   const forensicsId = `PlayerHand:${instanceIdRef.current}`;
