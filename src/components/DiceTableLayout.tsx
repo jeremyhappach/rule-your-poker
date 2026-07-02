@@ -2003,7 +2003,7 @@ export function DiceTableLayout({
       )}
 
       <div className="absolute inset-0 z-30 pointer-events-none" data-dice-layer="held" data-layer-z={30}>
-        {orderedDice.map((item) => renderDieForLayer(item, "held"))}
+        {committedHeldLayerIterationOrder.map((item) => renderDieForLayer(item, "held"))}
       </div>
     </div>
   );
