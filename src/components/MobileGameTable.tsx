@@ -8422,13 +8422,14 @@ export const MobileGameTable = ({
             }
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
-            holmLedgerIdentity={{
+            holmLedgerIdentity={holmPresentationOwner.resolveLedgerIdentity({
               dealerGameId: holmDealerGameId ?? null,
               roundId: handContextId ?? null,
               handNumber: currentRound ?? null,
               handContextId: handContextId ?? null,
               playerId: currentPlayer?.id ?? null,
-            }}
+            })}
+
             onAnimationStart={() => {
               // POT-OUT animation starting - mark active and use snapped pot
               setPotOutAnimationActive(true);
