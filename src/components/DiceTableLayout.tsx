@@ -1868,6 +1868,10 @@ export function DiceTableLayout({
         data-die-react-key={reactKey}
         data-die-transform-owner={transformOwner}
         data-die-slot-index={slotIndexInHeldRow ?? ""}
+        data-die-renderer-input-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+        data-die-renderer-input-source="committedHeldLayerIterationOrder"
+        data-die-committed-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+        data-die-phase-branch={usePreRollLayout ? "pre-roll" : (isAnimatingFlyIn ? "fly-in" : "normal")}
         className={cn(
           "absolute will-change-transform",
           !shouldSkipTransition && !useInstantTransform && "transition-transform duration-300 ease-out",
