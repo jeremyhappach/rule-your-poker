@@ -184,7 +184,9 @@ export function resetYahtzeeReorderTrace(): void {
   presentationEvents.length = 0;
   violationEvents.length = 0;
   prevByDieId.clear();
-  prevHeldOrder = [];
+  committedHeldSig = null;
+  committedHeldOrder = [];
+  committedHeldValues = new Map();
   currentRollNumber = null;
   notify();
 }
