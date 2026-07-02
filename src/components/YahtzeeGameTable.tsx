@@ -1688,6 +1688,19 @@ export function YahtzeeGameTable({
         const category = isYahtzeeStraightDebugEnabled() ? getDebugStraightCategoryChoice(ps) : getBotCategoryChoice(ps);
         console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)), turnIdentity });
 
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_INTENT', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_PREVIEW', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
         setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: botPlayerId });
 
@@ -1697,7 +1710,20 @@ export function YahtzeeGameTable({
         ps = scoreYahtzeeCategory(ps, category);
         state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
         yahtzeeSync.applyOptimistic(state);
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_DISPATCHED', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
         await updateYahtzeeState(currentRoundId, state);
+        emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+          category,
+          actor: 'bot',
+          actorPlayerId: botPlayerId,
+          playerId: botPlayerId,
+        });
+        requestYahtzeeReorderTraceHold(2000, `bot-authority-arrival:${category}`);
 
         await new Promise(r => setTimeout(r, 2000));
         if (isCancelled('after-score-wait')) {
