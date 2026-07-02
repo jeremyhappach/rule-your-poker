@@ -42,6 +42,8 @@ import {
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
+import { setThree57LedgerActive } from "@/lib/threeFiveSeven/presentationLedger";
+import { ThreeFiveSevenPresentationLedgerPill } from "@/components/ThreeFiveSevenPresentationLedgerPill";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
