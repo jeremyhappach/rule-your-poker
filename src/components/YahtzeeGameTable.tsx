@@ -957,6 +957,14 @@ export function YahtzeeGameTable({
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
+    emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_INTENT', {
+      category,
+      actor: 'local',
+      actorPlayerId: myPlayer.id,
+      playerId: myPlayer.id,
+      rollNumber: 3 - myPs.rollsRemaining,
+    });
+
     const diceValues = myPs.dice.map(d => d.value);
 
     // Enforce Joker rules: restrict category choices when applicable
