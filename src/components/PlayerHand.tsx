@@ -711,7 +711,20 @@ export const PlayerHand = ({
     cards.length === 0 &&
     typeof expectedCardCount === 'number' &&
     expectedCardCount > 0;
-  if (!_isHolmActiveSelfStagedPreArrival && (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))) {
+  // 3-5-7 active-self staged pre-arrival — MUST NOT render placeholder
+  // card backs for unarrived local slots. Layout reservation is handled
+  // below by invisible reservation slots (mirrors Holm).
+  const _is357ActiveSelfStagedPreArrival =
+    is357Game &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    !isHidden &&
+    three57StagedCapacity != null;
+  if (
+    !_isHolmActiveSelfStagedPreArrival &&
+    !_is357ActiveSelfStagedPreArrival &&
+    (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))
+  ) {
     const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
 
     
