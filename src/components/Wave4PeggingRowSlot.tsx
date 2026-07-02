@@ -33,6 +33,11 @@ import { CribbagePlayingCard } from "./CribbagePlayingCard";
 
 export interface PeggingRowPlayedCard {
   card: CribbageCard;
+  /** Player who tabled this card. When provided together with an
+   *  `activePlayerId` on the slot, cards belonging to non-active seats
+   *  receive the shared `.crib-inactive-pegged-card` dim token so the
+   *  active-seat spotlight wins visual hierarchy. */
+  playerId?: string | null;
 }
 
 export interface Wave4PeggingRowSlotProps {
@@ -44,7 +49,11 @@ export interface Wave4PeggingRowSlotProps {
   count: number;
   playedCards: ReadonlyArray<PeggingRowPlayedCard>;
   showEmptyPlaceholder: boolean;
+  /** Cribbage active-turn player id. Used only to select which pegged
+   *  cards receive the mild inactive dim token. */
+  activePlayerId?: string | null;
 }
+
 
 const PEGGING_ROW_ID = "cribbage.peggingRow";
 
