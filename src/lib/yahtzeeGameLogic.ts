@@ -7,6 +7,12 @@
 
 import { YahtzeeDie, YahtzeePlayerState, YahtzeeState, YahtzeeCategory } from './yahtzeeTypes';
 import { createEmptyScorecard, scoreCategory, isScorecardComplete } from './yahtzeeScoring';
+import {
+  advanceYahtzeeReorderHarnessRoll,
+  consumeYahtzeeReorderHarnessValue,
+  isYahtzeeReorderHarnessArmed,
+} from './yahtzee/reorderHarness';
+
 
 /** Create initial dice (5 unrolled dice) */
 export function createInitialYahtzeeDice(): YahtzeeDie[] {
