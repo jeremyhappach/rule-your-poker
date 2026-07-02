@@ -193,6 +193,18 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         const oldEvent = prevAuthEvent.current;
         prevAuthEvent.current = event;
 
+        recordAuthStateChange({
+          previousState: oldEvent ?? "none",
+          nextState: event,
+          supabaseEvent: event,
+          sessionBefore: !!user,
+          sessionAfter: !!session,
+          accessTokenExpiresAt: session?.expires_at ?? null,
+          refreshTokenPresent: !!session?.refresh_token,
+          userId: session?.user?.id ?? user?.id ?? null,
+          callerLabel: `useAuthGuard(${pageLabel})#onAuthStateChange`,
+        });
+
         traceAuthEvent("app-auth-state-change", {
           oldState: oldEvent ?? "none",
           newState: event,
@@ -200,6 +212,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
           userId: session?.user?.id ?? null,
           hasSession: !!session,
         });
+
 
         if (session) {
           // Clear any pending recheck
