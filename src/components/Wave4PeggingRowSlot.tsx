@@ -15,7 +15,7 @@
  *   - center-drift assertion → wave5d:peggingRow center-drift warn
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
@@ -25,10 +25,8 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
-import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
-import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
-// (Removed cardArtifactOverlap import — pegging row uses the adaptive
-// resolver default; not a manually tuned felt-artifact overlap value.)
+import { useCanonicalFeltOverflowFrameElement } from "@/lib/canonicalShell/useCanonicalFeltOverflowFrameElement";
+import { resolvePeggingFanLayout } from "@/lib/cribbage/peggingFanLayout";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
