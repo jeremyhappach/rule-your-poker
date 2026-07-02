@@ -6,6 +6,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
+import { recordHolmLedger, recordHolmLedgerViolation, type HolmLedgerIdentity } from '@/lib/holm/holmPresentationLedger';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
