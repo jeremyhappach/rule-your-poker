@@ -325,46 +325,93 @@ export function emitYahtzeeDiePresentation(
     }
   }
 
-  // Held-row order violation
-  const heldOrderNow = snapshots
-    .filter((s) => s.sourceRow === 'held')
+  // ── Held-row committed-order contract ──────────────────────────
+  //
+  // The held row is intentionally sorted (value ASC, dieId ASC) so
+  // straights/combinations read cleanly to observers. Once committed
+  // for a given held-set signature it must not drift for animation /
+  // scoring / preview / unrelated reroll reasons.
+  const heldSnaps = snapshots.filter((s) => s.sourceRow === 'held');
+  const heldSetSig = heldSnaps
+    .map((s) => s.dieId)
+    .slice()
+    .sort((a, b) => a - b)
+    .join(',');
+  const canonicalOrder = heldSnaps
+    .slice()
+    .sort((a, b) => (a.value - b.value) || (a.dieId - b.dieId))
+    .map((s) => s.dieId);
+  const canonicalValues = canonicalOrder.map(
+    (id) => heldSnaps.find((s) => s.dieId === id)?.value ?? -1,
+  );
+  const domHeldOrder = heldSnaps
+    .slice()
     .sort((a, b) => a.indexInRow - b.indexInRow)
     .map((s) => s.dieId);
-  const heldValuesNow = snapshots
-    .filter((s) => s.sourceRow === 'held')
-    .sort((a, b) => a.indexInRow - b.indexInRow)
-    .map((s) => s.value);
-  const prevSet = new Set(prevHeldOrder);
-  const nowSet = new Set(heldOrderNow);
-  const sameHeldSet =
-    prevSet.size === nowSet.size &&
-    [...prevSet].every((id) => nowSet.has(id));
-  const orderChanged =
-    prevHeldOrder.length > 0 &&
-    (heldOrderNow.length !== prevHeldOrder.length ||
-      heldOrderNow.some((id, i) => id !== prevHeldOrder[i]));
-  if (orderChanged) {
-    pushViolation({
-      ts,
-      kind: 'HELD_ROW_ORDER_CHANGED',
-      dieId: null,
-      rollNumber: currentRollNumber,
-      detail: {
-        before: prevHeldOrder.slice(),
-        after: heldOrderNow.slice(),
-        beforeValues: prevHeldOrder.map(
-          (id) => prevByDieId.get(id)?.value ?? null,
-        ),
-        afterValues: heldValuesNow,
-        trigger: reason,
-        underlyingHeldSetChanged: !sameHeldSet,
-      },
-    });
+
+  // Detect if any committed die's value legitimately changed (roll of
+  // a held die is not allowed, but if it happens we treat it as a
+  // legitimate cause for recommit rather than drift).
+  const heldValueChanged = committedHeldSig === heldSetSig
+    && canonicalOrder.some(
+      (id) => committedHeldValues.get(id) !== undefined &&
+              committedHeldValues.get(id) !== (heldSnaps.find((s) => s.dieId === id)?.value ?? null),
+    );
+
+  const setChanged = committedHeldSig !== heldSetSig;
+
+  if (setChanged || heldValueChanged) {
+    // Legitimate recommit → announce as CHANGED (informational), not
+    // a drift violation.
+    if (committedHeldSig !== null) {
+      pushViolation({
+        ts,
+        kind: 'HELD_ROW_ORDER_CHANGED',
+        dieId: null,
+        rollNumber: currentRollNumber,
+        detail: {
+          before: committedHeldOrder.slice(),
+          after: canonicalOrder.slice(),
+          afterValues: canonicalValues,
+          trigger: reason,
+          cause: setChanged ? 'held-set-changed' : 'held-value-changed',
+        },
+      });
+    }
+    committedHeldSig = heldSetSig;
+    committedHeldOrder = canonicalOrder.slice();
+    committedHeldValues = new Map(
+      heldSnaps.map((s) => [s.dieId, s.value] as const),
+    );
+  } else if (committedHeldSig !== null && committedHeldOrder.length > 0) {
+    // Signature + values stable → the DOM order MUST equal the
+    // committed canonical order. Any deviation is a drift violation.
+    const drifted =
+      domHeldOrder.length !== committedHeldOrder.length ||
+      domHeldOrder.some((id, i) => id !== committedHeldOrder[i]);
+    if (drifted) {
+      pushViolation({
+        ts,
+        kind: 'HELD_ROW_ORDER_DRIFT_VIOLATION',
+        dieId: null,
+        rollNumber: currentRollNumber,
+        detail: {
+          committed: committedHeldOrder.slice(),
+          committedValues: committedHeldOrder.map(
+            (id) => committedHeldValues.get(id) ?? null,
+          ),
+          domOrder: domHeldOrder.slice(),
+          domValues: domHeldOrder.map(
+            (id) => heldSnaps.find((s) => s.dieId === id)?.value ?? null,
+          ),
+          trigger: reason,
+        },
+      });
+    }
   }
 
   // Commit snapshots as new "previous"
   for (const s of snapshots) prevByDieId.set(s.dieId, s);
-  prevHeldOrder = heldOrderNow;
 
   pushEvent({ ts, reason, rollNumber: currentRollNumber, dice: snapshots });
   notify();
