@@ -1017,7 +1017,7 @@ export const PlayerHand = ({
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-        const n = sortedCardsWithIndices.length;
+        const n = holmStagedCapacity ?? sortedCardsWithIndices.length;
         const rotationDeg = useV4FanR1
           ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n) * v4R1FanSign
           : defaultFanStep * (displayIndex - (n - 1) / 2);
