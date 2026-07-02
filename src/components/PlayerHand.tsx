@@ -694,6 +694,8 @@ export const PlayerHand = ({
     const startAngle = -arcSpread / 2;
     const angleStep = count > 1 ? arcSpread / (count - 1) : 0;
     
+    const _holmHiddenFaceEmit =
+      isHolmGame && !isOpponentExposedShowdown;
     return (
       <div className="flex justify-center relative" ref={is357Game ? measureRef : undefined} style={{ minHeight: '60px' }}>
         {Array.from({ length: count }, (_, index) => {
@@ -719,6 +721,29 @@ export const PlayerHand = ({
             />
           );
         })}
+        {_holmHiddenFaceEmit ? (
+          <HolmFaceStateProbe
+            renderBranch="hidden"
+            baseHandContextId={baseHandContextId}
+            dealPhase={dealPhase}
+            forceHiddenFaces={forceHiddenFaces}
+            expectedCardCount={expectedCardCount ?? null}
+            arrivedCount={cards.length}
+            slotCount={count}
+            claimedCardIds={claimedCardIds ?? null}
+            perCard={Array.from({ length: count }, (_, i) => ({
+              slotIndex: i,
+              cardId: `<hidden-slot-${i}>`,
+              faceMode: 'back' as const,
+              transportPhase: 'armed' as const,
+              landed: false,
+              settled: false,
+            }))}
+            faceHistoryRef={holmFaceHistoryRef}
+            handKeyRef={holmLastHandKeyRef}
+            sourceBranchLabel="hidden-back-branch"
+          />
+        ) : null}
       </div>
     );
   }
