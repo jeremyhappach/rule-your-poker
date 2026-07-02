@@ -10930,11 +10930,12 @@ export const MobileGameTable = ({
                                                    cards={effectiveCards}
                                                    capacity={capacity}
                                                    portalTargetSelector="[data-holm-active-pane-content]"
-                                                     phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                     activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     phaseLockKey={`holm|owner:${holmPresentationOwner.identity.key}`}
+                                                     activeHandFanRenderKey={`ActiveHandFan|holm|owner:${holmPresentationOwner.identity.key}`}
 
                                                     cardIds={boundary.rawClaimedCardIds}
                                                     applyFan
+                                                    externalCommitRef={holmPresentationOwner.activeHandCommitRef}
                                                     holmLedgerIdentity={{
                                                       dealerGameId: holmDealerGameId ?? null,
                                                       roundId: handContextId ?? null,
@@ -10944,6 +10945,7 @@ export const MobileGameTable = ({
                                                       branch: 'holm.activeSelf',
                                                     }}
                                                   />
+
                                                )
 
                                             );
