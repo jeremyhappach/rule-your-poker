@@ -295,6 +295,14 @@ export function MeasuredActiveHandFan({
         committedNow.key === activeLockKey &&
         !!committedNow.rect;
       if (zones.length > 0 && totalLowerZonePx <= 0 && !alreadyCommittedForKey) {
+        if (holmLedgerIdentity) {
+          recordHolmLedger('ACTIVE_HAND_LAYOUT', 'measure-deferred', holmLedgerIdentity, {
+            reason: 'lower-zone-pending',
+            zoneCount: zones.length,
+            paneRect: { w, h },
+            phaseLockKey: activeLockKey,
+          });
+        }
         return;
       }
 
@@ -310,11 +318,6 @@ export function MeasuredActiveHandFan({
         : null;
       const candidateValid = !!candidateLayout;
 
-      // Phase-lock: once a valid rect is committed for the current key,
-      // ignore growth updates until the key changes. A later measurement
-      // may replace the commit only if the current commit no longer fits
-      // the latest protected composition budget (e.g. a real shrink), never
-      // merely because a parent settles larger after cards landed.
       const committed = committedRef.current;
       const lockedForCurrentKey =
         !!activeLockKey &&
@@ -337,7 +340,46 @@ export function MeasuredActiveHandFan({
           committedLayout.stageRect.height > candidateLayout.stageRect.height + 0.5)
       );
 
-      if (candidateValid && (!lockedForCurrentKey || committedInvalid)) {
+      const willAccept = candidateValid && (!lockedForCurrentKey || committedInvalid);
+      const acceptedNoLock = !willAccept && !activeLockKey && candidateValid;
+
+      if (holmLedgerIdentity) {
+        const reason = !candidateValid
+          ? 'candidate-invalid'
+          : willAccept
+            ? (lockedForCurrentKey ? 'committed-invalidated' : 'first-commit')
+            : (lockedForCurrentKey ? 'locked-skip' : 'no-change');
+        const priorCardSize = committedLayout?.cardSize ?? null;
+        const nextCardSize = candidateLayout?.cardSize ?? null;
+        const sizeChangedAfterCommit = !!(
+          lockedForCurrentKey && priorCardSize && nextCardSize &&
+          (Math.abs(priorCardSize.width - nextCardSize.width) > 0.5 ||
+            Math.abs(priorCardSize.height - nextCardSize.height) > 0.5)
+        );
+        recordHolmLedger('ACTIVE_HAND_LAYOUT', willAccept ? 'commit-accept' : (acceptedNoLock ? 'commit-accept-nolock' : 'commit-reject'), holmLedgerIdentity, {
+          reason,
+          paneRect: { w, h },
+          lowerZoneMinPx: totalLowerZonePx,
+          zoneCount: zones.length,
+          phaseLockKey: activeLockKey,
+          lockedForCurrentKey,
+          candidateStageRect: candidateLayout?.stageRect ?? null,
+          committedStageRect: committedLayout?.stageRect ?? null,
+          candidateCardSize: nextCardSize,
+          committedCardSize: priorCardSize,
+          policyRevision: (policy as unknown as { revision?: number })?.revision ?? null,
+          sizeChangedAfterCommit,
+        });
+        if (sizeChangedAfterCommit && willAccept) {
+          recordHolmLedgerViolation('ACTIVE_HAND_LAYOUT', 'card-size-change-after-first-visible', holmLedgerIdentity, {
+            priorCardSize,
+            nextCardSize,
+            paneRect: { w, h },
+          });
+        }
+      }
+
+      if (willAccept) {
         committedRef.current = {
           key: activeLockKey,
           rect: candidateRect,
@@ -353,8 +395,7 @@ export function MeasuredActiveHandFan({
         setLowerZoneMinPx((prev) =>
           Math.abs(prev - totalLowerZonePx) < 0.5 ? prev : totalLowerZonePx,
         );
-      } else if (!activeLockKey && candidateValid) {
-        // No lock configured — behave as before (accept every valid rect).
+      } else if (acceptedNoLock) {
         setRect((prev) =>
           prev &&
           Math.abs(prev.width - w) < 0.5 &&
@@ -367,6 +408,7 @@ export function MeasuredActiveHandFan({
         );
       }
     };
+
 
 
     measure();
