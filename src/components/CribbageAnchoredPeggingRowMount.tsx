@@ -78,10 +78,12 @@ export function CribbageAnchoredPeggingRowMount({
       count={displayCount}
       playedCards={cribbageState.pegging.playedCards
         .slice(sequenceStartIndex)
-        .map((pc) => ({ card: pc.card }))}
+        .map((pc) => ({ card: pc.card, playerId: pc.playerId }))}
       showEmptyPlaceholder={!isPeggingWin}
+      activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}
     />
   );
 }
+
 
 export default CribbageAnchoredPeggingRowMount;
