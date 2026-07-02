@@ -240,36 +240,6 @@ function detectCrossStepViolations(
   }
 }
 
-// ────────────────────────────────────────────────────────────────
-// Reducer-derived synthetic snapshot (used when DOM is empty)
-// ────────────────────────────────────────────────────────────────
-function synthesizeFromReducer(ps: YahtzeePlayerState): YahtzeeDieInput[] {
-  const heldIds: number[] = [];
-  const rollIds: number[] = [];
-  ps.dice.forEach((d, i) => {
-    if (d.isHeld) heldIds.push(i);
-    else rollIds.push(i);
-  });
-  const ordered = [...heldIds, ...rollIds];
-  return ordered.map((dieId, globalIdx) => {
-    const d = ps.dice[dieId];
-    const isHeld = d.isHeld;
-    const rowIds = isHeld ? heldIds : rollIds;
-    return {
-      dieId,
-      value: d.value,
-      held: isHeld,
-      colorToken: isHeld ? 'harness:held' : 'harness:roll',
-      computedColor: null,
-      sourceRow: isHeld ? 'held' : 'roll',
-      indexInRow: rowIds.indexOf(dieId),
-      globalRenderIndex: globalIdx,
-      rect: null,
-      animationPhase: `reducer:rollsRemaining=${ps.rollsRemaining}`,
-      reactKey: `die-${dieId}`,
-    };
-  });
-}
 
 // ────────────────────────────────────────────────────────────────
 // Passive continuous observer — records every mounted die on every
