@@ -1011,11 +1011,15 @@ export const PlayerHand = ({
 
   const r1MarkerActive =
     is357Game && currentRound === 1 && displayCardCount === 3 && !forceHiddenFaces;
+  const isHolmActiveSelf = isHolmGame && !isOpponentExposedShowdown && !forceHiddenFaces;
   return (
     <div
       className="flex"
-      ref={is357Game ? measureRef : undefined}
-      
+      ref={(node) => {
+        if (is357Game) measureRef.current = node;
+        if (isHolmActiveSelf) holmActiveSelfRef.current = node;
+      }}
+      {...(isHolmActiveSelf ? { 'data-holm-active-self-fan-root': 'true' } : {})}
       {...(r1MarkerActive ? { 'data-357-r1-row': 'true' } : {})}
     >
 
