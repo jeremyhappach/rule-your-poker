@@ -320,7 +320,7 @@ export const GinRummyMobileCardsTab = ({
 
 
   return (
-    <div className="h-full px-2 flex flex-col">
+    <div className="relative h-full px-2 flex flex-col">
 
       {/* ── POST-KNOCK VIEW: Melds left-justified, deadwood right-justified, wraps naturally ── */}
       {inPostKnock ? (
