@@ -1132,7 +1132,9 @@ export const PlayerHand = ({
         }
         return cardEl;
       })}
+      <HolmDealGeometryProbe {...holmTraceProps} />
     </div>
   );
+
 };
 
