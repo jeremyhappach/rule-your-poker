@@ -34,6 +34,21 @@ bootstrapTableDemo();
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
 supabase.auth.onAuthStateChange((event, session) => {
+  try {
+    recordAuthStateChange({
+      previousState: null,
+      nextState: event,
+      supabaseEvent: event,
+      sessionBefore: false,
+      sessionAfter: !!session,
+      accessTokenExpiresAt: session?.expires_at ?? null,
+      refreshTokenPresent: !!session?.refresh_token,
+      userId: session?.user?.id ?? null,
+      callerLabel: "main.tsx#global-onAuthStateChange",
+    });
+  } catch {
+    /* noop */
+  }
   if (event === "TOKEN_REFRESHED" && !session) {
     persistSyncDebugEvent({
       gameId: "00000000-0000-0000-0000-000000000000",
@@ -52,6 +67,7 @@ supabase.auth.onAuthStateChange((event, session) => {
     });
   }
 });
+
 
 // iOS Safari can restore pages from the Back/Forward Cache (BFCache), which may
 // resurrect an *old published build* and show stale lobby content.
