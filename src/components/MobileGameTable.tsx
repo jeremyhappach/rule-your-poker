@@ -10673,18 +10673,19 @@ export const MobileGameTable = ({
                                                  //   cannot expand into the
                                                  //   action zone. Phase-lock
                                                  //   the committed rect to
-                                                 //   the current hand identity
-                                                 //   so later ancestor
-                                                 //   measurements (once
-                                                 //   `flex-1` fills) cannot
-                                                 //   enlarge the stage.
+                                                 //   the full current hand
+                                                 //   identity so later
+                                                 //   ancestor measurements
+                                                 //   (once `flex-1` fills)
+                                                 //   cannot enlarge the
+                                                 //   stage.
                                                  <MeasuredActiveHandFan
                                                    game={activeGame}
                                                    cards={effectiveCards}
                                                    capacity={capacity}
                                                    portalTargetSelector="[data-holm-active-pane-content]"
-                                                   phaseLockKey={`holm|${boundary.baseHandContextId}|p${currentPlayer?.id ?? 'noP'}`}
-                                                   activeHandFanRenderKey={`ActiveHandFan|holm|${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                    phaseLockKey={`holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                    activeHandFanRenderKey={`ActiveHandFan|holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
                                                    cardIds={boundary.rawClaimedCardIds}
                                                    applyFan
                                                  />
