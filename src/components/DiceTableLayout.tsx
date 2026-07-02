@@ -1065,10 +1065,20 @@ export function DiceTableLayout({
     console.warn('[DiceTableLayout] Empty orderedDice - this may cause visual flicker');
   }
   
-  // Separate held and unheld dice
-  const heldDice = orderedDice.filter(d => d.die.isHeld);
+  // Separate held and unheld dice.
+  // CANONICAL HELD-ROW POLICY: held dice are always sorted by (value ASC, dieId ASC).
+  // Every downstream layout consumer (heldPositions, heldPositionByOriginalIndex, fallback
+  // held-position derivations, and heldSlotIndexByDie) reads from this ordering, so a die's
+  // horizontal slot is solely a function of its position in the committed canonical order.
+  // This prevents a category-selection / authority-arrival render from silently switching
+  // the row into physical/insertion order via a `held:layout` fallback.
+  const canonicalHeldSort = (
+    a: (typeof orderedDice)[number],
+    b: (typeof orderedDice)[number],
+  ) => (a.die.value !== b.die.value ? a.die.value - b.die.value : a.originalIndex - b.originalIndex);
+  const heldDice = orderedDice.filter(d => d.die.isHeld).sort(canonicalHeldSort);
   const unheldDice = orderedDice.filter(d => !d.die.isHeld);
-  
+
   const heldCount = heldDice.length;
   const unheldCount = unheldDice.length;
   
