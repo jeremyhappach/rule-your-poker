@@ -130,15 +130,41 @@ export const CribbageTurnSpotlight = ({
   // but no longer needed for legacy fallback math.
   void currentPlayerPosition;
 
+  // Brief brighter pulse on turn ownership arrival, then settle to the
+  // stronger steady state. Footprint/geometry unchanged.
+  const [pulse, setPulse] = useState(0);
+  const lastTurnRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isVisible || !currentTurnPlayerId) {
+      lastTurnRef.current = null;
+      setPulse(0);
+      return;
+    }
+    if (lastTurnRef.current === currentTurnPlayerId) return;
+    lastTurnRef.current = currentTurnPlayerId;
+    setPulse(1);
+    const t = window.setTimeout(() => setPulse(0), 520);
+    return () => window.clearTimeout(t);
+  }, [isVisible, currentTurnPlayerId]);
+
   if (!isVisible || !currentTurnPlayerId) {
     return null;
   }
 
   // Narrow cone — apex now centered on canonical seat geometry.
   const beamHalfAngle = 25;
+  const coneMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`;
+  const invConeMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`;
+
+  // Steady-state luminance ~2× prior (0.15 → 0.32) with a tighter,
+  // sharper inner-edge halo via a radial falloff inside the cone.
+  const coreAlpha = 0.32 + pulse * 0.28;
+  const glowAlpha = 0.18 + pulse * 0.12; // outer glow ~1.5× prior baseline
+  const pulseTransition = pulse ? 'background 180ms ease-out' : 'background 420ms ease-in';
 
   const overlay = (
     <>
+      {/* Outer soft glow — broader, dimmer wash for context */}
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath }}
@@ -146,14 +172,32 @@ export const CribbageTurnSpotlight = ({
         <div
           className="absolute inset-0"
           style={{
-            background: 'hsla(45, 70%, 50%, 0.15)',
-            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
-            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
-            transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            background: `hsla(45, 75%, 55%, ${glowAlpha})`,
+            maskImage: coneMask,
+            WebkitMaskImage: coneMask,
+            transition: `mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), ${pulseTransition}`,
           }}
         />
       </div>
 
+      {/* Core bright halo — sharper, brighter, with radial falloff so the
+          inner edge reads as a distinct active-zone halo. */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[5]"
+        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse 70% 70% at 50% 50%, hsla(48, 90%, 62%, ${coreAlpha}) 0%, hsla(45, 80%, 55%, ${coreAlpha * 0.85}) 45%, hsla(45, 75%, 50%, ${coreAlpha * 0.55}) 78%, hsla(45, 70%, 50%, 0) 100%)`,
+            maskImage: coneMask,
+            WebkitMaskImage: coneMask,
+            transition: `mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), ${pulseTransition}`,
+          }}
+        />
+      </div>
+
+      {/* Outside-cone dim (unchanged footprint) */}
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath }}
@@ -162,14 +206,15 @@ export const CribbageTurnSpotlight = ({
           className="absolute inset-0"
           style={{
             background: 'rgba(0, 0, 0, 0.35)',
-            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
-            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
+            maskImage: invConeMask,
+            WebkitMaskImage: invConeMask,
             transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
       </div>
     </>
   );
+
 
   if (shellOwned) {
     if (!shellFrame) return null;
