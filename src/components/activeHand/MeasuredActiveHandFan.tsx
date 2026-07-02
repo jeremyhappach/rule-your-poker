@@ -62,6 +62,11 @@ import {
   recordHolmLedger,
   recordHolmLedgerViolation,
 } from '@/lib/holm/holmPresentationLedger';
+import {
+  recordThree57Geometry,
+  recordThree57Lifecycle,
+  type Three57LedgerIdentity,
+} from '@/lib/threeFiveSeven/presentationLedger';
 
 type PaneRect = ActiveHandStageRect;
 
