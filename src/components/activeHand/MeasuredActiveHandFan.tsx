@@ -124,6 +124,18 @@ export interface MeasuredActiveHandFanProps {
   dataAttribute?: string;
   activeHandFanRenderKey?: string | null;
   cardIds?: string[];
+  /**
+   * Optional identity carried into HOLM_PRESENTATION_LEDGER. When
+   * absent, this component emits no ledger records.
+   */
+  holmLedgerIdentity?: {
+    dealerGameId?: string | null;
+    roundId?: string | null;
+    handNumber?: number | null;
+    handContextId?: string | null;
+    playerId?: string | null;
+    branch?: string;
+  };
 }
 
 export function MeasuredActiveHandFan({
@@ -142,6 +154,7 @@ export function MeasuredActiveHandFan({
   dataAttribute,
   activeHandFanRenderKey,
   cardIds,
+  holmLedgerIdentity,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [rect, setRect] = useState<PaneRect | null>(null);
