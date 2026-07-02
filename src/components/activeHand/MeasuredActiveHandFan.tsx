@@ -384,6 +384,27 @@ export function MeasuredActiveHandFan({
             phaseLockKey: activeLockKey,
           });
         }
+        if (three57LedgerIdentity) {
+          recordThree57Geometry(three57LedgerIdentity, {
+            event: 'commit-reject',
+            branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+            sourceLabels: { reason: 'lower-zone-pending', zoneCount: zones.length },
+            expectedCapacity: capacity,
+            visibleCapacity: cards.length,
+            claimedCapacity: (cardIds ?? []).length,
+            cardWidth: null,
+            cardHeight: null,
+            wrapperScale: null,
+            fanOverlap: null,
+            fanSpread: null,
+            rotationDeg: null,
+            paneRect: { w, h },
+            commitKind: 'sample',
+            selectingFunction: 'measure/lowerZonePending',
+            isPostDealBranch: false,
+            legalIdentityChange: false,
+          });
+        }
         return;
       }
 
