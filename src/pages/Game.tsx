@@ -11121,6 +11121,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onDeckColorModeChange={async () => {}}
           />
         )}
+        <ThreeFiveSevenPresentationLedgerPill />
         <VisualBugReportButton
           gameId={gameId!}
           gameType={game.game_type}
