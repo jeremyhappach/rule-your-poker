@@ -1956,6 +1956,10 @@ export function DiceTableLayout({
               data-die-layer-z={30}
               data-die-react-key={`die-${item.originalIndex}`}
               data-die-transform-owner="freeze"
+              data-die-renderer-input-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+              data-die-renderer-input-source="committedHeldLayerIterationOrder"
+              data-die-committed-order={committedHeldItems.map((h) => h.originalIndex).join(",")}
+              data-die-phase-branch="freeze"
               className="absolute will-change-transform"
               style={{
                 left: '50%',
