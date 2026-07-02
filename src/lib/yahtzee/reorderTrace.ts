@@ -153,12 +153,14 @@ export function resetYahtzeeReorderTrace(): void {
 export function getYahtzeeReorderTraceSnapshot(): {
   presentation: readonly YahtzeeDiePresentationEvent[];
   violations: readonly YahtzeeReorderViolationEvent[];
+  lifecycle: readonly YahtzeeReorderHarnessLifecycleEvent[];
   active: boolean;
   currentRollNumber: number | null;
 } {
   return {
     presentation: presentationEvents,
     violations: violationEvents,
+    lifecycle: lifecycleEvents,
     active,
     currentRollNumber,
   };
