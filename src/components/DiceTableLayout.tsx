@@ -1227,11 +1227,13 @@ export function DiceTableLayout({
   let layoutUnheldDice: typeof orderedDice;
   
   if (usePreRollLayout) {
-    // During animation: use the pre-roll held state for layout
-    layoutHeldDice = orderedDice.filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex]);
+    // During animation: use the pre-roll held state for layout (canonicalized).
+    layoutHeldDice = orderedDice
+      .filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex])
+      .sort(canonicalHeldSort);
     layoutUnheldDice = orderedDice.filter((d) => !heldMaskBeforeComplete?.[d.originalIndex]);
   } else {
-    // Normal: use actual isHeld state
+    // Normal: use actual isHeld state (already canonicalized above)
     layoutHeldDice = heldDice;
     layoutUnheldDice = unheldDice;
   }
