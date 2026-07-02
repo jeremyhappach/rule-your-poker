@@ -314,8 +314,23 @@ export const PlayerHand = ({
     expectedCardCount >= Math.max(1, cards.length)
       ? expectedCardCount
       : null;
+  // 3-5-7 active-self staged-deal capacity — same contract as Holm.
+  // While cards flow in one at a time within the same round, lock
+  // size/overlap/fan to the AUTHORITATIVE round capacity (3/5/7)
+  // provided via expectedCardCount by MobileGameTable.activeSelfHand.
+  // Never fall back to sortedCards/visible/claimed counts, otherwise
+  // per-slot geometry reflows every time a new card arrives (large
+  // cards landing then snapping smaller).
+  const three57StagedCapacity =
+    is357Game &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    typeof expectedCardCount === 'number' &&
+    expectedCardCount >= Math.max(1, cards.length)
+      ? expectedCardCount
+      : null;
   const displayCardCount =
-    holmStagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
+    holmStagedCapacity ?? three57StagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
   const cardSize = getCardSize(displayCardCount);
 
   // Round 1 (3-5-7) on mobile: cards were getting too wide when scaled.
@@ -696,7 +711,20 @@ export const PlayerHand = ({
     cards.length === 0 &&
     typeof expectedCardCount === 'number' &&
     expectedCardCount > 0;
-  if (!_isHolmActiveSelfStagedPreArrival && (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))) {
+  // 3-5-7 active-self staged pre-arrival — MUST NOT render placeholder
+  // card backs for unarrived local slots. Layout reservation is handled
+  // below by invisible reservation slots (mirrors Holm).
+  const _is357ActiveSelfStagedPreArrival =
+    is357Game &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    !isHidden &&
+    three57StagedCapacity != null;
+  if (
+    !_isHolmActiveSelfStagedPreArrival &&
+    !_is357ActiveSelfStagedPreArrival &&
+    (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0))
+  ) {
     const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
 
     
@@ -1212,6 +1240,40 @@ export const PlayerHand = ({
                 key={`holm-reservation-${i}`}
                 aria-hidden="true"
                 data-holm-reservation-slot={String(sortedCardsWithIndices.length + i)}
+                className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+                style={{
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                  width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
+                }}
+              >
+                <div className={
+                  cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
+                  : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
+                  : cardSize === 'md' ? 'w-7 h-10 sm:w-8 sm:h-12'
+                  : 'w-6 h-9 sm:w-7 sm:h-10'
+                } />
+              </div>
+            ),
+          )
+        : null}
+      {/* 3-5-7 active-self staged-deal reservation slots — mirror the
+          Holm contract. Reserve invisible layout for unarrived slots so
+          the fan geometry (size / overlap / fan / rotation) is locked
+          BEFORE card 1 arrives, and later arrivals only fill precomputed
+          slots. No card backs, no flip-capable placeholders. */}
+      {is357Game &&
+        !isOpponentExposedShowdown &&
+        !forceHiddenFaces &&
+        three57StagedCapacity != null &&
+        sortedCardsWithIndices.length < three57StagedCapacity
+        ? Array.from(
+            { length: three57StagedCapacity - sortedCardsWithIndices.length },
+            (_, i) => (
+              <div
+                key={`three57-reservation-${i}`}
+                aria-hidden="true"
+                data-three57-reservation-slot={String(sortedCardsWithIndices.length + i)}
                 className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
                 style={{
                   visibility: 'hidden',
