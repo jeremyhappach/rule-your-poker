@@ -72,6 +72,12 @@ export function acquireRecoveryLease(gameId: string, userId: string): LeaseIdent
       prior: currentLease,
       next: { gameId, userId },
     });
+    recordSessionRecoveryLease({
+      action: 'release',
+      reason: 'superseded-by-new-identity',
+      oldDealerGameId: currentLease.gameId,
+      newDealerGameId: gameId,
+    });
   }
   currentLease = {
     gameId,
@@ -83,8 +89,15 @@ export function acquireRecoveryLease(gameId: string, userId: string): LeaseIdent
     kind: 'lease-acquired',
     lease: currentLease,
   });
+  recordSessionRecoveryLease({
+    action: 'acquire',
+    reason: 'lease-acquired',
+    newDealerGameId: gameId,
+    detail: { userId, mountId: currentLease.mountId },
+  });
   return currentLease;
 }
+
 
 export function releaseRecoveryLease(
   reason: TerminalRecoveryReason | 'unmount',
