@@ -32,7 +32,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   onAnimationStart,
   onAnimationComplete,
 }) => {
-  const [animations, setAnimations] = useState<{ position: number; fromX: number; fromY: number; toX: number; toY: number; amount: number }[]>([]);
+  const [animations, setAnimations] = useState<{ position: number; fromX: number; fromY: number; toX: number; toY: number; amount: number; viewportLeft: number; viewportTop: number }[]>([]);
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
   const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
@@ -204,7 +204,13 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
           toX: winnerCoords.x,
           toY: winnerCoords.y,
           amount: splitAmount,
+          // Viewport-absolute origin of the container so the rendered
+          // chip can use `position: fixed` and escape the seat-cluster
+          // stacking context that otherwise paints over `z-[100]`.
+          viewportLeft: rect.left,
+          viewportTop: rect.top,
         };
+
       });
 
       // Call onAnimationStart when POT-OUT animation begins
@@ -261,13 +267,15 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
         return (
           <div
             key={animKey}
-            className="absolute z-[100] pointer-events-none"
+            className="fixed pointer-events-none"
             style={{
-              left: anim.fromX,
-              top: anim.fromY,
+              left: anim.viewportLeft + anim.fromX,
+              top: anim.viewportTop + anim.fromY,
               transform: 'translate(-50%, -50%)',
+              zIndex: 1000,
             }}
           >
+
             <div
               className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-white shadow-lg flex items-center justify-center"
               style={{

@@ -1127,6 +1127,12 @@ export const MobileGameTable = ({
   const _ttPlay = usePlayGeometry();
   const _ttShowdownCfg = useThreeFiveSevenShowdownConfig();
   const opponentShowdownPlacementPx = useMemo(() => {
+    // Hard gate: this placement drives the 3-5-7 bespoke opponent
+    // outward-show geometry. It must never be reachable for other
+    // game types (e.g. Holm) — even though the seat dispatcher
+    // already routes by game_type, callers reading this memo
+    // unconditionally must see `undefined` outside 3-5-7.
+    if (!__is357GameType(gameType)) return undefined;
     const p = _ttShowdownCfg.placement;
     const w = _ttPlay.width || 0;
     const h = _ttPlay.height || 0;
@@ -1137,6 +1143,7 @@ export const MobileGameTable = ({
       dyPx: (p.yPctOfFelt / 100) * h,
     };
   }, [
+    gameType,
     _ttShowdownCfg.placement.attachment,
     _ttShowdownCfg.placement.sprawlDirection,
     _ttShowdownCfg.placement.xPctOfFelt,
@@ -1144,6 +1151,7 @@ export const MobileGameTable = ({
     _ttPlay.width,
     _ttPlay.height,
   ]);
+
 
   // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
   // single shared placement object resolves to felt-relative pixels
@@ -3494,6 +3502,13 @@ export const MobileGameTable = ({
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
     stayedPlayersCount >= 2 && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+
+  // HOLM: monotonic folded-latch state lives with the rest of the
+  // per-hand refs; the effect that fills it runs after `currentPlayer`
+  // is defined below (see `holmSelfFoldedLatched`).
+  const holmSelfFoldedForHandRef = useRef<string | null>(null);
+
+
   
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
@@ -3742,6 +3757,29 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+
+  // HOLM: monotonic folded-latch for the local self hand.
+  // Once `current_decision === 'fold'` is observed for a given
+  // handContextId, keep the folded dim on the active self subtree for
+  // the ENTIRETY of that hand — including win/result/announcement
+  // phases where a generic reveal/tabled/winner branch could otherwise
+  // revive the hand to full opacity. The ref clears naturally on the
+  // next handContextId boundary because the derived boolean below
+  // compares against the current `handContextId`.
+  const holmSelfCurrentHandCtx = handContextId ?? null;
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!holmSelfCurrentHandCtx) return;
+    if (currentPlayer?.current_decision === 'fold') {
+      holmSelfFoldedForHandRef.current = holmSelfCurrentHandCtx;
+    }
+  }, [gameType, currentPlayer?.current_decision, holmSelfCurrentHandCtx]);
+  const holmSelfFoldedLatched =
+    gameType === 'holm-game' &&
+    holmSelfCurrentHandCtx != null &&
+    holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
+
+
   
   // CRITICAL FIX: Use handContextId to validate current player cards.
   // During hand transitions, playerCards may briefly contain stale data from the previous hand.
@@ -9885,7 +9923,7 @@ export const MobileGameTable = ({
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
         {/* SKIP if cards are already tabled via solo vs Chucky - they're already in position */}
-        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && (
+        {gameType === 'holm-game' && holmWinPotTriggerIdGated && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && !isSoloVsChucky && !isHolmMultiPlayerShowdown && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div 
               className="flex"
@@ -10569,7 +10607,7 @@ export const MobileGameTable = ({
                               className={cn(
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
                                 isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
-                                (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : '',
+                                (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' || holmSelfFoldedLatched ? 'opacity-40 grayscale-[30%]' : '',
                                 currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
@@ -10684,8 +10722,9 @@ export const MobileGameTable = ({
                                                    cards={effectiveCards}
                                                    capacity={capacity}
                                                    portalTargetSelector="[data-holm-active-pane-content]"
-                                                    phaseLockKey={`holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                    activeHandFanRenderKey={`ActiveHandFan|holm|dg:${holmDealerGameId ?? gameId ?? 'noDG'}|rid:${handContextId ?? boundary.baseHandContextId}|hand:${currentRound ?? 0}|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+
                                                    cardIds={boundary.rawClaimedCardIds}
                                                    applyFan
                                                  />
