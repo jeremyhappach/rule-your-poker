@@ -1197,18 +1197,6 @@ export const PlayerHand = ({
         }
         return cardEl;
       })}
-      <HolmDealGeometryProbe {...holmTraceProps} />
-      {isHolmActiveSelf ? (
-        <HolmFaceStateProbe
-          renderBranch="main"
-          baseHandContextId={baseHandContextId}
-          dealPhase={dealPhase}
-          forceHiddenFaces={forceHiddenFaces}
-          expectedCardCount={expectedCardCount ?? null}
-          arrivedCount={cards.length}
-          slotCount={displayCardCount}
-          claimedCardIds={claimedCardIds ?? null}
-          perCard={holmFaceStatePerCard}
       {/* Inert reservation slots for Holm active-self staged deal — occupy
           layout for unarrived final slots WITHOUT painting a card back /
           canonical card back / flip-capable card. Preserves the locked
@@ -1231,9 +1219,6 @@ export const PlayerHand = ({
                   width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
                 }}
               >
-                {/* Sized spacer only; no card surface. Uses PlayingCard's
-                    size classes for width/height parity with the arrived
-                    face-up cards so the fan slot geometry stays locked. */}
                 <div className={
                   cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
                   : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
@@ -1244,6 +1229,7 @@ export const PlayerHand = ({
             ),
           )
         : null}
+
       <HolmDealGeometryProbe {...holmTraceProps} />
       {isHolmActiveSelf ? (
         <HolmFaceStateProbe
