@@ -10927,21 +10927,31 @@ export const MobileGameTable = ({
                                              //   3s→5s or 5s→7s, or hand boundary) BEFORE the
                                              //   successor renders — no prior cards, transforms,
                                              //   slot locks, or cached scale survive the boundary.
-                                             const identityKey = `357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`;
-                                             return (
-                                                <MeasuredActiveHandFan
-                                                  key={identityKey}
-                                                  game={activeGame}
-                                                  cards={effectiveCards}
-                                                  capacity={capacity}
-                                                  portalTargetSelector="[data-357-active-pane-content]"
-                                                  phaseLockKey={identityKey}
-                                                  activeHandFanRenderKey={`ActiveHandFan|${identityKey}`}
-                                                  cardIds={boundary.rawClaimedCardIds}
-                                                  applyFan
-                                                />
-                                              );
-                                            }
+                                              const identityKey = `357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`;
+                                              const three57LedgerIdentity = {
+                                                dealerGameId: (activeGame as unknown as { id?: string })?.id ?? null,
+                                                roundId: (currentRound != null ? String(currentRound) : null),
+                                                handNumber: null,
+                                                stageRound: (capacity === 3 ? 3 : capacity === 5 ? 5 : 7) as 3 | 5 | 7,
+                                                handContextId: boundary.baseHandContextId ?? null,
+                                                localPlayerId: currentPlayer?.id ?? null,
+                                                branch: 'MobileGameTable/357-active-fan',
+                                              };
+                                              return (
+                                                 <MeasuredActiveHandFan
+                                                   key={identityKey}
+                                                   game={activeGame}
+                                                   cards={effectiveCards}
+                                                   capacity={capacity}
+                                                   portalTargetSelector="[data-357-active-pane-content]"
+                                                   phaseLockKey={identityKey}
+                                                   activeHandFanRenderKey={`ActiveHandFan|${identityKey}`}
+                                                   cardIds={boundary.rawClaimedCardIds}
+                                                   applyFan
+                                                   three57LedgerIdentity={three57LedgerIdentity}
+                                                 />
+                                               );
+                                             }
 
                                          return (
                                            <PlayerHand

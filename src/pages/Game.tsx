@@ -42,6 +42,8 @@ import {
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
+import { setThree57LedgerActive } from "@/lib/threeFiveSeven/presentationLedger";
+import { ThreeFiveSevenPresentationLedgerPill } from "@/components/ThreeFiveSevenPresentationLedgerPill";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -2416,11 +2418,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Buffer resets on activation; deactivation clears the on-screen pill.
   useEffect(() => {
     const isHolm = game?.game_type === 'holm-game';
+    const is357 = game?.game_type === 'three-five-seven';
     setHolmTraceActive(isHolm);
     setHolmLedgerActive(isHolm);
+    setThree57LedgerActive(is357);
     return () => {
       setHolmTraceActive(false);
       setHolmLedgerActive(false);
+      setThree57LedgerActive(false);
     };
   }, [game?.game_type, game?.id]);
 
@@ -11116,6 +11121,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onDeckColorModeChange={async () => {}}
           />
         )}
+        <ThreeFiveSevenPresentationLedgerPill />
         <VisualBugReportButton
           gameId={gameId!}
           gameType={game.game_type}
