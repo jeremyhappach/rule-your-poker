@@ -244,7 +244,7 @@ export async function startNextCribbageHand(
         const ps = newState.playerStates[pid];
         return ps ? { player_id: pid, cards: ps.hand } : null;
       })
-      .filter((v): v is { player_id: string; cards: unknown[] } => v !== null);
+      .filter((v): v is NonNullable<typeof v> => v !== null);
 
     const { data, error } = await supabase.rpc('cribbage_create_next_hand' as any, {
       _predecessor_round_id: predecessorRoundId,
