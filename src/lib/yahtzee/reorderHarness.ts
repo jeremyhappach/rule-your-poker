@@ -32,12 +32,6 @@ interface HarnessState {
   nextRollIdx: number;
   armedAtMs: number | null;
   runId: string | null;
-  eligibility: {
-    isYahtzeeTurn: boolean;
-    isLocalTurn: boolean;
-    isNonHost: boolean;
-    playerId: string | null;
-  };
   listeners: Set<() => void>;
 }
 
@@ -53,12 +47,6 @@ const state: HarnessState = {
   nextRollIdx: 0,
   armedAtMs: null,
   runId: null,
-  eligibility: {
-    isYahtzeeTurn: false,
-    isLocalTurn: false,
-    isNonHost: false,
-    playerId: null,
-  },
   listeners: new Set(),
 };
 
@@ -83,7 +71,6 @@ export function getYahtzeeReorderHarnessSnapshot(): {
   status: YahtzeeReorderHarnessStatus;
   nextRollIdx: number;
   totalRolls: number;
-  eligibility: HarnessState['eligibility'];
   armedAtMs: number | null;
   runId: string | null;
 } {
@@ -91,29 +78,20 @@ export function getYahtzeeReorderHarnessSnapshot(): {
     status: state.status,
     nextRollIdx: state.nextRollIdx,
     totalRolls: SCENARIO.length,
-    eligibility: { ...state.eligibility },
     armedAtMs: state.armedAtMs,
     runId: state.runId,
   };
-}
-
-export function setYahtzeeReorderHarnessEligibility(
-  next: Partial<HarnessState['eligibility']>,
-): void {
-  const prev = state.eligibility;
-  state.eligibility = { ...prev, ...next };
-  notify();
 }
 
 export function isYahtzeeReorderHarnessArmed(): boolean {
   return state.status === 'armed' || state.status === 'in_progress';
 }
 
-export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string; runId?: string } {
-  const el = state.eligibility;
-  if (!el.isYahtzeeTurn) return { ok: false, reason: 'not in a Yahtzee turn' };
-  if (!el.isLocalTurn) return { ok: false, reason: 'not your turn' };
-  if (!el.isNonHost) return { ok: false, reason: 'local player must be non-host' };
+/**
+ * Manual, unconditional arm. Always succeeds. No eligibility, role, or
+ * turn checks — the caller decides when to run the scenario.
+ */
+export function armYahtzeeReorderHarness(): { ok: true; runId: string } {
   state.queue = SCENARIO.map((row) => row.slice());
   state.nextRollIdx = 0;
   state.status = 'armed';
