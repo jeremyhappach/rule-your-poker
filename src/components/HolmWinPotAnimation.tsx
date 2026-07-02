@@ -19,6 +19,7 @@ interface HolmWinPotAnimationProps {
   containerRef: React.RefObject<HTMLDivElement>;
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
+  holmLedgerIdentity?: HolmLedgerIdentity;
 }
 
 export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
