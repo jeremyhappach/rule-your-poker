@@ -15,7 +15,7 @@
  *   - center-drift assertion → wave5d:peggingRow center-drift warn
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   deriveAvailableGameplayViewport,
@@ -25,10 +25,8 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
-import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
-import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanonicalFeltCoordFrameElement";
-// (Removed cardArtifactOverlap import — pegging row uses the adaptive
-// resolver default; not a manually tuned felt-artifact overlap value.)
+import { useCanonicalFeltOverflowFrameElement } from "@/lib/canonicalShell/useCanonicalFeltOverflowFrameElement";
+import { resolvePeggingFanLayout } from "@/lib/cribbage/peggingFanLayout";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -65,7 +63,7 @@ export function Wave4PeggingRowSlot({
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useCribbageGameplayGeometry();
-  const coordFrame = useCanonicalFeltCoordFrameElement(true);
+  const overflowFrame = useCanonicalFeltOverflowFrameElement(true);
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGGING_ROW_ID);
@@ -190,7 +188,7 @@ export function Wave4PeggingRowSlot({
     );
   }
 
-  if (!coordFrame) return null;
+  if (!overflowFrame) return null;
 
   const x = toVmin(placement.rect.x, vminInPx);
   const y = toVmin(placement.rect.y, vminInPx);
@@ -219,23 +217,92 @@ export function Wave4PeggingRowSlot({
   const visibleCardCount =
     playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
 
-  // Adaptive pegging fan — resolver's default preferredOverlapRatio
-  // (0.18) is the implementation default. No manual override.
-  const fan = visibleCardCount > 0
-    ? resolveCardRowLayout({
-        availableWidth: Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx),
-        availableHeight: cardCeilingHeightPx,
-        count: visibleCardCount,
-        aspect: CARD_ASPECT_WH,
-        minCardWidth: 18,
-        maxCardWidth: cardCeilingWidthPx,
-        maxOverlapRatio: 0.9,
-      })
-    : null;
+  // Adaptive pegging fan — threshold-free, progressive-compression
+  // resolver with explicit overflow policy. Card WIDTH is fixed at the
+  // rect-driven ceiling; only overlap adapts. If the readable-overlap
+  // floor is reached, the fan is allowed to overhang the available
+  // span (rendered above the felt rim via the overflow frame).
+  const availableSpanPx = Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx);
+  const fan = resolvePeggingFanLayout({
+    availableSpanPx,
+    cardWidthPx: cardCeilingWidthPx,
+    cardHeightPx: cardCeilingHeightPx,
+    count: visibleCardCount,
+  });
 
-  const cardWidthPx = fan?.cardWidth ?? cardCeilingWidthPx;
-  const cardHeightPx = fan?.cardHeight ?? cardCeilingHeightPx;
-  const finalOverlap = fan?.overlapPx ?? 0;
+  const cardWidthPx = fan.cardWidthPx;
+  const cardHeightPx = fan.cardHeightPx;
+  const finalOverlap = fan.overlapPx;
+
+  // Publish latest diagnostics for CRIB_PEG_HAND_FAN_LAYOUT export.
+  // Passive, single-slot global — inspect via
+  //   window.__CRIB_PEG_HAND_FAN_LAYOUT_LATEST
+  // or copy the on-DOM `data-crib-peg-fan-*` attributes.
+  const clippingAncestor = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const node = ref.current;
+    if (!node) return null;
+    let p: HTMLElement | null = node.parentElement;
+    let hops = 0;
+    while (p && hops < 20) {
+      const cs = getComputedStyle(p);
+      if (
+        cs.overflow === "hidden" ||
+        cs.overflowX === "hidden" ||
+        cs.overflowY === "hidden" ||
+        (cs.clipPath && cs.clipPath !== "none")
+      ) {
+        return (
+          p.tagName.toLowerCase() +
+          (p.dataset && Object.keys(p.dataset).length
+            ? "[" + Object.keys(p.dataset).slice(0, 2).join(",") + "]"
+            : "")
+        );
+      }
+      p = p.parentElement;
+      hops += 1;
+    }
+    return null;
+  }, [fan.resolvedSpanPx, fan.overflowMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      kind: "CRIB_PEG_HAND_FAN_LAYOUT" as const,
+      timestamp: Date.now(),
+      cardCount: visibleCardCount,
+      cardWidthPx: fan.cardWidthPx,
+      cardHeightPx: fan.cardHeightPx,
+      overlapPx: fan.overlapPx,
+      overlapRatio: fan.cardWidthPx > 0 ? fan.overlapPx / fan.cardWidthPx : 0,
+      naturalSpanPx: fan.naturalSpanPx,
+      availableSpanPx: fan.availableSpanPx,
+      resolvedSpanPx: fan.resolvedSpanPx,
+      fillRatio: fan.fillRatio,
+      requiredCompression: fan.requiredCompression,
+      overflowMode: fan.overflowMode,
+      overhangsAvailable: fan.overhangsAvailable,
+      overhangPerSidePx: fan.overhangPerSidePx,
+      clippingAncestor,
+    };
+    (window as unknown as {
+      __CRIB_PEG_HAND_FAN_LAYOUT_LATEST?: typeof payload;
+    }).__CRIB_PEG_HAND_FAN_LAYOUT_LATEST = payload;
+  }, [
+    visibleCardCount,
+    fan.cardWidthPx,
+    fan.cardHeightPx,
+    fan.overlapPx,
+    fan.naturalSpanPx,
+    fan.availableSpanPx,
+    fan.resolvedSpanPx,
+    fan.fillRatio,
+    fan.requiredCompression,
+    fan.overflowMode,
+    fan.overhangsAvailable,
+    fan.overhangPerSidePx,
+    clippingAncestor,
+  ]);
 
   return createPortal(
     <div
@@ -243,10 +310,20 @@ export function Wave4PeggingRowSlot({
       data-wave4-pegging-row-slot="resolved"
       data-artifact-id="cribbage.peggingRow"
       data-placement-mode="anchored"
-      data-placement-frame="felt-coord-frame"
+      data-placement-frame="felt-overflow-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       data-pegging-row-rect={`${x.toFixed(2)},${y.toFixed(2)},${w.toFixed(2)},${h.toFixed(2)}`}
       data-pegging-row-fault-count={String(faults.length)}
+      data-crib-peg-fan-count={String(visibleCardCount)}
+      data-crib-peg-fan-natural-px={fan.naturalSpanPx.toFixed(1)}
+      data-crib-peg-fan-available-px={fan.availableSpanPx.toFixed(1)}
+      data-crib-peg-fan-resolved-px={fan.resolvedSpanPx.toFixed(1)}
+      data-crib-peg-fan-overlap-px={fan.overlapPx.toFixed(2)}
+      data-crib-peg-fan-fill-ratio={fan.fillRatio.toFixed(3)}
+      data-crib-peg-fan-required-compression={fan.requiredCompression.toFixed(3)}
+      data-crib-peg-fan-mode={fan.overflowMode}
+      data-crib-peg-fan-overhang-px={fan.overhangPerSidePx.toFixed(1)}
+      data-crib-peg-fan-clipper={clippingAncestor ?? "none"}
       style={{
         position: "absolute",
         left: `${x}vmin`,
@@ -258,6 +335,10 @@ export function Wave4PeggingRowSlot({
         alignItems: "center",
         justifyContent: "center",
         gap: `${badgeGapPx}px`,
+        // Allow the card fan to render past the row rect horizontally
+        // when overhang occurs. The overflow frame ancestor is not
+        // clipped by the felt ellipse, so this reaches viewport edge.
+        overflow: "visible",
         pointerEvents: "auto",
       }}
     >
@@ -268,6 +349,7 @@ export function Wave4PeggingRowSlot({
           alignItems: "center",
           justifyContent: "center",
           maxHeight: "100%",
+          flexShrink: 0,
         }}
       >
         <span
@@ -295,10 +377,19 @@ export function Wave4PeggingRowSlot({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
+          // Card fan must be free to overhang either side.
+          overflow: "visible",
+          flexShrink: 0,
         }}
       >
         {playedCards.map((pc, i) => (
-          <div key={i} style={{ marginLeft: i === 0 ? 0 : `${-finalOverlap}px` }}>
+          <div
+            key={i}
+            style={{
+              marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
+              flexShrink: 0,
+            }}
+          >
             <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
           </div>
         ))}
@@ -313,7 +404,7 @@ export function Wave4PeggingRowSlot({
         )}
       </div>
     </div>,
-    coordFrame,
+    overflowFrame,
   );
 }
 
