@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { exportAuthEjectionTrace, readAuthEjectionEvents } from "@/lib/authEjectionLedger";
+
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -524,8 +526,43 @@ const Auth = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Wartime: exportable auth-ejection ledger. Visible on the auth screen
+          so users who were unexpectedly ejected from an active table can
+          copy the pre-teardown trace for forensics. */}
+      <div className="fixed bottom-3 right-3 z-50">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            const trace = exportAuthEjectionTrace();
+            const count = readAuthEjectionEvents().length;
+            try {
+              await navigator.clipboard.writeText(trace);
+              toast({
+                title: `Copied ${count} event${count === 1 ? "" : "s"}`,
+                description: "Auth ejection trace copied to clipboard.",
+              });
+            } catch {
+              // Fallback: open in a new tab
+              const blob = new Blob([trace], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank");
+              toast({
+                title: `Trace ready (${count} events)`,
+                description: "Opened in a new tab (clipboard unavailable).",
+              });
+            }
+          }}
+          className="bg-slate-900/80 border-amber-700/40 text-amber-200 hover:bg-slate-900 text-xs"
+        >
+          Export Auth Ejection Trace
+        </Button>
+      </div>
     </div>
   );
+
 };
 
 export default Auth;

@@ -20,6 +20,8 @@
  */
 
 import { appendSessionRecoveryEvent } from './networkSimChaos';
+import { recordSessionRecoveryLease } from './authEjectionLedger';
+
 
 export type TerminalRecoveryReason =
   | 'explicit-leave'
@@ -70,6 +72,12 @@ export function acquireRecoveryLease(gameId: string, userId: string): LeaseIdent
       prior: currentLease,
       next: { gameId, userId },
     });
+    recordSessionRecoveryLease({
+      action: 'release',
+      reason: 'superseded-by-new-identity',
+      oldDealerGameId: currentLease.gameId,
+      newDealerGameId: gameId,
+    });
   }
   currentLease = {
     gameId,
@@ -81,22 +89,37 @@ export function acquireRecoveryLease(gameId: string, userId: string): LeaseIdent
     kind: 'lease-acquired',
     lease: currentLease,
   });
+  recordSessionRecoveryLease({
+    action: 'acquire',
+    reason: 'lease-acquired',
+    newDealerGameId: gameId,
+    detail: { userId, mountId: currentLease.mountId },
+  });
   return currentLease;
 }
+
 
 export function releaseRecoveryLease(
   reason: TerminalRecoveryReason | 'unmount',
   extra?: Record<string, unknown>,
 ): void {
   if (!currentLease) return;
+  const prior = currentLease;
   appendSessionRecoveryEvent({
     kind: 'lease-released',
     reason,
     lease: currentLease,
     ...(extra ?? {}),
   });
+  recordSessionRecoveryLease({
+    action: 'release',
+    reason,
+    oldDealerGameId: prior.gameId,
+    detail: { ...(extra ?? {}), userId: prior.userId, mountId: prior.mountId },
+  });
   currentLease = null;
 }
+
 
 export function getActiveRecoveryLease(): LeaseIdentity | null {
   return currentLease;

@@ -819,6 +819,49 @@ const Game = () => {
     });
   }, [gameId, game?.total_hands]);
 
+  // Wartime AUTH_EJECTION_LEDGER: record waiting-table mount / unmount /
+  // lookup outcomes so a redirect back to /auth can be traced against
+  // the pre-teardown table membership.
+  useEffect(() => {
+    let alive = true;
+    import("@/lib/authEjectionLedger").then(({ recordWaitingTableLifecycle }) => {
+      if (!alive) return;
+      recordWaitingTableLifecycle({
+        phase: "mount",
+        dealerGameId: gameId ?? null,
+        userId: user?.id ?? null,
+      });
+    }).catch(() => {});
+    return () => {
+      alive = false;
+      import("@/lib/authEjectionLedger").then(({ recordWaitingTableLifecycle }) => {
+        recordWaitingTableLifecycle({
+          phase: "unmount",
+          dealerGameId: gameId ?? null,
+          userId: user?.id ?? null,
+        });
+      }).catch(() => {});
+    };
+  }, [gameId, user?.id]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    if (!game) return;
+    import("@/lib/authEjectionLedger").then(({ recordWaitingTableLifecycle }) => {
+      recordWaitingTableLifecycle({
+        phase: "lookup-ok",
+        dealerGameId: gameId,
+        userId: user?.id ?? null,
+        detail: {
+          status: game.status,
+          gameType: game.game_type,
+          currentGameUuid: (game as any)?.current_game_uuid ?? null,
+        },
+      });
+    }).catch(() => {});
+  }, [gameId, game?.status, game?.game_type, (game as any)?.current_game_uuid, user?.id]);
+
+
   // POT STABILITY:
   // Backend updates can briefly emit pot=null during hand/round transitions (frontend was coercing null -> 0).
   // Keep last non-null pot so the UI never flashes back to $0 while chip stacks are already updated.

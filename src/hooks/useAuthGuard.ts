@@ -18,8 +18,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, AuthChangeEvent } from "@supabase/supabase-js";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
+import {
+  noteAuthRedirectAttempt,
+  recordAuthStateChange,
+  recordRouteRedirect,
+} from "@/lib/authEjectionLedger";
+import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
 
 const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
+
 
 interface AuthGuardOptions {
   /** Additional context for trace events */
@@ -95,6 +102,28 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
     function redirectToAuth(reason: string) {
       if (!mounted) return;
       const currentPath = window.location.pathname;
+      // Wartime: probe for suspicious redirect (valid session or lease).
+      supabase.auth.getSession().then(({ data: { session: probe } }) => {
+        const lease = getActiveRecoveryLease();
+        noteAuthRedirectAttempt({
+          caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
+          hasValidSession: !!probe && (probe.expires_at ?? 0) * 1000 > Date.now(),
+          hasWaitingTableMembership: false,
+          hasActiveRecoveryLease: !!lease,
+          userId: probe?.user?.id ?? user?.id ?? null,
+          dealerGameId: lease?.gameId ?? null,
+          guardInputs: { reason, currentPath, pageLabel },
+          note: "redirectToAuth probe",
+        });
+      }).catch(() => { /* noop */ });
+      recordRouteRedirect({
+        from: currentPath,
+        to: "/auth",
+        reason,
+        caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
+        dealerGameId: getActiveRecoveryLease()?.gameId ?? null,
+        playerId: user?.id ?? null,
+      });
       traceAuthEvent("app-unexpected-navigation-login", {
         previousRoute: currentPath,
         nextRoute: "/auth",
@@ -104,6 +133,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
       sessionStorage.setItem("redirectAfterAuth", currentPath);
       navigate("/auth");
     }
+
 
     async function verifySessionOrRedirect(trigger: string) {
       // Double-check: maybe the token refreshed by now
@@ -163,6 +193,18 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         const oldEvent = prevAuthEvent.current;
         prevAuthEvent.current = event;
 
+        recordAuthStateChange({
+          previousState: oldEvent ?? "none",
+          nextState: event,
+          supabaseEvent: event,
+          sessionBefore: !!user,
+          sessionAfter: !!session,
+          accessTokenExpiresAt: session?.expires_at ?? null,
+          refreshTokenPresent: !!session?.refresh_token,
+          userId: session?.user?.id ?? user?.id ?? null,
+          callerLabel: `useAuthGuard(${pageLabel})#onAuthStateChange`,
+        });
+
         traceAuthEvent("app-auth-state-change", {
           oldState: oldEvent ?? "none",
           newState: event,
@@ -170,6 +212,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
           userId: session?.user?.id ?? null,
           hasSession: !!session,
         });
+
 
         if (session) {
           // Clear any pending recheck

@@ -383,6 +383,16 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
+      const { recordRouteRedirect } = await import("@/lib/authEjectionLedger");
+      recordRouteRedirect({
+        from: window.location.pathname,
+        to: "/auth",
+        reason: "explicit-logout",
+        caller: "Index#handleLogout",
+        playerId: user?.id ?? null,
+      });
+    } catch { /* noop */ }
+    try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
@@ -390,6 +400,7 @@ const Index = () => {
     // Always navigate to auth page, even if signOut fails
     navigate("/auth");
   };
+
 
   const handleUpdateUsername = async () => {
     if (!user || !newUsername.trim()) {

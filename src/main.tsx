@@ -14,6 +14,14 @@ import "@/lib/geometryLab/noTimersStore";
 // Shell → Seat Cluster → Nameplate). Applies CSS-var defaults at
 // import time; the Geometry Lab loader fetches the committed row.
 import "@/lib/canonicalShell/shellNameplateConfig";
+import {
+  installAuthEjectionHistoryListener,
+  recordAuthStateChange,
+} from "@/lib/authEjectionLedger";
+
+// Wartime: install the auth-ejection ledger history listener BEFORE any
+// route mounts so a redirect to /auth is captured with pre-teardown context.
+installAuthEjectionHistoryListener();
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
@@ -22,9 +30,25 @@ bootstrapCanonicalShellLayout();
 bootstrapDealTiming();
 bootstrapTableDemo();
 
+
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
 supabase.auth.onAuthStateChange((event, session) => {
+  try {
+    recordAuthStateChange({
+      previousState: null,
+      nextState: event,
+      supabaseEvent: event,
+      sessionBefore: false,
+      sessionAfter: !!session,
+      accessTokenExpiresAt: session?.expires_at ?? null,
+      refreshTokenPresent: !!session?.refresh_token,
+      userId: session?.user?.id ?? null,
+      callerLabel: "main.tsx#global-onAuthStateChange",
+    });
+  } catch {
+    /* noop */
+  }
   if (event === "TOKEN_REFRESHED" && !session) {
     persistSyncDebugEvent({
       gameId: "00000000-0000-0000-0000-000000000000",
@@ -43,6 +67,7 @@ supabase.auth.onAuthStateChange((event, session) => {
     });
   }
 });
+
 
 // iOS Safari can restore pages from the Back/Forward Cache (BFCache), which may
 // resurrect an *old published build* and show stale lobby content.
