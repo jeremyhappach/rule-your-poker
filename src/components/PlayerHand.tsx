@@ -314,8 +314,23 @@ export const PlayerHand = ({
     expectedCardCount >= Math.max(1, cards.length)
       ? expectedCardCount
       : null;
+  // 3-5-7 active-self staged-deal capacity — same contract as Holm.
+  // While cards flow in one at a time within the same round, lock
+  // size/overlap/fan to the AUTHORITATIVE round capacity (3/5/7)
+  // provided via expectedCardCount by MobileGameTable.activeSelfHand.
+  // Never fall back to sortedCards/visible/claimed counts, otherwise
+  // per-slot geometry reflows every time a new card arrives (large
+  // cards landing then snapping smaller).
+  const three57StagedCapacity =
+    is357Game &&
+    !isOpponentExposedShowdown &&
+    !forceHiddenFaces &&
+    typeof expectedCardCount === 'number' &&
+    expectedCardCount >= Math.max(1, cards.length)
+      ? expectedCardCount
+      : null;
   const displayCardCount =
-    holmStagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
+    holmStagedCapacity ?? three57StagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
   const cardSize = getCardSize(displayCardCount);
 
   // Round 1 (3-5-7) on mobile: cards were getting too wide when scaled.
