@@ -1922,7 +1922,7 @@ export function DiceTableLayout({
   if (shouldUseFreezePresentation) {
     return (
       <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
-        {orderedDice.map((item) => {
+        {committedHeldLayerIterationOrder.map((item) => {
           const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
           if (!frozenEntry) return null;
 
