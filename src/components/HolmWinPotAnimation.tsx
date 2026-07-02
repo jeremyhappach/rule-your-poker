@@ -319,10 +319,11 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animations.length, triggerId]);
 
+  const portalToSettlement = useShellOverlayPortal('settlement');
+
   if (animations.length === 0) return null;
 
-
-  return (
+  const rendered = (
     <>
       {animations.map((anim) => {
         const deltaX = anim.toX - anim.fromX;
@@ -337,7 +338,9 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
               left: anim.viewportLeft + anim.fromX,
               top: anim.viewportTop + anim.fromY,
               transform: 'translate(-50%, -50%)',
-              zIndex: 1000,
+              // No hard-coded z here — the shell overlay 'settlement' layer
+              // owns the paint order (above SeatAnchorLayer, below HUD /
+              // modals / announcements). See SHELL_OVERLAY_Z.
             }}
           >
 
@@ -349,7 +352,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
             >
               <span className="text-black text-xs font-black drop-shadow-sm">${formatChipValue(anim.amount)}</span>
             </div>
-            
+
             <style dangerouslySetInnerHTML={{ __html: `
               @keyframes holmWinPot-${animKey.replace(/[^a-zA-Z0-9]/g, '_')} {
                 0% {
@@ -395,6 +398,13 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       })}
     </>
   );
+
+  // Portal into the shell-owned 'settlement' overlay layer so paint order is
+  // structurally above canonical seat-cluster artifacts (SeatAnchorLayer) and
+  // below HUD, modals, and announcements. Falls back to inline render only if
+  // the shell overlay provider is not mounted (non-canonical embed).
+  const portalled = portalToSettlement(rendered);
+  return portalled ?? rendered;
 };
 
 export default HolmWinPotAnimation;
