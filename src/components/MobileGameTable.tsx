@@ -10927,10 +10927,11 @@ export const MobileGameTable = ({
                                              //   3s→5s or 5s→7s, or hand boundary) BEFORE the
                                              //   successor renders — no prior cards, transforms,
                                              //   slot locks, or cached scale survive the boundary.
+                                              const identityKey = `357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`;
                                               const three57LedgerIdentity = {
-                                                dealerGameId: (game as unknown as { id?: string })?.id ?? null,
+                                                dealerGameId: (activeGame as unknown as { id?: string })?.id ?? null,
                                                 roundId: (currentRound != null ? String(currentRound) : null),
-                                                handNumber: (game as unknown as { hand_number?: number })?.hand_number ?? null,
+                                                handNumber: null,
                                                 stageRound: (capacity === 3 ? 3 : capacity === 5 ? 5 : 7) as 3 | 5 | 7,
                                                 handContextId: boundary.baseHandContextId ?? null,
                                                 localPlayerId: currentPlayer?.id ?? null,
