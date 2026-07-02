@@ -79,7 +79,7 @@ function sampleAndEmit(reason: string): void {
     const animationPhase =
       readAttr(el, 'data-die-transform-owner') ?? readAttr(el, 'data-die-layer');
     const colorToken =
-      readAttr(el, 'data-die-color-token') ?? el.className || null;
+      readAttr(el, 'data-die-color-token') ?? (el.className || null);
     let computedColor: string | null = null;
     try {
       const cs = window.getComputedStyle(el);
