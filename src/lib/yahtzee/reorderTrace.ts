@@ -52,7 +52,9 @@ export type YahtzeeReorderViolation =
   | 'DIE_DISAPPEARED_AFTER_LAND'
   | 'DIE_REORDERED_AFTER_HOLD'
   | 'DIE_RENDER_NODE_REPLACED'
-  | 'DIE_SCATTERED_ROW_LOST';
+  | 'DIE_SCATTERED_ROW_LOST'
+  | 'CATEGORY_SELECTION_HELD_ORDER_DRIFT'
+  | 'CATEGORY_SELECTION_DIE_OWNER_SWAP';
 
 export function emitYahtzeeReorderViolation(
   kind: YahtzeeReorderViolation,
