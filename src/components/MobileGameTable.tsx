@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
-import { MeasuredActiveHandFan } from "./activeHand/MeasuredActiveHandFan";
+import { MeasuredActiveHandFan, type MeasuredActiveHandFanCommit } from "./activeHand/MeasuredActiveHandFan";
 import { HolmActivePaneGeometryPill } from "./HolmActivePaneGeometryPill";
 
 import { PlayingCard } from "./PlayingCard";
@@ -613,6 +613,92 @@ function getHolmSelfDealCardIds({
     }
   }
   return ids;
+}
+
+interface HolmPersistentPresentationIdentity {
+  key: string;
+  dealerGameId: string | null;
+  roundId: string | null;
+  handNumber: number | null;
+  baseHandContextId: string;
+  localPlayerId: string | null;
+}
+
+function useHolmHandPresentationOwner({
+  enabled,
+  dealerGameId,
+  roundId,
+  handNumber,
+  baseHandContextId,
+  localPlayerId,
+  localDecision,
+}: {
+  enabled: boolean;
+  dealerGameId: string | null | undefined;
+  roundId: string | null | undefined;
+  handNumber: number | null | undefined;
+  baseHandContextId: string | null | undefined;
+  localPlayerId: string | null | undefined;
+  localDecision: string | null | undefined;
+}) {
+  const activeHandCommitRef = useRef<MeasuredActiveHandFanCommit>({ key: null, rect: null, lowerZoneMinPx: 0 });
+  const foldedRef = useRef(false);
+  const tabledLogicalRegistryRef = useRef<Set<string>>(new Set());
+  const tabledAnimationKeysRef = useRef<Set<string>>(new Set());
+  const lastIdentityRef = useRef<HolmPersistentPresentationIdentity | null>(null);
+
+  const identity = useMemo<HolmPersistentPresentationIdentity>(() => {
+    const prev = lastIdentityRef.current;
+    const nextDealerGameId = dealerGameId ?? prev?.dealerGameId ?? null;
+    const nextRoundId = roundId ?? prev?.roundId ?? null;
+    const nextHandNumber = handNumber ?? prev?.handNumber ?? null;
+    const nextBaseHandContextId = baseHandContextId ?? prev?.baseHandContextId ?? 'no-runtime';
+    const nextLocalPlayerId = localPlayerId ?? prev?.localPlayerId ?? null;
+    return {
+      dealerGameId: nextDealerGameId,
+      roundId: nextRoundId,
+      handNumber: nextHandNumber,
+      baseHandContextId: nextBaseHandContextId,
+      localPlayerId: nextLocalPlayerId,
+      key: [
+        'holm-hand-owner',
+        nextDealerGameId ?? 'no-dealer-game',
+        nextRoundId ?? 'no-round',
+        nextHandNumber ?? 'no-hand-number',
+        nextBaseHandContextId,
+        nextLocalPlayerId ?? 'no-local-player',
+      ].join('|'),
+    };
+  }, [dealerGameId, roundId, handNumber, baseHandContextId, localPlayerId]);
+
+  if (lastIdentityRef.current?.key !== identity.key) {
+    activeHandCommitRef.current = { key: null, rect: null, lowerZoneMinPx: 0 };
+    foldedRef.current = false;
+    tabledLogicalRegistryRef.current.clear();
+    tabledAnimationKeysRef.current.clear();
+    lastIdentityRef.current = identity;
+  } else {
+    lastIdentityRef.current = identity;
+  }
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (localDecision === 'fold') foldedRef.current = true;
+  }, [enabled, identity.key, localDecision]);
+
+  const markTabledAnimationOnce = useCallback((logicalKey: string): boolean => {
+    if (tabledAnimationKeysRef.current.has(logicalKey)) return false;
+    tabledAnimationKeysRef.current.add(logicalKey);
+    return true;
+  }, []);
+
+  return {
+    identity,
+    activeHandCommitRef,
+    foldedRef,
+    tabledLogicalRegistryRef,
+    markTabledAnimationOnce,
+  };
 }
 
 function UseHolmSelfHand<T>({
