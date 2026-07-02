@@ -1106,6 +1106,27 @@ export const PlayerHand = ({
     holmSizeSourceEmittedForRef,
   } as const;
 
+  // Per-card face-state descriptors for the main render branch (Holm active-self).
+  const holmFaceStatePerCard = isHolmActiveSelf
+    ? sortedCardsWithIndices.map(({ card, originalIndex }, displayIndex) => {
+        const explicitId = (card as any).id ?? (card as any).cardId;
+        const cardId = explicitId != null
+          ? String(explicitId)
+          : `${baseHandContextId ?? 'no-base'}#${card.rank}-${card.suit}-${originalIndex}`;
+        const isClaimed = claimedCardIds
+          ? claimedCardIds.includes(cardId) || claimedCardIds.includes(String(explicitId ?? ''))
+          : false;
+        return {
+          slotIndex: displayIndex,
+          cardId,
+          faceMode: (forceHiddenFaces ? 'back' : 'face') as 'face' | 'back',
+          transportPhase: (isClaimed ? 'settled' : 'landed') as 'armed' | 'in-flight' | 'landed' | 'settled',
+          landed: true,
+          settled: isClaimed,
+        };
+      })
+    : [];
+
   return (
     <div
       className="flex"
@@ -1162,6 +1183,22 @@ export const PlayerHand = ({
         return cardEl;
       })}
       <HolmDealGeometryProbe {...holmTraceProps} />
+      {isHolmActiveSelf ? (
+        <HolmFaceStateProbe
+          renderBranch="main"
+          baseHandContextId={baseHandContextId}
+          dealPhase={dealPhase}
+          forceHiddenFaces={forceHiddenFaces}
+          expectedCardCount={expectedCardCount ?? null}
+          arrivedCount={cards.length}
+          slotCount={displayCardCount}
+          claimedCardIds={claimedCardIds ?? null}
+          perCard={holmFaceStatePerCard}
+          faceHistoryRef={holmFaceHistoryRef}
+          handKeyRef={holmLastHandKeyRef}
+          sourceBranchLabel="main-face-branch"
+        />
+      ) : null}
     </div>
   );
 
