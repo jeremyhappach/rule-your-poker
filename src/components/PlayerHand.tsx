@@ -344,6 +344,11 @@ export const PlayerHand = ({
   // post-transform width by the caller-supplied `wrapperScale` so the
   // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
+  const holmActiveSelfRef = useRef<HTMLDivElement | null>(null);
+  const holmPrevGeomRef = useRef<Record<string, unknown> | null>(null);
+  const holmSizeSourceEmittedForRef = useRef<string | null>(null);
+  const holmSettledRectsRef = useRef<Map<string, { x: number; y: number; w: number; h: number; rot: number }>>(new Map());
+  const holmLastHandKeyRef = useRef<string | null>(null);
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   const forensicsId = `PlayerHand:${instanceIdRef.current}`;
