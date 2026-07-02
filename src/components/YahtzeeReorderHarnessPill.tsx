@@ -53,12 +53,6 @@ import {
   type YahtzeeDieInput,
   type YahtzeeDieSourceRow,
 } from '@/lib/yahtzee/reorderTrace';
-import {
-  createInitialPlayerState,
-  rollYahtzeeDice,
-  toggleYahtzeeHold,
-} from '@/lib/yahtzeeGameLogic';
-import type { YahtzeePlayerState } from '@/lib/yahtzeeTypes';
 
 // ────────────────────────────────────────────────────────────────
 // DOM sampling — real mounted Yahtzee dice
