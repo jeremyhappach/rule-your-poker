@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { exportAuthEjectionTrace, readAuthEjectionEvents } from "@/lib/authEjectionLedger";
+
 
 const Auth = () => {
   const navigate = useNavigate();
