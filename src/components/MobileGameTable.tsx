@@ -3861,10 +3861,28 @@ export const MobileGameTable = ({
       holmSelfFoldedForHandRef.current = holmSelfCurrentHandCtx;
     }
   }, [gameType, currentPlayer?.current_decision, holmSelfCurrentHandCtx]);
+
+  // Persistent Holm hand-presentation owner. Its refs live at the
+  // parent-scope so committed active-hand layout, folded state, and
+  // tabled/win identity survive any child remount within the same
+  // `{ dealerGameId, roundId, handNumber, baseHandContextId,
+  // localPlayerId }` identity (betting → fold → solo/lone-player
+  // tabled → Chucky → result → win).
+  const holmPresentationOwner = useHolmHandPresentationOwner({
+    enabled: gameType === 'holm-game',
+    dealerGameId: holmDealerGameId ?? null,
+    roundId: handContextId ?? null,
+    handNumber: currentRound ?? null,
+    baseHandContextId: handContextId ?? null,
+    localPlayerId: currentPlayer?.id ?? null,
+    localDecision: currentPlayer?.current_decision ?? null,
+  });
   const holmSelfFoldedLatched =
     gameType === 'holm-game' &&
-    holmSelfCurrentHandCtx != null &&
-    holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
+    ((holmSelfCurrentHandCtx != null &&
+      holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx) ||
+      holmPresentationOwner.foldedRef.current);
+
 
 
 
@@ -10912,11 +10930,12 @@ export const MobileGameTable = ({
                                                    cards={effectiveCards}
                                                    capacity={capacity}
                                                    portalTargetSelector="[data-holm-active-pane-content]"
-                                                     phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
-                                                     activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
+                                                     phaseLockKey={`holm|owner:${holmPresentationOwner.identity.key}`}
+                                                     activeHandFanRenderKey={`ActiveHandFan|holm|owner:${holmPresentationOwner.identity.key}`}
 
                                                     cardIds={boundary.rawClaimedCardIds}
                                                     applyFan
+                                                    externalCommitRef={holmPresentationOwner.activeHandCommitRef}
                                                     holmLedgerIdentity={{
                                                       dealerGameId: holmDealerGameId ?? null,
                                                       roundId: handContextId ?? null,
@@ -10926,6 +10945,7 @@ export const MobileGameTable = ({
                                                       branch: 'holm.activeSelf',
                                                     }}
                                                   />
+
                                                )
 
                                             );
