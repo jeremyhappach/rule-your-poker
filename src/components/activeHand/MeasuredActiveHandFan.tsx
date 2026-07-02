@@ -38,6 +38,7 @@
  */
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -56,6 +57,10 @@ import {
   useActiveHandLayoutPolicy,
   type ActiveHandStageRect,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import {
+  recordHolmLedger,
+  recordHolmLedgerViolation,
+} from '@/lib/holm/holmPresentationLedger';
 
 type PaneRect = ActiveHandStageRect;
 
