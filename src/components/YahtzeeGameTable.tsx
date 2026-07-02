@@ -58,10 +58,6 @@ import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
-import {
-  emitYahtzeeCategorySelectionBoundary,
-  requestYahtzeeReorderTraceHold,
-} from "@/lib/yahtzee/reorderTrace";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
