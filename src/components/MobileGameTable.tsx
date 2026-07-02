@@ -129,6 +129,7 @@ import {
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
 import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
+import { recordFoldPresentation, recordHolmLedger } from "@/lib/holm/holmPresentationLedger";
 import {
   HolmDealOrchestrator,
   HolmDealRuntimeMaybe,
@@ -3780,6 +3781,10 @@ export const MobileGameTable = ({
     holmSelfFoldedForHandRef.current === holmSelfCurrentHandCtx;
 
 
+
+
+
+
   
   // CRITICAL FIX: Use handContextId to validate current player cards.
   // During hand transitions, playerCards may briefly contain stale data from the previous hand.
@@ -4962,6 +4967,90 @@ export const MobileGameTable = ({
   // captured winner. Prevents the bottom active-hand path from
   // re-mounting the frozen terminal cards while celebration ends.
   const isCurrentPlayerSoloVsChucky = _rawIsCurrentPlayerSoloVsChucky;
+
+  // HOLM_PRESENTATION_LEDGER — FOLD_PRESENTATION derivation trace.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    try {
+      const applied =
+        ((isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') ||
+          currentPlayer?.current_decision === 'fold' ||
+          holmSelfFoldedLatched)
+          ? 'opacity-40 grayscale-[30%]'
+          : null;
+      recordFoldPresentation(
+        {
+          dealerGameId: holmDealerGameId ?? null,
+          roundId: handContextId ?? null,
+          handNumber: currentRound ?? null,
+          handContextId: holmSelfCurrentHandCtx ?? handContextId ?? null,
+          playerId: currentPlayer?.id ?? null,
+        },
+        {
+          authoritativeDecision: currentPlayer?.current_decision ?? null,
+          optimisticDecision: null,
+          latchValue: holmSelfFoldedLatched ? 'fold' : null,
+          activeRenderBranch: 'MobileGameTable.activeSelfHand',
+          appliedDimClass: applied,
+          appliedDimValue: applied ? 0.4 : 1,
+          precedenceOrder: ['announcement-stay-loser', 'decision-fold', 'latched-fold'],
+        },
+      );
+    } catch { /* noop */ }
+  }, [
+    gameType,
+    currentPlayer?.current_decision,
+    holmSelfFoldedLatched,
+    isShowingAnnouncement,
+    winnerPlayerId,
+    isCurrentPlayerWinner,
+    holmSelfCurrentHandCtx,
+    handContextId,
+    currentRound,
+    currentPlayer?.id,
+    holmDealerGameId,
+  ]);
+
+  // HOLM_PRESENTATION_LEDGER — SOLO_CHUCKY_SNAPSHOT.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    try {
+      recordHolmLedger(
+        'SOLO_CHUCKY_SNAPSHOT',
+        'transition',
+        {
+          dealerGameId: holmDealerGameId ?? null,
+          roundId: handContextId ?? null,
+          handNumber: currentRound ?? null,
+          handContextId: holmSelfCurrentHandCtx ?? handContextId ?? null,
+          playerId: currentPlayer?.id ?? null,
+        },
+        {
+          isCurrentPlayerSoloVsChucky,
+          isShowingAnnouncement,
+          winnerPlayerId,
+          isCurrentPlayerWinner,
+          selfDecision: currentPlayer?.current_decision ?? null,
+          selfFoldedLatched: holmSelfFoldedLatched,
+        },
+      );
+    } catch { /* noop */ }
+  }, [
+    gameType,
+    isCurrentPlayerSoloVsChucky,
+    isShowingAnnouncement,
+    winnerPlayerId,
+    isCurrentPlayerWinner,
+    holmSelfFoldedLatched,
+    currentPlayer?.current_decision,
+    holmSelfCurrentHandCtx,
+    handContextId,
+    currentRound,
+    currentPlayer?.id,
+    holmDealerGameId,
+  ]);
+
+
 
 
   // Get winner's cards for highlighting (winner may be current player or another player)
@@ -8186,6 +8275,13 @@ export const MobileGameTable = ({
             }
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
+            holmLedgerIdentity={{
+              dealerGameId: holmDealerGameId ?? null,
+              roundId: handContextId ?? null,
+              handNumber: currentRound ?? null,
+              handContextId: handContextId ?? null,
+              playerId: currentPlayer?.id ?? null,
+            }}
             onAnimationStart={() => {
               // POT-OUT animation starting - mark active and use snapped pot
               setPotOutAnimationActive(true);
@@ -9722,6 +9818,14 @@ export const MobileGameTable = ({
                       isFourColor={deckColorMode === 'four_color'}
                       getFourColorSuit={getFourColorSuit}
                       animate={shouldAnimate}
+                      ownerPlayerId={soloVsChuckyPlayerIdLocked ?? null}
+                      holmLedgerIdentity={{
+                        dealerGameId: holmDealerGameId ?? null,
+                        roundId: handContextId ?? null,
+                        handNumber: currentRound ?? null,
+                        handContextId: handContextId ?? null,
+                        playerId: soloVsChuckyPlayerIdLocked ?? null,
+                      }}
                     />
                     <style>{`
                       @keyframes holmSoloTableSlide {
@@ -10725,9 +10829,17 @@ export const MobileGameTable = ({
                                                      phaseLockKey={`holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
                                                      activeHandFanRenderKey={`ActiveHandFan|holm|ctx:${boundary.baseHandContextId}|p:${currentPlayer?.id ?? 'noP'}`}
 
-                                                   cardIds={boundary.rawClaimedCardIds}
-                                                   applyFan
-                                                 />
+                                                    cardIds={boundary.rawClaimedCardIds}
+                                                    applyFan
+                                                    holmLedgerIdentity={{
+                                                      dealerGameId: holmDealerGameId ?? null,
+                                                      roundId: handContextId ?? null,
+                                                      handNumber: currentRound ?? null,
+                                                      handContextId: boundary.baseHandContextId ?? handContextId ?? null,
+                                                      playerId: currentPlayer?.id ?? null,
+                                                      branch: 'holm.activeSelf',
+                                                    }}
+                                                  />
                                                )
 
                                             );

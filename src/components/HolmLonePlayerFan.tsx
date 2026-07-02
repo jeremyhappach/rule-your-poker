@@ -24,6 +24,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
+import { noteTabledCardOwnership, recordHolmLedger, type HolmLedgerIdentity } from "@/lib/holm/holmPresentationLedger";
 
 type Card = { rank: string; suit: string };
 
@@ -40,6 +41,8 @@ export interface HolmLonePlayerFanProps {
   isFourColor: boolean;
   getFourColorSuit: (suit: string) => FourColorConfig | null | undefined;
   animate: boolean;
+  holmLedgerIdentity?: HolmLedgerIdentity;
+  ownerPlayerId?: string | null;
 }
 
 export function HolmLonePlayerFan({
@@ -51,6 +54,8 @@ export function HolmLonePlayerFan({
   isFourColor,
   getFourColorSuit,
   animate,
+  holmLedgerIdentity,
+  ownerPlayerId = null,
 }: HolmLonePlayerFanProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -70,6 +75,37 @@ export function HolmLonePlayerFan({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // TABLED_CARD_OWNERSHIP: create/unmount for lone-player tabled fan.
+  const cardIdsKey = sortedCards.map((s) => `${s.card.rank}${s.card.suit}`).join(',');
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    sortedCards.forEach((s) => {
+      noteTabledCardOwnership('create', holmLedgerIdentity, {
+        ownerPlayerId,
+        cardId: `${s.card.rank}${s.card.suit}`,
+        destination: 'holm.lonePlayerTabledCardsStage',
+        sourceBranch: 'HolmLonePlayerFan',
+        component: 'HolmLonePlayerFan',
+        gameTypeGuardOk: true,
+        transportType: animate ? 'solo-slide' : null,
+      });
+    });
+    return () => {
+      if (!holmLedgerIdentity) return;
+      sortedCards.forEach((s) => {
+        noteTabledCardOwnership('unmount', holmLedgerIdentity, {
+          ownerPlayerId,
+          cardId: `${s.card.rank}${s.card.suit}`,
+          destination: 'holm.lonePlayerTabledCardsStage',
+          sourceBranch: 'HolmLonePlayerFan',
+          component: 'HolmLonePlayerFan',
+        });
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardIdsKey, ownerPlayerId, holmLedgerIdentity?.handContextId]);
+
 
   const count = sortedCards.length;
   const fanOverlap = useCardOverlap('cardOverlap.holm.lonePlayerFan');
@@ -101,6 +137,26 @@ export function HolmLonePlayerFan({
       hasHighlights,
     },
   });
+
+  if (holmLedgerIdentity) {
+    recordHolmLedger(
+      'TABLED_CARD_OWNERSHIP',
+      layout ? 'render' : 'suppress',
+      holmLedgerIdentity,
+      {
+        sourceBranch: 'HolmLonePlayerFan',
+        component: 'HolmLonePlayerFan',
+        cardCount: count,
+        cardIds: cardIdsKey,
+        wrapperW: size.w,
+        wrapperH: size.h,
+        animate,
+        isSoloPlayerWinner,
+        hasHighlights,
+      },
+    );
+  }
+
 
   return (
     <div

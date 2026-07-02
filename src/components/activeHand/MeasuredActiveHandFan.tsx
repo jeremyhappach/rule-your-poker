@@ -38,6 +38,7 @@
  */
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -56,6 +57,10 @@ import {
   useActiveHandLayoutPolicy,
   type ActiveHandStageRect,
 } from '@/lib/activeHand/activeHandLayoutSettings';
+import {
+  recordHolmLedger,
+  recordHolmLedgerViolation,
+} from '@/lib/holm/holmPresentationLedger';
 
 type PaneRect = ActiveHandStageRect;
 
@@ -119,6 +124,18 @@ export interface MeasuredActiveHandFanProps {
   dataAttribute?: string;
   activeHandFanRenderKey?: string | null;
   cardIds?: string[];
+  /**
+   * Optional identity carried into HOLM_PRESENTATION_LEDGER. When
+   * absent, this component emits no ledger records.
+   */
+  holmLedgerIdentity?: {
+    dealerGameId?: string | null;
+    roundId?: string | null;
+    handNumber?: number | null;
+    handContextId?: string | null;
+    playerId?: string | null;
+    branch?: string;
+  };
 }
 
 export function MeasuredActiveHandFan({
@@ -137,6 +154,7 @@ export function MeasuredActiveHandFan({
   dataAttribute,
   activeHandFanRenderKey,
   cardIds,
+  holmLedgerIdentity,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [rect, setRect] = useState<PaneRect | null>(null);
@@ -161,8 +179,60 @@ export function MeasuredActiveHandFan({
   // synchronously before the measurement effect below.
   const activeLockKey = phaseLockKey ?? null;
   if (committedRef.current.key !== activeLockKey) {
+    if (holmLedgerIdentity) {
+      recordHolmLedger('ACTIVE_HAND_LAYOUT', 'phaseLockKey-reset', holmLedgerIdentity, {
+        prevKey: committedRef.current.key,
+        nextKey: activeLockKey,
+        branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        game,
+      });
+    }
     committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
+
+  // ACTIVE_SELF_LIFECYCLE: mount/unmount + card identity change.
+  const mountRectRef = useRef<{ w: number; h: number } | null>(null);
+  const cardIdsKey = (cardIds ?? []).join(',');
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    const host = hostRef.current;
+    const r = host?.getBoundingClientRect();
+    mountRectRef.current = r ? { w: r.width, h: r.height } : null;
+    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'mount', holmLedgerIdentity, {
+      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+      component: 'MeasuredActiveHandFan',
+      phaseLockKey: activeLockKey,
+      renderKey: activeHandFanRenderKey ?? null,
+      cardCount: cards.length,
+      cardIds: cardIdsKey,
+      hostRect: mountRectRef.current,
+      game,
+    });
+    return () => {
+      const rr = host?.getBoundingClientRect();
+      recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'unmount', holmLedgerIdentity, {
+        branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+        component: 'MeasuredActiveHandFan',
+        phaseLockKey: activeLockKey,
+        renderKey: activeHandFanRenderKey ?? null,
+        hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
+        mountRect: mountRectRef.current,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLockKey]);
+
+  useEffect(() => {
+    if (!holmLedgerIdentity) return;
+    recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'cardIds-change', holmLedgerIdentity, {
+      branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
+      cardCount: cards.length,
+      cardIds: cardIdsKey,
+      renderKey: activeHandFanRenderKey ?? null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardIdsKey]);
+
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -225,6 +295,14 @@ export function MeasuredActiveHandFan({
         committedNow.key === activeLockKey &&
         !!committedNow.rect;
       if (zones.length > 0 && totalLowerZonePx <= 0 && !alreadyCommittedForKey) {
+        if (holmLedgerIdentity) {
+          recordHolmLedger('ACTIVE_HAND_LAYOUT', 'measure-deferred', holmLedgerIdentity, {
+            reason: 'lower-zone-pending',
+            zoneCount: zones.length,
+            paneRect: { w, h },
+            phaseLockKey: activeLockKey,
+          });
+        }
         return;
       }
 
@@ -240,11 +318,6 @@ export function MeasuredActiveHandFan({
         : null;
       const candidateValid = !!candidateLayout;
 
-      // Phase-lock: once a valid rect is committed for the current key,
-      // ignore growth updates until the key changes. A later measurement
-      // may replace the commit only if the current commit no longer fits
-      // the latest protected composition budget (e.g. a real shrink), never
-      // merely because a parent settles larger after cards landed.
       const committed = committedRef.current;
       const lockedForCurrentKey =
         !!activeLockKey &&
@@ -267,7 +340,46 @@ export function MeasuredActiveHandFan({
           committedLayout.stageRect.height > candidateLayout.stageRect.height + 0.5)
       );
 
-      if (candidateValid && (!lockedForCurrentKey || committedInvalid)) {
+      const willAccept = candidateValid && (!lockedForCurrentKey || committedInvalid);
+      const acceptedNoLock = !willAccept && !activeLockKey && candidateValid;
+
+      if (holmLedgerIdentity) {
+        const reason = !candidateValid
+          ? 'candidate-invalid'
+          : willAccept
+            ? (lockedForCurrentKey ? 'committed-invalidated' : 'first-commit')
+            : (lockedForCurrentKey ? 'locked-skip' : 'no-change');
+        const priorCardSize = committedLayout ? { width: committedLayout.cardWidth, height: committedLayout.cardHeight } : null;
+        const nextCardSize = candidateLayout ? { width: candidateLayout.cardWidth, height: candidateLayout.cardHeight } : null;
+        const sizeChangedAfterCommit = !!(
+          lockedForCurrentKey && priorCardSize && nextCardSize &&
+          (Math.abs(priorCardSize.width - nextCardSize.width) > 0.5 ||
+            Math.abs(priorCardSize.height - nextCardSize.height) > 0.5)
+        );
+        recordHolmLedger('ACTIVE_HAND_LAYOUT', willAccept ? 'commit-accept' : (acceptedNoLock ? 'commit-accept-nolock' : 'commit-reject'), holmLedgerIdentity, {
+          reason,
+          paneRect: { w, h },
+          lowerZoneMinPx: totalLowerZonePx,
+          zoneCount: zones.length,
+          phaseLockKey: activeLockKey,
+          lockedForCurrentKey,
+          candidateStageRect: candidateLayout?.stageRect ?? null,
+          committedStageRect: committedLayout?.stageRect ?? null,
+          candidateCardSize: nextCardSize,
+          committedCardSize: priorCardSize,
+          policyRevision: (policy as unknown as { revision?: number })?.revision ?? null,
+          sizeChangedAfterCommit,
+        });
+        if (sizeChangedAfterCommit && willAccept) {
+          recordHolmLedgerViolation('ACTIVE_HAND_LAYOUT', 'card-size-change-after-first-visible', holmLedgerIdentity, {
+            priorCardSize,
+            nextCardSize,
+            paneRect: { w, h },
+          });
+        }
+      }
+
+      if (willAccept) {
         committedRef.current = {
           key: activeLockKey,
           rect: candidateRect,
@@ -283,8 +395,7 @@ export function MeasuredActiveHandFan({
         setLowerZoneMinPx((prev) =>
           Math.abs(prev - totalLowerZonePx) < 0.5 ? prev : totalLowerZonePx,
         );
-      } else if (!activeLockKey && candidateValid) {
-        // No lock configured — behave as before (accept every valid rect).
+      } else if (acceptedNoLock) {
         setRect((prev) =>
           prev &&
           Math.abs(prev.width - w) < 0.5 &&
@@ -297,6 +408,7 @@ export function MeasuredActiveHandFan({
         );
       }
     };
+
 
 
     measure();

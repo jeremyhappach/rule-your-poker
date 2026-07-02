@@ -41,6 +41,7 @@ import {
 } from "@/lib/holm/holmTrace";
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import HolmTracePill from "@/components/HolmTracePill";
+import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -2373,7 +2374,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const isHolm = game?.game_type === 'holm-game';
     setHolmTraceActive(isHolm);
-    return () => setHolmTraceActive(false);
+    setHolmLedgerActive(isHolm);
+    return () => {
+      setHolmTraceActive(false);
+      setHolmLedgerActive(false);
+    };
   }, [game?.game_type, game?.id]);
 
 
