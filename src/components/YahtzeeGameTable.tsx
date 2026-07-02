@@ -805,6 +805,14 @@ export function YahtzeeGameTable({
 
     if (newCat) {
       // Opponent just scored this category — show highlight
+      emitYahtzeeCategorySelectionBoundary('YAHTZEE_CATEGORY_SELECTION_AUTHORITY_ARRIVAL', {
+        category: newCat,
+        actor: currentTurnPlayerId === myPlayer?.id ? 'local' : 'remote',
+        actorPlayerId: currentTurnPlayerId,
+        playerId: currentTurnPlayerId,
+        extra: { scoredValue: currentScores[newCat] },
+      });
+      requestYahtzeeReorderTraceHold(2000, `remote-authority-arrival:${newCat}`);
       setLastScoredCategory(newCat);
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
