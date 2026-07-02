@@ -192,6 +192,8 @@ const App = () => {
 
               {/* HOLM TRACE PILL — temporary, self-gates on isHolmTraceActive(). */}
               <HolmTracePill />
+              <HolmPresentationLedgerPill />
+
 
 
 
