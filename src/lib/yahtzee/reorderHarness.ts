@@ -28,13 +28,10 @@ export type YahtzeeReorderHarnessStatus =
 
 interface HarnessState {
   status: YahtzeeReorderHarnessStatus;
-  // Per-roll forced values, indexed by [rollNumber][dieIndex]. `null` slots
-  // mean "held — do not consume, do not overwrite" (a safety belt: the real
-  // reducer already preserves held values, but the queue never hands one out
-  // for a held die).
   queue: (number | null)[][];
   nextRollIdx: number;
   armedAtMs: number | null;
+  runId: string | null;
   eligibility: {
     isYahtzeeTurn: boolean;
     isLocalTurn: boolean;
@@ -55,6 +52,7 @@ const state: HarnessState = {
   queue: [],
   nextRollIdx: 0,
   armedAtMs: null,
+  runId: null,
   eligibility: {
     isYahtzeeTurn: false,
     isLocalTurn: false,
@@ -87,6 +85,7 @@ export function getYahtzeeReorderHarnessSnapshot(): {
   totalRolls: number;
   eligibility: HarnessState['eligibility'];
   armedAtMs: number | null;
+  runId: string | null;
 } {
   return {
     status: state.status,
@@ -94,6 +93,7 @@ export function getYahtzeeReorderHarnessSnapshot(): {
     totalRolls: SCENARIO.length,
     eligibility: { ...state.eligibility },
     armedAtMs: state.armedAtMs,
+    runId: state.runId,
   };
 }
 
@@ -109,7 +109,7 @@ export function isYahtzeeReorderHarnessArmed(): boolean {
   return state.status === 'armed' || state.status === 'in_progress';
 }
 
-export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string } {
+export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string; runId?: string } {
   const el = state.eligibility;
   if (!el.isYahtzeeTurn) return { ok: false, reason: 'not in a Yahtzee turn' };
   if (!el.isLocalTurn) return { ok: false, reason: 'not your turn' };
@@ -118,14 +118,16 @@ export function armYahtzeeReorderHarness(): { ok: boolean; reason?: string } {
   state.nextRollIdx = 0;
   state.status = 'armed';
   state.armedAtMs = Date.now();
+  state.runId = `yhz-reorder-${state.armedAtMs}-${Math.random().toString(36).slice(2, 8)}`;
   notify();
-  return { ok: true };
+  return { ok: true, runId: state.runId };
 }
 
 export function resetYahtzeeReorderHarness(reason: 'manual' | 'complete' | 'cancel' = 'manual'): void {
   state.queue = [];
   state.nextRollIdx = 0;
   state.status = reason === 'complete' ? 'completed' : reason === 'cancel' ? 'cancelled' : 'idle';
+  // Preserve runId so post-completion snapshots still identify the run.
   notify();
 }
 
@@ -167,4 +169,27 @@ export function advanceYahtzeeReorderHarnessRoll(): void {
     return;
   }
   notify();
+}
+
+const TOTAL_FORCED_VALUES = SCENARIO.reduce(
+  (n, row) => n + row.filter((v) => typeof v === 'number').length,
+  0,
+);
+
+export function getYahtzeeReorderTotalForcedValues(): number {
+  return TOTAL_FORCED_VALUES;
+}
+
+export function getYahtzeeReorderConsumedForcedValues(): number {
+  if (state.queue.length === 0) {
+    // Not currently armed — either idle (0 consumed) or terminal (all consumed
+    // for completed; partial only if externally cancelled, in which case we
+    // report 0 to avoid leaking stale queue state).
+    return state.status === 'completed' ? TOTAL_FORCED_VALUES : 0;
+  }
+  const remaining = state.queue.reduce(
+    (n, row) => n + row.filter((v) => typeof v === 'number').length,
+    0,
+  );
+  return TOTAL_FORCED_VALUES - remaining;
 }
