@@ -452,22 +452,19 @@ export function YahtzeeReorderHarnessPill() {
 
   if (!enabled) return null;
 
-  const totalForced = getYahtzeeReorderTotalForcedValues();
-  const consumed = getYahtzeeReorderConsumedForcedValues();
-
   let statusLine: string;
   let statusColor: string;
   if (running) {
-    statusLine = `RUNNING ${consumed}/${totalForced}`;
+    statusLine = `RECORDING — ${traceSnap.presentation.length} snaps`;
     statusColor = '#FFD580';
-  } else if (snap.status === 'completed') {
-    statusLine = 'COMPLETED';
-    statusColor = '#B5FFB5';
   } else if (snap.status === 'cancelled') {
-    statusLine = 'STOPPED';
+    statusLine = `STOPPED — ${traceSnap.presentation.length} snaps captured`;
     statusColor = '#CFCFCF';
+  } else if (traceSnap.presentation.length > 0) {
+    statusLine = `IDLE — ${traceSnap.presentation.length} snaps buffered`;
+    statusColor = '#B5FFB5';
   } else {
-    statusLine = 'IDLE — click RUN to execute scenario';
+    statusLine = 'IDLE — click RUN to record dice';
     statusColor = '#B5FFB5';
   }
 
