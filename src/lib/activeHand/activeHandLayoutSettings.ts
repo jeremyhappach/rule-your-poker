@@ -137,6 +137,9 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.07,
   maxAdaptiveOverlapPct: 0.35,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
