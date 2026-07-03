@@ -12,6 +12,10 @@ import {
   resolveGinHelperTextStyle,
   useGinHelperTextSettings,
 } from '@/lib/ginRummy/helperTextSettings';
+import {
+  resolveGinStockCountStyle,
+  useGinStockCountSettings,
+} from '@/lib/ginRummy/stockCountSettings';
 import { GinAnchoredInteractionSlot } from './GinAnchoredInteractionSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
@@ -255,6 +259,8 @@ export const GinRummyFeltContent = ({
     widthPx: PILE_CARD_WIDTH_PX,
     heightPx: PILE_CARD_HEIGHT_PX,
   });
+  const stockCountSettings = useGinStockCountSettings();
+  const stockCountStyle = resolveGinStockCountStyle(stockCountSettings);
   let helperTextNode: React.ReactNode = null;
   if (!hidePiles) {
     if (ginState.phase === 'playing') {
