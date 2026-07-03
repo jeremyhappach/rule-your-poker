@@ -8638,6 +8638,11 @@ export const MobileGameTable = ({
                 ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
               });
+              // Disarm after the canonical bounce timing window closes.
+              window.setTimeout(
+                () => disarmWinPresentationSampler(_horsesWinKey, 'transfer-complete+bounce'),
+                1200,
+              );
               onHorsesWinPotAnimationComplete?.();
             }}
           />
