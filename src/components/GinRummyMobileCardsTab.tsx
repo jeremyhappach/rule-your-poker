@@ -212,13 +212,35 @@ export const GinRummyMobileCardsTab = ({
     return rawMyStateAuthoritative;
   }, [rawMyStateAuthoritative, rawAuthoritativeHandCount, localHandIdentityKey, currentPlayerId, ginState.phase, currentHandBaselineCommitted]);
 
-  // Withhold each freshly drawn card from the rendered hand while its
-  // own self-draw transport animation is in flight. The cards are
-  // committed to ginState (so subsequent actions like discard remain
-  // legal) but we visually withhold each face until its own flight
-  // settles, mirroring the opponent ownership-claim model.
+  const deal = useDealRuntime();
+
+  // ── HARD READY RECONCILIATION ────────────────────────────────────
+  // Broken branch removed: `withheldDrawnCards` used to clip the
+  // rendered hand at every deal phase (including READY/GAMEPLAY),
+  // meaning a stale/leftover self-draw intent, or any withheld entry
+  // during the READY window between opening-deal settle and first
+  // playable action, could suppress the full admitted projection and
+  // render zero cards on a valid, baseline-committed identity.
+  //
+  // Invariant now enforced: for a committed current hand at
+  //   deal.phase ∈ {READY, GAMEPLAY} OR ginState.phase !== 'dealing'
+  // the rendered hand IS the admitted local projection — no
+  // withheld-set clipping, no per-player settlement slicing, no
+  // branch-local count may suppress it. Withhold clipping only
+  // applies during a live self-draw animation (a card currently
+  // in-flight between the pile and the active-pane destination) —
+  // and only while the opening-deal wave is still active (dealing
+  // phase). At READY, any withheld entries are ignored.
+  const dealIsReadyOrGameplay = !!deal && (deal.phase === 'READY' || deal.phase === 'GAMEPLAY');
+  const projectionIsPlayable =
+    !!ginState.phase && ginState.phase !== 'dealing';
+  const forceFullProjection = dealIsReadyOrGameplay || projectionIsPlayable;
+
   const rawMyState = useMemo(() => {
     if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;
+    // READY / GAMEPLAY / any non-dealing gin phase → render full admitted
+    // projection. Never allow the withheld set to suppress cards here.
+    if (forceFullProjection) return stableMyStateAuthoritative;
     if (!withheldDrawnCards || withheldDrawnCards.length === 0) return stableMyStateAuthoritative;
     const clipped = [...stableMyStateAuthoritative.hand];
     for (const w of withheldDrawnCards) {
@@ -227,24 +249,18 @@ export const GinRummyMobileCardsTab = ({
     }
     if (clipped.length === stableMyStateAuthoritative.hand.length) return stableMyStateAuthoritative;
     return { ...stableMyStateAuthoritative, hand: clipped };
-  }, [stableMyStateAuthoritative, withheldDrawnCards]);
+  }, [stableMyStateAuthoritative, withheldDrawnCards, forceFullProjection]);
+
   // Opening-deal prefix gate applies ONLY to the opening dealt-card
-  // sequence (cardsPerPlayer cards). Once authoritative hand membership
-  // exceeds the opening manifest size, the additional card was acquired
-  // via a gameplay action (e.g. take-upcard / draw-stock / draw-discard)
-  // and must render immediately — gameplay-acquired cards are NOT part
-  // of the opening-deal settlement ledger.
-  const deal = useDealRuntime();
+  // sequence (cardsPerPlayer cards) DURING the DEALING wave. Once the
+  // deal reaches READY (or the authoritative gin phase moves off
+  // 'dealing'), the full admitted projection is rendered directly.
   const myState = useMemo(() => {
     if (!rawMyState) return rawMyState;
     if (!deal) return rawMyState;
-    if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return rawMyState;
-    // DealRuntime is transport lifecycle, not card ownership. Once the
-    // authoritative Gin phase is playable, a seated client's own hand must
-    // stay rendered even if the deal runtime remounts, re-enters PRE_DEAL,
-    // or has a temporarily empty settlement ledger.
-    if (ginState.phase !== 'dealing') return rawMyState;
-    // Authoritative gameplay membership beyond opening size → render full hand.
+    if (forceFullProjection) return rawMyState;
+    // DEALING wave only — reveal cards as each self-directed intent
+    // settles at its mapped destination.
     if (rawMyState.hand.length > GIN_CARDS_PER_PLAYER) return rawMyState;
     if (deal.phase === 'PRE_DEAL') return { ...rawMyState, hand: [] };
     const allowed = Math.min(
@@ -253,7 +269,7 @@ export const GinRummyMobileCardsTab = ({
     );
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
-  }, [rawMyState, deal, currentPlayerId, ginState.phase, deal?.phase, deal?.settledCardIds]);
+  }, [rawMyState, deal, currentPlayerId, forceFullProjection, deal?.phase, deal?.settledCardIds]);
 
   // Single-owner discard contract: Take must be disabled until the
   // opening discard intent for the current hand has settled.
@@ -680,7 +696,7 @@ export const GinRummyMobileCardsTab = ({
             }))}
             capacity={GIN_CARDS_PER_PLAYER + 1}
             portalTargetSelector="[data-gin-active-pane-content]"
-            phaseLockKey={`gin|h${ginState.handNumber}|ph:${ginState.phase}|tp:${ginState.turnPhase}|p:${currentPlayerId}`}
+            phaseLockKey={`gin|id:${localHandIdentityKey}`}
             applyFan
             renderCard={({ index, card_node }) => {
               const item = flatSortedHand[index];
