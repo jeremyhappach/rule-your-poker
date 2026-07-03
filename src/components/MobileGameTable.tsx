@@ -184,6 +184,14 @@ import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
+import {
+  markUnreadEvaluated,
+  recordChatDeliveryEvent,
+  recordConsumerSubscription,
+  recordReactRenderObserved,
+  recordSelectorProof,
+  validateActiveChatConsumers,
+} from "@/lib/chatDelivery/chatDeliveryLedger";
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
