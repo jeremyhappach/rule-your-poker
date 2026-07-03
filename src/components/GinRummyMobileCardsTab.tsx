@@ -559,8 +559,18 @@ export const GinRummyMobileCardsTab = ({
         </>
       )}
 
-      {/* ── Action area ── */}
-      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+      {/* ── Action area ──
+          Row-4 action placement: the button row is a
+          `[data-active-hand-lower-zone]` sibling of the fan and lives
+          wholly inside the row-4 active-player pane. It carries its own
+          `min-h` + bottom padding so the Discard/Take/Knock/Pass row
+          always sits above the row-5 identity boundary with deliberate
+          clearance, even on small mobile viewports where the button's
+          own height would otherwise consume the entire lower-zone rect.
+          The pane resolver reserves `max(authored, measured + safeArea)`
+          so this height is fed back into the fan's stage budget — the
+          action row is never clipped and never overlaps identity. */}
+      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[44px] pb-2 gap-2 flex-wrap">
         {/* Deadwood readout — right-aligned inside the action strip so
             it no longer eats vertical room above the fan. Post-knock
             view renders its own DW block above (line ~379). */}
