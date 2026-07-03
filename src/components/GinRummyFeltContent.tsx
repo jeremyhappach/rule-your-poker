@@ -473,9 +473,8 @@ export const GinRummyFeltContent = ({
                 }}
               />
             </div>
-            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none', visibility: 'hidden' }}>
-              {stockDanger ? 'Low!' : 'Stock'}
-            </span>
+            {/* No spacer label — visual layer no longer renders a
+                text row under the stock card. */}
           </div>
 
           <div
@@ -510,7 +509,8 @@ export const GinRummyFeltContent = ({
                 }}
               />
             </div>
-            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none', visibility: 'hidden' }}>Discard</span>
+            {/* No spacer label — visual layer no longer renders a
+                text row under the discard card. */}
           </div>
         </GinAnchoredInteractionSlot>
       )}
