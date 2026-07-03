@@ -3079,6 +3079,7 @@ export const GinRummyGameTable = ({
       />
       </div>
     </DealRuntimeMaybe>
+    <GinActiveHandLedgerPill />
     </div>
 
   );
