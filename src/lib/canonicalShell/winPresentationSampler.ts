@@ -132,8 +132,12 @@ function snapshotTransfer(triggerId: string | null): TransferSnapshot {
   };
 }
 
-function snapshotActiveHand(selfPlayerId: string | null): ActiveHandSnapshot {
-  if (typeof document === 'undefined' || !selfPlayerId) {
+function snapshotActiveHand(selfPlayerId: string | null, isWinnerClient: boolean): ActiveHandSnapshot {
+  // Only capture active-hand geometry on the winner's client. On
+  // losers/observers/bot seats the local viewer's active-hand pane is
+  // either empty or unrelated to the winner, so treating those zero-card
+  // snapshots as evidence of a winner-hand regression is a false signal.
+  if (!isWinnerClient || typeof document === 'undefined' || !selfPlayerId) {
     return { found: false, handKey: null, cardCount: 0, stageRect: null, wrapperTransform: null, cards: [], ancestorsTransform: [] };
   }
   const stage = document.querySelector(
@@ -143,7 +147,6 @@ function snapshotActiveHand(selfPlayerId: string | null): ActiveHandSnapshot {
     return { found: false, handKey: `hand-${selfPlayerId}`, cardCount: 0, stageRect: null, wrapperTransform: null, cards: [], ancestorsTransform: [] };
   }
   const stageCS = getComputedStyle(stage);
-  // Cards are typically descendants with a card-back / card-front root.
   const cardEls = Array.from(
     stage.querySelectorAll<HTMLElement>('[data-card-index], [data-playing-card], [data-card-back], [data-card-front]'),
   );
