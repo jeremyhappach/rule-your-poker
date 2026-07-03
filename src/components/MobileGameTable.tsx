@@ -10882,120 +10882,61 @@ export const MobileGameTable = ({
                                            renderReason={`self-rendered count=${effectiveCards.length}`}
                                          />
                                        ))}
-                                        {(() => {
-                                          // 3-5-7 active-self renderer routing.
-                                          //
-                                          // INVARIANT (requirement 1 & 2): once a local 3-5-7 card
-                                          // has resolved/landed at its committed geometry, it may
-                                          // never grow afterward. MeasuredActiveHandFan locks the
-                                          // stage / per-card / fan geometry per full 357 hand
-                                          // identity + numbered round stage via `phaseLockKey`.
-                                          // We must NOT fall back to the legacy PlayerHand path
-                                          // mid-hand for 357 — that path is count/scale-derived and
-                                          // is the source of the "explode after fold / action
-                                          // resolution" defect.
-                                          //
-                                          // For 357: only the initial staged-deal window
-                                          // (PRE_DEAL/DEALING) and the explicit R3 7-card
-                                          // showSeparated layout still use PlayerHand. Every other
-                                          // state (fold, timeout, sitting out, opponent action,
-                                          // scoring/announcement, result transition, winner
-                                          // reveal) stays on MeasuredActiveHandFan.
-                                          const is357R3Separated =
-                                            gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7;
-                                          const isVisibleGameplay357 =
-                                            gameType !== 'holm-game' &&
-                                            !is357Staged &&
-                                            dealPhase !== 'PRE_DEAL' && dealPhase !== 'DEALING' &&
-                                            effectiveCards.length > 0 &&
-                                            !is357R3Separated;
-                                          const isVisibleGameplayHolm =
-                                            gameType === 'holm-game' &&
-                                            !isHolmStaged &&
-                                            dealPhase !== 'PRE_DEAL' && dealPhase !== 'DEALING' &&
-                                            effectiveCards.length > 0 &&
-                                            !(isCurrentPlayerWinner && winningCardHighlights.hasHighlights);
-                                          const isVisibleGameplay = isVisibleGameplay357 || isVisibleGameplayHolm;
-                                           if (isVisibleGameplay && gameType !== 'holm-game') {
-                                             const activeGame: import('@/lib/geometryLab/descriptorIndex').GameKey = 'threeFiveSeven';
-                                             const capacity =
-                                               currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7;
-                                             // Full 357 hand identity for lock + retirement:
-                                             //   base hand context + numbered round stage (3s/5s/7s)
-                                             //   + player id. `key` forces React to retire the prior
-                                             //   instance on any identity change (round boundary
-                                             //   3s→5s or 5s→7s, or hand boundary) BEFORE the
-                                             //   successor renders — no prior cards, transforms,
-                                             //   slot locks, or cached scale survive the boundary.
-                                              const identityKey = `357|${boundary.baseHandContextId}|r${currentRound ?? 0}|p${currentPlayer?.id ?? 'noP'}`;
-                                              const three57LedgerIdentity = {
-                                                dealerGameId: (activeGame as unknown as { id?: string })?.id ?? null,
-                                                roundId: (currentRound != null ? String(currentRound) : null),
-                                                handNumber: null,
-                                                stageRound: (capacity === 3 ? 3 : capacity === 5 ? 5 : 7) as 3 | 5 | 7,
-                                                handContextId: boundary.baseHandContextId ?? null,
-                                                localPlayerId: currentPlayer?.id ?? null,
-                                                branch: 'MobileGameTable/357-active-fan',
-                                              };
-                                              return (
-                                                 <MeasuredActiveHandFan
-                                                   key={identityKey}
-                                                   game={activeGame}
-                                                   cards={effectiveCards}
-                                                   capacity={capacity}
-                                                   portalTargetSelector="[data-357-active-pane-content]"
-                                                   phaseLockKey={identityKey}
-                                                   activeHandFanRenderKey={`ActiveHandFan|${identityKey}`}
-                                                   cardIds={boundary.rawClaimedCardIds}
-                                                   applyFan
-                                                   three57LedgerIdentity={three57LedgerIdentity}
-                                                 />
-                                               );
-                                             }
-
-                                         return (
-                                           <PlayerHand
-                                             cards={effectiveCards}
-                                             isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
-                                             expectedCardCount={
-                                                 // Holm active-self: authoritative final hand
-                                                 // capacity (cardsPerPlayer=4). Latch for the entire
-                                                 // staged deal so first-card size/overlap/fan resolves
-                                                 // from the FINAL slot count — never from
-                                                 // sortedCards/visible/claimed counts.
-                                                 //
-                                                 // 3-5-7 active-self staged deal: same contract.
-                                                 // Pass the round's authoritative final capacity
-                                                 // (3/5/7) BEFORE card 1 arrives so PlayerHand
-                                                 // locks slot geometry to that capacity and
-                                                 // reserves invisible slots for unarrived cards
-                                                 // (no visible backs, no post-land resize).
-                                                 gameType === 'holm-game'
-                                                   ? 4
-                                                   : is357
-                                                     ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
-                                                     : (effectiveCards.length === 0
-                                                       ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
-                                                       : undefined)
-                                               }
-                                             highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                                             kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                                             hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                                             gameType={gameType}
-                                             currentRound={currentRound}
-                                             dealPhase={dealPhase}
-                                             claimedCardIds={boundary.claimedCardIds}
-                                             baseHandContextId={boundary.baseHandContextId}
-                                             boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
-                                             source="MobileGameTable.activeSelfHand"
-                                             forceHiddenFaces={false}
-                                             showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
-                                             tightOverlap={isHolmMultiPlayerShowdown}
-                                             availableHeightPx={handAvailableHeightPx357}
-                                             wrapperScale={handScaleNum}
-                                           />
-                                         );
-                                       })()}
+                                        {/*
+                                          * 3-5-7 (and Holm) active-self renderer.
+                                          *
+                                          * RESTORATION (pre-MeasuredActiveHandFan): the local
+                                          * active-self path renders through the legacy
+                                          * <PlayerHand/> owner exclusively. The prior
+                                          * MeasuredActiveHandFan / 357-active-fan branch —
+                                          * portal, phase-lock sizing, measure-ancestor,
+                                          * post-land geometry reconciliation — is removed
+                                          * entirely from 3-5-7 local active-self.
+                                          *
+                                          * Staged-deal deltas the restored owner still applies:
+                                          *   • expectedCardCount is the authoritative final
+                                          *     round capacity (3/5/7 or Holm 4) BEFORE card 1
+                                          *     arrives — locks slot geometry to final
+                                          *     capacity, no post-arrival resize.
+                                          *   • PlayerHand reserves unarrived slots as inert
+                                          *     (visibility:hidden) spacers via its internal
+                                          *     three57StagedCapacity / holmStagedCapacity
+                                          *     branches — no painted card backs.
+                                          *   • Local cards first appear face-up at their
+                                          *     resolved slot (no back→face swap).
+                                          *   • Teardown at 3→5→7 stage / hand identity
+                                          *     boundary is owned by the parent
+                                          *     Use357SelfHand / UseHolmSelfHand wrapper via
+                                          *     boundary.baseHandContextId re-keying.
+                                          */}
+                                        <PlayerHand
+                                          cards={effectiveCards}
+                                          isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
+                                          expectedCardCount={
+                                            gameType === 'holm-game'
+                                              ? 4
+                                              : is357
+                                                ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
+                                                : (effectiveCards.length === 0
+                                                  ? (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)
+                                                  : undefined)
+                                          }
+                                          highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                          kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                          hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                          gameType={gameType}
+                                          currentRound={currentRound}
+                                          dealPhase={dealPhase}
+                                          claimedCardIds={boundary.claimedCardIds}
+                                          baseHandContextId={boundary.baseHandContextId}
+                                          boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
+                                          source="MobileGameTable.activeSelfHand"
+                                          forceHiddenFaces={false}
+                                          showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
+                                          tightOverlap={isHolmMultiPlayerShowdown}
+                                          availableHeightPx={handAvailableHeightPx357}
+                                          wrapperScale={handScaleNum}
+                                        />
                                      </>
                                     );
                                  };
