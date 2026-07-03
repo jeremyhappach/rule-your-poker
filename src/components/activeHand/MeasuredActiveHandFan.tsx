@@ -62,11 +62,7 @@ import {
   recordHolmLedger,
   recordHolmLedgerViolation,
 } from '@/lib/holm/holmPresentationLedger';
-import {
-  recordThree57Geometry,
-  recordThree57Lifecycle,
-  type Three57LedgerIdentity,
-} from '@/lib/threeFiveSeven/presentationLedger';
+// 3-5-7 presentation ledger removed (temporary tracking).
 
 type PaneRect = ActiveHandStageRect;
 
