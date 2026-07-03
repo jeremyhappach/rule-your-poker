@@ -146,16 +146,16 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
 };
 
 const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
-  preferredOverlap: 0.20,
-  maxOverlap: 0.45,
+  preferredOverlap: 0.10,
+  maxOverlap: 0.35,
   minCardWidthPx: 28,
-  maxWidthPctOfPane: 0.96,
+  maxWidthPctOfPane: 0.98,
   maxHeightPctOfPane: 0.60,
   preferredCardScalePctOfStage: 0.11,
   maxCardScalePctOfStage: 0.16,
   baselineFanArchDeg: 8,
-  baselineOverlapPct: 0.20,
-  maxAdaptiveOverlapPct: 0.45,
+  baselineOverlapPct: 0.10,
+  maxAdaptiveOverlapPct: 0.35,
   // Small breathing room under the row-3 timer boundary; fan flush to
   // top of the resulting stage so the hand sits high inside row 4.
   stageTopInsetPctOfPane: 0.02,
