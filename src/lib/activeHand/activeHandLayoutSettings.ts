@@ -487,28 +487,33 @@ export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
   overrides?: PaneReservationOverrides,
-): { stageRect: ActiveHandStageRect; reservedLowerZonePx: number; interZoneClearancePx: number } {
+): {
+  stageRect: ActiveHandStageRect;
+  reservedLowerZonePx: number;
+  interZoneClearancePx: number;
+  stageTopInsetPx: number;
+} {
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
   const authoredReserved = paneH * policy.reservedLowerZonePctOfPane;
   const measured = Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0);
   const safeArea = Math.max(0, overrides?.safeAreaBottomPx ?? 0);
-  // Never below authored; escalate to actual rendered minimum + safe-area
-  // when the lower zone is taller than the authored reservation.
   const reservedLowerZonePx = Math.max(authoredReserved, measured + safeArea);
   const interZoneClearancePx = paneH * policy.interZoneClearancePctOfPane;
+  const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
     Math.min(
       paneH * policy.maxHeightPctOfPane,
-      paneH - reservedLowerZonePx - interZoneClearancePx,
+      paneH - reservedLowerZonePx - interZoneClearancePx - stageTopInsetPx,
     ),
   );
   return {
     stageRect: { width: stageW, height: stageH },
     reservedLowerZonePx,
     interZoneClearancePx,
+    stageTopInsetPx,
   };
 }
 
