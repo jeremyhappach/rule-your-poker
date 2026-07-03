@@ -265,15 +265,6 @@ export function MeasuredActiveHandFan({
         renderKey: activeHandFanRenderKey ?? null,
       });
     }
-    if (three57LedgerIdentity) {
-      recordThree57Lifecycle('render', three57LedgerIdentity, {
-        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        reason: 'cardIds-change',
-        cardCount: cards.length,
-        cardIds: cardIdsKey,
-        renderKey: activeHandFanRenderKey ?? null,
-      });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardIdsKey]);
 
