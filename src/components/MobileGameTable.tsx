@@ -8545,8 +8545,24 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner (no confetti) */}
-        {horsesWinPotTriggerId && (
+        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner. */}
+        {horsesWinPotTriggerId && (() => {
+          const _horsesWinnerPlayer = players.find(p => p.position === horsesWinWinnerPosition);
+          const _horsesIdentity: WinAttemptIdentity = {
+            winAttemptId: `${gameType ?? 'dice'}:${horsesWinPotTriggerId}`,
+            gameId: gameId ?? null,
+            dealerGameId: null,
+            roundId: handContextId ?? null,
+            handNumber: currentRound ?? null,
+            gameType: gameType ?? 'dice',
+            outcomeId: horsesWinPotTriggerId ?? null,
+            winnerPlayerId: _horsesWinnerPlayer?.id ?? null,
+            localViewerId: currentPlayer?.id ?? null,
+            localRole: currentPlayer?.id && _horsesWinnerPlayer?.id
+              ? (currentPlayer.id === _horsesWinnerPlayer.id ? 'winner' : 'loser')
+              : (currentPlayer ? 'loser' : 'observer'),
+          };
+          return (
           <PotToPlayerAnimation
             triggerId={horsesWinPotTriggerId}
             amount={horsesWinPotAmount}
@@ -8558,21 +8574,42 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-start',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                payload: { amount: horsesWinPotAmount, winnerPosition: horsesWinWinnerPosition },
+              });
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-mounted',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-complete',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+              });
               // Canonical winner arrival: destination bounce + confetti.
               // Dedupe by triggerId so remount / re-emission cannot double-fire.
               fireCanonicalWinCelly({
                 container: tableContainerRef.current,
                 winnerPosition: horsesWinWinnerPosition,
                 winKey: `${gameType ?? 'dice'}:win:${horsesWinPotTriggerId ?? 'no-trigger'}`,
+                ledgerIdentity: _horsesIdentity,
+                ledgerOwner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
               });
               onHorsesWinPotAnimationComplete?.();
             }}
           />
-        )}
+          );
+        })()}
+
         
         {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
         {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
