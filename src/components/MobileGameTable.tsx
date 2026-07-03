@@ -4523,22 +4523,20 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Always update watermarks so the message is never lost
+    // Track that we've processed this realtime id so the same message
+    // is not re-evaluated on rerender. IMPORTANT: do NOT advance the
+    // seen/read cursors here. A realtime message is not hydration and
+    // must not silently establish a read baseline — that path is what
+    // auto-cleared remote unread before the indicator could fire.
     processedEligibleRealtimeRef.current = true;
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeChatMessage.id;
-    setLastSeenChatMessageId(latestRealtimeChatMessage.id);
-    logChatIndicator('watermark updated', latestRealtimeChatMessage, {
-      lastSeen: latestRealtimeChatMessage.id,
-      lastRead: lastReadChatMessageId,
-      reason: 'eligible-realtime-seen',
-    });
     recordChatDeliveryEvent({
-      phase: 'read-cursor-advanced',
+      phase: 'realtime-eligible-observed',
       message: latestRealtimeChatMessage,
       gameId: gameId ?? null,
       dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
       consumer: 'unread-selector',
-      payload: { reason: 'eligible-realtime-seen', lastSeen: latestRealtimeChatMessage.id, lastRead: lastReadChatMessageId },
+      payload: { reason: 'eligible-realtime-observed-no-cursor-advance', lastSeen: lastSeenChatMessageId, lastRead: lastReadChatMessageId },
     });
 
     // Pre-hydration: preserve the message as unseen, but never pulse/mark-read.
