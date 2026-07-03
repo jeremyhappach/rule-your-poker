@@ -175,6 +175,9 @@ const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.18,
   maxAdaptiveOverlapPct: 0.42,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
@@ -190,6 +193,9 @@ const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.12,
   maxAdaptiveOverlapPct: 0.40,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 /**
