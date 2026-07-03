@@ -8634,6 +8634,7 @@ export const MobileGameTable = ({
                 container: tableContainerRef.current,
                 winnerPosition: horsesWinWinnerPosition,
                 winKey: _horsesWinKey,
+                transferArtifactId: horsesWinPotTriggerId ?? null,
                 ledgerIdentity: _horsesIdentity,
                 ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
