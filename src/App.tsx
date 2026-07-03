@@ -46,7 +46,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
-import { ThreeFiveSevenPresentationLedgerPill } from "@/components/ThreeFiveSevenPresentationLedgerPill";
+
 
 import { R1SnapbackPill } from "@/lib/wartimeDebug/R1SnapbackPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
