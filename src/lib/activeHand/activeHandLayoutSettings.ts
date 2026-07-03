@@ -670,14 +670,13 @@ export function resolveActiveHandFromPane(
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
-  _overrides?: PaneReservationOverrides,
+  overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
-  void _overrides;
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
   const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
-    computeStageRectFromPane(paneRect, policy);
+    computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
   return { ...row, stageTopInsetPx, stageBottomInsetPx };
