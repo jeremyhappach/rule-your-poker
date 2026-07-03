@@ -1762,6 +1762,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     prevChatDealerGameIdRef.current = currentDealerGameId;
   }, [game?.current_game_uuid]);
+
+  // Conversation-key stability guard. The canonical chat conversation
+  // key is the route `gameId` — it MUST remain stable across dealer
+  // games, rounds, phase transitions, and mobile-table remounts within
+  // the same table/session. Any change here is a genuine table/session
+  // change and is recorded so that chat history preservation across
+  // dealer-game boundaries can be verified from the ledger.
+  const prevChatConversationKeyRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevChatConversationKeyRef.current;
+    if (prev !== undefined && prev !== chatConversationKey) {
+      recordChatDeliveryViolation({
+        violation: 'CHAT_CONVERSATION_KEY_CHANGED_MID_SESSION',
+        gameId: chatConversationKey ?? null,
+        consumer: 'Game.tsx',
+        payload: {
+          prevConversationKey: prev,
+          nextConversationKey: chatConversationKey,
+          currentDealerGameId: (game as any)?.current_game_uuid ?? null,
+        },
+      });
+    }
+    prevChatConversationKeyRef.current = chatConversationKey;
+  }, [chatConversationKey, (game as any)?.current_game_uuid]);
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
   useDeadlineEnforcer(gameId, game?.status);
