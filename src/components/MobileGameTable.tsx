@@ -6607,7 +6607,7 @@ export const MobileGameTable = ({
         onThreeFiveSevenWinAnimationComplete();
       }
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId]);
 
   // ── Canonical seat contract (PR-B: single-path collapse) ──────────
   //
