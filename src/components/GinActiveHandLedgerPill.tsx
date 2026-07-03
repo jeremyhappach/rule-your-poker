@@ -55,23 +55,21 @@ export function GinActiveHandLedgerPill() {
     setCount(0);
   }, []);
 
-  const handleCopy = useCallback(async () => {
+  const handleExport = useCallback(() => {
     const text = formatGinLedgerAsText();
     try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      a.href = url;
+      a.download = `gin-active-hand-ledger-${ts}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
-      /* clipboard errors must never affect gameplay */
+      /* export errors must never affect gameplay */
     }
     setCount(getGinLedgerEventCount());
   }, []);
