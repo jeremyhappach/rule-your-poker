@@ -89,6 +89,28 @@ export interface ActiveHandLayoutPolicy {
   baselineOverlapPct: number;
   /** Ceiling overlap used only when containment requires it. Mirrors `maxOverlap`. */
   maxAdaptiveOverlapPct: number;
+
+  // ── Stage vertical placement (v3 — active-hand host anchor) ───────
+  /**
+   * Extra top inset, expressed as fraction of pane HEIGHT, applied
+   * BEFORE the stage rect is placed in the pane. Positive values push
+   * the whole hand-stage DOWN (leaving more empty space above cards).
+   * Zero preserves the legacy top-flushed placement. [0, 0.9].
+   */
+  stageTopInsetPctOfPane: number;
+  /**
+   * Vertical alignment of the fan within the resolved stage rect.
+   *   'bottom' — cards flush to bottom of stage (legacy default).
+   *   'center' — cards centered vertically inside stage.
+   *   'top'    — cards flush to top of stage (moves hand UP inside pane).
+   */
+  stageVerticalAlignment: 'top' | 'center' | 'bottom';
+  /**
+   * Signed final Y trim as % of stage HEIGHT, applied AFTER alignment.
+   * Positive shifts cards DOWN inside the stage; negative shifts UP.
+   * Use for small authored trims only. [-0.5, 0.5].
+   */
+  contentYOffsetPctOfStage: number;
 }
 
 export interface ActiveHandLayoutGameSpec {
@@ -115,6 +137,9 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.07,
   maxAdaptiveOverlapPct: 0.35,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
@@ -130,6 +155,11 @@ const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.20,
   maxAdaptiveOverlapPct: 0.45,
+  // Move Gin hand UP inside the pane: fan flush to top of stage,
+  // small authored top inset for breathing room above the fan.
+  stageTopInsetPctOfPane: 0.02,
+  stageVerticalAlignment: 'top',
+  contentYOffsetPctOfStage: 0,
 };
 
 const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
@@ -145,6 +175,9 @@ const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.18,
   maxAdaptiveOverlapPct: 0.42,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
@@ -160,6 +193,9 @@ const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.12,
   maxAdaptiveOverlapPct: 0.40,
+  stageTopInsetPctOfPane: 0,
+  stageVerticalAlignment: 'bottom',
+  contentYOffsetPctOfStage: 0,
 };
 
 /**
@@ -248,6 +284,22 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
       baselineFanArchDeg: clamp(num(v.baselineFanArchDeg, defaults.baselineFanArchDeg), 0, 45),
       baselineOverlapPct: baselineOverlap,
       maxAdaptiveOverlapPct: maxAdaptive,
+      stageTopInsetPctOfPane: clamp(
+        num(v.stageTopInsetPctOfPane, defaults.stageTopInsetPctOfPane),
+        0,
+        0.9,
+      ),
+      stageVerticalAlignment:
+        v.stageVerticalAlignment === 'top' ||
+        v.stageVerticalAlignment === 'center' ||
+        v.stageVerticalAlignment === 'bottom'
+          ? v.stageVerticalAlignment
+          : defaults.stageVerticalAlignment,
+      contentYOffsetPctOfStage: clamp(
+        num(v.contentYOffsetPctOfStage, defaults.contentYOffsetPctOfStage),
+        -0.5,
+        0.5,
+      ),
     };
   };
 }
@@ -319,6 +371,13 @@ export interface ResolvedActiveHandRow {
   reservedLowerZonePx: number;
   /** Inter-zone clearance in px between hand stage and lower zone. */
   interZoneClearancePx: number;
+  /**
+   * Extra top inset in px (from `stageTopInsetPctOfPane`). The pane
+   * owner should offset the stage container DOWN by this amount from
+   * the pane's top edge. Cards do NOT re-scale for this value — it
+   * moves the whole stage without changing card geometry.
+   */
+  stageTopInsetPx: number;
 }
 
 export interface ActiveHandFanBounds {
@@ -428,28 +487,33 @@ export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
   overrides?: PaneReservationOverrides,
-): { stageRect: ActiveHandStageRect; reservedLowerZonePx: number; interZoneClearancePx: number } {
+): {
+  stageRect: ActiveHandStageRect;
+  reservedLowerZonePx: number;
+  interZoneClearancePx: number;
+  stageTopInsetPx: number;
+} {
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
   const authoredReserved = paneH * policy.reservedLowerZonePctOfPane;
   const measured = Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0);
   const safeArea = Math.max(0, overrides?.safeAreaBottomPx ?? 0);
-  // Never below authored; escalate to actual rendered minimum + safe-area
-  // when the lower zone is taller than the authored reservation.
   const reservedLowerZonePx = Math.max(authoredReserved, measured + safeArea);
   const interZoneClearancePx = paneH * policy.interZoneClearancePctOfPane;
+  const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
     Math.min(
       paneH * policy.maxHeightPctOfPane,
-      paneH - reservedLowerZonePx - interZoneClearancePx,
+      paneH - reservedLowerZonePx - interZoneClearancePx - stageTopInsetPx,
     ),
   );
   return {
     stageRect: { width: stageW, height: stageH },
     reservedLowerZonePx,
     interZoneClearancePx,
+    stageTopInsetPx,
   };
 }
 
@@ -561,6 +625,20 @@ export function resolveActiveHandLayout(
     fanArchDeg,
   );
 
+  // Vertical placement of the fan inside the stage.
+  const alignment = policy.stageVerticalAlignment;
+  let rowOffsetYBase: number;
+  if (alignment === 'top') {
+    rowOffsetYBase = -visualBounds.minY;
+  } else if (alignment === 'center') {
+    rowOffsetYBase =
+      (stage.height - visualBounds.height) / 2 - visualBounds.minY;
+  } else {
+    rowOffsetYBase = stage.height - visualBounds.maxY;
+  }
+  const rowOffsetY =
+    rowOffsetYBase + stage.height * policy.contentYOffsetPctOfStage;
+
   return {
     cardWidth,
     cardHeight,
@@ -570,10 +648,11 @@ export function resolveActiveHandLayout(
     fanArchDeg,
     visualBounds,
     rowOffsetX: (stage.width - visualBounds.width) / 2 - visualBounds.minX,
-    rowOffsetY: stage.height - visualBounds.maxY,
+    rowOffsetY,
     stageRect: stage,
     reservedLowerZonePx: 0,
     interZoneClearancePx: 0,
+    stageTopInsetPx: 0,
   };
 }
 
@@ -592,10 +671,10 @@ export function resolveActiveHandFromPane(
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
-  const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
+  const { stageRect, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx } =
     computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
-  return { ...row, reservedLowerZonePx, interZoneClearancePx };
+  return { ...row, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx };
 }
 
