@@ -10822,6 +10822,10 @@ export const MobileGameTable = ({
                           isSending={isChatSending}
                           chatInputValue={externalChatInputValue}
                           onChatInputChange={externalOnChatInputChange}
+                          currentUserId={currentUserId}
+                          instrumentationCurrentUserId={currentUserId}
+                          diagnosticGameId={gameId ?? null}
+                          diagnosticDealerGameId={holmDealerGameId ?? horsesDealerGameId ?? null}
                         />
                       </div>
                     ) : (
@@ -11399,6 +11403,10 @@ export const MobileGameTable = ({
                         isSending={isChatSending}
                         chatInputValue={externalChatInputValue}
                         onChatInputChange={externalOnChatInputChange}
+                        currentUserId={currentUserId}
+                        instrumentationCurrentUserId={currentUserId}
+                        diagnosticGameId={gameId ?? null}
+                        diagnosticDealerGameId={holmDealerGameId ?? horsesDealerGameId ?? null}
                       />
                     </div>
                   ) : (
