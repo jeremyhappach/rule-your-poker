@@ -152,6 +152,11 @@ const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.20,
   maxAdaptiveOverlapPct: 0.45,
+  // Move Gin hand UP inside the pane: fan flush to top of stage,
+  // small authored top inset for breathing room above the fan.
+  stageTopInsetPctOfPane: 0.02,
+  stageVerticalAlignment: 'top',
+  contentYOffsetPctOfStage: 0,
 };
 
 const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
