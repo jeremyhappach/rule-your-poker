@@ -1548,6 +1548,8 @@ export const GinRummyGameTable = ({
     eligibleIndicatorMessages,
     getMessagesAfterWatermark,
     hasUnreadMessages,
+    hydrationBaselineIds,
+    isChatHydrated,
     logChatIndicator,
   ]);
 
