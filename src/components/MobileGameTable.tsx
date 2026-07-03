@@ -41,6 +41,10 @@ import {
   armWinFreezeWatchdog,
   type WinAttemptIdentity,
 } from "@/lib/canonicalShell/winPresentationLedger";
+import {
+  armWinPresentationSampler,
+  disarmWinPresentationSampler,
+} from "@/lib/canonicalShell/winPresentationSampler";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
