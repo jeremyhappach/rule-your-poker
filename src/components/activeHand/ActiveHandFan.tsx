@@ -281,6 +281,15 @@ export function ActiveHandFan({
             ? -archDeg / 2 + perCardDeg * index
             : 0;
           const marginLeft = index === 0 ? 0 : -layout.overlapPx;
+          // Rotation is applied to the wrapper so that any selection /
+          // interaction outline rendered by `renderCard` (rings,
+          // highlights, lifts) inherits the exact same transform frame
+          // as the card face — the outline follows fan rotation, scale,
+          // and translation instead of being an axis-aligned overlay
+          // around a rotated card.
+          const wrapperTransform = applyFan
+            ? `rotate(${rotationDeg.toFixed(3)}deg)`
+            : undefined;
           const cardNode = (
             <PlayingCard
               card={card}
@@ -290,8 +299,6 @@ export function ActiveHandFan({
               style={{
                 width: layout.cardWidth,
                 height: layout.cardHeight,
-                transform: applyFan ? `rotate(${rotationDeg.toFixed(3)}deg)` : undefined,
-                transformOrigin: 'center bottom',
               }}
             />
           );
@@ -305,7 +312,12 @@ export function ActiveHandFan({
                 key={`${card.rank}-${card.suit}-${index}`}
                 data-357-deal-card-id={traceCardId ?? undefined}
                 data-357-rendered-active-card-render-key={renderedActiveCardRenderKey ?? undefined}
-                style={{ marginLeft, zIndex: index }}
+                style={{
+                  marginLeft,
+                  zIndex: index,
+                  transform: wrapperTransform,
+                  transformOrigin: 'center bottom',
+                }}
               >
                 {renderCard({
                   card,
@@ -325,7 +337,12 @@ export function ActiveHandFan({
               key={`${card.rank}-${card.suit}-${index}`}
               data-357-deal-card-id={traceCardId ?? undefined}
               data-357-rendered-active-card-render-key={renderedActiveCardRenderKey ?? undefined}
-              style={{ marginLeft, zIndex: index }}
+              style={{
+                marginLeft,
+                zIndex: index,
+                transform: wrapperTransform,
+                transformOrigin: 'center bottom',
+              }}
             >
               {cardNode}
             </div>
