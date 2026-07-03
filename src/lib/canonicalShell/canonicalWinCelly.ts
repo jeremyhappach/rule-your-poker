@@ -32,7 +32,10 @@ import confetti from 'canvas-confetti';
 const STYLE_ID = '__chip-dest-reaction-keyframes';
 const BOUNCE_DURATION_MS = 900;
 
-const firedKeys = new Set<string>();
+// legacy dedupe set retained for backward-compat shim only.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _firedKeys = new Set<string>();
+
 
 function ensureBounceStylesheet(): void {
   if (typeof document === 'undefined') return;
@@ -116,10 +119,122 @@ export interface CanonicalWinCellyArgs {
 
 /**
  * Fire the canonical win celebration (destination bounce + confetti).
- * Idempotent per `winKey`. Safe to call from onAnimationEnd of legacy
- * pot-transfer animators after the chip has visibly arrived.
+ *
+ * @deprecated Prefer the split `startCanonicalWinSequence` (fires
+ * winner-only confetti at pot-transfer start) and
+ * `completeCanonicalWinSequence` (fires destination bounce after the
+ * chip has visibly arrived). This monolithic entry point violates the
+ * canonical contract by conflating both beats, and is kept only for
+ * transient compatibility. No callers remain in-tree.
  */
-export function fireCanonicalWinCelly({
+export function fireCanonicalWinCelly(args: CanonicalWinCellyArgs): void {
+  startCanonicalWinSequence(args);
+  completeCanonicalWinSequence(args);
+}
+
+// -----------------------------------------------------------------------
+// Split canonical sequence (transfer-start beat + transfer-end beat).
+// -----------------------------------------------------------------------
+
+const startedKeys = new Set<string>();
+const completedKeys = new Set<string>();
+
+function resolveEligibility(id: WinAttemptIdentity | undefined):
+  'winner' | 'nonwinner' | 'unknown'
+{
+  const viewerId = id?.localViewerId ?? null;
+  const winnerId = id?.winnerPlayerId ?? null;
+  if (!viewerId || !winnerId) return 'unknown';
+  return viewerId === winnerId ? 'winner' : 'nonwinner';
+}
+
+/**
+ * Beat 1 of the canonical win sequence — fires winner-only confetti
+ * the moment the pot transfer begins. Idempotent per `winKey`.
+ *
+ * Contract:
+ *   - Confetti mounts iff `localViewerId === winnerPlayerId`. Losing
+ *     seats, observers, and bot seats never see confetti.
+ *   - Records `canonical-sequence-requested`, `canonical-sequence-accepted`,
+ *     and (when eligible) `confetti-trigger-requested` +
+ *     `confetti-mounted` on the shared ledger identity so replays /
+ *     late-mount attempts correlate under the same winAttemptId.
+ *   - Does NOT touch the winner anchor DOM (no bounce). Bounce is
+ *     owned by `completeCanonicalWinSequence`.
+ */
+export function startCanonicalWinSequence({
+  winnerPosition,
+  winKey,
+  ledgerIdentity,
+  ledgerOwner,
+  ledgerSource,
+}: CanonicalWinCellyArgs): void {
+  const source = ledgerSource ?? 'canonicalWinCelly.startCanonicalWinSequence';
+  const id = ledgerIdentity;
+
+  if (!winKey) {
+    if (id) recordWinPresentationViolation(id, 'WIN_DUPLICATE_OR_REPLAYED_SEQUENCE', source, { reason: 'empty-winKey' });
+    return;
+  }
+  if (startedKeys.has(winKey)) {
+    if (id) recordWinPresentationEvent({
+      identity: id, name: 'duplicate-outcome-suppressed', source, owner: ledgerOwner,
+      severity: 'warn', payload: { winKey, beat: 'start' },
+    });
+    return;
+  }
+  startedKeys.add(winKey);
+
+  const eligibility = resolveEligibility(id);
+
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'canonical-sequence-requested', source, owner: ledgerOwner,
+      payload: { winKey, winnerPosition, eligibility, beat: 'start' },
+    });
+    recordWinPresentationEvent({
+      identity: id, name: 'canonical-sequence-accepted', source, owner: ledgerOwner,
+      payload: { beat: 'start' },
+    });
+  }
+
+  // WINNER-ONLY confetti. Losers/observers get transfer + bounce only.
+  if (eligibility !== 'winner') {
+    if (id) recordWinPresentationEvent({
+      identity: id, name: 'confetti-trigger-requested', source, owner: ledgerOwner,
+      payload: { eligibility, suppressed: true, reason: 'non-winner-client' },
+    });
+    window.setTimeout(() => startedKeys.delete(winKey), 30000);
+    return;
+  }
+
+  if (id) recordWinPresentationEvent({
+    identity: id, name: 'confetti-trigger-requested', source, owner: ledgerOwner,
+    payload: { eligibility },
+  });
+
+  fireConfetti();
+
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'confetti-mounted', source, owner: ledgerOwner,
+      payload: { eligibility, targetAudience: 'winner', branch: 'startCanonicalWinSequence' },
+    });
+    window.setTimeout(() => {
+      recordWinPresentationEvent({ identity: id, name: 'confetti-complete', source, owner: ledgerOwner });
+    }, 900);
+  }
+
+  window.setTimeout(() => startedKeys.delete(winKey), 30000);
+}
+
+/**
+ * Beat 2 of the canonical win sequence — fires destination bounce on
+ * the winner chip anchor after the pot transfer has landed. Idempotent
+ * per `winKey`. Runs on every client because the bounce reflects chip
+ * arrival, not local eligibility.
+ */
+export function completeCanonicalWinSequence({
   container,
   winnerPosition,
   winKey,
@@ -127,33 +242,26 @@ export function fireCanonicalWinCelly({
   ledgerOwner,
   ledgerSource,
 }: CanonicalWinCellyArgs): void {
-  const source = ledgerSource ?? 'canonicalWinCelly.fireCanonicalWinCelly';
+  const source = ledgerSource ?? 'canonicalWinCelly.completeCanonicalWinSequence';
   const id = ledgerIdentity;
 
   if (!winKey) {
     if (id) recordWinPresentationViolation(id, 'WIN_DUPLICATE_OR_REPLAYED_SEQUENCE', source, { reason: 'empty-winKey' });
     return;
   }
-  if (firedKeys.has(winKey)) {
+  if (completedKeys.has(winKey)) {
     if (id) recordWinPresentationEvent({
       identity: id, name: 'duplicate-outcome-suppressed', source, owner: ledgerOwner,
-      severity: 'warn', payload: { winKey },
+      severity: 'warn', payload: { winKey, beat: 'complete' },
     });
     return;
   }
-  firedKeys.add(winKey);
+  completedKeys.add(winKey);
 
-  const viewerId = id?.localViewerId ?? null;
-  const winnerId = id?.winnerPlayerId ?? null;
-  const eligibility: 'winner' | 'nonwinner' | 'unknown' =
-    viewerId && winnerId ? (viewerId === winnerId ? 'winner' : 'nonwinner') : 'unknown';
-
-  if (id) {
-    recordWinPresentationEvent({
-      identity: id, name: 'canonical-sequence-requested', source, owner: ledgerOwner,
-      payload: { winKey, winnerPosition, eligibility },
-    });
-  }
+  if (id) recordWinPresentationEvent({
+    identity: id, name: 'destination-arrival', source, owner: ledgerOwner,
+    payload: { winnerPosition },
+  });
 
   const scope: ParentNode = container ?? (typeof document !== 'undefined' ? document : null as unknown as ParentNode);
   const el = scope
@@ -180,29 +288,6 @@ export function fireCanonicalWinCelly({
     }, BOUNCE_DURATION_MS + 60);
   }
 
-  if (id) {
-    recordWinPresentationEvent({
-      identity: id, name: 'confetti-trigger-requested', source, owner: ledgerOwner,
-      payload: { eligibility, viewerId, winnerId },
-    });
-    if (eligibility === 'nonwinner') {
-      recordWinPresentationViolation(id, 'WIN_CONFETTI_ON_NONWINNER_CLIENT', source, {
-        viewerId, winnerId, localRole: id.localRole ?? null,
-      });
-    }
-  }
-
-  fireConfetti();
-
-  if (id) {
-    recordWinPresentationEvent({
-      identity: id, name: 'confetti-mounted', source, owner: ledgerOwner,
-      payload: { eligibility, targetAudience: eligibility, branch: 'fireCanonicalWinCelly' },
-    });
-    window.setTimeout(() => {
-      recordWinPresentationEvent({ identity: id, name: 'confetti-complete', source, owner: ledgerOwner });
-    }, 900);
-  }
-
-  window.setTimeout(() => firedKeys.delete(winKey), 30000);
+  window.setTimeout(() => completedKeys.delete(winKey), 30000);
 }
+
