@@ -610,12 +610,12 @@ export const CribbageCountingPhase = ({
 
       if (currentComboIndex < currentCombos.length) {
         const combo = currentCombos[currentComboIndex];
+        // Bind announcement to the same presentation beat that flips
+        // the scored pair into its highlighted state. Emit BEFORE
+        // score/peg propagation so ordering is:
+        //   highlight + announcement → peg animation → next combo.
         setHighlightedCards(combo.cards);
-        setAnnouncementData(prev => ({
-          text: `${combo.label}: +${combo.points}`,
-          targetLabel: currentTarget.label,
-          key: (prev?.key ?? 0) + 1,
-        }));
+        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label);
 
         // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
