@@ -134,14 +134,13 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.62,
-  reservedLowerZonePctOfPane: 0.24,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.18,
   maxCardScalePctOfStage: 0.24,
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.07,
   maxAdaptiveOverlapPct: 0.35,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.28,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
@@ -152,16 +151,15 @@ const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.96,
   maxHeightPctOfPane: 0.60,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.11,
   maxCardScalePctOfStage: 0.16,
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.20,
   maxAdaptiveOverlapPct: 0.45,
-  // Move Gin hand UP inside the pane: fan flush to top of stage,
-  // small authored top inset for breathing room above the fan.
+  // Small breathing room under the row-3 timer boundary; fan flush to
+  // top of the resulting stage so the hand sits high inside row 4.
   stageTopInsetPctOfPane: 0.02,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'top',
   contentYOffsetPctOfStage: 0,
 };
@@ -172,14 +170,13 @@ const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 30,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.64,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.28,
   maxCardScalePctOfStage: 0.36,
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.18,
   maxAdaptiveOverlapPct: 0.42,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
@@ -190,17 +187,17 @@ const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.60,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.20,
   maxCardScalePctOfStage: 0.30,
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.12,
   maxAdaptiveOverlapPct: 0.40,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
+
 
 /**
  * Per-game registry. Extend by appending an entry; the domain
