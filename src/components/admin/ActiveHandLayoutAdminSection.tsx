@@ -161,6 +161,54 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
 
       <fieldset className="space-y-3 border-t border-border/40 pt-3">
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Stage vertical placement
+        </legend>
+        <RatioField
+          label="Stage top inset % of pane"
+          value={value.stageTopInsetPctOfPane}
+          max={0.9}
+          onCommit={(n) => patch({ stageTopInsetPctOfPane: n })}
+          help="Pushes the whole hand-stage DOWN from the top of the pane by this fraction of pane height. Does NOT change card size."
+        />
+        <div className="space-y-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <Label className="text-sm font-medium">Fan alignment within stage</Label>
+            <select
+              className="h-8 rounded border border-input bg-background px-2 text-xs font-mono"
+              value={value.stageVerticalAlignment}
+              onChange={(e) =>
+                patch({
+                  stageVerticalAlignment: e.target.value as
+                    | 'top'
+                    | 'center'
+                    | 'bottom',
+                })
+              }
+              aria-label="Fan alignment within stage"
+            >
+              <option value="bottom">bottom (legacy)</option>
+              <option value="center">center</option>
+              <option value="top">top (raise hand)</option>
+            </select>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Vertical anchor of the fan inside the resolved stage rect.
+            'top' raises the hand upward without resizing cards.
+          </p>
+        </div>
+        <RatioField
+          label="Content Y offset % of stage"
+          value={value.contentYOffsetPctOfStage}
+          min={-0.5}
+          max={0.5}
+          onCommit={(n) => patch({ contentYOffsetPctOfStage: n })}
+          help="Final signed Y trim inside the stage. Positive = down, negative = up."
+        />
+      </fieldset>
+
+
+      <fieldset className="space-y-3 border-t border-border/40 pt-3">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Card scale within stage
         </legend>
         <RatioField
