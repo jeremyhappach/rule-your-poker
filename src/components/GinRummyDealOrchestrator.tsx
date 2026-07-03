@@ -29,7 +29,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
-import { recordGinLedger } from '@/lib/ginRummy/ginActiveHandLedger';
+
 
 interface SeatEntry {
   playerId: string;

@@ -42,7 +42,6 @@ import {
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
-import { setGinLedgerActive } from "@/lib/ginRummy/ginActiveHandLedger";
 // 3-5-7 presentation ledger removed (temporary tracking).
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
@@ -2418,14 +2417,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Buffer resets on activation; deactivation clears the on-screen pill.
   useEffect(() => {
     const isHolm = game?.game_type === 'holm-game';
-    const isGin = game?.game_type === 'gin-rummy';
     setHolmTraceActive(isHolm);
     setHolmLedgerActive(isHolm);
-    setGinLedgerActive(isGin);
     return () => {
       setHolmTraceActive(false);
       setHolmLedgerActive(false);
-      setGinLedgerActive(false);
     };
   }, [game?.game_type, game?.id]);
 
