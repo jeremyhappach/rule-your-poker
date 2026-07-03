@@ -4619,35 +4619,50 @@ export const MobileGameTable = ({
     });
 
     if (!chatHydratedRef.current) {
-      if (!hasObservedInitialChatSnapshotRef.current) {
-        hasObservedInitialChatSnapshotRef.current = true;
-        if (allMessages.length === 0) {
-          return;
-        }
+      // Gate hydration on the AUTHORITATIVE store signal, not on
+      // "allMessages became non-empty" — that stale gate treated the
+      // first realtime message as hydration and auto-cleared unread.
+      if (!isChatHydrated) {
+        return;
       }
 
+      hasObservedInitialChatSnapshotRef.current = true;
       chatHydratedRef.current = true;
 
-      if (!lastSeenChatMessageId && !lastReadChatMessageId && latestEligibleMessage && !processedEligibleRealtimeRef.current) {
-        setLastSeenChatMessageId(latestEligibleMessage.id);
-        setLastReadChatMessageId(latestEligibleMessage.id);
+      // Baseline may only include ids that were actually returned by
+      // the initial hydration fetch. Any message merged from realtime
+      // after hydration is post-baseline and is an unread candidate.
+      const baselineEligible = hydrationBaselineIdSet
+        ? eligibleIndicatorMessages.filter((m) => hydrationBaselineIdSet.has(m.id))
+        : [];
+      const baselineLatestEligible = baselineEligible[baselineEligible.length - 1] ?? null;
+
+      if (!lastSeenChatMessageId && !lastReadChatMessageId && baselineLatestEligible && !processedEligibleRealtimeRef.current) {
+        setLastSeenChatMessageId(baselineLatestEligible.id);
+        setLastReadChatMessageId(baselineLatestEligible.id);
         setHasUnreadMessages(false);
-        logChatIndicator('watermark updated', latestEligibleMessage, {
+        logChatIndicator('watermark updated', baselineLatestEligible, {
           flashing: false,
           unread: false,
-          lastSeen: latestEligibleMessage.id,
-          lastRead: latestEligibleMessage.id,
-          reason: 'hydration-seed',
+          lastSeen: baselineLatestEligible.id,
+          lastRead: baselineLatestEligible.id,
+          reason: 'hydration-baseline-seed',
         });
         recordChatDeliveryEvent({
           phase: 'read-cursor-advanced',
-          message: latestEligibleMessage,
+          message: baselineLatestEligible,
           gameId: gameId ?? null,
           dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
           consumer: 'unread-selector',
-          payload: { reason: 'hydration-seed', lastSeen: latestEligibleMessage.id, lastRead: latestEligibleMessage.id },
+          payload: {
+            reason: 'hydration-baseline-seed',
+            lastSeen: baselineLatestEligible.id,
+            lastRead: baselineLatestEligible.id,
+            baselineSize: hydrationBaselineIds?.length ?? 0,
+          },
         });
-        return;
+        // Fall through so the RED reconciliation below can flag any
+        // post-baseline messages that arrived during hydration.
       }
     }
 
