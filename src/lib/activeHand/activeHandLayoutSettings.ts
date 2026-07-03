@@ -625,6 +625,20 @@ export function resolveActiveHandLayout(
     fanArchDeg,
   );
 
+  // Vertical placement of the fan inside the stage.
+  const alignment = policy.stageVerticalAlignment;
+  let rowOffsetYBase: number;
+  if (alignment === 'top') {
+    rowOffsetYBase = -visualBounds.minY;
+  } else if (alignment === 'center') {
+    rowOffsetYBase =
+      (stage.height - visualBounds.height) / 2 - visualBounds.minY;
+  } else {
+    rowOffsetYBase = stage.height - visualBounds.maxY;
+  }
+  const rowOffsetY =
+    rowOffsetYBase + stage.height * policy.contentYOffsetPctOfStage;
+
   return {
     cardWidth,
     cardHeight,
@@ -634,10 +648,11 @@ export function resolveActiveHandLayout(
     fanArchDeg,
     visualBounds,
     rowOffsetX: (stage.width - visualBounds.width) / 2 - visualBounds.minX,
-    rowOffsetY: stage.height - visualBounds.maxY,
+    rowOffsetY,
     stageRect: stage,
     reservedLowerZonePx: 0,
     interZoneClearancePx: 0,
+    stageTopInsetPx: 0,
   };
 }
 
@@ -656,10 +671,10 @@ export function resolveActiveHandFromPane(
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
-  const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
+  const { stageRect, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx } =
     computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
-  return { ...row, reservedLowerZonePx, interZoneClearancePx };
+  return { ...row, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx };
 }
 
