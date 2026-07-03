@@ -278,7 +278,7 @@ export function recordChatDeliveryEvent(input: {
     dealerGameId: input.dealerGameId ?? null,
     consumer: input.consumer,
     payload: {
-      ...(input.message ? { message: compactMessage(input.message) } : null),
+      ...(input.message ? { message: compactMessage(input.message) } : {}),
       ...(input.payload ?? {}),
     },
   };
@@ -316,7 +316,7 @@ export function recordChatDeliveryViolation(input: {
     gameId,
     consumer: input.consumer,
     payload: {
-      ...(input.message ? { message: compactMessage(input.message) } : null),
+      ...(input.message ? { message: compactMessage(input.message) } : {}),
       ...(input.payload ?? {}),
     },
   };
