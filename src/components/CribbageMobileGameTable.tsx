@@ -2667,33 +2667,35 @@ export const CribbageMobileGameTable = ({
     }
   }, [viewState?.phase, viewState?.playerStates, countingScoreOverrides, countingStateSnapshot, renderHandKey, currentHandKey]);
 
-  // Mark hydration complete once allMessages are loaded
+  // Mark hydration complete based on the AUTHORITATIVE store signal —
+  // NOT on allMessages becoming non-empty (that stale gate treated
+  // the first realtime message as hydration and auto-cleared unread).
   useEffect(() => {
-    if (!allMessages || allMessages.length === 0) return;
+    if (!isChatHydrated) return;
     const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
 
     if (!chatHydratedRef.current) {
-      if (!hasObservedInitialChatSnapshotRef.current) {
-        hasObservedInitialChatSnapshotRef.current = true;
-        if (allMessages.length === 0) {
-          return;
-        }
-      }
-
+      hasObservedInitialChatSnapshotRef.current = true;
       chatHydratedRef.current = true;
 
-      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && latestEligibleMessage && !lastProcessedRealtimeMessageIdRef.current) {
-        lastSeenChatMessageIdRef.current = latestEligibleMessage.id;
-        lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+      const baselineSet = hydrationBaselineIds ? new Set(hydrationBaselineIds) : null;
+      const baselineLatestEligible = baselineSet
+        ? (eligibleIndicatorMessages.filter((m) => baselineSet.has(m.id)).slice(-1)[0] ?? null)
+        : null;
+
+      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && baselineLatestEligible && !lastProcessedRealtimeMessageIdRef.current) {
+        lastSeenChatMessageIdRef.current = baselineLatestEligible.id;
+        lastReadChatMessageIdRef.current = baselineLatestEligible.id;
         setHasUnreadMessages(false);
-        logChatIndicator('watermark updated', latestEligibleMessage, {
+        logChatIndicator('watermark updated', baselineLatestEligible, {
           flashing: false,
           unread: false,
-          lastSeen: latestEligibleMessage.id,
-          lastRead: latestEligibleMessage.id,
-          reason: 'hydration-seed',
+          lastSeen: baselineLatestEligible.id,
+          lastRead: baselineLatestEligible.id,
+          reason: 'hydration-baseline-seed',
         });
-        return;
+        // Fall through so RED reconciliation flags any post-baseline
+        // messages that arrived during hydration.
       }
     }
 
