@@ -112,11 +112,9 @@ export function GinActiveHandLedgerPill() {
       <span onClick={handleRefreshCount} style={{ opacity: 0.85, cursor: 'pointer' }}>
         #{count}
       </span>
-      <button type="button" onClick={handleArm} style={btn(armed ? '#9FE2BF' : '#FFD9B5')}>
-        ARM
-      </button>
-      <button type="button" onClick={handleCopy} style={btn('#FFD9B5')}>
-        COPY
+      <span style={{ opacity: 0.85 }}>{armed ? 'ARMED' : 'IDLE'}</span>
+      <button type="button" onClick={handleExport} style={btn('#FFD9B5')}>
+        EXPORT TXT
       </button>
       <button type="button" onClick={handleClear} style={btn('#FFD9B5')}>
         CLEAR
