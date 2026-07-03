@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
+import { readPersistedMatchChatTab, writePersistedMatchChatTab } from "@/lib/matchChatTabPersistence";
 import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
