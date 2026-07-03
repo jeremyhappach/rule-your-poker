@@ -112,6 +112,54 @@ export const MobileChatPanel = ({
     }
   }, [messages]);
 
+  // Chat-delivery instrumentation: panel open/close + render events.
+  useEffect(() => {
+    recordChatDeliveryEvent({
+      identity: null,
+      name: 'chat-panel-open',
+      source: 'MobileChatPanel#mount',
+      payload: { currentUserId: currentUserId ?? null },
+    });
+    return () => {
+      recordChatDeliveryEvent({
+        identity: null,
+        name: 'chat-panel-close',
+        source: 'MobileChatPanel#unmount',
+        payload: { currentUserId: currentUserId ?? null },
+      });
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    recordChatDeliveryEvent({
+      identity: null,
+      name: 'chat-list-render',
+      source: 'MobileChatPanel#render',
+      payload: {
+        playerCount: messages.length,
+        dealerCount: dealerMessages.length,
+        latestPlayerMessageId: messages[messages.length - 1]?.id ?? null,
+      },
+    });
+    // Emit a per-message "mounted" event for the last several rendered
+    // player messages so a missing render can be diffed against the
+    // store admission events emitted from useGameChat.
+    const tail = messages.slice(-10);
+    for (const m of tail) {
+      recordChatDeliveryEvent({
+        identity: {
+          messageId: m.id,
+          clientInstanceId: getClientInstanceId(),
+          localViewerId: currentUserId ?? null,
+          senderPlayerId: m.user_id,
+          transportSource: 'unknown',
+        },
+        name: 'chat-message-mounted',
+        source: 'MobileChatPanel#render',
+      });
+    }
+  }, [messages, dealerMessages.length, currentUserId]);
+
   const handleSend = () => {
     if (inputMessage.trim() && !isSending) {
       onSend(inputMessage.trim());
