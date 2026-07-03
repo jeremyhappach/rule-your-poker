@@ -171,7 +171,6 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
-                <ChatDeliveryExportPill />
                 <R1SnapbackPill />
 
 
@@ -190,8 +189,12 @@ const App = () => {
                   pointerEvents: 'auto',
                 }}
               >
-                <Wave5GridOverlayToggle />
+              <Wave5GridOverlayToggle />
               </div>
+
+              {/* Chat delivery export pill — always visible in published builds,
+                  outside DebugTray/hideDebugUI gating, persistent across routes. */}
+              <ChatDeliveryExportPill />
 
 
 
