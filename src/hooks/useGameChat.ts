@@ -451,8 +451,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         });
         return next;
       });
+
+      // Publish the hydration baseline: only ids returned by this
+      // fetch. Any realtime message arriving after this point is by
+      // definition post-hydration and is a candidate for unread.
+      setHydrationBaseline({ gameId, ids: messagesWithUsernames.map((m) => m.id) });
     };
 
+    // Reset baseline whenever the conversation identity changes so a
+    // new gameId cannot inherit the previous conversation's baseline.
+    setHydrationBaseline(null);
     fetchMessages();
   }, [gameId, currentUserId, mergeMessages]);
 
