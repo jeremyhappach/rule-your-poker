@@ -94,8 +94,11 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
   const cachedUser = useRef<User | null>(readCachedUserSync()).current;
   const [user, setUser] = useState<User | null>(cachedUser);
   const [isReady, setIsReady] = useState<boolean>(cachedUser !== null);
+  const [authRecovering, setAuthRecovering] = useState<boolean>(false);
   const prevAuthEvent = useRef<string | null>(null);
   const recheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastKnownSessionRef = useRef<Session | null>(null);
+  const reconcilingRef = useRef<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
