@@ -43,7 +43,7 @@ import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 import { setThree57LedgerActive } from "@/lib/threeFiveSeven/presentationLedger";
-import { ThreeFiveSevenPresentationLedgerPill } from "@/components/ThreeFiveSevenPresentationLedgerPill";
+// ThreeFiveSevenPresentationLedgerPill mounted globally in App.tsx DebugTray.
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -11121,7 +11121,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onDeckColorModeChange={async () => {}}
           />
         )}
-        <ThreeFiveSevenPresentationLedgerPill />
+        {/* 357 PRESENTATION LEDGER pill is mounted globally from
+            App.tsx's DebugTray so it is visible on every client
+            (host/non-host, observer, sitting-out, folded, timed-out)
+            regardless of the local hand-pane branch. */}
         <VisualBugReportButton
           gameId={gameId!}
           gameType={game.game_type}
