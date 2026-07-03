@@ -136,10 +136,31 @@ export const GinRummyMobileCardsTab = ({
 
   const localHandIdentityKey = `${gameId}|${handIdentityKey ?? `gin-hand:${ginState.handNumber ?? 'unknown'}`}|p:${currentPlayerId}`;
   const localHandProjectionRef = useRef<CachedLocalHandProjection | null>(null);
+  const localHandBaselineRef = useRef<LocalHandBaselineCommit | null>(null);
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
+  const rawAuthoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
+
+  // ── Current-hand readiness gate ─────────────────────────────────
+  // On EVERY new identity (dealerGameId / roundId / handNumber /
+  // viewer flip encoded in localHandIdentityKey), the baseline is
+  // reset to "not committed". Prior-hand cards are never bridged.
+  // Baseline commits the FIRST time this identity's live projection
+  // admits a non-empty local hand. Subsequent transient empties for
+  // the SAME identity are absorbed by the sticky cache below.
+  if (localHandBaselineRef.current?.identityKey !== localHandIdentityKey) {
+    localHandBaselineRef.current = { identityKey: localHandIdentityKey, committed: false };
+    // Drop any prior-identity cache so no old cards can leak forward.
+    if (localHandProjectionRef.current?.identityKey !== localHandIdentityKey) {
+      localHandProjectionRef.current = null;
+    }
+  }
+  if (rawAuthoritativeHandCount > 0 && localHandBaselineRef.current) {
+    localHandBaselineRef.current.committed = true;
+  }
+  const currentHandBaselineCommitted = !!localHandBaselineRef.current?.committed;
+
   const stableMyStateAuthoritative = useMemo(() => {
-    const authoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
-    if (rawMyStateAuthoritative && authoritativeHandCount > 0) {
+    if (rawMyStateAuthoritative && rawAuthoritativeHandCount > 0) {
       localHandProjectionRef.current = {
         identityKey: localHandIdentityKey,
         playerId: currentPlayerId,
@@ -148,18 +169,21 @@ export const GinRummyMobileCardsTab = ({
       return rawMyStateAuthoritative;
     }
 
+    // Sticky cache only fires AFTER baseline for the same identity
+    // has already committed. Never bridges identities.
     const cached = localHandProjectionRef.current;
     if (
       cached &&
       cached.identityKey === localHandIdentityKey &&
       cached.playerId === currentPlayerId &&
+      currentHandBaselineCommitted &&
       isCurrentHandLocalHandPhase(ginState.phase)
     ) {
       return cached.state;
     }
 
     return rawMyStateAuthoritative;
-  }, [rawMyStateAuthoritative, localHandIdentityKey, currentPlayerId, ginState.phase]);
+  }, [rawMyStateAuthoritative, rawAuthoritativeHandCount, localHandIdentityKey, currentPlayerId, ginState.phase, currentHandBaselineCommitted]);
 
   // Withhold each freshly drawn card from the rendered hand while its
   // own self-draw transport animation is in flight. The cards are
