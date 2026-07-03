@@ -1577,6 +1577,72 @@ export const MobileGameTable = ({
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
 
+  useEffect(() => {
+    recordConsumerSubscription({
+      consumer: 'MobileGameTable',
+      mounted: true,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      payload: { instanceLabel, currentUserId: currentUserId ?? null, gameType: gameType ?? null },
+    });
+    recordConsumerSubscription({
+      consumer: 'unread-selector',
+      mounted: true,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      payload: { owner: 'MobileGameTable', instanceLabel },
+    });
+    recordConsumerSubscription({
+      consumer: 'indicator-selector',
+      mounted: true,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      payload: { owner: 'MobileGameTable', instanceLabel },
+    });
+    return () => {
+      recordConsumerSubscription({
+        consumer: 'MobileGameTable',
+        mounted: false,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        payload: { instanceLabel },
+      });
+      recordConsumerSubscription({
+        consumer: 'unread-selector',
+        mounted: false,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        payload: { owner: 'MobileGameTable', instanceLabel },
+      });
+      recordConsumerSubscription({
+        consumer: 'indicator-selector',
+        mounted: false,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        payload: { owner: 'MobileGameTable', instanceLabel },
+      });
+    };
+  }, [gameId, gameType, holmDealerGameId, horsesDealerGameId, instanceLabel, currentUserId]);
+
+  useEffect(() => {
+    recordReactRenderObserved({
+      consumer: 'MobileGameTable',
+      sourceCollection: allMessages,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      payload: {
+        instanceLabel,
+        activeTab,
+        currentUserId: currentUserId ?? null,
+        chatTabFlashing,
+        hasUnreadMessages,
+        showGreenChatIndicator,
+        showRedChatIndicator,
+      },
+    });
+    validateActiveChatConsumers(gameId ?? null);
+  }, [activeTab, allMessages, chatTabFlashing, currentUserId, gameId, hasUnreadMessages, holmDealerGameId, horsesDealerGameId, instanceLabel, showGreenChatIndicator, showRedChatIndicator]);
+
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
     const isDealerOrSystem = message.id.startsWith('dealer-') || !message.user_id;
@@ -1604,6 +1670,55 @@ export const MobileGameTable = ({
     () => allMessages.filter((message) => getChatIndicatorEligibility(message).eligible),
     [allMessages, getChatIndicatorEligibility]
   );
+
+  useEffect(() => {
+    const reasons = Object.fromEntries(
+      allMessages.map((message) => [message.id, getChatIndicatorEligibility(message)])
+    );
+    recordSelectorProof({
+      consumer: 'indicator-selector',
+      selectorName: 'MobileGameTable.eligibleIndicatorMessages',
+      sourceCollection: allMessages,
+      returnedCollection: eligibleIndicatorMessages,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      currentUserId: currentUserId ?? null,
+      memoInputs: {
+        allMessagesIds: allMessages.map((message) => message.id),
+        currentUserId: currentUserId ?? null,
+        playerUserIds: players.map((player) => player.user_id),
+      },
+      dependencyInputs: {
+        allMessagesLength: allMessages.length,
+        activeTab,
+        lastSeenChatMessageId,
+        lastReadChatMessageId,
+        hasUnreadMessages,
+      },
+      outputReasonById: reasons,
+    });
+    recordSelectorProof({
+      consumer: 'unread-selector',
+      selectorName: 'MobileGameTable.unread-source-eligible-messages',
+      sourceCollection: allMessages,
+      returnedCollection: eligibleIndicatorMessages,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      currentUserId: currentUserId ?? null,
+      memoInputs: {
+        activeTab,
+        lastSeenChatMessageId,
+        lastReadChatMessageId,
+        chatHydrated: chatHydratedRef.current,
+      },
+      dependencyInputs: {
+        allMessagesLength: allMessages.length,
+        eligibleLength: eligibleIndicatorMessages.length,
+        activeTab,
+      },
+      outputReasonById: reasons,
+    });
+  }, [activeTab, allMessages, currentUserId, eligibleIndicatorMessages, gameId, getChatIndicatorEligibility, hasUnreadMessages, holmDealerGameId, horsesDealerGameId, lastReadChatMessageId, lastSeenChatMessageId, players]);
 
   const getMessagesAfterWatermark = useCallback(
     (
