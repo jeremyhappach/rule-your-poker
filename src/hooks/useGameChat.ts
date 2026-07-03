@@ -40,6 +40,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const [isSending, setIsSending] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
   const [latestRealtimeMessage, setLatestRealtimeMessage] = useState<ChatMessage | null>(null);
+  // Hydration baseline: the exact set of message ids returned by the
+  // initial fetch for the current gameId. Realtime messages that arrive
+  // *after* this snapshot is captured MUST NOT be treated as hydration
+  // and MUST NOT be used to seed the read/seen cursors.
+  //
+  // `null` = hydration for the current gameId has not completed yet.
+  const [hydrationBaseline, setHydrationBaseline] = useState<{ gameId: string; ids: string[] } | null>(null);
 
   useEffect(() => {
     recordConsumerSubscription({
