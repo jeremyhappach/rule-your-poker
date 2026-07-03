@@ -5,7 +5,7 @@
 import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type Meld } from '@/lib/ginRummyTypes';
+import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type GinRummyPlayerState, type Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { MeasuredActiveHandFan } from './activeHand/MeasuredActiveHandFan';
@@ -43,6 +43,8 @@ interface GinRummyMobileCardsTabProps {
   onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
+  /** Full current-hand identity from the Gin shell: dealer-game + round + hand. */
+  handIdentityKey?: string | null;
   /** Cards to hide from the rendered hand while their self-draw
    *  transport animations are in flight. Each entry is keyed by its
    *  own intent and released independently on its own settle. */
@@ -72,6 +74,23 @@ const SUIT_ORDER: Record<string, number> = {
 const isPostKnockPhase = (phase: string) =>
   phase === 'knocking' || phase === 'laying_off' || phase === 'scoring' || phase === 'complete';
 
+const isCurrentHandLocalHandPhase = (phase: string) =>
+  phase === 'first_draw' || phase === 'playing' || phase === 'knocking' || phase === 'laying_off' || phase === 'scoring';
+
+type CachedLocalHandProjection = {
+  identityKey: string;
+  playerId: string;
+  state: GinRummyPlayerState;
+};
+
+const cloneLocalPlayerState = (state: GinRummyPlayerState): GinRummyPlayerState => ({
+  ...state,
+  hand: [...state.hand],
+  melds: state.melds.map((meld) => ({ ...meld, cards: [...meld.cards] })),
+  deadwood: [...state.deadwood],
+  laidOffCards: [...state.laidOffCards],
+});
+
 export const GinRummyMobileCardsTab = ({
   ginState,
   currentPlayerId,
@@ -87,6 +106,7 @@ export const GinRummyMobileCardsTab = ({
   onLayOffCardSelected,
   currentPlayer,
   gameId,
+  handIdentityKey,
   withheldDrawnCards,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -107,23 +127,49 @@ export const GinRummyMobileCardsTab = ({
     setGinPolicyRevision(ginPolicyRevisionRef.current);
   }, [ginPolicy]);
 
+  const localHandIdentityKey = `${gameId}|${handIdentityKey ?? `gin-hand:${ginState.handNumber ?? 'unknown'}`}|p:${currentPlayerId}`;
+  const localHandProjectionRef = useRef<CachedLocalHandProjection | null>(null);
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
+  const stableMyStateAuthoritative = useMemo(() => {
+    const authoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
+    if (rawMyStateAuthoritative && authoritativeHandCount > 0) {
+      localHandProjectionRef.current = {
+        identityKey: localHandIdentityKey,
+        playerId: currentPlayerId,
+        state: cloneLocalPlayerState(rawMyStateAuthoritative),
+      };
+      return rawMyStateAuthoritative;
+    }
+
+    const cached = localHandProjectionRef.current;
+    if (
+      cached &&
+      cached.identityKey === localHandIdentityKey &&
+      cached.playerId === currentPlayerId &&
+      isCurrentHandLocalHandPhase(ginState.phase)
+    ) {
+      return cached.state;
+    }
+
+    return rawMyStateAuthoritative;
+  }, [rawMyStateAuthoritative, localHandIdentityKey, currentPlayerId, ginState.phase]);
+
   // Withhold each freshly drawn card from the rendered hand while its
   // own self-draw transport animation is in flight. The cards are
   // committed to ginState (so subsequent actions like discard remain
   // legal) but we visually withhold each face until its own flight
   // settles, mirroring the opponent ownership-claim model.
   const rawMyState = useMemo(() => {
-    if (!rawMyStateAuthoritative) return rawMyStateAuthoritative;
-    if (!withheldDrawnCards || withheldDrawnCards.length === 0) return rawMyStateAuthoritative;
-    const clipped = [...rawMyStateAuthoritative.hand];
+    if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;
+    if (!withheldDrawnCards || withheldDrawnCards.length === 0) return stableMyStateAuthoritative;
+    const clipped = [...stableMyStateAuthoritative.hand];
     for (const w of withheldDrawnCards) {
       const idx = clipped.findIndex(c => c.rank === w.rank && c.suit === w.suit);
       if (idx !== -1) clipped.splice(idx, 1);
     }
-    if (clipped.length === rawMyStateAuthoritative.hand.length) return rawMyStateAuthoritative;
-    return { ...rawMyStateAuthoritative, hand: clipped };
-  }, [rawMyStateAuthoritative, withheldDrawnCards]);
+    if (clipped.length === stableMyStateAuthoritative.hand.length) return stableMyStateAuthoritative;
+    return { ...stableMyStateAuthoritative, hand: clipped };
+  }, [stableMyStateAuthoritative, withheldDrawnCards]);
   // Opening-deal prefix gate applies ONLY to the opening dealt-card
   // sequence (cardsPerPlayer cards). Once authoritative hand membership
   // exceeds the opening manifest size, the additional card was acquired
@@ -135,6 +181,11 @@ export const GinRummyMobileCardsTab = ({
     if (!rawMyState) return rawMyState;
     if (!deal) return rawMyState;
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return rawMyState;
+    // DealRuntime is transport lifecycle, not card ownership. Once the
+    // authoritative Gin phase is playable, a seated client's own hand must
+    // stay rendered even if the deal runtime remounts, re-enters PRE_DEAL,
+    // or has a temporarily empty settlement ledger.
+    if (ginState.phase !== 'dealing') return rawMyState;
     // Authoritative gameplay membership beyond opening size → render full hand.
     if (rawMyState.hand.length > GIN_CARDS_PER_PLAYER) return rawMyState;
     if (deal.phase === 'PRE_DEAL') return { ...rawMyState, hand: [] };
@@ -144,7 +195,7 @@ export const GinRummyMobileCardsTab = ({
     );
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
-  }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
+  }, [rawMyState, deal, currentPlayerId, ginState.phase, deal?.phase, deal?.settledCardIds]);
 
   // Single-owner discard contract: Take must be disabled until the
   // opening discard intent for the current hand has settled.
