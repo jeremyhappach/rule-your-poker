@@ -67,6 +67,7 @@ import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
 import {
+  recordChatDeliveryViolation,
   recordConsumerSubscription,
   recordReactRenderObserved,
   recordSelectorProof,
