@@ -393,6 +393,8 @@ const Index = () => {
       });
     } catch { /* noop */ }
     try {
+      const { markIntentionalSignOut } = await import("@/lib/authInvalidationCause");
+      markIntentionalSignOut("Index#handleLogout");
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
