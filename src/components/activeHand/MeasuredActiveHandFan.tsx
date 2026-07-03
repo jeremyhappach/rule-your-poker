@@ -483,6 +483,15 @@ export function MeasuredActiveHandFan({
   }, [rect, activeLockKey]);
   const isReady = !!(paneRect && paneRect.width > 0 && paneRect.height > 0);
 
+  // Stage top inset (Gin, and any other game that authors > 0). The
+  // portal wrapper below offsets the fan container DOWN by this many
+  // px, which shifts the whole active-hand stage without changing
+  // resolved card geometry. Card size / overlap / arch are unchanged.
+  const stageTopInsetPx = useMemo(() => {
+    if (!paneRect) return 0;
+    return Math.max(0, paneRect.height * policy.stageTopInsetPctOfPane);
+  }, [paneRect, policy.stageTopInsetPctOfPane]);
+
   const fan = (
     <ActiveHandFan
       game={game}
@@ -512,9 +521,11 @@ export function MeasuredActiveHandFan({
           ? createPortal(
               <div
                 data-measured-active-hand-fan-portal={game}
+                data-measured-active-hand-stage-top-inset-px={stageTopInsetPx.toFixed(2)}
                 style={{
                   position: 'absolute',
                   inset: 0,
+                  paddingTop: stageTopInsetPx,
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'center',
