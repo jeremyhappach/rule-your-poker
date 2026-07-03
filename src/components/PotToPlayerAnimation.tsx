@@ -2,6 +2,30 @@
 // New chip transport must dispatch via useChipTransport() — see
 // src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
 // as-is until its consumer migrates in a later wave.
+//
+// -----------------------------------------------------------------------
+// CANONICAL WIN-CHIP ARTIFACT PHASE MACHINE (357 / Horses / SCC)
+// -----------------------------------------------------------------------
+//
+//   FLYING → ARRIVAL_HOLD → BOUNCING → COMPLETE
+//
+// This component owns the full artifact lifecycle. Consumers may unmount
+// the wrapping conditional the moment `onAnimationEnd` fires — that is
+// therefore only fired AFTER the bounce completes, not at flight end.
+//
+//   FLYING        — outer wrapper runs the flight keyframe.
+//   ARRIVAL_HOLD  — flight animation cleared; outer wrapper frozen at the
+//                   landing translate; no bounce yet. Same DOM node, same
+//                   key, same z-layer, same opacity, same chip visual.
+//   BOUNCING      — bounce transform applied to the INNER child only;
+//                   outer wrapper remains frozen at the landing rect.
+//   COMPLETE      — artifact unmounts; then onAnimationEnd fires so the
+//                   consumer's teardown / phase-transition may proceed.
+//
+// The parent's onAnimationEnd can drive game-phase teardown (which will
+// unmount the wrapping conditional); we intentionally block it until
+// BOUNCING → COMPLETE so the artifact cannot be torn down mid-bounce.
+// -----------------------------------------------------------------------
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
@@ -19,6 +43,14 @@ interface PotToPlayerAnimationProps {
   onAnimationEnd?: () => void;
 }
 
+type ArtifactPhase = 'flying' | 'arrival_hold' | 'bouncing' | 'complete';
+
+// Timings that make up the canonical arrival envelope. Kept in sync
+// with the __chipDestBounce keyframe below.
+const ARRIVAL_HOLD_MS = 60;
+const BOUNCE_DURATION_MS = 900;
+const BOUNCE_TEARDOWN_TAIL_MS = 60;
+
 export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   triggerId,
   amount,
@@ -31,10 +63,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   onAnimationEnd,
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
+  const [phase, setPhase] = useState<ArtifactPhase>('flying');
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
-  const endTimeoutRef = useRef<number | null>(null);
-  const clearTimeoutRef = useRef<number | null>(null);
+  const phaseTimersRef = useRef<number[]>([]);
   const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
 
   // IMPORTANT: parent often passes inline callbacks which change identity on re-render.
@@ -43,132 +75,56 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const onStartRef = useRef<(() => void) | undefined>(onAnimationStart);
   const onEndRef = useRef<(() => void) | undefined>(onAnimationEnd);
 
-  useEffect(() => {
-    onStartRef.current = onAnimationStart;
-  }, [onAnimationStart]);
-
-  useEffect(() => {
-    onEndRef.current = onAnimationEnd;
-  }, [onAnimationEnd]);
+  useEffect(() => { onStartRef.current = onAnimationStart; }, [onAnimationStart]);
+  useEffect(() => { onEndRef.current = onAnimationEnd; }, [onAnimationEnd]);
 
   const animationName = useMemo(() => {
     const safe = (triggerId ?? 'no_trigger').replace(/[^a-zA-Z0-9_-]/g, '_');
     return `potToPlayer_${safe}`;
   }, [triggerId]);
 
-  // Pot center position - different for Holm vs 3-5-7
-  const getPotCenter = (rect: DOMRect): { x: number; y: number } => {
-    // 3-5-7: pot is centered vertically (50%), Holm: pot is higher (38%)
-    const yPercent = gameType === 'holm-game' ? 0.38 : 0.5;
-    return {
-      x: rect.width * 0.5,
-      y: rect.height * yPercent,
-    };
+  const clearPhaseTimers = () => {
+    for (const id of phaseTimersRef.current) window.clearTimeout(id);
+    phaseTimersRef.current = [];
   };
 
-  // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
-  // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
+  // ---------------------------------------------------------------------
+  // Position mapping helpers (unchanged from prior implementation).
+  // ---------------------------------------------------------------------
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
+    if (slotIndex === -1) return { top: 92, left: 50 };
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
-      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2
-      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
-      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
-      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2
-      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
+      0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+      3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
     };
     return slots[slotIndex] || { top: 50, left: 50 };
-  };
-
-  // Absolute position mapping for observers (positions 1-7 around the table)
-  // CRITICAL: Must match MobileGameTable.tsx observer rendering layout:
-  // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
-  // Position 4: Bottom-center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
-  const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
-    const positions: Record<number, { top: number; left: number }> = {
-      1: { top: 2, left: 10 },    // Top-left (matches top-4 left-10)
-      2: { top: 50, left: 2 },    // Left (matches left-0 top-1/2)
-      3: { top: 92, left: 10 },   // Bottom-left (matches bottom-2 left-10)
-      4: { top: 92, left: 50 },   // Bottom-center (matches bottom-2 left-1/2)
-      5: { top: 92, left: 90 },   // Bottom-right (matches bottom-2 right-10)
-      6: { top: 50, left: 98 },   // Right (matches right-0 top-1/2)
-      7: { top: 2, left: 90 },    // Top-right (matches right-10 top-4)
-    };
-    return positions[position] || { top: 50, left: 50 };
   };
 
   const getCachedChipCenter = (position: number, rect: DOMRect): { x: number; y: number } | null => {
     const cached = chipCenterCacheRef.current[position];
     if (!cached) return null;
-    return {
-      x: cached.xPct * rect.width,
-      y: cached.yPct * rect.height,
-    };
+    return { x: cached.xPct * rect.width, y: cached.yPct * rect.height };
   };
 
   const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
     const container = containerRef.current;
     if (!container) return null;
-
-    // First try to find the actual chip circle element (more accurate)
-    let el = container.querySelector(
-      `[data-chip-center="${position}"]`
-    ) as HTMLElement | null;
-
-    // Fallback to the wrapper if chip circle not found
-    if (!el) {
-      el = container.querySelector(
-        `[data-seat-chip-position="${position}"]`
-      ) as HTMLElement | null;
-    }
+    let el = container.querySelector(`[data-chip-center="${position}"]`) as HTMLElement | null;
+    if (!el) el = container.querySelector(`[data-seat-chip-position="${position}"]`) as HTMLElement | null;
     if (!el) return null;
-
     const containerRect = container.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-
     const coords = {
       x: r.left - containerRect.left + r.width / 2,
       y: r.top - containerRect.top + r.height / 2,
     };
-
-    // Cache as % so we still have a good target if the chip DOM is temporarily hidden.
     if (containerRect.width > 0 && containerRect.height > 0) {
       chipCenterCacheRef.current[position] = {
         xPct: coords.x / containerRect.width,
         yPct: coords.y / containerRect.height,
       };
     }
-
     return coords;
-  };
-
-  const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    // Prefer real DOM-measured chipstack center when available (more accurate than % mapping).
-    const dom = getChipCenterFromDom(position);
-    if (dom) return dom;
-
-    // Use last-known DOM center if the chip stack is currently not in the DOM (e.g. showdown layout).
-    const cached = getCachedChipCenter(position, rect);
-    if (cached) return cached;
-
-    const isObserver = currentPlayerPosition === null;
-
-    let slot: { top: number; left: number };
-    if (isObserver) {
-      // Observer: use absolute positions
-      slot = getAbsolutePositionPercent(position);
-    } else {
-      // Seated player: use relative slot positions
-      const isCurrentPlayer = currentPlayerPosition === position;
-      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-      slot = getSlotPercent(slotIndex);
-    }
-
-    return {
-      x: (slot.left / 100) * rect.width,
-      y: (slot.top / 100) * rect.height,
-    };
   };
 
   // Store position-related props in refs so the effect doesn't re-run when they change
@@ -189,44 +145,24 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   });
 
   useEffect(() => {
-    if (!triggerId || triggerId === lastTriggerIdRef.current) {
-      return;
-    }
+    if (!triggerId || triggerId === lastTriggerIdRef.current) return;
 
     const container = containerRefRef.current?.current;
-    if (!container) {
-      return;
-    }
+    if (!container) return;
 
-    // Clear any previous timers so older animations can't end this one early.
-    if (endTimeoutRef.current) {
-      window.clearTimeout(endTimeoutRef.current);
-      endTimeoutRef.current = null;
-    }
-    if (clearTimeoutRef.current) {
-      window.clearTimeout(clearTimeoutRef.current);
-      clearTimeoutRef.current = null;
-    }
-
+    clearPhaseTimers();
     lastTriggerIdRef.current = triggerId;
     lockedAmountRef.current = amountRef.current;
 
-    // Defer measurement by one frame so the showdown layout reflow has committed.
-    // Without this, coordinates are captured from the pre-showdown geometry (pot/players
-    // in their old positions) causing animations to target stale locations.
     const capturedTriggerId = triggerId;
     requestAnimationFrame(() => {
-      // Guard: don't proceed if a newer trigger arrived while we waited
       if (lastTriggerIdRef.current !== capturedTriggerId) return;
-
       const freshContainer = containerRefRef.current?.current;
       if (!freshContainer) return;
 
-      // Compute positions using refs (won't cause re-runs)
       const rect = freshContainer.getBoundingClientRect();
 
-      // P8.2b: prefer canonical pot endpoint (game-owned data-pot-anchor).
-      // Falls back to legacy hardcoded % math only if marker is missing.
+      // P8.2b: prefer canonical pot endpoint.
       const canonicalPot = resolveChipEndpoint({
         ref: { kind: 'pot' },
         container: freshContainer,
@@ -235,10 +171,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
       const potCoords = canonicalPot ?? { x: rect.width * 0.5, y: rect.height * yPercent };
 
-      // Winner target
+      // Winner target: canonical → DOM → cache → % fallback.
       let winnerCoords: { x: number; y: number };
-
-      // P8.2b: prefer canonical seat endpoint, then existing DOM/cache/% fallback chain.
       const canonicalWinner = resolveChipEndpoint({
         ref: { kind: 'seat', position: winnerPositionRef.current },
         container: freshContainer,
@@ -266,15 +200,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             } else {
               const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
               const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
-              if (slotIndex === -1) {
-                slot = { top: 92, left: 50 };
-              } else {
-                const slots: Record<number, { top: number; left: number }> = {
-                  0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
-                  3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
-                };
-                slot = slots[slotIndex] || { top: 50, left: 50 };
-              }
+              slot = getSlotPercent(slotIndex);
             }
             winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
           }
@@ -285,69 +211,84 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       onStartRef.current?.();
 
       setAnimation({
-        // Convert container-relative coords → viewport coords so we can render with position:fixed
         fromX: rect.left + potCoords.x,
         fromY: rect.top + potCoords.y,
         toX: rect.left + winnerCoords.x,
         toY: rect.top + winnerCoords.y,
       });
+      setPhase('flying');
 
-      // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
       const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
       const animDuration = isDiceGame ? 1600 : 3300;
-      // Bounce runs ~900ms after arrival on the SAME artifact node, then
-      // the artifact tears down. Keep the artifact mounted long enough
-      // for the canonical bounce (~900ms) + a small buffer.
-      const BOUNCE_HOLD_MS = 1050;
-      const clearDelay = animDuration + BOUNCE_HOLD_MS;
 
-      // Notify parent AFTER the visual transfer finishes so the canonical
-      // bounce beat can fire while the artifact is still mounted.
-      endTimeoutRef.current = window.setTimeout(() => {
-        if (lastTriggerIdRef.current === capturedTriggerId) {
-          onEndRef.current?.();
-        }
+      // Phase transitions — chained timers, all cancelable if a new
+      // triggerId arrives.
+      const flightEnd = window.setTimeout(() => {
+        if (lastTriggerIdRef.current !== capturedTriggerId) return;
+        setPhase('arrival_hold');
+
+        const bounceStart = window.setTimeout(() => {
+          if (lastTriggerIdRef.current !== capturedTriggerId) return;
+          setPhase('bouncing');
+
+          const bounceEnd = window.setTimeout(() => {
+            if (lastTriggerIdRef.current !== capturedTriggerId) return;
+            // COMPLETE: unmount artifact first, THEN allow consumer
+            // teardown. onAnimationEnd is intentionally fired only
+            // here — never at flight completion.
+            setPhase('complete');
+            setAnimation(null);
+            onEndRef.current?.();
+          }, BOUNCE_DURATION_MS + BOUNCE_TEARDOWN_TAIL_MS);
+          phaseTimersRef.current.push(bounceEnd);
+        }, ARRIVAL_HOLD_MS);
+        phaseTimersRef.current.push(bounceStart);
       }, animDuration);
-
-      // Tear down the artifact only AFTER the bounce window closes.
-      clearTimeoutRef.current = window.setTimeout(() => {
-        if (lastTriggerIdRef.current === capturedTriggerId) {
-          setAnimation(null);
-        }
-      }, clearDelay);
+      phaseTimersRef.current.push(flightEnd);
     });
-
-    // NO cleanup that clears timers - we don't want deps changes to cancel timers
-    // Timers are only cleared when a NEW triggerId arrives (handled above)
-  }, [triggerId]); // ONLY triggerId - other values accessed via refs
+  }, [triggerId]);
 
   // Cleanup on unmount only
   useEffect(() => {
-    return () => {
-      if (endTimeoutRef.current) window.clearTimeout(endTimeoutRef.current);
-      if (clearTimeoutRef.current) window.clearTimeout(clearTimeoutRef.current);
-    };
+    return () => { clearPhaseTimers(); };
   }, []);
 
   if (!animation) return null;
-
-  // Fast-ish for dice games, slower for card games
-  const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
-  const animDuration = isDiceGame ? '1.6s' : '3.2s';
-  const timingFn = isDiceGame ? 'linear' : 'ease-in-out';
-
-  // If any ancestor has transform/filter, `position: fixed` can get trapped in that stacking context.
-  // Portal to <body> so the chip ALWAYS renders above the entire app UI.
   if (typeof document === 'undefined') return null;
 
-  // NOTE: transport keyframe is applied to the OUTER wrapper (translate).
-  // The INNER (data-win-transfer-artifact-inner) is left free so the
-  // canonical bounce beat can animate its transform independently
-  // without fighting the transport for the same `transform` slot.
-  // The chip is a fixed 32×32 px disc, so we center via negative offsets
-  // instead of a `translate(-50%,-50%)` (which would collide with the
-  // transport animation on the same element).
+  const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  const animDurationCss = isDiceGame ? '1.6s' : '3.2s';
+  const timingFn = isDiceGame ? 'linear' : 'ease-in-out';
+
   const CHIP_SIZE = 32;
+
+  // Landing translate — used to freeze the outer wrapper once flight ends.
+  const landingDx = animation.toX - animation.fromX;
+  const landingDy = animation.toY - animation.fromY;
+
+  // Outer style depends on phase:
+  //   FLYING       — flight keyframe drives the transform.
+  //   ARRIVAL_HOLD — flight animation cleared; frozen at landing translate.
+  //   BOUNCING     — same frozen translate; inner owns the bounce.
+  const outerStyle: React.CSSProperties = {
+    left: animation.fromX - CHIP_SIZE / 2,
+    top: animation.fromY - CHIP_SIZE / 2,
+    zIndex: 200,
+  };
+  if (phase === 'flying') {
+    outerStyle.animation = `${animationName} ${animDurationCss} ${timingFn} forwards`;
+  } else {
+    outerStyle.animation = 'none';
+    outerStyle.transform = `translate(${landingDx}px, ${landingDy}px)`;
+  }
+
+  const innerStyle: React.CSSProperties =
+    phase === 'bouncing'
+      ? {
+          animation: `__chipDestBounce ${BOUNCE_DURATION_MS}ms cubic-bezier(.34,1.56,.64,1) forwards`,
+          transformOrigin: '50% 50%',
+        }
+      : {};
 
   const chip = (
     <div
@@ -355,16 +296,13 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       data-win-transfer-artifact={triggerId ?? ''}
       data-win-transfer-owner={gameType ?? 'unknown'}
       data-win-transfer-winner={String(winnerPosition)}
-      style={{
-        left: animation.fromX - CHIP_SIZE / 2,
-        top: animation.fromY - CHIP_SIZE / 2,
-        zIndex: 200,
-        animation: `${animationName} ${animDuration} ${timingFn} forwards`,
-      }}
+      data-win-transfer-phase={phase}
+      style={outerStyle}
     >
       <div
         data-win-transfer-artifact-inner={triggerId ?? ''}
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
+        style={innerStyle}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
@@ -375,11 +313,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          /* Dice games: straight line from pot to winner destination.
-             Freeze at destination (scale 1, opacity 1) so the canonical
-             bounce beat can animate the inner artifact independently. */
           100% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
+            transform: translate(${landingDx}px, ${landingDy}px) scale(1);
             opacity: 1;
           }
           ` : `
@@ -387,13 +322,20 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             transform: translate(0, -8px) scale(1.1);
             opacity: 1;
           }
-          /* Freeze at winner destination — canonical bounce beat animates
-             the inner artifact. NO shrink / fade here. */
           100% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
+            transform: translate(${landingDx}px, ${landingDy}px) scale(1);
             opacity: 1;
           }
           `}
+        }
+        @keyframes __chipDestBounce {
+          0%   { transform: translateY(0)    scale(1); }
+          18%  { transform: translateY(-14px) scale(1.22); }
+          34%  { transform: translateY(0)    scale(1.00); }
+          48%  { transform: translateY(-9px) scale(1.14); }
+          62%  { transform: translateY(0)    scale(0.96); }
+          78%  { transform: translateY(-3px) scale(1.04); }
+          100% { transform: translateY(0)    scale(1); }
         }
       `}</style>
     </div>
