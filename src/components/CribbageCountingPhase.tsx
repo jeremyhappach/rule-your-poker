@@ -82,6 +82,21 @@ export const CribbageCountingPhase = ({
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
   const [baselineInitialized, setBaselineInitialized] = useState(false);
   const skipAheadAppliedRef = useRef(false);
+  // Monotonic announcement key so we can publish the rail emit in the
+  // SAME tick as the highlight state update (bound to the presentation
+  // beat, not to the useEffect that runs after paint).
+  const announcementKeyRef = useRef(0);
+  const publishAnnouncement = useCallback(
+    (text: string, targetLabel: string) => {
+      const key = ++announcementKeyRef.current;
+      setAnnouncementData({ text, targetLabel, key });
+      // Bind announcement dispatch to the same frame that turns the
+      // scored pair into its highlighted state (no delay constant, no
+      // wait for peg-animation completion).
+      onAnnouncementChange?.(text, targetLabel, key);
+    },
+    [onAnnouncementChange],
+  );
 
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
