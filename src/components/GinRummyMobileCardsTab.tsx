@@ -2,17 +2,14 @@
 // My cards always live here — never on the felt.
 // During knocking/laying_off: show melds + deadwood organized, with lay-off UX.
 
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type GinRummyPlayerState, type Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { MeasuredActiveHandFan } from './activeHand/MeasuredActiveHandFan';
-import {
-  computeStageRectFromPane,
-  useActiveHandLayoutPolicy,
-} from '@/lib/activeHand/activeHandLayoutSettings';
+import { useActiveHandLayoutPolicy } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
