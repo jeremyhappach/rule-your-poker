@@ -462,19 +462,12 @@ function transformedFanBounds(
 }
 
 /**
- * Optional overrides consumed by the pane-based resolver.
- *
- * `measuredLowerZoneMinPx` is the runtime-measured minimum rendered
- * height of the sibling lower zone (action / instruction / identity)
- * that the pane owner reserves as `max-content` next to the hand
- * stage. `safeAreaBottomPx` is the resolved
- * `env(safe-area-inset-bottom)` allowance so devices with a home-bar /
- * gesture area cannot clip the identity row.
- *
- * Resolved reservation used by the resolver:
- *   `max(paneH × reservedLowerZonePctOfPane, measuredLowerZoneMinPx + safeAreaBottomPx)`
- *
- * Never falls below the authored reservation.
+ * @deprecated Retained as a no-op type for back-compat with old
+ * callers. The v3 contract removes lower-zone reservation ownership
+ * from `ActiveHandLayoutPolicy`; the shell HUD stack sizes rows 3 and
+ * 5 independently, and the row-4 pane rect handed to ActiveHand is
+ * already the final active-player pane. Fields on this interface are
+ * ignored by the resolver.
  */
 export interface PaneReservationOverrides {
   measuredLowerZoneMinPx?: number;
@@ -482,43 +475,44 @@ export interface PaneReservationOverrides {
 }
 
 /**
- * Compute the hand-stage rect from the pane rect + authored reservations.
- * Owners can call this to size the lower zone sibling in the same
- * space the resolver uses.
+ * Compute the hand-stage rect inside the row-4 pane rect.
+ *
+ * Contract: `paneRect` MUST be the final HUD row-4 active-player pane
+ * rect the shell has already resolved. The resolver never subtracts
+ * timer, identity, or action reservations here — those are shell HUD
+ * stack geometry and are already excluded from the pane rect handed
+ * in. Only the authored intra-row breathing rooms
+ * (`stageTopInsetPctOfPane`, `stageBottomInsetPctOfPane`) are applied.
  */
 export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
-  overrides?: PaneReservationOverrides,
+  _overrides?: PaneReservationOverrides,
 ): {
   stageRect: ActiveHandStageRect;
-  reservedLowerZonePx: number;
-  interZoneClearancePx: number;
   stageTopInsetPx: number;
+  stageBottomInsetPx: number;
 } {
+  void _overrides;
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
-  const authoredReserved = paneH * policy.reservedLowerZonePctOfPane;
-  const measured = Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0);
-  const safeArea = Math.max(0, overrides?.safeAreaBottomPx ?? 0);
-  const reservedLowerZonePx = Math.max(authoredReserved, measured + safeArea);
-  const interZoneClearancePx = paneH * policy.interZoneClearancePctOfPane;
   const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
+  const stageBottomInsetPx = Math.max(0, paneH * policy.stageBottomInsetPctOfPane);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
     Math.min(
       paneH * policy.maxHeightPctOfPane,
-      paneH - reservedLowerZonePx - interZoneClearancePx - stageTopInsetPx,
+      paneH - stageTopInsetPx - stageBottomInsetPx,
     ),
   );
   return {
     stageRect: { width: stageW, height: stageH },
-    reservedLowerZonePx,
-    interZoneClearancePx,
     stageTopInsetPx,
+    stageBottomInsetPx,
   };
 }
+
 
 
 /**
