@@ -647,31 +647,32 @@ export function resolveActiveHandLayout(
     rowOffsetX: (stage.width - visualBounds.width) / 2 - visualBounds.minX,
     rowOffsetY,
     stageRect: stage,
-    reservedLowerZonePx: 0,
-    interZoneClearancePx: 0,
     stageTopInsetPx: 0,
+    stageBottomInsetPx: 0,
   };
 }
 
 /**
- * Preferred v2 entry point. Given a measured pane rect and a policy,
- * derives the stage rect (subtracting reserved lower zone + clearance)
- * and resolves the card row inside it in one pass.
+ * Preferred v3 entry point. Given the resolved HUD row-4 pane rect and
+ * a policy, derives the stage rect (applying only the authored intra-
+ * row top/bottom clearances) and resolves the card row inside it.
  */
 export function resolveActiveHandFromPane(
   paneRect: ActiveHandStageRect | null,
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
-  overrides?: PaneReservationOverrides,
+  _overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
+  void _overrides;
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
-  const { stageRect, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx } =
-    computeStageRectFromPane(paneRect, policy, overrides);
+  const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
+    computeStageRectFromPane(paneRect, policy);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
-  return { ...row, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx };
+  return { ...row, stageTopInsetPx, stageBottomInsetPx };
 }
+
 
