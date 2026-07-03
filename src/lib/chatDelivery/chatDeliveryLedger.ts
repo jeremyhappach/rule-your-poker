@@ -51,6 +51,7 @@ export type ChatDeliveryEventName =
   | 'store-message-added'
   | 'store-message-merged'
   | 'store-message-skipped-duplicate'
+  | 'store-message-classified'
   // Render
   | 'chat-panel-open'
   | 'chat-panel-close'
@@ -58,6 +59,8 @@ export type ChatDeliveryEventName =
   | 'chat-message-mounted'
   | 'chat-message-hidden'
   // Unread / new-chat indicator
+  | 'unread-evaluation-start'
+  | 'unread-eligibility-resolved'
   | 'indicator-eligibility'
   | 'indicator-requested'
   | 'indicator-mounted'
@@ -81,7 +84,11 @@ export type ChatDeliveryViolation =
   | 'CHAT_INDICATOR_CLEARED_BEFORE_READ'
   | 'CHAT_READ_CURSOR_ADVANCED_WITHOUT_READ'
   | 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH'
-  | 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY';
+  | 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY'
+  | 'CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD'
+  | 'CHAT_STORE_MESSAGE_EXCLUDED_FROM_PLAYER_LIST'
+  | 'CHAT_MESSAGE_CLASSIFIED_AS_DEALER_OR_SYSTEM_UNEXPECTEDLY'
+  | 'CHAT_STORE_RENDER_COUNT_MISMATCH';
 
 export interface ChatMessageIdentity {
   messageId: string;          // server row id, optimistic id, or hydration key
@@ -240,6 +247,12 @@ export interface RecordChatEventArgs {
 
 export function recordChatDeliveryEvent(args: RecordChatEventArgs): void {
   if (!isBrowser()) return;
+  // Passive: track latest observed store size so render surfaces can
+  // detect store↔render count mismatches without new plumbing.
+  try {
+    const s = (args.payload as { storeSize?: unknown } | undefined)?.storeSize;
+    if (typeof s === 'number') lastKnownStoreSize = s;
+  } catch { /* ignore */ }
   try {
     const file = loadFile();
     const evt: ChatDeliveryEvent = {
@@ -389,3 +402,71 @@ function installConsoleTap(): void {
 installConsoleTap();
 // Warm the client instance id so exports always carry it.
 getClientInstanceId();
+
+/* ────────────────────────────────────────────────────────────
+   Unread-evaluation expectation tracker
+
+   When a remote (non-self) chat message is admitted from realtime,
+   consumers call `armRemoteUnreadExpectation(identity)`. The
+   indicator effect calls `markUnreadEvaluated(messageId)` when it
+   runs. If no evaluation is seen within one macrotask window
+   (~one render cycle), the ledger emits
+   `CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD`.
+
+   Instrumentation-only. This never blocks or alters chat.
+   ──────────────────────────────────────────────────────────── */
+
+const UNREAD_EVAL_DEADLINE_MS = 100;
+
+interface UnreadExpectation {
+  identity: ChatMessageIdentity;
+  timer: ReturnType<typeof setTimeout>;
+  armedAt: number;
+  evaluated: boolean;
+}
+
+const unreadExpectations = new Map<string, UnreadExpectation>();
+
+/** Latest observed store size from `store-message-*` payloads. */
+let lastKnownStoreSize: number | null = null;
+export function getLastKnownStoreSize(): number | null {
+  return lastKnownStoreSize;
+}
+export function noteStoreSize(size: number): void {
+  if (typeof size === 'number' && size >= 0) lastKnownStoreSize = size;
+}
+
+export function armRemoteUnreadExpectation(identity: ChatMessageIdentity): void {
+  if (!isBrowser() || !identity?.messageId) return;
+  // Idempotent per message id.
+  const existing = unreadExpectations.get(identity.messageId);
+  if (existing) return;
+  const armedAt = Date.now();
+  const timer = setTimeout(() => {
+    const rec = unreadExpectations.get(identity.messageId);
+    if (rec && !rec.evaluated) {
+      recordChatDeliveryViolation(
+        identity,
+        'CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD',
+        'chatDeliveryLedger#unreadExpectationDeadline',
+        { deadlineMs: UNREAD_EVAL_DEADLINE_MS, armedAt },
+      );
+    }
+    unreadExpectations.delete(identity.messageId);
+  }, UNREAD_EVAL_DEADLINE_MS);
+  unreadExpectations.set(identity.messageId, {
+    identity,
+    timer,
+    armedAt,
+    evaluated: false,
+  });
+}
+
+export function markUnreadEvaluated(messageId: string): void {
+  const rec = unreadExpectations.get(messageId);
+  if (!rec) return;
+  rec.evaluated = true;
+  clearTimeout(rec.timer);
+  unreadExpectations.delete(messageId);
+}
+
