@@ -245,6 +245,20 @@ export function startCanonicalWinSequence({
  * itself, at its resolved winner-destination position. Runs on every
  * client. Idempotent per `winKey`. No seat-cluster fallback.
  */
+/**
+ * Beat 2 — ledger-only observer.
+ *
+ * The canonical FLYING → ARRIVAL_HOLD → BOUNCING → COMPLETE phase
+ * machine now lives inside PotToPlayerAnimation, which owns the
+ * bounce on the same transfer-artifact DOM node it flew in. This
+ * helper therefore no longer touches the DOM and never applies a
+ * bounce here — doing so would either double-bounce or fire after
+ * the artifact has already unmounted at COMPLETE.
+ *
+ * Consumers still call this on transfer-complete so the presentation
+ * ledger records canonical-sequence teardown / duplicate-suppression
+ * against the shared winKey.
+ */
 export function completeCanonicalWinSequence({
   winnerPosition,
   winKey,
@@ -269,49 +283,20 @@ export function completeCanonicalWinSequence({
   }
   completedKeys.add(winKey);
 
-  if (id) recordWinPresentationEvent({
-    identity: id, name: 'destination-arrival', source, owner: ledgerOwner,
-    payload: { winnerPosition, transferArtifactId: transferArtifactId ?? null },
-  });
-
-  const artifact = resolveTransferArtifact(transferArtifactId);
-
   if (id) {
     recordWinPresentationEvent({
-      identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
+      identity: id, name: 'destination-arrival', source, owner: ledgerOwner,
       payload: {
-        found: !!artifact,
         winnerPosition,
         transferArtifactId: transferArtifactId ?? null,
-        target: artifact ? 'transfer-artifact' : 'none',
-        beat: 'complete',
+        bounceOwner: 'PotToPlayerAnimation.phaseMachine',
       },
     });
+    recordWinPresentationEvent({
+      identity: id, name: 'canonical-sequence-accepted', source, owner: ledgerOwner,
+      payload: { beat: 'complete', note: 'bounce-owned-by-artifact' },
+    });
   }
-
-  if (!artifact) {
-    if (id) recordWinPresentationViolation(
-      id,
-      'WIN_TRANSFER_ARTIFACT_MISSING_AT_ARRIVAL',
-      source,
-      {
-        winnerPosition,
-        transferArtifactId: transferArtifactId ?? null,
-        reason: 'artifact-not-in-DOM-at-arrival',
-      },
-    );
-    window.setTimeout(() => completedKeys.delete(winKey), 30000);
-    return;
-  }
-
-  if (id) recordWinPresentationEvent({
-    identity: id, name: 'bounce-start', source, owner: ledgerOwner,
-    payload: { durationMs: BOUNCE_DURATION_MS, appliedTo: 'transfer-artifact-inner' },
-  });
-  applyBounce(artifact.inner);
-  if (id) window.setTimeout(() => {
-    recordWinPresentationEvent({ identity: id, name: 'bounce-complete', source, owner: ledgerOwner });
-  }, BOUNCE_DURATION_MS + 60);
 
   window.setTimeout(() => completedKeys.delete(winKey), 30000);
 }
