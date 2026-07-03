@@ -389,7 +389,7 @@ export function disarmWinPresentationSampler(winAttemptId: string, reason: strin
   if (s.timeoutId) window.clearTimeout(s.timeoutId);
 
   const finalTransfer = snapshotTransfer(s.triggerId);
-  const finalHand = snapshotActiveHand(s.selfPlayerId);
+  const finalHand = snapshotActiveHand(s.selfPlayerId, s.isWinnerClient);
   const bounceInfo = classifyBounceTarget(s.winnerPosition, s.triggerId);
 
   recordWinPresentationEvent({
