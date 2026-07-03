@@ -118,18 +118,9 @@ export const GinRummyMobileCardsTab = ({
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
-  // Shared active-hand policy for instrumentation. The pane composition
-  // itself is now owned by MeasuredActiveHandFan (portal + pane-based
-  // reservation math) — no more independent stageRect measurement here.
-  const ginPolicy = useActiveHandLayoutPolicy('ginRummy');
-  // Bumped whenever the committed policy value changes (proves GeoLab
-  // Apply + realtime remote updates reach the active-hand render path).
-  const ginPolicyRevisionRef = useRef(0);
-  const [ginPolicyRevision, setGinPolicyRevision] = useState(0);
-  useEffect(() => {
-    ginPolicyRevisionRef.current += 1;
-    setGinPolicyRevision(ginPolicyRevisionRef.current);
-  }, [ginPolicy]);
+  // Active-hand policy consumed only by the shared MeasuredActiveHandFan.
+  // No local instrumentation pill remains.
+  void useActiveHandLayoutPolicy;
 
   const localHandIdentityKey = `${gameId}|${handIdentityKey ?? `gin-hand:${ginState.handNumber ?? 'unknown'}`}|p:${currentPlayerId}`;
   const localHandProjectionRef = useRef<CachedLocalHandProjection | null>(null);
