@@ -77,10 +77,17 @@ const isPostKnockPhase = (phase: string) =>
 const isCurrentHandLocalHandPhase = (phase: string) =>
   phase === 'first_draw' || phase === 'playing' || phase === 'knocking' || phase === 'laying_off' || phase === 'scoring';
 
+// Local-hand presentation is a LIVE PROJECTION admitted from the
+// authoritative Gin state stream (never a synthesised source of truth).
 type CachedLocalHandProjection = {
   identityKey: string;
   playerId: string;
   state: GinRummyPlayerState;
+};
+
+type LocalHandBaselineCommit = {
+  identityKey: string;
+  committed: boolean;
 };
 
 const cloneLocalPlayerState = (state: GinRummyPlayerState): GinRummyPlayerState => ({
@@ -129,10 +136,31 @@ export const GinRummyMobileCardsTab = ({
 
   const localHandIdentityKey = `${gameId}|${handIdentityKey ?? `gin-hand:${ginState.handNumber ?? 'unknown'}`}|p:${currentPlayerId}`;
   const localHandProjectionRef = useRef<CachedLocalHandProjection | null>(null);
+  const localHandBaselineRef = useRef<LocalHandBaselineCommit | null>(null);
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
+  const rawAuthoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
+
+  // ── Current-hand readiness gate ─────────────────────────────────
+  // On EVERY new identity (dealerGameId / roundId / handNumber /
+  // viewer flip encoded in localHandIdentityKey), the baseline is
+  // reset to "not committed". Prior-hand cards are never bridged.
+  // Baseline commits the FIRST time this identity's live projection
+  // admits a non-empty local hand. Subsequent transient empties for
+  // the SAME identity are absorbed by the sticky cache below.
+  if (localHandBaselineRef.current?.identityKey !== localHandIdentityKey) {
+    localHandBaselineRef.current = { identityKey: localHandIdentityKey, committed: false };
+    // Drop any prior-identity cache so no old cards can leak forward.
+    if (localHandProjectionRef.current?.identityKey !== localHandIdentityKey) {
+      localHandProjectionRef.current = null;
+    }
+  }
+  if (rawAuthoritativeHandCount > 0 && localHandBaselineRef.current) {
+    localHandBaselineRef.current.committed = true;
+  }
+  const currentHandBaselineCommitted = !!localHandBaselineRef.current?.committed;
+
   const stableMyStateAuthoritative = useMemo(() => {
-    const authoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
-    if (rawMyStateAuthoritative && authoritativeHandCount > 0) {
+    if (rawMyStateAuthoritative && rawAuthoritativeHandCount > 0) {
       localHandProjectionRef.current = {
         identityKey: localHandIdentityKey,
         playerId: currentPlayerId,
@@ -141,18 +169,21 @@ export const GinRummyMobileCardsTab = ({
       return rawMyStateAuthoritative;
     }
 
+    // Sticky cache only fires AFTER baseline for the same identity
+    // has already committed. Never bridges identities.
     const cached = localHandProjectionRef.current;
     if (
       cached &&
       cached.identityKey === localHandIdentityKey &&
       cached.playerId === currentPlayerId &&
+      currentHandBaselineCommitted &&
       isCurrentHandLocalHandPhase(ginState.phase)
     ) {
       return cached.state;
     }
 
     return rawMyStateAuthoritative;
-  }, [rawMyStateAuthoritative, localHandIdentityKey, currentPlayerId, ginState.phase]);
+  }, [rawMyStateAuthoritative, rawAuthoritativeHandCount, localHandIdentityKey, currentPlayerId, ginState.phase, currentHandBaselineCommitted]);
 
   // Withhold each freshly drawn card from the rendered hand while its
   // own self-draw transport animation is in flight. The cards are
@@ -341,10 +372,31 @@ export const GinRummyMobileCardsTab = ({
 
 
 
-  if (!myState) {
+  // ── Current-hand readiness gate ─────────────────────────────────
+  // Playable presentation (fan, action prompts, "Draw a card", Take,
+  // Discard, Knock, Pass, Waiting-for-opponent, etc.) is BLOCKED
+  // until this identity's live projection has admitted a non-empty
+  // local hand at least once, OR the authoritative rule-state proves
+  // the local player legitimately has zero cards for this identity
+  // (post-knock scoring / hand-complete resolution paths keep their
+  // own downstream branches; they must still see myState populated
+  // via the sticky cache for their own melds/deadwood readouts).
+  //
+  // A remote seated client that joins/recovers mid-hand hits this
+  // same gate on every render: the shell shows the non-playable
+  // "Dealing…" placeholder until the projection converges, then
+  // commits the baseline and reveals the playable UI — no refresh.
+  const authoritativeZeroHandLegit =
+    !!rawMyStateAuthoritative &&
+    rawAuthoritativeHandCount === 0 &&
+    (ginState.phase === 'complete' || ginState.phase === 'scoring') &&
+    !!ginState.knockResult;
+  const presentationReady = currentHandBaselineCommitted || authoritativeZeroHandLegit;
+
+  if (!myState || !presentationReady) {
     return (
       <div className="flex items-center justify-center py-8">
-        <span className="text-muted-foreground">Loading...</span>
+        <span className="text-muted-foreground">Dealing…</span>
       </div>
     );
   }
