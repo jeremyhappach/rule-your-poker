@@ -1688,6 +1688,59 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     latestRealtimeMessage,
   } = useGameChat(gameId, players, user?.id);
 
+  useEffect(() => {
+    recordConsumerSubscription({
+      consumer: 'Game.tsx',
+      mounted: true,
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      payload: { currentUserId: user?.id ?? null, route: 'game' },
+    });
+    return () => recordConsumerSubscription({
+      consumer: 'Game.tsx',
+      mounted: false,
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      payload: { route: 'game' },
+    });
+  }, [gameId, (game as any)?.current_game_uuid, user?.id]);
+
+  useEffect(() => {
+    recordReactRenderObserved({
+      consumer: 'Game.tsx',
+      sourceCollection: allMessages,
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      payload: {
+        currentUserId: user?.id ?? null,
+        latestRealtimeMessageId: latestRealtimeMessage?.id ?? null,
+        activeTab: mobileActiveTab,
+        hasUnreadMessages: mobileHasUnreadMessages,
+        lastSeenChatMessageId,
+        lastReadChatMessageId,
+      },
+    });
+    recordSelectorProof({
+      consumer: 'Game.tsx',
+      selectorName: 'Game.useGameChat-allMessages-prop-pass',
+      sourceCollection: allMessages,
+      returnedCollection: allMessages,
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      currentUserId: user?.id ?? null,
+      memoInputs: {
+        allMessagesIds: allMessages.map((message) => message.id),
+        latestRealtimeMessageId: latestRealtimeMessage?.id ?? null,
+        currentUserId: user?.id ?? null,
+      },
+      dependencyInputs: {
+        allMessagesLength: allMessages.length,
+        gameId: gameId ?? null,
+        dealerGameId: (game as any)?.current_game_uuid ?? null,
+      },
+    });
+  }, [allMessages, gameId, (game as any)?.current_game_uuid, latestRealtimeMessage, lastReadChatMessageId, lastSeenChatMessageId, mobileActiveTab, mobileHasUnreadMessages, user?.id]);
+
   const prevChatDealerGameIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const currentDealerGameId = game?.current_game_uuid ?? null;
