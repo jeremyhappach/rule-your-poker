@@ -22,7 +22,7 @@ export function ChatDeliveryExportPill() {
   const clientId = getChatDeliveryClientInstanceId();
   const shortClientId = useMemo(() => clientId.slice(0, 8), [clientId]);
 
-  if (ledger.events.length === 0 && ledger.violations.length === 0) return null;
+  // Always render — this is a persistent published-build export control.
 
   const handleExport = () => {
     const json = exportChatDeliveryLedger();
@@ -44,7 +44,14 @@ export function ChatDeliveryExportPill() {
 
   return (
     <div
-      className="flex items-center gap-1 rounded border border-amber-400/40 bg-black/90 px-2 py-1 text-[10px] text-amber-100 shadow-lg"
+      style={{
+        position: 'fixed',
+        top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+        right: 6,
+        zIndex: 2147483647,
+        pointerEvents: 'auto',
+      }}
+      className="flex items-center gap-1 rounded border border-amber-400/60 bg-black/90 px-2 py-1 text-[10px] text-amber-100 shadow-lg"
       title={`CHAT_DELIVERY_LEDGER client ${clientId}`}
       data-chat-delivery-ledger-client={clientId}
       data-chat-delivery-ledger-tick={tick}
