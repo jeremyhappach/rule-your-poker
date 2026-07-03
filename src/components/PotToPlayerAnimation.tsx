@@ -295,17 +295,21 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
       const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
       const animDuration = isDiceGame ? 1600 : 3300;
-      const clearDelay = isDiceGame ? 1800 : 3700;
+      // Bounce runs ~900ms after arrival on the SAME artifact node, then
+      // the artifact tears down. Keep the artifact mounted long enough
+      // for the canonical bounce (~900ms) + a small buffer.
+      const BOUNCE_HOLD_MS = 1050;
+      const clearDelay = animDuration + BOUNCE_HOLD_MS;
 
-      // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
+      // Notify parent AFTER the visual transfer finishes so the canonical
+      // bounce beat can fire while the artifact is still mounted.
       endTimeoutRef.current = window.setTimeout(() => {
-        // Guard: only end the animation we started for this trigger.
         if (lastTriggerIdRef.current === capturedTriggerId) {
           onEndRef.current?.();
         }
       }, animDuration);
 
-      // Clear animation after it completes
+      // Tear down the artifact only AFTER the bounce window closes.
       clearTimeoutRef.current = window.setTimeout(() => {
         if (lastTriggerIdRef.current === capturedTriggerId) {
           setAnimation(null);
