@@ -247,6 +247,12 @@ export interface RecordChatEventArgs {
 
 export function recordChatDeliveryEvent(args: RecordChatEventArgs): void {
   if (!isBrowser()) return;
+  // Passive: track latest observed store size so render surfaces can
+  // detect store↔render count mismatches without new plumbing.
+  try {
+    const s = (args.payload as { storeSize?: unknown } | undefined)?.storeSize;
+    if (typeof s === 'number') lastKnownStoreSize = s;
+  } catch { /* ignore */ }
   try {
     const file = loadFile();
     const evt: ChatDeliveryEvent = {
