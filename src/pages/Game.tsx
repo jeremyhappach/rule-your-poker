@@ -42,6 +42,7 @@ import {
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
+import { setGinLedgerActive } from "@/lib/ginRummy/ginActiveHandLedger";
 // 3-5-7 presentation ledger removed (temporary tracking).
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
