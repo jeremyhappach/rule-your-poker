@@ -141,8 +141,92 @@ export const MobileChatPanel = ({
         playerCount: messages.length,
         dealerCount: dealerMessages.length,
         latestPlayerMessageId: messages[messages.length - 1]?.id ?? null,
+        lastKnownStoreSize: getLastKnownStoreSize(),
       },
     });
+
+    // Store↔render count mismatch: the panel's player message array
+    // should track the useGameChat store (bar dealer/system messages).
+    // A drift here is direct evidence of a filter/prop mismatch.
+    const lastStoreSize = getLastKnownStoreSize();
+    if (
+      lastStoreSize !== null &&
+      messages.length !== lastStoreSize
+    ) {
+      recordChatDeliveryViolation(
+        null,
+        'CHAT_STORE_RENDER_COUNT_MISMATCH',
+        'MobileChatPanel#render',
+        {
+          renderedPlayerCount: messages.length,
+          renderedDealerCount: dealerMessages.length,
+          lastKnownStoreSize: lastStoreSize,
+        },
+      );
+    }
+
+    // Per-message classification: which list each stored message
+    // ended up in, and why (or why not).
+    for (const m of messages) {
+      const isOptimistic = m.id.startsWith('optimistic-');
+      const isDealerLike = m.id.startsWith('dealer-') || !m.user_id;
+      const category = isDealerLike ? 'dealer-or-system' : 'player';
+      recordChatDeliveryEvent({
+        identity: {
+          messageId: m.id,
+          clientInstanceId: getClientInstanceId(),
+          localViewerId: currentUserId ?? null,
+          senderPlayerId: m.user_id,
+          transportSource: 'unknown',
+        },
+        name: 'store-message-classified',
+        source: 'MobileChatPanel#render',
+        payload: {
+          rawType: 'chat_message',
+          category,
+          includedInPlayerList: !isDealerLike,
+          includedInDealerList: false,
+          filterPredicateResult: !isDealerLike,
+          rejectionReason: isDealerLike ? 'dealer-or-system-id' : null,
+          isOptimistic,
+        },
+      });
+      if (isDealerLike) {
+        recordChatDeliveryViolation(
+          {
+            messageId: m.id,
+            clientInstanceId: getClientInstanceId(),
+            localViewerId: currentUserId ?? null,
+            senderPlayerId: m.user_id,
+            transportSource: 'unknown',
+          },
+          'CHAT_MESSAGE_CLASSIFIED_AS_DEALER_OR_SYSTEM_UNEXPECTEDLY',
+          'MobileChatPanel#render',
+          { messageId: m.id, user_id: m.user_id ?? null },
+        );
+      }
+    }
+
+    for (const dm of dealerMessages) {
+      recordChatDeliveryEvent({
+        identity: {
+          messageId: dm.id,
+          clientInstanceId: getClientInstanceId(),
+          localViewerId: currentUserId ?? null,
+          transportSource: 'system',
+        },
+        name: 'store-message-classified',
+        source: 'MobileChatPanel#render.dealer',
+        payload: {
+          rawType: 'dealer_message',
+          category: 'dealer',
+          includedInPlayerList: false,
+          includedInDealerList: true,
+          filterPredicateResult: true,
+        },
+      });
+    }
+
     // Emit a per-message "mounted" event for the last several rendered
     // player messages so a missing render can be diffed against the
     // store admission events emitted from useGameChat.
@@ -160,7 +244,7 @@ export const MobileChatPanel = ({
         source: 'MobileChatPanel#render',
       });
     }
-  }, [messages, dealerMessages.length, currentUserId]);
+  }, [messages, dealerMessages, currentUserId]);
 
   const handleSend = () => {
     if (inputMessage.trim() && !isSending) {
