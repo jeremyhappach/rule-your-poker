@@ -1578,6 +1578,18 @@ export const MobileGameTable = ({
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
 
+  // Canonical hydration signals from the single chat store. These are
+  // the ONLY authoritative inputs for seeding read/seen cursors — the
+  // local allMessages array can contain post-hydration realtime rows
+  // and must not be used as a hydration baseline.
+  const chatCtx = useGameChatContext();
+  const isChatHydrated = chatCtx.isChatHydrated;
+  const hydrationBaselineIds = chatCtx.hydrationBaselineIds;
+  const hydrationBaselineIdSet = useMemo(
+    () => (hydrationBaselineIds ? new Set(hydrationBaselineIds) : null),
+    [hydrationBaselineIds]
+  );
+
   useEffect(() => {
     recordConsumerSubscription({
       consumer: 'MobileGameTable',
