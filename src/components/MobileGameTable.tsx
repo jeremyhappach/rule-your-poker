@@ -4401,6 +4401,18 @@ export const MobileGameTable = ({
 
       setChatTabFlashing(false);
       setHasUnreadMessages(false);
+      recordChatDeliveryEvent({
+        identity: _rtIdentity,
+        name: 'indicator-suppressed',
+        source: 'MobileGameTable#realtimeUnreadEffect',
+        payload: {
+          reason: 'chat-open',
+          activeTab,
+          chatOpen: true,
+          lastSeenBefore: lastSeenChatMessageId,
+          lastReadBefore: lastReadChatMessageId,
+        },
+      });
 
       if (lastReadChatMessageId !== latestRealtimeChatMessage.id) {
         setLastReadChatMessageId(latestRealtimeChatMessage.id);
@@ -4412,6 +4424,16 @@ export const MobileGameTable = ({
           lastRead: latestRealtimeChatMessage.id,
           reason: 'realtime-while-chat-open',
         });
+        recordChatDeliveryEvent({
+          identity: _rtIdentity,
+          name: 'read-cursor-advanced',
+          source: 'MobileGameTable#realtimeUnreadEffect',
+          payload: {
+            lastReadBefore: lastReadChatMessageId,
+            lastReadAfter: latestRealtimeChatMessage.id,
+            reason: 'realtime-while-chat-open',
+          },
+        });
       }
 
       logChatIndicator('red cleared', latestRealtimeChatMessage, {
@@ -4419,6 +4441,12 @@ export const MobileGameTable = ({
         flashing: false,
         unread: false,
         reason: 'chat-already-open',
+      });
+      recordChatDeliveryEvent({
+        identity: _rtIdentity,
+        name: 'indicator-cleared',
+        source: 'MobileGameTable#realtimeUnreadEffect',
+        payload: { reason: 'chat-already-open', activeTab },
       });
       return;
     }
@@ -4429,6 +4457,18 @@ export const MobileGameTable = ({
 
     setChatTabFlashing(true);
     setHasUnreadMessages(true);
+    recordChatDeliveryEvent({
+      identity: _rtIdentity,
+      name: 'indicator-requested',
+      source: 'MobileGameTable#realtimeUnreadEffect',
+      payload: {
+        kind: 'green+red',
+        activeTab,
+        chatOpen: false,
+        lastSeenBefore: lastSeenChatMessageId,
+        lastReadBefore: lastReadChatMessageId,
+      },
+    });
     logChatIndicator('green set', latestRealtimeChatMessage, {
       flashing: true,
       unread: true,
@@ -4440,6 +4480,18 @@ export const MobileGameTable = ({
       lastSeen: latestRealtimeChatMessage.id,
       reason: 'eligible-realtime-while-chat-closed',
     });
+    // The indicator DOM is owned by the shell-owned tab bar published
+    // via useShellTabBar; treat state activation as mount.
+    recordChatDeliveryEvent({
+      identity: _rtIdentity,
+      name: 'indicator-mounted',
+      source: 'MobileGameTable#realtimeUnreadEffect',
+      payload: {
+        kind: 'green+red',
+        owningComponent: 'ShellTabBar',
+        activeTab,
+      },
+    });
 
     greenClearTimeoutRef.current = setTimeout(() => {
       greenClearTimeoutRef.current = null;
@@ -4449,6 +4501,12 @@ export const MobileGameTable = ({
         unread: true,
         lastSeen: latestRealtimeChatMessage.id,
         reason: 'pulse-timeout',
+      });
+      recordChatDeliveryEvent({
+        identity: _rtIdentity,
+        name: 'indicator-cleared',
+        source: 'MobileGameTable#realtimeUnreadEffect.pulseTimeout',
+        payload: { kind: 'green', reason: 'pulse-timeout' },
       });
     }, 1500);
   }, [
