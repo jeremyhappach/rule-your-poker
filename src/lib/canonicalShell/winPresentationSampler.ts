@@ -292,7 +292,7 @@ function tickSampler(key: string): void {
   s.sampleCount++;
 
   const transfer = snapshotTransfer(s.triggerId);
-  const hand = snapshotActiveHand(s.selfPlayerId);
+  const hand = snapshotActiveHand(s.selfPlayerId, s.isWinnerClient);
 
   // Sample throttling: emit every ~4 ticks OR on meaningful change.
   const transferChanged =
