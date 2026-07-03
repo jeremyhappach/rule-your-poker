@@ -371,6 +371,13 @@ export interface ResolvedActiveHandRow {
   reservedLowerZonePx: number;
   /** Inter-zone clearance in px between hand stage and lower zone. */
   interZoneClearancePx: number;
+  /**
+   * Extra top inset in px (from `stageTopInsetPctOfPane`). The pane
+   * owner should offset the stage container DOWN by this amount from
+   * the pane's top edge. Cards do NOT re-scale for this value — it
+   * moves the whole stage without changing card geometry.
+   */
+  stageTopInsetPx: number;
 }
 
 export interface ActiveHandFanBounds {
