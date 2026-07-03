@@ -51,6 +51,7 @@ export type ChatDeliveryEventName =
   | 'store-message-added'
   | 'store-message-merged'
   | 'store-message-skipped-duplicate'
+  | 'store-message-classified'
   // Render
   | 'chat-panel-open'
   | 'chat-panel-close'
@@ -58,6 +59,8 @@ export type ChatDeliveryEventName =
   | 'chat-message-mounted'
   | 'chat-message-hidden'
   // Unread / new-chat indicator
+  | 'unread-evaluation-start'
+  | 'unread-eligibility-resolved'
   | 'indicator-eligibility'
   | 'indicator-requested'
   | 'indicator-mounted'
@@ -81,7 +84,11 @@ export type ChatDeliveryViolation =
   | 'CHAT_INDICATOR_CLEARED_BEFORE_READ'
   | 'CHAT_READ_CURSOR_ADVANCED_WITHOUT_READ'
   | 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH'
-  | 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY';
+  | 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY'
+  | 'CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD'
+  | 'CHAT_STORE_MESSAGE_EXCLUDED_FROM_PLAYER_LIST'
+  | 'CHAT_MESSAGE_CLASSIFIED_AS_DEALER_OR_SYSTEM_UNEXPECTEDLY'
+  | 'CHAT_STORE_RENDER_COUNT_MISMATCH';
 
 export interface ChatMessageIdentity {
   messageId: string;          // server row id, optimistic id, or hydration key
