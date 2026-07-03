@@ -30,7 +30,11 @@ import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
-import { fireCanonicalWinCelly } from "@/lib/canonicalShell/canonicalWinCelly";
+import {
+  startCanonicalWinSequence,
+  completeCanonicalWinSequence,
+} from "@/lib/canonicalShell/canonicalWinCelly";
+
 import {
   recordWinPresentationEvent,
   recordWinPresentationViolation,
