@@ -604,7 +604,7 @@ export const CribbageMobileGameTable = ({
   useWakeLock(true);
   
   // Canonical shared chat — single store lives at Game.tsx shell boundary.
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();
   
   // Tab state - must be declared before chat indicator hooks that reference it
   // Tab state — seeded from the in-session persistence store so the
