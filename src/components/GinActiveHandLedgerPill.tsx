@@ -25,8 +25,14 @@ export function GinActiveHandLedgerPill() {
   const [count, setCount] = useState<number>(() => getGinLedgerEventCount());
 
   useEffect(() => {
+    // Auto-arm on mount so early deal-lifecycle events (which happen
+    // before the user could tap ARM) are captured.
+    if (isGinLedgerActive() && !isGinLedgerArmed()) {
+      setGinLedgerArmed(true);
+    }
     const offAvail = subscribeGinLedgerAvailability((v) => {
       setAvailable(v);
+      if (v && !isGinLedgerArmed()) setGinLedgerArmed(true);
       setArmed(isGinLedgerArmed());
       setCount(getGinLedgerEventCount());
     });
@@ -40,12 +46,6 @@ export function GinActiveHandLedgerPill() {
     };
   }, []);
 
-  const handleArm = useCallback(() => {
-    setGinLedgerArmed(true);
-    setArmed(isGinLedgerArmed());
-    setCount(getGinLedgerEventCount());
-  }, []);
-
   const handleRefreshCount = useCallback(() => {
     setCount(getGinLedgerEventCount());
   }, []);
@@ -55,23 +55,21 @@ export function GinActiveHandLedgerPill() {
     setCount(0);
   }, []);
 
-  const handleCopy = useCallback(async () => {
+  const handleExport = useCallback(() => {
     const text = formatGinLedgerAsText();
     try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      a.href = url;
+      a.download = `gin-active-hand-ledger-${ts}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
-      /* clipboard errors must never affect gameplay */
+      /* export errors must never affect gameplay */
     }
     setCount(getGinLedgerEventCount());
   }, []);
@@ -114,11 +112,9 @@ export function GinActiveHandLedgerPill() {
       <span onClick={handleRefreshCount} style={{ opacity: 0.85, cursor: 'pointer' }}>
         #{count}
       </span>
-      <button type="button" onClick={handleArm} style={btn(armed ? '#9FE2BF' : '#FFD9B5')}>
-        ARM
-      </button>
-      <button type="button" onClick={handleCopy} style={btn('#FFD9B5')}>
-        COPY
+      <span style={{ opacity: 0.85 }}>{armed ? 'ARMED' : 'IDLE'}</span>
+      <button type="button" onClick={handleExport} style={btn('#FFD9B5')}>
+        EXPORT TXT
       </button>
       <button type="button" onClick={handleClear} style={btn('#FFD9B5')}>
         CLEAR
