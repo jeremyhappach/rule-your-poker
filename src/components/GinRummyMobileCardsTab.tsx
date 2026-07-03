@@ -2,17 +2,14 @@
 // My cards always live here — never on the felt.
 // During knocking/laying_off: show melds + deadwood organized, with lay-off UX.
 
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type GinRummyPlayerState, type Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { MeasuredActiveHandFan } from './activeHand/MeasuredActiveHandFan';
-import {
-  computeStageRectFromPane,
-  useActiveHandLayoutPolicy,
-} from '@/lib/activeHand/activeHandLayoutSettings';
+import { useActiveHandLayoutPolicy } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
@@ -121,18 +118,9 @@ export const GinRummyMobileCardsTab = ({
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
-  // Shared active-hand policy for instrumentation. The pane composition
-  // itself is now owned by MeasuredActiveHandFan (portal + pane-based
-  // reservation math) — no more independent stageRect measurement here.
-  const ginPolicy = useActiveHandLayoutPolicy('ginRummy');
-  // Bumped whenever the committed policy value changes (proves GeoLab
-  // Apply + realtime remote updates reach the active-hand render path).
-  const ginPolicyRevisionRef = useRef(0);
-  const [ginPolicyRevision, setGinPolicyRevision] = useState(0);
-  useEffect(() => {
-    ginPolicyRevisionRef.current += 1;
-    setGinPolicyRevision(ginPolicyRevisionRef.current);
-  }, [ginPolicy]);
+  // Active-hand policy consumed only by the shared MeasuredActiveHandFan.
+  // No local instrumentation pill remains.
+  void useActiveHandLayoutPolicy;
 
   const localHandIdentityKey = `${gameId}|${handIdentityKey ?? `gin-hand:${ginState.handNumber ?? 'unknown'}`}|p:${currentPlayerId}`;
   const localHandProjectionRef = useRef<CachedLocalHandProjection | null>(null);
@@ -571,8 +559,18 @@ export const GinRummyMobileCardsTab = ({
         </>
       )}
 
-      {/* ── Action area ── */}
-      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+      {/* ── Action area ──
+          Row-4 action placement: the button row is a
+          `[data-active-hand-lower-zone]` sibling of the fan and lives
+          wholly inside the row-4 active-player pane. It carries its own
+          `min-h` + bottom padding so the Discard/Take/Knock/Pass row
+          always sits above the row-5 identity boundary with deliberate
+          clearance, even on small mobile viewports where the button's
+          own height would otherwise consume the entire lower-zone rect.
+          The pane resolver reserves `max(authored, measured + safeArea)`
+          so this height is fed back into the fan's stage budget — the
+          action row is never clipped and never overlaps identity. */}
+      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[44px] pb-2 gap-2 flex-wrap">
         {/* Deadwood readout — right-aligned inside the action strip so
             it no longer eats vertical room above the fan. Post-knock
             view renders its own DW block above (line ~379). */}
@@ -658,131 +656,7 @@ export const GinRummyMobileCardsTab = ({
           </p>
         )}
       </div>
-      <GinActivePaneGeometryPill
-        policy={ginPolicy}
-        policyRevision={ginPolicyRevision}
-      />
     </div>
   );
 };
 
-// ─── Instrumentation ────────────────────────────────────────────────
-// Temporary on-screen Gin active-pane geometry pill. Hidden by default;
-// enable by appending `?ginGeom=1` to the URL, or set
-// `localStorage.ptp_ginGeom = '1'`. Also exposes the same snapshot on
-// `window.__ptp_ginPaneGeom` for export.
-function GinActivePaneGeometryPill({
-  policy,
-  policyRevision,
-}: {
-  policy: ReturnType<typeof useActiveHandLayoutPolicy>;
-  policyRevision: number;
-}) {
-  const [enabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const q = new URLSearchParams(window.location.search);
-      if (q.get('ginGeom') === '1') return true;
-      return window.localStorage?.getItem('ptp_ginGeom') === '1';
-    } catch {
-      return false;
-    }
-  });
-  const [snap, setSnap] = useState<{
-    paneTop: number;
-    paneBottom: number;
-    paneH: number;
-    stageTop: number;
-    stageBottom: number;
-    stageH: number;
-    resolvedClearancePx: number;
-    reservedLowerZonePx: number;
-    actionZoneComputedTop: number;
-    actionZoneActualTop: number;
-    actionZoneH: number;
-    delta: number;
-  } | null>(null);
-
-  useLayoutEffect(() => {
-    if (!enabled && typeof window !== 'undefined' && !(window as any).__ptp_ginPaneGeomAlwaysCompute) {
-      // Still compute & publish to window for headless export, but
-      // don't render. Cheap; runs only when a pane exists.
-    }
-    const compute = () => {
-      const pane = document.querySelector<HTMLElement>('[data-gin-active-pane-content]');
-      if (!pane) return;
-      const paneRect = pane.getBoundingClientRect();
-      const action = pane.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
-      const actionRect = action?.getBoundingClientRect() ?? null;
-      const measuredLowerZoneMinPx = actionRect ? actionRect.height : 0;
-      const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
-        computeStageRectFromPane(
-          { width: paneRect.width, height: paneRect.height },
-          policy,
-        );
-      const reservedLowerZonePx = stageBottomInsetPx;
-      const interZoneClearancePx = stageTopInsetPx;
-
-      const stageTop = paneRect.top;
-      const stageBottom = stageTop + stageRect.height;
-      const actionZoneComputedTop = stageBottom + interZoneClearancePx;
-      const actionZoneActualTop = actionRect ? actionRect.top : NaN;
-      const next = {
-        paneTop: paneRect.top,
-        paneBottom: paneRect.bottom,
-        paneH: paneRect.height,
-        stageTop,
-        stageBottom,
-        stageH: stageRect.height,
-        resolvedClearancePx: interZoneClearancePx,
-        reservedLowerZonePx,
-        actionZoneComputedTop,
-        actionZoneActualTop,
-        actionZoneH: actionRect?.height ?? 0,
-        delta: Number.isFinite(actionZoneActualTop)
-          ? actionZoneActualTop - actionZoneComputedTop
-          : NaN,
-      };
-      if (typeof window !== 'undefined') {
-        (window as any).__ptp_ginPaneGeom = { ...next, policy, policyRevision };
-      }
-      setSnap(next);
-    };
-    compute();
-    if (typeof ResizeObserver === 'undefined') return;
-    const pane = document.querySelector<HTMLElement>('[data-gin-active-pane-content]');
-    if (!pane) return;
-    const ro = new ResizeObserver(compute);
-    ro.observe(pane);
-    const action = pane.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
-    if (action) ro.observe(action);
-    const mo = new MutationObserver(compute);
-    mo.observe(pane, { childList: true, subtree: true });
-    return () => {
-      ro.disconnect();
-      mo.disconnect();
-    };
-  }, [enabled, policy, policyRevision]);
-
-  if (!enabled || !snap) return null;
-  const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : '—');
-  return (
-    <div
-      data-gin-active-pane-geom-pill=""
-      className="pointer-events-none absolute left-1 bottom-1 z-[9999] rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-emerald-300 shadow"
-      style={{ maxWidth: 220 }}
-    >
-      <div className="text-emerald-200">gin pane geom · rev {policyRevision}</div>
-      <div>pane H: {fmt(snap.paneH)}</div>
-      <div>stage T/B: {fmt(snap.stageTop)} / {fmt(snap.stageBottom)}</div>
-      <div>stage H: {fmt(snap.stageH)}</div>
-      <div>clearance: {fmt(snap.resolvedClearancePx)}</div>
-      <div>reserved LZ: {fmt(snap.reservedLowerZonePx)}</div>
-      <div>action ⌐ top (calc): {fmt(snap.actionZoneComputedTop)}</div>
-      <div>action ⌐ top (actual): {fmt(snap.actionZoneActualTop)}</div>
-      <div className={Math.abs(snap.delta) < 2 ? 'text-emerald-300' : 'text-amber-300'}>
-        Δ: {fmt(snap.delta)}px
-      </div>
-    </div>
-  );
-}

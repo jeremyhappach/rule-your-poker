@@ -196,8 +196,10 @@ export function HolmLonePlayerFan({
               isSoloPlayerWinner && kickerPlayerIndices.includes(originalIndex);
             const isDimmed = hasHighlights && !isHighlighted && !isKicker;
             const lift = isHighlighted || isKicker ? "translateY(-25%)" : "";
+            // Dim treatment is filter-only. Ancestor opacity would let
+            // overlapping neighbour cards bleed through.
             const dimStyle: CSSProperties = isDimmed
-              ? { opacity: 0.4, filter: "grayscale(30%)" }
+              ? { filter: "grayscale(70%) brightness(0.7)" }
               : {};
             return (
               <div
