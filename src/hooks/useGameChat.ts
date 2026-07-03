@@ -576,5 +576,15 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     isSending,
     getPositionForUserId,
     latestRealtimeMessage,
+    // Chat is considered hydrated once the initial fetch for the
+    // current gameId has resolved (even if empty). Consumers use this
+    // to gate cursor seeding.
+    isChatHydrated: hydrationBaseline?.gameId === gameId,
+    // Frozen set of ids returned by the initial hydration. Consumers
+    // must NOT include any id outside this set when seeding cursors.
+    hydrationBaselineIds: hydrationBaseline?.gameId === gameId ? hydrationBaseline.ids : null,
+    // The canonical conversation key that all chat consumers must use.
+    // Stable for the lifetime of this hook invocation (route gameId).
+    chatConversationKey: gameId ?? null,
   };
 };
