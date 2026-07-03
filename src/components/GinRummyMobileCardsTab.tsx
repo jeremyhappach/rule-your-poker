@@ -15,6 +15,10 @@ import {
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import {
+  recordGinLedger,
+  recordGinLedgerViolation,
+} from '@/lib/ginRummy/ginActiveHandLedger';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -140,6 +144,15 @@ export const GinRummyMobileCardsTab = ({
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
   const rawAuthoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
 
+  // Ledger identity — recomputed cheaply per render.
+  const ledgerIdentity = {
+    gameId,
+    handContextId: handIdentityKey ?? null,
+    handNumber: ginState.handNumber ?? null,
+    localPlayerId: currentPlayerId ?? null,
+    phase: ginState.phase ?? null,
+  };
+
   // ── Current-hand readiness gate ─────────────────────────────────
   // On EVERY new identity (dealerGameId / roundId / handNumber /
   // viewer flip encoded in localHandIdentityKey), the baseline is
@@ -148,13 +161,27 @@ export const GinRummyMobileCardsTab = ({
   // admits a non-empty local hand. Subsequent transient empties for
   // the SAME identity are absorbed by the sticky cache below.
   if (localHandBaselineRef.current?.identityKey !== localHandIdentityKey) {
+    const prevKey = localHandBaselineRef.current?.identityKey ?? null;
+    const prevCached = localHandProjectionRef.current;
     localHandBaselineRef.current = { identityKey: localHandIdentityKey, committed: false };
     // Drop any prior-identity cache so no old cards can leak forward.
     if (localHandProjectionRef.current?.identityKey !== localHandIdentityKey) {
       localHandProjectionRef.current = null;
     }
+    recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'GIN_STICKY_CACHE_INVALIDATED', ledgerIdentity, {
+      reason: 'identity-changed',
+      prevIdentityKey: prevKey,
+      nextIdentityKey: localHandIdentityKey,
+      prevCacheHandLen: prevCached?.state.hand.length ?? null,
+    });
   }
   if (rawAuthoritativeHandCount > 0 && localHandBaselineRef.current) {
+    if (!localHandBaselineRef.current.committed) {
+      recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'baseline-committed', ledgerIdentity, {
+        identityKey: localHandIdentityKey,
+        rawAuthoritativeHandCount,
+      });
+    }
     localHandBaselineRef.current.committed = true;
   }
   const currentHandBaselineCommitted = !!localHandBaselineRef.current?.committed;
@@ -239,6 +266,136 @@ export const GinRummyMobileCardsTab = ({
 
   useEffect(() => {
   }, [ginState.handNumber, ginState.phase, ginState.turnPhase, ginState.actionCount, isMyTurn, isProcessing, rawMyState?.hand?.length, myState?.hand?.length, deal?.handContextId, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, currentPlayerId]);
+
+  // ── GIN_ACTIVE_HAND_LEDGER — owner mount/unmount ─────────────────
+  useEffect(() => {
+    recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'owner-mount', ledgerIdentity, {
+      owner: 'GinRummyMobileCardsTab',
+    });
+    return () => {
+      recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'GIN_LOCAL_OWNER_UNMOUNT', ledgerIdentity, {
+        owner: 'GinRummyMobileCardsTab',
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── GIN_ACTIVE_HAND_LEDGER — projection-dropped detector ─────────
+  const prevRawAuthCountRef = useRef<{ key: string; count: number } | null>(null);
+  useEffect(() => {
+    const prev = prevRawAuthCountRef.current;
+    if (prev && prev.key === localHandIdentityKey && prev.count > 0 && rawAuthoritativeHandCount === 0) {
+      recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'GIN_CURRENT_HAND_PROJECTION_DROPPED', ledgerIdentity, {
+        prevCount: prev.count,
+        nextCount: rawAuthoritativeHandCount,
+        identityKey: localHandIdentityKey,
+        phase: ginState.phase,
+        baselineCommitted: currentHandBaselineCommitted,
+        stickyCacheAvailable: !!localHandProjectionRef.current,
+      });
+    }
+    prevRawAuthCountRef.current = { key: localHandIdentityKey, count: rawAuthoritativeHandCount };
+  }, [localHandIdentityKey, rawAuthoritativeHandCount, ginState.phase, currentHandBaselineCommitted]);
+
+  // ── GIN_ACTIVE_HAND_LEDGER — per-render snapshot ─────────────────
+  // AUTHORITATIVE → PROJECTION → OWNER.
+  useEffect(() => {
+    const rawIds = (rawMyStateAuthoritative?.hand ?? []).map(c => `${c.rank}${c.suit}`);
+    const projIds = (myState?.hand ?? []).map(c => `${c.rank}${c.suit}`);
+    const cache = localHandProjectionRef.current;
+    let stickyState: 'cold' | 'committed' | 'returned' | 'invalidated' = 'cold';
+    if (cache && cache.identityKey === localHandIdentityKey) {
+      stickyState = rawAuthoritativeHandCount > 0 ? 'committed' : 'returned';
+    } else if (currentHandBaselineCommitted) {
+      stickyState = 'invalidated';
+    }
+    recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'render-snapshot', ledgerIdentity, {
+      rawAuthoritativeIds: rawIds,
+      rawAuthoritativeCount: rawIds.length,
+      projectionIds: projIds,
+      projectionCount: projIds.length,
+      stickyState,
+      baselineCommitted: currentHandBaselineCommitted,
+      identityKey: localHandIdentityKey,
+      dealPhase: deal?.phase ?? null,
+      dealExpected: deal?.expectedCount ?? null,
+      dealSettledCount: deal?.settledCardIds?.size ?? null,
+      dealHandContextId: deal?.handContextId ?? null,
+      withheldDrawn: (withheldDrawnCards ?? []).length,
+      isProcessing,
+      isMyTurn,
+      turnPhase: ginState.turnPhase,
+      currentTurn: ginState.currentTurnPlayerId?.slice(0, 8) ?? null,
+      knockResultPresent: !!ginState.knockResult,
+    });
+  });
+
+  // ── GIN_ACTIVE_HAND_LEDGER — playable-turn invariant ─────────────
+  const prevRenderedCountRef = useRef<{ key: string; count: number } | null>(null);
+  useEffect(() => {
+    const renderedCount = myState?.hand?.length ?? 0;
+    const playableActive =
+      ginState.phase === 'playing' || ginState.phase === 'first_draw' ||
+      ginState.phase === 'knocking' || ginState.phase === 'laying_off';
+    const activePromptForSelf = playableActive && (isMyTurn || ginState.phase === 'first_draw');
+
+    if (activePromptForSelf && renderedCount === 0) {
+      recordGinLedgerViolation('POST_DEAL_INVARIANT', 'GIN_ACTIVE_PROMPT_ZERO_HAND_VIOLATION', ledgerIdentity, {
+        phase: ginState.phase,
+        turnPhase: ginState.turnPhase,
+        isMyTurn,
+        rawAuthoritativeHandCount,
+        baselineCommitted: currentHandBaselineCommitted,
+        stickyCacheAvailable: !!localHandProjectionRef.current,
+        dealPhase: deal?.phase ?? null,
+        dealSettledCount: deal?.settledCardIds?.size ?? null,
+      });
+      recordGinLedgerViolation('POST_DEAL_INVARIANT', 'GIN_PLAYABLE_TURN_HAND_INVARIANT_BROKEN', ledgerIdentity, {
+        renderedCount, rawAuthoritativeHandCount,
+      });
+    }
+
+    const prev = prevRenderedCountRef.current;
+    if (prev && prev.key === localHandIdentityKey && prev.count > 0 && renderedCount === 0 && playableActive) {
+      recordGinLedgerViolation('GEOMETRY_DISAPPEARANCE', 'GIN_HAND_RENDERED_EMPTY_AFTER_NONEMPTY', ledgerIdentity, {
+        prevCount: prev.count,
+        nextCount: renderedCount,
+        phase: ginState.phase,
+        turnPhase: ginState.turnPhase,
+      });
+    }
+    prevRenderedCountRef.current = { key: localHandIdentityKey, count: renderedCount };
+  });
+
+  // ── GIN_ACTIVE_HAND_LEDGER — geometry sampler ─────────────────────
+  // Cheap DOM read; only actually records when armed.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const pane = document.querySelector<HTMLElement>('[data-gin-active-pane-content]');
+    if (!pane) {
+      recordGinLedger('GEOMETRY_DISAPPEARANCE', 'GIN_ZERO_HOST_RECT', ledgerIdentity, {
+        reason: 'pane-missing',
+      });
+      return;
+    }
+    const paneRect = pane.getBoundingClientRect();
+    if (paneRect.width < 4 || paneRect.height < 4) {
+      recordGinLedgerViolation('GEOMETRY_DISAPPEARANCE', 'GIN_ZERO_HOST_RECT', ledgerIdentity, {
+        paneW: paneRect.width, paneH: paneRect.height,
+      });
+    }
+    const cardNodes = pane.querySelectorAll<HTMLElement>('[data-card-anchor], [data-canonical-card]');
+    const domCards = pane.querySelectorAll<HTMLElement>('.aspect-\\[5\\/7\\], [data-cribbage-card], [data-canonical-card-back], [data-transport-card]');
+    recordGinLedger('GEOMETRY_DISAPPEARANCE', 'geometry-sample', ledgerIdentity, {
+      paneW: Math.round(paneRect.width),
+      paneH: Math.round(paneRect.height),
+      paneTop: Math.round(paneRect.top),
+      paneBottom: Math.round(paneRect.bottom),
+      cardAnchorCount: cardNodes.length,
+      domCardNodeCount: domCards.length,
+      renderedMyHandLen: myState?.hand?.length ?? 0,
+    });
+  });
 
   // Track newly drawn card
   useEffect(() => {
