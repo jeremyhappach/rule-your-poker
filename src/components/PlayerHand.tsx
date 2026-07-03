@@ -907,9 +907,14 @@ export const PlayerHand = ({
               width: `${secW}px`,
               height: `${secH}px`,
               marginLeft: displayIndex === 0 ? 0 : `${-secOverlapPx}px`,
-              opacity: secOpacity,
+              // Opacity intentionally omitted — overlapping fan cards
+              // must stay fully opaque. Dimming is expressed via
+              // grayscale + brightness on the filter chain below.
               transform: `scale(${secScale})`,
-              filter: secGrayscale > 0 ? `grayscale(${secGrayscale})` : undefined,
+              filter:
+                secGrayscale > 0 || secOpacity < 1
+                  ? `grayscale(${Math.max(secGrayscale, secOpacity < 1 ? 0.7 : 0)}) brightness(${secOpacity < 1 ? Math.max(0.5, secOpacity) : 1})`
+                  : undefined,
             }}
           />
         ))}
@@ -1024,7 +1029,12 @@ export const PlayerHand = ({
               className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
               style={composeStyle({
                 transform: `rotate(${rotationDeg}deg)`,
-                opacity: isUnused ? irrOpacity : 1,
+                // Overlapping fan cards must remain fully opaque.
+                // Communicate the irrelevant/unused state through a
+                // grayscale + brightness filter instead of alpha.
+                filter: isUnused
+                  ? `grayscale(0.8) brightness(${Math.max(0.5, irrOpacity)})`
+                  : undefined,
               }, true, displayIndex)}
             />
           );

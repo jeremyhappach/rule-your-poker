@@ -288,7 +288,11 @@ export const PlayingCard = ({
     ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' }
     : {};
 
-  const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+  // Dim treatment is filter-only. NEVER lower ancestor opacity on a
+  // card face — overlapping siblings would bleed through and rank/suit
+  // from the underlying card would become visible. Grayscale +
+  // brightness communicates dimmed/inactive state without alpha.
+  const dimStyle = isDimmed ? { filter: 'grayscale(70%) brightness(0.7)' } : {};
   const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
   const combinedTransform = [liftTransform, style?.transform].filter(Boolean).join(' ') || undefined;
 
