@@ -4,6 +4,7 @@ import {
   recordChatDeliveryEvent,
   recordChatDeliveryViolation,
   getClientInstanceId,
+  armRemoteUnreadExpectation,
   type ChatMessageIdentity,
 } from '@/lib/chatDelivery/chatDeliveryLedger';
 
