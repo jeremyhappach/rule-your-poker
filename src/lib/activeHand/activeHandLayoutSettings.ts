@@ -487,17 +487,25 @@ export interface PaneReservationOverrides {
 export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
-  _overrides?: PaneReservationOverrides,
+  overrides?: PaneReservationOverrides,
 ): {
   stageRect: ActiveHandStageRect;
   stageTopInsetPx: number;
   stageBottomInsetPx: number;
 } {
-  void _overrides;
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
   const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
-  const stageBottomInsetPx = Math.max(0, paneH * policy.stageBottomInsetPctOfPane);
+  // Bottom clearance: authored % OR measured in-pane row-5 controls +
+  // safe-area, whichever is greater. This is the row-4/row-5 non-overlap
+  // guard: an active-hand stage cannot consume vertical space required
+  // by visible row-5 action controls that live inside the same row-4
+  // pane container.
+  const authoredBottomInsetPx = paneH * policy.stageBottomInsetPctOfPane;
+  const measuredBottomInsetPx =
+    Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0) +
+    Math.max(0, overrides?.safeAreaBottomPx ?? 0);
+  const stageBottomInsetPx = Math.max(0, authoredBottomInsetPx, measuredBottomInsetPx);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
