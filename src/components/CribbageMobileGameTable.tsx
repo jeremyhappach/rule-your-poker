@@ -606,7 +606,16 @@ export const CribbageMobileGameTable = ({
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   
   // Tab state - must be declared before chat indicator hooks that reference it
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  // Tab state — seeded from the in-session persistence store so the
+  // user's explicit tab selection survives gameplay-driven remounts.
+  // See src/lib/matchChatTabPersistence.ts.
+  const [activeTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
+    () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
+  );
+  const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    writePersistedMatchChatTab(gameId, next);
+    setActiveTabRaw(next);
+  }, [gameId]);
 
   // Unread messages tracking for chat tab indicator
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
