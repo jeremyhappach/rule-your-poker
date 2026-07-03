@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Smile, Mic, MicOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceToText } from '@/hooks/useVoiceToText';
+import {
+  recordChatDeliveryEvent,
+  recordChatDeliveryViolation,
+  recordConsumerSubscription,
+  recordReactRenderObserved,
+  recordSelectorProof,
+} from '@/lib/chatDelivery/chatDeliveryLedger';
 
 const EMOTICONS = [
   '😀', '😂', '😍', '🤔', '😎', '😢', '😡', '🤯',
@@ -41,6 +48,9 @@ interface MobileChatPanelProps {
   onChatInputChange?: (value: string) => void;
   dealerMessages?: DealerMessage[];
   currentUserId?: string;
+  instrumentationCurrentUserId?: string;
+  diagnosticGameId?: string | null;
+  diagnosticDealerGameId?: string | null;
 }
 
 export const MobileChatPanel = ({
@@ -51,6 +61,9 @@ export const MobileChatPanel = ({
   onChatInputChange,
   dealerMessages = [],
   currentUserId,
+  instrumentationCurrentUserId,
+  diagnosticGameId,
+  diagnosticDealerGameId,
 }: MobileChatPanelProps) => {
   const [internalInputMessage, setInternalInputMessage] = useState('');
   const inputMessage = chatInputValue ?? internalInputMessage;
@@ -64,6 +77,57 @@ export const MobileChatPanel = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const voice = useVoiceToText();
+
+  const diagnosticUserId = currentUserId ?? instrumentationCurrentUserId;
+
+  useEffect(() => {
+    recordConsumerSubscription({
+      consumer: 'MobileChatPanel',
+      mounted: true,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      payload: { source: 'MobileChatPanel', currentUserId: diagnosticUserId ?? null },
+    });
+    recordChatDeliveryEvent({
+      phase: 'chat-panel-open',
+      consumer: 'MobileChatPanel',
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      payload: { messageIds: messages.map((m) => m.id), dealerMessageIds: dealerMessages.map((m) => m.id) },
+    });
+    return () => {
+      recordChatDeliveryEvent({
+        phase: 'chat-panel-closed',
+        consumer: 'MobileChatPanel',
+        gameId: diagnosticGameId ?? null,
+        dealerGameId: diagnosticDealerGameId ?? null,
+        payload: { messageIds: messages.map((m) => m.id), dealerMessageIds: dealerMessages.map((m) => m.id) },
+      });
+      recordConsumerSubscription({
+        consumer: 'MobileChatPanel',
+        mounted: false,
+        gameId: diagnosticGameId ?? null,
+        dealerGameId: diagnosticDealerGameId ?? null,
+        payload: { source: 'MobileChatPanel' },
+      });
+    };
+    // Mount/unmount proof only; per-render source changes are recorded separately.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    recordReactRenderObserved({
+      consumer: 'MobileChatPanel',
+      sourceCollection: messages,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      payload: {
+        currentUserId: diagnosticUserId ?? null,
+        dealerCount: dealerMessages.length,
+        muteDealerChat,
+      },
+    });
+  });
 
   useEffect(() => {
     if (!currentUserId) {
@@ -171,6 +235,139 @@ export const MobileChatPanel = ({
     voice.state === 'error' ? 'text-amber-400' : '',
   ].filter(Boolean).join(' ');
 
+  type CombinedMessage =
+    | (ChatMessage & { isDealer?: false })
+    | DealerMessage;
+
+  const visibleDealerMessages = useMemo(
+    () => (muteDealerChat ? [] : dealerMessages),
+    [dealerMessages, muteDealerChat]
+  );
+
+  const combinedMessages = useMemo<CombinedMessage[]>(() => {
+    const playerMessages = messages.map(m => ({ ...m, isDealer: false as const }));
+    const combined: CombinedMessage[] = [
+      ...playerMessages,
+      ...visibleDealerMessages,
+    ];
+
+    combined.sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return combined;
+  }, [messages, visibleDealerMessages]);
+
+  useEffect(() => {
+    const playerMessages = messages.map(m => ({ ...m, isDealer: false as const }));
+    recordSelectorProof({
+      consumer: 'player-list-selector',
+      selectorName: 'MobileChatPanel.messages-to-player-list',
+      sourceCollection: messages,
+      returnedCollection: playerMessages,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      currentUserId: diagnosticUserId ?? null,
+      memoInputs: {
+        messagesRef: 'prop:messages',
+        length: messages.length,
+        ids: messages.map((m) => m.id),
+      },
+      dependencyInputs: { messagesLength: messages.length },
+      outputReasonById: Object.fromEntries(messages.map((m) => [m.id, 'player-message-prop'])),
+    });
+
+    recordSelectorProof({
+      consumer: 'dealer-system-selector',
+      selectorName: 'MobileChatPanel.dealerMessages-visible-filter',
+      sourceCollection: dealerMessages,
+      returnedCollection: visibleDealerMessages,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      currentUserId: diagnosticUserId ?? null,
+      memoInputs: {
+        dealerMessagesLength: dealerMessages.length,
+        muteDealerChat,
+        ids: dealerMessages.map((m) => m.id),
+      },
+      dependencyInputs: { dealerMessagesLength: dealerMessages.length, muteDealerChat },
+      outputReasonById: Object.fromEntries(dealerMessages.map((m) => [m.id, muteDealerChat ? 'muted' : 'visible-dealer-message'])),
+    });
+
+    recordSelectorProof({
+      consumer: 'MobileChatPanel',
+      selectorName: 'MobileChatPanel.combined-render-list',
+      sourceCollection: messages,
+      returnedIds: combinedMessages.map((m) => m.id),
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      currentUserId: diagnosticUserId ?? null,
+      memoInputs: {
+        playerIds: messages.map((m) => m.id),
+        dealerIds: visibleDealerMessages.map((m) => m.id),
+        muteDealerChat,
+      },
+      dependencyInputs: {
+        messagesLength: messages.length,
+        visibleDealerMessagesLength: visibleDealerMessages.length,
+        muteDealerChat,
+      },
+    });
+
+    const playerIds = new Set(messages.map((m) => m.id));
+    visibleDealerMessages.forEach((dealerMsg) => {
+      if (playerIds.has(dealerMsg.id)) {
+        recordChatDeliveryViolation({
+          violation: 'CHAT_MESSAGE_CLASSIFIED_AS_DEALER_OR_SYSTEM_UNEXPECTEDLY',
+          messageId: dealerMsg.id,
+          gameId: diagnosticGameId ?? null,
+          consumer: 'dealer-system-selector',
+          payload: { selectorName: 'MobileChatPanel.dealerMessages-visible-filter' },
+        });
+      }
+    });
+
+    if (combinedMessages.length < messages.length) {
+      recordChatDeliveryViolation({
+        violation: 'CHAT_STORE_RENDER_COUNT_MISMATCH',
+        gameId: diagnosticGameId ?? null,
+        consumer: 'MobileChatPanel',
+        payload: {
+          storeCount: messages.length,
+          renderedCount: combinedMessages.length,
+          messageIds: messages.map((m) => m.id),
+          combinedIds: combinedMessages.map((m) => m.id),
+        },
+      });
+    }
+  }, [combinedMessages, dealerMessages, diagnosticDealerGameId, diagnosticGameId, diagnosticUserId, messages, muteDealerChat, visibleDealerMessages]);
+
+  useEffect(() => {
+    combinedMessages.forEach((msg) => {
+      if (msg.isDealer) {
+        recordChatDeliveryEvent({
+          phase: 'chat-message-mounted',
+          messageId: msg.id,
+          gameId: diagnosticGameId ?? null,
+          dealerGameId: diagnosticDealerGameId ?? null,
+          consumer: 'dealer-system-selector',
+          payload: { classification: 'dealer', rendered: true },
+        });
+      } else {
+        recordChatDeliveryEvent({
+          phase: 'chat-message-mounted',
+          message: msg,
+          gameId: diagnosticGameId ?? null,
+          dealerGameId: diagnosticDealerGameId ?? null,
+          consumer: 'MobileChatPanel',
+          payload: { classification: 'player', rendered: true },
+        });
+      }
+    });
+  }, [combinedMessages, diagnosticDealerGameId, diagnosticGameId]);
+
   return (
     <div className="bg-black/90 rounded-lg border border-white/20 overflow-hidden h-full flex flex-col">
       <div className="px-2 py-2 flex-shrink-0">
@@ -267,28 +464,11 @@ export const MobileChatPanel = ({
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
         {(() => {
-          type CombinedMessage =
-            | (ChatMessage & { isDealer?: false })
-            | DealerMessage;
-
-          const visibleDealerMessages = muteDealerChat ? [] : dealerMessages;
-
-          const combined: CombinedMessage[] = [
-            ...messages.map(m => ({ ...m, isDealer: false as const })),
-            ...visibleDealerMessages,
-          ];
-
-          combined.sort((a, b) => {
-            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return timeB - timeA;
-          });
-
-          if (combined.length === 0) {
+          if (combinedMessages.length === 0) {
             return <p className="text-white/40 text-xs text-center">No messages yet</p>;
           }
 
-          return combined.map((msg) => {
+          return combinedMessages.map((msg) => {
             if (msg.isDealer) {
               return (
                 <div key={msg.id} className="text-xs leading-tight">

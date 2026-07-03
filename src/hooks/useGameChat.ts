@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  recordCanonicalProjection,
+  recordChatDeliveryEvent,
+  recordChatDeliveryViolation,
+  recordConsumerSubscription,
+} from '@/lib/chatDelivery/chatDeliveryLedger';
 
 interface ChatMessage {
   id: string;
@@ -34,6 +40,33 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const [isSending, setIsSending] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
   const [latestRealtimeMessage, setLatestRealtimeMessage] = useState<ChatMessage | null>(null);
+
+  useEffect(() => {
+    recordConsumerSubscription({
+      consumer: 'canonical-store',
+      mounted: true,
+      gameId: gameId ?? null,
+      payload: { hook: 'useGameChat', currentUserId: currentUserId ?? null },
+    });
+    return () => recordConsumerSubscription({
+      consumer: 'canonical-store',
+      mounted: false,
+      gameId: gameId ?? null,
+      payload: { hook: 'useGameChat' },
+    });
+  }, [gameId, currentUserId]);
+
+  useEffect(() => {
+    recordCanonicalProjection({
+      source: 'identity-change',
+      messages: allMessages,
+      gameId: gameId ?? null,
+      currentUserId,
+      payload: { reason: 'game-or-viewer-identity-change', currentUserId: currentUserId ?? null },
+    });
+    // Intentionally keyed only to identity inputs; this is not a projection-change recorder.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, currentUserId]);
 
   // Keep latest players/profile in refs so we don't refetch chat history every time players updates.
   const playersRef = useRef<any[]>(players);
@@ -157,6 +190,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
+      recordChatDeliveryEvent({
+        phase: 'send-intent',
+        gameId,
+        consumer: 'canonical-store',
+        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile), currentUserId: currentUserId ?? null },
+      });
+
       setIsSending(true);
       try {
         // IMPORTANT: Avoid supabase.auth.getUser() here — it can clear a valid session.
@@ -183,7 +223,19 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           username,
         };
 
-        setAllMessages(prev => mergeMessages(prev, [optimisticMessage]));
+        setAllMessages(prev => {
+          const next = mergeMessages(prev, [optimisticMessage]);
+          recordCanonicalProjection({
+            source: 'optimistic-merged',
+            messages: next,
+            gameId,
+            currentUserId: userId,
+            incomingIds: [optimisticId],
+            prevIds: prev.map((m) => m.id),
+            payload: { optimisticId, refSource: 'sendMessage.optimistic' },
+          });
+          return next;
+        });
 
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
@@ -194,16 +246,60 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
         if (error) {
           console.error('Error sending chat message:', error);
-          setAllMessages(prev => prev.filter(m => m.id !== optimisticId));
+          recordChatDeliveryEvent({
+            phase: 'insert-error',
+            message: optimisticMessage,
+            gameId,
+            consumer: 'canonical-store',
+            payload: { error: error.message, optimisticId },
+          });
+          recordChatDeliveryViolation({
+            violation: 'CHAT_MESSAGE_WRITE_NOT_CONFIRMED',
+            message: optimisticMessage,
+            gameId,
+            consumer: 'canonical-store',
+            payload: { error: error.message, optimisticId },
+          });
+          setAllMessages(prev => {
+            const next = prev.filter(m => m.id !== optimisticId);
+            recordCanonicalProjection({
+              source: 'optimistic-reconciliation',
+              messages: next,
+              gameId,
+              currentUserId: userId,
+              incomingIds: [],
+              prevIds: prev.map((m) => m.id),
+              payload: { optimisticId, outcome: 'insert-error-removed' },
+            });
+            return next;
+          });
         } else if (data) {
+          recordChatDeliveryEvent({
+            phase: 'insert-success',
+            message: data as ChatMessage,
+            gameId,
+            consumer: 'canonical-store',
+            payload: { optimisticId, authoritativeId: data.id },
+          });
           // Drop optimistic and merge authoritative row. Realtime may
           // also fire for the same id; mergeMessages dedupes.
-          setAllMessages(prev =>
-            mergeMessages(
-              prev.filter(m => m.id !== optimisticId),
+          setAllMessages(prev => {
+            const withoutOptimistic = prev.filter(m => m.id !== optimisticId);
+            const next = mergeMessages(
+              withoutOptimistic,
               [{ ...data, username }],
-            ),
-          );
+            );
+            recordCanonicalProjection({
+              source: 'optimistic-reconciliation',
+              messages: next,
+              gameId,
+              currentUserId: userId,
+              incomingIds: [data.id],
+              prevIds: prev.map((m) => m.id),
+              payload: { optimisticId, authoritativeId: data.id, outcome: 'insert-success-reconciled' },
+            });
+            return next;
+          });
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
@@ -231,6 +327,14 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
     const msgWithUsername: ChatMessage = { ...msg, username };
 
+    recordChatDeliveryEvent({
+      phase: 'realtime-payload-admitted',
+      message: msgWithUsername,
+      gameId: msgWithUsername.game_id,
+      consumer: 'canonical-store',
+      payload: { username, currentUserId: currentUserId ?? null },
+    });
+
     const bubble: ChatBubble = {
       ...msgWithUsername,
       expiresAt: Date.now() + (msg.image_url ? 8000 : 5000),
@@ -241,7 +345,19 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
       return updated.slice(-10);
     });
 
-    setAllMessages(prev => mergeMessages(prev, [msgWithUsername]));
+    setAllMessages(prev => {
+      const next = mergeMessages(prev, [msgWithUsername]);
+      recordCanonicalProjection({
+        source: 'realtime-merge',
+        messages: next,
+        gameId: msgWithUsername.game_id,
+        currentUserId,
+        incomingIds: [msgWithUsername.id],
+        prevIds: prev.map((m) => m.id),
+        payload: { refSource: 'addBubble.realtime', username },
+      });
+      return next;
+    });
   }, [currentUserId, getOrFetchObserverUsername, mergeMessages]);
 
   // Clean up expired bubbles
@@ -260,13 +376,28 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     if (!gameId) return;
 
     const fetchMessages = async () => {
+      recordChatDeliveryEvent({
+        phase: 'hydration-start',
+        gameId,
+        consumer: 'canonical-store',
+        payload: { currentUserId: currentUserId ?? null },
+      });
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('game_id', gameId)
         .order('created_at', { ascending: true });
 
-      if (error || !data) return;
+      if (error || !data) {
+        recordChatDeliveryEvent({
+          phase: 'hydration-merge',
+          gameId,
+          consumer: 'canonical-store',
+          payload: { error: error?.message ?? 'no-data', incomingIds: [] },
+        });
+        return;
+      }
 
       const currentPlayers = playersRef.current;
       const currentProfile = currentUserProfileRef.current;
@@ -300,7 +431,19 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         return { ...msg, username: cached ?? 'Unknown' };
       });
 
-      setAllMessages(prev => mergeMessages(prev, messagesWithUsernames));
+      setAllMessages(prev => {
+        const next = mergeMessages(prev, messagesWithUsernames);
+        recordCanonicalProjection({
+          source: 'hydration-merge',
+          messages: next,
+          gameId,
+          currentUserId,
+          incomingIds: messagesWithUsernames.map((m) => m.id),
+          prevIds: prev.map((m) => m.id),
+          payload: { fetchedCount: data.length, refSource: 'fetchMessages' },
+        });
+        return next;
+      });
     };
 
     fetchMessages();
@@ -309,14 +452,24 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   // When players list updates, patch existing messages with now-known player usernames (no refetch)
   useEffect(() => {
     if (!players?.length) return;
-    setAllMessages((prev) =>
-      prev.map((m) => {
+    setAllMessages((prev) => {
+      const next = prev.map((m) => {
         const player = players.find((p) => p.user_id === m.user_id);
         if (player?.profiles?.username) return { ...m, username: player.profiles.username };
         return m;
-      })
-    );
-  }, [players]);
+      });
+      recordCanonicalProjection({
+        source: 'players-patch',
+        messages: next,
+        gameId: gameId ?? null,
+        currentUserId,
+        incomingIds: [],
+        prevIds: prev.map((m) => m.id),
+        payload: { playerCount: players.length, refSource: 'players-username-patch' },
+      });
+      return next;
+    });
+  }, [players, gameId, currentUserId]);
 
   // Subscribe to realtime chat messages. Realtime writes flow through
   // the same mergeMessages path as hydration and optimistic sends, so
@@ -325,6 +478,12 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     if (!gameId) return;
 
     const channelTopic = `chat-${gameId}`;
+    recordChatDeliveryEvent({
+      phase: 'realtime-subscribe-start',
+      gameId,
+      consumer: 'canonical-store',
+      payload: { channelTopic, filter: `game_id=eq.${gameId}` },
+    });
     const channel = supabase
       .channel(channelTopic)
       .on(
@@ -337,20 +496,60 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
-          if (newMessage.game_id !== gameId) return;
+          recordChatDeliveryEvent({
+            phase: 'realtime-insert-received',
+            message: newMessage,
+            gameId,
+            consumer: 'canonical-store',
+            payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+          });
+          if (newMessage.game_id !== gameId) {
+            recordChatDeliveryViolation({
+              violation: 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH',
+              message: newMessage,
+              gameId,
+              consumer: 'canonical-store',
+              payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+            });
+            return;
+          }
           setLatestRealtimeMessage(newMessage);
           addBubble(newMessage);
         }
       )
       .subscribe((status, err) => {
+        recordChatDeliveryEvent({
+          phase: 'realtime-subscribe-status',
+          gameId,
+          consumer: 'canonical-store',
+          payload: { channelTopic, status, error: err ? String(err) : null },
+        });
         if (status === 'CHANNEL_ERROR') {
           console.error('[useGameChat] Channel error:', err);
+          recordChatDeliveryViolation({
+            violation: 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY',
+            gameId,
+            consumer: 'canonical-store',
+            payload: { channelTopic, status, error: err ? String(err) : null },
+          });
         } else if (status === 'TIMED_OUT') {
           console.error('[useGameChat] Channel subscription timed out');
+          recordChatDeliveryViolation({
+            violation: 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY',
+            gameId,
+            consumer: 'canonical-store',
+            payload: { channelTopic, status },
+          });
         }
       });
 
     return () => {
+      recordChatDeliveryEvent({
+        phase: 'realtime-unsubscribe',
+        gameId,
+        consumer: 'canonical-store',
+        payload: { channelTopic },
+      });
       supabase.removeChannel(channel);
     };
   }, [gameId, addBubble]);
