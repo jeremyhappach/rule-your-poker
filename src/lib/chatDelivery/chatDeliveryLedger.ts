@@ -210,7 +210,7 @@ function upsertMessage(file: LedgerFile, identity: ChatMessageIdentity): Message
     for (const k of Object.keys(identity) as Array<keyof ChatMessageIdentity>) {
       const v = identity[k];
       if (v !== undefined && v !== null && v !== '') {
-        (merged as Record<string, unknown>)[k] = v as unknown;
+        (merged as unknown as Record<string, unknown>)[k] = v as unknown;
       }
     }
     file.messages[idx].identity = merged;
