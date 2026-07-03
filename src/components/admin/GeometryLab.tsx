@@ -72,6 +72,7 @@ import { ShellOpponentCardBacksAdminSection } from "./ShellOpponentCardBacksAdmi
 import { HolmBuckIndicatorPanel } from "./HolmBuckIndicatorPanel";
 import { ActiveHandLayoutAdminSection } from "./ActiveHandLayoutAdminSection";
 import { GinHelperTextAdminSection } from "./GinHelperTextAdminSection";
+import { GinStockCountAdminSection } from "./GinStockCountAdminSection";
 import { getActiveHandLayoutSpec } from "@/lib/activeHand/activeHandLayoutSettings";
 import { BufferedRatioInput } from "./BufferedRatioInput";
 import { broadcastGeometryOverrideApplied } from "@/lib/geometryLab/GeometryOverridesLoader";
@@ -885,12 +886,16 @@ function GameSections(props: GameSectionsProps) {
             artifacts that own a persisted fan-overlap value. */}
         <ArtifactOverlapControls artifactId={artifactId} />
 
-        {/* Gin → Gameplay Artifacts → Stock + Discard → Helper Text.
-            Helper text is coupled to the cluster (child of the
-            Stock + Discard slot), not an independently anchored
-            artifact. Its only controls are Placement + Offset. */}
+        {/* Gin → Gameplay Artifacts → Stock + Discard → Stock Count
+            + Helper Text. Both are coupled children of the cluster
+            (Stock + Discard slot), not independently anchored
+            artifacts. Placement/gap edits propagate atomically on
+            Apply through the shared GeometryLab draft. */}
         {artifactId === "gin.stockDiscardGroup" && (
-          <GinHelperTextAdminSection />
+          <>
+            <GinStockCountAdminSection />
+            <GinHelperTextAdminSection />
+          </>
         )}
 
 
