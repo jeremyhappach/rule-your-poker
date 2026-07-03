@@ -229,33 +229,6 @@ export function GinRummyDealOrchestrator({
     deal.beginDeal(intents.length);
     ct.dispatchMany(intents);
 
-    // GIN_ACTIVE_HAND_LEDGER — deal-intent manifest snapshot.
-    recordGinLedger('DEAL_VISIBILITY_FACE', 'deal-manifest-dispatched', {
-      handContextId,
-      localPlayerId: selfPlayerId,
-      dealerGameId: null,
-      roundId: null,
-      handNumber: null,
-    }, {
-      dealerPlayerId: dealerPlayerId.slice(0, 8),
-      nonDealerPlayerId: nonDealerPlayerId.slice(0, 8),
-      selfPlayerId: selfPlayerId.slice(0, 8),
-      dealerIsSelf,
-      intentCount: intents.length,
-      selfHandLen: selfHand.length,
-      cardsPerPlayer,
-      timingSource: intentTimingSource,
-      staggerMs, durationMs,
-      intents: intents.map((it, i) => ({
-        i,
-        cardId: it.cardId,
-        face: it.face,
-        toKind: it.to.kind,
-        recipient: it.recipientPlayerId?.slice(0, 8) ?? null,
-        hasVisibleFace: !!it.visibleFace,
-        launchDelayMs: it.launchDelayMs,
-      })),
-    });
   }, [
     deal, ct, handContextId, dealerPlayerId, nonDealerPlayerId, selfPlayerId,
     seats, cardsPerPlayer, selfHand, discardTop, cardBackColors, dealTimingHydrated,

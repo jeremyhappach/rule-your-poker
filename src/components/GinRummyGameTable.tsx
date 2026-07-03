@@ -59,11 +59,6 @@ import {
 } from '@/lib/ginRummyRoundLogic';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
-import { GinActiveHandLedgerPill } from './GinActiveHandLedgerPill';
-import {
-  recordGinLedger,
-  recordGinLedgerViolation,
-} from '@/lib/ginRummy/ginActiveHandLedger';
 import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
 import { GinAnchoredSlot } from './GinAnchoredSlot';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
