@@ -365,18 +365,23 @@ export interface ResolvedActiveHandRow {
   rowOffsetY: number;
   /** Resolved card stage rect (owner uses this for the card container). */
   stageRect: ActiveHandStageRect;
-  /** Reserved lower-zone height in px (owner renders the lower zone with this). */
-  reservedLowerZonePx: number;
-  /** Inter-zone clearance in px between hand stage and lower zone. */
-  interZoneClearancePx: number;
   /**
-   * Extra top inset in px (from `stageTopInsetPctOfPane`). The pane
-   * owner should offset the stage container DOWN by this amount from
-   * the pane's top edge. Cards do NOT re-scale for this value — it
-   * moves the whole stage without changing card geometry.
+   * Top clearance in px (from `stageTopInsetPctOfPane`) — safe
+   * breathing room inside row 4 below the row-3 timer boundary. The
+   * pane owner should offset the stage container DOWN by this amount
+   * from the row-4 pane's top edge. Cards do NOT re-scale for this
+   * value — it moves the whole stage without changing card geometry.
    */
   stageTopInsetPx: number;
+  /**
+   * Bottom clearance in px (from `stageBottomInsetPctOfPane`) — safe
+   * breathing room inside row 4 above the row-5 identity/action row
+   * boundary. Cards do NOT re-scale for this value; the resolver
+   * simply excludes it from the stage height.
+   */
+  stageBottomInsetPx: number;
 }
+
 
 export interface ActiveHandFanBounds {
   minX: number;
