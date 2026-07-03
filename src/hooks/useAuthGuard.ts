@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { User, AuthChangeEvent } from "@supabase/supabase-js";
+import { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import {
   noteAuthRedirectAttempt,
@@ -24,8 +24,35 @@ import {
   recordRouteRedirect,
 } from "@/lib/authEjectionLedger";
 import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
+import {
+  peekIntentionalSignOut,
+  recordAuthSessionInvalidationCause,
+  installAuthStorageWatcher,
+  type RefreshOutcome,
+} from "@/lib/authInvalidationCause";
 
 const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
+
+installAuthStorageWatcher();
+
+/**
+ * Routes on which an unexpected SIGNED_OUT should NOT immediately eject
+ * the user. On these routes we hold the current location, attempt one
+ * canonical refresh, and only navigate to /auth if reconciliation
+ * definitively confirms no usable session.
+ */
+function isProtectedTableRoute(path: string): boolean {
+  return (
+    path.startsWith("/game") ||
+    path.startsWith("/waiting") ||
+    path.startsWith("/table")
+  );
+}
+
+function priorTokenLooksAlive(session: Session | null | undefined): boolean {
+  if (!session?.expires_at) return false;
+  return session.expires_at * 1000 - Date.now() > 30_000;
+}
 
 
 interface AuthGuardOptions {
