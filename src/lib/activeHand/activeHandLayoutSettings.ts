@@ -281,6 +281,12 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
         0,
         0.9,
       ),
+      stageBottomInsetPctOfPane: clamp(
+        num(v.stageBottomInsetPctOfPane, defaults.stageBottomInsetPctOfPane),
+        0,
+        0.9,
+      ),
+
       stageVerticalAlignment:
         v.stageVerticalAlignment === 'top' ||
         v.stageVerticalAlignment === 'center' ||
