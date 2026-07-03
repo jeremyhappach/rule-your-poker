@@ -89,6 +89,28 @@ export interface ActiveHandLayoutPolicy {
   baselineOverlapPct: number;
   /** Ceiling overlap used only when containment requires it. Mirrors `maxOverlap`. */
   maxAdaptiveOverlapPct: number;
+
+  // ── Stage vertical placement (v3 — active-hand host anchor) ───────
+  /**
+   * Extra top inset, expressed as fraction of pane HEIGHT, applied
+   * BEFORE the stage rect is placed in the pane. Positive values push
+   * the whole hand-stage DOWN (leaving more empty space above cards).
+   * Zero preserves the legacy top-flushed placement. [0, 0.9].
+   */
+  stageTopInsetPctOfPane: number;
+  /**
+   * Vertical alignment of the fan within the resolved stage rect.
+   *   'bottom' — cards flush to bottom of stage (legacy default).
+   *   'center' — cards centered vertically inside stage.
+   *   'top'    — cards flush to top of stage (moves hand UP inside pane).
+   */
+  stageVerticalAlignment: 'top' | 'center' | 'bottom';
+  /**
+   * Signed final Y trim as % of stage HEIGHT, applied AFTER alignment.
+   * Positive shifts cards DOWN inside the stage; negative shifts UP.
+   * Use for small authored trims only. [-0.5, 0.5].
+   */
+  contentYOffsetPctOfStage: number;
 }
 
 export interface ActiveHandLayoutGameSpec {
