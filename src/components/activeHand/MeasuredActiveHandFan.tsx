@@ -240,18 +240,6 @@ export function MeasuredActiveHandFan({
         game,
       });
     }
-    if (three57LedgerIdentity) {
-      recordThree57Lifecycle('mount', three57LedgerIdentity, {
-        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        component: 'MeasuredActiveHandFan',
-        phaseLockKey: activeLockKey,
-        renderKey: activeHandFanRenderKey ?? null,
-        cardCount: cards.length,
-        cardIds: cardIdsKey,
-        hostRect: mountRectRef.current,
-        game,
-      });
-    }
     return () => {
       const rr = host?.getBoundingClientRect();
       if (holmLedgerIdentity) {
