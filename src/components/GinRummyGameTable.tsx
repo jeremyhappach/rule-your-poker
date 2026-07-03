@@ -914,29 +914,6 @@ export const GinRummyGameTable = ({
     );
   }, [activeSeatPlayers, shellAnchors]);
 
-  // GIN_ACTIVE_HAND_LEDGER — record identity/lineage transitions.
-  useEffect(() => {
-    recordGinLedger('LINEAGE_MARKER', 'GIN_HAND_IDENTITY_CHANGED', {
-      gameId,
-      dealerGameId: dealerGameId ?? null,
-      roundId: roundId ?? null,
-      handNumber: handNumber ?? null,
-      handContextId: handContextId ?? null,
-      localPlayerId: currentPlayerId ?? null,
-      viewerId: currentUserId ?? null,
-      phase: viewState?.phase ?? null,
-    }, {
-      propRoundId: propRoundId ?? null,
-      authRoundId: authIdentity?.roundId ?? null,
-      authDealerGameId: authIdentity?.dealerGameId ?? null,
-      authHandNumber: authIdentity?.handNumber ?? null,
-      hasCommittedIdentity: !!renderCommittedIdentity,
-      hasAcceptedPresentation: !!renderAcceptedPresentation,
-      viewStateHand: viewState?.handNumber ?? null,
-      viewStateTurnPhase: viewState?.turnPhase ?? null,
-      viewStateCurrentTurn: viewState?.currentTurnPlayerId?.slice(0, 8) ?? null,
-    });
-  }, [handContextId, dealerGameId, roundId, handNumber, currentPlayerId, currentUserId, gameId, viewState?.phase, viewState?.handNumber, viewState?.turnPhase, viewState?.currentTurnPlayerId, propRoundId, authIdentity?.roundId, authIdentity?.dealerGameId, authIdentity?.handNumber, renderCommittedIdentity, renderAcceptedPresentation]);
 
 
   // Derive opponent
@@ -3104,7 +3081,6 @@ export const GinRummyGameTable = ({
       />
       </div>
     </DealRuntimeMaybe>
-    <GinActiveHandLedgerPill />
     </div>
 
   );

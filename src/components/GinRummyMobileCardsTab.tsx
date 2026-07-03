@@ -15,10 +15,6 @@ import {
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
-import {
-  recordGinLedger,
-  recordGinLedgerViolation,
-} from '@/lib/ginRummy/ginActiveHandLedger';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
