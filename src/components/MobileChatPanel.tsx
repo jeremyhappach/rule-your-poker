@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useVoiceToText } from '@/hooks/useVoiceToText';
 import {
   recordChatDeliveryEvent,
+  recordChatDeliveryViolation,
   getClientInstanceId,
+  getLastKnownStoreSize,
 } from '@/lib/chatDelivery/chatDeliveryLedger';
 
 const EMOTICONS = [
