@@ -144,11 +144,8 @@ export interface MeasuredActiveHandFanProps {
     playerId?: string | null;
     branch?: string;
   };
-  /**
-   * Optional identity carried into 357_ACTIVE_HAND_PRESENTATION_LEDGER.
-   * When absent, this component emits no 357-ledger records.
-   */
-  three57LedgerIdentity?: Three57LedgerIdentity;
+  /** @deprecated 3-5-7 presentation ledger removed; prop retained no-op. */
+  three57LedgerIdentity?: unknown;
   /** Optional persistent owner storage; preserves the committed layout across same-hand remounts. */
   externalCommitRef?: MutableRefObject<MeasuredActiveHandFanCommit>;
 }
