@@ -1567,20 +1567,20 @@ export const GinRummyGameTable = ({
 
     if (!eligibility.eligible) return;
 
-    // Replay / duplicate guard
-    if (
-      lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
-      lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
-    ) {
+    // Replay / duplicate guard (do NOT compare against lastSeen — the
+    // seen cursor must not silently absorb realtime messages).
+    if (lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id) {
       return;
     }
 
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
-    lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+    // Do NOT advance lastSeen/lastRead here. A realtime message is
+    // post-hydration and must remain unread until an explicit
+    // Chat-open/read acknowledgement.
     logChatIndicator('watermark updated', latestRealtimeMessage, {
-      lastSeen: latestRealtimeMessage.id,
+      lastSeen: lastSeenChatMessageIdRef.current,
       lastRead: lastReadChatMessageIdRef.current,
-      reason: 'eligible-realtime-seen',
+      reason: 'eligible-realtime-observed-no-cursor-advance',
     });
 
     if (!chatHydratedRef.current) {
