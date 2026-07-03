@@ -8552,8 +8552,14 @@ export const MobileGameTable = ({
         {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner. */}
         {horsesWinPotTriggerId && (() => {
           const _horsesWinnerPlayer = players.find(p => p.position === horsesWinWinnerPosition);
+          const _owner = gameType === 'ship-captain-crew' ? 'scc' : 'horses';
+          // One outcome = one winAttemptId. Keyed on stable outcome
+          // identity (game + winner + hand), NOT the ephemeral trigger
+          // id, so replays / remounts attach to the same attempt.
+          const _horsesWinKey =
+            `${_owner}:win:${gameId ?? 'no-game'}:${_horsesWinnerPlayer?.id ?? 'no-winner'}:${handContextId ?? 'no-hand'}`;
           const _horsesIdentity: WinAttemptIdentity = {
-            winAttemptId: `${gameType ?? 'dice'}:${horsesWinPotTriggerId}`,
+            winAttemptId: _horsesWinKey,
             gameId: gameId ?? null,
             dealerGameId: null,
             roundId: handContextId ?? null,
@@ -8581,13 +8587,25 @@ export const MobileGameTable = ({
               recordWinPresentationEvent({
                 identity: _horsesIdentity, name: 'transfer-start',
                 source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                owner: _owner,
                 payload: { amount: horsesWinPotAmount, winnerPosition: horsesWinWinnerPosition },
               });
               recordWinPresentationEvent({
                 identity: _horsesIdentity, name: 'transfer-mounted',
                 source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                owner: _owner,
+              });
+              // Canonical beat 1: winner-only confetti mounts NOW,
+              // same beat as pot-transfer start, under the shared
+              // winAttemptId. Losers/observers are suppressed inside
+              // the helper.
+              startCanonicalWinSequence({
+                container: tableContainerRef.current,
+                winnerPosition: horsesWinWinnerPosition,
+                winKey: _horsesWinKey,
+                ledgerIdentity: _horsesIdentity,
+                ledgerOwner: _owner,
+                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
               });
             }}
             onAnimationEnd={() => {
@@ -8596,16 +8614,16 @@ export const MobileGameTable = ({
               recordWinPresentationEvent({
                 identity: _horsesIdentity, name: 'transfer-complete',
                 source: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
-                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                owner: _owner,
               });
-              // Canonical winner arrival: destination bounce + confetti.
-              // Dedupe by triggerId so remount / re-emission cannot double-fire.
-              fireCanonicalWinCelly({
+              // Canonical beat 2: destination bounce at winner anchor.
+              // Runs on every client. Confetti is NOT re-fired here.
+              completeCanonicalWinSequence({
                 container: tableContainerRef.current,
                 winnerPosition: horsesWinWinnerPosition,
-                winKey: `${gameType ?? 'dice'}:win:${horsesWinPotTriggerId ?? 'no-trigger'}`,
+                winKey: _horsesWinKey,
                 ledgerIdentity: _horsesIdentity,
-                ledgerOwner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
               });
               onHorsesWinPotAnimationComplete?.();
@@ -8613,6 +8631,7 @@ export const MobileGameTable = ({
           />
           );
         })()}
+
 
         
         {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
