@@ -188,6 +188,7 @@ const App = () => {
                   pointerEvents: 'auto',
                 }}
               >
+                <Wave5GridOverlayToggle />
               </div>
 
               {/* Persistent win-presentation ledger export pill (survives navigation). */}
