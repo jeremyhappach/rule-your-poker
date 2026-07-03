@@ -252,16 +252,6 @@ export function MeasuredActiveHandFan({
           mountRect: mountRectRef.current,
         });
       }
-      if (three57LedgerIdentity) {
-        recordThree57Lifecycle('unmount', three57LedgerIdentity, {
-          branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-          component: 'MeasuredActiveHandFan',
-          phaseLockKey: activeLockKey,
-          renderKey: activeHandFanRenderKey ?? null,
-          hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
-          mountRect: mountRectRef.current,
-        });
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLockKey]);
