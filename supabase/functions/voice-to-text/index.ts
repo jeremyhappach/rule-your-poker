@@ -6,15 +6,11 @@ const corsHeaders = {
 };
 
 /**
- * voice-to-text — thin wrapper around ElevenLabs Speech-to-Text.
+ * voice-to-text — Lovable AI Gateway Speech-to-Text.
  *
  * Accepts { audio: base64, mimeType: string } and returns
- * { transcript: string }. Fails cleanly (503) when
- * ELEVENLABS_API_KEY is not configured so the match-chat mic can
- * surface an error state without blocking text chat.
- *
- * Raw audio is never persisted server-side; the request body is
- * discarded after the upstream call completes.
+ * { transcript: string }. Uses openai/gpt-4o-mini-transcribe via
+ * the Lovable AI Gateway. Billed from workspace Lovable credits.
  */
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -30,8 +26,8 @@ serve(async (req) => {
   }
 
   try {
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ error: "voice-to-text capability not configured." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -47,25 +43,39 @@ serve(async (req) => {
     }
 
     const bytes = base64ToBytes(audio);
-    const mt = typeof mimeType === "string" && mimeType ? mimeType : "audio/webm";
-    const ext = mt.includes("mp4") ? "mp4" : mt.includes("wav") ? "wav" : mt.includes("mpeg") ? "mp3" : "webm";
+    const mt = typeof mimeType === "string" && mimeType ? mimeType.split(";")[0] : "audio/webm";
+    const extMap: Record<string, string> = {
+      "audio/webm": "webm",
+      "audio/mp4": "mp4",
+      "audio/mpeg": "mp3",
+      "audio/mp3": "mp3",
+      "audio/wav": "wav",
+      "audio/x-wav": "wav",
+      "audio/ogg": "ogg",
+    };
+    const ext = extMap[mt] ?? "webm";
     const file = new File([bytes], `chat.${ext}`, { type: mt });
 
     const form = new FormData();
     form.append("file", file);
-    form.append("model_id", "scribe_v2");
+    form.append("model", "openai/gpt-4o-mini-transcribe");
 
-    const upstream = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    const upstream = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
-      headers: { "xi-api-key": ELEVENLABS_API_KEY },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
       body: form,
     });
 
     if (!upstream.ok) {
       const txt = await upstream.text().catch(() => "");
+      const status = upstream.status === 402 ? 402 : upstream.status === 429 ? 429 : 502;
+      const errMsg =
+        upstream.status === 402 ? "Out of Lovable AI credits. Add credits in Settings → Plans & credits."
+        : upstream.status === 429 ? "Rate limited. Please try again in a moment."
+        : `Transcription failed (${upstream.status}).`;
       return new Response(
-        JSON.stringify({ error: `Transcription failed (${upstream.status}).`, detail: txt.slice(0, 512) }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: errMsg, detail: txt.slice(0, 512) }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
