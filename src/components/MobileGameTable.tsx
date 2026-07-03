@@ -1,10 +1,4 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
-import {
-  recordChatDeliveryEvent,
-  markUnreadEvaluated,
-  getClientInstanceId,
-  type ChatMessageIdentity,
-} from '@/lib/chatDelivery/chatDeliveryLedger';
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
