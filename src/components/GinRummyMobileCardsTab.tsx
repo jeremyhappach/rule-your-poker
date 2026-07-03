@@ -453,7 +453,16 @@ export const GinRummyMobileCardsTab = ({
       )}
 
       {/* ── Action area ── */}
-      <div data-active-hand-lower-zone="" className="flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+        {/* Deadwood readout — right-aligned inside the action strip so
+            it no longer eats vertical room above the fan. Post-knock
+            view renders its own DW block above (line ~379). */}
+        {!inPostKnock && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-muted-foreground pointer-events-none">
+            DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
+          </span>
+        )}
+
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
           <>
