@@ -46,6 +46,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
+import { WinPresentationExportPill } from "@/lib/canonicalShell/WinPresentationExportPill";
 
 
 import { R1SnapbackPill } from "@/lib/wartimeDebug/R1SnapbackPill";
@@ -189,6 +190,10 @@ const App = () => {
               >
                 <Wave5GridOverlayToggle />
               </div>
+
+              {/* Persistent win-presentation ledger export pill (survives navigation). */}
+              <WinPresentationExportPill />
+
 
 
 

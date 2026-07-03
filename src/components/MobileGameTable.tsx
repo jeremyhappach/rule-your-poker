@@ -31,6 +31,12 @@ import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { fireCanonicalWinCelly } from "@/lib/canonicalShell/canonicalWinCelly";
+import {
+  recordWinPresentationEvent,
+  recordWinPresentationViolation,
+  armWinFreezeWatchdog,
+  type WinAttemptIdentity,
+} from "@/lib/canonicalShell/winPresentationLedger";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
@@ -6571,14 +6577,40 @@ export const MobileGameTable = ({
     // winKey dedupe against replay / remount / re-emission).
     if (threeFiveSevenWinnerId) {
       const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+      const _357Identity: WinAttemptIdentity = {
+        winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+        gameId: gameId ?? null,
+        dealerGameId: null,
+        roundId: handContextId ?? null,
+        handNumber: currentRound ?? null,
+        gameType: 'three-five-seven',
+        outcomeId: currentAnimationIdRef.current ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId,
+        localViewerId: currentPlayer?.id ?? null,
+        localRole: currentPlayer?.id === threeFiveSevenWinnerId
+          ? 'winner'
+          : (currentPlayer ? 'loser' : 'observer'),
+      };
+      recordWinPresentationEvent({
+        identity: _357Identity, name: 'transfer-complete',
+        source: 'MobileGameTable#handlePotToPlayerComplete357', owner: '357',
+        payload: { winnerPos },
+      });
       if (winnerPos != null) {
         fireCanonicalWinCelly({
           container: tableContainerRef.current,
           winnerPosition: winnerPos,
           winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+          ledgerIdentity: _357Identity,
+          ledgerOwner: '357',
+          ledgerSource: 'MobileGameTable#handlePotToPlayerComplete357',
         });
+      } else {
+        recordWinPresentationViolation(_357Identity, 'WIN_BOUNCE_TARGET_MISSING',
+          'MobileGameTable#handlePotToPlayerComplete357', { reason: 'no-winner-position' });
       }
     }
+
 
 
     
@@ -8513,8 +8545,24 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner (no confetti) */}
-        {horsesWinPotTriggerId && (
+        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner. */}
+        {horsesWinPotTriggerId && (() => {
+          const _horsesWinnerPlayer = players.find(p => p.position === horsesWinWinnerPosition);
+          const _horsesIdentity: WinAttemptIdentity = {
+            winAttemptId: `${gameType ?? 'dice'}:${horsesWinPotTriggerId}`,
+            gameId: gameId ?? null,
+            dealerGameId: null,
+            roundId: handContextId ?? null,
+            handNumber: currentRound ?? null,
+            gameType: gameType ?? 'dice',
+            outcomeId: horsesWinPotTriggerId ?? null,
+            winnerPlayerId: _horsesWinnerPlayer?.id ?? null,
+            localViewerId: currentPlayer?.id ?? null,
+            localRole: currentPlayer?.id && _horsesWinnerPlayer?.id
+              ? (currentPlayer.id === _horsesWinnerPlayer.id ? 'winner' : 'loser')
+              : (currentPlayer ? 'loser' : 'observer'),
+          };
+          return (
           <PotToPlayerAnimation
             triggerId={horsesWinPotTriggerId}
             amount={horsesWinPotAmount}
@@ -8526,21 +8574,42 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-start',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                payload: { amount: horsesWinPotAmount, winnerPosition: horsesWinWinnerPosition },
+              });
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-mounted',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
+              recordWinPresentationEvent({
+                identity: _horsesIdentity, name: 'transfer-complete',
+                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
+                owner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+              });
               // Canonical winner arrival: destination bounce + confetti.
               // Dedupe by triggerId so remount / re-emission cannot double-fire.
               fireCanonicalWinCelly({
                 container: tableContainerRef.current,
                 winnerPosition: horsesWinWinnerPosition,
                 winKey: `${gameType ?? 'dice'}:win:${horsesWinPotTriggerId ?? 'no-trigger'}`,
+                ledgerIdentity: _horsesIdentity,
+                ledgerOwner: gameType === 'ship-captain-crew' ? 'scc' : 'horses',
+                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
               });
               onHorsesWinPotAnimationComplete?.();
             }}
           />
-        )}
+          );
+        })()}
+
         
         {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
         {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
@@ -8757,6 +8826,30 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               // Pot goes to 0 visually
               setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
+              if (threeFiveSevenWinnerId) {
+                const _id: WinAttemptIdentity = {
+                  winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  handNumber: currentRound ?? null,
+                  gameType: 'three-five-seven',
+                  outcomeId: potToPlayerTriggerId357 ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId,
+                  localViewerId: currentPlayer?.id ?? null,
+                  localRole: currentPlayer?.id === threeFiveSevenWinnerId
+                    ? 'winner'
+                    : (currentPlayer ? 'loser' : 'observer'),
+                };
+                recordWinPresentationEvent({
+                  identity: _id, name: 'transfer-start',
+                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
+                  payload: { amount: threeFiveSevenWinPotAmount },
+                });
+                recordWinPresentationEvent({
+                  identity: _id, name: 'transfer-mounted',
+                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
+                });
+              }
             }}
             onAnimationEnd={() => {
               handlePotToPlayerComplete357();

@@ -85,6 +85,12 @@ function fireConfetti(): void {
   }
 }
 
+import {
+  recordWinPresentationEvent,
+  recordWinPresentationViolation,
+  type WinAttemptIdentity,
+} from './winPresentationLedger';
+
 export interface CanonicalWinCellyArgs {
   /** Table container to scope DOM lookup. Falls back to document. */
   container: HTMLElement | null;
@@ -96,6 +102,16 @@ export interface CanonicalWinCellyArgs {
    * re-emitted outcomes cannot double-fire.
    */
   winKey: string;
+  /**
+   * Optional win-attempt identity for the CANONICAL_WIN_PRESENTATION_LEDGER.
+   * When supplied, this call is recorded with full source/eligibility
+   * attribution and violations are emitted for common misuses.
+   */
+  ledgerIdentity?: WinAttemptIdentity;
+  /** Optional caller tag (e.g. '357', 'horses', 'scc'). */
+  ledgerOwner?: string;
+  /** Optional caller source label. */
+  ledgerSource?: string;
 }
 
 /**
@@ -107,21 +123,86 @@ export function fireCanonicalWinCelly({
   container,
   winnerPosition,
   winKey,
+  ledgerIdentity,
+  ledgerOwner,
+  ledgerSource,
 }: CanonicalWinCellyArgs): void {
-  if (!winKey) return;
-  if (firedKeys.has(winKey)) return;
+  const source = ledgerSource ?? 'canonicalWinCelly.fireCanonicalWinCelly';
+  const id = ledgerIdentity;
+
+  if (!winKey) {
+    if (id) recordWinPresentationViolation(id, 'WIN_DUPLICATE_OR_REPLAYED_SEQUENCE', source, { reason: 'empty-winKey' });
+    return;
+  }
+  if (firedKeys.has(winKey)) {
+    if (id) recordWinPresentationEvent({
+      identity: id, name: 'duplicate-outcome-suppressed', source, owner: ledgerOwner,
+      severity: 'warn', payload: { winKey },
+    });
+    return;
+  }
   firedKeys.add(winKey);
+
+  const viewerId = id?.localViewerId ?? null;
+  const winnerId = id?.winnerPlayerId ?? null;
+  const eligibility: 'winner' | 'nonwinner' | 'unknown' =
+    viewerId && winnerId ? (viewerId === winnerId ? 'winner' : 'nonwinner') : 'unknown';
+
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'canonical-sequence-requested', source, owner: ledgerOwner,
+      payload: { winKey, winnerPosition, eligibility },
+    });
+  }
 
   const scope: ParentNode = container ?? (typeof document !== 'undefined' ? document : null as unknown as ParentNode);
   const el = scope
     ? ((scope.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) as HTMLElement | null)
         ?? (scope.querySelector(`[data-chip-center="${winnerPosition}"]`) as HTMLElement | null))
     : null;
-  if (el) applyBounce(el);
+
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
+      payload: { found: !!el, winnerPosition },
+    });
+    if (!el) recordWinPresentationViolation(id, 'WIN_BOUNCE_TARGET_MISSING', source, { winnerPosition });
+  }
+
+  if (el) {
+    if (id) recordWinPresentationEvent({
+      identity: id, name: 'bounce-start', source, owner: ledgerOwner,
+      payload: { durationMs: BOUNCE_DURATION_MS },
+    });
+    applyBounce(el);
+    if (id) window.setTimeout(() => {
+      recordWinPresentationEvent({ identity: id, name: 'bounce-complete', source, owner: ledgerOwner });
+    }, BOUNCE_DURATION_MS + 60);
+  }
+
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'confetti-trigger-requested', source, owner: ledgerOwner,
+      payload: { eligibility, viewerId, winnerId },
+    });
+    if (eligibility === 'nonwinner') {
+      recordWinPresentationViolation(id, 'WIN_CONFETTI_ON_NONWINNER_CLIENT', source, {
+        viewerId, winnerId, localRole: id.localRole ?? null,
+      });
+    }
+  }
 
   fireConfetti();
 
-  // Release the dedupe latch after a generous window so the same seat
-  // can celebrate again in a later match without a page reload.
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'confetti-mounted', source, owner: ledgerOwner,
+      payload: { eligibility, targetAudience: eligibility, branch: 'fireCanonicalWinCelly' },
+    });
+    window.setTimeout(() => {
+      recordWinPresentationEvent({ identity: id, name: 'confetti-complete', source, owner: ledgerOwner });
+    }, 900);
+  }
+
   window.setTimeout(() => firedKeys.delete(winKey), 30000);
 }
