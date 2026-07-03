@@ -6601,7 +6601,7 @@ export const MobileGameTable = ({
         payload: { winnerPos },
       });
       if (winnerPos != null) {
-        fireCanonicalWinCelly({
+        completeCanonicalWinSequence({
           container: tableContainerRef.current,
           winnerPosition: winnerPos,
           winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
