@@ -481,7 +481,7 @@ export const GinRummyMobileCardsTab = ({
                       onClick={() => originalIndex !== -1 && handleCardClick(originalIndex)}
                       disabled={isProcessing || !isLayingOff}
                       className={cn(
-                        "transition-all duration-200 rounded relative opacity-80",
+                        "transition-all duration-200 rounded relative",
                         isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "",
                         isLayingOff && "cursor-pointer"
                       )}
