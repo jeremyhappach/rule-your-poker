@@ -8872,8 +8872,25 @@ export const MobileGameTable = ({
                   identity: _id, name: 'transfer-mounted',
                   source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
                 });
+                // Canonical beat 1: winner-only confetti mounts at the
+                // same beat as pot-transfer start (after Sweep-the-Legs
+                // completes and pot-to-player phase begins). Losers /
+                // observers are suppressed inside the helper.
+                const _winnerPos357Start =
+                  players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+                if (_winnerPos357Start != null) {
+                  startCanonicalWinSequence({
+                    container: tableContainerRef.current,
+                    winnerPosition: _winnerPos357Start,
+                    winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+                    ledgerIdentity: _id,
+                    ledgerOwner: '357',
+                    ledgerSource: 'MobileGameTable#357PotToPlayer.onAnimationStart',
+                  });
+                }
               }
             }}
+
             onAnimationEnd={() => {
               handlePotToPlayerComplete357();
             }}
