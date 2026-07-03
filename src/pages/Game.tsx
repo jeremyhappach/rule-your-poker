@@ -9421,7 +9421,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);
     setThreeFiveSevenWinnerCards(winnerCards);
-    setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
+    const _357trigger = `357-win-${Date.now()}`;
+    setThreeFiveSevenWinTriggerId(_357trigger);
+    {
+      const _viewer357 = players.find(p => p.user_id === user?.id);
+      const _357Identity: WinAttemptIdentity = {
+        winAttemptId: `357:${gameId ?? 'no-game'}:${winnerPlayer.id}:${_357trigger}`,
+        gameId: gameId ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        roundId: null,
+        handNumber: game?.total_hands ?? null,
+        gameType: 'three-five-seven',
+        outcomeId: _357trigger,
+        winnerPlayerId: winnerPlayer.id,
+        localViewerId: _viewer357?.id ?? null,
+        localRole: _viewer357?.id === winnerPlayer.id
+          ? 'winner'
+          : (_viewer357 ? 'loser' : 'observer'),
+      };
+      recordWinPresentationEvent({
+        identity: _357Identity, name: 'outcome-detected',
+        source: 'Game#threeFiveSevenWinEffect', owner: '357',
+        payload: { winnerName, potAmount, messageType: isGameWinMessage ? 'game_win' : 'leg_win' },
+      });
+      recordWinPresentationEvent({
+        identity: _357Identity, name: 'winner-identity-resolved',
+        source: 'Game#threeFiveSevenWinEffect', owner: '357',
+      });
+      recordWinPresentationEvent({
+        identity: _357Identity, name: 'local-viewer-classified',
+        source: 'Game#threeFiveSevenWinEffect', owner: '357',
+        payload: { localRole: _357Identity.localRole },
+      });
+      armWinFreezeWatchdog(_357Identity, 10000, 'Game#threeFiveSevenWinEffect', '357-outcome-to-transfer');
+    }
   }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards, threeFiveSevenWinTriggerId]);
   
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
