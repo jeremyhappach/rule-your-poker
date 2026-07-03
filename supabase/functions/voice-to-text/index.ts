@@ -53,7 +53,7 @@ serve(async (req) => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("model_id", "scribe_v1");
+    form.append("model_id", "scribe_v2");
 
     const upstream = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
