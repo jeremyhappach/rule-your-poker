@@ -1643,6 +1643,58 @@ export const MobileGameTable = ({
     validateActiveChatConsumers(gameId ?? null);
   }, [activeTab, allMessages, chatTabFlashing, currentUserId, gameId, hasUnreadMessages, holmDealerGameId, horsesDealerGameId, instanceLabel, showGreenChatIndicator, showRedChatIndicator]);
 
+  useEffect(() => {
+    const indicatorIds = eligibleIndicatorMessages.map((message) => message.id);
+    recordSelectorProof({
+      consumer: 'indicator-selector',
+      selectorName: 'MobileGameTable.shell-tab-chat-indicator-state',
+      sourceCollection: allMessages,
+      returnedIds: showGreenChatIndicator || showRedChatIndicator ? indicatorIds : [],
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      currentUserId: currentUserId ?? null,
+      memoInputs: {
+        chatTabFlashing,
+        hasUnreadMessages,
+        activeTab,
+        eligibleIds: indicatorIds,
+      },
+      dependencyInputs: {
+        showGreenChatIndicator,
+        showRedChatIndicator,
+        activeTab,
+      },
+    });
+    const latestEligible = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+    if (showGreenChatIndicator || showRedChatIndicator) {
+      recordChatDeliveryEvent({
+        phase: 'indicator-requested',
+        message: latestEligible,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        consumer: 'indicator-selector',
+        payload: { green: showGreenChatIndicator, red: showRedChatIndicator, activeTab, eligibleIds: indicatorIds },
+      });
+      recordChatDeliveryEvent({
+        phase: 'indicator-mounted',
+        message: latestEligible,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        consumer: 'indicator-selector',
+        payload: { green: showGreenChatIndicator, red: showRedChatIndicator, activeTab, eligibleIds: indicatorIds },
+      });
+    } else {
+      recordChatDeliveryEvent({
+        phase: hasUnreadMessages || chatTabFlashing ? 'indicator-suppressed' : 'indicator-cleared',
+        message: latestEligible,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        consumer: 'indicator-selector',
+        payload: { green: showGreenChatIndicator, red: showRedChatIndicator, activeTab, eligibleIds: indicatorIds },
+      });
+    }
+  }, [activeTab, allMessages, chatTabFlashing, currentUserId, eligibleIndicatorMessages, gameId, hasUnreadMessages, holmDealerGameId, horsesDealerGameId, showGreenChatIndicator, showRedChatIndicator]);
+
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
     const isDealerOrSystem = message.id.startsWith('dealer-') || !message.user_id;
@@ -1789,6 +1841,17 @@ export const MobileGameTable = ({
       flashing: false,
       unread: false,
     });
+
+    if (latestEligibleMessage) {
+      recordChatDeliveryEvent({
+        phase: 'read-cursor-advanced',
+        message: latestEligibleMessage,
+        gameId: gameId ?? null,
+        dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+        consumer: 'unread-selector',
+        payload: { reason: 'chat-open', lastRead: latestEligibleMessage.id, activeTab: 'chat' },
+      });
+    }
 
     if (wasFlashing) {
       logChatIndicator('green cleared', latestEligibleMessage, {
@@ -4408,8 +4471,28 @@ export const MobileGameTable = ({
     if (!latestRealtimeChatMessage) return;
 
     logChatIndicator('realtime received', latestRealtimeChatMessage);
+    recordChatDeliveryEvent({
+      phase: 'unread-evaluation-start',
+      message: latestRealtimeChatMessage,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      consumer: 'unread-selector',
+      payload: {
+        activeTab,
+        source: 'latestRealtimeChatMessage-effect',
+        allMessageIds: allMessages.map((message) => message.id),
+      },
+    });
 
     const eligibility = getChatIndicatorEligibility(latestRealtimeChatMessage);
+    markUnreadEvaluated({
+      message: latestRealtimeChatMessage,
+      gameId: gameId ?? null,
+      eligible: eligibility.eligible,
+      reason: eligibility.reason,
+      selectorIds: eligibleIndicatorMessages.map((message) => message.id),
+      activeTab,
+    });
 
     logChatIndicator('eligibility', latestRealtimeChatMessage, {
       eligible: eligibility.eligible,
@@ -4436,6 +4519,14 @@ export const MobileGameTable = ({
       lastRead: lastReadChatMessageId,
       reason: 'eligible-realtime-seen',
     });
+    recordChatDeliveryEvent({
+      phase: 'read-cursor-advanced',
+      message: latestRealtimeChatMessage,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      consumer: 'unread-selector',
+      payload: { reason: 'eligible-realtime-seen', lastSeen: latestRealtimeChatMessage.id, lastRead: lastReadChatMessageId },
+    });
 
     // Pre-hydration: preserve the message as unseen, but never pulse/mark-read.
     if (!chatHydratedRef.current) {
@@ -4453,6 +4544,14 @@ export const MobileGameTable = ({
 
       if (lastReadChatMessageId !== latestRealtimeChatMessage.id) {
         setLastReadChatMessageId(latestRealtimeChatMessage.id);
+        recordChatDeliveryEvent({
+          phase: 'read-cursor-advanced',
+          message: latestRealtimeChatMessage,
+          gameId: gameId ?? null,
+          dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+          consumer: 'unread-selector',
+          payload: { reason: 'chat-open-realtime', lastRead: latestRealtimeChatMessage.id, activeTab },
+        });
       }
       return;
     }
@@ -4470,8 +4569,13 @@ export const MobileGameTable = ({
     }, 1500);
   }, [
     activeTab,
+    allMessages,
     chatTabFlashing,
+    eligibleIndicatorMessages,
+    gameId,
     getChatIndicatorEligibility,
+    holmDealerGameId,
+    horsesDealerGameId,
     lastReadChatMessageId,
     lastSeenChatMessageId,
     latestRealtimeChatMessage,
@@ -4485,6 +4589,21 @@ export const MobileGameTable = ({
   // Hydration + RED unread reconciliation path.
   useEffect(() => {
     const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+    recordChatDeliveryEvent({
+      phase: 'unread-evaluation-start',
+      message: latestEligibleMessage,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      consumer: 'unread-selector',
+      payload: {
+        activeTab,
+        source: 'hydration-red-reconciliation-effect',
+        allMessageIds: allMessages.map((message) => message.id),
+        eligibleIds: eligibleIndicatorMessages.map((message) => message.id),
+        lastSeenChatMessageId,
+        lastReadChatMessageId,
+      },
+    });
 
     if (!chatHydratedRef.current) {
       if (!hasObservedInitialChatSnapshotRef.current) {
@@ -4506,6 +4625,14 @@ export const MobileGameTable = ({
           lastSeen: latestEligibleMessage.id,
           lastRead: latestEligibleMessage.id,
           reason: 'hydration-seed',
+        });
+        recordChatDeliveryEvent({
+          phase: 'read-cursor-advanced',
+          message: latestEligibleMessage,
+          gameId: gameId ?? null,
+          dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+          consumer: 'unread-selector',
+          payload: { reason: 'hydration-seed', lastSeen: latestEligibleMessage.id, lastRead: latestEligibleMessage.id },
         });
         return;
       }
@@ -4541,6 +4668,14 @@ export const MobileGameTable = ({
           lastSeen: latestEligibleMessage.id,
           lastRead: latestEligibleMessage.id,
           reason: 'chat-open-sync',
+        });
+        recordChatDeliveryEvent({
+          phase: 'read-cursor-advanced',
+          message: latestEligibleMessage,
+          gameId: gameId ?? null,
+          dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+          consumer: 'unread-selector',
+          payload: { reason: 'chat-open-sync', lastSeen: latestEligibleMessage.id, lastRead: latestEligibleMessage.id },
         });
       }
 
@@ -4581,6 +4716,38 @@ export const MobileGameTable = ({
 
     const shouldHaveUnreadMessages = unreadEligibleMessages.length > 0;
 
+    recordSelectorProof({
+      consumer: 'unread-selector',
+      selectorName: 'MobileGameTable.unreadEligibleMessages-after-watermark',
+      sourceCollection: eligibleIndicatorMessages,
+      returnedCollection: unreadEligibleMessages,
+      gameId: gameId ?? null,
+      dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
+      currentUserId: currentUserId ?? null,
+      memoInputs: {
+        lastReadChatMessageId,
+        lastSeenChatMessageId,
+        activeTab,
+        chatHydrated: chatHydratedRef.current,
+      },
+      dependencyInputs: {
+        eligibleLength: eligibleIndicatorMessages.length,
+        unreadLength: unreadEligibleMessages.length,
+        hasUnreadMessages,
+      },
+    });
+
+    unreadEligibleMessages.forEach((message) => {
+      markUnreadEvaluated({
+        message,
+        gameId: gameId ?? null,
+        eligible: true,
+        reason: 'eligible-messages-newer-than-read-watermark',
+        selectorIds: unreadEligibleMessages.map((m) => m.id),
+        activeTab,
+      });
+    });
+
     if (hasUnreadMessages !== shouldHaveUnreadMessages) {
       logChatIndicator(shouldHaveUnreadMessages ? 'red set' : 'red cleared', latestEligibleMessage, {
         unread: shouldHaveUnreadMessages,
@@ -4596,9 +4763,13 @@ export const MobileGameTable = ({
     activeTab,
     allMessages,
     chatTabFlashing,
+    currentUserId,
     eligibleIndicatorMessages,
+    gameId,
     getMessagesAfterWatermark,
     hasUnreadMessages,
+    holmDealerGameId,
+    horsesDealerGameId,
     lastReadChatMessageId,
     lastSeenChatMessageId,
     logChatIndicator,
