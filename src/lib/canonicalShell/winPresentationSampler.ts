@@ -242,8 +242,13 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
   const key = args.identity.winAttemptId;
   if (!key || armed.has(key)) return;
 
+  const isWinnerClient =
+    !!args.identity.localViewerId &&
+    !!args.identity.winnerPlayerId &&
+    args.identity.localViewerId === args.identity.winnerPlayerId;
+
   const baselineTransfer = snapshotTransfer(args.triggerId);
-  const baselineHand = snapshotActiveHand(args.selfPlayerId);
+  const baselineHand = snapshotActiveHand(args.selfPlayerId, isWinnerClient);
 
   recordWinPresentationEvent({
     identity: args.identity, name: 'transfer-artifact-baseline',
@@ -253,7 +258,7 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
   recordWinPresentationEvent({
     identity: args.identity, name: 'active-hand-baseline',
     source: args.source, owner: args.owner,
-    payload: { selfPlayerId: args.selfPlayerId, snapshot: baselineHand },
+    payload: { selfPlayerId: args.selfPlayerId, snapshot: baselineHand, isWinnerClient },
   });
 
   const state: ArmedSampler = {
@@ -262,6 +267,7 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
     source: args.source,
     winnerPosition: args.winnerPosition,
     selfPlayerId: args.selfPlayerId,
+    isWinnerClient,
     triggerId: args.triggerId,
     baselineTransfer,
     baselineHand,
