@@ -130,11 +130,11 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
           Pane-relative sizing
         </legend>
         <RatioField
-          label="Max stage width % of pane"
+          label="Fan span % of pane width"
           value={value.maxWidthPctOfPane}
           min={0.1}
           onCommit={(n) => patch({ maxWidthPctOfPane: n })}
-          help="Upper bound on the card stage horizontal footprint inside HUD row 4."
+          help="Authored horizontal fan span inside row 4, as a fraction of pane width. The resolver sizes cards independently and then solves overlap so the fan spans this width — narrower spans tighten overlap, wider spans relax overlap toward the preferred value. Does NOT re-scale cards."
         />
         <RatioField
           label="Max stage height % of pane"
