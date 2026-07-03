@@ -178,25 +178,51 @@ function rectDelta(a: Rect | null, b: Rect | null): number {
 
 function classifyBounceTarget(winnerPosition: number, triggerId: string | null): {
   target: 'transfer-artifact' | 'seat-cluster-chip-disc' | 'other' | 'none';
-  seatDiscMatch: boolean;
+  seatDiscHasBounce: boolean;
+  transferArtifactHasBounce: boolean;
   transferArtifactPresent: boolean;
 } {
   if (typeof document === 'undefined') {
-    return { target: 'none', seatDiscMatch: false, transferArtifactPresent: false };
+    return { target: 'none', seatDiscHasBounce: false, transferArtifactHasBounce: false, transferArtifactPresent: false };
   }
   const seatDisc =
-    document.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) ??
-    document.querySelector(`[data-chip-center="${winnerPosition}"]`);
+    (document.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) as HTMLElement | null) ??
+    (document.querySelector(`[data-chip-center="${winnerPosition}"]`) as HTMLElement | null);
   const artSel = triggerId
     ? `[data-win-transfer-artifact="${CSS.escape(triggerId)}"]`
     : `[data-win-transfer-artifact]`;
-  const artifact = document.querySelector(artSel);
+  const artifactOuter = document.querySelector(artSel) as HTMLElement | null;
+  const artifactInner = artifactOuter
+    ? (artifactOuter.querySelector('[data-win-transfer-artifact-inner]') as HTMLElement | null) ?? artifactOuter
+    : null;
+
+  const hasBounce = (el: HTMLElement | null): boolean => {
+    if (!el) return false;
+    const anim = getComputedStyle(el).animationName || '';
+    if (anim.includes('__chipDestBounce')) return true;
+    // Inline style shorthand may set the animation name outside computed
+    // getters (e.g. via setProperty with !important).
+    return (el.style.animation || '').includes('__chipDestBounce');
+  };
+
+  const seatDiscHasBounce = hasBounce(seatDisc);
+  const transferArtifactHasBounce = hasBounce(artifactInner) || hasBounce(artifactOuter);
+
+  const target: 'transfer-artifact' | 'seat-cluster-chip-disc' | 'other' | 'none' =
+    transferArtifactHasBounce
+      ? 'transfer-artifact'
+      : seatDiscHasBounce
+        ? 'seat-cluster-chip-disc'
+        : (artifactOuter ? 'other' : 'none');
+
   return {
-    target: seatDisc ? 'seat-cluster-chip-disc' : (artifact ? 'transfer-artifact' : 'none'),
-    seatDiscMatch: !!seatDisc,
-    transferArtifactPresent: !!artifact,
+    target,
+    seatDiscHasBounce,
+    transferArtifactHasBounce,
+    transferArtifactPresent: !!artifactOuter,
   };
 }
+
 
 export interface ArmWinSamplerArgs {
   identity: WinAttemptIdentity;
