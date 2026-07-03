@@ -9121,9 +9121,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         return;
       }
       console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer!.position, 'pot:', potAmount);
+      const _triggerId = `horses-win-${Date.now()}`;
+      const _viewer = players.find(p => p.user_id === user?.id);
+      const _horsesIdentity: WinAttemptIdentity = {
+        winAttemptId: `${game?.game_type ?? 'dice'}:${_triggerId}`,
+        gameId: gameId ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        roundId: null,
+        handNumber: game?.total_hands ?? null,
+        gameType: game?.game_type ?? 'dice',
+        outcomeId: resultMessage,
+        winnerPlayerId: winnerPlayer!.id,
+        localViewerId: _viewer?.id ?? null,
+        localRole: _viewer?.id === winnerPlayer!.id
+          ? 'winner'
+          : (_viewer ? 'loser' : 'observer'),
+      };
+      recordWinPresentationEvent({
+        identity: _horsesIdentity, name: 'outcome-detected',
+        source: 'Game#horsesWinPotEffect',
+        owner: game?.game_type === 'ship-captain-crew' ? 'scc' : 'horses',
+        payload: { winnerName, potAmount, resultMessage },
+      });
+      recordWinPresentationEvent({
+        identity: _horsesIdentity, name: 'winner-identity-resolved',
+        source: 'Game#horsesWinPotEffect',
+        owner: game?.game_type === 'ship-captain-crew' ? 'scc' : 'horses',
+      });
+      recordWinPresentationEvent({
+        identity: _horsesIdentity, name: 'local-viewer-classified',
+        source: 'Game#horsesWinPotEffect',
+        owner: game?.game_type === 'ship-captain-crew' ? 'scc' : 'horses',
+        payload: { localRole: _horsesIdentity.localRole },
+      });
+      // Freeze watchdog: if no transfer/confetti/bounce within 8s, log WIN_PRESENTATION_FROZEN.
+      armWinFreezeWatchdog(_horsesIdentity, 8000, 'Game#horsesWinPotEffect', 'horses-outcome-to-transfer');
       setHorsesWinPotAmount(potAmount);
       setHorsesWinWinnerPosition(winnerPlayer!.position);
-      setHorsesWinPotTriggerId(`horses-win-${Date.now()}`);
+      setHorsesWinPotTriggerId(_triggerId);
     };
 
     if (localPot > 0) {
