@@ -388,15 +388,16 @@ export function disarmWinPresentationSampler(winAttemptId: string, reason: strin
     payload: {
       reason,
       target: bounceInfo.target,
-      seatDiscMatch: bounceInfo.seatDiscMatch,
+      seatDiscHasBounce: bounceInfo.seatDiscHasBounce,
+      transferArtifactHasBounce: bounceInfo.transferArtifactHasBounce,
       transferArtifactPresent: bounceInfo.transferArtifactPresent,
     },
   });
 
-  // The canonical bounce currently binds to the seat-cluster chip disc.
-  // Emit the classification violation so the ledger surfaces this
-  // divergence from the transferred-artifact contract.
-  if (bounceInfo.seatDiscMatch) {
+  // Only flag as violation when a bounce actually landed on the seat
+  // chip disc (canonical contract requires bounce on the transferred
+  // artifact). Mere presence of a seat disc is expected and benign.
+  if (bounceInfo.seatDiscHasBounce && !bounceInfo.transferArtifactHasBounce) {
     recordWinPresentationViolation(s.identity, 'WIN_BOUNCE_APPLIED_TO_SEAT_CHIP_DISC', s.source, {
       winnerPosition: s.winnerPosition, target: bounceInfo.target,
     });
