@@ -41,6 +41,10 @@ import {
   armWinFreezeWatchdog,
   type WinAttemptIdentity,
 } from "@/lib/canonicalShell/winPresentationLedger";
+import {
+  armWinPresentationSampler,
+  disarmWinPresentationSampler,
+} from "@/lib/canonicalShell/winPresentationSampler";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
@@ -8607,6 +8611,14 @@ export const MobileGameTable = ({
                 ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
               });
+              armWinPresentationSampler({
+                identity: _horsesIdentity,
+                owner: _owner,
+                source: 'MobileGameTable#HorsesPotToPlayer.armSampler',
+                winnerPosition: horsesWinWinnerPosition,
+                selfPlayerId: currentPlayer?.id ?? null,
+                triggerId: horsesWinPotTriggerId ?? null,
+              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
@@ -8626,6 +8638,11 @@ export const MobileGameTable = ({
                 ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
               });
+              // Disarm after the canonical bounce timing window closes.
+              window.setTimeout(
+                () => disarmWinPresentationSampler(_horsesWinKey, 'transfer-complete+bounce'),
+                1200,
+              );
               onHorsesWinPotAnimationComplete?.();
             }}
           />
@@ -8878,20 +8895,36 @@ export const MobileGameTable = ({
                 // observers are suppressed inside the helper.
                 const _winnerPos357Start =
                   players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+                const _357WinKey = `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`;
                 if (_winnerPos357Start != null) {
                   startCanonicalWinSequence({
                     container: tableContainerRef.current,
                     winnerPosition: _winnerPos357Start,
-                    winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+                    winKey: _357WinKey,
                     ledgerIdentity: _id,
                     ledgerOwner: '357',
                     ledgerSource: 'MobileGameTable#357PotToPlayer.onAnimationStart',
+                  });
+                  armWinPresentationSampler({
+                    identity: _id,
+                    owner: '357',
+                    source: 'MobileGameTable#357PotToPlayer.armSampler',
+                    winnerPosition: _winnerPos357Start,
+                    selfPlayerId: currentPlayer?.id ?? null,
+                    triggerId: potToPlayerTriggerId357 ?? null,
                   });
                 }
               }
             }}
 
             onAnimationEnd={() => {
+              if (threeFiveSevenWinnerId) {
+                const _357WinKey = `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`;
+                window.setTimeout(
+                  () => disarmWinPresentationSampler(_357WinKey, 'transfer-complete+bounce'),
+                  1200,
+                );
+              }
               handlePotToPlayerComplete357();
             }}
           />

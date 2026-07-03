@@ -339,6 +339,9 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const chip = (
     <div
       className="fixed pointer-events-none"
+      data-win-transfer-artifact={triggerId ?? ''}
+      data-win-transfer-owner={gameType ?? 'unknown'}
+      data-win-transfer-winner={String(winnerPosition)}
       style={{
         left: animation.fromX,
         top: animation.fromY,
@@ -347,6 +350,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       }}
     >
       <div
+        data-win-transfer-artifact-inner={triggerId ?? ''}
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
           animation: `${animationName} ${animDuration} ${timingFn} forwards`,

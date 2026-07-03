@@ -41,10 +41,22 @@ export type WinPresentationEventName =
   | 'winner-destination-resolved'
   | 'destination-arrival'
   | 'bounce-start'
+  | 'bounce-frame'
   | 'bounce-complete'
   | 'confetti-complete'
   | 'teardown-requested'
   | 'teardown-committed'
+  // E. Transfer-artifact sampling (proof of what actually bounces)
+  | 'transfer-artifact-baseline'
+  | 'transfer-artifact-sample'
+  | 'transfer-artifact-land'
+  | 'transfer-artifact-teardown'
+  | 'bounce-target-classified'
+  // F. Active-hand sampling (proof of winner card-size stability)
+  | 'active-hand-baseline'
+  | 'active-hand-sample'
+  | 'active-hand-diff'
+  | 'active-hand-teardown'
   // C./D. violations (also fired via recordViolation for immediate error)
   | 'violation';
 
@@ -57,7 +69,20 @@ export type WinPresentationViolation =
   | 'WIN_SEQUENCE_SKIPPED_TO_TEARDOWN'
   | 'WIN_PRESENTATION_FROZEN'
   | 'WIN_DUPLICATE_OR_REPLAYED_SEQUENCE'
-  | 'WIN_OUTCOME_WITHOUT_TRANSFER';
+  | 'WIN_OUTCOME_WITHOUT_TRANSFER'
+  // Transfer-artifact bounce contract
+  | 'WIN_TRANSFER_ARTIFACT_MISSING_AT_ARRIVAL'
+  | 'WIN_TRANSFER_ARTIFACT_BOUNCE_NOT_APPLIED'
+  | 'WIN_TRANSFER_ARTIFACT_ZERO_VISUAL_DELTA'
+  | 'WIN_BOUNCE_APPLIED_TO_SEAT_CHIP_DISC'
+  | 'WIN_TRANSFER_ARTIFACT_UNMOUNTED_BEFORE_BOUNCE'
+  | 'WIN_TRANSFER_DESTINATION_DIVERGENCE'
+  // Winner active-hand invariance contract
+  | 'WIN_ACTIVE_HAND_SIZE_SHRINK'
+  | 'WIN_ACTIVE_HAND_GEOMETRY_RECOMPUTE'
+  | 'WIN_ACTIVE_HAND_STAGE_CHANGED_DURING_CELLY'
+  | 'WIN_ACTIVE_HAND_REMOUNT'
+  | 'WIN_ACTIVE_HAND_NODE_LOST';
 
 export interface WinAttemptIdentity {
   gameId?: string | null;
