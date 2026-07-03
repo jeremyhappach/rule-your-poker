@@ -28,6 +28,7 @@ type ChatLifecyclePhase =
   | 'indicator-suppressed'
   | 'indicator-cleared'
   | 'read-cursor-advanced'
+  | 'realtime-eligible-observed'
   | 'console-chat-indicator';
 
 export type ChatDeliveryViolation =
