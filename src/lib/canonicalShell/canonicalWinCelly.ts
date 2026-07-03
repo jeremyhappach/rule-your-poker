@@ -3,39 +3,34 @@
  *
  * Shared destination bounce + confetti applied at winner-arrival for
  * games that still use the legacy PotToPlayerAnimation transport
- * (3-5-7, Horses, Ship Captain Crew). Games on the canonical
- * ChipTransport pipeline (Cribbage, Holm) get bounce via
- * ChipTransportRuntime's destinationReaction and fire their own
- * confetti; this helper is the parity glue for the FROZEN transport
- * consumers.
+ * (3-5-7, Horses, Ship Captain Crew).
  *
- * Contract:
- *   - Reuses the same `__chipDestBounce` keyframe id owned by
- *     ChipTransportRuntime so we don't fork the bounce feel. Style tag
- *     id is stable — if the runtime has already mounted the sheet, we
- *     no-op; otherwise we install an identical copy.
- *   - Targets the same `[data-chip-reaction-target="{position}"]`
- *     anchor as the canonical runtime, falling back to
- *     `[data-chip-center="{position}"]`.
- *   - Fires a canvas-confetti burst comparable to Cribbage / Yahtzee.
- *   - Dedupes by caller-supplied winKey so remounts, replays, or
- *     re-emitted outcomes cannot double-fire the celebration.
+ * ARTIFACT-BOUNCE CONTRACT (canonical):
  *
- * Non-goals:
- *   - Does NOT drive chip motion, teardown, or announcements. Callers
- *     must continue to invoke their existing pot-transfer complete
- *     handlers.
+ *   The transfer artifact IS the bounce target. There is one lifecycle:
+ *
+ *     mount → flight → arrival freeze at winner rect → bounce → teardown
+ *
+ *   Beat 1 (`startCanonicalWinSequence`):
+ *     - Fires winner-only confetti (localViewerId === winnerPlayerId).
+ *     - Does NOT resolve any seat-cluster anchor. The bounce target is
+ *       the transfer artifact itself, which will be mounted by
+ *       PotToPlayerAnimation on the same beat.
+ *
+ *   Beat 2 (`completeCanonicalWinSequence`):
+ *     - Resolves the transfer artifact by `transferArtifactId` (the
+ *       PotToPlayerAnimation triggerId) via
+ *       `[data-win-transfer-artifact="{id}"]` / its inner descendant.
+ *     - Applies the shared `__chipDestBounce` keyframe to THAT node.
+ *     - If the artifact is unexpectedly gone, records
+ *       WIN_TRANSFER_ARTIFACT_MISSING_AT_ARRIVAL. NO seat-cluster /
+ *       chip-disc / screen-center fallback exists.
  */
 
 import confetti from 'canvas-confetti';
 
 const STYLE_ID = '__chip-dest-reaction-keyframes';
 const BOUNCE_DURATION_MS = 900;
-
-// legacy dedupe set retained for backward-compat shim only.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _firedKeys = new Set<string>();
-
 
 function ensureBounceStylesheet(): void {
   if (typeof document === 'undefined') return;
@@ -61,9 +56,15 @@ function applyBounce(el: HTMLElement): void {
   const prevAnim = el.style.animation;
   const prevOrigin = el.style.transformOrigin;
   el.style.transformOrigin = '50% 50%';
-  el.style.animation = `__chipDestBounce ${BOUNCE_DURATION_MS}ms cubic-bezier(.34,1.56,.64,1)`;
+  // `!important` so we override any inline animation the transfer keyframe
+  // may still hold (PotToPlayerAnimation forwards the destination frame,
+  // but its animation shorthand can otherwise win the cascade).
+  el.style.setProperty(
+    'animation',
+    `__chipDestBounce ${BOUNCE_DURATION_MS}ms cubic-bezier(.34,1.56,.64,1)`,
+    'important',
+  );
   window.setTimeout(() => {
-    // Only restore if we still own the animation slot.
     if (el.style.animation.includes('__chipDestBounce')) {
       el.style.animation = prevAnim;
       el.style.transformOrigin = prevOrigin;
@@ -95,9 +96,9 @@ import {
 } from './winPresentationLedger';
 
 export interface CanonicalWinCellyArgs {
-  /** Table container to scope DOM lookup. Falls back to document. */
+  /** Table container (kept for API compatibility; no longer used for lookup). */
   container: HTMLElement | null;
-  /** Winner seat position (matches data-chip-* attribute value). */
+  /** Winner seat position (kept for diagnostics; not used to resolve bounce target). */
   winnerPosition: number;
   /**
    * Stable idempotency key. Callers should combine gameId + winnerId
@@ -106,27 +107,16 @@ export interface CanonicalWinCellyArgs {
    */
   winKey: string;
   /**
-   * Optional win-attempt identity for the CANONICAL_WIN_PRESENTATION_LEDGER.
-   * When supplied, this call is recorded with full source/eligibility
-   * attribution and violations are emitted for common misuses.
+   * PotToPlayerAnimation triggerId — used to resolve the transfer
+   * artifact for the destination bounce. Required at complete-beat.
    */
+  transferArtifactId?: string | null;
   ledgerIdentity?: WinAttemptIdentity;
-  /** Optional caller tag (e.g. '357', 'horses', 'scc'). */
   ledgerOwner?: string;
-  /** Optional caller source label. */
   ledgerSource?: string;
 }
 
-/**
- * Fire the canonical win celebration (destination bounce + confetti).
- *
- * @deprecated Prefer the split `startCanonicalWinSequence` (fires
- * winner-only confetti at pot-transfer start) and
- * `completeCanonicalWinSequence` (fires destination bounce after the
- * chip has visibly arrived). This monolithic entry point violates the
- * canonical contract by conflating both beats, and is kept only for
- * transient compatibility. No callers remain in-tree.
- */
+/** @deprecated compat shim; no callers remain. */
 export function fireCanonicalWinCelly(args: CanonicalWinCellyArgs): void {
   startCanonicalWinSequence(args);
   completeCanonicalWinSequence(args);
@@ -149,56 +139,44 @@ function resolveEligibility(id: WinAttemptIdentity | undefined):
 }
 
 /**
- * Beat 1 of the canonical win sequence — fires winner-only confetti
- * the moment the pot transfer begins. Idempotent per `winKey`.
- *
- * Contract:
- *   - Confetti mounts iff `localViewerId === winnerPlayerId`. Losing
- *     seats, observers, and bot seats never see confetti.
- *   - Records `canonical-sequence-requested`, `canonical-sequence-accepted`,
- *     and (when eligible) `confetti-trigger-requested` +
- *     `confetti-mounted` on the shared ledger identity so replays /
- *     late-mount attempts correlate under the same winAttemptId.
- *   - Resolves and RETAINS the canonical winner-destination anchor at
- *     start (document-scoped, mirroring the endpoints published by
- *     CanonicalSeatCluster and ShellViewerChipEndpoint). The same
- *     retained anchor is used for the arrival bounce, so the transfer
- *     landing target and bounce target are one object — no independent
- *     re-query after transfer completion.
- *   - If no canonical anchor exists at start, records
- *     `WIN_BOUNCE_TARGET_MISSING` and does not proceed with confetti
- *     or bounce for this winKey (canonical boundary hold — no
- *     fabricated screen-center or legacy fallback target).
+ * Resolve the transfer artifact (inner element with the transport
+ * animation) for the given PotToPlayerAnimation triggerId. Falls back
+ * to the outer wrapper if the inner marker is not found, but NEVER to
+ * any seat-cluster / chip-disc element.
  */
-
-/**
- * Resolve the canonical winner-destination anchor from the DOM, using
- * the same attributes CanonicalSeatCluster / CanonicalChipDisc /
- * ShellViewerChipEndpoint publish for every seat (including the local
- * viewer's portaled endpoint). Document-scoped on purpose — the local
- * viewer's chip endpoint is portaled onto the shell felt element,
- * which may sit outside a caller-supplied `container` subtree, so
- * container-scoped lookups silently miss the local winner. This is
- * the shared resolver used at both beats.
- */
-function resolveWinnerAnchor(winnerPosition: number): HTMLElement | null {
+function resolveTransferArtifact(
+  transferArtifactId: string | null | undefined,
+): { outer: HTMLElement; inner: HTMLElement } | null {
   if (typeof document === 'undefined') return null;
-  return (
-    (document.querySelector(
-      `[data-chip-reaction-target="${winnerPosition}"]`,
-    ) as HTMLElement | null) ??
-    (document.querySelector(
-      `[data-chip-center="${winnerPosition}"]`,
-    ) as HTMLElement | null)
-  );
+  if (!transferArtifactId) {
+    // No triggerId supplied — try any live artifact as last resort.
+    const anyOuter = document.querySelector(
+      '[data-win-transfer-artifact]',
+    ) as HTMLElement | null;
+    if (!anyOuter) return null;
+    const anyInner = (anyOuter.querySelector(
+      '[data-win-transfer-artifact-inner]',
+    ) as HTMLElement | null) ?? anyOuter;
+    return { outer: anyOuter, inner: anyInner };
+  }
+  const escape = (v: string) =>
+    (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(v) : v.replace(/["\\]/g, '\\$&');
+  const outer = document.querySelector(
+    `[data-win-transfer-artifact="${escape(transferArtifactId)}"]`,
+  ) as HTMLElement | null;
+  if (!outer) return null;
+  const inner = (outer.querySelector(
+    `[data-win-transfer-artifact-inner="${escape(transferArtifactId)}"]`,
+  ) as HTMLElement | null)
+    ?? (outer.querySelector('[data-win-transfer-artifact-inner]') as HTMLElement | null)
+    ?? outer;
+  return { outer, inner };
 }
-
-/** Anchors retained at start, keyed by winKey. Consumed at complete. */
-const retainedAnchors = new Map<string, HTMLElement>();
 
 export function startCanonicalWinSequence({
   winnerPosition,
   winKey,
+  transferArtifactId,
   ledgerIdentity,
   ledgerOwner,
   ledgerSource,
@@ -224,35 +202,8 @@ export function startCanonicalWinSequence({
   if (id) {
     recordWinPresentationEvent({
       identity: id, name: 'canonical-sequence-requested', source, owner: ledgerOwner,
-      payload: { winKey, winnerPosition, eligibility, beat: 'start' },
+      payload: { winKey, winnerPosition, eligibility, beat: 'start', transferArtifactId: transferArtifactId ?? null },
     });
-  }
-
-  // Resolve the canonical winner-destination anchor NOW, before any
-  // beat proceeds. Retain the exact element so bounce fires on the
-  // same DOM node the pot-transfer lands on. If missing, hold the
-  // canonical sequence: no confetti, no bounce, violation recorded.
-  const anchor = resolveWinnerAnchor(winnerPosition);
-  if (id) {
-    recordWinPresentationEvent({
-      identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
-      payload: { found: !!anchor, winnerPosition, beat: 'start', retained: !!anchor },
-    });
-  }
-  if (!anchor) {
-    if (id) recordWinPresentationViolation(
-      id,
-      'WIN_BOUNCE_TARGET_MISSING',
-      source,
-      { winnerPosition, phase: 'start', reason: 'no-canonical-anchor-before-transfer' },
-    );
-    // Do not admit the sequence; do not fabricate a fallback target.
-    startedKeys.delete(winKey);
-    return;
-  }
-  retainedAnchors.set(winKey, anchor);
-
-  if (id) {
     recordWinPresentationEvent({
       identity: id, name: 'canonical-sequence-accepted', source, owner: ledgerOwner,
       payload: { beat: 'start' },
@@ -290,15 +241,14 @@ export function startCanonicalWinSequence({
 }
 
 /**
- * Beat 2 of the canonical win sequence — fires destination bounce on
- * the winner chip anchor after the pot transfer has landed. Idempotent
- * per `winKey`. Runs on every client because the bounce reflects chip
- * arrival, not local eligibility. Reuses the anchor retained at start
- * so this beat and the transfer landing point are one shared object.
+ * Beat 2 — apply destination bounce to the transferred pot artifact
+ * itself, at its resolved winner-destination position. Runs on every
+ * client. Idempotent per `winKey`. No seat-cluster fallback.
  */
 export function completeCanonicalWinSequence({
   winnerPosition,
   winKey,
+  transferArtifactId,
   ledgerIdentity,
   ledgerOwner,
   ledgerSource,
@@ -321,48 +271,47 @@ export function completeCanonicalWinSequence({
 
   if (id) recordWinPresentationEvent({
     identity: id, name: 'destination-arrival', source, owner: ledgerOwner,
-    payload: { winnerPosition },
+    payload: { winnerPosition, transferArtifactId: transferArtifactId ?? null },
   });
 
-  // Prefer the anchor retained at start (same object the transfer
-  // landed against). If it disconnected mid-lifecycle, re-resolve
-  // canonically once — never fall back to legacy container scope or
-  // fabricated screen-center targets.
-  let el: HTMLElement | null = retainedAnchors.get(winKey) ?? null;
-  const retainedStillMounted = !!el && el.isConnected;
-  if (!retainedStillMounted) {
-    el = resolveWinnerAnchor(winnerPosition);
-  }
+  const artifact = resolveTransferArtifact(transferArtifactId);
 
   if (id) {
     recordWinPresentationEvent({
       identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
       payload: {
-        found: !!el,
+        found: !!artifact,
         winnerPosition,
+        transferArtifactId: transferArtifactId ?? null,
+        target: artifact ? 'transfer-artifact' : 'none',
         beat: 'complete',
-        source: retainedStillMounted ? 'retained' : (el ? 're-resolved' : 'missing'),
       },
     });
-    if (!el) recordWinPresentationViolation(
-      id, 'WIN_BOUNCE_TARGET_MISSING', source,
-      { winnerPosition, phase: 'complete', reason: 'anchor-lost-before-arrival' },
+  }
+
+  if (!artifact) {
+    if (id) recordWinPresentationViolation(
+      id,
+      'WIN_TRANSFER_ARTIFACT_MISSING_AT_ARRIVAL',
+      source,
+      {
+        winnerPosition,
+        transferArtifactId: transferArtifactId ?? null,
+        reason: 'artifact-not-in-DOM-at-arrival',
+      },
     );
+    window.setTimeout(() => completedKeys.delete(winKey), 30000);
+    return;
   }
 
-  if (el) {
-    if (id) recordWinPresentationEvent({
-      identity: id, name: 'bounce-start', source, owner: ledgerOwner,
-      payload: { durationMs: BOUNCE_DURATION_MS },
-    });
-    applyBounce(el);
-    if (id) window.setTimeout(() => {
-      recordWinPresentationEvent({ identity: id, name: 'bounce-complete', source, owner: ledgerOwner });
-    }, BOUNCE_DURATION_MS + 60);
-  }
+  if (id) recordWinPresentationEvent({
+    identity: id, name: 'bounce-start', source, owner: ledgerOwner,
+    payload: { durationMs: BOUNCE_DURATION_MS, appliedTo: 'transfer-artifact-inner' },
+  });
+  applyBounce(artifact.inner);
+  if (id) window.setTimeout(() => {
+    recordWinPresentationEvent({ identity: id, name: 'bounce-complete', source, owner: ledgerOwner });
+  }, BOUNCE_DURATION_MS + 60);
 
-  retainedAnchors.delete(winKey);
   window.setTimeout(() => completedKeys.delete(winKey), 30000);
 }
-
-

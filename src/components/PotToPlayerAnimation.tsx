@@ -295,17 +295,21 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
       const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
       const animDuration = isDiceGame ? 1600 : 3300;
-      const clearDelay = isDiceGame ? 1800 : 3700;
+      // Bounce runs ~900ms after arrival on the SAME artifact node, then
+      // the artifact tears down. Keep the artifact mounted long enough
+      // for the canonical bounce (~900ms) + a small buffer.
+      const BOUNCE_HOLD_MS = 1050;
+      const clearDelay = animDuration + BOUNCE_HOLD_MS;
 
-      // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
+      // Notify parent AFTER the visual transfer finishes so the canonical
+      // bounce beat can fire while the artifact is still mounted.
       endTimeoutRef.current = window.setTimeout(() => {
-        // Guard: only end the animation we started for this trigger.
         if (lastTriggerIdRef.current === capturedTriggerId) {
           onEndRef.current?.();
         }
       }, animDuration);
 
-      // Clear animation after it completes
+      // Tear down the artifact only AFTER the bounce window closes.
       clearTimeoutRef.current = window.setTimeout(() => {
         if (lastTriggerIdRef.current === capturedTriggerId) {
           setAnimation(null);
@@ -336,6 +340,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   // Portal to <body> so the chip ALWAYS renders above the entire app UI.
   if (typeof document === 'undefined') return null;
 
+  // NOTE: transport keyframe is applied to the OUTER wrapper (translate).
+  // The INNER (data-win-transfer-artifact-inner) is left free so the
+  // canonical bounce beat can animate its transform independently
+  // without fighting the transport for the same `transform` slot.
+  // The chip is a fixed 32×32 px disc, so we center via negative offsets
+  // instead of a `translate(-50%,-50%)` (which would collide with the
+  // transport animation on the same element).
+  const CHIP_SIZE = 32;
+
   const chip = (
     <div
       className="fixed pointer-events-none"
@@ -343,18 +356,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       data-win-transfer-owner={gameType ?? 'unknown'}
       data-win-transfer-winner={String(winnerPosition)}
       style={{
-        left: animation.fromX,
-        top: animation.fromY,
-        transform: 'translate(-50%, -50%)',
+        left: animation.fromX - CHIP_SIZE / 2,
+        top: animation.fromY - CHIP_SIZE / 2,
         zIndex: 200,
+        animation: `${animationName} ${animDuration} ${timingFn} forwards`,
       }}
     >
       <div
         data-win-transfer-artifact-inner={triggerId ?? ''}
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
-        style={{
-          animation: `${animationName} ${animDuration} ${timingFn} forwards`,
-        }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
@@ -365,27 +375,23 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          /* Dice games: straight line from pot to player (no bounce), then vanish into the stack */
-          92% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
-            opacity: 1;
-          }
+          /* Dice games: straight line from pot to winner destination.
+             Freeze at destination (scale 1, opacity 1) so the canonical
+             bounce beat can animate the inner artifact independently. */
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
-            opacity: 0;
+            opacity: 1;
           }
           ` : `
           15% {
             transform: translate(0, -8px) scale(1.1);
             opacity: 1;
           }
-          85% {
+          /* Freeze at winner destination — canonical bounce beat animates
+             the inner artifact. NO shrink / fade here. */
+          100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
-          }
-          100% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(0);
-            opacity: 0;
           }
           `}
         }

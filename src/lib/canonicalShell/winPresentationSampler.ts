@@ -60,6 +60,7 @@ interface ArmedSampler {
   source: string;
   winnerPosition: number;
   selfPlayerId: string | null;
+  isWinnerClient: boolean;
   triggerId: string | null;
   baselineTransfer: TransferSnapshot | null;
   baselineHand: ActiveHandSnapshot | null;
@@ -132,8 +133,12 @@ function snapshotTransfer(triggerId: string | null): TransferSnapshot {
   };
 }
 
-function snapshotActiveHand(selfPlayerId: string | null): ActiveHandSnapshot {
-  if (typeof document === 'undefined' || !selfPlayerId) {
+function snapshotActiveHand(selfPlayerId: string | null, isWinnerClient: boolean): ActiveHandSnapshot {
+  // Only capture active-hand geometry on the winner's client. On
+  // losers/observers/bot seats the local viewer's active-hand pane is
+  // either empty or unrelated to the winner, so treating those zero-card
+  // snapshots as evidence of a winner-hand regression is a false signal.
+  if (!isWinnerClient || typeof document === 'undefined' || !selfPlayerId) {
     return { found: false, handKey: null, cardCount: 0, stageRect: null, wrapperTransform: null, cards: [], ancestorsTransform: [] };
   }
   const stage = document.querySelector(
@@ -143,7 +148,6 @@ function snapshotActiveHand(selfPlayerId: string | null): ActiveHandSnapshot {
     return { found: false, handKey: `hand-${selfPlayerId}`, cardCount: 0, stageRect: null, wrapperTransform: null, cards: [], ancestorsTransform: [] };
   }
   const stageCS = getComputedStyle(stage);
-  // Cards are typically descendants with a card-back / card-front root.
   const cardEls = Array.from(
     stage.querySelectorAll<HTMLElement>('[data-card-index], [data-playing-card], [data-card-back], [data-card-front]'),
   );
@@ -178,25 +182,51 @@ function rectDelta(a: Rect | null, b: Rect | null): number {
 
 function classifyBounceTarget(winnerPosition: number, triggerId: string | null): {
   target: 'transfer-artifact' | 'seat-cluster-chip-disc' | 'other' | 'none';
-  seatDiscMatch: boolean;
+  seatDiscHasBounce: boolean;
+  transferArtifactHasBounce: boolean;
   transferArtifactPresent: boolean;
 } {
   if (typeof document === 'undefined') {
-    return { target: 'none', seatDiscMatch: false, transferArtifactPresent: false };
+    return { target: 'none', seatDiscHasBounce: false, transferArtifactHasBounce: false, transferArtifactPresent: false };
   }
   const seatDisc =
-    document.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) ??
-    document.querySelector(`[data-chip-center="${winnerPosition}"]`);
+    (document.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) as HTMLElement | null) ??
+    (document.querySelector(`[data-chip-center="${winnerPosition}"]`) as HTMLElement | null);
   const artSel = triggerId
     ? `[data-win-transfer-artifact="${CSS.escape(triggerId)}"]`
     : `[data-win-transfer-artifact]`;
-  const artifact = document.querySelector(artSel);
+  const artifactOuter = document.querySelector(artSel) as HTMLElement | null;
+  const artifactInner = artifactOuter
+    ? (artifactOuter.querySelector('[data-win-transfer-artifact-inner]') as HTMLElement | null) ?? artifactOuter
+    : null;
+
+  const hasBounce = (el: HTMLElement | null): boolean => {
+    if (!el) return false;
+    const anim = getComputedStyle(el).animationName || '';
+    if (anim.includes('__chipDestBounce')) return true;
+    // Inline style shorthand may set the animation name outside computed
+    // getters (e.g. via setProperty with !important).
+    return (el.style.animation || '').includes('__chipDestBounce');
+  };
+
+  const seatDiscHasBounce = hasBounce(seatDisc);
+  const transferArtifactHasBounce = hasBounce(artifactInner) || hasBounce(artifactOuter);
+
+  const target: 'transfer-artifact' | 'seat-cluster-chip-disc' | 'other' | 'none' =
+    transferArtifactHasBounce
+      ? 'transfer-artifact'
+      : seatDiscHasBounce
+        ? 'seat-cluster-chip-disc'
+        : (artifactOuter ? 'other' : 'none');
+
   return {
-    target: seatDisc ? 'seat-cluster-chip-disc' : (artifact ? 'transfer-artifact' : 'none'),
-    seatDiscMatch: !!seatDisc,
-    transferArtifactPresent: !!artifact,
+    target,
+    seatDiscHasBounce,
+    transferArtifactHasBounce,
+    transferArtifactPresent: !!artifactOuter,
   };
 }
+
 
 export interface ArmWinSamplerArgs {
   identity: WinAttemptIdentity;
@@ -212,8 +242,13 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
   const key = args.identity.winAttemptId;
   if (!key || armed.has(key)) return;
 
+  const isWinnerClient =
+    !!args.identity.localViewerId &&
+    !!args.identity.winnerPlayerId &&
+    args.identity.localViewerId === args.identity.winnerPlayerId;
+
   const baselineTransfer = snapshotTransfer(args.triggerId);
-  const baselineHand = snapshotActiveHand(args.selfPlayerId);
+  const baselineHand = snapshotActiveHand(args.selfPlayerId, isWinnerClient);
 
   recordWinPresentationEvent({
     identity: args.identity, name: 'transfer-artifact-baseline',
@@ -223,7 +258,7 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
   recordWinPresentationEvent({
     identity: args.identity, name: 'active-hand-baseline',
     source: args.source, owner: args.owner,
-    payload: { selfPlayerId: args.selfPlayerId, snapshot: baselineHand },
+    payload: { selfPlayerId: args.selfPlayerId, snapshot: baselineHand, isWinnerClient },
   });
 
   const state: ArmedSampler = {
@@ -232,6 +267,7 @@ export function armWinPresentationSampler(args: ArmWinSamplerArgs): void {
     source: args.source,
     winnerPosition: args.winnerPosition,
     selfPlayerId: args.selfPlayerId,
+    isWinnerClient,
     triggerId: args.triggerId,
     baselineTransfer,
     baselineHand,
@@ -256,7 +292,7 @@ function tickSampler(key: string): void {
   s.sampleCount++;
 
   const transfer = snapshotTransfer(s.triggerId);
-  const hand = snapshotActiveHand(s.selfPlayerId);
+  const hand = snapshotActiveHand(s.selfPlayerId, s.isWinnerClient);
 
   // Sample throttling: emit every ~4 ticks OR on meaningful change.
   const transferChanged =
@@ -353,7 +389,7 @@ export function disarmWinPresentationSampler(winAttemptId: string, reason: strin
   if (s.timeoutId) window.clearTimeout(s.timeoutId);
 
   const finalTransfer = snapshotTransfer(s.triggerId);
-  const finalHand = snapshotActiveHand(s.selfPlayerId);
+  const finalHand = snapshotActiveHand(s.selfPlayerId, s.isWinnerClient);
   const bounceInfo = classifyBounceTarget(s.winnerPosition, s.triggerId);
 
   recordWinPresentationEvent({
@@ -362,15 +398,16 @@ export function disarmWinPresentationSampler(winAttemptId: string, reason: strin
     payload: {
       reason,
       target: bounceInfo.target,
-      seatDiscMatch: bounceInfo.seatDiscMatch,
+      seatDiscHasBounce: bounceInfo.seatDiscHasBounce,
+      transferArtifactHasBounce: bounceInfo.transferArtifactHasBounce,
       transferArtifactPresent: bounceInfo.transferArtifactPresent,
     },
   });
 
-  // The canonical bounce currently binds to the seat-cluster chip disc.
-  // Emit the classification violation so the ledger surfaces this
-  // divergence from the transferred-artifact contract.
-  if (bounceInfo.seatDiscMatch) {
+  // Only flag as violation when a bounce actually landed on the seat
+  // chip disc (canonical contract requires bounce on the transferred
+  // artifact). Mere presence of a seat disc is expected and benign.
+  if (bounceInfo.seatDiscHasBounce && !bounceInfo.transferArtifactHasBounce) {
     recordWinPresentationViolation(s.identity, 'WIN_BOUNCE_APPLIED_TO_SEAT_CHIP_DISC', s.source, {
       winnerPosition: s.winnerPosition, target: bounceInfo.target,
     });
