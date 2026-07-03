@@ -60,6 +60,7 @@ interface ArmedSampler {
   source: string;
   winnerPosition: number;
   selfPlayerId: string | null;
+  isWinnerClient: boolean;
   triggerId: string | null;
   baselineTransfer: TransferSnapshot | null;
   baselineHand: ActiveHandSnapshot | null;
