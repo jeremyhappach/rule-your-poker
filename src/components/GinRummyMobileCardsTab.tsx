@@ -140,15 +140,6 @@ export const GinRummyMobileCardsTab = ({
   const rawMyStateAuthoritative = ginState.playerStates[currentPlayerId];
   const rawAuthoritativeHandCount = rawMyStateAuthoritative?.hand?.length ?? 0;
 
-  // Ledger identity — recomputed cheaply per render.
-  const ledgerIdentity = {
-    gameId,
-    handContextId: handIdentityKey ?? null,
-    handNumber: ginState.handNumber ?? null,
-    localPlayerId: currentPlayerId ?? null,
-    phase: ginState.phase ?? null,
-  };
-
   // ── Current-hand readiness gate ─────────────────────────────────
   // On EVERY new identity (dealerGameId / roundId / handNumber /
   // viewer flip encoded in localHandIdentityKey), the baseline is
@@ -157,27 +148,13 @@ export const GinRummyMobileCardsTab = ({
   // admits a non-empty local hand. Subsequent transient empties for
   // the SAME identity are absorbed by the sticky cache below.
   if (localHandBaselineRef.current?.identityKey !== localHandIdentityKey) {
-    const prevKey = localHandBaselineRef.current?.identityKey ?? null;
-    const prevCached = localHandProjectionRef.current;
     localHandBaselineRef.current = { identityKey: localHandIdentityKey, committed: false };
     // Drop any prior-identity cache so no old cards can leak forward.
     if (localHandProjectionRef.current?.identityKey !== localHandIdentityKey) {
       localHandProjectionRef.current = null;
     }
-    recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'GIN_STICKY_CACHE_INVALIDATED', ledgerIdentity, {
-      reason: 'identity-changed',
-      prevIdentityKey: prevKey,
-      nextIdentityKey: localHandIdentityKey,
-      prevCacheHandLen: prevCached?.state.hand.length ?? null,
-    });
   }
   if (rawAuthoritativeHandCount > 0 && localHandBaselineRef.current) {
-    if (!localHandBaselineRef.current.committed) {
-      recordGinLedger('AUTHORITATIVE_PROJECTION_OWNER', 'baseline-committed', ledgerIdentity, {
-        identityKey: localHandIdentityKey,
-        rawAuthoritativeHandCount,
-      });
-    }
     localHandBaselineRef.current.committed = true;
   }
   const currentHandBaselineCommitted = !!localHandBaselineRef.current?.committed;
