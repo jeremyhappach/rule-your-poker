@@ -387,19 +387,16 @@ export const GinRummyMobileCardsTab = ({
       ) : (
         /* ── NORMAL PLAY VIEW: shared active-hand fan ── */
         <>
-          <div className="flex items-center pl-2 pt-1">
-            <span className="text-sm font-mono font-bold text-muted-foreground tracking-wide">
-              DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
-            </span>
-          </div>
           {/*
-            Pane-owned composition: the middle spacer occupies remaining
-            vertical space between the DW label and the sibling action
-            zone so the action zone is bottom-anchored. The active-hand
-            fan is portaled INTO `[data-gin-active-pane-content]` by
-            MeasuredActiveHandFan, which measures the un-transformed
-            pane rect and every `[data-active-hand-lower-zone]` sibling
-            (below), then derives:
+            Pane-owned composition: the top spacer + fan host fill the
+            pane; the DW label now lives inside the lower-zone action
+            strip below (right-aligned) so the top of the pane stays
+            clear and the portaled fan has full vertical breathing
+            room. The active-hand fan is portaled INTO
+            `[data-gin-active-pane-content]` by MeasuredActiveHandFan,
+            which measures the un-transformed pane rect and every
+            `[data-active-hand-lower-zone]` sibling (below), then
+            derives:
                 stageRect.height = paneH·maxHeightPct
                                      bounded by paneH − reserved − clearance
                 reserved  = max(paneH·reservedLowerZonePct,
@@ -414,6 +411,7 @@ export const GinRummyMobileCardsTab = ({
             data-gin-active-hand-stage-spacer=""
             className="flex-1 min-h-0"
           />
+
           <MeasuredActiveHandFan
             game="ginRummy"
             cards={flatSortedHand.map(({ card }) => ({
