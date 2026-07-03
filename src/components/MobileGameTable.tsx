@@ -6564,6 +6564,23 @@ export const MobileGameTable = ({
       });
     }
 
+    // Canonical winner arrival: destination bounce + confetti.
+    // Fires only after Sweep-the-Legs prelude has completed and the
+    // pot chip has visibly arrived (guarded by the phase check + the
+    // one-shot potToPlayerCompletedRef above, plus the helper's own
+    // winKey dedupe against replay / remount / re-emission).
+    if (threeFiveSevenWinnerId) {
+      const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+      if (winnerPos != null) {
+        fireCanonicalWinCelly({
+          container: tableContainerRef.current,
+          winnerPosition: winnerPos,
+          winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+        });
+      }
+    }
+
+
     
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
