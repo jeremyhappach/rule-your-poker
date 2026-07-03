@@ -226,10 +226,18 @@ export const GinRummyMobileCardsTab = ({
   // opening reveal into an all-at-once dump (regression 1).
   const dealBoundToThisHand =
     !!deal && !!deal.handContextId && deal.handContextId === handIdentityKey;
-  const dealIsReadyOrGameplay =
-    dealBoundToThisHand && (deal!.phase === 'READY' || deal!.phase === 'GAMEPLAY');
-  const noDealGate = !dealBoundToThisHand;
-  const forceFullProjection = dealIsReadyOrGameplay || noDealGate;
+  // Card-by-card opening reveal is gated STRICTLY to the DealRuntime
+  // DEALING wave bound to this exact hand identity. Any other state —
+  // READY, GAMEPLAY, unbound runtime (mid-hand rejoin / recovery /
+  // snapshot catch-up), or a live local hand that has already grown
+  // past the opening capacity (self-draw 10→11) — renders the full
+  // admitted local projection. ginState.phase is intentionally NOT
+  // used as a reveal gate (the server flips to `first_draw` the same
+  // moment it deals, which would collapse the card-by-card reveal).
+  const dealBoundDealing = dealBoundToThisHand && deal!.phase === 'DEALING';
+  const authHandLen = stableMyStateAuthoritative?.hand?.length ?? 0;
+  const forceFullProjection =
+    !dealBoundDealing || authHandLen > GIN_CARDS_PER_PLAYER;
 
   const rawMyState = useMemo(() => {
     if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;
