@@ -77,10 +77,17 @@ const isPostKnockPhase = (phase: string) =>
 const isCurrentHandLocalHandPhase = (phase: string) =>
   phase === 'first_draw' || phase === 'playing' || phase === 'knocking' || phase === 'laying_off' || phase === 'scoring';
 
+// Local-hand presentation is a LIVE PROJECTION admitted from the
+// authoritative Gin state stream (never a synthesised source of truth).
 type CachedLocalHandProjection = {
   identityKey: string;
   playerId: string;
   state: GinRummyPlayerState;
+};
+
+type LocalHandBaselineCommit = {
+  identityKey: string;
+  committed: boolean;
 };
 
 const cloneLocalPlayerState = (state: GinRummyPlayerState): GinRummyPlayerState => ({
