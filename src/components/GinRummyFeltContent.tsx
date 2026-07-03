@@ -317,7 +317,11 @@ export const GinRummyFeltContent = ({
           innerStyle={{ gap: '1rem', pointerEvents: 'none' }}
         >
           {/* Stock Pile — visual only. The click owner is in the shell
-              interaction layer and occupies this same card rect. */}
+              interaction layer and occupies this same card rect. The
+              remaining-count label lives OUTSIDE the card back (as a
+              positioned sibling driven by GeometryLab
+              stockCountSettings) so it remains readable regardless of
+              card-back art. */}
           <div
             data-gin-pile="stock"
             data-gin-pile-layer="wrapper"
@@ -347,23 +351,26 @@ export const GinRummyFeltContent = ({
                     radiusPx={6}
                     style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
                   />
-                  <span
-                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
-                    style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
-                  >
-                    {stockCount}
-                  </span>
                 </div>
               ) : null}
+              {stockRevealed ? (
+                <span
+                  data-gin-stock-count=""
+                  data-gin-stock-count-placement={stockCountSettings.placement}
+                  className={`text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`}
+                  style={{ ...stockCountStyle, textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+                >
+                  {stockCount}
+                </span>
+              ) : null}
             </div>
-            <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`} style={{ pointerEvents: 'none' }}>
-              {stockDanger ? 'Low!' : 'Stock'}
-            </span>
           </div>
 
 
           {/* Discard Pile — visual only. The click owner is in the shell
-              interaction layer and occupies this same card rect. */}
+              interaction layer and occupies this same card rect. When
+              empty, only an invisible stable destination/hit anchor
+              remains (no visible dashed box, no "Empty" text). */}
           <div
             data-gin-pile="discard"
             data-gin-pile-layer="wrapper"
@@ -391,16 +398,13 @@ export const GinRummyFeltContent = ({
               ) : (
                 <div
                   data-gin-pile="discard"
-                  data-gin-pile-layer="empty-placeholder-child"
-                  className="rounded-md border border-dashed border-white/20 flex items-center justify-center"
+                  data-gin-pile-layer="empty-anchor-child"
                   style={{ pointerEvents: 'none', position: 'absolute', inset: 0 }}
-                >
-                  <span className="text-white/20 text-[8px]">Empty</span>
-                </div>
+                />
               )}
             </div>
-            <span className="text-[8px] text-white/50" style={{ pointerEvents: 'none' }}>Discard</span>
           </div>
+
 
           {/* Helper text — child of the FULL Stock + Discard cluster
               slot (union of stock + discard rects). Placement selects
