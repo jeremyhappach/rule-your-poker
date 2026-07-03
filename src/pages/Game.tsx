@@ -13205,6 +13205,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           isSending: isChatSending,
           getPositionForUserId,
           latestRealtimeMessage,
+          isChatHydrated,
+          hydrationBaselineIds,
+          chatConversationKey,
         }}
       >
       <GameDeckColorModeSync
