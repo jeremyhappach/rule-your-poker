@@ -115,16 +115,18 @@ export const MobileChatPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  recordReactRenderObserved({
-    consumer: 'MobileChatPanel',
-    sourceCollection: messages,
-    gameId: diagnosticGameId ?? null,
-    dealerGameId: diagnosticDealerGameId ?? null,
-    payload: {
-      currentUserId: diagnosticUserId ?? null,
-      dealerCount: dealerMessages.length,
-      muteDealerChat,
-    },
+  useEffect(() => {
+    recordReactRenderObserved({
+      consumer: 'MobileChatPanel',
+      sourceCollection: messages,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      payload: {
+        currentUserId: diagnosticUserId ?? null,
+        dealerCount: dealerMessages.length,
+        muteDealerChat,
+      },
+    });
   });
 
   useEffect(() => {
