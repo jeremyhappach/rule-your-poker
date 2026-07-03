@@ -1687,6 +1687,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isSending: isChatSending,
     getPositionForUserId,
     latestRealtimeMessage,
+    isChatHydrated,
+    hydrationBaselineIds,
+    chatConversationKey,
   } = useGameChat(gameId, players, user?.id);
 
   useEffect(() => {
