@@ -2,6 +2,7 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
@@ -674,7 +675,13 @@ export const GinRummyGameTable = ({
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  const [activeTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
+    () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
+  );
+  const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    writePersistedMatchChatTab(gameId, next);
+    setActiveTabRaw(next);
+  }, [gameId]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
   // Chat indicator: hydration guard + replay guard

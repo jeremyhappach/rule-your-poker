@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
+import { readPersistedMatchChatTab, writePersistedMatchChatTab } from "@/lib/matchChatTabPersistence";
 import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -534,7 +535,13 @@ export function YahtzeeGameTable({
   // Track Yahtzee bonus counts per player to detect new bonuses
   const prevYahtzeeBonusRef = useRef<Record<string, number>>({});
   // Tab state
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  const [activeTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
+    () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
+  );
+  const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    writePersistedMatchChatTab(gameId, next);
+    setActiveTabRaw(next);
+  }, [gameId]);
 
   // Local dice state — OWNED by the active player during their turn.
   // Seeded from DB once on turn start; after that, only local actions mutate it.
