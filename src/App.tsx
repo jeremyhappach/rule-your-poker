@@ -191,8 +191,6 @@ const App = () => {
                 <Wave5GridOverlayToggle />
               </div>
 
-              {/* Persistent chat-delivery ledger export pill (survives navigation/reload). */}
-              <ChatDeliveryExportPill />
 
 
 
