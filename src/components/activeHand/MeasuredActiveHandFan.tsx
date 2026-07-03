@@ -434,48 +434,6 @@ export function MeasuredActiveHandFan({
           });
         }
       }
-      if (three57LedgerIdentity) {
-        const reason = !candidateValid
-          ? 'candidate-invalid'
-          : willAccept
-            ? (lockedForCurrentKey ? 'committed-invalidated' : 'first-commit')
-            : (lockedForCurrentKey ? 'locked-skip' : 'no-change');
-        const priorCardSize = committedLayout ? { width: committedLayout.cardWidth, height: committedLayout.cardHeight } : null;
-        const nextCardSize = candidateLayout ? { width: candidateLayout.cardWidth, height: candidateLayout.cardHeight } : null;
-        const commitKind: 'new' | 'reuse' | 'fallback' | 'recompute' | 'sample' = willAccept
-          ? (lockedForCurrentKey ? 'recompute' : 'new')
-          : acceptedNoLock
-            ? 'new'
-            : (lockedForCurrentKey ? 'reuse' : 'sample');
-        recordThree57Geometry(three57LedgerIdentity, {
-          event: willAccept ? 'commit-accept' : (acceptedNoLock ? 'commit-accept-nolock' : 'commit-reject') as string,
-          branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-          sourceLabels: {
-            reason,
-            zoneCount: zones.length,
-            lowerZoneMinPx: totalLowerZonePx,
-            lockedForCurrentKey: String(lockedForCurrentKey),
-            phaseLockKey: activeLockKey ?? null,
-            policyRevision: (policy as unknown as { revision?: number })?.revision ?? null,
-          },
-          expectedCapacity: capacity,
-          visibleCapacity: cards.length,
-          claimedCapacity: (cardIds ?? []).length,
-          cardWidth: nextCardSize?.width ?? null,
-          cardHeight: nextCardSize?.height ?? null,
-          wrapperScale: 1,
-          fanOverlap: null,
-          fanSpread: null,
-          rotationDeg: null,
-          paneRect: { w, h },
-          commitId: activeLockKey,
-          prevCommitId: committedRef.current.key,
-          commitKind,
-          selectingFunction: 'resolveActiveHandFromPane',
-          isPostDealBranch: false,
-          legalIdentityChange: committedRef.current.key !== activeLockKey,
-        });
-      }
 
       if (willAccept) {
         committedRef.current = {
