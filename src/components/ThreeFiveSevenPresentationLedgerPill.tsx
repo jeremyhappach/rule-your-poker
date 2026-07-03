@@ -43,6 +43,17 @@ export function ThreeFiveSevenPresentationLedgerPill() {
     };
   }, []);
 
+  // While armed, poll the ring-buffer count so the "N events" status
+  // stays live without requiring the user to tap the number. 500ms is
+  // plenty for a status readout and keeps overhead negligible.
+  useEffect(() => {
+    if (!armed) return;
+    const id = window.setInterval(() => {
+      setCount(getThree57LedgerEventCount());
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [armed]);
+
   const handleArm = useCallback(() => {
     setThree57LedgerArmed(true);
     setArmed(isThree57LedgerArmed());
@@ -85,7 +96,12 @@ export function ThreeFiveSevenPresentationLedgerPill() {
     setCount(getThree57LedgerEventCount());
   }, []);
 
-  if (!available) return null;
+  // Every-client visibility contract: render whenever a 3-5-7 table is
+  // mounted (available), OR whenever we still hold a recording (armed
+  // or non-empty buffer). Do NOT gate on local active turn, host role,
+  // hand-pane branch, or renderer mount. The pill must persist so that
+  // the impacted client can always export the retained ledger.
+  if (!available && !armed && count === 0) return null;
 
   const btn = (bg: string): React.CSSProperties => ({
     background: bg,
@@ -101,10 +117,6 @@ export function ThreeFiveSevenPresentationLedgerPill() {
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: 66,
-        right: 6,
-        zIndex: 100000,
         background: 'rgba(0,0,0,0.85)',
         color: '#FFD59E',
         border: '1px solid #FFD59E',
@@ -118,10 +130,17 @@ export function ThreeFiveSevenPresentationLedgerPill() {
         userSelect: 'none',
       }}
       data-three57-presentation-ledger-pill=""
+      data-available={available ? '1' : '0'}
+      data-armed={armed ? '1' : '0'}
     >
       <span style={{ fontWeight: 700 }}>357 PRESENTATION LEDGER</span>
-      <span onClick={handleRefreshCount} style={{ opacity: 0.85, cursor: 'pointer' }}>
-        #{count}
+      <span
+        onClick={handleRefreshCount}
+        style={{ opacity: 0.9, cursor: 'pointer' }}
+        title="Tap to refresh count"
+      >
+        357 ledger: {count} events | {armed ? 'armed' : 'disarmed'}
+        {!available ? ' (table unmounted)' : ''}
       </span>
       <button
         type="button"
