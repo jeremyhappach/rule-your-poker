@@ -462,5 +462,5 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  return { user, isReady };
+  return { user, isReady, authRecovering };
 }
