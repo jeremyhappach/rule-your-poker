@@ -203,21 +203,21 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
 
       <fieldset className="space-y-3 border-t border-border/40 pt-3">
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Card scale within stage
+          Card scale (independent of fan span)
         </legend>
         <RatioField
-          label="Preferred card scale % of stage"
+          label="Preferred card scale % of pane width"
           value={value.preferredCardScalePctOfStage}
           min={0.02}
           onCommit={(n) => patch({ preferredCardScalePctOfStage: n })}
-          help="Preferred card width as % of the resolved stage width. Resolver picks the largest card that fits at this scale, capacity, and aspect."
+          help="Preferred card width as % of the row-4 pane width. This governs card scale ONLY — the authored fan span above is solved independently by adjusting overlap."
         />
         <RatioField
-          label="Maximum card scale % of stage"
+          label="Maximum card scale % of pane width"
           value={value.maxCardScalePctOfStage}
           min={0.02}
           onCommit={(n) => patch({ maxCardScalePctOfStage: n })}
-          help="Hard ceiling — cards never exceed this fraction of the stage width regardless of remaining space."
+          help="Hard ceiling on card width as % of the row-4 pane width. Height ceiling still applies."
         />
       </fieldset>
 
