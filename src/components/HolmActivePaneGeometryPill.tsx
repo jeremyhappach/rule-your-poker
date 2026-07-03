@@ -64,12 +64,14 @@ export function HolmActivePaneGeometryPill() {
       const action = pane.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
       const actionRect = action?.getBoundingClientRect() ?? null;
       const measuredLowerZoneMinPx = actionRect ? actionRect.height : 0;
-      const { stageRect, reservedLowerZonePx, interZoneClearancePx } =
+      const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
         computeStageRectFromPane(
           { width: paneRect.width, height: paneRect.height },
           policy,
-          { measuredLowerZoneMinPx, safeAreaBottomPx: 0 },
         );
+      const reservedLowerZonePx = stageBottomInsetPx;
+      const interZoneClearancePx = stageTopInsetPx;
+
       const stageTop = paneRect.top;
       const stageBottom = stageTop + stageRect.height;
       const actionZoneComputedTop = stageBottom + interZoneClearancePx;

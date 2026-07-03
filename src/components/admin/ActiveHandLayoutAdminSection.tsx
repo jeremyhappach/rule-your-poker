@@ -134,45 +134,38 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
           value={value.maxWidthPctOfPane}
           min={0.1}
           onCommit={(n) => patch({ maxWidthPctOfPane: n })}
-          help="Upper bound on the card stage horizontal footprint."
+          help="Upper bound on the card stage horizontal footprint inside HUD row 4."
         />
         <RatioField
           label="Max stage height % of pane"
           value={value.maxHeightPctOfPane}
           min={0.1}
           onCommit={(n) => patch({ maxHeightPctOfPane: n })}
-          help="Upper bound on the card stage vertical footprint before reservations apply."
-        />
-        <RatioField
-          label="Reserved lower-zone % of pane"
-          value={value.reservedLowerZonePctOfPane}
-          max={0.9}
-          onCommit={(n) => patch({ reservedLowerZonePctOfPane: n })}
-          help="Vertical share of the pane reserved for the pane's own action / instruction / identity content."
-        />
-        <RatioField
-          label="Inter-zone clearance % of pane"
-          value={value.interZoneClearancePctOfPane}
-          max={0.5}
-          onCommit={(n) => patch({ interZoneClearancePctOfPane: n })}
-          help="Breathing room between the resolved hand stage and the lower zone."
+          help="Upper bound on the card stage vertical footprint inside HUD row 4 before intra-row clearances apply."
         />
       </fieldset>
 
       <fieldset className="space-y-3 border-t border-border/40 pt-3">
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Stage vertical placement
+          Hand vertical placement (inside row 4 only)
         </legend>
         <RatioField
-          label="Stage top inset % of pane"
+          label="Top clearance below timer row"
           value={value.stageTopInsetPctOfPane}
           max={0.9}
           onCommit={(n) => patch({ stageTopInsetPctOfPane: n })}
-          help="Pushes the whole hand-stage DOWN from the top of the pane by this fraction of pane height. Does NOT change card size."
+          help="Safe vertical breathing room inside row 4 below the row-3 timer boundary, as a fraction of row-4 pane height. Does NOT own row 3 or timer sizing."
+        />
+        <RatioField
+          label="Bottom clearance above identity/action row"
+          value={value.stageBottomInsetPctOfPane}
+          max={0.9}
+          onCommit={(n) => patch({ stageBottomInsetPctOfPane: n })}
+          help="Safe vertical breathing room inside row 4 above the row-5 identity/action boundary, as a fraction of row-4 pane height. Does NOT own row 5 sizing."
         />
         <div className="space-y-1">
           <div className="flex items-baseline justify-between gap-2">
-            <Label className="text-sm font-medium">Fan alignment within stage</Label>
+            <Label className="text-sm font-medium">Hand vertical alignment</Label>
             <select
               className="h-8 rounded border border-input bg-background px-2 text-xs font-mono"
               value={value.stageVerticalAlignment}
@@ -184,27 +177,28 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
                     | 'bottom',
                 })
               }
-              aria-label="Fan alignment within stage"
+              aria-label="Hand vertical alignment"
             >
-              <option value="bottom">bottom (legacy)</option>
+              <option value="bottom">bottom</option>
               <option value="center">center</option>
-              <option value="top">top (raise hand)</option>
+              <option value="top">top</option>
             </select>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Vertical anchor of the fan inside the resolved stage rect.
-            'top' raises the hand upward without resizing cards.
+            Vertical anchor of the fan inside the remaining row-4 stage
+            after top and bottom clearances are applied.
           </p>
         </div>
         <RatioField
-          label="Content Y offset % of stage"
+          label="Fine vertical offset"
           value={value.contentYOffsetPctOfStage}
           min={-0.5}
           max={0.5}
           onCommit={(n) => patch({ contentYOffsetPctOfStage: n })}
-          help="Final signed Y trim inside the stage. Positive = down, negative = up."
+          help="Small signed authored Y trim inside the stage. Positive = down, negative = up."
         />
       </fieldset>
+
 
 
       <fieldset className="space-y-3 border-t border-border/40 pt-3">

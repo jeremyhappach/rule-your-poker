@@ -63,15 +63,11 @@ export interface ActiveHandLayoutPolicy {
   /** Minimum legible card width in CSS px. [8, 120]. */
   minCardWidthPx: number;
 
-  // ── Pane-relative sizing (v2, authored as percentages) ────────────
-  /** Max usable hand-stage width as % of measured pane width. [0, 1]. */
+  // ── Pane-relative sizing (v3, authored as percentages) ────────────
+  /** Max usable hand-stage width as % of row-4 pane width. [0, 1]. */
   maxWidthPctOfPane: number;
-  /** Max usable hand-stage height as % of measured pane height. [0, 1]. */
+  /** Max usable hand-stage height as % of row-4 pane height. [0, 1]. */
   maxHeightPctOfPane: number;
-  /** % of pane height reserved for lower action/instruction/identity zone. [0, 0.9]. */
-  reservedLowerZonePctOfPane: number;
-  /** % of pane height as vertical clearance between hand stage and lower zone. [0, 0.5]. */
-  interZoneClearancePctOfPane: number;
 
   // ── Card scale within resolved stage ─────────────────────────────
   /** Preferred card width as % of resolved stage width. [0, 1]. */
@@ -87,16 +83,26 @@ export interface ActiveHandLayoutPolicy {
   /** Ceiling overlap used only when containment requires it. Mirrors `maxOverlap`. */
   maxAdaptiveOverlapPct: number;
 
-  // ── Stage vertical placement (v3 — active-hand host anchor) ───────
+  // ── Stage vertical placement (v3 — inside row-4 pane only) ────────
   /**
-   * Extra top inset, expressed as fraction of pane HEIGHT, applied
-   * BEFORE the stage rect is placed in the pane. Positive values push
-   * the whole hand-stage DOWN (leaving more empty space above cards).
-   * Zero preserves the legacy top-flushed placement. [0, 0.9].
+   * Safe vertical breathing room inside the row-4 pane BELOW the row-3
+   * timer-row boundary, expressed as fraction of row-4 pane HEIGHT.
+   * This is NOT ownership of row 3 or timer sizing — the shell already
+   * owns the timer row height. Positive values push the whole
+   * hand-stage DOWN inside row 4. [0, 0.9].
    */
   stageTopInsetPctOfPane: number;
   /**
-   * Vertical alignment of the fan within the resolved stage rect.
+   * Safe vertical breathing room inside the row-4 pane ABOVE the row-5
+   * identity/action-row boundary, expressed as fraction of row-4 pane
+   * HEIGHT. This is NOT ownership of row 5 sizing — the shell owns the
+   * identity/action row height. Positive values shrink the stage from
+   * the bottom of row 4. [0, 0.9].
+   */
+  stageBottomInsetPctOfPane: number;
+  /**
+   * Vertical alignment of the fan within the remaining row-4 stage
+   * after top+bottom clearances are applied.
    *   'bottom' — cards flush to bottom of stage (legacy default).
    *   'center' — cards centered vertically inside stage.
    *   'top'    — cards flush to top of stage (moves hand UP inside pane).
@@ -109,6 +115,7 @@ export interface ActiveHandLayoutPolicy {
    */
   contentYOffsetPctOfStage: number;
 }
+
 
 export interface ActiveHandLayoutGameSpec {
   game: GameKey;
@@ -127,14 +134,13 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.62,
-  reservedLowerZonePctOfPane: 0.24,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.18,
   maxCardScalePctOfStage: 0.24,
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.07,
   maxAdaptiveOverlapPct: 0.35,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.28,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
@@ -145,16 +151,15 @@ const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.96,
   maxHeightPctOfPane: 0.60,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.11,
   maxCardScalePctOfStage: 0.16,
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.20,
   maxAdaptiveOverlapPct: 0.45,
-  // Move Gin hand UP inside the pane: fan flush to top of stage,
-  // small authored top inset for breathing room above the fan.
+  // Small breathing room under the row-3 timer boundary; fan flush to
+  // top of the resulting stage so the hand sits high inside row 4.
   stageTopInsetPctOfPane: 0.02,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'top',
   contentYOffsetPctOfStage: 0,
 };
@@ -165,14 +170,13 @@ const HOLM_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 30,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.64,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.28,
   maxCardScalePctOfStage: 0.36,
   baselineFanArchDeg: 8,
   baselineOverlapPct: 0.18,
   maxAdaptiveOverlapPct: 0.42,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
@@ -183,17 +187,17 @@ const THREE_FIVE_SEVEN_DEFAULTS: ActiveHandLayoutPolicy = {
   minCardWidthPx: 28,
   maxWidthPctOfPane: 0.94,
   maxHeightPctOfPane: 0.60,
-  reservedLowerZonePctOfPane: 0.22,
-  interZoneClearancePctOfPane: 0.04,
   preferredCardScalePctOfStage: 0.20,
   maxCardScalePctOfStage: 0.30,
   baselineFanArchDeg: 6,
   baselineOverlapPct: 0.12,
   maxAdaptiveOverlapPct: 0.40,
   stageTopInsetPctOfPane: 0,
+  stageBottomInsetPctOfPane: 0.26,
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
+
 
 /**
  * Per-game registry. Extend by appending an entry; the domain
@@ -258,16 +262,6 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
       minCardWidthPx: minW,
       maxWidthPctOfPane: clamp(num(v.maxWidthPctOfPane, defaults.maxWidthPctOfPane), 0.1, 1),
       maxHeightPctOfPane: clamp(num(v.maxHeightPctOfPane, defaults.maxHeightPctOfPane), 0.1, 1),
-      reservedLowerZonePctOfPane: clamp(
-        num(v.reservedLowerZonePctOfPane, defaults.reservedLowerZonePctOfPane),
-        0,
-        0.9,
-      ),
-      interZoneClearancePctOfPane: clamp(
-        num(v.interZoneClearancePctOfPane, defaults.interZoneClearancePctOfPane),
-        0,
-        0.5,
-      ),
       preferredCardScalePctOfStage: clamp(
         num(v.preferredCardScalePctOfStage, defaults.preferredCardScalePctOfStage),
         0.02,
@@ -278,6 +272,7 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
         0.02,
         1,
       ),
+
       baselineFanArchDeg: clamp(num(v.baselineFanArchDeg, defaults.baselineFanArchDeg), 0, 45),
       baselineOverlapPct: baselineOverlap,
       maxAdaptiveOverlapPct: maxAdaptive,
@@ -286,6 +281,12 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
         0,
         0.9,
       ),
+      stageBottomInsetPctOfPane: clamp(
+        num(v.stageBottomInsetPctOfPane, defaults.stageBottomInsetPctOfPane),
+        0,
+        0.9,
+      ),
+
       stageVerticalAlignment:
         v.stageVerticalAlignment === 'top' ||
         v.stageVerticalAlignment === 'center' ||
@@ -364,18 +365,23 @@ export interface ResolvedActiveHandRow {
   rowOffsetY: number;
   /** Resolved card stage rect (owner uses this for the card container). */
   stageRect: ActiveHandStageRect;
-  /** Reserved lower-zone height in px (owner renders the lower zone with this). */
-  reservedLowerZonePx: number;
-  /** Inter-zone clearance in px between hand stage and lower zone. */
-  interZoneClearancePx: number;
   /**
-   * Extra top inset in px (from `stageTopInsetPctOfPane`). The pane
-   * owner should offset the stage container DOWN by this amount from
-   * the pane's top edge. Cards do NOT re-scale for this value — it
-   * moves the whole stage without changing card geometry.
+   * Top clearance in px (from `stageTopInsetPctOfPane`) — safe
+   * breathing room inside row 4 below the row-3 timer boundary. The
+   * pane owner should offset the stage container DOWN by this amount
+   * from the row-4 pane's top edge. Cards do NOT re-scale for this
+   * value — it moves the whole stage without changing card geometry.
    */
   stageTopInsetPx: number;
+  /**
+   * Bottom clearance in px (from `stageBottomInsetPctOfPane`) — safe
+   * breathing room inside row 4 above the row-5 identity/action row
+   * boundary. Cards do NOT re-scale for this value; the resolver
+   * simply excludes it from the stage height.
+   */
+  stageBottomInsetPx: number;
 }
+
 
 export interface ActiveHandFanBounds {
   minX: number;
@@ -456,19 +462,12 @@ function transformedFanBounds(
 }
 
 /**
- * Optional overrides consumed by the pane-based resolver.
- *
- * `measuredLowerZoneMinPx` is the runtime-measured minimum rendered
- * height of the sibling lower zone (action / instruction / identity)
- * that the pane owner reserves as `max-content` next to the hand
- * stage. `safeAreaBottomPx` is the resolved
- * `env(safe-area-inset-bottom)` allowance so devices with a home-bar /
- * gesture area cannot clip the identity row.
- *
- * Resolved reservation used by the resolver:
- *   `max(paneH × reservedLowerZonePctOfPane, measuredLowerZoneMinPx + safeAreaBottomPx)`
- *
- * Never falls below the authored reservation.
+ * @deprecated Retained as a no-op type for back-compat with old
+ * callers. The v3 contract removes lower-zone reservation ownership
+ * from `ActiveHandLayoutPolicy`; the shell HUD stack sizes rows 3 and
+ * 5 independently, and the row-4 pane rect handed to ActiveHand is
+ * already the final active-player pane. Fields on this interface are
+ * ignored by the resolver.
  */
 export interface PaneReservationOverrides {
   measuredLowerZoneMinPx?: number;
@@ -476,43 +475,44 @@ export interface PaneReservationOverrides {
 }
 
 /**
- * Compute the hand-stage rect from the pane rect + authored reservations.
- * Owners can call this to size the lower zone sibling in the same
- * space the resolver uses.
+ * Compute the hand-stage rect inside the row-4 pane rect.
+ *
+ * Contract: `paneRect` MUST be the final HUD row-4 active-player pane
+ * rect the shell has already resolved. The resolver never subtracts
+ * timer, identity, or action reservations here — those are shell HUD
+ * stack geometry and are already excluded from the pane rect handed
+ * in. Only the authored intra-row breathing rooms
+ * (`stageTopInsetPctOfPane`, `stageBottomInsetPctOfPane`) are applied.
  */
 export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
-  overrides?: PaneReservationOverrides,
+  _overrides?: PaneReservationOverrides,
 ): {
   stageRect: ActiveHandStageRect;
-  reservedLowerZonePx: number;
-  interZoneClearancePx: number;
   stageTopInsetPx: number;
+  stageBottomInsetPx: number;
 } {
+  void _overrides;
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
-  const authoredReserved = paneH * policy.reservedLowerZonePctOfPane;
-  const measured = Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0);
-  const safeArea = Math.max(0, overrides?.safeAreaBottomPx ?? 0);
-  const reservedLowerZonePx = Math.max(authoredReserved, measured + safeArea);
-  const interZoneClearancePx = paneH * policy.interZoneClearancePctOfPane;
   const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
+  const stageBottomInsetPx = Math.max(0, paneH * policy.stageBottomInsetPctOfPane);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
     Math.min(
       paneH * policy.maxHeightPctOfPane,
-      paneH - reservedLowerZonePx - interZoneClearancePx - stageTopInsetPx,
+      paneH - stageTopInsetPx - stageBottomInsetPx,
     ),
   );
   return {
     stageRect: { width: stageW, height: stageH },
-    reservedLowerZonePx,
-    interZoneClearancePx,
     stageTopInsetPx,
+    stageBottomInsetPx,
   };
 }
+
 
 
 /**
@@ -647,31 +647,32 @@ export function resolveActiveHandLayout(
     rowOffsetX: (stage.width - visualBounds.width) / 2 - visualBounds.minX,
     rowOffsetY,
     stageRect: stage,
-    reservedLowerZonePx: 0,
-    interZoneClearancePx: 0,
     stageTopInsetPx: 0,
+    stageBottomInsetPx: 0,
   };
 }
 
 /**
- * Preferred v2 entry point. Given a measured pane rect and a policy,
- * derives the stage rect (subtracting reserved lower zone + clearance)
- * and resolves the card row inside it in one pass.
+ * Preferred v3 entry point. Given the resolved HUD row-4 pane rect and
+ * a policy, derives the stage rect (applying only the authored intra-
+ * row top/bottom clearances) and resolves the card row inside it.
  */
 export function resolveActiveHandFromPane(
   paneRect: ActiveHandStageRect | null,
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
-  overrides?: PaneReservationOverrides,
+  _overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
+  void _overrides;
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
-  const { stageRect, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx } =
-    computeStageRectFromPane(paneRect, policy, overrides);
+  const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
+    computeStageRectFromPane(paneRect, policy);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
-  return { ...row, reservedLowerZonePx, interZoneClearancePx, stageTopInsetPx };
+  return { ...row, stageTopInsetPx, stageBottomInsetPx };
 }
+
 
