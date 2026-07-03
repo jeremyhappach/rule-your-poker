@@ -6609,6 +6609,7 @@ export const MobileGameTable = ({
           container: tableContainerRef.current,
           winnerPosition: winnerPos,
           winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+          transferArtifactId: potToPlayerTriggerId357 ?? null,
           ledgerIdentity: _357Identity,
           ledgerOwner: '357',
           ledgerSource: 'MobileGameTable#handlePotToPlayerComplete357',
