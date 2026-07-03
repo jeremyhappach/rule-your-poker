@@ -46,6 +46,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
+import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
 
 
 
@@ -170,6 +171,7 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
+                <ChatDeliveryExportPill />
                 <R1SnapbackPill />
 
 
