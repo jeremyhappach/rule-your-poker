@@ -263,6 +263,11 @@ import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/G
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
 import {
+  recordWinPresentationEvent,
+  armWinFreezeWatchdog,
+  type WinAttemptIdentity,
+} from "@/lib/canonicalShell/winPresentationLedger";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
