@@ -130,11 +130,11 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
           Pane-relative sizing
         </legend>
         <RatioField
-          label="Max stage width % of pane"
+          label="Fan span % of pane width"
           value={value.maxWidthPctOfPane}
           min={0.1}
           onCommit={(n) => patch({ maxWidthPctOfPane: n })}
-          help="Upper bound on the card stage horizontal footprint inside HUD row 4."
+          help="Authored horizontal fan span inside row 4, as a fraction of pane width. The resolver sizes cards independently and then solves overlap so the fan spans this width — narrower spans tighten overlap, wider spans relax overlap toward the preferred value. Does NOT re-scale cards."
         />
         <RatioField
           label="Max stage height % of pane"
@@ -203,21 +203,21 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
 
       <fieldset className="space-y-3 border-t border-border/40 pt-3">
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Card scale within stage
+          Card scale (independent of fan span)
         </legend>
         <RatioField
-          label="Preferred card scale % of stage"
+          label="Preferred card scale % of pane width"
           value={value.preferredCardScalePctOfStage}
           min={0.02}
           onCommit={(n) => patch({ preferredCardScalePctOfStage: n })}
-          help="Preferred card width as % of the resolved stage width. Resolver picks the largest card that fits at this scale, capacity, and aspect."
+          help="Preferred card width as % of the row-4 pane width. This governs card scale ONLY — the authored fan span above is solved independently by adjusting overlap."
         />
         <RatioField
-          label="Maximum card scale % of stage"
+          label="Maximum card scale % of pane width"
           value={value.maxCardScalePctOfStage}
           min={0.02}
           onCommit={(n) => patch({ maxCardScalePctOfStage: n })}
-          help="Hard ceiling — cards never exceed this fraction of the stage width regardless of remaining space."
+          help="Hard ceiling on card width as % of the row-4 pane width. Height ceiling still applies."
         />
       </fieldset>
 

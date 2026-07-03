@@ -525,14 +525,18 @@ export function computeStageRectFromPane(
 
 /**
  * Legacy signature (accepts a pre-computed stage rect). Retained for
- * back-compat with the Cribbage stage-first mount path. New callers
- * should prefer `resolveActiveHandFromPane` below.
+ * back-compat with the Cribbage stage-first mount path. Card scale in
+ * this signature is resolved against `stage.width` when no explicit
+ * `scaleBaseWidth` is provided. New callers should prefer
+ * `resolveActiveHandFromPane`, which sizes cards against the pane
+ * width so `maxWidthPctOfPane` governs only the fan span.
  */
 export function resolveActiveHandLayout(
   stage: ActiveHandStageRect | null,
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
+  scaleBaseWidth?: number,
 ): ResolvedActiveHandRow | null {
   if (!stage) return null;
   if (!Number.isFinite(stage.width) || stage.width <= 0) return null;
@@ -540,86 +544,71 @@ export function resolveActiveHandLayout(
   if (!Number.isFinite(capacity) || capacity <= 0) return null;
   if (!Number.isFinite(aspect) || aspect <= 0) return null;
 
-  const heightBound = stage.height * aspect;
-  const { preferredOverlap, maxOverlap, minCardWidthPx, maxCardScalePctOfStage } = policy;
+  const scaleBase =
+    Number.isFinite(scaleBaseWidth) && (scaleBaseWidth as number) > 0
+      ? (scaleBaseWidth as number)
+      : stage.width;
+
+  const {
+    preferredOverlap,
+    maxOverlap,
+    minCardWidthPx,
+    preferredCardScalePctOfStage,
+    maxCardScalePctOfStage,
+  } = policy;
   const fanArchDeg = policy.baselineFanArchDeg;
 
-  const widthAt = (overlap: number): number => {
-    const density = 1 + (capacity - 1) * (1 - overlap);
-    return density > 0 ? stage.width / density : stage.width;
-  };
+  // Step 1 — card scale is independent of the fan span. Resolved from
+  // `scaleBase` (pane width) up to the height ceiling. Shrinking the
+  // authored `maxWidthPctOfPane` does NOT shrink cards.
+  const heightBound = stage.height * aspect;
+  const maxCardWidthByScale = scaleBase * maxCardScalePctOfStage;
+  const preferredCardWidth = Math.min(
+    scaleBase * preferredCardScalePctOfStage,
+    maxCardWidthByScale,
+    heightBound,
+  );
+  let cardWidth = Math.max(minCardWidthPx, preferredCardWidth);
+  if (cardWidth > heightBound) cardWidth = Math.max(1, heightBound);
 
-  const widthBoundedByTransformedFan = (overlap: number): number => {
-    const unitBounds = transformedFanBounds(
-      1,
-      1 / aspect,
-      overlap,
-      capacity,
-      fanArchDeg,
-      0,
-    );
-    const availableW = Math.max(0, stage.width - ACTIVE_HAND_VISUAL_BOUNDS_PAD_PX * 2);
-    const availableH = Math.max(0, stage.height - ACTIVE_HAND_VISUAL_BOUNDS_PAD_PX * 2);
-    const byW = unitBounds.width > 0 ? availableW / unitBounds.width : stage.width;
-    const byH = unitBounds.height > 0 ? availableH / unitBounds.height : heightBound;
-    return Math.max(0, Math.min(byW, byH));
-  };
+  // Step 2 — the target fan span IS `stage.width` (governed by
+  // `maxWidthPctOfPane`). Overlap is solved so the fan spans it.
+  const targetFanSpan = stage.width;
 
-  const ceilingByScale = stage.width * maxCardScalePctOfStage;
+  let overlapPx: number;
+  let overlapRatio: number;
 
-  const preferred = Math.max(0, Math.min(maxOverlap, preferredOverlap));
-  const overlapCandidates = capacity <= 1
-    ? [0]
-    : Array.from({ length: 13 }, (_unused, index) => {
-        const t = index / 12;
-        return preferred + (maxOverlap - preferred) * t;
-      });
+  if (capacity <= 1) {
+    overlapPx = 0;
+    overlapRatio = 0;
+  } else {
+    const preferredOverlapPx = cardWidth * preferredOverlap;
+    const maxOverlapPx = cardWidth * maxOverlap;
+    // Overlap required for `capacity` cards of `cardWidth` to fit within
+    // the target fan span.
+    const requiredOverlapPx =
+      (capacity * cardWidth - targetFanSpan) / (capacity - 1);
 
-  let overlap = overlapCandidates[0] ?? preferred;
-  let cardWidth = 0;
-  for (const candidateOverlap of overlapCandidates) {
-    const candidateWidth = Math.min(
-      widthAt(candidateOverlap),
-      heightBound,
-      ceilingByScale,
-      widthBoundedByTransformedFan(candidateOverlap),
-    );
-    if (
-      candidateWidth > cardWidth + 0.25 ||
-      (Math.abs(candidateWidth - cardWidth) <= 0.25 && candidateOverlap < overlap)
-    ) {
-      overlap = candidateOverlap;
-      cardWidth = candidateWidth;
+    // Relax overlap only down to the authored preferred; escalate up
+    // only to the max-overlap safety ceiling.
+    overlapPx = Math.max(preferredOverlapPx, requiredOverlapPx);
+
+    if (overlapPx > maxOverlapPx) {
+      // Even at max overlap the fan overflows — shrink card width so
+      // the fan exactly fills targetFanSpan at max overlap. This is
+      // the only path that reduces card size below its authored scale.
+      const denom = capacity - (capacity - 1) * maxOverlap;
+      const shrunk = denom > 0 ? targetFanSpan / denom : cardWidth;
+      cardWidth = Math.max(minCardWidthPx, Math.min(cardWidth, shrunk));
+      overlapPx = cardWidth * maxOverlap;
+      overlapRatio = maxOverlap;
+    } else {
+      overlapRatio = cardWidth > 0 ? overlapPx / cardWidth : 0;
     }
-  }
-
-  // If the stage is tight, prefer legibility up to the point where the
-  // transformed/shadowed fan would violate containment. This preserves
-  // the existing minimum-width intent without allowing rotated corners or
-  // active-hand shadows to clip outside the stage.
-  if (capacity > 1 && cardWidth < minCardWidthPx) {
-    const boundedMinimum = Math.min(
-      minCardWidthPx,
-      heightBound,
-      ceilingByScale,
-      widthBoundedByTransformedFan(overlap),
-    );
-    cardWidth = Math.max(cardWidth, boundedMinimum);
-  }
-
-  if (capacity === 1) {
-    overlap = 0;
-    cardWidth = Math.min(
-      stage.width,
-      heightBound,
-      ceilingByScale,
-      widthBoundedByTransformedFan(0),
-    );
   }
 
   if (!Number.isFinite(cardWidth) || cardWidth <= 0) return null;
 
-  const overlapPx = cardWidth * overlap;
   const totalWidth = cardWidth + (capacity - 1) * (cardWidth - overlapPx);
   const cardHeight = cardWidth / aspect;
   const visualBounds = transformedFanBounds(
@@ -649,7 +638,7 @@ export function resolveActiveHandLayout(
     cardHeight,
     overlapPx,
     totalWidth,
-    appliedOverlap: overlap,
+    appliedOverlap: overlapRatio,
     fanArchDeg,
     visualBounds,
     rowOffsetX: (stage.width - visualBounds.width) / 2 - visualBounds.minX,
@@ -661,9 +650,11 @@ export function resolveActiveHandLayout(
 }
 
 /**
- * Preferred v3 entry point. Given the resolved HUD row-4 pane rect and
- * a policy, derives the stage rect (applying only the authored intra-
- * row top/bottom clearances) and resolves the card row inside it.
+ * Preferred v3 entry point. Given the HUD row-4 pane rect and a policy,
+ * derives the stage rect (applying authored intra-row clearances) and
+ * resolves the card row. Card scale is derived from the PANE width, so
+ * `maxWidthPctOfPane` tunes the fan span (via overlap) rather than
+ * uniformly re-scaling cards.
  */
 export function resolveActiveHandFromPane(
   paneRect: ActiveHandStageRect | null,
@@ -677,7 +668,13 @@ export function resolveActiveHandFromPane(
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
   const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
     computeStageRectFromPane(paneRect, policy, overrides);
-  const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
+  const row = resolveActiveHandLayout(
+    stageRect,
+    capacity,
+    policy,
+    aspect,
+    paneRect.width,
+  );
   if (!row) return null;
   return { ...row, stageTopInsetPx, stageBottomInsetPx };
 }
