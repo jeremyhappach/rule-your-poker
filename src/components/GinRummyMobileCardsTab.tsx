@@ -481,7 +481,7 @@ export const GinRummyMobileCardsTab = ({
                       onClick={() => originalIndex !== -1 && handleCardClick(originalIndex)}
                       disabled={isProcessing || !isLayingOff}
                       className={cn(
-                        "transition-all duration-200 rounded relative opacity-80",
+                        "transition-all duration-200 rounded relative",
                         isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "",
                         isLayingOff && "cursor-pointer"
                       )}
@@ -549,7 +549,7 @@ export const GinRummyMobileCardsTab = ({
               const isSelected = selectedCardIndex === originalIndex;
               const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
               const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-              const isMeld = meldGroup >= 0;
+              void meldGroup;
               return (
                 <button
                   onClick={() => handleCardClick(originalIndex)}
@@ -557,7 +557,6 @@ export const GinRummyMobileCardsTab = ({
                   disabled={isProcessing || !canSelect}
                   className={cn(
                     "transition-all duration-200 rounded relative pointer-events-auto",
-                    isMeld ? "opacity-100" : "opacity-80",
                     isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
                     canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
                     isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"

@@ -146,16 +146,16 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
 };
 
 const GIN_DEFAULTS: ActiveHandLayoutPolicy = {
-  preferredOverlap: 0.20,
-  maxOverlap: 0.45,
+  preferredOverlap: 0.10,
+  maxOverlap: 0.35,
   minCardWidthPx: 28,
-  maxWidthPctOfPane: 0.96,
+  maxWidthPctOfPane: 0.98,
   maxHeightPctOfPane: 0.60,
   preferredCardScalePctOfStage: 0.11,
   maxCardScalePctOfStage: 0.16,
   baselineFanArchDeg: 8,
-  baselineOverlapPct: 0.20,
-  maxAdaptiveOverlapPct: 0.45,
+  baselineOverlapPct: 0.10,
+  maxAdaptiveOverlapPct: 0.35,
   // Small breathing room under the row-3 timer boundary; fan flush to
   // top of the resulting stage so the hand sits high inside row 4.
   stageTopInsetPctOfPane: 0.02,
@@ -487,17 +487,25 @@ export interface PaneReservationOverrides {
 export function computeStageRectFromPane(
   paneRect: ActiveHandStageRect,
   policy: ActiveHandLayoutPolicy,
-  _overrides?: PaneReservationOverrides,
+  overrides?: PaneReservationOverrides,
 ): {
   stageRect: ActiveHandStageRect;
   stageTopInsetPx: number;
   stageBottomInsetPx: number;
 } {
-  void _overrides;
   const paneW = Math.max(0, paneRect.width);
   const paneH = Math.max(0, paneRect.height);
   const stageTopInsetPx = Math.max(0, paneH * policy.stageTopInsetPctOfPane);
-  const stageBottomInsetPx = Math.max(0, paneH * policy.stageBottomInsetPctOfPane);
+  // Bottom clearance: authored % OR measured in-pane row-5 controls +
+  // safe-area, whichever is greater. This is the row-4/row-5 non-overlap
+  // guard: an active-hand stage cannot consume vertical space required
+  // by visible row-5 action controls that live inside the same row-4
+  // pane container.
+  const authoredBottomInsetPx = paneH * policy.stageBottomInsetPctOfPane;
+  const measuredBottomInsetPx =
+    Math.max(0, overrides?.measuredLowerZoneMinPx ?? 0) +
+    Math.max(0, overrides?.safeAreaBottomPx ?? 0);
+  const stageBottomInsetPx = Math.max(0, authoredBottomInsetPx, measuredBottomInsetPx);
   const stageW = Math.max(0, paneW * policy.maxWidthPctOfPane);
   const stageH = Math.max(
     0,
@@ -662,14 +670,13 @@ export function resolveActiveHandFromPane(
   capacity: number,
   policy: ActiveHandLayoutPolicy,
   aspect: number = 2 / 3,
-  _overrides?: PaneReservationOverrides,
+  overrides?: PaneReservationOverrides,
 ): ResolvedActiveHandRow | null {
-  void _overrides;
   if (!paneRect) return null;
   if (!Number.isFinite(paneRect.width) || paneRect.width <= 0) return null;
   if (!Number.isFinite(paneRect.height) || paneRect.height <= 0) return null;
   const { stageRect, stageTopInsetPx, stageBottomInsetPx } =
-    computeStageRectFromPane(paneRect, policy);
+    computeStageRectFromPane(paneRect, policy, overrides);
   const row = resolveActiveHandLayout(stageRect, capacity, policy, aspect);
   if (!row) return null;
   return { ...row, stageTopInsetPx, stageBottomInsetPx };
