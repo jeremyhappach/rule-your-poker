@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  recordChatDeliveryEvent,
+  recordChatDeliveryViolation,
+  getClientInstanceId,
+  type ChatMessageIdentity,
+} from '@/lib/chatDelivery/chatDeliveryLedger';
 
 interface ChatMessage {
   id: string;
@@ -35,6 +41,26 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
   // Cache usernames for observers (not seated players) so we don't re-query per message.
   const observerUsernameCacheRef = useRef<Map<string, string>>(new Map());
+
+  // Ledger identity helpers.
+  const buildIdentity = useCallback(
+    (
+      messageId: string,
+      transportSource: ChatMessageIdentity['transportSource'],
+      overrides: Partial<ChatMessageIdentity> = {},
+    ): ChatMessageIdentity => ({
+      messageId,
+      clientInstanceId: getClientInstanceId(),
+      localViewerId: currentUserId ?? null,
+      senderPlayerId: overrides.senderPlayerId ?? null,
+      dealerGameId: overrides.dealerGameId ?? null,
+      sessionId: gameId ?? null,
+      sentAt: overrides.sentAt ?? null,
+      transportSource,
+      ...overrides,
+    }),
+    [currentUserId, gameId],
+  );
 
   // Fetch current user's profile for observers
   useEffect(() => {
@@ -146,18 +172,46 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         // Optimistic update: immediately show the message in the UI
         const optimisticId = `optimistic-${Date.now()}`;
         const username = getUsernameForUserId(userId);
+        const sentAt = new Date().toISOString();
         const optimisticMessage: ChatMessage = {
           id: optimisticId,
           game_id: gameId,
           user_id: userId,
           message: message.trim(),
           image_url: imageUrl,
-          created_at: new Date().toISOString(),
+          created_at: sentAt,
           username,
         };
-        
-        setAllMessages(prev => [...prev, optimisticMessage]);
 
+        const _optimisticIdentity = buildIdentity(optimisticId, 'send', {
+          senderPlayerId: userId,
+          sentAt,
+        });
+        recordChatDeliveryEvent({
+          identity: _optimisticIdentity,
+          name: 'send-intent',
+          source: 'useGameChat#sendMessage',
+          payload: { hasImage: !!imageUrl, textLength: message.trim().length },
+        });
+        recordChatDeliveryEvent({
+          identity: _optimisticIdentity,
+          name: 'send-optimistic-created',
+          source: 'useGameChat#sendMessage',
+        });
+
+        setAllMessages(prev => [...prev, optimisticMessage]);
+        recordChatDeliveryEvent({
+          identity: _optimisticIdentity,
+          name: 'store-message-added',
+          source: 'useGameChat#sendMessage.optimistic',
+          payload: { storeSize: allMessages.length + 1 },
+        });
+
+        recordChatDeliveryEvent({
+          identity: _optimisticIdentity,
+          name: 'send-insert-start',
+          source: 'useGameChat#sendMessage.insert',
+        });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
@@ -167,26 +221,72 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
         if (error) {
           console.error('Error sending chat message:', error);
+          recordChatDeliveryEvent({
+            identity: _optimisticIdentity,
+            name: 'send-insert-error',
+            source: 'useGameChat#sendMessage.insert',
+            severity: 'error',
+            payload: { code: error.code, message: error.message },
+          });
           // Remove optimistic message on error
           setAllMessages(prev => prev.filter(m => m.id !== optimisticId));
+          recordChatDeliveryEvent({
+            identity: _optimisticIdentity,
+            name: 'send-optimistic-dropped',
+            source: 'useGameChat#sendMessage.insertError',
+          });
         } else if (data) {
+          recordChatDeliveryEvent({
+            identity: _optimisticIdentity,
+            name: 'send-insert-success',
+            source: 'useGameChat#sendMessage.insert',
+            payload: { serverId: data.id, serverCreatedAt: data.created_at },
+          });
+          const _authoritativeIdentity = buildIdentity(data.id, 'send', {
+            senderPlayerId: userId,
+            sentAt: data.created_at,
+          });
+          recordChatDeliveryEvent({
+            identity: _authoritativeIdentity,
+            name: 'send-authoritative-received',
+            source: 'useGameChat#sendMessage.insert',
+            payload: { optimisticId },
+          });
           // Replace optimistic message with real one (realtime will also fire, dedupe handles it)
           setAllMessages(prev => {
             const withoutOptimistic = prev.filter(m => m.id !== optimisticId);
             // Check if real message already exists (from realtime)
             if (withoutOptimistic.some(m => m.id === data.id)) {
+              recordChatDeliveryEvent({
+                identity: _authoritativeIdentity,
+                name: 'store-message-skipped-duplicate',
+                source: 'useGameChat#sendMessage.reconcile',
+                payload: { reason: 'realtime-already-inserted' },
+              });
               return withoutOptimistic;
             }
+            recordChatDeliveryEvent({
+              identity: _authoritativeIdentity,
+              name: 'send-optimistic-reconciled',
+              source: 'useGameChat#sendMessage.reconcile',
+            });
             return [...withoutOptimistic, { ...data, username }];
           });
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
+        recordChatDeliveryEvent({
+          identity: null,
+          name: 'send-insert-error',
+          source: 'useGameChat#sendMessage.catch',
+          severity: 'error',
+          payload: { error: String((error as Error)?.message ?? error) },
+        });
       } finally {
         setIsSending(false);
       }
     },
-    [gameId, isSending, currentUserId, getUsernameForUserId]
+    [gameId, isSending, currentUserId, getUsernameForUserId, buildIdentity, allMessages.length]
   );
 
   // Add a new bubble with expiration
@@ -222,7 +322,37 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     setAllMessages(prev => {
       const msgWithUsername = { ...msg, username };
       // Avoid duplicates
-      if (prev.some(m => m.id === msg.id)) return prev;
+      if (prev.some(m => m.id === msg.id)) {
+        recordChatDeliveryEvent({
+          identity: {
+            messageId: msg.id,
+            clientInstanceId: getClientInstanceId(),
+            localViewerId: currentUserId ?? null,
+            senderPlayerId: msg.user_id,
+            sessionId: msg.game_id ?? null,
+            sentAt: msg.created_at,
+            transportSource: 'realtime',
+          },
+          name: 'store-message-skipped-duplicate',
+          source: 'useGameChat#addBubble',
+          payload: { storeSize: prev.length },
+        });
+        return prev;
+      }
+      recordChatDeliveryEvent({
+        identity: {
+          messageId: msg.id,
+          clientInstanceId: getClientInstanceId(),
+          localViewerId: currentUserId ?? null,
+          senderPlayerId: msg.user_id,
+          sessionId: msg.game_id ?? null,
+          sentAt: msg.created_at,
+          transportSource: 'realtime',
+        },
+        name: 'store-message-merged',
+        source: 'useGameChat#addBubble',
+        payload: { storeSize: prev.length + 1, username },
+      });
       return [...prev, msgWithUsername];
     });
   }, [currentUserId, getOrFetchObserverUsername]);
@@ -241,13 +371,60 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     if (!gameId) return;
 
     const fetchMessages = async () => {
+      recordChatDeliveryEvent({
+        identity: null,
+        name: 'fetch-start',
+        source: 'useGameChat#fetchMessages',
+        payload: { gameId },
+      });
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('game_id', gameId)
         .order('created_at', { ascending: true });
 
-      if (error || !data) return;
+      if (error || !data) {
+        recordChatDeliveryEvent({
+          identity: null,
+          name: 'fetch-end',
+          source: 'useGameChat#fetchMessages',
+          severity: error ? 'error' : 'info',
+          payload: {
+            gameId,
+            error: error?.message ?? null,
+            count: 0,
+          },
+        });
+        return;
+      }
+
+      recordChatDeliveryEvent({
+        identity: null,
+        name: 'fetch-end',
+        source: 'useGameChat#fetchMessages',
+        payload: {
+          gameId,
+          count: data.length,
+          firstId: data[0]?.id ?? null,
+          lastId: data[data.length - 1]?.id ?? null,
+        },
+      });
+
+      for (const msg of data) {
+        recordChatDeliveryEvent({
+          identity: {
+            messageId: msg.id,
+            clientInstanceId: getClientInstanceId(),
+            localViewerId: currentUserId ?? null,
+            senderPlayerId: msg.user_id,
+            sessionId: msg.game_id ?? null,
+            sentAt: msg.created_at,
+            transportSource: 'fetch',
+          },
+          name: 'fetch-message-admitted',
+          source: 'useGameChat#fetchMessages',
+        });
+      }
 
       const currentPlayers = playersRef.current;
       const currentProfile = currentUserProfileRef.current;
@@ -283,6 +460,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
       });
 
       setAllMessages(messagesWithUsernames);
+      recordChatDeliveryEvent({
+        identity: null,
+        name: 'hydration-complete',
+        source: 'useGameChat#fetchMessages',
+        payload: {
+          gameId,
+          count: messagesWithUsernames.length,
+          latestId: messagesWithUsernames[messagesWithUsernames.length - 1]?.id ?? null,
+        },
+      });
       console.log('[holm-chat-indicator] hydration complete', {
         gameId,
         count: messagesWithUsernames.length,
@@ -309,8 +496,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   useEffect(() => {
     if (!gameId) return;
 
+    const channelTopic = `chat-${gameId}`;
+    recordChatDeliveryEvent({
+      identity: null,
+      name: 'realtime-subscription-created',
+      source: 'useGameChat#subscribe',
+      payload: { channelTopic, filter: `game_id=eq.${gameId}` },
+    });
+
     const channel = supabase
-      .channel(`chat-${gameId}`)
+      .channel(channelTopic)
       .on(
         'postgres_changes',
         {
@@ -321,6 +516,42 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
+          const _rtIdentity: ChatMessageIdentity = {
+            messageId: newMessage.id,
+            clientInstanceId: getClientInstanceId(),
+            localViewerId: currentUserId ?? null,
+            senderPlayerId: newMessage.user_id,
+            sessionId: newMessage.game_id ?? null,
+            sentAt: newMessage.created_at,
+            transportSource: 'realtime',
+          };
+          recordChatDeliveryEvent({
+            identity: _rtIdentity,
+            name: 'realtime-insert-received',
+            source: 'useGameChat#subscribe.onInsert',
+            payload: { channelTopic },
+          });
+          // Filter check: payload should match current gameId.
+          if (newMessage.game_id !== gameId) {
+            recordChatDeliveryViolation(_rtIdentity, 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH',
+              'useGameChat#subscribe.onInsert', {
+                payloadGameId: newMessage.game_id,
+                subscribedGameId: gameId,
+              });
+            recordChatDeliveryEvent({
+              identity: _rtIdentity,
+              name: 'realtime-payload-rejected',
+              source: 'useGameChat#subscribe.onInsert',
+              severity: 'warn',
+              payload: { reason: 'game-id-mismatch' },
+            });
+            return;
+          }
+          recordChatDeliveryEvent({
+            identity: _rtIdentity,
+            name: 'realtime-payload-admitted',
+            source: 'useGameChat#subscribe.onInsert',
+          });
           console.log('[holm-chat-indicator] realtime message received', {
             gameId,
             messageId: newMessage.id,
@@ -331,17 +562,44 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         }
       )
       .subscribe((status, err) => {
+        recordChatDeliveryEvent({
+          identity: null,
+          name: 'realtime-subscription-status',
+          source: 'useGameChat#subscribe.status',
+          severity: status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' ? 'error' : 'info',
+          payload: { status, channelTopic, error: err ? String(err) : null },
+        });
         if (status === 'CHANNEL_ERROR') {
           console.error('[useGameChat] Channel error:', err);
+          recordChatDeliveryEvent({
+            identity: null,
+            name: 'realtime-subscription-error',
+            source: 'useGameChat#subscribe.status',
+            severity: 'error',
+            payload: { channelTopic, error: err ? String(err) : null },
+          });
         } else if (status === 'TIMED_OUT') {
           console.error('[useGameChat] Channel subscription timed out');
+          recordChatDeliveryEvent({
+            identity: null,
+            name: 'realtime-subscription-error',
+            source: 'useGameChat#subscribe.status',
+            severity: 'error',
+            payload: { channelTopic, reason: 'timed-out' },
+          });
         }
       });
 
     return () => {
+      recordChatDeliveryEvent({
+        identity: null,
+        name: 'realtime-subscription-teardown',
+        source: 'useGameChat#subscribe.cleanup',
+        payload: { channelTopic },
+      });
       supabase.removeChannel(channel);
     };
-  }, [gameId, addBubble]);
+  }, [gameId, addBubble, currentUserId]);
 
   return {
     chatBubbles,
