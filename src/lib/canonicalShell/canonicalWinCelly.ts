@@ -32,7 +32,10 @@ import confetti from 'canvas-confetti';
 const STYLE_ID = '__chip-dest-reaction-keyframes';
 const BOUNCE_DURATION_MS = 900;
 
-const firedKeys = new Set<string>();
+// legacy dedupe set retained for backward-compat shim only.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _firedKeys = new Set<string>();
+
 
 function ensureBounceStylesheet(): void {
   if (typeof document === 'undefined') return;
