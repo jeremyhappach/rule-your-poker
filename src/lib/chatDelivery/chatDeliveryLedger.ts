@@ -396,3 +396,71 @@ function installConsoleTap(): void {
 installConsoleTap();
 // Warm the client instance id so exports always carry it.
 getClientInstanceId();
+
+/* ────────────────────────────────────────────────────────────
+   Unread-evaluation expectation tracker
+
+   When a remote (non-self) chat message is admitted from realtime,
+   consumers call `armRemoteUnreadExpectation(identity)`. The
+   indicator effect calls `markUnreadEvaluated(messageId)` when it
+   runs. If no evaluation is seen within one macrotask window
+   (~one render cycle), the ledger emits
+   `CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD`.
+
+   Instrumentation-only. This never blocks or alters chat.
+   ──────────────────────────────────────────────────────────── */
+
+const UNREAD_EVAL_DEADLINE_MS = 100;
+
+interface UnreadExpectation {
+  identity: ChatMessageIdentity;
+  timer: ReturnType<typeof setTimeout>;
+  armedAt: number;
+  evaluated: boolean;
+}
+
+const unreadExpectations = new Map<string, UnreadExpectation>();
+
+/** Latest observed store size from `store-message-*` payloads. */
+let lastKnownStoreSize: number | null = null;
+export function getLastKnownStoreSize(): number | null {
+  return lastKnownStoreSize;
+}
+export function noteStoreSize(size: number): void {
+  if (typeof size === 'number' && size >= 0) lastKnownStoreSize = size;
+}
+
+export function armRemoteUnreadExpectation(identity: ChatMessageIdentity): void {
+  if (!isBrowser() || !identity?.messageId) return;
+  // Idempotent per message id.
+  const existing = unreadExpectations.get(identity.messageId);
+  if (existing) return;
+  const armedAt = Date.now();
+  const timer = setTimeout(() => {
+    const rec = unreadExpectations.get(identity.messageId);
+    if (rec && !rec.evaluated) {
+      recordChatDeliveryViolation(
+        identity,
+        'CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD',
+        'chatDeliveryLedger#unreadExpectationDeadline',
+        { deadlineMs: UNREAD_EVAL_DEADLINE_MS, armedAt },
+      );
+    }
+    unreadExpectations.delete(identity.messageId);
+  }, UNREAD_EVAL_DEADLINE_MS);
+  unreadExpectations.set(identity.messageId, {
+    identity,
+    timer,
+    armedAt,
+    evaluated: false,
+  });
+}
+
+export function markUnreadEvaluated(messageId: string): void {
+  const rec = unreadExpectations.get(messageId);
+  if (!rec) return;
+  rec.evaluated = true;
+  clearTimeout(rec.timer);
+  unreadExpectations.delete(messageId);
+}
+
