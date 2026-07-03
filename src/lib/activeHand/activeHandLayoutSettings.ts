@@ -63,15 +63,11 @@ export interface ActiveHandLayoutPolicy {
   /** Minimum legible card width in CSS px. [8, 120]. */
   minCardWidthPx: number;
 
-  // ── Pane-relative sizing (v2, authored as percentages) ────────────
-  /** Max usable hand-stage width as % of measured pane width. [0, 1]. */
+  // ── Pane-relative sizing (v3, authored as percentages) ────────────
+  /** Max usable hand-stage width as % of row-4 pane width. [0, 1]. */
   maxWidthPctOfPane: number;
-  /** Max usable hand-stage height as % of measured pane height. [0, 1]. */
+  /** Max usable hand-stage height as % of row-4 pane height. [0, 1]. */
   maxHeightPctOfPane: number;
-  /** % of pane height reserved for lower action/instruction/identity zone. [0, 0.9]. */
-  reservedLowerZonePctOfPane: number;
-  /** % of pane height as vertical clearance between hand stage and lower zone. [0, 0.5]. */
-  interZoneClearancePctOfPane: number;
 
   // ── Card scale within resolved stage ─────────────────────────────
   /** Preferred card width as % of resolved stage width. [0, 1]. */
@@ -87,16 +83,26 @@ export interface ActiveHandLayoutPolicy {
   /** Ceiling overlap used only when containment requires it. Mirrors `maxOverlap`. */
   maxAdaptiveOverlapPct: number;
 
-  // ── Stage vertical placement (v3 — active-hand host anchor) ───────
+  // ── Stage vertical placement (v3 — inside row-4 pane only) ────────
   /**
-   * Extra top inset, expressed as fraction of pane HEIGHT, applied
-   * BEFORE the stage rect is placed in the pane. Positive values push
-   * the whole hand-stage DOWN (leaving more empty space above cards).
-   * Zero preserves the legacy top-flushed placement. [0, 0.9].
+   * Safe vertical breathing room inside the row-4 pane BELOW the row-3
+   * timer-row boundary, expressed as fraction of row-4 pane HEIGHT.
+   * This is NOT ownership of row 3 or timer sizing — the shell already
+   * owns the timer row height. Positive values push the whole
+   * hand-stage DOWN inside row 4. [0, 0.9].
    */
   stageTopInsetPctOfPane: number;
   /**
-   * Vertical alignment of the fan within the resolved stage rect.
+   * Safe vertical breathing room inside the row-4 pane ABOVE the row-5
+   * identity/action-row boundary, expressed as fraction of row-4 pane
+   * HEIGHT. This is NOT ownership of row 5 sizing — the shell owns the
+   * identity/action row height. Positive values shrink the stage from
+   * the bottom of row 4. [0, 0.9].
+   */
+  stageBottomInsetPctOfPane: number;
+  /**
+   * Vertical alignment of the fan within the remaining row-4 stage
+   * after top+bottom clearances are applied.
    *   'bottom' — cards flush to bottom of stage (legacy default).
    *   'center' — cards centered vertically inside stage.
    *   'top'    — cards flush to top of stage (moves hand UP inside pane).
@@ -109,6 +115,7 @@ export interface ActiveHandLayoutPolicy {
    */
   contentYOffsetPctOfStage: number;
 }
+
 
 export interface ActiveHandLayoutGameSpec {
   game: GameKey;
