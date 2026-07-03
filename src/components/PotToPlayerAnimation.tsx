@@ -340,6 +340,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   // Portal to <body> so the chip ALWAYS renders above the entire app UI.
   if (typeof document === 'undefined') return null;
 
+  // NOTE: transport keyframe is applied to the OUTER wrapper (translate).
+  // The INNER (data-win-transfer-artifact-inner) is left free so the
+  // canonical bounce beat can animate its transform independently
+  // without fighting the transport for the same `transform` slot.
+  // The chip is a fixed 32×32 px disc, so we center via negative offsets
+  // instead of a `translate(-50%,-50%)` (which would collide with the
+  // transport animation on the same element).
+  const CHIP_SIZE = 32;
+
   const chip = (
     <div
       className="fixed pointer-events-none"
@@ -347,18 +356,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       data-win-transfer-owner={gameType ?? 'unknown'}
       data-win-transfer-winner={String(winnerPosition)}
       style={{
-        left: animation.fromX,
-        top: animation.fromY,
-        transform: 'translate(-50%, -50%)',
+        left: animation.fromX - CHIP_SIZE / 2,
+        top: animation.fromY - CHIP_SIZE / 2,
         zIndex: 200,
+        animation: `${animationName} ${animDuration} ${timingFn} forwards`,
       }}
     >
       <div
         data-win-transfer-artifact-inner={triggerId ?? ''}
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
-        style={{
-          animation: `${animationName} ${animDuration} ${timingFn} forwards`,
-        }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
@@ -371,7 +377,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
           ${isDiceGame ? `
           /* Dice games: straight line from pot to winner destination.
              Freeze at destination (scale 1, opacity 1) so the canonical
-             bounce beat can animate this same artifact node. */
+             bounce beat can animate the inner artifact independently. */
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
@@ -381,8 +387,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             transform: translate(0, -8px) scale(1.1);
             opacity: 1;
           }
-          /* Freeze at winner destination — canonical bounce beat will
-             animate this same artifact. NO shrink / fade here. */
+          /* Freeze at winner destination — canonical bounce beat animates
+             the inner artifact. NO shrink / fade here. */
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
