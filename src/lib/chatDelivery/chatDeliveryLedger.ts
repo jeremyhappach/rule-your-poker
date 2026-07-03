@@ -28,6 +28,7 @@ type ChatLifecyclePhase =
   | 'indicator-suppressed'
   | 'indicator-cleared'
   | 'read-cursor-advanced'
+  | 'realtime-eligible-observed'
   | 'console-chat-indicator';
 
 export type ChatDeliveryViolation =
@@ -48,7 +49,9 @@ export type ChatDeliveryViolation =
   | 'CHAT_UNREAD_SELECTOR_NEVER_RECEIVES_REMOTE_MESSAGE'
   | 'CHAT_SELECTOR_BOUND_TO_STALE_GAME_OR_DEALER_ID'
   | 'CHAT_CONSUMER_NOT_SUBSCRIBED_TO_CANONICAL_STORE'
-  | 'CHAT_CANONICAL_STORE_REPLACED_OR_WIPED';
+  | 'CHAT_CANONICAL_STORE_REPLACED_OR_WIPED'
+  | 'CHAT_CONVERSATION_KEY_CHANGED_MID_SESSION'
+  | 'CHAT_CURSOR_ADVANCED_FROM_REALTIME_MESSAGE';
 
 export type ChatDeliveryConsumer =
   | 'canonical-store'

@@ -25,6 +25,7 @@ import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
+import { useGameChatContext } from "@/hooks/GameChatContext";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
@@ -1576,6 +1577,18 @@ export const MobileGameTable = ({
   const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
+
+  // Canonical hydration signals from the single chat store. These are
+  // the ONLY authoritative inputs for seeding read/seen cursors — the
+  // local allMessages array can contain post-hydration realtime rows
+  // and must not be used as a hydration baseline.
+  const chatCtx = useGameChatContext();
+  const isChatHydrated = chatCtx.isChatHydrated;
+  const hydrationBaselineIds = chatCtx.hydrationBaselineIds;
+  const hydrationBaselineIdSet = useMemo(
+    () => (hydrationBaselineIds ? new Set(hydrationBaselineIds) : null),
+    [hydrationBaselineIds]
+  );
 
   useEffect(() => {
     recordConsumerSubscription({
@@ -4510,22 +4523,20 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Always update watermarks so the message is never lost
+    // Track that we've processed this realtime id so the same message
+    // is not re-evaluated on rerender. IMPORTANT: do NOT advance the
+    // seen/read cursors here. A realtime message is not hydration and
+    // must not silently establish a read baseline — that path is what
+    // auto-cleared remote unread before the indicator could fire.
     processedEligibleRealtimeRef.current = true;
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeChatMessage.id;
-    setLastSeenChatMessageId(latestRealtimeChatMessage.id);
-    logChatIndicator('watermark updated', latestRealtimeChatMessage, {
-      lastSeen: latestRealtimeChatMessage.id,
-      lastRead: lastReadChatMessageId,
-      reason: 'eligible-realtime-seen',
-    });
     recordChatDeliveryEvent({
-      phase: 'read-cursor-advanced',
+      phase: 'realtime-eligible-observed',
       message: latestRealtimeChatMessage,
       gameId: gameId ?? null,
       dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
       consumer: 'unread-selector',
-      payload: { reason: 'eligible-realtime-seen', lastSeen: latestRealtimeChatMessage.id, lastRead: lastReadChatMessageId },
+      payload: { reason: 'eligible-realtime-observed-no-cursor-advance', lastSeen: lastSeenChatMessageId, lastRead: lastReadChatMessageId },
     });
 
     // Pre-hydration: preserve the message as unseen, but never pulse/mark-read.
@@ -4606,35 +4617,50 @@ export const MobileGameTable = ({
     });
 
     if (!chatHydratedRef.current) {
-      if (!hasObservedInitialChatSnapshotRef.current) {
-        hasObservedInitialChatSnapshotRef.current = true;
-        if (allMessages.length === 0) {
-          return;
-        }
+      // Gate hydration on the AUTHORITATIVE store signal, not on
+      // "allMessages became non-empty" — that stale gate treated the
+      // first realtime message as hydration and auto-cleared unread.
+      if (!isChatHydrated) {
+        return;
       }
 
+      hasObservedInitialChatSnapshotRef.current = true;
       chatHydratedRef.current = true;
 
-      if (!lastSeenChatMessageId && !lastReadChatMessageId && latestEligibleMessage && !processedEligibleRealtimeRef.current) {
-        setLastSeenChatMessageId(latestEligibleMessage.id);
-        setLastReadChatMessageId(latestEligibleMessage.id);
+      // Baseline may only include ids that were actually returned by
+      // the initial hydration fetch. Any message merged from realtime
+      // after hydration is post-baseline and is an unread candidate.
+      const baselineEligible = hydrationBaselineIdSet
+        ? eligibleIndicatorMessages.filter((m) => hydrationBaselineIdSet.has(m.id))
+        : [];
+      const baselineLatestEligible = baselineEligible[baselineEligible.length - 1] ?? null;
+
+      if (!lastSeenChatMessageId && !lastReadChatMessageId && baselineLatestEligible && !processedEligibleRealtimeRef.current) {
+        setLastSeenChatMessageId(baselineLatestEligible.id);
+        setLastReadChatMessageId(baselineLatestEligible.id);
         setHasUnreadMessages(false);
-        logChatIndicator('watermark updated', latestEligibleMessage, {
+        logChatIndicator('watermark updated', baselineLatestEligible, {
           flashing: false,
           unread: false,
-          lastSeen: latestEligibleMessage.id,
-          lastRead: latestEligibleMessage.id,
-          reason: 'hydration-seed',
+          lastSeen: baselineLatestEligible.id,
+          lastRead: baselineLatestEligible.id,
+          reason: 'hydration-baseline-seed',
         });
         recordChatDeliveryEvent({
           phase: 'read-cursor-advanced',
-          message: latestEligibleMessage,
+          message: baselineLatestEligible,
           gameId: gameId ?? null,
           dealerGameId: holmDealerGameId ?? horsesDealerGameId ?? null,
           consumer: 'unread-selector',
-          payload: { reason: 'hydration-seed', lastSeen: latestEligibleMessage.id, lastRead: latestEligibleMessage.id },
+          payload: {
+            reason: 'hydration-baseline-seed',
+            lastSeen: baselineLatestEligible.id,
+            lastRead: baselineLatestEligible.id,
+            baselineSize: hydrationBaselineIds?.length ?? 0,
+          },
         });
-        return;
+        // Fall through so the RED reconciliation below can flag any
+        // post-baseline messages that arrived during hydration.
       }
     }
 
@@ -4770,6 +4796,9 @@ export const MobileGameTable = ({
     hasUnreadMessages,
     holmDealerGameId,
     horsesDealerGameId,
+    hydrationBaselineIdSet,
+    hydrationBaselineIds,
+    isChatHydrated,
     lastReadChatMessageId,
     lastSeenChatMessageId,
     logChatIndicator,

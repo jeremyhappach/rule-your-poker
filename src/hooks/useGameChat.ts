@@ -40,6 +40,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const [isSending, setIsSending] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
   const [latestRealtimeMessage, setLatestRealtimeMessage] = useState<ChatMessage | null>(null);
+  // Hydration baseline: the exact set of message ids returned by the
+  // initial fetch for the current gameId. Realtime messages that arrive
+  // *after* this snapshot is captured MUST NOT be treated as hydration
+  // and MUST NOT be used to seed the read/seen cursors.
+  //
+  // `null` = hydration for the current gameId has not completed yet.
+  const [hydrationBaseline, setHydrationBaseline] = useState<{ gameId: string; ids: string[] } | null>(null);
 
   useEffect(() => {
     recordConsumerSubscription({
@@ -444,8 +451,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         });
         return next;
       });
+
+      // Publish the hydration baseline: only ids returned by this
+      // fetch. Any realtime message arriving after this point is by
+      // definition post-hydration and is a candidate for unread.
+      setHydrationBaseline({ gameId, ids: messagesWithUsernames.map((m) => m.id) });
     };
 
+    // Reset baseline whenever the conversation identity changes so a
+    // new gameId cannot inherit the previous conversation's baseline.
+    setHydrationBaseline(null);
     fetchMessages();
   }, [gameId, currentUserId, mergeMessages]);
 
@@ -561,5 +576,15 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     isSending,
     getPositionForUserId,
     latestRealtimeMessage,
+    // Chat is considered hydrated once the initial fetch for the
+    // current gameId has resolved (even if empty). Consumers use this
+    // to gate cursor seeding.
+    isChatHydrated: hydrationBaseline?.gameId === gameId,
+    // Frozen set of ids returned by the initial hydration. Consumers
+    // must NOT include any id outside this set when seeding cursors.
+    hydrationBaselineIds: hydrationBaseline?.gameId === gameId ? hydrationBaseline.ids : null,
+    // The canonical conversation key that all chat consumers must use.
+    // Stable for the lifetime of this hook invocation (route gameId).
+    chatConversationKey: gameId ?? null,
   };
 };

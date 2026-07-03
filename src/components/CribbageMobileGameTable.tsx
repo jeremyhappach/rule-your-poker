@@ -604,7 +604,7 @@ export const CribbageMobileGameTable = ({
   useWakeLock(true);
   
   // Canonical shared chat — single store lives at Game.tsx shell boundary.
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();
   
   // Tab state - must be declared before chat indicator hooks that reference it
   // Tab state — seeded from the in-session persistence store so the
@@ -2667,33 +2667,35 @@ export const CribbageMobileGameTable = ({
     }
   }, [viewState?.phase, viewState?.playerStates, countingScoreOverrides, countingStateSnapshot, renderHandKey, currentHandKey]);
 
-  // Mark hydration complete once allMessages are loaded
+  // Mark hydration complete based on the AUTHORITATIVE store signal —
+  // NOT on allMessages becoming non-empty (that stale gate treated
+  // the first realtime message as hydration and auto-cleared unread).
   useEffect(() => {
-    if (!allMessages || allMessages.length === 0) return;
+    if (!isChatHydrated) return;
     const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
 
     if (!chatHydratedRef.current) {
-      if (!hasObservedInitialChatSnapshotRef.current) {
-        hasObservedInitialChatSnapshotRef.current = true;
-        if (allMessages.length === 0) {
-          return;
-        }
-      }
-
+      hasObservedInitialChatSnapshotRef.current = true;
       chatHydratedRef.current = true;
 
-      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && latestEligibleMessage && !lastProcessedRealtimeMessageIdRef.current) {
-        lastSeenChatMessageIdRef.current = latestEligibleMessage.id;
-        lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+      const baselineSet = hydrationBaselineIds ? new Set(hydrationBaselineIds) : null;
+      const baselineLatestEligible = baselineSet
+        ? (eligibleIndicatorMessages.filter((m) => baselineSet.has(m.id)).slice(-1)[0] ?? null)
+        : null;
+
+      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && baselineLatestEligible && !lastProcessedRealtimeMessageIdRef.current) {
+        lastSeenChatMessageIdRef.current = baselineLatestEligible.id;
+        lastReadChatMessageIdRef.current = baselineLatestEligible.id;
         setHasUnreadMessages(false);
-        logChatIndicator('watermark updated', latestEligibleMessage, {
+        logChatIndicator('watermark updated', baselineLatestEligible, {
           flashing: false,
           unread: false,
-          lastSeen: latestEligibleMessage.id,
-          lastRead: latestEligibleMessage.id,
-          reason: 'hydration-seed',
+          lastSeen: baselineLatestEligible.id,
+          lastRead: baselineLatestEligible.id,
+          reason: 'hydration-baseline-seed',
         });
-        return;
+        // Fall through so RED reconciliation flags any post-baseline
+        // messages that arrived during hydration.
       }
     }
 
@@ -2771,6 +2773,8 @@ export const CribbageMobileGameTable = ({
     eligibleIndicatorMessages,
     getMessagesAfterWatermark,
     hasUnreadMessages,
+    hydrationBaselineIds,
+    isChatHydrated,
     logChatIndicator,
   ]);
 
@@ -2788,20 +2792,20 @@ export const CribbageMobileGameTable = ({
 
     if (!eligibility.eligible) return;
 
-    // Replay / duplicate guard
-    if (
-      lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
-      lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
-    ) {
+    // Replay / duplicate guard (do NOT compare against lastSeen — the
+    // seen cursor must not silently absorb realtime messages).
+    if (lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id) {
       return;
     }
 
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
-    lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+    // Do NOT advance lastSeen/lastRead here. A realtime message is
+    // post-hydration and must remain unread until an explicit
+    // Chat-open/read acknowledgement.
     logChatIndicator('watermark updated', latestRealtimeMessage, {
-      lastSeen: latestRealtimeMessage.id,
+      lastSeen: lastSeenChatMessageIdRef.current,
       lastRead: lastReadChatMessageIdRef.current,
-      reason: 'eligible-realtime-seen',
+      reason: 'eligible-realtime-observed-no-cursor-advance',
     });
 
     if (!chatHydratedRef.current) {

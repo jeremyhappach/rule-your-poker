@@ -354,7 +354,7 @@ export const GinRummyGameTable = ({
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();
   const announcements = useAnnouncements();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   // (debug instrumentation moved to AnnouncementDebugPanel)
@@ -1444,27 +1444,33 @@ export const GinRummyGameTable = ({
     const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
 
     if (!chatHydratedRef.current) {
-      if (!hasObservedInitialChatSnapshotRef.current) {
-        hasObservedInitialChatSnapshotRef.current = true;
-        if (allMessages.length === 0) {
-          return;
-        }
+      // Gate hydration on the authoritative store signal, not on
+      // "allMessages became non-empty" (which would treat the first
+      // realtime message as hydration and auto-clear unread).
+      if (!isChatHydrated) {
+        return;
       }
-
+      hasObservedInitialChatSnapshotRef.current = true;
       chatHydratedRef.current = true;
 
-      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && latestEligibleMessage && !lastProcessedRealtimeMessageIdRef.current) {
-        lastSeenChatMessageIdRef.current = latestEligibleMessage.id;
-        lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+      const baselineSet = hydrationBaselineIds ? new Set(hydrationBaselineIds) : null;
+      const baselineLatestEligible = baselineSet
+        ? (eligibleIndicatorMessages.filter((m) => baselineSet.has(m.id)).slice(-1)[0] ?? null)
+        : null;
+
+      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && baselineLatestEligible && !lastProcessedRealtimeMessageIdRef.current) {
+        lastSeenChatMessageIdRef.current = baselineLatestEligible.id;
+        lastReadChatMessageIdRef.current = baselineLatestEligible.id;
         setHasUnreadMessages(false);
-        logChatIndicator('watermark updated', latestEligibleMessage, {
+        logChatIndicator('watermark updated', baselineLatestEligible, {
           flashing: false,
           unread: false,
-          lastSeen: latestEligibleMessage.id,
-          lastRead: latestEligibleMessage.id,
-          reason: 'hydration-seed',
+          lastSeen: baselineLatestEligible.id,
+          lastRead: baselineLatestEligible.id,
+          reason: 'hydration-baseline-seed',
         });
-        return;
+        // Fall through so RED reconciliation can flag any post-baseline
+        // messages that arrived during hydration.
       }
     }
 
@@ -1542,6 +1548,8 @@ export const GinRummyGameTable = ({
     eligibleIndicatorMessages,
     getMessagesAfterWatermark,
     hasUnreadMessages,
+    hydrationBaselineIds,
+    isChatHydrated,
     logChatIndicator,
   ]);
 
@@ -1559,20 +1567,20 @@ export const GinRummyGameTable = ({
 
     if (!eligibility.eligible) return;
 
-    // Replay / duplicate guard
-    if (
-      lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
-      lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
-    ) {
+    // Replay / duplicate guard (do NOT compare against lastSeen — the
+    // seen cursor must not silently absorb realtime messages).
+    if (lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id) {
       return;
     }
 
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
-    lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+    // Do NOT advance lastSeen/lastRead here. A realtime message is
+    // post-hydration and must remain unread until an explicit
+    // Chat-open/read acknowledgement.
     logChatIndicator('watermark updated', latestRealtimeMessage, {
-      lastSeen: latestRealtimeMessage.id,
+      lastSeen: lastSeenChatMessageIdRef.current,
       lastRead: lastReadChatMessageIdRef.current,
-      reason: 'eligible-realtime-seen',
+      reason: 'eligible-realtime-observed-no-cursor-advance',
     });
 
     if (!chatHydratedRef.current) {
