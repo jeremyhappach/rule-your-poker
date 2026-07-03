@@ -30,6 +30,7 @@ import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
+import { fireCanonicalWinCelly } from "@/lib/canonicalShell/canonicalWinCelly";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
@@ -6563,6 +6564,23 @@ export const MobileGameTable = ({
       });
     }
 
+    // Canonical winner arrival: destination bounce + confetti.
+    // Fires only after Sweep-the-Legs prelude has completed and the
+    // pot chip has visibly arrived (guarded by the phase check + the
+    // one-shot potToPlayerCompletedRef above, plus the helper's own
+    // winKey dedupe against replay / remount / re-emission).
+    if (threeFiveSevenWinnerId) {
+      const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+      if (winnerPos != null) {
+        fireCanonicalWinCelly({
+          container: tableContainerRef.current,
+          winnerPosition: winnerPos,
+          winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+        });
+      }
+    }
+
+
     
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
@@ -6589,7 +6607,7 @@ export const MobileGameTable = ({
         onThreeFiveSevenWinAnimationComplete();
       }
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId]);
 
   // ── Canonical seat contract (PR-B: single-path collapse) ──────────
   //
@@ -8512,6 +8530,13 @@ export const MobileGameTable = ({
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
+              // Canonical winner arrival: destination bounce + confetti.
+              // Dedupe by triggerId so remount / re-emission cannot double-fire.
+              fireCanonicalWinCelly({
+                container: tableContainerRef.current,
+                winnerPosition: horsesWinWinnerPosition,
+                winKey: `${gameType ?? 'dice'}:win:${horsesWinPotTriggerId ?? 'no-trigger'}`,
+              });
               onHorsesWinPotAnimationComplete?.();
             }}
           />
