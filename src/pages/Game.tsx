@@ -42,8 +42,7 @@ import {
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
-import { setThree57LedgerActive } from "@/lib/threeFiveSeven/presentationLedger";
-// ThreeFiveSevenPresentationLedgerPill mounted globally in App.tsx DebugTray.
+// 3-5-7 presentation ledger removed (temporary tracking).
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
