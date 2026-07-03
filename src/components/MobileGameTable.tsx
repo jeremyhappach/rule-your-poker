@@ -30,21 +30,8 @@ import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
-import {
-  startCanonicalWinSequence,
-  completeCanonicalWinSequence,
-} from "@/lib/canonicalShell/canonicalWinCelly";
-
-import {
-  recordWinPresentationEvent,
-  recordWinPresentationViolation,
-  armWinFreezeWatchdog,
-  type WinAttemptIdentity,
-} from "@/lib/canonicalShell/winPresentationLedger";
-import {
-  armWinPresentationSampler,
-  disarmWinPresentationSampler,
-} from "@/lib/canonicalShell/winPresentationSampler";
+// Win-presentation instrumentation was removed. No canonical win-celly
+// helper, ledger, or sampler is imported here.
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
@@ -6578,47 +6565,7 @@ export const MobileGameTable = ({
       });
     }
 
-    // Canonical winner arrival: destination bounce + confetti.
-    // Fires only after Sweep-the-Legs prelude has completed and the
-    // pot chip has visibly arrived (guarded by the phase check + the
-    // one-shot potToPlayerCompletedRef above, plus the helper's own
-    // winKey dedupe against replay / remount / re-emission).
-    if (threeFiveSevenWinnerId) {
-      const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position;
-      const _357Identity: WinAttemptIdentity = {
-        winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
-        gameId: gameId ?? null,
-        dealerGameId: null,
-        roundId: handContextId ?? null,
-        handNumber: currentRound ?? null,
-        gameType: 'three-five-seven',
-        outcomeId: currentAnimationIdRef.current ?? null,
-        winnerPlayerId: threeFiveSevenWinnerId,
-        localViewerId: currentPlayer?.id ?? null,
-        localRole: currentPlayer?.id === threeFiveSevenWinnerId
-          ? 'winner'
-          : (currentPlayer ? 'loser' : 'observer'),
-      };
-      recordWinPresentationEvent({
-        identity: _357Identity, name: 'transfer-complete',
-        source: 'MobileGameTable#handlePotToPlayerComplete357', owner: '357',
-        payload: { winnerPos },
-      });
-      if (winnerPos != null) {
-        completeCanonicalWinSequence({
-          container: tableContainerRef.current,
-          winnerPosition: winnerPos,
-          winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
-          transferArtifactId: potToPlayerTriggerId357 ?? null,
-          ledgerIdentity: _357Identity,
-          ledgerOwner: '357',
-          ledgerSource: 'MobileGameTable#handlePotToPlayerComplete357',
-        });
-      } else {
-        recordWinPresentationViolation(_357Identity, 'WIN_BOUNCE_TARGET_MISSING',
-          'MobileGameTable#handlePotToPlayerComplete357', { reason: 'no-winner-position' });
-      }
-    }
+    // Win-presentation instrumentation was removed.
 
 
 
@@ -8563,20 +8510,7 @@ export const MobileGameTable = ({
           // id, so replays / remounts attach to the same attempt.
           const _horsesWinKey =
             `${_owner}:win:${gameId ?? 'no-game'}:${_horsesWinnerPlayer?.id ?? 'no-winner'}:${handContextId ?? 'no-hand'}`;
-          const _horsesIdentity: WinAttemptIdentity = {
-            winAttemptId: _horsesWinKey,
-            gameId: gameId ?? null,
-            dealerGameId: null,
-            roundId: handContextId ?? null,
-            handNumber: currentRound ?? null,
-            gameType: gameType ?? 'dice',
-            outcomeId: horsesWinPotTriggerId ?? null,
-            winnerPlayerId: _horsesWinnerPlayer?.id ?? null,
-            localViewerId: currentPlayer?.id ?? null,
-            localRole: currentPlayer?.id && _horsesWinnerPlayer?.id
-              ? (currentPlayer.id === _horsesWinnerPlayer.id ? 'winner' : 'loser')
-              : (currentPlayer ? 'loser' : 'observer'),
-          };
+          // Win-presentation instrumentation was removed.
           return (
           <PotToPlayerAnimation
             triggerId={horsesWinPotTriggerId}
@@ -8589,62 +8523,10 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-start',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: _owner,
-                payload: { amount: horsesWinPotAmount, winnerPosition: horsesWinWinnerPosition },
-              });
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-mounted',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: _owner,
-              });
-              // Canonical beat 1: winner-only confetti mounts NOW,
-              // same beat as pot-transfer start, under the shared
-              // winAttemptId. Losers/observers are suppressed inside
-              // the helper.
-              startCanonicalWinSequence({
-                container: tableContainerRef.current,
-                winnerPosition: horsesWinWinnerPosition,
-                winKey: _horsesWinKey,
-                ledgerIdentity: _horsesIdentity,
-                ledgerOwner: _owner,
-                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-              });
-              armWinPresentationSampler({
-                identity: _horsesIdentity,
-                owner: _owner,
-                source: 'MobileGameTable#HorsesPotToPlayer.armSampler',
-                winnerPosition: horsesWinWinnerPosition,
-                selfPlayerId: currentPlayer?.id ?? null,
-                triggerId: horsesWinPotTriggerId ?? null,
-              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-complete',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
-                owner: _owner,
-              });
-              // Canonical beat 2: destination bounce at winner anchor.
-              // Runs on every client. Confetti is NOT re-fired here.
-              completeCanonicalWinSequence({
-                container: tableContainerRef.current,
-                winnerPosition: horsesWinWinnerPosition,
-                winKey: _horsesWinKey,
-                transferArtifactId: horsesWinPotTriggerId ?? null,
-                ledgerIdentity: _horsesIdentity,
-                ledgerOwner: _owner,
-                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
-              });
-              // Disarm after the canonical bounce timing window closes.
-              window.setTimeout(
-                () => disarmWinPresentationSampler(_horsesWinKey, 'transfer-complete+bounce'),
-                1200,
-              );
               onHorsesWinPotAnimationComplete?.();
             }}
           />
@@ -8868,65 +8750,9 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               // Pot goes to 0 visually
               setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
-              if (threeFiveSevenWinnerId) {
-                const _id: WinAttemptIdentity = {
-                  winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
-                  gameId: gameId ?? null,
-                  roundId: handContextId ?? null,
-                  handNumber: currentRound ?? null,
-                  gameType: 'three-five-seven',
-                  outcomeId: potToPlayerTriggerId357 ?? null,
-                  winnerPlayerId: threeFiveSevenWinnerId,
-                  localViewerId: currentPlayer?.id ?? null,
-                  localRole: currentPlayer?.id === threeFiveSevenWinnerId
-                    ? 'winner'
-                    : (currentPlayer ? 'loser' : 'observer'),
-                };
-                recordWinPresentationEvent({
-                  identity: _id, name: 'transfer-start',
-                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
-                  payload: { amount: threeFiveSevenWinPotAmount },
-                });
-                recordWinPresentationEvent({
-                  identity: _id, name: 'transfer-mounted',
-                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
-                });
-                // Canonical beat 1: winner-only confetti mounts at the
-                // same beat as pot-transfer start (after Sweep-the-Legs
-                // completes and pot-to-player phase begins). Losers /
-                // observers are suppressed inside the helper.
-                const _winnerPos357Start =
-                  players.find(p => p.id === threeFiveSevenWinnerId)?.position;
-                const _357WinKey = `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`;
-                if (_winnerPos357Start != null) {
-                  startCanonicalWinSequence({
-                    container: tableContainerRef.current,
-                    winnerPosition: _winnerPos357Start,
-                    winKey: _357WinKey,
-                    ledgerIdentity: _id,
-                    ledgerOwner: '357',
-                    ledgerSource: 'MobileGameTable#357PotToPlayer.onAnimationStart',
-                  });
-                  armWinPresentationSampler({
-                    identity: _id,
-                    owner: '357',
-                    source: 'MobileGameTable#357PotToPlayer.armSampler',
-                    winnerPosition: _winnerPos357Start,
-                    selfPlayerId: currentPlayer?.id ?? null,
-                    triggerId: potToPlayerTriggerId357 ?? null,
-                  });
-                }
-              }
             }}
 
             onAnimationEnd={() => {
-              if (threeFiveSevenWinnerId) {
-                const _357WinKey = `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`;
-                window.setTimeout(
-                  () => disarmWinPresentationSampler(_357WinKey, 'transfer-complete+bounce'),
-                  1200,
-                );
-              }
               handlePotToPlayerComplete357();
             }}
           />
