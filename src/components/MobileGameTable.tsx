@@ -6577,14 +6577,40 @@ export const MobileGameTable = ({
     // winKey dedupe against replay / remount / re-emission).
     if (threeFiveSevenWinnerId) {
       const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position;
+      const _357Identity: WinAttemptIdentity = {
+        winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+        gameId: gameId ?? null,
+        dealerGameId: null,
+        roundId: handContextId ?? null,
+        handNumber: currentRound ?? null,
+        gameType: 'three-five-seven',
+        outcomeId: currentAnimationIdRef.current ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId,
+        localViewerId: currentPlayer?.id ?? null,
+        localRole: currentPlayer?.id === threeFiveSevenWinnerId
+          ? 'winner'
+          : (currentPlayer ? 'loser' : 'observer'),
+      };
+      recordWinPresentationEvent({
+        identity: _357Identity, name: 'transfer-complete',
+        source: 'MobileGameTable#handlePotToPlayerComplete357', owner: '357',
+        payload: { winnerPos },
+      });
       if (winnerPos != null) {
         fireCanonicalWinCelly({
           container: tableContainerRef.current,
           winnerPosition: winnerPos,
           winKey: `357:win:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+          ledgerIdentity: _357Identity,
+          ledgerOwner: '357',
+          ledgerSource: 'MobileGameTable#handlePotToPlayerComplete357',
         });
+      } else {
+        recordWinPresentationViolation(_357Identity, 'WIN_BOUNCE_TARGET_MISSING',
+          'MobileGameTable#handlePotToPlayerComplete357', { reason: 'no-winner-position' });
       }
     }
+
 
 
     
