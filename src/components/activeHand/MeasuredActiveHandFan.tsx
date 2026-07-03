@@ -62,11 +62,7 @@ import {
   recordHolmLedger,
   recordHolmLedgerViolation,
 } from '@/lib/holm/holmPresentationLedger';
-import {
-  recordThree57Geometry,
-  recordThree57Lifecycle,
-  type Three57LedgerIdentity,
-} from '@/lib/threeFiveSeven/presentationLedger';
+// 3-5-7 presentation ledger removed (temporary tracking).
 
 type PaneRect = ActiveHandStageRect;
 
@@ -148,11 +144,8 @@ export interface MeasuredActiveHandFanProps {
     playerId?: string | null;
     branch?: string;
   };
-  /**
-   * Optional identity carried into 357_ACTIVE_HAND_PRESENTATION_LEDGER.
-   * When absent, this component emits no 357-ledger records.
-   */
-  three57LedgerIdentity?: Three57LedgerIdentity;
+  /** @deprecated 3-5-7 presentation ledger removed; prop retained no-op. */
+  three57LedgerIdentity?: unknown;
   /** Optional persistent owner storage; preserves the committed layout across same-hand remounts. */
   externalCommitRef?: MutableRefObject<MeasuredActiveHandFanCommit>;
 }
@@ -209,14 +202,6 @@ export function MeasuredActiveHandFan({
         game,
       });
     }
-    if (three57LedgerIdentity) {
-      recordThree57Lifecycle('phase-lock-reset', three57LedgerIdentity, {
-        prevKey: committedRef.current.key,
-        nextKey: activeLockKey,
-        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        game,
-      });
-    }
     committedRef.current = { key: activeLockKey, rect: null, lowerZoneMinPx: 0 };
   }
 
@@ -255,33 +240,11 @@ export function MeasuredActiveHandFan({
         game,
       });
     }
-    if (three57LedgerIdentity) {
-      recordThree57Lifecycle('mount', three57LedgerIdentity, {
-        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        component: 'MeasuredActiveHandFan',
-        phaseLockKey: activeLockKey,
-        renderKey: activeHandFanRenderKey ?? null,
-        cardCount: cards.length,
-        cardIds: cardIdsKey,
-        hostRect: mountRectRef.current,
-        game,
-      });
-    }
     return () => {
       const rr = host?.getBoundingClientRect();
       if (holmLedgerIdentity) {
         recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'unmount', holmLedgerIdentity, {
           branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-          component: 'MeasuredActiveHandFan',
-          phaseLockKey: activeLockKey,
-          renderKey: activeHandFanRenderKey ?? null,
-          hostRectBeforeUnmount: rr ? { w: rr.width, h: rr.height } : null,
-          mountRect: mountRectRef.current,
-        });
-      }
-      if (three57LedgerIdentity) {
-        recordThree57Lifecycle('unmount', three57LedgerIdentity, {
-          branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
           component: 'MeasuredActiveHandFan',
           phaseLockKey: activeLockKey,
           renderKey: activeHandFanRenderKey ?? null,
@@ -297,15 +260,6 @@ export function MeasuredActiveHandFan({
     if (holmLedgerIdentity) {
       recordHolmLedger('ACTIVE_SELF_LIFECYCLE', 'cardIds-change', holmLedgerIdentity, {
         branch: holmLedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        cardCount: cards.length,
-        cardIds: cardIdsKey,
-        renderKey: activeHandFanRenderKey ?? null,
-      });
-    }
-    if (three57LedgerIdentity) {
-      recordThree57Lifecycle('render', three57LedgerIdentity, {
-        branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-        reason: 'cardIds-change',
         cardCount: cards.length,
         cardIds: cardIdsKey,
         renderKey: activeHandFanRenderKey ?? null,
@@ -384,27 +338,6 @@ export function MeasuredActiveHandFan({
             phaseLockKey: activeLockKey,
           });
         }
-        if (three57LedgerIdentity) {
-          recordThree57Geometry(three57LedgerIdentity, {
-            event: 'commit-reject',
-            branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-            sourceLabels: { reason: 'lower-zone-pending', zoneCount: zones.length },
-            expectedCapacity: capacity,
-            visibleCapacity: cards.length,
-            claimedCapacity: (cardIds ?? []).length,
-            cardWidth: null,
-            cardHeight: null,
-            wrapperScale: null,
-            fanOverlap: null,
-            fanSpread: null,
-            rotationDeg: null,
-            paneRect: { w, h },
-            commitKind: 'sample',
-            selectingFunction: 'measure/lowerZonePending',
-            isPostDealBranch: false,
-            legalIdentityChange: false,
-          });
-        }
         return;
       }
 
@@ -479,48 +412,6 @@ export function MeasuredActiveHandFan({
             paneRect: { w, h },
           });
         }
-      }
-      if (three57LedgerIdentity) {
-        const reason = !candidateValid
-          ? 'candidate-invalid'
-          : willAccept
-            ? (lockedForCurrentKey ? 'committed-invalidated' : 'first-commit')
-            : (lockedForCurrentKey ? 'locked-skip' : 'no-change');
-        const priorCardSize = committedLayout ? { width: committedLayout.cardWidth, height: committedLayout.cardHeight } : null;
-        const nextCardSize = candidateLayout ? { width: candidateLayout.cardWidth, height: candidateLayout.cardHeight } : null;
-        const commitKind: 'new' | 'reuse' | 'fallback' | 'recompute' | 'sample' = willAccept
-          ? (lockedForCurrentKey ? 'recompute' : 'new')
-          : acceptedNoLock
-            ? 'new'
-            : (lockedForCurrentKey ? 'reuse' : 'sample');
-        recordThree57Geometry(three57LedgerIdentity, {
-          event: willAccept ? 'commit-accept' : (acceptedNoLock ? 'commit-accept-nolock' : 'commit-reject') as string,
-          branch: three57LedgerIdentity.branch ?? 'MeasuredActiveHandFan',
-          sourceLabels: {
-            reason,
-            zoneCount: zones.length,
-            lowerZoneMinPx: totalLowerZonePx,
-            lockedForCurrentKey: String(lockedForCurrentKey),
-            phaseLockKey: activeLockKey ?? null,
-            policyRevision: (policy as unknown as { revision?: number })?.revision ?? null,
-          },
-          expectedCapacity: capacity,
-          visibleCapacity: cards.length,
-          claimedCapacity: (cardIds ?? []).length,
-          cardWidth: nextCardSize?.width ?? null,
-          cardHeight: nextCardSize?.height ?? null,
-          wrapperScale: 1,
-          fanOverlap: null,
-          fanSpread: null,
-          rotationDeg: null,
-          paneRect: { w, h },
-          commitId: activeLockKey,
-          prevCommitId: committedRef.current.key,
-          commitKind,
-          selectingFunction: 'resolveActiveHandFromPane',
-          isPostDealBranch: false,
-          legalIdentityChange: committedRef.current.key !== activeLockKey,
-        });
       }
 
       if (willAccept) {

@@ -46,7 +46,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
-import { ThreeFiveSevenPresentationLedgerPill } from "@/components/ThreeFiveSevenPresentationLedgerPill";
+
 
 import { R1SnapbackPill } from "@/lib/wartimeDebug/R1SnapbackPill";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
@@ -177,17 +177,6 @@ const App = () => {
                 <DestReactionDbgPanel />
                 <VisibleChipDbgPanel />
               </DebugTray>
-              <div
-                style={{
-                  position: 'fixed',
-                  left: 8,
-                  top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-                  zIndex: 2147483647,
-                  pointerEvents: 'auto',
-                }}
-              >
-                <ThreeFiveSevenPresentationLedgerPill />
-              </div>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
                 style={{
