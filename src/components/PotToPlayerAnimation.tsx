@@ -369,27 +369,23 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          /* Dice games: straight line from pot to player (no bounce), then vanish into the stack */
-          92% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
-            opacity: 1;
-          }
+          /* Dice games: straight line from pot to winner destination.
+             Freeze at destination (scale 1, opacity 1) so the canonical
+             bounce beat can animate this same artifact node. */
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
-            opacity: 0;
+            opacity: 1;
           }
           ` : `
           15% {
             transform: translate(0, -8px) scale(1.1);
             opacity: 1;
           }
-          85% {
+          /* Freeze at winner destination — canonical bounce beat will
+             animate this same artifact. NO shrink / fade here. */
+          100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
-          }
-          100% {
-            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(0);
-            opacity: 0;
           }
           `}
         }
