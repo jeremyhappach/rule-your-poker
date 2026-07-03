@@ -25,6 +25,7 @@ import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
+import { useGameChatContext } from "@/hooks/GameChatContext";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
