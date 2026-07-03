@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Smile, Paperclip, X } from 'lucide-react';
+import { Send, Smile, Mic, MicOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
+import { useVoiceToText } from '@/hooks/useVoiceToText';
 
 const EMOTICONS = [
   '😀', '😂', '😍', '🤔', '😎', '😢', '😡', '🤯',
@@ -31,48 +32,44 @@ interface DealerMessage {
 
 interface MobileChatPanelProps {
   messages: ChatMessage[];
+  // NOTE: Attachments were removed from match chat; onSend never
+  // receives a File anymore. The optional param is retained for
+  // backward compatibility with existing call sites.
   onSend: (message: string, imageFile?: File) => void;
   isSending: boolean;
-  // Lifted chat input state (persists across remounts)
   chatInputValue?: string;
   onChatInputChange?: (value: string) => void;
-  // Dealer messages (scoring announcements) - styled differently
   dealerMessages?: DealerMessage[];
-  // Current user ID for preference management
   currentUserId?: string;
 }
 
-export const MobileChatPanel = ({ 
-  messages, 
-  onSend, 
+export const MobileChatPanel = ({
+  messages,
+  onSend,
   isSending,
   chatInputValue,
   onChatInputChange,
   dealerMessages = [],
   currentUserId,
 }: MobileChatPanelProps) => {
-  // Use external state if provided, otherwise internal
   const [internalInputMessage, setInternalInputMessage] = useState('');
   const inputMessage = chatInputValue ?? internalInputMessage;
   const setInputMessage = onChatInputChange ?? setInternalInputMessage;
 
   const [showEmoticons, setShowEmoticons] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [muteDealerChat, setMuteDealerChat] = useState(false);
   const [isLoadingPreference, setIsLoadingPreference] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
-  // Load user preference from database
+
+  const voice = useVoiceToText();
+
   useEffect(() => {
     if (!currentUserId) {
       setIsLoadingPreference(false);
       return;
     }
-    
     const loadPreference = async () => {
       try {
         const { data, error } = await supabase
@@ -80,7 +77,6 @@ export const MobileChatPanel = ({
           .select('mute_dealer_chat')
           .eq('id', currentUserId)
           .single();
-        
         if (!error && data) {
           setMuteDealerChat(data.mute_dealer_chat ?? false);
         }
@@ -90,16 +86,12 @@ export const MobileChatPanel = ({
         setIsLoadingPreference(false);
       }
     };
-    
     loadPreference();
   }, [currentUserId]);
-  
-  // Handle mute dealer chat toggle
+
   const handleMuteToggle = async (checked: boolean) => {
     setMuteDealerChat(checked);
-    
     if (!currentUserId) return;
-    
     try {
       await supabase
         .from('profiles')
@@ -110,7 +102,6 @@ export const MobileChatPanel = ({
     }
   };
 
-  // Auto-scroll to top when new messages arrive (newest first)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
@@ -118,12 +109,9 @@ export const MobileChatPanel = ({
   }, [messages]);
 
   const handleSend = () => {
-    if ((inputMessage.trim() || selectedImage) && !isSending) {
-      onSend(inputMessage.trim(), selectedImage || undefined);
+    if (inputMessage.trim() && !isSending) {
+      onSend(inputMessage.trim());
       setInputMessage('');
-      setSelectedImage(null);
-      setImagePreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -142,68 +130,64 @@ export const MobileChatPanel = ({
     inputRef.current?.focus();
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+  const handleMicToggle = async () => {
+    if (voice.state === 'recording') {
+      const transcript = await voice.stop();
+      if (transcript) {
+        // Insert as an editable draft only. Never auto-send.
+        const remaining = Math.max(0, 100 - inputMessage.length);
+        const insertion = transcript.slice(0, remaining);
+        setInputMessage(
+          (inputMessage + (inputMessage && !inputMessage.endsWith(' ') ? ' ' : '') + insertion).slice(0, 100)
+        );
+        inputRef.current?.focus();
+      }
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
+    if (voice.state === 'error') {
+      voice.reset();
       return;
     }
-
-    setSelectedImage(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+    await voice.start();
   };
 
-  const clearImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  const micTitle =
+    voice.state === 'recording' ? 'Stop recording' :
+    voice.state === 'transcribing' ? 'Transcribing…' :
+    voice.state === 'error' ? (voice.error || 'Voice input error') :
+    voice.isSupported ? 'Voice to text' : 'Voice input unavailable';
+
+  const MicIcon =
+    voice.state === 'recording' ? MicOff :
+    voice.state === 'transcribing' ? Loader2 :
+    voice.state === 'error' ? AlertCircle :
+    Mic;
+
+  const micIconClass = [
+    'h-4 w-4',
+    voice.state === 'recording' ? 'text-red-400 animate-pulse' : '',
+    voice.state === 'transcribing' ? 'animate-spin' : '',
+    voice.state === 'error' ? 'text-amber-400' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <div className="bg-black/90 rounded-lg border border-white/20 overflow-hidden h-full flex flex-col">
-      {/* Input section */}
       <div className="px-2 py-2 flex-shrink-0">
-        {imagePreview && (
-          <div className="relative w-16 h-16 mb-2">
-            <img
-              src={imagePreview}
-              alt="Selected chat image preview"
-              className="w-full h-full object-cover rounded-md"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearImage}
-              className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 hover:bg-red-600 text-white rounded-full p-0"
-              title="Remove image"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
         <div className="flex items-center gap-1">
           <Input
             ref={inputRef}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value.slice(0, 100))}
             onKeyDown={handleKeyDown}
-            placeholder="Type..."
+            placeholder={voice.state === 'recording' ? 'Recording…' : 'Type…'}
             className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 h-9 text-sm min-w-0"
             style={{ fontSize: '16px' }}
             maxLength={100}
-            disabled={isSending}
+            // NOTE: Do NOT disable the input while sending. Keeping it
+            // interactive prevents the composer from feeling "frozen"
+            // during optimistic send latency.
           />
 
-          {/* Emoticon picker (left of send) */}
           <Popover open={showEmoticons} onOpenChange={setShowEmoticons}>
             <PopoverTrigger asChild>
               <Button
@@ -230,39 +214,39 @@ export const MobileChatPanel = ({
             </PopoverContent>
           </Popover>
 
-          {/* Attach image (paperclip) */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            className="hidden"
-          />
+          {/* Voice-to-text mic (replaces prior attachment paperclip).
+              Fails gracefully: when unsupported or errored, the button
+              still renders and never blocks text chat. */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={handleMicToggle}
+            disabled={voice.state === 'transcribing' || !voice.isSupported}
             className="h-9 w-9 text-white hover:bg-white/20 flex-shrink-0"
-            title="Attach image"
-            disabled={isSending}
+            title={micTitle}
+            aria-label={micTitle}
           >
-            <Paperclip className="h-4 w-4" />
+            <MicIcon className={micIconClass} />
           </Button>
 
-          {/* Send */}
           <Button
             variant="ghost"
             size="icon"
             onClick={handleSend}
-            disabled={(!inputMessage.trim() && !selectedImage) || isSending}
+            disabled={!inputMessage.trim() || isSending}
             className="h-9 w-9 text-white hover:bg-white/20 flex-shrink-0"
             title="Send"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        
-        {/* Mute dealer chat option */}
+
+        {voice.state === 'error' && voice.error && (
+          <div className="mt-1 px-1 text-[10px] text-amber-300/90 leading-tight">
+            {voice.error}
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mt-2 px-1">
           <Checkbox
             id="mute-dealer"
@@ -271,8 +255,8 @@ export const MobileChatPanel = ({
             disabled={isLoadingPreference}
             className="h-3.5 w-3.5 border-white/40 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
           />
-          <label 
-            htmlFor="mute-dealer" 
+          <label
+            htmlFor="mute-dealer"
             className="text-xs text-white/60 cursor-pointer select-none"
           >
             mute dealer
@@ -280,36 +264,31 @@ export const MobileChatPanel = ({
         </div>
       </div>
 
-      {/* Chat history */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
         {(() => {
-          // Combine player messages and dealer messages, sorted by timestamp (newest first)
-          type CombinedMessage = 
+          type CombinedMessage =
             | (ChatMessage & { isDealer?: false })
             | DealerMessage;
-          
-          // Filter dealer messages based on mute preference
+
           const visibleDealerMessages = muteDealerChat ? [] : dealerMessages;
-          
+
           const combined: CombinedMessage[] = [
             ...messages.map(m => ({ ...m, isDealer: false as const })),
             ...visibleDealerMessages,
           ];
-          
-          // Sort by created_at descending (newest first)
+
           combined.sort((a, b) => {
             const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
             return timeB - timeA;
           });
-          
+
           if (combined.length === 0) {
             return <p className="text-white/40 text-xs text-center">No messages yet</p>;
           }
-          
+
           return combined.map((msg) => {
             if (msg.isDealer) {
-              // Dealer message - different styling (green/teal color, no image support)
               return (
                 <div key={msg.id} className="text-xs leading-tight">
                   <div>
@@ -319,8 +298,7 @@ export const MobileChatPanel = ({
                 </div>
               );
             }
-            
-            // Player message
+
             const playerMsg = msg as ChatMessage;
             return (
               <div key={playerMsg.id} className="text-xs leading-tight">
