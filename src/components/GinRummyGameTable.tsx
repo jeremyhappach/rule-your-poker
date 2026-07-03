@@ -3019,6 +3019,7 @@ export const GinRummyGameTable = ({
                 onLayOffCardSelected={setLayOffSelectedCardIndex}
                 currentPlayer={currentPlayer}
                 gameId={gameId}
+                handIdentityKey={handContextId}
                 withheldDrawnCards={Object.values(selfDrawIntents)
                   .map(i => i.card)
                   .filter((c): c is GinRummyCard => !!c)
