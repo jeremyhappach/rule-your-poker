@@ -66,6 +66,11 @@ import CribDealerDrawTraceOverlay from "@/components/debug/CribDealerDrawTraceOv
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
+import {
+  recordConsumerSubscription,
+  recordReactRenderObserved,
+  recordSelectorProof,
+} from "@/lib/chatDelivery/chatDeliveryLedger";
 
 
 /**
