@@ -25,8 +25,14 @@ export function GinActiveHandLedgerPill() {
   const [count, setCount] = useState<number>(() => getGinLedgerEventCount());
 
   useEffect(() => {
+    // Auto-arm on mount so early deal-lifecycle events (which happen
+    // before the user could tap ARM) are captured.
+    if (isGinLedgerActive() && !isGinLedgerArmed()) {
+      setGinLedgerArmed(true);
+    }
     const offAvail = subscribeGinLedgerAvailability((v) => {
       setAvailable(v);
+      if (v && !isGinLedgerArmed()) setGinLedgerArmed(true);
       setArmed(isGinLedgerArmed());
       setCount(getGinLedgerEventCount());
     });
@@ -38,12 +44,6 @@ export function GinActiveHandLedgerPill() {
       offAvail();
       offArm();
     };
-  }, []);
-
-  const handleArm = useCallback(() => {
-    setGinLedgerArmed(true);
-    setArmed(isGinLedgerArmed());
-    setCount(getGinLedgerEventCount());
   }, []);
 
   const handleRefreshCount = useCallback(() => {
