@@ -80,7 +80,7 @@ import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useKnockSound } from '@/hooks/useKnockSound';
-import { useGameChat } from '@/hooks/useGameChat';
+import { useGameChatContext } from '@/hooks/GameChatContext';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
@@ -354,7 +354,7 @@ export const GinRummyGameTable = ({
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
   const announcements = useAnnouncements();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   // (debug instrumentation moved to AnnouncementDebugPanel)

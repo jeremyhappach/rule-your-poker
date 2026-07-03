@@ -55,7 +55,7 @@ import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
-import { useGameChat } from "@/hooks/useGameChat";
+import { useGameChatContext } from "@/hooks/GameChatContext";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
@@ -250,7 +250,7 @@ export function YahtzeeGameTable({
 
 
   // Canonical shared chat — same shell experience as Cribbage/Gin.
-  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+  const { allMessages, sendMessage, isSending: isChatSending } = useGameChatContext();
 
 
 

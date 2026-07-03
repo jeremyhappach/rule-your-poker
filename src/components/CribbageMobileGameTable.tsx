@@ -57,7 +57,7 @@ import { HandHistory } from './HandHistory';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
-import { useGameChat } from '@/hooks/useGameChat';
+import { useGameChatContext } from '@/hooks/GameChatContext';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 
@@ -603,8 +603,8 @@ export const CribbageMobileGameTable = ({
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
   
-  // Chat hook - integrated like other mobile game tables
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
+  // Canonical shared chat — single store lives at Game.tsx shell boundary.
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
   
   // Tab state - must be declared before chat indicator hooks that reference it
   // Tab state — seeded from the in-session persistence store so the
