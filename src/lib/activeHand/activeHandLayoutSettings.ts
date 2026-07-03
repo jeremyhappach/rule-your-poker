@@ -2,50 +2,47 @@
  * Per-game Active-Player Hand Layout policy.
  *
  * ─────────────────────────────────────────────────────────────────────
- *  CONTRACT (v2 — canonical Active Player Hand pass)
+ *  CONTRACT (v3 — Shell HUD row ownership boundary)
  * ─────────────────────────────────────────────────────────────────────
- *  Each card game owns its own `ActiveHandLayoutPolicy` persisted as a
- *  `system_settings` row (e.g. `activeHandLayout.cribbage`). The policy
- *  drives a SINGLE shared resolver that sizes the active player's
- *  hand-stage rect and the cards inside it. There is one and only one
- *  physical-card treatment, extracted from Holm, delivered via the
- *  shared `<ActiveHandFan/>` renderer that all four games consume.
+ *  Ownership boundary (canonical):
  *
- *  Ownership boundary:
- *    - The active pane / shell owns the FULL pane rect and its lower
- *      action / instruction / identity zone. It measures the pane and
- *      renders the lower zone as a sibling of the hand.
- *    - This resolver owns the CARD STAGE only. Given a pane rect (or
- *      an explicit stage rect on legacy callers) plus the authored
- *      reserved-lower-zone % + inter-zone clearance %, it computes the
- *      stage rect and the card size / overlap / fan arch that fits it.
- *    - The shared renderer never receives or renders the lower zone.
+ *      Shell HUD stack resolves rows  →  row 4 active-player pane rect
+ *      is handed to ActiveHand        →  this policy resolves the CARD
+ *      STAGE only inside that row-4 pane.
  *
- *  Reactive path:
- *    Policies are persisted via `defaultsRegistry` (system_settings).
- *    Consumers use `useActiveHandLayoutPolicy(game)` which subscribes
- *    to the committed reactive store — Apply and remote realtime edits
- *    take effect on already-mounted active-hand consumers immediately.
+ *  Shell HUD rows (announcement / tabs / timer / active pane /
+ *  identity) are Shell HUD Stack territory. The timer reservation and
+ *  the identity/action reservation are independent shell rows. This
+ *  policy MUST NOT own, tune, subtract, or semantically reference any
+ *  of them — "pane" in every field on this policy means the final
+ *  ROW-4 active-player pane rect the shell has already resolved.
+ *
+ *  Any subtraction of a sibling action/instruction strip is performed
+ *  upstream by the shell-owned pane owner BEFORE the pane rect reaches
+ *  this policy; the resolver here treats its input rect as the exact
+ *  usable card region.
  *
  *  Resolver flow (per phase):
- *    1. Measure the active pane rect (owner does this).
- *    2. Subtract `reservedLowerZonePctOfPane` and
- *       `interZoneClearancePctOfPane` from pane HEIGHT → stage height.
- *    3. Bound stage WIDTH by `maxWidthPctOfPane`, HEIGHT by
+ *    1. Owner hands in the resolved row-4 pane rect.
+ *    2. Bound stage WIDTH by `maxWidthPctOfPane`, HEIGHT by
  *       `maxHeightPctOfPane`.
+ *    3. Apply `stageTopInsetPctOfPane` — pushes the whole stage DOWN
+ *       inside the pane. Cards do not re-scale for this offset.
  *    4. Choose card width from `preferredCardScalePctOfStage` clamped
  *       by `maxCardScalePctOfStage`, capacity, and aspect (height
  *       bound). Apply `baselineOverlapPct` and `baselineFanArchDeg`.
  *    5. If containment fails, escalate overlap toward
  *       `maxAdaptiveOverlapPct` (never past). If still too small,
  *       shrink card width to fit — never below `minCardWidthPx`.
- *    6. Lock the resolved size + overlap + arch for the phase.
+ *    6. Align the resolved fan inside the stage per
+ *       `stageVerticalAlignment` + `contentYOffsetPctOfStage`.
  *
- *  Back-compat: the legacy fields `preferredOverlap`, `maxOverlap`,
- *  and `minCardWidthPx` are preserved. `sanitize()` back-fills the
- *  new fields when only legacy values exist, and vice-versa, so
- *  existing persisted settings continue to load.
+ *  Reactive path: policies persist via `defaultsRegistry`
+ *  (system_settings). Consumers use `useActiveHandLayoutPolicy(game)`
+ *  which subscribes to the committed reactive store — Apply and remote
+ *  realtime edits take effect on already-mounted consumers immediately.
  */
+
 
 import { useSyncExternalStore } from 'react';
 import {
