@@ -30,21 +30,8 @@ import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
-import {
-  startCanonicalWinSequence,
-  completeCanonicalWinSequence,
-} from "@/lib/canonicalShell/canonicalWinCelly";
-
-import {
-  recordWinPresentationEvent,
-  recordWinPresentationViolation,
-  armWinFreezeWatchdog,
-  type WinAttemptIdentity,
-} from "@/lib/canonicalShell/winPresentationLedger";
-import {
-  armWinPresentationSampler,
-  disarmWinPresentationSampler,
-} from "@/lib/canonicalShell/winPresentationSampler";
+// Win-presentation instrumentation was removed. No canonical win-celly
+// helper, ledger, or sampler is imported here.
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";

@@ -262,11 +262,7 @@ import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
-import {
-  recordWinPresentationEvent,
-  armWinFreezeWatchdog,
-  type WinAttemptIdentity,
-} from "@/lib/canonicalShell/winPresentationLedger";
+// Win-presentation instrumentation was removed.
 import {
   AlertDialog,
   AlertDialogAction,
