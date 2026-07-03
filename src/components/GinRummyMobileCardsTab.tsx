@@ -372,10 +372,31 @@ export const GinRummyMobileCardsTab = ({
 
 
 
-  if (!myState) {
+  // ── Current-hand readiness gate ─────────────────────────────────
+  // Playable presentation (fan, action prompts, "Draw a card", Take,
+  // Discard, Knock, Pass, Waiting-for-opponent, etc.) is BLOCKED
+  // until this identity's live projection has admitted a non-empty
+  // local hand at least once, OR the authoritative rule-state proves
+  // the local player legitimately has zero cards for this identity
+  // (post-knock scoring / hand-complete resolution paths keep their
+  // own downstream branches; they must still see myState populated
+  // via the sticky cache for their own melds/deadwood readouts).
+  //
+  // A remote seated client that joins/recovers mid-hand hits this
+  // same gate on every render: the shell shows the non-playable
+  // "Dealing…" placeholder until the projection converges, then
+  // commits the baseline and reveals the playable UI — no refresh.
+  const authoritativeZeroHandLegit =
+    !!rawMyStateAuthoritative &&
+    rawAuthoritativeHandCount === 0 &&
+    (ginState.phase === 'complete' || ginState.phase === 'scoring') &&
+    !!ginState.knockResult;
+  const presentationReady = currentHandBaselineCommitted || authoritativeZeroHandLegit;
+
+  if (!myState || !presentationReady) {
     return (
       <div className="flex items-center justify-center py-8">
-        <span className="text-muted-foreground">Loading...</span>
+        <span className="text-muted-foreground">Dealing…</span>
       </div>
     );
   }
