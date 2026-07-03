@@ -169,7 +169,6 @@ const App = () => {
                 <HolmDealDbgPanel />
                 <HolmBucksOverlayDbgPill />
                 <HolmCommunityLandingPill />
-                <ThreeFiveSevenPresentationLedgerPill />
                 <R1SnapbackPill />
 
 
@@ -178,6 +177,17 @@ const App = () => {
                 <DestReactionDbgPanel />
                 <VisibleChipDbgPanel />
               </DebugTray>
+              <div
+                style={{
+                  position: 'fixed',
+                  left: 8,
+                  top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+                  zIndex: 2147483647,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <ThreeFiveSevenPresentationLedgerPill />
+              </div>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
                 style={{

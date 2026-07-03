@@ -2418,7 +2418,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Buffer resets on activation; deactivation clears the on-screen pill.
   useEffect(() => {
     const isHolm = game?.game_type === 'holm-game';
-    const is357 = game?.game_type === 'three-five-seven';
+    const is357 =
+      game?.game_type === '3-5-7' ||
+      game?.game_type === '3-5-7-game' ||
+      game?.game_type === '357';
     setHolmTraceActive(isHolm);
     setHolmLedgerActive(isHolm);
     setThree57LedgerActive(is357);
