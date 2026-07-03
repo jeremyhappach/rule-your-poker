@@ -3,7 +3,7 @@
  * control for the 357 ACTIVE HAND PRESENTATION LEDGER ring buffer.
  *
  * Mirrors HolmPresentationLedgerPill contract:
- *   - Renders only when a 3-5-7 table is mounted (availability signal).
+ *   - Always renders from the app shell so impacted clients can find it.
  *   - Recording is OFF by default; user taps ARM.
  *   - No polling, no observer, no gameplay subscription.
  *   - COPY writes the formatted export to clipboard.
@@ -96,12 +96,10 @@ export function ThreeFiveSevenPresentationLedgerPill() {
     setCount(getThree57LedgerEventCount());
   }, []);
 
-  // Every-client visibility contract: render whenever a 3-5-7 table is
-  // mounted (available), OR whenever we still hold a recording (armed
-  // or non-empty buffer). Do NOT gate on local active turn, host role,
-  // hand-pane branch, or renderer mount. The pill must persist so that
-  // the impacted client can always export the retained ledger.
-  if (!available && !armed && count === 0) return null;
+  // Every-client visibility contract: do not return null. The control is
+  // intentionally visible even on the lobby with "table unmounted" status
+  // so users can confirm the retained per-client ledger surface exists
+  // before entering a 3-5-7 table.
 
   const btn = (bg: string): React.CSSProperties => ({
     background: bg,
