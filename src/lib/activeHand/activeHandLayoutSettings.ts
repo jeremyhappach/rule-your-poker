@@ -262,16 +262,6 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
       minCardWidthPx: minW,
       maxWidthPctOfPane: clamp(num(v.maxWidthPctOfPane, defaults.maxWidthPctOfPane), 0.1, 1),
       maxHeightPctOfPane: clamp(num(v.maxHeightPctOfPane, defaults.maxHeightPctOfPane), 0.1, 1),
-      reservedLowerZonePctOfPane: clamp(
-        num(v.reservedLowerZonePctOfPane, defaults.reservedLowerZonePctOfPane),
-        0,
-        0.9,
-      ),
-      interZoneClearancePctOfPane: clamp(
-        num(v.interZoneClearancePctOfPane, defaults.interZoneClearancePctOfPane),
-        0,
-        0.5,
-      ),
       preferredCardScalePctOfStage: clamp(
         num(v.preferredCardScalePctOfStage, defaults.preferredCardScalePctOfStage),
         0.02,
@@ -282,6 +272,7 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
         0.02,
         1,
       ),
+
       baselineFanArchDeg: clamp(num(v.baselineFanArchDeg, defaults.baselineFanArchDeg), 0, 45),
       baselineOverlapPct: baselineOverlap,
       maxAdaptiveOverlapPct: maxAdaptive,
