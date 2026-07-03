@@ -8826,6 +8826,30 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               // Pot goes to 0 visually
               setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
+              if (threeFiveSevenWinnerId) {
+                const _id: WinAttemptIdentity = {
+                  winAttemptId: `357:${gameId ?? 'no-game'}:${threeFiveSevenWinnerId}:${handContextId ?? 'no-hand'}`,
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  handNumber: currentRound ?? null,
+                  gameType: 'three-five-seven',
+                  outcomeId: potToPlayerTriggerId357 ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId,
+                  localViewerId: currentPlayer?.id ?? null,
+                  localRole: currentPlayer?.id === threeFiveSevenWinnerId
+                    ? 'winner'
+                    : (currentPlayer ? 'loser' : 'observer'),
+                };
+                recordWinPresentationEvent({
+                  identity: _id, name: 'transfer-start',
+                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
+                  payload: { amount: threeFiveSevenWinPotAmount },
+                });
+                recordWinPresentationEvent({
+                  identity: _id, name: 'transfer-mounted',
+                  source: 'MobileGameTable#357PotToPlayer.onAnimationStart', owner: '357',
+                });
+              }
             }}
             onAnimationEnd={() => {
               handlePotToPlayerComplete357();
