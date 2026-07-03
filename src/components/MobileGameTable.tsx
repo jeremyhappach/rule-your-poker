@@ -8510,20 +8510,7 @@ export const MobileGameTable = ({
           // id, so replays / remounts attach to the same attempt.
           const _horsesWinKey =
             `${_owner}:win:${gameId ?? 'no-game'}:${_horsesWinnerPlayer?.id ?? 'no-winner'}:${handContextId ?? 'no-hand'}`;
-          const _horsesIdentity: WinAttemptIdentity = {
-            winAttemptId: _horsesWinKey,
-            gameId: gameId ?? null,
-            dealerGameId: null,
-            roundId: handContextId ?? null,
-            handNumber: currentRound ?? null,
-            gameType: gameType ?? 'dice',
-            outcomeId: horsesWinPotTriggerId ?? null,
-            winnerPlayerId: _horsesWinnerPlayer?.id ?? null,
-            localViewerId: currentPlayer?.id ?? null,
-            localRole: currentPlayer?.id && _horsesWinnerPlayer?.id
-              ? (currentPlayer.id === _horsesWinnerPlayer.id ? 'winner' : 'loser')
-              : (currentPlayer ? 'loser' : 'observer'),
-          };
+          // Win-presentation instrumentation was removed.
           return (
           <PotToPlayerAnimation
             triggerId={horsesWinPotTriggerId}
@@ -8536,62 +8523,10 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-start',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: _owner,
-                payload: { amount: horsesWinPotAmount, winnerPosition: horsesWinWinnerPosition },
-              });
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-mounted',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-                owner: _owner,
-              });
-              // Canonical beat 1: winner-only confetti mounts NOW,
-              // same beat as pot-transfer start, under the shared
-              // winAttemptId. Losers/observers are suppressed inside
-              // the helper.
-              startCanonicalWinSequence({
-                container: tableContainerRef.current,
-                winnerPosition: horsesWinWinnerPosition,
-                winKey: _horsesWinKey,
-                ledgerIdentity: _horsesIdentity,
-                ledgerOwner: _owner,
-                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
-              });
-              armWinPresentationSampler({
-                identity: _horsesIdentity,
-                owner: _owner,
-                source: 'MobileGameTable#HorsesPotToPlayer.armSampler',
-                winnerPosition: horsesWinWinnerPosition,
-                selfPlayerId: currentPlayer?.id ?? null,
-                triggerId: horsesWinPotTriggerId ?? null,
-              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
-              recordWinPresentationEvent({
-                identity: _horsesIdentity, name: 'transfer-complete',
-                source: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
-                owner: _owner,
-              });
-              // Canonical beat 2: destination bounce at winner anchor.
-              // Runs on every client. Confetti is NOT re-fired here.
-              completeCanonicalWinSequence({
-                container: tableContainerRef.current,
-                winnerPosition: horsesWinWinnerPosition,
-                winKey: _horsesWinKey,
-                transferArtifactId: horsesWinPotTriggerId ?? null,
-                ledgerIdentity: _horsesIdentity,
-                ledgerOwner: _owner,
-                ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationEnd',
-              });
-              // Disarm after the canonical bounce timing window closes.
-              window.setTimeout(
-                () => disarmWinPresentationSampler(_horsesWinKey, 'transfer-complete+bounce'),
-                1200,
-              );
               onHorsesWinPotAnimationComplete?.();
             }}
           />
