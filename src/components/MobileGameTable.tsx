@@ -4292,7 +4292,47 @@ export const MobileGameTable = ({
 
     logChatIndicator('realtime received', latestRealtimeChatMessage);
 
+    // Chat-delivery ledger: begin unread evaluation for this admitted
+    // message. This satisfies the "evaluated within one render cycle"
+    // expectation armed at realtime-payload-admitted in useGameChat.
+    const _rtIdentity: ChatMessageIdentity = {
+      messageId: latestRealtimeChatMessage.id,
+      clientInstanceId: getClientInstanceId(),
+      localViewerId: currentUserId ?? null,
+      senderPlayerId: latestRealtimeChatMessage.user_id,
+      sessionId: gameId ?? null,
+      transportSource: 'realtime',
+    };
+    markUnreadEvaluated(latestRealtimeChatMessage.id);
+    recordChatDeliveryEvent({
+      identity: _rtIdentity,
+      name: 'unread-evaluation-start',
+      source: 'MobileGameTable#realtimeUnreadEffect',
+      payload: {
+        activeTab,
+        chatOpen: activeTab === 'chat',
+        hydrated: chatHydratedRef.current,
+        lastSeenBefore: lastSeenChatMessageId,
+        lastReadBefore: lastReadChatMessageId,
+        newestKnownMessageId: eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1]?.id ?? null,
+        owningComponent: 'MobileGameTable',
+      },
+    });
+
     const eligibility = getChatIndicatorEligibility(latestRealtimeChatMessage);
+
+    recordChatDeliveryEvent({
+      identity: _rtIdentity,
+      name: 'unread-eligibility-resolved',
+      source: 'MobileGameTable#realtimeUnreadEffect',
+      payload: {
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        isSelf: !!currentUserId && latestRealtimeChatMessage.user_id === currentUserId,
+        activeTab,
+        chatOpen: activeTab === 'chat',
+      },
+    });
 
     logChatIndicator('eligibility', latestRealtimeChatMessage, {
       eligible: eligibility.eligible,
@@ -4300,6 +4340,12 @@ export const MobileGameTable = ({
     });
 
     if (!eligibility.eligible) {
+      recordChatDeliveryEvent({
+        identity: _rtIdentity,
+        name: 'indicator-suppressed',
+        source: 'MobileGameTable#realtimeUnreadEffect',
+        payload: { reason: `not-eligible:${eligibility.reason}`, activeTab },
+      });
       return;
     }
 
@@ -4309,6 +4355,12 @@ export const MobileGameTable = ({
     ) {
       console.log('[holm-chat-indicator] skipped stale/replayed', {
         messageId: latestRealtimeChatMessage.id,
+      });
+      recordChatDeliveryEvent({
+        identity: _rtIdentity,
+        name: 'indicator-suppressed',
+        source: 'MobileGameTable#realtimeUnreadEffect',
+        payload: { reason: 'stale-or-replayed', activeTab },
       });
       return;
     }
