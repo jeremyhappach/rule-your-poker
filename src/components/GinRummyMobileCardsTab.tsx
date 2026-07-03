@@ -549,7 +549,7 @@ export const GinRummyMobileCardsTab = ({
               const isSelected = selectedCardIndex === originalIndex;
               const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
               const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-              const isMeld = meldGroup >= 0;
+              void meldGroup;
               return (
                 <button
                   onClick={() => handleCardClick(originalIndex)}
