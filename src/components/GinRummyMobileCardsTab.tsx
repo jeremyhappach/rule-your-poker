@@ -696,7 +696,7 @@ export const GinRummyMobileCardsTab = ({
             }))}
             capacity={GIN_CARDS_PER_PLAYER + 1}
             portalTargetSelector="[data-gin-active-pane-content]"
-            phaseLockKey={`gin|h${ginState.handNumber}|ph:${ginState.phase}|tp:${ginState.turnPhase}|p:${currentPlayerId}`}
+            phaseLockKey={`gin|id:${localHandIdentityKey}`}
             applyFan
             renderCard={({ index, card_node }) => {
               const item = flatSortedHand[index];
