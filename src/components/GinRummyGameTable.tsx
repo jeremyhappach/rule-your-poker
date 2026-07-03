@@ -489,24 +489,7 @@ export const GinRummyGameTable = ({
       propRoundId: propRoundId ?? null,
       authRoundId: authIdentity?.roundId ?? null,
     });
-    recordGinLedger('LINEAGE_MARKER', 'GIN_HAND_IDENTITY_CHANGED', {
-      gameId,
-      dealerGameId: dealerGameId ?? null,
-      roundId: roundId ?? null,
-      handNumber: handNumber ?? null,
-      handContextId: handContextId ?? null,
-      localPlayerId: currentPlayerId ?? null,
-      viewerId: currentUserId ?? null,
-      phase: viewState?.phase ?? null,
-    }, {
-      propRoundId: propRoundId ?? null,
-      authRoundId: authIdentity?.roundId ?? null,
-      authDealerGameId: authIdentity?.dealerGameId ?? null,
-      authHandNumber: authIdentity?.handNumber ?? null,
-      hasCommittedIdentity: !!renderCommittedIdentity,
-      hasAcceptedPresentation: !!renderAcceptedPresentation,
-    });
-  }, [dealerGameId, roundId, handNumber, propRoundId, authIdentity?.roundId, authIdentity?.dealerGameId, authIdentity?.handNumber, handContextId, currentPlayerId, currentUserId, viewState?.phase, gameId, renderCommittedIdentity, renderAcceptedPresentation]);
+  }, [dealerGameId, roundId, handNumber, propRoundId, authIdentity?.roundId]);
 
   const roundIdSeenRef = useRef(false);
   useEffect(() => {
