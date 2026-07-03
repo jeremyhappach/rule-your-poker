@@ -284,6 +284,22 @@ function sanitizeFor(defaults: ActiveHandLayoutPolicy) {
       baselineFanArchDeg: clamp(num(v.baselineFanArchDeg, defaults.baselineFanArchDeg), 0, 45),
       baselineOverlapPct: baselineOverlap,
       maxAdaptiveOverlapPct: maxAdaptive,
+      stageTopInsetPctOfPane: clamp(
+        num(v.stageTopInsetPctOfPane, defaults.stageTopInsetPctOfPane),
+        0,
+        0.9,
+      ),
+      stageVerticalAlignment:
+        v.stageVerticalAlignment === 'top' ||
+        v.stageVerticalAlignment === 'center' ||
+        v.stageVerticalAlignment === 'bottom'
+          ? v.stageVerticalAlignment
+          : defaults.stageVerticalAlignment,
+      contentYOffsetPctOfStage: clamp(
+        num(v.contentYOffsetPctOfStage, defaults.contentYOffsetPctOfStage),
+        -0.5,
+        0.5,
+      ),
     };
   };
 }
