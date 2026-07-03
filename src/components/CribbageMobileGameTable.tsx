@@ -2773,6 +2773,8 @@ export const CribbageMobileGameTable = ({
     eligibleIndicatorMessages,
     getMessagesAfterWatermark,
     hasUnreadMessages,
+    hydrationBaselineIds,
+    isChatHydrated,
     logChatIndicator,
   ]);
 
