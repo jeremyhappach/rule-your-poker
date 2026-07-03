@@ -553,6 +553,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             name: 'realtime-payload-admitted',
             source: 'useGameChat#subscribe.onInsert',
           });
+          // Arm expectation: a non-self admitted remote message MUST
+          // be evaluated by the unread indicator effect within one
+          // render cycle. If not, the ledger will emit
+          // CHAT_REMOTE_MESSAGE_NEVER_EVALUATED_FOR_UNREAD.
+          if (currentUserId && newMessage.user_id !== currentUserId) {
+            armRemoteUnreadExpectation(_rtIdentity);
+          }
           console.log('[holm-chat-indicator] realtime message received', {
             gameId,
             messageId: newMessage.id,
