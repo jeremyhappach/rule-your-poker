@@ -8611,6 +8611,14 @@ export const MobileGameTable = ({
                 ledgerOwner: _owner,
                 ledgerSource: 'MobileGameTable#HorsesPotToPlayer.onAnimationStart',
               });
+              armWinPresentationSampler({
+                identity: _horsesIdentity,
+                owner: _owner,
+                source: 'MobileGameTable#HorsesPotToPlayer.armSampler',
+                winnerPosition: horsesWinWinnerPosition,
+                selfPlayerId: currentPlayer?.id ?? null,
+                triggerId: horsesWinPotTriggerId ?? null,
+              });
             }}
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
