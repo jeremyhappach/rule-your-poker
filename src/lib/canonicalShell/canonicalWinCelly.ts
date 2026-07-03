@@ -159,9 +159,43 @@ function resolveEligibility(id: WinAttemptIdentity | undefined):
  *     and (when eligible) `confetti-trigger-requested` +
  *     `confetti-mounted` on the shared ledger identity so replays /
  *     late-mount attempts correlate under the same winAttemptId.
- *   - Does NOT touch the winner anchor DOM (no bounce). Bounce is
- *     owned by `completeCanonicalWinSequence`.
+ *   - Resolves and RETAINS the canonical winner-destination anchor at
+ *     start (document-scoped, mirroring the endpoints published by
+ *     CanonicalSeatCluster and ShellViewerChipEndpoint). The same
+ *     retained anchor is used for the arrival bounce, so the transfer
+ *     landing target and bounce target are one object — no independent
+ *     re-query after transfer completion.
+ *   - If no canonical anchor exists at start, records
+ *     `WIN_BOUNCE_TARGET_MISSING` and does not proceed with confetti
+ *     or bounce for this winKey (canonical boundary hold — no
+ *     fabricated screen-center or legacy fallback target).
  */
+
+/**
+ * Resolve the canonical winner-destination anchor from the DOM, using
+ * the same attributes CanonicalSeatCluster / CanonicalChipDisc /
+ * ShellViewerChipEndpoint publish for every seat (including the local
+ * viewer's portaled endpoint). Document-scoped on purpose — the local
+ * viewer's chip endpoint is portaled onto the shell felt element,
+ * which may sit outside a caller-supplied `container` subtree, so
+ * container-scoped lookups silently miss the local winner. This is
+ * the shared resolver used at both beats.
+ */
+function resolveWinnerAnchor(winnerPosition: number): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  return (
+    (document.querySelector(
+      `[data-chip-reaction-target="${winnerPosition}"]`,
+    ) as HTMLElement | null) ??
+    (document.querySelector(
+      `[data-chip-center="${winnerPosition}"]`,
+    ) as HTMLElement | null)
+  );
+}
+
+/** Anchors retained at start, keyed by winKey. Consumed at complete. */
+const retainedAnchors = new Map<string, HTMLElement>();
+
 export function startCanonicalWinSequence({
   winnerPosition,
   winKey,
@@ -192,6 +226,33 @@ export function startCanonicalWinSequence({
       identity: id, name: 'canonical-sequence-requested', source, owner: ledgerOwner,
       payload: { winKey, winnerPosition, eligibility, beat: 'start' },
     });
+  }
+
+  // Resolve the canonical winner-destination anchor NOW, before any
+  // beat proceeds. Retain the exact element so bounce fires on the
+  // same DOM node the pot-transfer lands on. If missing, hold the
+  // canonical sequence: no confetti, no bounce, violation recorded.
+  const anchor = resolveWinnerAnchor(winnerPosition);
+  if (id) {
+    recordWinPresentationEvent({
+      identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
+      payload: { found: !!anchor, winnerPosition, beat: 'start', retained: !!anchor },
+    });
+  }
+  if (!anchor) {
+    if (id) recordWinPresentationViolation(
+      id,
+      'WIN_BOUNCE_TARGET_MISSING',
+      source,
+      { winnerPosition, phase: 'start', reason: 'no-canonical-anchor-before-transfer' },
+    );
+    // Do not admit the sequence; do not fabricate a fallback target.
+    startedKeys.delete(winKey);
+    return;
+  }
+  retainedAnchors.set(winKey, anchor);
+
+  if (id) {
     recordWinPresentationEvent({
       identity: id, name: 'canonical-sequence-accepted', source, owner: ledgerOwner,
       payload: { beat: 'start' },
@@ -232,10 +293,10 @@ export function startCanonicalWinSequence({
  * Beat 2 of the canonical win sequence — fires destination bounce on
  * the winner chip anchor after the pot transfer has landed. Idempotent
  * per `winKey`. Runs on every client because the bounce reflects chip
- * arrival, not local eligibility.
+ * arrival, not local eligibility. Reuses the anchor retained at start
+ * so this beat and the transfer landing point are one shared object.
  */
 export function completeCanonicalWinSequence({
-  container,
   winnerPosition,
   winKey,
   ledgerIdentity,
@@ -263,18 +324,30 @@ export function completeCanonicalWinSequence({
     payload: { winnerPosition },
   });
 
-  const scope: ParentNode = container ?? (typeof document !== 'undefined' ? document : null as unknown as ParentNode);
-  const el = scope
-    ? ((scope.querySelector(`[data-chip-reaction-target="${winnerPosition}"]`) as HTMLElement | null)
-        ?? (scope.querySelector(`[data-chip-center="${winnerPosition}"]`) as HTMLElement | null))
-    : null;
+  // Prefer the anchor retained at start (same object the transfer
+  // landed against). If it disconnected mid-lifecycle, re-resolve
+  // canonically once — never fall back to legacy container scope or
+  // fabricated screen-center targets.
+  let el: HTMLElement | null = retainedAnchors.get(winKey) ?? null;
+  const retainedStillMounted = !!el && el.isConnected;
+  if (!retainedStillMounted) {
+    el = resolveWinnerAnchor(winnerPosition);
+  }
 
   if (id) {
     recordWinPresentationEvent({
       identity: id, name: 'winner-destination-resolved', source, owner: ledgerOwner,
-      payload: { found: !!el, winnerPosition },
+      payload: {
+        found: !!el,
+        winnerPosition,
+        beat: 'complete',
+        source: retainedStillMounted ? 'retained' : (el ? 're-resolved' : 'missing'),
+      },
     });
-    if (!el) recordWinPresentationViolation(id, 'WIN_BOUNCE_TARGET_MISSING', source, { winnerPosition });
+    if (!el) recordWinPresentationViolation(
+      id, 'WIN_BOUNCE_TARGET_MISSING', source,
+      { winnerPosition, phase: 'complete', reason: 'anchor-lost-before-arrival' },
+    );
   }
 
   if (el) {
@@ -288,6 +361,8 @@ export function completeCanonicalWinSequence({
     }, BOUNCE_DURATION_MS + 60);
   }
 
+  retainedAnchors.delete(winKey);
   window.setTimeout(() => completedKeys.delete(winKey), 30000);
 }
+
 
