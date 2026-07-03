@@ -237,3 +237,45 @@ export function exportWinLedgerJson(): string {
 export function hasAnyWinAttempts(): boolean {
   return load().length > 0;
 }
+
+/**
+ * Watchdog for Horses-freeze coverage. Arms a timer against `identity`;
+ * if no `confetti-mounted`/`transfer-complete`/`bounce-complete`/
+ * `teardown-committed` event is recorded on the same attempt within
+ * `deadlineMs`, records a `WIN_PRESENTATION_FROZEN` violation.
+ * Idempotent per winAttemptId + label.
+ */
+const armedWatchdogs = new Set<string>();
+export function armWinFreezeWatchdog(
+  identity: WinAttemptIdentity,
+  deadlineMs: number,
+  source: string,
+  label: string = 'default',
+): void {
+  if (!isBrowser()) return;
+  const key = `${identity.winAttemptId}::${label}`;
+  if (armedWatchdogs.has(key)) return;
+  armedWatchdogs.add(key);
+  const armedAt = Date.now();
+  window.setTimeout(() => {
+    try {
+      const records = load();
+      const rec = records.find(r => r.identity.winAttemptId === identity.winAttemptId);
+      const progressed = !!rec?.events.some(e =>
+        e.name === 'confetti-mounted' ||
+        e.name === 'transfer-complete' ||
+        e.name === 'bounce-complete' ||
+        e.name === 'teardown-committed'
+      );
+      if (!progressed) {
+        recordWinPresentationViolation(identity, 'WIN_PRESENTATION_FROZEN', source, {
+          deadlineMs,
+          elapsedMs: Date.now() - armedAt,
+          label,
+          lastEvent: rec?.events[rec.events.length - 1]?.name ?? null,
+          eventCount: rec?.events.length ?? 0,
+        });
+      }
+    } catch { /* */ }
+  }, deadlineMs);
+}
