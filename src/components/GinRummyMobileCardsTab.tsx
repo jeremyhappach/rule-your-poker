@@ -686,7 +686,7 @@ export const GinRummyMobileCardsTab = ({
               suit: card.suit as CanonicalCardType['suit'],
               rank: card.rank as CanonicalCardType['rank'],
             }))}
-            capacity={GIN_CARDS_PER_PLAYER + 1}
+            capacity={GIN_CARDS_PER_PLAYER}
             portalTargetSelector="[data-gin-active-pane-content]"
             phaseLockKey={`gin|id:${localHandIdentityKey}`}
             applyFan
