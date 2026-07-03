@@ -387,19 +387,16 @@ export const GinRummyMobileCardsTab = ({
       ) : (
         /* ── NORMAL PLAY VIEW: shared active-hand fan ── */
         <>
-          <div className="flex items-center pl-2 pt-1">
-            <span className="text-sm font-mono font-bold text-muted-foreground tracking-wide">
-              DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
-            </span>
-          </div>
           {/*
-            Pane-owned composition: the middle spacer occupies remaining
-            vertical space between the DW label and the sibling action
-            zone so the action zone is bottom-anchored. The active-hand
-            fan is portaled INTO `[data-gin-active-pane-content]` by
-            MeasuredActiveHandFan, which measures the un-transformed
-            pane rect and every `[data-active-hand-lower-zone]` sibling
-            (below), then derives:
+            Pane-owned composition: the top spacer + fan host fill the
+            pane; the DW label now lives inside the lower-zone action
+            strip below (right-aligned) so the top of the pane stays
+            clear and the portaled fan has full vertical breathing
+            room. The active-hand fan is portaled INTO
+            `[data-gin-active-pane-content]` by MeasuredActiveHandFan,
+            which measures the un-transformed pane rect and every
+            `[data-active-hand-lower-zone]` sibling (below), then
+            derives:
                 stageRect.height = paneH·maxHeightPct
                                      bounded by paneH − reserved − clearance
                 reserved  = max(paneH·reservedLowerZonePct,
@@ -414,6 +411,7 @@ export const GinRummyMobileCardsTab = ({
             data-gin-active-hand-stage-spacer=""
             className="flex-1 min-h-0"
           />
+
           <MeasuredActiveHandFan
             game="ginRummy"
             cards={flatSortedHand.map(({ card }) => ({
@@ -455,7 +453,16 @@ export const GinRummyMobileCardsTab = ({
       )}
 
       {/* ── Action area ── */}
-      <div data-active-hand-lower-zone="" className="flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+      <div data-active-hand-lower-zone="" className="relative flex items-center justify-center min-h-[28px] gap-2 flex-wrap">
+        {/* Deadwood readout — right-aligned inside the action strip so
+            it no longer eats vertical room above the fan. Post-knock
+            view renders its own DW block above (line ~379). */}
+        {!inPostKnock && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-muted-foreground pointer-events-none">
+            DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
+          </span>
+        )}
+
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
           <>
