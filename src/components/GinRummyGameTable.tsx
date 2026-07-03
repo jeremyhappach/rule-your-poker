@@ -354,7 +354,7 @@ export const GinRummyGameTable = ({
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
-  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChatContext();
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();
   const announcements = useAnnouncements();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   // (debug instrumentation moved to AnnouncementDebugPanel)
