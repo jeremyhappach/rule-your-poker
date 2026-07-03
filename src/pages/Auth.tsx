@@ -130,6 +130,8 @@ const Auth = () => {
           .maybeSingle();
         
         if (profile && !profile.is_active) {
+          const { markIntentionalSignOut } = await import("@/lib/authInvalidationCause");
+          markIntentionalSignOut("Auth#inactive-account-signOut");
           await supabase.auth.signOut();
           toast({
             title: "Account Inactive",

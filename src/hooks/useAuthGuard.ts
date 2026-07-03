@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { User, AuthChangeEvent } from "@supabase/supabase-js";
+import { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import {
   noteAuthRedirectAttempt,
@@ -24,8 +24,35 @@ import {
   recordRouteRedirect,
 } from "@/lib/authEjectionLedger";
 import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
+import {
+  peekIntentionalSignOut,
+  recordAuthSessionInvalidationCause,
+  installAuthStorageWatcher,
+  type RefreshOutcome,
+} from "@/lib/authInvalidationCause";
 
 const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
+
+installAuthStorageWatcher();
+
+/**
+ * Routes on which an unexpected SIGNED_OUT should NOT immediately eject
+ * the user. On these routes we hold the current location, attempt one
+ * canonical refresh, and only navigate to /auth if reconciliation
+ * definitively confirms no usable session.
+ */
+function isProtectedTableRoute(path: string): boolean {
+  return (
+    path.startsWith("/game") ||
+    path.startsWith("/waiting") ||
+    path.startsWith("/table")
+  );
+}
+
+function priorTokenLooksAlive(session: Session | null | undefined): boolean {
+  if (!session?.expires_at) return false;
+  return session.expires_at * 1000 - Date.now() > 30_000;
+}
 
 
 interface AuthGuardOptions {
@@ -67,8 +94,11 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
   const cachedUser = useRef<User | null>(readCachedUserSync()).current;
   const [user, setUser] = useState<User | null>(cachedUser);
   const [isReady, setIsReady] = useState<boolean>(cachedUser !== null);
+  const [authRecovering, setAuthRecovering] = useState<boolean>(false);
   const prevAuthEvent = useRef<string | null>(null);
   const recheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastKnownSessionRef = useRef<Session | null>(null);
+  const reconcilingRef = useRef<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -99,29 +129,51 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
       });
     }
 
-    function redirectToAuth(reason: string) {
+    /**
+     * Synchronous pre-navigation eligibility. Returns the guard's decision
+     * WITHOUT navigating. Callers must NOT navigate to /auth if this
+     * returns "kept-route-*". The decision is recorded upstream by
+     * `recordAuthSessionInvalidationCause`.
+     */
+    function evaluateRedirectEligibility(
+      reason: string,
+      priorSession: Session | null,
+    ): "kept-route-recovering" | "kept-route-lease" | "redirected-no-session" | "redirected-intentional" {
+      const intentional = peekIntentionalSignOut();
+      if (intentional) return "redirected-intentional";
+      const currentPath = window.location.pathname;
+      const onProtected = isProtectedTableRoute(currentPath);
+      const lease = getActiveRecoveryLease();
+      const tokenAlive = priorTokenLooksAlive(priorSession);
+      if (onProtected && (tokenAlive || lease)) {
+        return lease && !tokenAlive ? "kept-route-lease" : "kept-route-recovering";
+      }
+      // Also protect explicitly on protected route even if we lack prior
+      // session snapshot (e.g. cold-mount) — a lease alone is enough.
+      if (onProtected && lease) return "kept-route-lease";
+      return "redirected-no-session";
+    }
+
+    function performRedirectToAuth(reason: string, priorSession: Session | null) {
       if (!mounted) return;
       const currentPath = window.location.pathname;
-      // Wartime: probe for suspicious redirect (valid session or lease).
-      supabase.auth.getSession().then(({ data: { session: probe } }) => {
-        const lease = getActiveRecoveryLease();
-        noteAuthRedirectAttempt({
-          caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
-          hasValidSession: !!probe && (probe.expires_at ?? 0) * 1000 > Date.now(),
-          hasWaitingTableMembership: false,
-          hasActiveRecoveryLease: !!lease,
-          userId: probe?.user?.id ?? user?.id ?? null,
-          dealerGameId: lease?.gameId ?? null,
-          guardInputs: { reason, currentPath, pageLabel },
-          note: "redirectToAuth probe",
-        });
-      }).catch(() => { /* noop */ });
+      const lease = getActiveRecoveryLease();
+      noteAuthRedirectAttempt({
+        caller: `useAuthGuard(${pageLabel})#performRedirectToAuth`,
+        hasValidSession: priorTokenLooksAlive(priorSession),
+        hasWaitingTableMembership: false,
+        hasActiveRecoveryLease: !!lease,
+        userId: priorSession?.user?.id ?? user?.id ?? null,
+        dealerGameId: lease?.gameId ?? null,
+        guardInputs: { reason, currentPath, pageLabel },
+        note: "pre-navigation eligibility (synchronous)",
+      });
       recordRouteRedirect({
         from: currentPath,
         to: "/auth",
         reason,
-        caller: `useAuthGuard(${pageLabel})#redirectToAuth`,
-        dealerGameId: getActiveRecoveryLease()?.gameId ?? null,
+        caller: `useAuthGuard(${pageLabel})#performRedirectToAuth`,
+        dealerGameId: lease?.gameId ?? null,
         playerId: user?.id ?? null,
       });
       traceAuthEvent("app-unexpected-navigation-login", {
@@ -134,6 +186,98 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
       navigate("/auth");
     }
 
+    /**
+     * Bounded recovery. On unexpected SIGNED_OUT with an unexpired prior
+     * token or an active lease, hold the route, attempt ONE canonical
+     * refresh, and only redirect if reconciliation confirms no session.
+     */
+    async function reconcileUnexpectedSignOut(
+      event: AuthChangeEvent,
+      priorSession: Session | null,
+    ): Promise<void> {
+      if (reconcilingRef.current) return;
+      reconcilingRef.current = true;
+      setAuthRecovering(true);
+
+      const started = Date.now();
+      let outcome: RefreshOutcome = "not-attempted";
+      let refreshError: string | null = null;
+      let recoveredSession: Session | null = null;
+
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          outcome = "error";
+          refreshError = error.message;
+        } else if (data.session) {
+          outcome = "recovered";
+          recoveredSession = data.session;
+        } else {
+          // Fall back to a plain getSession in case another tab refreshed.
+          const { data: probe } = await supabase.auth.getSession();
+          if (probe.session) {
+            outcome = "recovered";
+            recoveredSession = probe.session;
+          } else {
+            outcome = "no-session";
+          }
+        }
+      } catch (err) {
+        outcome = "error";
+        refreshError = err instanceof Error ? err.message : String(err);
+      }
+
+      const finished = Date.now();
+      if (!mounted) { reconcilingRef.current = false; return; }
+
+      if (recoveredSession) {
+        lastKnownSessionRef.current = recoveredSession;
+        setUser((prev) => (prev && prev.id === recoveredSession!.user.id ? prev : recoveredSession!.user));
+        setIsReady(true);
+        setAuthRecovering(false);
+        traceAuthEvent("app-auth-session-recovered", {
+          trigger: `reconcile-after-${event}`,
+          userId: recoveredSession.user.id,
+        });
+        recordAuthSessionInvalidationCause({
+          supabaseEvent: event,
+          callbackLabel: `useAuthGuard(${pageLabel})`,
+          priorTokenExpiresAt: priorSession?.expires_at ?? null,
+          refreshTokenPresent: !!priorSession?.refresh_token,
+          refreshAttempt: { startedAt: started, finishedAt: finished, outcome, error: refreshError },
+          sessionNullTiming: "before-cleanup",
+          recoveryGuardDecision: "kept-route-recovering",
+          userId: priorSession?.user?.id ?? recoveredSession.user.id,
+        });
+        reconcilingRef.current = false;
+        return;
+      }
+
+      // Reconciliation confirms no usable session. Evaluate eligibility
+      // one more time (lease could have been released mid-reconcile).
+      const decision = evaluateRedirectEligibility(`reconciled-${event}`, priorSession);
+      recordAuthSessionInvalidationCause({
+        supabaseEvent: event,
+        callbackLabel: `useAuthGuard(${pageLabel})`,
+        priorTokenExpiresAt: priorSession?.expires_at ?? null,
+        refreshTokenPresent: !!priorSession?.refresh_token,
+        refreshAttempt: { startedAt: started, finishedAt: finished, outcome, error: refreshError },
+        sessionNullTiming: "after-cleanup",
+        recoveryGuardDecision: decision,
+        userId: priorSession?.user?.id ?? null,
+      });
+
+      if (decision === "kept-route-recovering" || decision === "kept-route-lease") {
+        // Stay put; another callback (SIGNED_IN / TOKEN_REFRESHED) will
+        // resolve the recovering state, or lease teardown will handle it.
+        reconcilingRef.current = false;
+        return;
+      }
+
+      setAuthRecovering(false);
+      performRedirectToAuth(`reconciled-no-session-${event}`, priorSession);
+      reconcilingRef.current = false;
+    }
 
     async function verifySessionOrRedirect(trigger: string) {
       // Double-check: maybe the token refreshed by now
@@ -141,21 +285,28 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
       if (!mounted) return;
 
       if (freshSession) {
-        // Transient loss – session recovered
+        lastKnownSessionRef.current = freshSession;
         traceAuthEvent("app-auth-session-recovered", {
           trigger,
           userId: freshSession.user.id,
         });
         setUser(freshSession.user);
         setIsReady(true);
+        setAuthRecovering(false);
       } else {
-        // Confirmed loss
         traceAuthEvent("app-auth-session-lost", {
           trigger,
           previousUserId: user?.id ?? null,
           tokenRefreshInProgress: false,
         });
-        redirectToAuth(trigger);
+        const prior = lastKnownSessionRef.current;
+        const decision = evaluateRedirectEligibility(trigger, prior);
+        if (decision === "kept-route-recovering" || decision === "kept-route-lease") {
+          // Hand off to reconcile path; do not navigate.
+          void reconcileUnexpectedSignOut("USER_UPDATED" as AuthChangeEvent, prior);
+          return;
+        }
+        performRedirectToAuth(trigger, prior);
       }
     }
 
@@ -167,13 +318,17 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
           trigger: "initial-getSession",
           previousUserId: null,
         });
-        redirectToAuth("initial-no-session");
+        // Pre-navigation eligibility: on protected routes with an
+        // active lease we must NOT eject during initial mount.
+        const decision = evaluateRedirectEligibility("initial-no-session", null);
+        if (decision === "kept-route-recovering" || decision === "kept-route-lease") {
+          setAuthRecovering(true);
+          void reconcileUnexpectedSignOut("INITIAL_SESSION" as AuthChangeEvent, null);
+          return;
+        }
+        performRedirectToAuth("initial-no-session", null);
       } else {
-        // ID-stable promotion: only replace the user object if the id
-        // actually changed. Replacing on every getSession resolution
-        // produces a fresh object reference even when the user is the
-        // same, which invalidates any effect deps that include the
-        // `user` object and re-runs heavy hydration paths.
+        lastKnownSessionRef.current = session;
         setUser((prev) => (prev && prev.id === session.user.id ? prev : session.user));
         setIsReady(true);
         traceAuthEvent("app-auth-state-change", {
@@ -192,6 +347,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
 
         const oldEvent = prevAuthEvent.current;
         prevAuthEvent.current = event;
+        const priorSession = lastKnownSessionRef.current;
 
         recordAuthStateChange({
           previousState: oldEvent ?? "none",
@@ -215,29 +371,77 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
 
 
         if (session) {
-          // Clear any pending recheck
           if (recheckTimerRef.current) {
             clearTimeout(recheckTimerRef.current);
             recheckTimerRef.current = null;
           }
+          lastKnownSessionRef.current = session;
           setUser((prev) => (prev && prev.id === session.user.id ? prev : session.user));
           setIsReady(true);
+          setAuthRecovering(false);
         } else {
-          // ── CRITICAL CHANGE ────────────────────────────────
-          // Do NOT immediately redirect.  Wait and re-verify.
-          // This prevents kicking users on transient refresh gaps.
           if (event === "SIGNED_OUT") {
-            // Explicit sign-out: redirect immediately
-            redirectToAuth("explicit-SIGNED_OUT");
+            // ── PRE-NAVIGATION ELIGIBILITY (synchronous) ───────
+            // Classify intentional vs unexpected. If protected route
+            // + (prior token alive OR active recovery lease), hold
+            // the route and perform ONE bounded reconciliation.
+            const intentional = peekIntentionalSignOut();
+            const decision = evaluateRedirectEligibility("SIGNED_OUT", priorSession);
+
+            if (intentional || decision === "redirected-intentional") {
+              // Record and redirect immediately — normal logout.
+              recordAuthSessionInvalidationCause({
+                supabaseEvent: event,
+                callbackLabel: `useAuthGuard(${pageLabel})`,
+                priorTokenExpiresAt: priorSession?.expires_at ?? null,
+                refreshTokenPresent: !!priorSession?.refresh_token,
+                refreshAttempt: {
+                  startedAt: null,
+                  finishedAt: null,
+                  outcome: "not-attempted",
+                  error: null,
+                },
+                sessionNullTiming: "before-cleanup",
+                recoveryGuardDecision: "redirected-intentional",
+                userId: priorSession?.user?.id ?? user?.id ?? null,
+              });
+              lastKnownSessionRef.current = null;
+              performRedirectToAuth("intentional-SIGNED_OUT", priorSession);
+              return;
+            }
+
+            if (decision === "kept-route-recovering" || decision === "kept-route-lease") {
+              // Hold route; bounded reconcile.
+              void reconcileUnexpectedSignOut(event, priorSession);
+              return;
+            }
+
+            // Truly unauthenticated on a non-protected route.
+            recordAuthSessionInvalidationCause({
+              supabaseEvent: event,
+              callbackLabel: `useAuthGuard(${pageLabel})`,
+              priorTokenExpiresAt: priorSession?.expires_at ?? null,
+              refreshTokenPresent: !!priorSession?.refresh_token,
+              refreshAttempt: {
+                startedAt: null,
+                finishedAt: null,
+                outcome: "not-attempted",
+                error: null,
+              },
+              sessionNullTiming: "before-cleanup",
+              recoveryGuardDecision: "redirected-no-session",
+              userId: priorSession?.user?.id ?? user?.id ?? null,
+            });
+            lastKnownSessionRef.current = null;
+            performRedirectToAuth("SIGNED_OUT-no-protection", priorSession);
           } else {
-            // Transient null (TOKEN_REFRESHED race, network blip, etc.)
+            // Transient null (TOKEN_REFRESHED race, etc.)
             traceAuthEvent("app-auth-session-lost", {
               trigger: `transient-null-event-${event}`,
               previousUserId: user?.id ?? null,
               tokenRefreshInProgress: true,
             });
 
-            // Schedule a recheck
             if (recheckTimerRef.current) clearTimeout(recheckTimerRef.current);
             recheckTimerRef.current = setTimeout(() => {
               recheckTimerRef.current = null;
@@ -258,5 +462,5 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  return { user, isReady };
+  return { user, isReady, authRecovering };
 }
