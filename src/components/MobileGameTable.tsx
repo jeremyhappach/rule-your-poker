@@ -8513,6 +8513,13 @@ export const MobileGameTable = ({
             onAnimationEnd={() => {
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
+              // Canonical winner arrival: destination bounce + confetti.
+              // Dedupe by triggerId so remount / re-emission cannot double-fire.
+              fireCanonicalWinCelly({
+                container: tableContainerRef.current,
+                winnerPosition: horsesWinWinnerPosition,
+                winKey: `${gameType ?? 'dice'}:win:${horsesWinPotTriggerId ?? 'no-trigger'}`,
+              });
               onHorsesWinPotAnimationComplete?.();
             }}
           />
