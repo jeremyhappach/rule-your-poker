@@ -750,7 +750,7 @@ export const CribbageMobileGameTable = ({
         reason: 'chat-open',
       });
     }
-  }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+  }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and the
