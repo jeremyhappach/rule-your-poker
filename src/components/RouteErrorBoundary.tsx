@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
+import { recordErrorBoundaryCaught } from "@/lib/runtimeInstrumentation/runtimeTracer";
 
 type Props = {
   children: React.ReactNode;
@@ -30,6 +31,18 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
     console.error("[RouteErrorBoundary] Error info:", errorInfo);
     try {
       recordSessionIncident("FATAL_RENDER_OR_PROMISE_REJECTION", {
+        source: "RouteErrorBoundary",
+        title: this.props.title ?? null,
+        message: (error as Error)?.message ?? String(error),
+        stack: (error as Error)?.stack ?? null,
+        componentStack:
+          (errorInfo as { componentStack?: string })?.componentStack ?? null,
+      });
+    } catch {
+      /* noop */
+    }
+    try {
+      recordErrorBoundaryCaught({
         source: "RouteErrorBoundary",
         title: this.props.title ?? null,
         message: (error as Error)?.message ?? String(error),
