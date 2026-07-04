@@ -310,7 +310,7 @@ async function upsertInstance(): Promise<void> {
   try {
     await supabase
       .from("client_runtime_instances")
-      .upsert(row, { onConflict: "client_instance_id" });
+      .upsert(row as never, { onConflict: "client_instance_id" });
     instanceRegistered = true;
   } catch {
     /* swallow; heartbeat retries */
