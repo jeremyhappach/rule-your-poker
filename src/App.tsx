@@ -208,6 +208,13 @@ const App = () => {
                   outside DebugTray/hideDebugUI gating, persistent across routes. */}
               <ChatDeliveryExportPill />
 
+              {/* P0: always-mounted session lifecycle recovery pill.
+                  Persists across every route (including /auth and any
+                  legacy Join fallback) so the operator can always reach
+                  /diagnostics and copy the ledger, even when the game
+                  UI is gone. Pure link + copy; no auth/session mutation. */}
+              <SessionLifecycleRecoveryPill />
+
 
 
 
