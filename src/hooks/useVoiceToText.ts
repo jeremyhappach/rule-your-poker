@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
