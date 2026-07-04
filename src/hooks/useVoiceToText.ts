@@ -226,6 +226,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
       rec.start();
       setError(null);
       setState('recording');
+      // Open a durable runtime incident id that survives tab replacement
+      // and browser relaunch. Every downstream event (encode, invoke,
+      // send, page-lifecycle) attaches to this id via correlation_id.
+      const incidentId = beginRuntimeIncident('voice-send', {
+        opened_at: new Date().toISOString(),
+        mimeType: rec.mimeType || 'audio/webm',
+      });
+      recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId}`);
+      // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
     } catch (err) {
       const name = (err as { name?: string })?.name;
