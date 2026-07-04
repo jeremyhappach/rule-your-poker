@@ -1928,6 +1928,58 @@ export const CribbageMobileGameTable = ({
   // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
+
+  // Canonical cards-tab attention: local player has a real actionable
+  // cribbage decision (discard-to-crib or pegging turn). Red wins over
+  // any legacy/deal green pulses. Uses authoritative cribbageState +
+  // viewState fallback — not a generic betting predicate.
+  const cribbageLocalTurnEligible = (() => {
+    if (isPaused) return false;
+    if (!currentPlayerId) return false;
+    const semanticState: CribbageState | null =
+      (viewState as CribbageState | null) ?? cribbageState;
+    if (!semanticState) return false;
+    const phase = semanticState.phase;
+    if (phase === 'discarding') {
+      const playerCount = players.filter((p) => !p.sitting_out).length || players.length;
+      const required = DISCARD_COUNT[playerCount] ?? 2;
+      const ps = semanticState.playerStates?.[currentPlayerId];
+      const discarded = ps?.discardedToCrib?.length ?? 0;
+      const inHand = ps?.hand?.length ?? 0;
+      return inHand > 0 && discarded < required;
+    }
+    if (phase === 'pegging') {
+      return semanticState.pegging?.currentTurnPlayerId === currentPlayerId;
+    }
+    return false;
+  })();
+  const cribbageCardsFlash: 'red' | null =
+    (activeTab !== 'cards' && cribbageLocalTurnEligible) ? 'red' : null;
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'cribbage',
+      activeTab,
+      localTurnEligible: cribbageLocalTurnEligible,
+      iconKind: 'spade',
+      shouldBeRed: cribbageCardsFlash === 'red',
+      renderedRed: cribbageCardsFlash === 'red',
+      suppressReason: cribbageLocalTurnEligible
+        ? (activeTab === 'cards' ? 'on-cards-tab' : null)
+        : (isPaused ? 'paused' : 'no-actionable-phase'),
+    },
+  });
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    cardsFlashing: cribbageCardsFlash,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
+    onOpenChat: handleOpenChatTab,
+    isPaused: !!isPaused,
+  });
   const shellAnchors = useRequiredSeatAnchors('cribbage');
   const playerSlotById = useMemo(() => {
     const slotByPosition = shellAnchors
