@@ -207,11 +207,21 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
+      const correlationId = `chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      const sendIntentAt = new Date().toISOString();
       recordChatDeliveryEvent({
         phase: 'send-intent',
         gameId,
         consumer: 'canonical-store',
-        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile), currentUserId: currentUserId ?? null },
+        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile), currentUserId: currentUserId ?? null, correlationId },
+      });
+      recordRuntimeEvent({
+        event_family: 'chat',
+        event_name: 'SEND_INTENT',
+        severity: 'info',
+        correlation_id: correlationId,
+        game_id: gameId,
+        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile) },
       });
 
       setIsSending(true);
