@@ -239,6 +239,15 @@ export default function RuntimeDiagnostics() {
 
       {error && <p style={{ color: "#f87171" }}>Error: {error}</p>}
 
+      {lastMarkers && (
+        <details style={{ background: "#0b1220", border: "1px solid #334155", padding: 6, marginBottom: 8, fontSize: 11 }} open>
+          <summary style={{ cursor: "pointer", color: "#93c5fd" }}>Explicit last-of markers</summary>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", color: "#e2e8f0" }}>
+            {JSON.stringify(lastMarkers, null, 2)}
+          </pre>
+        </details>
+      )}
+
       <p style={{ color: "#94a3b8", fontSize: 11 }}>
         {rows.length} row{rows.length === 1 ? "" : "s"}
       </p>
