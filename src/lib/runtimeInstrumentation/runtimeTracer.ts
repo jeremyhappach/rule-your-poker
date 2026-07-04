@@ -132,10 +132,68 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "BOOT_RECOVERY_AUTH_LINKED",
 ]);
 
-/** Events whose local capsule append MUST be verified with read-back. */
-const VERIFIED_APPEND_EVENT_NAMES = new Set<string>([
+/**
+ * Events whose local capsule append MUST be verified with read-back and
+ * that must live-patch the incident row + upsert the instance heartbeat
+ * whenever an incident correlation_id is active. This is the central
+ * unavoidable verification set — no voice/lifecycle/route/session/network
+ * call site is trusted to write its own capsule; the central writer does.
+ *
+ * IMPORTANT: keep this list explicit rather than family-based to prevent
+ * proof events themselves (CAPSULE_LOCAL_APPEND_VERIFIED, etc — which
+ * carry event_family="environment") from recursing.
+ */
+const CENTRAL_VERIFIED_EVENT_NAMES = new Set<string>([
+  // Voice boundaries
   "VOICE_CAPTURE_START",
+  "VOICE_CAPTURE_STARTED",
   "VOICE_RECORDING_HEARTBEAT",
+  "VOICE_STOP_BUTTON_TAPPED",
+  "VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING",
+  "VOICE_STOP_HANDLER_ENTERED",
+  "VOICE_STOP_HANDLER_EXITED",
+  "VOICE_CAPTURE_STOP_REQUESTED",
+  "VOICE_MEDIARECORDER_STOP_CALLED",
+  "VOICE_MEDIARECORDER_ONSTOP_ENTERED",
+  "VOICE_MEDIARECORDER_DATAAVAILABLE",
+  "VOICE_BLOB_READY",
+  "VOICE_ENCODE_START",
+  "VOICE_ENCODE_COMPLETE",
+  "VOICE_FN_INVOKE_START",
+  "VOICE_FN_INVOKE_RESPONSE",
+  "VOICE_FN_INVOKE_ERROR",
+  "VOICE_FINALIZE_RETURN",
+  "VOICE_SEND_BEGIN",
+  "VOICE_SEND_COMPLETE",
+  "VOICE_SEND_BLOCKED",
+  "VOICE_REQUEST_NETWORK_FAILURE",
+  // Network
+  "NETWORK_ONLINE",
+  "NETWORK_OFFLINE",
+  "NETWORK_STATUS_SNAPSHOT",
+  "ONLINE",
+  "OFFLINE",
+  // Page lifecycle
+  "PAGE_VISIBILITY_CHANGE",
+  "PAGE_HIDE",
+  "PAGE_SHOW",
+  "BEFORE_UNLOAD",
+  "UNLOAD",
+  "FREEZE",
+  "RESUME",
+  // Fatal
+  "WINDOW_ERROR",
+  "UNHANDLED_REJECTION",
+  "ERROR_BOUNDARY_CAUGHT",
+  // Route / session
+  "ROUTE_REDIRECT",
+  "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+  "ACTIVE_SESSION_ROUTE_EJECTED",
+  "ACTIVE_SESSION_SHELL_UNMOUNTED",
+  "ACTIVE_SESSION_AUTH_REDIRECT",
+  "PERSISTED_SESSION_RESTORE_FAILED",
+  // Lifecycle callback proof
+  "LIFECYCLE_CALLBACK_ENTERED",
 ]);
 
 /**
