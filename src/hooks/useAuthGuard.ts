@@ -24,6 +24,7 @@ import {
   recordRouteRedirect,
 } from "@/lib/authEjectionLedger";
 import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
+import { recordActiveSessionMarker, recordAppRouteRedirect } from "@/lib/runtimeInstrumentation/runtimeTracer";
 import {
   peekIntentionalSignOut,
   recordAuthSessionInvalidationCause,
