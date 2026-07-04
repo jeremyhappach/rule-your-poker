@@ -481,7 +481,7 @@ export const MobileChatPanel = ({
             variant="ghost"
             size="icon"
             onClick={handleMicToggle}
-            disabled={voice.state === 'transcribing' || !voice.isSupported}
+            disabled={voice.state === 'transcribing' || isFinalizing || !voice.isSupported}
             className="h-9 w-9 text-white hover:bg-white/20 flex-shrink-0"
             title={micTitle}
             aria-label={micTitle}
@@ -492,18 +492,41 @@ export const MobileChatPanel = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleSend}
-            disabled={!inputMessage.trim() || isSending}
+            onClick={() => void handleSend()}
+            disabled={sendDisabled}
             className="h-9 w-9 text-white hover:bg-white/20 flex-shrink-0"
-            title="Send"
+            title={
+              isFinalizing ? 'Finalizing…' :
+              voice.state === 'recording' ? 'Stop recording and send' :
+              'Send'
+            }
+            aria-label={voice.state === 'recording' ? 'Stop recording and send' : 'Send'}
           >
-            <Send className="h-4 w-4" />
+            {isFinalizing
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Send className="h-4 w-4" />}
           </Button>
         </div>
+
+        {isFinalizing && (
+          <div className="mt-1 px-1 text-[10px] text-white/70 leading-tight">Finalizing transcription…</div>
+        )}
 
         {voice.state === 'error' && voice.error && (
           <div className="mt-1 px-1 text-[10px] text-amber-300/90 leading-tight">
             {voice.error}
+          </div>
+        )}
+
+        {voice.permission === 'denied' && voice.state !== 'error' && (
+          <div className="mt-1 px-1 text-[10px] text-amber-300/90 leading-tight">
+            Microphone blocked. Enable it for this site in your browser settings, then tap the mic again.
+          </div>
+        )}
+
+        {voice.diagnostics.length > 0 && (
+          <div className="mt-1 px-1 text-[9px] text-white/40 leading-tight font-mono truncate" aria-hidden>
+            voice: {voice.diagnostics.slice(-3).map((d) => d.code.replace('VOICE_', '') + (d.detail ? `(${d.detail})` : '')).join(' · ')}
           </div>
         )}
 
