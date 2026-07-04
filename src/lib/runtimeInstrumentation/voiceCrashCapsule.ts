@@ -36,10 +36,11 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-const DB_NAME = "voice_network_crash_capsule_v1";
-const DB_VERSION = 1;
-const STORE_CAPSULES = "capsules";
-const STORE_EVENTS = "events";
+export const DB_NAME = "voice_network_crash_capsule_v1";
+export const DB_VERSION = 2;
+export const STORE_CAPSULES = "capsules";
+export const STORE_EVENTS = "events";
+export const STORE_MANIFESTS = "manifests";
 
 export interface CapsuleMeta {
   clientInstanceId: string;
