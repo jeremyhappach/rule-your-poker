@@ -314,14 +314,26 @@ export function useVoiceToText(): UseVoiceToTextResult {
   // Internal: stop the recorder and transcribe. Optionally release the stream
   // after transcription. Returns the transcript, or null on error/empty.
   const stopAndTranscribe = useCallback(async (opts: { keepStream: boolean }): Promise<string | null> => {
+    recordDiagnostic(
+      'VOICE_STOP_HANDLER_ENTERED',
+      `keepStream=${opts.keepStream}`,
+    );
     const rec = recorderRef.current;
     if (!rec) {
       if (!opts.keepStream) releaseStream();
+      stopHeartbeat();
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'no-recorder');
       return null;
     }
     const mimeType = rec.mimeType || 'audio/webm';
     const finished = new Promise<Blob>((resolve) => {
       rec.onstop = () => {
+        try {
+          recordDiagnostic(
+            'VOICE_MEDIARECORDER_ONSTOP_ENTERED',
+            `chunks=${chunksRef.current.length}`,
+          );
+        } catch { /* noop */ }
         const blob = new Blob(chunksRef.current, { type: mimeType });
         chunksRef.current = [];
         resolve(blob);
@@ -329,8 +341,10 @@ export function useVoiceToText(): UseVoiceToTextResult {
     });
     try {
       recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
+      recordDiagnostic('VOICE_MEDIARECORDER_STOP_CALLED', `state=${rec.state}`);
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
+    stopHeartbeat();
     setState('transcribing');
     const blob = await finished;
     recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
@@ -343,6 +357,8 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'cancelled');
       endRuntimeIncident('cancelled');
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'cancelled');
       return null;
     }
 
@@ -364,11 +380,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
         setError('No speech detected. Try again.');
         setState('error');
         recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
+        captureStartedAtRef.current = null;
+        recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'empty');
         return null;
       }
       setState('idle');
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', `chars=${transcript.length}`);
       return transcript;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -376,9 +396,11 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('error');
       recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'error');
       return null;
     }
-  }, [releaseStream]);
+  }, [recordDiagnostic, releaseStream, stopHeartbeat]);
 
   const stop = useCallback(() => stopAndTranscribe({ keepStream: false }), [stopAndTranscribe]);
   const finalize = useCallback(() => stopAndTranscribe({ keepStream: true }), [stopAndTranscribe]);
@@ -391,10 +413,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       if (rec && rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     recorderRef.current = null;
+    stopHeartbeat();
+    captureStartedAtRef.current = null;
     // Keep the stream alive so the next start doesn't re-prompt.
     setState('idle');
     setError(null);
-  }, []);
+  }, [stopHeartbeat]);
 
   return {
     state,
