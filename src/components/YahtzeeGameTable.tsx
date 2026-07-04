@@ -577,6 +577,7 @@ export function YahtzeeGameTable({
 
   const chatAttention = useChatAttention();
   useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useEffect(() => { if (activeTab === 'chat') chatAttention.markChatRead('chat-tab-opened-actual-read'); }, [activeTab, chatAttention]);
   useChatIconStyleGuard(chatAttention.attentionState);
   const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
   const yahtzeeCardsFlash: 'red' | null = (isMyTurn && activeTab !== 'cards' && gamePhase === 'playing') ? 'red' : null;
