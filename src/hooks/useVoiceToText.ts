@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   recordRuntimeEvent,
+  recordVoiceRequestNetworkFailure,
   beginRuntimeIncident,
   endRuntimeIncident,
   getActiveRuntimeIncidentId,
@@ -372,6 +373,13 @@ export function useVoiceToText(): UseVoiceToTextResult {
       });
       if (fnError) {
         recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        try {
+          recordVoiceRequestNetworkFailure({
+            phase: 'edge-function-invoke',
+            message: fnError.message ?? null,
+            errorName: (fnError as { name?: string }).name ?? null,
+          });
+        } catch { /* noop */ }
         throw new Error(fnError.message || 'Transcription failed.');
       }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
@@ -392,10 +400,26 @@ export function useVoiceToText(): UseVoiceToTextResult {
       return transcript;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const name = (err as { name?: string })?.name ?? null;
       setError(msg || 'Transcription unavailable.');
       setState('error');
       recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
+      try {
+        // TypeError from fetch / offline / DNS all bubble as generic
+        // Error. Surface as a network-family failure so the DB
+        // timeline shows the outage boundary immediately.
+        const looksNetworky =
+          name === 'TypeError' ||
+          /network|fetch|failed to fetch|load failed/i.test(msg);
+        if (looksNetworky || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+          recordVoiceRequestNetworkFailure({
+            phase: 'edge-function-catch',
+            message: msg,
+            errorName: name,
+          });
+        }
+      } catch { /* noop */ }
       captureStartedAtRef.current = null;
       recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'error');
       return null;

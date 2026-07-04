@@ -23,6 +23,13 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  appendCapsuleEvent,
+  bootVoiceCrashCapsule,
+  closeCapsule,
+  onAuthenticatedSessionRestored,
+  openCapsule,
+} from "@/lib/runtimeInstrumentation/voiceCrashCapsule";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -95,6 +102,17 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "ACTIVE_SESSION_SHELL_UNMOUNTED",
   "ACTIVE_SESSION_AUTH_REDIRECT",
   "PERSISTED_SESSION_RESTORE_FAILED",
+  // Network state + capsule lifecycle boundaries
+  "NETWORK_ONLINE",
+  "NETWORK_OFFLINE",
+  "NETWORK_STATUS_SNAPSHOT",
+  "VOICE_REQUEST_NETWORK_FAILURE",
+  "DB_CRITICAL_WRITE_NETWORK_FAILURE",
+  "CAPSULE_PERSISTED_LOCAL",
+  "CAPSULE_UPLOAD_STARTED",
+  "CAPSULE_UPLOAD_COMPLETED",
+  "CAPSULE_UPLOAD_FAILED",
+  "CAPSULE_RECOVERED_AFTER_BOOT",
 ]);
 
 /**
@@ -300,6 +318,18 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   }
   if (userIdBecameSet) {
     void runOpenIncidentScan();
+    // Flush any local capsules that outlived a signed-out interval or
+    // were captured under an anonymous client_instance_id.
+    try {
+      onAuthenticatedSessionRestored((name, severity, payload) => {
+        recordRuntimeEvent({
+          event_family: "environment",
+          event_name: name,
+          severity: severity as Severity,
+          payload,
+        });
+      });
+    } catch { /* diagnostic; swallow */ }
   }
 }
 
@@ -539,6 +569,19 @@ export function beginRuntimeIncident(
   persistIncident(cachedIncident);
   // Open a DB row immediately so cross-origin recovery can find it.
   void openDbIncidentRow(id, kind, meta);
+  // Open the durable local IndexedDB capsule for this incident. Every
+  // downstream event that carries this correlation_id will be appended
+  // there first, so the causal chain survives connectivity loss.
+  void openCapsule(id, {
+    clientInstanceId: getClientInstanceId(),
+    tabSessionId: getTabSessionId(),
+    origin: typeof window !== "undefined" ? window.location.origin : null,
+    route: currentRoute(),
+    userId: ambient.user_id,
+    opened_at: cachedIncident.started_at,
+    openedTsMs: Date.now(),
+    extra: meta,
+  });
   return id;
 }
 
@@ -550,6 +593,7 @@ export function endRuntimeIncident(reason?: string): string | null {
   }
   if (id) {
     void closeDbIncidentRow(id, reason ?? "ended");
+    void closeCapsule(id, reason ?? "ended");
   }
   cachedIncident = null;
   persistIncident(null);
@@ -654,6 +698,23 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     payload: input.payload ?? null,
     ...errFields,
   };
+  // Local capsule FIRST — every event with an active runtime incident
+  // is appended to the durable IndexedDB capsule before any network
+  // attempt, so the causal chain survives connectivity loss / reboot.
+  if (evt.correlation_id) {
+    try {
+      appendCapsuleEvent({
+        voiceCrashIncidentId: evt.correlation_id,
+        eventFamily: evt.event_family,
+        eventName: evt.event_name,
+        severity: evt.severity,
+        route: evt.route,
+        clientInstanceId: evt.client_instance_id,
+        tabSessionId: evt.tab_session_id ?? "",
+        payload: evt.payload,
+      });
+    } catch { /* diagnostic; swallow */ }
+  }
   const immediate =
     evt.severity === "critical" ||
     IMMEDIATE_EVENT_NAMES.has(evt.event_name);
@@ -1221,6 +1282,61 @@ export function recordErrorBoundaryCaught(detail: {
   });
 }
 
+/**
+ * Emit VOICE_REQUEST_NETWORK_FAILURE when a voice-to-text edge-function
+ * request fails and there is reason to believe the failure is network
+ * related (navigator offline, TypeError from fetch, etc).
+ */
+export function recordVoiceRequestNetworkFailure(detail: {
+  phase: string;
+  message: string | null;
+  errorName?: string | null;
+  online?: boolean | null;
+  extra?: Record<string, unknown>;
+}): void {
+  recordRuntimeEvent({
+    event_family: "voice",
+    event_name: "VOICE_REQUEST_NETWORK_FAILURE",
+    severity: "error",
+    payload: {
+      phase: detail.phase,
+      message: detail.message,
+      errorName: detail.errorName ?? null,
+      online:
+        detail.online ??
+        (typeof navigator !== "undefined" ? navigator.onLine : null),
+      ...(detail.extra ?? {}),
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
+/**
+ * Emit DB_CRITICAL_WRITE_NETWORK_FAILURE from any critical DB write path
+ * (keepalive flush, outbox insert, incident upsert) that fails.
+ */
+export function recordDbCriticalWriteFailure(detail: {
+  target: string;
+  message: string | null;
+  errorName?: string | null;
+  extra?: Record<string, unknown>;
+}): void {
+  recordRuntimeEvent({
+    event_family: "environment",
+    event_name: "DB_CRITICAL_WRITE_NETWORK_FAILURE",
+    severity: "error",
+    payload: {
+      target: detail.target,
+      message: detail.message,
+      errorName: detail.errorName ?? null,
+      online:
+        typeof navigator !== "undefined" ? navigator.onLine : null,
+      ...(detail.extra ?? {}),
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
 export function bootRuntimeTracer(): void {
   if (booted || typeof window === "undefined") return;
   booted = true;
@@ -1228,6 +1344,20 @@ export function bootRuntimeTracer(): void {
   loadRetryQueue();
   void upsertInstance();
   installHistoryPatch();
+
+  // Boot the durable IndexedDB capsule + network listeners BEFORE
+  // React mounts. Emits NETWORK_STATUS_SNAPSHOT / NETWORK_ONLINE /
+  // NETWORK_OFFLINE / CAPSULE_* events through the tracer.
+  try {
+    bootVoiceCrashCapsule((name, severity, payload) => {
+      recordRuntimeEvent({
+        event_family: name.startsWith("CAPSULE_") ? "environment" : "environment",
+        event_name: name,
+        severity: severity as Severity,
+        payload,
+      });
+    });
+  } catch { /* diagnostic; swallow */ }
 
   // If we have replayed queued events from a prior tab, emit a
   // dedicated marker so post-relaunch analysis can pinpoint the
