@@ -516,25 +516,45 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
-          recordChatDeliveryEvent({
-            phase: 'realtime-insert-received',
-            message: newMessage,
+          recordChatRealtimeCallbackBegin({
             gameId,
-            consumer: 'canonical-store',
-            payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+            messageId: newMessage.id,
+            payloadGameId: newMessage.game_id,
           });
-          if (newMessage.game_id !== gameId) {
-            recordChatDeliveryViolation({
-              violation: 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH',
+          try {
+            recordChatDeliveryEvent({
+              phase: 'realtime-insert-received',
               message: newMessage,
               gameId,
               consumer: 'canonical-store',
               payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
             });
-            return;
+            if (newMessage.game_id !== gameId) {
+              recordChatDeliveryViolation({
+                violation: 'CHAT_SESSION_OR_GAME_FILTER_MISMATCH',
+                message: newMessage,
+                gameId,
+                consumer: 'canonical-store',
+                payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+              });
+              return;
+            }
+            recordSessionLifecycleEvent('CHAT_STORE_UPDATE_BEGIN', {
+              gameId,
+              messageId: newMessage.id,
+            });
+            setLatestRealtimeMessage(newMessage);
+            addBubble(newMessage);
+            recordSessionLifecycleEvent('CHAT_STORE_UPDATE_END', {
+              gameId,
+              messageId: newMessage.id,
+            });
+          } finally {
+            recordChatRealtimeCallbackEnd({
+              gameId,
+              messageId: newMessage.id,
+            });
           }
-          setLatestRealtimeMessage(newMessage);
-          addBubble(newMessage);
         }
       )
       .subscribe((status, err) => {
