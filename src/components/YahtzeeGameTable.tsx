@@ -575,12 +575,33 @@ export function YahtzeeGameTable({
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
 
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
+  const yahtzeeCardsFlash: 'red' | null = (isMyTurn && activeTab !== 'cards' && gamePhase === 'playing') ? 'red' : null;
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'yahtzee',
+      activeTab,
+      localTurnEligible: isMyTurn && gamePhase === 'playing',
+      iconKind: 'dice',
+      shouldBeRed: yahtzeeCardsFlash === 'red',
+      renderedRed: yahtzeeCardsFlash === 'red',
+      suppressReason: !isMyTurn ? 'not-your-turn' : (gamePhase !== 'playing' ? `phase:${gamePhase}` : (activeTab === 'cards' ? 'on-cards-tab' : null)),
+    },
+  });
+
   // Publish tab metadata to the shell-owned tab bar.
   useShellTabBar({
     cardsIcon: 'dice',
     activeTab,
     setActiveTab,
-    cardsFlashing: (isMyTurn && activeTab !== 'cards' && gamePhase === 'playing') ? 'red' : null,
+    cardsFlashing: yahtzeeCardsFlash,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
   });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
