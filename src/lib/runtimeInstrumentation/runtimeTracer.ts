@@ -1259,6 +1259,7 @@ export function bootRuntimeTracer(): void {
   });
 
   const flushOnBackground = (label: string, extra?: Record<string, unknown>) => {
+    forceInstanceHeartbeat(label);
     recordRuntimeEvent({
       event_family: "environment",
       event_name: label,
@@ -1268,6 +1269,9 @@ export function bootRuntimeTracer(): void {
     void flushNow();
     persistRetryQueue();
   };
+
+  // Immediate boot heartbeat so instances table reflects this tab now.
+  forceInstanceHeartbeat("BOOT");
 
   window.addEventListener("pagehide", (e) => {
     const persisted = (e as PageTransitionEvent).persisted;
