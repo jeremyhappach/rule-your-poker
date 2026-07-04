@@ -77,7 +77,17 @@ supabase.auth.onAuthStateChange((event, session) => {
   } catch {
     /* noop */
   }
-  if (event === "TOKEN_REFRESHED" && !session) {
+  try {
+    setRuntimeAmbient({ user_id: session?.user?.id ?? null });
+    recordRuntimeEvent({
+      event_family: "auth",
+      event_name: event === "TOKEN_REFRESHED" && !session ? "TOKEN_REFRESH_FAILED" : "AUTH_STATE_CHANGE",
+      severity: event === "TOKEN_REFRESHED" && !session ? "error" : "info",
+      payload: { supabaseEvent: event, hasSession: !!session, expiresAt: session?.expires_at ?? null },
+    });
+  } catch {
+    /* noop */
+  }
     persistSyncDebugEvent({
       gameId: "00000000-0000-0000-0000-000000000000",
       gameType: "auth",
