@@ -264,6 +264,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           return next;
         });
 
+        const dbStartAt = new Date().toISOString();
+        recordRuntimeEvent({
+          event_family: 'chat',
+          event_name: 'DB_INSERT_START',
+          correlation_id: correlationId,
+          game_id: gameId,
+        });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
@@ -273,19 +280,44 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
         if (error) {
           console.error('Error sending chat message:', error);
+          const failureAt = new Date().toISOString();
           recordChatDeliveryEvent({
             phase: 'insert-error',
             message: optimisticMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { error: error.message, optimisticId },
+            payload: { error: error.message, optimisticId, correlationId },
           });
           recordChatDeliveryViolation({
             violation: 'CHAT_MESSAGE_WRITE_NOT_CONFIRMED',
             message: optimisticMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { error: error.message, optimisticId },
+            payload: { error: error.message, optimisticId, correlationId },
+          });
+          recordRuntimeEvent({
+            event_family: 'chat',
+            event_name: 'DB_INSERT_FAILURE',
+            severity: 'error',
+            correlation_id: correlationId,
+            game_id: gameId,
+            error,
+            payload: { optimisticId },
+          });
+          void upsertDeliveryTrace({
+            message_id: optimisticId,
+            recipient_client_instance_id: getClientInstanceId(),
+            correlation_id: correlationId,
+            sender_user_id: userId,
+            sender_client_instance_id: getClientInstanceId(),
+            game_id: gameId,
+            source_type: 'text',
+            send_intent_at: sendIntentAt,
+            optimistic_created_at: sentAt,
+            db_insert_start_at: dbStartAt,
+            db_insert_failure_at: failureAt,
+            delivery_status: 'insert-error',
+            failure_reason: error.message,
           });
           setAllMessages(prev => {
             const next = prev.filter(m => m.id !== optimisticId);
@@ -301,12 +333,36 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             return next;
           });
         } else if (data) {
+          const successAt = new Date().toISOString();
           recordChatDeliveryEvent({
             phase: 'insert-success',
             message: data as ChatMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { optimisticId, authoritativeId: data.id },
+            payload: { optimisticId, authoritativeId: data.id, correlationId },
+          });
+          recordRuntimeEvent({
+            event_family: 'chat',
+            event_name: 'DB_INSERT_SUCCESS',
+            correlation_id: correlationId,
+            game_id: gameId,
+            message_id: data.id,
+            payload: { optimisticId },
+          });
+          void upsertDeliveryTrace({
+            message_id: data.id,
+            recipient_client_instance_id: getClientInstanceId(),
+            correlation_id: correlationId,
+            sender_user_id: userId,
+            sender_client_instance_id: getClientInstanceId(),
+            game_id: gameId,
+            source_type: 'text',
+            send_intent_at: sendIntentAt,
+            optimistic_created_at: sentAt,
+            db_insert_start_at: dbStartAt,
+            db_insert_success_at: successAt,
+            authoritative_row_at: (data as { created_at?: string }).created_at ?? successAt,
+            delivery_status: 'insert-success',
           });
           // Drop optimistic and merge authoritative row. Realtime may
           // also fire for the same id; mergeMessages dedupes.
