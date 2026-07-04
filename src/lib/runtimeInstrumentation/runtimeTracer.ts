@@ -23,6 +23,13 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  appendCapsuleEvent,
+  bootVoiceCrashCapsule,
+  closeCapsule,
+  onAuthenticatedSessionRestored,
+  openCapsule,
+} from "@/lib/runtimeInstrumentation/voiceCrashCapsule";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
