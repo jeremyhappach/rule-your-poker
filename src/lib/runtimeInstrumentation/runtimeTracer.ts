@@ -318,6 +318,18 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   }
   if (userIdBecameSet) {
     void runOpenIncidentScan();
+    // Flush any local capsules that outlived a signed-out interval or
+    // were captured under an anonymous client_instance_id.
+    try {
+      onAuthenticatedSessionRestored((name, severity, payload) => {
+        recordRuntimeEvent({
+          event_family: "environment",
+          event_name: name,
+          severity: severity as Severity,
+          payload,
+        });
+      });
+    } catch { /* diagnostic; swallow */ }
   }
 }
 
