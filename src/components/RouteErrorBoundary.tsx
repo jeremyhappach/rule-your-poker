@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 
 type Props = {
   children: React.ReactNode;
