@@ -1978,7 +1978,7 @@ export const CribbageMobileGameTable = ({
     chatFlashing: chatAttentionTabProps.chatFlashing,
     chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
-    isPaused: !!isPaused,
+    isPaused: false,
   });
   const shellAnchors = useRequiredSeatAnchors('cribbage');
   const playerSlotById = useMemo(() => {
