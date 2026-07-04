@@ -189,21 +189,22 @@ export function ShellTabBar() {
   //   chatFlash === 'red'  → NEW_MESSAGE_PULSE : outline+fill red, pulsing
   //   chatDot   === 'red'  → UNREAD_PERSISTENT : outline red, NO fill
   //   Green chat state is retired — no waiting-table green fill anywhere.
+  const chatFlashRed = chatFlash === 'red';
   const chatIconClass = [
     'w-5 h-5',
-    chatFlash === 'red' ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
-    chatDot === 'red' && chatFlash !== 'red' ? 'text-poker-chip-red' : '',
+    chatFlashRed ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
+    chatDot === 'red' && !chatFlashRed ? 'text-poker-chip-red' : '',
   ]
     .filter(Boolean)
     .join(' ');
   const chatIconResolvedStroke =
-    chatFlash === 'red' || (chatDot === 'red' && chatFlash !== 'red')
+    chatFlashRed || (chatDot === 'red' && !chatFlashRed)
       ? 'poker-chip-red'
       : 'inherit';
-  const chatIconResolvedFill =
-    chatFlash === 'red' ? 'poker-chip-red' : 'none';
+  const chatIconResolvedFill = chatFlashRed ? 'poker-chip-red' : 'none';
   const chatAttentionRenderState =
-    chatFlash === 'red' ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
+    chatFlashRed ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
+
 
   // Turn-attention visual scope: glyph-only. No ring / border / bg on the
   // gameplay tab container. Chat attention is handled separately on its
