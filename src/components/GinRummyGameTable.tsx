@@ -813,15 +813,28 @@ export const GinRummyGameTable = ({
         reason: 'chat-open',
       });
     }
-  }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+  }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
-  // Publish tab metadata to the shell-owned tab bar.
+  // Turn-attention audit telemetry (read-only, no behavior change).
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'gin-rummy',
+      activeTab,
+      localTurnEligible: null,
+      iconKind: 'spade',
+      shouldBeRed: null,
+      renderedRed: false,
+      suppressReason: 'no-turn-source-wired',
+    },
+  });
   useShellTabBar({
     cardsIcon: 'spade',
     activeTab,
     setActiveTab,
-    chatFlashing: showGreenChatIndicator ? 'green' : null,
-    chatIndicator: showRedChatIndicator ? 'red' : null,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
   });
 
