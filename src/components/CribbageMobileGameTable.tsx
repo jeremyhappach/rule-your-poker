@@ -755,12 +755,26 @@ export const CribbageMobileGameTable = ({
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and the
   // gameplay-derived indicator state.
+  // Turn-attention audit telemetry (read-only, no behavior change).
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'cribbage',
+      activeTab,
+      localTurnEligible: null,
+      iconKind: 'spade',
+      shouldBeRed: null,
+      renderedRed: false,
+      suppressReason: 'no-turn-source-wired',
+    },
+  });
   useShellTabBar({
     cardsIcon: 'spade',
     activeTab,
     setActiveTab,
-    chatFlashing: showGreenChatIndicator ? 'green' : null,
-    chatIndicator: showRedChatIndicator ? 'red' : null,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
   });
 
