@@ -373,6 +373,13 @@ export function useVoiceToText(): UseVoiceToTextResult {
       });
       if (fnError) {
         recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        try {
+          recordVoiceRequestNetworkFailure({
+            phase: 'edge-function-invoke',
+            message: fnError.message ?? null,
+            errorName: (fnError as { name?: string }).name ?? null,
+          });
+        } catch { /* noop */ }
         throw new Error(fnError.message || 'Transcription failed.');
       }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
