@@ -1612,6 +1612,10 @@ export const MobileGameTable = ({
   const chatCtx = useGameChatContext();
   const isChatHydrated = chatCtx.isChatHydrated;
   const hydrationBaselineIds = chatCtx.hydrationBaselineIds;
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
   const hydrationBaselineIdSet = useMemo(
     () => (hydrationBaselineIds ? new Set(hydrationBaselineIds) : null),
     [hydrationBaselineIds]
