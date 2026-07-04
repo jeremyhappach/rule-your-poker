@@ -752,31 +752,10 @@ export const CribbageMobileGameTable = ({
     }
   }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
-  // Publish tab metadata to the shell-owned tab bar. Shell owns layout
-  // and geometry; this surface provides only the icon choice and the
-  // gameplay-derived indicator state.
-  // Turn-attention audit telemetry (read-only, no behavior change).
-  recordChatDeliveryEvent({
-    phase: 'turn-attention-evaluated',
-    consumer: 'turn-attention-audit',
-    payload: {
-      game: 'cribbage',
-      activeTab,
-      localTurnEligible: null,
-      iconKind: 'spade',
-      shouldBeRed: null,
-      renderedRed: false,
-      suppressReason: 'no-turn-source-wired',
-    },
-  });
-  useShellTabBar({
-    cardsIcon: 'spade',
-    activeTab,
-    setActiveTab,
-    chatFlashing: chatAttentionTabProps.chatFlashing,
-    chatIndicator: chatAttentionTabProps.chatIndicator,
-    onOpenChat: handleOpenChatTab,
-  });
+  // Publish tab metadata to the shell-owned tab bar. Deferred until
+  // after cribbageState / currentPlayerId are derived so we can wire
+  // authoritative local-turn attention (`cardsFlashing: 'red'`). See
+  // the useShellTabBar call further down in this component.
 
   useEffect(() => {
     return () => {
