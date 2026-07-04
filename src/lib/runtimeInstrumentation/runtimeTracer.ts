@@ -657,13 +657,27 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
   const immediate =
     evt.severity === "critical" ||
     IMMEDIATE_EVENT_NAMES.has(evt.event_name);
+  // Fire-and-forget: live-patch the DB incident row whenever the
+  // event carries a correlation_id that matches an open voice /
+  // lifecycle incident. Safe to run for every event; PostgREST
+  // no-ops when there is no matching row.
+  if (evt.correlation_id && INCIDENT_PATCH_FAMILIES.has(evt.event_family)) {
+    void patchDbIncidentRow(evt);
+  }
   if (immediate) {
+    // Outbox row FIRST so we have queryable evidence of the write
+    // attempt even if the tab dies before the event insert lands.
+    const outboxId = writeOutboxPending(evt);
     // Attempt crash-survivable delivery first. If unavailable (SSR, no
     // fetch), fall through to the batched supabase-js path via flushNow.
     const sent = keepaliveFlush([evt]);
     if (!sent) {
       queue.push(evt);
       void flushNow();
+    }
+    if (outboxId) {
+      // Mark the outbox row delivered/failed via supabase-js best-effort.
+      void finalizeOutboxRow(outboxId, sent);
     }
     return;
   }
@@ -674,6 +688,224 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     void flushNow();
   } else {
     scheduleFlush();
+  }
+}
+
+// ── DB-persisted incident lifecycle ────────────────────────────────
+
+const incidentSequences = new Map<string, number>();
+
+export function nextIncidentSequence(correlationId: string): number {
+  const cur = incidentSequences.get(correlationId) ?? 0;
+  const next = cur + 1;
+  incidentSequences.set(correlationId, next);
+  return next;
+}
+
+async function openDbIncidentRow(
+  correlationId: string,
+  kind: string,
+  meta: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    const row = {
+      incident_type: kind,
+      kind,
+      severity: "warn",
+      status: "open",
+      started_at: now,
+      detected_at: now,
+      correlation_id: correlationId,
+      client_instance_id: getClientInstanceId(),
+      tab_session_id: getTabSessionId(),
+      user_id: ambient.user_id,
+      game_id: ambient.game_id,
+      table_id: ambient.table_id,
+      dealer_game_id: ambient.dealer_game_id,
+      session_id: ambient.session_id,
+      route: ambient.route ?? currentRoute(),
+      origin:
+        typeof window !== "undefined" ? window.location.origin : null,
+      app_build_id: APP_BUILD_ID,
+      app_publish_version: APP_PUBLISH_VERSION,
+      last_event_at: now,
+      last_route: ambient.route ?? currentRoute(),
+      last_visibility_state:
+        typeof document !== "undefined" ? document.visibilityState : null,
+      event_sequence: 0,
+      payload: meta,
+      summary: `${kind} opened`,
+    };
+    // Upsert on correlation_id so a retry from the same tab is idempotent.
+    await supabase
+      .from("client_runtime_incidents")
+      .upsert(row as never, { onConflict: "correlation_id" });
+  } catch {
+    /* diagnostic; swallow */
+  }
+}
+
+async function closeDbIncidentRow(
+  correlationId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    await supabase
+      .from("client_runtime_incidents")
+      .update({
+        status: "closed",
+        resolved_at: new Date().toISOString(),
+        root_cause_status: reason,
+      } as never)
+      .eq("correlation_id", correlationId);
+  } catch {
+    /* diagnostic; swallow */
+  }
+}
+
+async function patchDbIncidentRow(evt: QueuedEvent): Promise<void> {
+  if (!evt.correlation_id) return;
+  const patch: Record<string, unknown> = {
+    last_event_at: evt.occurred_at_client,
+    last_route: evt.route,
+    last_visibility_state: evt.visibility_state,
+    event_sequence: nextIncidentSequence(evt.correlation_id),
+  };
+  if (evt.event_family === "voice") patch.last_voice_phase = evt.event_name;
+  if (
+    evt.event_family === "environment" ||
+    evt.event_family === "fatal" ||
+    evt.event_family === "session" ||
+    evt.event_family === "route"
+  ) {
+    patch.last_lifecycle_event = evt.event_name;
+  }
+  if (evt.error_message) {
+    patch.last_error_name = evt.error_name;
+    patch.last_error_message = evt.error_message;
+  }
+  try {
+    await supabase
+      .from("client_runtime_incidents")
+      .update(patch as never)
+      .eq("correlation_id", evt.correlation_id);
+  } catch {
+    /* diagnostic; swallow */
+  }
+}
+
+// ── Authoritative outbox for critical events ───────────────────────
+
+function writeOutboxPending(evt: QueuedEvent): string | null {
+  try {
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : randomId("obx");
+    const row = {
+      id,
+      status: "pending",
+      attempts: 1,
+      transport: "keepalive",
+      client_instance_id: evt.client_instance_id,
+      tab_session_id: evt.tab_session_id,
+      correlation_id: evt.correlation_id,
+      event_family: evt.event_family,
+      event_name: evt.event_name,
+      severity: evt.severity,
+      event_row: evt as unknown as Record<string, unknown>,
+    };
+    // supabase-js path (fire-and-forget) — no await so we don't block
+    // the immediate event flush. If it never lands (tab dies), the
+    // event will simply have no outbox proof — that IS the evidence.
+    void supabase
+      .from("client_runtime_event_outbox")
+      .insert(row as never)
+      .then(() => {});
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+async function finalizeOutboxRow(id: string, delivered: boolean): Promise<void> {
+  try {
+    const patch = delivered
+      ? { status: "delivered", delivered_at: new Date().toISOString() }
+      : { status: "failed", failed_at: new Date().toISOString(), error_message: "keepalive-unavailable" };
+    await supabase
+      .from("client_runtime_event_outbox")
+      .update(patch as never)
+      .eq("id", id);
+  } catch {
+    /* diagnostic; swallow */
+  }
+}
+
+// ── Cross-origin recovery scan ─────────────────────────────────────
+
+let openIncidentScanRan = false;
+
+async function runOpenIncidentScan(): Promise<void> {
+  if (openIncidentScanRan) return;
+  if (!ambient.user_id) return;
+  openIncidentScanRan = true;
+  try {
+    const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from("client_runtime_incidents")
+      .select(
+        "id, correlation_id, kind, origin, client_instance_id, tab_session_id, route, detected_at, last_event_at, last_voice_phase, last_lifecycle_event",
+      )
+      .eq("user_id", ambient.user_id)
+      .eq("status", "open")
+      .gte("detected_at", since)
+      .order("detected_at", { ascending: false })
+      .limit(5);
+    if (!data || data.length === 0) return;
+    for (const raw of data) {
+      const row = raw as {
+        id: string;
+        correlation_id: string | null;
+        kind: string | null;
+        origin: string | null;
+        client_instance_id: string | null;
+        tab_session_id: string | null;
+        route: string | null;
+        detected_at: string | null;
+        last_event_at: string | null;
+        last_voice_phase: string | null;
+        last_lifecycle_event: string | null;
+      };
+      if (row.client_instance_id === getClientInstanceId()) continue;
+      recordRuntimeEvent({
+        event_family: "session",
+        event_name: "BOOT_RECOVERED_OPEN_INCIDENT",
+        severity: "warn",
+        correlation_id: row.correlation_id ?? null,
+        payload: {
+          priorIncidentId: row.id,
+          priorCorrelationId: row.correlation_id,
+          priorKind: row.kind,
+          priorOrigin: row.origin,
+          priorClientInstanceId: row.client_instance_id,
+          priorTabSessionId: row.tab_session_id,
+          priorRoute: row.route,
+          priorDetectedAt: row.detected_at,
+          priorLastEventAt: row.last_event_at,
+          priorLastVoicePhase: row.last_voice_phase,
+          priorLastLifecycleEvent: row.last_lifecycle_event,
+          currentClientInstanceId: getClientInstanceId(),
+          currentOrigin:
+            typeof window !== "undefined" ? window.location.origin : null,
+          currentRoute: currentRoute(),
+          recoveryTimestamp: new Date().toISOString(),
+        },
+      });
+    }
+  } catch {
+    /* diagnostic; swallow */
   }
 }
 
