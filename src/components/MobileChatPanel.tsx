@@ -211,6 +211,7 @@ export const MobileChatPanel = ({
 
     // Path A: recording in progress — atomic finalize + send.
     if (voice.state === 'recording') {
+      voice.recordDiagnostic('VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING');
       sendInFlightRef.current = true;
       setIsFinalizing(true);
       voice.recordDiagnostic('VOICE_SEND_DURING_RECORDING');
