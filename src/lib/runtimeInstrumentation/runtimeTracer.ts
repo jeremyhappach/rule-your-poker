@@ -27,9 +27,17 @@ import {
   appendCapsuleEvent,
   bootVoiceCrashCapsule,
   closeCapsule,
+  earlyBootCapsuleScan,
   onAuthenticatedSessionRestored,
   openCapsule,
 } from "@/lib/runtimeInstrumentation/voiceCrashCapsule";
+import {
+  emitDirectDbEvent,
+  runManifestUpload,
+  verifyCapsuleAppendAndEmit,
+  verifyIncidentPatchAndEmit,
+  verifyInstanceHeartbeatAndEmit,
+} from "@/lib/runtimeInstrumentation/runtimePipelineProof";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
