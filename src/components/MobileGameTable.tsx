@@ -1381,7 +1381,29 @@ export const MobileGameTable = ({
       gameStatus: gameStatus ?? null,
       shellRoute: `MGT:${instanceLabel}`,
     });
+    setSessionLifecycleAmbient({
+      gameType: gameType ?? null,
+      extra: { instanceLabel, gameStatus: gameStatus ?? null },
+    } as never);
   }, [gameStatus, instanceLabel, gameType]);
+
+  // P0 session lifecycle: record SHELL_MOUNT / SHELL_UNMOUNT into the
+  // persistent ledger so a mid-session unmount that leads to a legacy
+  // Join fallback is captured even if in-app debug UI is gone.
+  useEffect(() => {
+    recordShellMount('MobileGameTable', {
+      instanceLabel,
+      gameType: gameType ?? null,
+      initialGameStatus: gameStatus ?? null,
+    });
+    return () => {
+      recordShellUnmount('MobileGameTable', {
+        instanceLabel,
+        gameType: gameType ?? null,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Holm lifecycle trace (P0 investigation, instrumentation only) ──
   // Captures every transition in the prop-level fields that govern the
