@@ -932,6 +932,16 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       lifecycleLabel: evt.event_name,
     });
   }
+  // Autopsy trigger: every event carrying a correlation_id feeds the
+  // per-incident watchdog and requests a server-side report regeneration.
+  // Debounced per-incident inside the trigger module.
+  if (evt.correlation_id) {
+    noteRuntimeEventForWatchdog(evt.correlation_id);
+    triggerIncidentReport(
+      evt.correlation_id,
+      `event:${evt.event_family}/${evt.event_name}`,
+    );
+  }
   const immediate =
     evt.severity === "critical" ||
     IMMEDIATE_EVENT_NAMES.has(evt.event_name);
