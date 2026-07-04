@@ -402,12 +402,16 @@ export type Database = {
           last_error_name: string | null
           last_event_at: string | null
           last_lifecycle_event: string | null
+          last_local_capsule_sequence: number | null
           last_route: string | null
           last_visibility_state: string | null
           last_voice_phase: string | null
           message_id: string | null
+          network_lost_observed: boolean | null
           origin: string | null
           payload: Json | null
+          recovered_from_local_capsule: boolean | null
+          recovery_upload_completed_at: string | null
           resolved_at: string | null
           root_cause_status: string | null
           route: string | null
@@ -440,12 +444,16 @@ export type Database = {
           last_error_name?: string | null
           last_event_at?: string | null
           last_lifecycle_event?: string | null
+          last_local_capsule_sequence?: number | null
           last_route?: string | null
           last_visibility_state?: string | null
           last_voice_phase?: string | null
           message_id?: string | null
+          network_lost_observed?: boolean | null
           origin?: string | null
           payload?: Json | null
+          recovered_from_local_capsule?: boolean | null
+          recovery_upload_completed_at?: string | null
           resolved_at?: string | null
           root_cause_status?: string | null
           route?: string | null
@@ -478,12 +486,16 @@ export type Database = {
           last_error_name?: string | null
           last_event_at?: string | null
           last_lifecycle_event?: string | null
+          last_local_capsule_sequence?: number | null
           last_route?: string | null
           last_visibility_state?: string | null
           last_voice_phase?: string | null
           message_id?: string | null
+          network_lost_observed?: boolean | null
           origin?: string | null
           payload?: Json | null
+          recovered_from_local_capsule?: boolean | null
+          recovery_upload_completed_at?: string | null
           resolved_at?: string | null
           root_cause_status?: string | null
           route?: string | null
