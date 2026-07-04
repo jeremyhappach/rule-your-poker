@@ -588,13 +588,13 @@ export async function upsertDeliveryTrace(
     "payload",
   ];
   for (const k of passThroughKeys) {
-    const v = (input as Record<string, unknown>)[k];
-    if (v !== undefined) row[k] = v;
+    const v = (input as unknown as Record<string, unknown>)[k as string];
+    if (v !== undefined) row[k as string] = v;
   }
   try {
     await supabase
       .from("chat_message_delivery_trace")
-      .upsert(row, {
+      .upsert(row as never, {
         onConflict: "message_id,recipient_client_instance_id",
       });
   } catch {
