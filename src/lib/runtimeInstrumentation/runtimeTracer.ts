@@ -27,9 +27,17 @@ import {
   appendCapsuleEvent,
   bootVoiceCrashCapsule,
   closeCapsule,
+  earlyBootCapsuleScan,
   onAuthenticatedSessionRestored,
   openCapsule,
 } from "@/lib/runtimeInstrumentation/voiceCrashCapsule";
+import {
+  emitDirectDbEvent,
+  runManifestUpload,
+  verifyCapsuleAppendAndEmit,
+  verifyIncidentPatchAndEmit,
+  verifyInstanceHeartbeatAndEmit,
+} from "@/lib/runtimeInstrumentation/runtimePipelineProof";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -113,6 +121,21 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "CAPSULE_UPLOAD_COMPLETED",
   "CAPSULE_UPLOAD_FAILED",
   "CAPSULE_RECOVERED_AFTER_BOOT",
+  "CAPSULE_LOCAL_APPEND_VERIFIED",
+  "CAPSULE_LOCAL_APPEND_FAILED",
+  "CAPSULE_MANIFEST_FOUND",
+  "CAPSULE_MANIFEST_MISSING",
+  "INCIDENT_PATCH_VERIFIED",
+  "INSTANCE_HEARTBEAT_VERIFIED",
+  "RUNTIME_BOOT_EARLY",
+  "CAPSULE_SCAN_COMPLETE",
+  "BOOT_RECOVERY_AUTH_LINKED",
+]);
+
+/** Events whose local capsule append MUST be verified with read-back. */
+const VERIFIED_APPEND_EVENT_NAMES = new Set<string>([
+  "VOICE_CAPTURE_START",
+  "VOICE_RECORDING_HEARTBEAT",
 ]);
 
 /**
@@ -318,6 +341,19 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   }
   if (userIdBecameSet) {
     void runOpenIncidentScan();
+    // Emit auth-linked boot-recovery proof event so early boot events
+    // (which had user_id=null) can be joined to this authenticated user.
+    try {
+      recordRuntimeEvent({
+        event_family: "session",
+        event_name: "BOOT_RECOVERY_AUTH_LINKED",
+        severity: "info",
+        payload: {
+          linkedAtIso: new Date().toISOString(),
+          earlyBootSummary: __earlyBootSummary,
+        },
+      });
+    } catch { /* noop */ }
     // Flush any local capsules that outlived a signed-out interval or
     // were captured under an anonymous client_instance_id.
     try {
@@ -330,7 +366,82 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
         });
       });
     } catch { /* diagnostic; swallow */ }
+    // Run manifest upload for any known open incident ids.
+    try {
+      if (__earlyBootSummary?.unresolvedIncidentIds?.length) {
+        for (const cid of __earlyBootSummary.unresolvedIncidentIds) {
+          void runManifestUpload({
+            incidentId: cid,
+            clientInstanceId: getClientInstanceId(),
+            tabSessionId: getTabSessionId(),
+            userId: ambient.user_id,
+            route: currentRoute(),
+            triggerReason: "auth-linked",
+          });
+        }
+      }
+    } catch { /* noop */ }
   }
+}
+
+/**
+ * Snapshot of the earliest boot scan; populated by
+ * runEarlyBootPipelineProof() before React mounts. Held in module scope
+ * so that BOOT_RECOVERY_AUTH_LINKED can carry it once auth exists.
+ */
+let __earlyBootSummary: Awaited<ReturnType<typeof earlyBootCapsuleScan>> | null =
+  null;
+
+/**
+ * Runs BEFORE React mounts, BEFORE auth exists. Emits:
+ *   RUNTIME_BOOT_EARLY   (direct DB event, no correlation)
+ *   CAPSULE_SCAN_COMPLETE (direct DB event, no correlation)
+ * with the IndexedDB scan result. Never throws.
+ */
+export async function runEarlyBootPipelineProof(): Promise<void> {
+  const cid = getClientInstanceId();
+  const tid = getTabSessionId();
+  const route = currentRoute();
+  emitDirectDbEvent({
+    event_family: "session",
+    event_name: "RUNTIME_BOOT_EARLY",
+    severity: "info",
+    correlation_id: null,
+    client_instance_id: cid,
+    tab_session_id: tid,
+    user_id: null,
+    route,
+    payload: {
+      href: typeof window !== "undefined" ? window.location.href : null,
+      origin: typeof window !== "undefined" ? window.location.origin : null,
+      navigatorOnline:
+        typeof navigator !== "undefined" ? navigator.onLine : null,
+      visibilityState:
+        typeof document !== "undefined" ? document.visibilityState : null,
+      wasDiscarded:
+        typeof document !== "undefined"
+          ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ??
+            null
+          : null,
+      bootTsIso: new Date().toISOString(),
+    },
+  });
+  try {
+    __earlyBootSummary = await earlyBootCapsuleScan();
+  } catch {
+    __earlyBootSummary = null;
+  }
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: "CAPSULE_SCAN_COMPLETE",
+    severity: __earlyBootSummary?.unresolvedCapsuleCount ? "warn" : "info",
+    correlation_id: null,
+    client_instance_id: cid,
+    tab_session_id: tid,
+    user_id: null,
+    route,
+    payload: __earlyBootSummary ?? { idbAvailable: false },
+  });
 }
 
 // ── UA parsing (best-effort) ───────────────────────────────────────
@@ -714,6 +825,43 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
         payload: evt.payload,
       });
     } catch { /* diagnostic; swallow */ }
+  }
+  // Verified append + verified patch + verified heartbeat for high-value
+  // voice boundaries. These run in parallel with the normal fire-and-forget
+  // paths and emit their own proof events (CAPSULE_LOCAL_APPEND_VERIFIED,
+  // INCIDENT_PATCH_VERIFIED, INSTANCE_HEARTBEAT_VERIFIED) via keepalive.
+  if (evt.correlation_id && VERIFIED_APPEND_EVENT_NAMES.has(evt.event_name)) {
+    const cid = evt.correlation_id;
+    const seq = nextIncidentSequence(cid + ":verify");
+    void verifyCapsuleAppendAndEmit({
+      incidentId: cid,
+      eventFamily: evt.event_family,
+      eventName: evt.event_name,
+      severity: evt.severity,
+      route: evt.route,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      payload: evt.payload,
+    });
+    void verifyIncidentPatchAndEmit({
+      incidentId: cid,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      route: evt.route,
+      eventFamily: evt.event_family,
+      eventName: evt.event_name,
+      sequence: seq,
+    });
+    void verifyInstanceHeartbeatAndEmit({
+      incidentId: cid,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      route: evt.route,
+      lifecycleLabel: evt.event_name,
+    });
   }
   const immediate =
     evt.severity === "critical" ||

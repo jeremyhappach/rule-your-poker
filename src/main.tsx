@@ -22,7 +22,12 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
-import { bootRuntimeTracer, recordRuntimeEvent, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { bootRuntimeTracer, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+
+// PIPELINE PROOF: fire the earliest observable events BEFORE any other
+// module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
+// keepalive fetch and do not depend on React, auth, or normal routing.
+void runEarlyBootPipelineProof();
 
 // Wartime: install the auth-ejection ledger history listener BEFORE any
 // route mounts so a redirect to /auth is captured with pre-teardown context.
