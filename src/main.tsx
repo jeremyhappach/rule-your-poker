@@ -22,7 +22,8 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
-import { bootRuntimeTracer, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { bootRuntimeTracer, getClientInstanceId, getTabSessionId, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { runRuntimePersistenceSelfCheck } from "@/lib/runtimeInstrumentation/runtimePipelineProof";
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other
 // module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
@@ -39,6 +40,21 @@ installAuthEjectionHistoryListener();
 // /auth or a legacy Join fallback screen.
 installSessionLifecycleListeners();
 bootRuntimeTracer();
+
+// Non-destructive persistence self-check: exercises the entire
+// capsule → manifest → incident-patch → instance-heartbeat pipeline
+// against a synthetic incident. Emits RUNTIME_PERSISTENCE_SELF_CHECK_PASSED
+// (or _FAILED) so every published build proves basic instrumentation
+// wiring before any user attempts a voice repro.
+void runRuntimePersistenceSelfCheck({
+  clientInstanceId: getClientInstanceId(),
+  tabSessionId: getTabSessionId(),
+  userId: null,
+  route:
+    typeof window !== "undefined"
+      ? window.location.pathname + window.location.search
+      : null,
+});
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,

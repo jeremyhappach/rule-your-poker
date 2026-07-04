@@ -130,12 +130,76 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "RUNTIME_BOOT_EARLY",
   "CAPSULE_SCAN_COMPLETE",
   "BOOT_RECOVERY_AUTH_LINKED",
+  "LIFECYCLE_LISTENERS_INSTALLED",
+  "LIFECYCLE_CALLBACK_ENTERED",
+  "CAPSULE_MANIFEST_UPDATED",
+  "RUNTIME_PERSISTENCE_SELF_CHECK_STARTED",
+  "RUNTIME_PERSISTENCE_SELF_CHECK_PASSED",
+  "RUNTIME_PERSISTENCE_SELF_CHECK_FAILED",
 ]);
 
-/** Events whose local capsule append MUST be verified with read-back. */
-const VERIFIED_APPEND_EVENT_NAMES = new Set<string>([
+/**
+ * Events whose local capsule append MUST be verified with read-back and
+ * that must live-patch the incident row + upsert the instance heartbeat
+ * whenever an incident correlation_id is active. This is the central
+ * unavoidable verification set — no voice/lifecycle/route/session/network
+ * call site is trusted to write its own capsule; the central writer does.
+ *
+ * IMPORTANT: keep this list explicit rather than family-based to prevent
+ * proof events themselves (CAPSULE_LOCAL_APPEND_VERIFIED, etc — which
+ * carry event_family="environment") from recursing.
+ */
+const CENTRAL_VERIFIED_EVENT_NAMES = new Set<string>([
+  // Voice boundaries
   "VOICE_CAPTURE_START",
+  "VOICE_CAPTURE_STARTED",
   "VOICE_RECORDING_HEARTBEAT",
+  "VOICE_STOP_BUTTON_TAPPED",
+  "VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING",
+  "VOICE_STOP_HANDLER_ENTERED",
+  "VOICE_STOP_HANDLER_EXITED",
+  "VOICE_CAPTURE_STOP_REQUESTED",
+  "VOICE_MEDIARECORDER_STOP_CALLED",
+  "VOICE_MEDIARECORDER_ONSTOP_ENTERED",
+  "VOICE_MEDIARECORDER_DATAAVAILABLE",
+  "VOICE_BLOB_READY",
+  "VOICE_ENCODE_START",
+  "VOICE_ENCODE_COMPLETE",
+  "VOICE_FN_INVOKE_START",
+  "VOICE_FN_INVOKE_RESPONSE",
+  "VOICE_FN_INVOKE_ERROR",
+  "VOICE_FINALIZE_RETURN",
+  "VOICE_SEND_BEGIN",
+  "VOICE_SEND_COMPLETE",
+  "VOICE_SEND_BLOCKED",
+  "VOICE_REQUEST_NETWORK_FAILURE",
+  // Network
+  "NETWORK_ONLINE",
+  "NETWORK_OFFLINE",
+  "NETWORK_STATUS_SNAPSHOT",
+  "ONLINE",
+  "OFFLINE",
+  // Page lifecycle
+  "PAGE_VISIBILITY_CHANGE",
+  "PAGE_HIDE",
+  "PAGE_SHOW",
+  "BEFORE_UNLOAD",
+  "UNLOAD",
+  "FREEZE",
+  "RESUME",
+  // Fatal
+  "WINDOW_ERROR",
+  "UNHANDLED_REJECTION",
+  "ERROR_BOUNDARY_CAUGHT",
+  // Route / session
+  "ROUTE_REDIRECT",
+  "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+  "ACTIVE_SESSION_ROUTE_EJECTED",
+  "ACTIVE_SESSION_SHELL_UNMOUNTED",
+  "ACTIVE_SESSION_AUTH_REDIRECT",
+  "PERSISTED_SESSION_RESTORE_FAILED",
+  // Lifecycle callback proof
+  "LIFECYCLE_CALLBACK_ENTERED",
 ]);
 
 /**
@@ -830,7 +894,7 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
   // voice boundaries. These run in parallel with the normal fire-and-forget
   // paths and emit their own proof events (CAPSULE_LOCAL_APPEND_VERIFIED,
   // INCIDENT_PATCH_VERIFIED, INSTANCE_HEARTBEAT_VERIFIED) via keepalive.
-  if (evt.correlation_id && VERIFIED_APPEND_EVENT_NAMES.has(evt.event_name)) {
+  if (evt.correlation_id && CENTRAL_VERIFIED_EVENT_NAMES.has(evt.event_name)) {
     const cid = evt.correlation_id;
     const seq = nextIncidentSequence(cid + ":verify");
     void verifyCapsuleAppendAndEmit({
@@ -1551,12 +1615,37 @@ export function bootRuntimeTracer(): void {
   // Immediate boot heartbeat so instances table reflects this tab now.
   forceInstanceHeartbeat("BOOT");
 
+  // Per-callback proof: emit LIFECYCLE_CALLBACK_ENTERED BEFORE the
+  // semantic event, so we prove the listener actually fired even if the
+  // downstream recordRuntimeEvent call is dropped by teardown.
+  const emitCallbackEntered = (
+    listenerName: string,
+    extra?: Record<string, unknown>,
+  ) => {
+    try {
+      recordRuntimeEvent({
+        event_family: "environment",
+        event_name: "LIFECYCLE_CALLBACK_ENTERED",
+        severity: "info",
+        payload: {
+          listenerName,
+          ...(extra ?? {}),
+          ...pageLifecycleBase(),
+        },
+      });
+    } catch {
+      /* diagnostic; swallow */
+    }
+  };
+
   window.addEventListener("pagehide", (e) => {
     const persisted = (e as PageTransitionEvent).persisted;
+    emitCallbackEntered("pagehide", { persisted });
     flushOnBackground("PAGE_HIDE", { persisted });
   });
   window.addEventListener("pageshow", (e) => {
     const persisted = (e as PageTransitionEvent).persisted;
+    emitCallbackEntered("pageshow", { persisted });
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "PAGE_SHOW",
@@ -1564,41 +1653,51 @@ export function bootRuntimeTracer(): void {
       payload: { persisted, ...pageLifecycleBase() },
     });
   });
-  window.addEventListener("beforeunload", () =>
-    flushOnBackground("BEFORE_UNLOAD"),
-  );
-  window.addEventListener("unload", () => flushOnBackground("UNLOAD"));
-  // Page Lifecycle API (Chrome/Android): freeze/resume around tab
-  // discard. `document.wasDiscarded` on next boot indicates a discard
-  // occurred; we surface it via pageLifecycleBase().
-  document.addEventListener("freeze", () => flushOnBackground("FREEZE"));
-  document.addEventListener("resume", () =>
+  window.addEventListener("beforeunload", () => {
+    emitCallbackEntered("beforeunload");
+    flushOnBackground("BEFORE_UNLOAD");
+  });
+  window.addEventListener("unload", () => {
+    emitCallbackEntered("unload");
+    flushOnBackground("UNLOAD");
+  });
+  document.addEventListener("freeze", () => {
+    emitCallbackEntered("freeze");
+    flushOnBackground("FREEZE");
+  });
+  document.addEventListener("resume", () => {
+    emitCallbackEntered("resume");
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "RESUME",
       severity: "info",
       payload: pageLifecycleBase(),
-    }),
-  );
+    });
+  });
 
-  window.addEventListener("online", () =>
+  window.addEventListener("online", () => {
+    emitCallbackEntered("online");
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "ONLINE",
       severity: "info",
       payload: pageLifecycleBase(),
-    }),
-  );
-  window.addEventListener("offline", () =>
+    });
+  });
+  window.addEventListener("offline", () => {
+    emitCallbackEntered("offline");
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "OFFLINE",
       severity: "info",
       payload: pageLifecycleBase(),
-    }),
-  );
+    });
+  });
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
+      emitCallbackEntered("visibilitychange", {
+        visibilityState: document.visibilityState,
+      });
       recordRuntimeEvent({
         event_family: "environment",
         event_name: "PAGE_VISIBILITY_CHANGE",
@@ -1608,6 +1707,7 @@ export function bootRuntimeTracer(): void {
     });
   }
   window.addEventListener("error", (event: ErrorEvent) => {
+    emitCallbackEntered("error", { message: event.message });
     recordRuntimeEvent({
       event_family: "fatal",
       event_name: "WINDOW_ERROR",
@@ -1624,6 +1724,7 @@ export function bootRuntimeTracer(): void {
   window.addEventListener(
     "unhandledrejection",
     (event: PromiseRejectionEvent) => {
+      emitCallbackEntered("unhandledrejection");
       recordRuntimeEvent({
         event_family: "fatal",
         event_name: "UNHANDLED_REJECTION",
@@ -1633,6 +1734,40 @@ export function bootRuntimeTracer(): void {
       });
     },
   );
+
+  // Proof that the listener registration block ran to completion and
+  // which listener names were installed. Emitted via keepalive so it
+  // lands even if the batched queue never flushes.
+  const installedListenerNames = [
+    "pagehide",
+    "pageshow",
+    "beforeunload",
+    "unload",
+    "freeze",
+    "resume",
+    "online",
+    "offline",
+    "visibilitychange",
+    "error",
+    "unhandledrejection",
+  ];
+  const listenerRegistrationHash =
+    "lifecycle-listeners-v1:" + installedListenerNames.join(",");
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: "LIFECYCLE_LISTENERS_INSTALLED",
+    severity: "info",
+    correlation_id: getActiveRuntimeIncidentId(),
+    client_instance_id: getClientInstanceId(),
+    tab_session_id: getTabSessionId(),
+    user_id: ambient.user_id,
+    route: currentRoute(),
+    payload: {
+      installedListenerNames,
+      listenerRegistrationHash,
+      installedAtIso: new Date().toISOString(),
+    },
+  });
 
   // Retry loop for queued events every 15s if any remain.
   setInterval(() => {
