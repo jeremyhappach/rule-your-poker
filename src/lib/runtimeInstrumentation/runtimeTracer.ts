@@ -762,6 +762,8 @@ export function beginRuntimeIncident(
     openedTsMs: Date.now(),
     extra: meta,
   });
+  // Trigger initial autopsy row immediately at incident open.
+  triggerIncidentReport(id, "incident-open");
   return id;
 }
 
@@ -774,6 +776,8 @@ export function endRuntimeIncident(reason?: string): string | null {
   if (id) {
     void closeDbIncidentRow(id, reason ?? "ended");
     void closeCapsule(id, reason ?? "ended");
+    // Final autopsy update at close — fire immediately (tab may end soon).
+    triggerIncidentReportImmediate(id, `incident-close:${reason ?? "ended"}`);
   }
   cachedIncident = null;
   persistIncident(null);
