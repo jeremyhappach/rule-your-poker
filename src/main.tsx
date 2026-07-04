@@ -22,6 +22,7 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
+import { bootRuntimeTracer, recordRuntimeEvent, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
 
 // Wartime: install the auth-ejection ledger history listener BEFORE any
 // route mounts so a redirect to /auth is captured with pre-teardown context.
