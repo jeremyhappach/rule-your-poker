@@ -192,7 +192,7 @@ export default function RuntimeDiagnostics() {
       </header>
 
       <nav style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        {(["events", "incidents", "delivery", "instances"] as const).map((t) => (
+        {(["events", "incidents", "delivery", "instances", "incident-merged"] as const).map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setRows([]); }}
