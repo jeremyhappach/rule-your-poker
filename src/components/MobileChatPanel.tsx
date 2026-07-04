@@ -262,6 +262,7 @@ export const MobileChatPanel = ({
   const handleMicToggle = async () => {
     if (isFinalizing) return;
     if (voice.state === 'recording') {
+      voice.recordDiagnostic('VOICE_STOP_BUTTON_TAPPED');
       // Mic button = stop + insert as editable draft. Never auto-sends.
       const transcript = await voice.stop();
       if (transcript) {
