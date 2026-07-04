@@ -472,7 +472,7 @@ async function flushNow(): Promise<void> {
     const rows = batch.map(({ __retry_count: _rc, occurred_at_server: _s, ...rest }) => rest);
     const { error } = await supabase
       .from("client_runtime_events")
-      .insert(rows);
+      .insert(rows as never);
     if (error) throw error;
   } catch {
     // Requeue with backoff / cap.
@@ -514,7 +514,7 @@ export async function openIncident(input: IncidentInput): Promise<string | null>
     };
     const { data, error } = await supabase
       .from("client_runtime_incidents")
-      .insert(row)
+      .insert(row as never)
       .select("id")
       .maybeSingle();
     if (error) throw error;
