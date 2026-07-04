@@ -215,8 +215,9 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   (Object.keys(partial) as (keyof AmbientContext)[]).forEach((k) => {
     const v = partial[k];
     if (v === undefined) return;
-    if ((ambient as Record<string, unknown>)[k as string] !== v) {
-      (ambient as Record<string, unknown>)[k as string] = v as unknown;
+    const bag = ambient as unknown as Record<string, unknown>;
+    if (bag[k as string] !== v) {
+      bag[k as string] = v as unknown;
       changed = true;
     }
   });
