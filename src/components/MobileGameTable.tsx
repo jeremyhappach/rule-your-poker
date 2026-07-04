@@ -1382,9 +1382,8 @@ export const MobileGameTable = ({
       shellRoute: `MGT:${instanceLabel}`,
     });
     setSessionLifecycleAmbient({
-      gameType: gameType ?? null,
-      extra: { instanceLabel, gameStatus: gameStatus ?? null },
-    } as never);
+      extra: { instanceLabel, gameType: gameType ?? null, gameStatus: gameStatus ?? null },
+    });
   }, [gameStatus, instanceLabel, gameType]);
 
   // P0 session lifecycle: record SHELL_MOUNT / SHELL_UNMOUNT into the
