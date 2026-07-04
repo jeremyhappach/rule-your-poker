@@ -54,7 +54,16 @@ const SUPABASE_ANON_KEY =
 const IMMEDIATE_EVENT_NAMES = new Set<string>([
   // Voice boundaries
   "VOICE_CAPTURE_START",
+  "VOICE_CAPTURE_STARTED",
   "VOICE_CAPTURE_STOP_REQUESTED",
+  "VOICE_RECORDING_HEARTBEAT",
+  "VOICE_STOP_BUTTON_TAPPED",
+  "VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING",
+  "VOICE_STOP_HANDLER_ENTERED",
+  "VOICE_STOP_HANDLER_EXITED",
+  "VOICE_MEDIARECORDER_STOP_CALLED",
+  "VOICE_MEDIARECORDER_ONSTOP_ENTERED",
+  "VOICE_MEDIARECORDER_DATAAVAILABLE",
   "VOICE_BLOB_READY",
   "VOICE_ENCODE_START",
   "VOICE_ENCODE_COMPLETE",
@@ -66,6 +75,7 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "VOICE_SEND_COMPLETE",
   "VOICE_SEND_BLOCKED",
   // Page lifetime
+  "PAGE_VISIBILITY_CHANGE",
   "PAGE_HIDE",
   "PAGE_SHOW",
   "BEFORE_UNLOAD",
@@ -77,12 +87,27 @@ const IMMEDIATE_EVENT_NAMES = new Set<string>([
   "ERROR_BOUNDARY_CAUGHT",
   "BOOT",
   "BOOT_RECOVERY_REPLAY",
+  "BOOT_RECOVERED_OPEN_INCIDENT",
   // Session/route markers
   "ROUTE_REDIRECT",
   "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
   "ACTIVE_SESSION_ROUTE_EJECTED",
   "ACTIVE_SESSION_SHELL_UNMOUNTED",
+  "ACTIVE_SESSION_AUTH_REDIRECT",
   "PERSISTED_SESSION_RESTORE_FAILED",
+]);
+
+/**
+ * Voice / lifecycle event names that carry an incident correlation_id
+ * and should live-patch the client_runtime_incidents row (last_event_at,
+ * last_voice_phase, last_lifecycle_event, last_error_*).
+ */
+const INCIDENT_PATCH_FAMILIES = new Set<string>([
+  "voice",
+  "environment",
+  "fatal",
+  "session",
+  "route",
 ]);
 
 type Severity = "debug" | "info" | "warn" | "error" | "critical";
