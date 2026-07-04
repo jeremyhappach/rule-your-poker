@@ -33,6 +33,7 @@ installAuthEjectionHistoryListener();
 // the very first frame — including when the app boots directly onto
 // /auth or a legacy Join fallback screen.
 installSessionLifecycleListeners();
+bootRuntimeTracer();
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
