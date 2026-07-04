@@ -208,8 +208,9 @@ export function useVoiceToText(): UseVoiceToTextResult {
 
   useEffect(() => {
     void queryPermission();
-    // Cleanup on unmount: fully release the mic.
+    // Cleanup on unmount: fully release the mic and any timers.
     return () => {
+      stopHeartbeat();
       try { recorderRef.current?.stop(); } catch { /* ignore */ }
       recorderRef.current = null;
       releaseStream();
