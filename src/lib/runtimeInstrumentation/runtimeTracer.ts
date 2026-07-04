@@ -581,6 +581,7 @@ export function endRuntimeIncident(reason?: string): string | null {
   }
   if (id) {
     void closeDbIncidentRow(id, reason ?? "ended");
+    void closeCapsule(id, reason ?? "ended");
   }
   cachedIncident = null;
   persistIncident(null);
