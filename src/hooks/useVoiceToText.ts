@@ -115,8 +115,17 @@ export function useVoiceToText(): UseVoiceToTextResult {
   const streamRef = useRef<MediaStream | null>(null);
   const diagIdRef = useRef(0);
   const cancelledRef = useRef(false);
+  const captureStartedAtRef = useRef<number | null>(null);
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isSupported = detectSupport();
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+  }, []);
 
   const recordDiagnostic = useCallback((code: VoiceDiagnosticEvent['code'], detail?: string) => {
     diagIdRef.current += 1;
@@ -126,11 +135,23 @@ export function useVoiceToText(): UseVoiceToTextResult {
       return next.length > 12 ? next.slice(next.length - 12) : next;
     });
     try {
+      const incidentId = getActiveRuntimeIncidentId();
+      const seq = incidentId ? nextIncidentSequence(incidentId) : null;
+      const elapsedMs =
+        captureStartedAtRef.current !== null
+          ? Date.now() - captureStartedAtRef.current
+          : null;
+      const payload: Record<string, unknown> = {};
+      if (detail !== undefined) payload.detail = detail;
+      if (seq !== null) payload.sequence = seq;
+      if (elapsedMs !== null) payload.elapsedMs = elapsedMs;
       recordRuntimeEvent({
         event_family: 'voice',
         event_name: code,
         severity: code === 'VOICE_SEND_BLOCKED_REASON' ? 'warn' : 'info',
-        payload: detail ? { detail } : undefined,
+        correlation_id: incidentId,
+        voice_operation_id: incidentId,
+        payload: Object.keys(payload).length > 0 ? payload : undefined,
       });
     } catch { /* noop */ }
   }, []);
