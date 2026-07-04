@@ -251,8 +251,11 @@ export function ShellTabBar() {
       <button
         onClick={handleChatClick}
         style={{ flex: '0 0 35%' }}
-        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle} ${chatFlash === 'green' ? 'animate-pulse' : ''}`}
+        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle} ${chatFlash === 'green' || chatFlash === 'red' ? 'animate-pulse' : ''}`}
         aria-label="Chat"
+        data-chat-attention-state={chatAttentionRenderState}
+        data-chat-icon-stroke={chatIconResolvedStroke}
+        data-chat-icon-fill={chatIconResolvedFill}
       >
         <MessageSquare className={chatIconClass} />
       </button>
