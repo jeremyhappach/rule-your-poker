@@ -815,28 +815,9 @@ export const GinRummyGameTable = ({
     }
   }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
-  // Turn-attention audit telemetry (read-only, no behavior change).
-  recordChatDeliveryEvent({
-    phase: 'turn-attention-evaluated',
-    consumer: 'turn-attention-audit',
-    payload: {
-      game: 'gin-rummy',
-      activeTab,
-      localTurnEligible: null,
-      iconKind: 'spade',
-      shouldBeRed: null,
-      renderedRed: false,
-      suppressReason: 'no-turn-source-wired',
-    },
-  });
-  useShellTabBar({
-    cardsIcon: 'spade',
-    activeTab,
-    setActiveTab,
-    chatFlashing: chatAttentionTabProps.chatFlashing,
-    chatIndicator: chatAttentionTabProps.chatIndicator,
-    onOpenChat: handleOpenChatTab,
-  });
+  // useShellTabBar for Gin is deferred until after currentPlayerId +
+  // viewState are derived so we can wire authoritative local-turn
+  // attention (`cardsFlashing: 'red'`). See the call further down.
 
   useEffect(() => {
     return () => {
@@ -950,6 +931,43 @@ export const GinRummyGameTable = ({
   const currentTurnSlot = viewState?.currentTurnPlayerId
     ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
     : null;
+
+  // Canonical cards-tab attention: local player has an actionable Gin
+  // turn (draw/discard/lay-off). Excludes deal/scoring/complete/idle
+  // and any phase without an authoritative turn player.
+  const ginActionablePhases = new Set(['first_draw', 'playing', 'laying_off']);
+  const ginLocalTurnEligible = !!(
+    currentPlayerId &&
+    viewState?.currentTurnPlayerId === currentPlayerId &&
+    viewState?.phase &&
+    ginActionablePhases.has(viewState.phase)
+  );
+  const ginCardsFlash: 'red' | null =
+    (activeTab !== 'cards' && ginLocalTurnEligible) ? 'red' : null;
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'gin-rummy',
+      activeTab,
+      localTurnEligible: ginLocalTurnEligible,
+      iconKind: 'spade',
+      shouldBeRed: ginCardsFlash === 'red',
+      renderedRed: ginCardsFlash === 'red',
+      suppressReason: ginLocalTurnEligible
+        ? (activeTab === 'cards' ? 'on-cards-tab' : null)
+        : (viewState?.currentTurnPlayerId !== currentPlayerId ? 'not-your-turn' : `phase:${viewState?.phase ?? 'none'}`),
+    },
+  });
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    cardsFlashing: ginCardsFlash,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
+    onOpenChat: handleOpenChatTab,
+  });
 
   // Canonical table-surface max-height token (single configurable contract).
   const geometryTokens = useGeometryTokensOptional();

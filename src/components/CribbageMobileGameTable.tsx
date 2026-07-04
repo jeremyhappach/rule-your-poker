@@ -752,31 +752,10 @@ export const CribbageMobileGameTable = ({
     }
   }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
-  // Publish tab metadata to the shell-owned tab bar. Shell owns layout
-  // and geometry; this surface provides only the icon choice and the
-  // gameplay-derived indicator state.
-  // Turn-attention audit telemetry (read-only, no behavior change).
-  recordChatDeliveryEvent({
-    phase: 'turn-attention-evaluated',
-    consumer: 'turn-attention-audit',
-    payload: {
-      game: 'cribbage',
-      activeTab,
-      localTurnEligible: null,
-      iconKind: 'spade',
-      shouldBeRed: null,
-      renderedRed: false,
-      suppressReason: 'no-turn-source-wired',
-    },
-  });
-  useShellTabBar({
-    cardsIcon: 'spade',
-    activeTab,
-    setActiveTab,
-    chatFlashing: chatAttentionTabProps.chatFlashing,
-    chatIndicator: chatAttentionTabProps.chatIndicator,
-    onOpenChat: handleOpenChatTab,
-  });
+  // Publish tab metadata to the shell-owned tab bar. Deferred until
+  // after cribbageState / currentPlayerId are derived so we can wire
+  // authoritative local-turn attention (`cardsFlashing: 'red'`). See
+  // the useShellTabBar call further down in this component.
 
   useEffect(() => {
     return () => {
@@ -1949,6 +1928,58 @@ export const CribbageMobileGameTable = ({
   // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
+
+  // Canonical cards-tab attention: local player has a real actionable
+  // cribbage decision (discard-to-crib or pegging turn). Red wins over
+  // any legacy/deal green pulses. Uses authoritative cribbageState +
+  // viewState fallback — not a generic betting predicate.
+  const cribbageLocalTurnEligible = (() => {
+    // No pause signal exists on the cribbage surface today; skip.
+    if (!currentPlayerId) return false;
+    const semanticState: CribbageState | null =
+      (viewState as CribbageState | null) ?? cribbageState;
+    if (!semanticState) return false;
+    const phase = semanticState.phase;
+    if (phase === 'discarding') {
+      const playerCount = players.filter((p) => !p.sitting_out).length || players.length;
+      const required = DISCARD_COUNT[playerCount] ?? 2;
+      const ps = semanticState.playerStates?.[currentPlayerId];
+      const discarded = ps?.discardedToCrib?.length ?? 0;
+      const inHand = ps?.hand?.length ?? 0;
+      return inHand > 0 && discarded < required;
+    }
+    if (phase === 'pegging') {
+      return semanticState.pegging?.currentTurnPlayerId === currentPlayerId;
+    }
+    return false;
+  })();
+  const cribbageCardsFlash: 'red' | null =
+    (activeTab !== 'cards' && cribbageLocalTurnEligible) ? 'red' : null;
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'cribbage',
+      activeTab,
+      localTurnEligible: cribbageLocalTurnEligible,
+      iconKind: 'spade',
+      shouldBeRed: cribbageCardsFlash === 'red',
+      renderedRed: cribbageCardsFlash === 'red',
+      suppressReason: cribbageLocalTurnEligible
+        ? (activeTab === 'cards' ? 'on-cards-tab' : null)
+        : 'no-actionable-phase',
+    },
+  });
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    cardsFlashing: cribbageCardsFlash,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
+    onOpenChat: handleOpenChatTab,
+    isPaused: false,
+  });
   const shellAnchors = useRequiredSeatAnchors('cribbage');
   const playerSlotById = useMemo(() => {
     const slotByPosition = shellAnchors

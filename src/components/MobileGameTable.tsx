@@ -4867,24 +4867,58 @@ export const MobileGameTable = ({
   // gameplay-derived indicator state (cards-tab flash on turn, chat
   // unread/new-message indicators).
   {
-    const isYourTurnNotOnCardsTab = !isPaused && isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
-    const cardsFlash: 'green' | 'red' | null = (!isPaused && cardsTabFlashing)
-      ? 'green'
-      : isYourTurnNotOnCardsTab
-        ? 'red'
-        : null;
-    // Turn-attention audit telemetry (read-only, no behavior change).
+    // Canonical cards-tab local-turn attention.
+    //   Holm / 3-5-7: existing per-seat turn eligibility (round in
+    //     'betting', not yet decided, seat's turn).
+    //   Horses / SCC: authoritative dice controller — never the shared
+    //     Holm betting predicate. Requires controller enabled,
+    //     gamePhase === 'playing', and isMyTurn.
+    //   Yahtzee is handled in YahtzeeGameTable (separate surface).
+    const holm357LocalTurnEligible = !isDiceGame
+      && !isPaused
+      && isPlayerTurn
+      && !hasDecided
+      && roundStatus === 'betting'
+      && (currentPlayer?.status === 'active');
+    const diceLocalTurnEligible = isDiceGame
+      && !isPaused
+      && !!horsesController?.enabled
+      && horsesController?.gamePhase === 'playing'
+      && !!horsesController?.isMyTurn;
+    const localTurnEligible = holm357LocalTurnEligible || diceLocalTurnEligible;
+    const isYourTurnNotOnCardsTab = localTurnEligible && activeTab !== 'cards';
+    // Red local-turn attention wins over any legacy green deal flash.
+    const cardsFlash: 'green' | 'red' | null = isYourTurnNotOnCardsTab
+      ? 'red'
+      : (!isPaused && cardsTabFlashing ? 'green' : null);
+    // Turn-attention audit telemetry (kept until published smoke).
     recordChatDeliveryEvent({
       phase: 'turn-attention-evaluated',
       consumer: 'turn-attention-audit',
       payload: {
         game: gameType ?? (isDiceGame ? 'dice-family' : 'holm-family'),
         activeTab,
-        localTurnEligible: !!(isPlayerTurn && !hasDecided && !isPaused && roundStatus === 'betting'),
+        localTurnEligible,
         iconKind: isDiceGame ? 'dice' : 'spade',
         shouldBeRed: isYourTurnNotOnCardsTab,
         renderedRed: cardsFlash === 'red',
-        suppressReason: isPaused ? 'paused' : (activeTab === 'cards' ? 'on-cards-tab' : (!isPlayerTurn ? 'not-your-turn' : (hasDecided ? 'already-decided' : (roundStatus !== 'betting' ? `phase:${roundStatus}` : null)))),
+        suppressReason: isPaused
+          ? 'paused'
+          : (activeTab === 'cards'
+              ? 'on-cards-tab'
+              : (localTurnEligible
+                  ? null
+                  : (isDiceGame
+                      ? (!horsesController?.enabled
+                          ? 'dice-controller-disabled'
+                          : (horsesController?.gamePhase !== 'playing'
+                              ? `dice-phase:${horsesController?.gamePhase ?? 'none'}`
+                              : (!horsesController?.isMyTurn ? 'dice-not-your-turn' : 'dice-other')))
+                      : (!isPlayerTurn
+                          ? 'not-your-turn'
+                          : (hasDecided
+                              ? 'already-decided'
+                              : (roundStatus !== 'betting' ? `phase:${roundStatus}` : null)))))),
       },
     });
     useShellTabBar({
