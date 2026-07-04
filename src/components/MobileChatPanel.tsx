@@ -211,6 +211,7 @@ export const MobileChatPanel = ({
 
     // Path A: recording in progress — atomic finalize + send.
     if (voice.state === 'recording') {
+      voice.recordDiagnostic('VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING');
       sendInFlightRef.current = true;
       setIsFinalizing(true);
       voice.recordDiagnostic('VOICE_SEND_DURING_RECORDING');
@@ -261,6 +262,7 @@ export const MobileChatPanel = ({
   const handleMicToggle = async () => {
     if (isFinalizing) return;
     if (voice.state === 'recording') {
+      voice.recordDiagnostic('VOICE_STOP_BUTTON_TAPPED');
       // Mic button = stop + insert as editable draft. Never auto-sends.
       const transcript = await voice.stop();
       if (transcript) {

@@ -27,6 +27,8 @@ import {
   beginRuntimeIncident,
   endRuntimeIncident,
   getActiveRuntimeIncidentId,
+  forceInstanceHeartbeat,
+  nextIncidentSequence,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
@@ -38,6 +40,14 @@ export type VoiceDiagnosticCode =
   | 'VOICE_CAPTURE_STARTED'
   | 'VOICE_CAPTURE_START'
   | 'VOICE_CAPTURE_STOP_REQUESTED'
+  | 'VOICE_RECORDING_HEARTBEAT'
+  | 'VOICE_STOP_BUTTON_TAPPED'
+  | 'VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING'
+  | 'VOICE_STOP_HANDLER_ENTERED'
+  | 'VOICE_STOP_HANDLER_EXITED'
+  | 'VOICE_MEDIARECORDER_STOP_CALLED'
+  | 'VOICE_MEDIARECORDER_ONSTOP_ENTERED'
+  | 'VOICE_MEDIARECORDER_DATAAVAILABLE'
   | 'VOICE_BLOB_READY'
   | 'VOICE_ENCODE_START'
   | 'VOICE_ENCODE_COMPLETE'
@@ -105,8 +115,17 @@ export function useVoiceToText(): UseVoiceToTextResult {
   const streamRef = useRef<MediaStream | null>(null);
   const diagIdRef = useRef(0);
   const cancelledRef = useRef(false);
+  const captureStartedAtRef = useRef<number | null>(null);
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isSupported = detectSupport();
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+  }, []);
 
   const recordDiagnostic = useCallback((code: VoiceDiagnosticEvent['code'], detail?: string) => {
     diagIdRef.current += 1;
@@ -116,11 +135,23 @@ export function useVoiceToText(): UseVoiceToTextResult {
       return next.length > 12 ? next.slice(next.length - 12) : next;
     });
     try {
+      const incidentId = getActiveRuntimeIncidentId();
+      const seq = incidentId ? nextIncidentSequence(incidentId) : null;
+      const elapsedMs =
+        captureStartedAtRef.current !== null
+          ? Date.now() - captureStartedAtRef.current
+          : null;
+      const payload: Record<string, unknown> = {};
+      if (detail !== undefined) payload.detail = detail;
+      if (seq !== null) payload.sequence = seq;
+      if (elapsedMs !== null) payload.elapsedMs = elapsedMs;
       recordRuntimeEvent({
         event_family: 'voice',
         event_name: code,
         severity: code === 'VOICE_SEND_BLOCKED_REASON' ? 'warn' : 'info',
-        payload: detail ? { detail } : undefined,
+        correlation_id: incidentId,
+        voice_operation_id: incidentId,
+        payload: Object.keys(payload).length > 0 ? payload : undefined,
       });
     } catch { /* noop */ }
   }, []);
@@ -177,8 +208,9 @@ export function useVoiceToText(): UseVoiceToTextResult {
 
   useEffect(() => {
     void queryPermission();
-    // Cleanup on unmount: fully release the mic.
+    // Cleanup on unmount: fully release the mic and any timers.
     return () => {
+      stopHeartbeat();
       try { recorderRef.current?.stop(); } catch { /* ignore */ }
       recorderRef.current = null;
       releaseStream();
@@ -221,21 +253,45 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const rec = new MediaRecorder(stream);
       rec.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        try {
+          recordDiagnostic(
+            'VOICE_MEDIARECORDER_DATAAVAILABLE',
+            `bytes=${e.data?.size ?? 0}`,
+          );
+        } catch { /* noop */ }
       };
       recorderRef.current = rec;
+      captureStartedAtRef.current = Date.now();
       rec.start();
       setError(null);
       setState('recording');
       // Open a durable runtime incident id that survives tab replacement
       // and browser relaunch. Every downstream event (encode, invoke,
       // send, page-lifecycle) attaches to this id via correlation_id.
-      const incidentId = beginRuntimeIncident('voice-send', {
+      const incidentId = beginRuntimeIncident('voice_capture', {
         opened_at: new Date().toISOString(),
         mimeType: rec.mimeType || 'audio/webm',
       });
+      // Force an immediate instance heartbeat so the DB shows this tab
+      // is actively capturing before any other event lands.
+      forceInstanceHeartbeat('VOICE_CAPTURE_START');
       recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId}`);
       // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
+
+      // 1s pre-stop heartbeat so the missing-boundary window between
+      // VOICE_CAPTURE_STARTED and VOICE_CAPTURE_STOP_REQUESTED is
+      // fully observable in the DB.
+      stopHeartbeat();
+      heartbeatTimerRef.current = setInterval(() => {
+        try {
+          const elapsed =
+            captureStartedAtRef.current !== null
+              ? Date.now() - captureStartedAtRef.current
+              : 0;
+          recordDiagnostic('VOICE_RECORDING_HEARTBEAT', `elapsedMs=${elapsed}`);
+        } catch { /* noop */ }
+      }, 1000);
     } catch (err) {
       const name = (err as { name?: string })?.name;
       const msg = err instanceof Error ? err.message : String(err);
@@ -250,20 +306,34 @@ export function useVoiceToText(): UseVoiceToTextResult {
       }
       setState('error');
       releaseStream();
+      stopHeartbeat();
+      captureStartedAtRef.current = null;
     }
-  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state]);
+  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
 
   // Internal: stop the recorder and transcribe. Optionally release the stream
   // after transcription. Returns the transcript, or null on error/empty.
   const stopAndTranscribe = useCallback(async (opts: { keepStream: boolean }): Promise<string | null> => {
+    recordDiagnostic(
+      'VOICE_STOP_HANDLER_ENTERED',
+      `keepStream=${opts.keepStream}`,
+    );
     const rec = recorderRef.current;
     if (!rec) {
       if (!opts.keepStream) releaseStream();
+      stopHeartbeat();
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'no-recorder');
       return null;
     }
     const mimeType = rec.mimeType || 'audio/webm';
     const finished = new Promise<Blob>((resolve) => {
       rec.onstop = () => {
+        try {
+          recordDiagnostic(
+            'VOICE_MEDIARECORDER_ONSTOP_ENTERED',
+            `chunks=${chunksRef.current.length}`,
+          );
+        } catch { /* noop */ }
         const blob = new Blob(chunksRef.current, { type: mimeType });
         chunksRef.current = [];
         resolve(blob);
@@ -271,8 +341,10 @@ export function useVoiceToText(): UseVoiceToTextResult {
     });
     try {
       recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
+      recordDiagnostic('VOICE_MEDIARECORDER_STOP_CALLED', `state=${rec.state}`);
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
+    stopHeartbeat();
     setState('transcribing');
     const blob = await finished;
     recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
@@ -285,6 +357,8 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'cancelled');
       endRuntimeIncident('cancelled');
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'cancelled');
       return null;
     }
 
@@ -306,11 +380,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
         setError('No speech detected. Try again.');
         setState('error');
         recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
+        captureStartedAtRef.current = null;
+        recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'empty');
         return null;
       }
       setState('idle');
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', `chars=${transcript.length}`);
       return transcript;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -318,9 +396,11 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('error');
       recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
+      captureStartedAtRef.current = null;
+      recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'error');
       return null;
     }
-  }, [releaseStream]);
+  }, [recordDiagnostic, releaseStream, stopHeartbeat]);
 
   const stop = useCallback(() => stopAndTranscribe({ keepStream: false }), [stopAndTranscribe]);
   const finalize = useCallback(() => stopAndTranscribe({ keepStream: true }), [stopAndTranscribe]);
@@ -333,10 +413,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       if (rec && rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     recorderRef.current = null;
+    stopHeartbeat();
+    captureStartedAtRef.current = null;
     // Keep the stream alive so the next start doesn't re-prompt.
     setState('idle');
     setError(null);
-  }, []);
+  }, [stopHeartbeat]);
 
   return {
     state,
