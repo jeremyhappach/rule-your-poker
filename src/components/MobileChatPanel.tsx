@@ -187,8 +187,10 @@ export const MobileChatPanel = ({
     const trimmed = text.trim();
     if (!trimmed) {
       voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'empty-after-finalize');
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED', 'empty-after-finalize');
       return false;
     }
+    voice.recordDiagnostic('VOICE_SEND_BEGIN', `len=${trimmed.length}`);
     onSend(trimmed);
     setInputMessage('');
     voice.recordDiagnostic('VOICE_SEND_COMPLETE', `len=${trimmed.length}`);
@@ -198,10 +200,12 @@ export const MobileChatPanel = ({
   const handleSend = async () => {
     if (sendInFlightRef.current) {
       voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'send-in-flight');
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED', 'send-in-flight');
       return;
     }
     if (isSending) {
       voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'parent-sending');
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED', 'parent-sending');
       return;
     }
 
@@ -215,6 +219,7 @@ export const MobileChatPanel = ({
         voice.recordDiagnostic('VOICE_FINALIZATION_COMPLETE', transcript ? `chars=${transcript.length}` : 'empty');
         if (!transcript) {
           voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'no-transcript');
+          voice.recordDiagnostic('VOICE_SEND_BLOCKED', 'no-transcript');
           return;
         }
         const next = appendTranscript(inputMessage, transcript);

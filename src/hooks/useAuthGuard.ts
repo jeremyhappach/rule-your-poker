@@ -24,6 +24,7 @@ import {
   recordRouteRedirect,
 } from "@/lib/authEjectionLedger";
 import { getActiveRecoveryLease } from "@/lib/sessionRecoveryLease";
+import { recordActiveSessionMarker, recordAppRouteRedirect } from "@/lib/runtimeInstrumentation/runtimeTracer";
 import {
   peekIntentionalSignOut,
   recordAuthSessionInvalidationCause,
@@ -183,6 +184,29 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         authState: user ? "had-user" : "no-user",
       });
       sessionStorage.setItem("redirectAfterAuth", currentPath);
+      try {
+        recordAppRouteRedirect({
+          from: currentPath,
+          to: "/auth",
+          reason,
+          caller: `useAuthGuard(${pageLabel})#performRedirectToAuth`,
+          initiator: "auth-guard",
+          dealer_game_id: lease?.gameId ?? null,
+        });
+        recordActiveSessionMarker("ACTIVE_SESSION_ROUTE_EJECTED", {
+          caller: `useAuthGuard(${pageLabel})#performRedirectToAuth`,
+          branch: "auth-guard-redirect",
+          prior_route: currentPath,
+          next_route: "/auth",
+          initiator: "auth-guard",
+          dealer_game_id: lease?.gameId ?? null,
+          extra: {
+            reason,
+            hasValidPriorSession: priorTokenLooksAlive(priorSession),
+            hasActiveRecoveryLease: !!lease,
+          },
+        });
+      } catch { /* noop */ }
       navigate("/auth");
     }
 

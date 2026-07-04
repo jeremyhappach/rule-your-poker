@@ -22,22 +22,40 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import {
+  recordRuntimeEvent,
+  beginRuntimeIncident,
+  endRuntimeIncident,
+  getActiveRuntimeIncidentId,
+} from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
 
+export type VoiceDiagnosticCode =
+  | 'VOICE_PERMISSION_STATE'
+  | 'VOICE_PERMISSION_REQUESTED'
+  | 'VOICE_CAPTURE_STARTED'
+  | 'VOICE_CAPTURE_START'
+  | 'VOICE_CAPTURE_STOP_REQUESTED'
+  | 'VOICE_BLOB_READY'
+  | 'VOICE_ENCODE_START'
+  | 'VOICE_ENCODE_COMPLETE'
+  | 'VOICE_FN_INVOKE_START'
+  | 'VOICE_FN_INVOKE_RESPONSE'
+  | 'VOICE_FN_INVOKE_ERROR'
+  | 'VOICE_FINALIZE_RETURN'
+  | 'VOICE_SEND_DURING_RECORDING'
+  | 'VOICE_FINALIZATION_COMPLETE'
+  | 'VOICE_SEND_BEGIN'
+  | 'VOICE_SEND_BLOCKED_REASON'
+  | 'VOICE_SEND_BLOCKED'
+  | 'VOICE_SEND_COMPLETE';
+
 export interface VoiceDiagnosticEvent {
   id: number;
   ts: number;
-  code:
-    | 'VOICE_PERMISSION_STATE'
-    | 'VOICE_PERMISSION_REQUESTED'
-    | 'VOICE_CAPTURE_STARTED'
-    | 'VOICE_SEND_DURING_RECORDING'
-    | 'VOICE_FINALIZATION_COMPLETE'
-    | 'VOICE_SEND_BLOCKED_REASON'
-    | 'VOICE_SEND_COMPLETE';
+  code: VoiceDiagnosticCode;
   detail?: string;
 }
 
@@ -208,6 +226,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
       rec.start();
       setError(null);
       setState('recording');
+      // Open a durable runtime incident id that survives tab replacement
+      // and browser relaunch. Every downstream event (encode, invoke,
+      // send, page-lifecycle) attaches to this id via correlation_id.
+      const incidentId = beginRuntimeIncident('voice-send', {
+        opened_at: new Date().toISOString(),
+        mimeType: rec.mimeType || 'audio/webm',
+      });
+      recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId}`);
+      // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
     } catch (err) {
       const name = (err as { name?: string })?.name;
@@ -243,10 +270,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       };
     });
     try {
+      recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     setState('transcribing');
     const blob = await finished;
+    recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
     recorderRef.current = null;
     if (!opts.keepStream) releaseStream();
 
@@ -254,28 +283,41 @@ export function useVoiceToText(): UseVoiceToTextResult {
       cancelledRef.current = false;
       setState('idle');
       setError(null);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', 'cancelled');
+      endRuntimeIncident('cancelled');
       return null;
     }
 
     try {
+      recordDiagnostic('VOICE_ENCODE_START', `bytes=${blob.size}`);
       const base64 = await blobToBase64(blob);
+      recordDiagnostic('VOICE_ENCODE_COMPLETE', `chars=${base64.length}`);
+      recordDiagnostic('VOICE_FN_INVOKE_START', `bytes=${base64.length}`);
       const { data, error: fnError } = await supabase.functions.invoke('voice-to-text', {
         body: { audio: base64, mimeType },
       });
-      if (fnError) throw new Error(fnError.message || 'Transcription failed.');
+      if (fnError) {
+        recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        throw new Error(fnError.message || 'Transcription failed.');
+      }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
+      recordDiagnostic('VOICE_FN_INVOKE_RESPONSE', `hasTranscript=${!!transcript};len=${transcript.length}`);
       if (!transcript) {
         setError('No speech detected. Try again.');
         setState('error');
+        recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
         return null;
       }
       setState('idle');
       setError(null);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
       return transcript;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg || 'Transcription unavailable.');
       setState('error');
+      recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
       return null;
     }
   }, [releaseStream]);

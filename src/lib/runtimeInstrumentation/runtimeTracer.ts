@@ -34,9 +34,56 @@ const APP_PUBLISH_VERSION =
 const CLIENT_INSTANCE_KEY = "runtime-tracer:client-instance-id";
 const TAB_SESSION_KEY = "runtime-tracer:tab-session-id";
 const RETRY_QUEUE_KEY = "runtime-tracer:retry-queue-v1";
+const INCIDENT_KEY = "runtime-tracer:active-incident-v1";
 const RETRY_QUEUE_MAX = 500;
 const BATCH_MAX = 20;
 const BATCH_INTERVAL_MS = 800;
+
+const SUPABASE_URL =
+  (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    ?.VITE_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY =
+  (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    ?.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+
+/**
+ * Events that must reach the server even if the tab is about to be
+ * killed/discarded/relaunched. They are flushed synchronously via
+ * `fetch(..., {keepalive:true})` instead of the batched supabase-js path.
+ */
+const IMMEDIATE_EVENT_NAMES = new Set<string>([
+  // Voice boundaries
+  "VOICE_CAPTURE_START",
+  "VOICE_CAPTURE_STOP_REQUESTED",
+  "VOICE_BLOB_READY",
+  "VOICE_ENCODE_START",
+  "VOICE_ENCODE_COMPLETE",
+  "VOICE_FN_INVOKE_START",
+  "VOICE_FN_INVOKE_RESPONSE",
+  "VOICE_FN_INVOKE_ERROR",
+  "VOICE_FINALIZE_RETURN",
+  "VOICE_SEND_BEGIN",
+  "VOICE_SEND_COMPLETE",
+  "VOICE_SEND_BLOCKED",
+  // Page lifetime
+  "PAGE_HIDE",
+  "PAGE_SHOW",
+  "BEFORE_UNLOAD",
+  "UNLOAD",
+  "FREEZE",
+  "RESUME",
+  "WINDOW_ERROR",
+  "UNHANDLED_REJECTION",
+  "ERROR_BOUNDARY_CAUGHT",
+  "BOOT",
+  "BOOT_RECOVERY_REPLAY",
+  // Session/route markers
+  "ROUTE_REDIRECT",
+  "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+  "ACTIVE_SESSION_ROUTE_EJECTED",
+  "ACTIVE_SESSION_SHELL_UNMOUNTED",
+  "PERSISTED_SESSION_RESTORE_FAILED",
+]);
 
 type Severity = "debug" | "info" | "warn" | "error" | "critical";
 
@@ -383,6 +430,112 @@ function persistRetryQueue() {
   safeSetItem(local, RETRY_QUEUE_KEY, JSON.stringify(toStore));
 }
 
+// ── Runtime incident id (survives tab replacement / relaunch) ──────
+
+interface ActiveIncident {
+  id: string;
+  kind: string;
+  started_at: string;
+  meta: Record<string, unknown>;
+}
+
+let cachedIncident: ActiveIncident | null = null;
+let incidentLoaded = false;
+
+function loadIncident(): ActiveIncident | null {
+  if (incidentLoaded) return cachedIncident;
+  incidentLoaded = true;
+  const { local } = getStorages();
+  const raw = safeGetItem(local, INCIDENT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ActiveIncident;
+    if (parsed && typeof parsed.id === "string") {
+      cachedIncident = parsed;
+      return parsed;
+    }
+  } catch {
+    /* noop */
+  }
+  return null;
+}
+
+function persistIncident(incident: ActiveIncident | null) {
+  const { local } = getStorages();
+  if (!local) return;
+  if (incident) {
+    safeSetItem(local, INCIDENT_KEY, JSON.stringify(incident));
+  } else {
+    try { local.removeItem(INCIDENT_KEY); } catch { /* noop */ }
+  }
+}
+
+export function beginRuntimeIncident(
+  kind: string,
+  meta: Record<string, unknown> = {},
+): string {
+  loadIncident();
+  const id = randomId("inc");
+  cachedIncident = {
+    id,
+    kind,
+    started_at: new Date().toISOString(),
+    meta,
+  };
+  persistIncident(cachedIncident);
+  return id;
+}
+
+export function endRuntimeIncident(reason?: string): string | null {
+  loadIncident();
+  const id = cachedIncident?.id ?? null;
+  if (cachedIncident && reason) {
+    cachedIncident = { ...cachedIncident, meta: { ...cachedIncident.meta, endReason: reason } };
+  }
+  cachedIncident = null;
+  persistIncident(null);
+  return id;
+}
+
+export function getActiveRuntimeIncidentId(): string | null {
+  loadIncident();
+  return cachedIncident?.id ?? null;
+}
+
+export function getActiveRuntimeIncident(): ActiveIncident | null {
+  loadIncident();
+  return cachedIncident;
+}
+
+// ── Keepalive transport (crash-survivable) ─────────────────────────
+
+function keepaliveFlush(rows: QueuedEvent[]): boolean {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || rows.length === 0) return false;
+  if (typeof fetch === "undefined") return false;
+  const clean = rows.map(({ __retry_count: _rc, occurred_at_server: _s, ...rest }) => rest);
+  try {
+    // fetch(..., keepalive:true) survives page teardown up to ~64KB.
+    void fetch(`${SUPABASE_URL}/rest/v1/client_runtime_events`, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify(clean),
+    }).catch(() => {
+      // On failure, ensure the row is durably queued for boot replay.
+      queue.push(...rows);
+      persistRetryQueue();
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function toErrorFields(err: unknown): {
   error_name: string | null;
   error_message: string | null;
@@ -423,7 +576,7 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     session_id: input.session_id ?? ambient.session_id ?? null,
     message_id: input.message_id ?? null,
     voice_operation_id: input.voice_operation_id ?? null,
-    correlation_id: input.correlation_id ?? null,
+    correlation_id: input.correlation_id ?? getActiveRuntimeIncidentId() ?? null,
     event_family: input.event_family,
     event_name: input.event_name,
     severity: input.severity ?? "info",
@@ -442,8 +595,21 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     payload: input.payload ?? null,
     ...errFields,
   };
+  const immediate =
+    evt.severity === "critical" ||
+    IMMEDIATE_EVENT_NAMES.has(evt.event_name);
+  if (immediate) {
+    // Attempt crash-survivable delivery first. If unavailable (SSR, no
+    // fetch), fall through to the batched supabase-js path via flushNow.
+    const sent = keepaliveFlush([evt]);
+    if (!sent) {
+      queue.push(evt);
+      void flushNow();
+    }
+    return;
+  }
   queue.push(evt);
-  if (evt.severity === "critical" || evt.severity === "error") {
+  if (evt.severity === "error") {
     void flushNow();
   } else if (queue.length >= BATCH_MAX) {
     void flushNow();
@@ -605,51 +771,264 @@ export async function upsertDeliveryTrace(
 // ── Boot + lifecycle listeners ─────────────────────────────────────
 
 let booted = false;
+let historyPatched = false;
+
+function navigationTypeString(): string | null {
+  try {
+    const entry = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    return entry?.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function pageLifecycleBase(): Record<string, unknown> {
+  return {
+    runtimeIncidentId: getActiveRuntimeIncidentId(),
+    clientInstanceId: getClientInstanceId(),
+    tabSessionId: getTabSessionId(),
+    route: currentRoute(),
+    href: typeof window !== "undefined" ? window.location.href : null,
+    referrer: typeof document !== "undefined" ? document.referrer : null,
+    visibilityState:
+      typeof document !== "undefined" ? document.visibilityState : null,
+    online: typeof navigator !== "undefined" ? navigator.onLine : null,
+    navigationType: navigationTypeString(),
+    wasDiscarded:
+      typeof document !== "undefined"
+        ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ?? null
+        : null,
+    ts: Date.now(),
+  };
+}
+
+function installHistoryPatch() {
+  if (historyPatched || typeof window === "undefined") return;
+  historyPatched = true;
+  const emit = (source: string, to: string) => {
+    recordRuntimeEvent({
+      event_family: "route",
+      event_name: "ROUTE_REDIRECT",
+      severity: "info",
+      payload: {
+        from: currentRoute(),
+        to,
+        source,
+        initiator: "history",
+        ...pageLifecycleBase(),
+      },
+    });
+  };
+  const origPush = window.history.pushState.bind(window.history);
+  const origReplace = window.history.replaceState.bind(window.history);
+  window.history.pushState = function patchedPush(
+    data: unknown,
+    unused: string,
+    url?: string | URL | null,
+  ) {
+    try { if (url != null) emit("history.pushState", String(url)); } catch { /* noop */ }
+    return origPush(data as never, unused, url as never);
+  } as typeof window.history.pushState;
+  window.history.replaceState = function patchedReplace(
+    data: unknown,
+    unused: string,
+    url?: string | URL | null,
+  ) {
+    try { if (url != null) emit("history.replaceState", String(url)); } catch { /* noop */ }
+    return origReplace(data as never, unused, url as never);
+  } as typeof window.history.replaceState;
+  window.addEventListener("popstate", () => emit("popstate", currentRoute() ?? ""));
+}
+
+// ── App-owned session/route markers (called from consumer sites) ────
+
+export function recordAppRouteRedirect(input: {
+  from: string;
+  to: string;
+  reason: string;
+  caller: string;
+  initiator?: string;
+  dealer_game_id?: string | null;
+  game_id?: string | null;
+  session_id?: string | null;
+  userId?: string | null;
+}): void {
+  recordRuntimeEvent({
+    event_family: "route",
+    event_name: "ROUTE_REDIRECT",
+    severity: "warn",
+    game_id: input.game_id ?? null,
+    dealer_game_id: input.dealer_game_id ?? null,
+    session_id: input.session_id ?? null,
+    payload: {
+      from: input.from,
+      to: input.to,
+      reason: input.reason,
+      caller: input.caller,
+      initiator: input.initiator ?? "app",
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
+export function recordActiveSessionMarker(
+  event: | "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK"
+         | "ACTIVE_SESSION_ROUTE_EJECTED"
+         | "ACTIVE_SESSION_SHELL_UNMOUNTED"
+         | "PERSISTED_SESSION_RESTORE_FAILED",
+  detail: {
+    caller: string;
+    branch?: string;
+    prior_route?: string | null;
+    next_route?: string | null;
+    dealer_game_id?: string | null;
+    game_id?: string | null;
+    session_id?: string | null;
+    table_id?: string | null;
+    initiator?: string;
+    extra?: Record<string, unknown>;
+  },
+): void {
+  recordRuntimeEvent({
+    event_family: "session",
+    event_name: event,
+    severity: "warn",
+    game_id: detail.game_id ?? null,
+    dealer_game_id: detail.dealer_game_id ?? null,
+    session_id: detail.session_id ?? null,
+    table_id: detail.table_id ?? null,
+    payload: {
+      caller: detail.caller,
+      branch: detail.branch ?? null,
+      prior_route: detail.prior_route ?? currentRoute(),
+      next_route: detail.next_route ?? null,
+      initiator: detail.initiator ?? "app",
+      ...(detail.extra ?? {}),
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
+export function recordErrorBoundaryCaught(detail: {
+  source: string;
+  message: string;
+  stack?: string | null;
+  componentStack?: string | null;
+  title?: string | null;
+}): void {
+  recordRuntimeEvent({
+    event_family: "fatal",
+    event_name: "ERROR_BOUNDARY_CAUGHT",
+    severity: "critical",
+    payload: {
+      ...detail,
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
 export function bootRuntimeTracer(): void {
   if (booted || typeof window === "undefined") return;
   booted = true;
+  loadIncident();
   loadRetryQueue();
   void upsertInstance();
+  installHistoryPatch();
+
+  // If we have replayed queued events from a prior tab, emit a
+  // dedicated marker so post-relaunch analysis can pinpoint the
+  // relaunch boundary. Replayed rows carry their original tab_session_id
+  // and (via correlation_id) the active runtimeIncidentId at time of
+  // enqueue.
+  if (queue.length > 0) {
+    recordRuntimeEvent({
+      event_family: "session",
+      event_name: "BOOT_RECOVERY_REPLAY",
+      severity: "info",
+      payload: {
+        replayed_count: queue.length,
+        ...pageLifecycleBase(),
+      },
+    });
+  }
 
   recordRuntimeEvent({
     event_family: "session",
     event_name: "BOOT",
     severity: "info",
     payload: {
-      href: window.location.href,
-      referrer: typeof document !== "undefined" ? document.referrer : null,
       build: APP_BUILD_ID,
       publish: APP_PUBLISH_VERSION,
+      activeIncident: getActiveRuntimeIncident(),
+      ...pageLifecycleBase(),
     },
   });
 
-  const flushOnBackground = () => {
+  const flushOnBackground = (label: string, extra?: Record<string, unknown>) => {
+    recordRuntimeEvent({
+      event_family: "environment",
+      event_name: label,
+      severity: "info",
+      payload: { ...(extra ?? {}), ...pageLifecycleBase() },
+    });
     void flushNow();
     persistRetryQueue();
   };
-  window.addEventListener("pagehide", flushOnBackground);
-  window.addEventListener("beforeunload", flushOnBackground);
-  window.addEventListener("online", () => {
+
+  window.addEventListener("pagehide", (e) => {
+    const persisted = (e as PageTransitionEvent).persisted;
+    flushOnBackground("PAGE_HIDE", { persisted });
+  });
+  window.addEventListener("pageshow", (e) => {
+    const persisted = (e as PageTransitionEvent).persisted;
+    recordRuntimeEvent({
+      event_family: "environment",
+      event_name: "PAGE_SHOW",
+      severity: "info",
+      payload: { persisted, ...pageLifecycleBase() },
+    });
+  });
+  window.addEventListener("beforeunload", () =>
+    flushOnBackground("BEFORE_UNLOAD"),
+  );
+  window.addEventListener("unload", () => flushOnBackground("UNLOAD"));
+  // Page Lifecycle API (Chrome/Android): freeze/resume around tab
+  // discard. `document.wasDiscarded` on next boot indicates a discard
+  // occurred; we surface it via pageLifecycleBase().
+  document.addEventListener("freeze", () => flushOnBackground("FREEZE"));
+  document.addEventListener("resume", () =>
+    recordRuntimeEvent({
+      event_family: "environment",
+      event_name: "RESUME",
+      severity: "info",
+      payload: pageLifecycleBase(),
+    }),
+  );
+
+  window.addEventListener("online", () =>
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "ONLINE",
       severity: "info",
-    });
-    void flushNow();
-  });
+      payload: pageLifecycleBase(),
+    }),
+  );
   window.addEventListener("offline", () =>
     recordRuntimeEvent({
       event_family: "environment",
       event_name: "OFFLINE",
       severity: "info",
+      payload: pageLifecycleBase(),
     }),
   );
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       recordRuntimeEvent({
         event_family: "environment",
-        event_name: "VISIBILITY_CHANGE",
-        payload: { state: document.visibilityState },
+        event_name: "PAGE_VISIBILITY_CHANGE",
+        payload: { state: document.visibilityState, ...pageLifecycleBase() },
       });
       if (document.visibilityState === "visible") void flushNow();
     });
@@ -664,6 +1043,7 @@ export function bootRuntimeTracer(): void {
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
+        ...pageLifecycleBase(),
       },
     });
   });
@@ -675,6 +1055,7 @@ export function bootRuntimeTracer(): void {
         event_name: "UNHANDLED_REJECTION",
         severity: "critical",
         error: event.reason,
+        payload: pageLifecycleBase(),
       });
     },
   );
