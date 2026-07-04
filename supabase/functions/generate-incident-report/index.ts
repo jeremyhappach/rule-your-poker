@@ -342,7 +342,7 @@ serve(async (req) => {
     const upsertRow = {
       correlation_id: correlationId,
       incident_row_id: incidentRow?.id ?? null,
-      user_id: incidentRow?.user_id ?? firstEvent?.detail && null,
+      user_id: incidentRow?.user_id ?? null,
       original_client_instance_id: originalInstanceId,
       original_tab_session_id: incidentRow?.tab_session_id ?? firstEvent?.tab_session_id ?? null,
       original_origin: incidentRow?.origin ?? originalInstance?.origin ?? null,
