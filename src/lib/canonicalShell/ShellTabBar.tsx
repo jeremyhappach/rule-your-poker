@@ -187,37 +187,28 @@ export function ShellTabBar() {
 
   // Canonical chat-attention rendering contract:
   //   chatFlash === 'red'  → NEW_MESSAGE_PULSE : outline+fill red, pulsing
-  //   chatFlash === 'green'→ (legacy waiting-surface only) green pulse
   //   chatDot   === 'red'  → UNREAD_PERSISTENT : outline red, NO fill
+  //   Green chat state is retired — no waiting-table green fill anywhere.
+  const chatFlashRed = chatFlash === 'red';
   const chatIconClass = [
     'w-5 h-5',
-    chatFlash === 'green' ? 'text-poker-chip-green fill-poker-chip-green animate-pulse' : '',
-    chatFlash === 'red' ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
-    chatDot === 'red' && !chatFlash ? 'text-poker-chip-red' : '',
+    chatFlashRed ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
+    chatDot === 'red' && !chatFlashRed ? 'text-poker-chip-red' : '',
   ]
     .filter(Boolean)
     .join(' ');
   const chatIconResolvedStroke =
-    chatFlash === 'red' || (chatDot === 'red' && !chatFlash)
+    chatFlashRed || (chatDot === 'red' && !chatFlashRed)
       ? 'poker-chip-red'
-      : chatFlash === 'green'
-        ? 'poker-chip-green'
-        : 'inherit';
-  const chatIconResolvedFill =
-    chatFlash === 'red'
-      ? 'poker-chip-red'
-      : chatFlash === 'green'
-        ? 'poker-chip-green'
-        : 'none';
+      : 'inherit';
+  const chatIconResolvedFill = chatFlashRed ? 'poker-chip-red' : 'none';
   const chatAttentionRenderState =
-    chatFlash === 'red' ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
+    chatFlashRed ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
 
-  const cardsRing =
-    cardsFlash === 'green'
-      ? 'animate-pulse ring-2 ring-poker-chip-green'
-      : cardsFlash === 'red'
-        ? 'animate-pulse ring-2 ring-poker-chip-red'
-        : '';
+
+  // Turn-attention visual scope: glyph-only. No ring / border / bg on the
+  // gameplay tab container. Chat attention is handled separately on its
+  // own glyph/container above.
 
   const handleChatClick = () => {
     if (onOpenChat) onOpenChat();
@@ -239,8 +230,9 @@ export function ShellTabBar() {
       <button
         onClick={() => setActiveTab('cards')}
         style={{ flex: '0 0 35%' }}
-        className={`${tabBase} ${activeTab === 'cards' ? tabActive : tabIdle} ${cardsRing}`}
+        className={`${tabBase} ${activeTab === 'cards' ? tabActive : tabIdle}`}
         aria-label="Cards"
+        data-cards-attention-state={cardsFlash === 'red' ? 'LOCAL_TURN' : cardsFlash === 'green' ? 'NEW_DEAL' : 'NONE'}
       >
         {cardsIcon === 'dice' ? (
           <DiceIcon className={cardsIconClass} />
@@ -251,7 +243,7 @@ export function ShellTabBar() {
       <button
         onClick={handleChatClick}
         style={{ flex: '0 0 35%' }}
-        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle} ${chatFlash === 'green' || chatFlash === 'red' ? 'animate-pulse' : ''}`}
+        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle}`}
         aria-label="Chat"
         data-chat-attention-state={chatAttentionRenderState}
         data-chat-icon-stroke={chatIconResolvedStroke}
@@ -259,6 +251,7 @@ export function ShellTabBar() {
       >
         <MessageSquare className={chatIconClass} />
       </button>
+
       <button
         onClick={() => setActiveTab('lobby')}
         style={{ flex: '0 0 15%' }}
