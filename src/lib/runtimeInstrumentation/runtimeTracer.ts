@@ -686,6 +686,23 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     payload: input.payload ?? null,
     ...errFields,
   };
+  // Local capsule FIRST — every event with an active runtime incident
+  // is appended to the durable IndexedDB capsule before any network
+  // attempt, so the causal chain survives connectivity loss / reboot.
+  if (evt.correlation_id) {
+    try {
+      appendCapsuleEvent({
+        voiceCrashIncidentId: evt.correlation_id,
+        eventFamily: evt.event_family,
+        eventName: evt.event_name,
+        severity: evt.severity,
+        route: evt.route,
+        clientInstanceId: evt.client_instance_id,
+        tabSessionId: evt.tab_session_id ?? "",
+        payload: evt.payload,
+      });
+    } catch { /* diagnostic; swallow */ }
+  }
   const immediate =
     evt.severity === "critical" ||
     IMMEDIATE_EVENT_NAMES.has(evt.event_name);
