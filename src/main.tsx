@@ -88,6 +88,7 @@ supabase.auth.onAuthStateChange((event, session) => {
   } catch {
     /* noop */
   }
+  if (event === "TOKEN_REFRESHED" && !session) {
     persistSyncDebugEvent({
       gameId: "00000000-0000-0000-0000-000000000000",
       gameType: "auth",
