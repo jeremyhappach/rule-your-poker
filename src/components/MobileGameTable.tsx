@@ -1867,6 +1867,7 @@ export const MobileGameTable = ({
 
     setChatTabFlashing(false);
     setHasUnreadMessages(false);
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
     setActiveTab('chat');
 
     if (latestEligibleMessage && lastReadChatMessageId !== latestEligibleMessage.id) {
