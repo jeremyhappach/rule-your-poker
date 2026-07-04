@@ -695,6 +695,10 @@ export const GinRummyGameTable = ({
   const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
 
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
