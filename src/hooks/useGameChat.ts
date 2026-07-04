@@ -11,6 +11,11 @@ import {
   recordChatRealtimeCallbackEnd,
   recordSessionLifecycleEvent,
 } from '@/lib/sessionLifecycleLedger';
+import {
+  recordRuntimeEvent,
+  upsertDeliveryTrace,
+  getClientInstanceId,
+} from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 interface ChatMessage {
   id: string;
