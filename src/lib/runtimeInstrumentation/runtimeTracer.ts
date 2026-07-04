@@ -888,7 +888,7 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
   // voice boundaries. These run in parallel with the normal fire-and-forget
   // paths and emit their own proof events (CAPSULE_LOCAL_APPEND_VERIFIED,
   // INCIDENT_PATCH_VERIFIED, INSTANCE_HEARTBEAT_VERIFIED) via keepalive.
-  if (evt.correlation_id && VERIFIED_APPEND_EVENT_NAMES.has(evt.event_name)) {
+  if (evt.correlation_id && CENTRAL_VERIFIED_EVENT_NAMES.has(evt.event_name)) {
     const cid = evt.correlation_id;
     const seq = nextIncidentSequence(cid + ":verify");
     void verifyCapsuleAppendAndEmit({
