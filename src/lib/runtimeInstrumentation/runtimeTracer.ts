@@ -576,7 +576,7 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     session_id: input.session_id ?? ambient.session_id ?? null,
     message_id: input.message_id ?? null,
     voice_operation_id: input.voice_operation_id ?? null,
-    correlation_id: input.correlation_id ?? null,
+    correlation_id: input.correlation_id ?? getActiveRuntimeIncidentId() ?? null,
     event_family: input.event_family,
     event_name: input.event_name,
     severity: input.severity ?? "info",
@@ -595,8 +595,21 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     payload: input.payload ?? null,
     ...errFields,
   };
+  const immediate =
+    evt.severity === "critical" ||
+    IMMEDIATE_EVENT_NAMES.has(evt.event_name);
+  if (immediate) {
+    // Attempt crash-survivable delivery first. If unavailable (SSR, no
+    // fetch), fall through to the batched supabase-js path via flushNow.
+    const sent = keepaliveFlush([evt]);
+    if (!sent) {
+      queue.push(evt);
+      void flushNow();
+    }
+    return;
+  }
   queue.push(evt);
-  if (evt.severity === "critical" || evt.severity === "error") {
+  if (evt.severity === "error") {
     void flushNow();
   } else if (queue.length >= BATCH_MAX) {
     void flushNow();
