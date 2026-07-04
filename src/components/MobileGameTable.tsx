@@ -1916,6 +1916,7 @@ export const MobileGameTable = ({
       });
     }
   }, [
+    chatAttention,
     chatTabFlashing,
     eligibleIndicatorMessages,
     hasUnreadMessages,
