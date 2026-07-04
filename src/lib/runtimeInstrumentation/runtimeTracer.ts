@@ -738,6 +738,43 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       });
     } catch { /* diagnostic; swallow */ }
   }
+  // Verified append + verified patch + verified heartbeat for high-value
+  // voice boundaries. These run in parallel with the normal fire-and-forget
+  // paths and emit their own proof events (CAPSULE_LOCAL_APPEND_VERIFIED,
+  // INCIDENT_PATCH_VERIFIED, INSTANCE_HEARTBEAT_VERIFIED) via keepalive.
+  if (evt.correlation_id && VERIFIED_APPEND_EVENT_NAMES.has(evt.event_name)) {
+    const cid = evt.correlation_id;
+    const seq = nextIncidentSequence(cid + ":verify");
+    void verifyCapsuleAppendAndEmit({
+      incidentId: cid,
+      eventFamily: evt.event_family,
+      eventName: evt.event_name,
+      severity: evt.severity,
+      route: evt.route,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      payload: evt.payload,
+    });
+    void verifyIncidentPatchAndEmit({
+      incidentId: cid,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      route: evt.route,
+      eventFamily: evt.event_family,
+      eventName: evt.event_name,
+      sequence: seq,
+    });
+    void verifyInstanceHeartbeatAndEmit({
+      incidentId: cid,
+      clientInstanceId: evt.client_instance_id,
+      tabSessionId: evt.tab_session_id ?? "",
+      userId: evt.user_id,
+      route: evt.route,
+      lifecycleLabel: evt.event_name,
+    });
+  }
   const immediate =
     evt.severity === "critical" ||
     IMMEDIATE_EVENT_NAMES.has(evt.event_name);
