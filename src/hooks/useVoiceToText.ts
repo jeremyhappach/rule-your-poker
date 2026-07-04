@@ -97,6 +97,14 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const next = [...prev, evt];
       return next.length > 12 ? next.slice(next.length - 12) : next;
     });
+    try {
+      recordRuntimeEvent({
+        event_family: 'voice',
+        event_name: code,
+        severity: code === 'VOICE_SEND_BLOCKED_REASON' ? 'warn' : 'info',
+        payload: detail ? { detail } : undefined,
+      });
+    } catch { /* noop */ }
   }, []);
 
   const reset = useCallback(() => {
