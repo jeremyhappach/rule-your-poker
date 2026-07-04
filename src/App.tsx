@@ -47,6 +47,9 @@ import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
+import Diagnostics from "@/pages/Diagnostics";
+import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
+import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 
 
 
@@ -113,6 +116,14 @@ const App = () => {
           ts: Date.now(),
         },
       });
+      try {
+        recordSessionIncident("FATAL_RENDER_OR_PROMISE_REJECTION", {
+          source: "App#unhandledrejection",
+          error: String(event.reason?.message ?? event.reason ?? "unknown"),
+        });
+      } catch {
+        /* noop */
+      }
       toast.error("An error occurred. Please try again.");
       event.preventDefault();
     };
@@ -147,6 +158,7 @@ const App = () => {
                 <Route path="/debug-hands" element={<HandEvalDebug />} />
                 <Route path="/dice-preview" element={<DicePreview />} />
                 <Route path="/debug-deadlines" element={<DeadlineDebug />} />
+                <Route path="/diagnostics" element={<Diagnostics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -195,6 +207,13 @@ const App = () => {
               {/* Chat delivery export pill — always visible in published builds,
                   outside DebugTray/hideDebugUI gating, persistent across routes. */}
               <ChatDeliveryExportPill />
+
+              {/* P0: always-mounted session lifecycle recovery pill.
+                  Persists across every route (including /auth and any
+                  legacy Join fallback) so the operator can always reach
+                  /diagnostics and copy the ledger, even when the game
+                  UI is gone. Pure link + copy; no auth/session mutation. */}
+              <SessionLifecycleRecoveryPill />
 
 
 

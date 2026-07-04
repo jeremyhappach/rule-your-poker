@@ -18,10 +18,20 @@ import {
   installAuthEjectionHistoryListener,
   recordAuthStateChange,
 } from "@/lib/authEjectionLedger";
+import {
+  installSessionLifecycleListeners,
+  recordSessionLifecycleEvent,
+} from "@/lib/sessionLifecycleLedger";
 
 // Wartime: install the auth-ejection ledger history listener BEFORE any
 // route mounts so a redirect to /auth is captured with pre-teardown context.
 installAuthEjectionHistoryListener();
+// P0: install the session lifecycle ledger listeners BEFORE any route
+// mount so BOOT, ROUTE_HISTORY_*, error, unhandledrejection, pageshow,
+// pagehide, visibilitychange, and online/offline are all captured from
+// the very first frame — including when the app boots directly onto
+// /auth or a legacy Join fallback screen.
+installSessionLifecycleListeners();
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
@@ -46,6 +56,22 @@ supabase.auth.onAuthStateChange((event, session) => {
       userId: session?.user?.id ?? null,
       callerLabel: "main.tsx#global-onAuthStateChange",
     });
+  } catch {
+    /* noop */
+  }
+  try {
+    recordSessionLifecycleEvent(
+      event === "TOKEN_REFRESHED" && !session
+        ? "AUTH_TOKEN_REFRESH_FAILED"
+        : "AUTH_STATE_CHANGE",
+      {
+        supabaseEvent: event,
+        sessionAfter: !!session,
+        userId: session?.user?.id ?? null,
+        accessTokenExpiresAt: session?.expires_at ?? null,
+      },
+      { userId: session?.user?.id ?? null },
+    );
   } catch {
     /* noop */
   }
