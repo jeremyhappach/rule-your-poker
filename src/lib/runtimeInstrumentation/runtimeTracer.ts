@@ -430,6 +430,112 @@ function persistRetryQueue() {
   safeSetItem(local, RETRY_QUEUE_KEY, JSON.stringify(toStore));
 }
 
+// ── Runtime incident id (survives tab replacement / relaunch) ──────
+
+interface ActiveIncident {
+  id: string;
+  kind: string;
+  started_at: string;
+  meta: Record<string, unknown>;
+}
+
+let cachedIncident: ActiveIncident | null = null;
+let incidentLoaded = false;
+
+function loadIncident(): ActiveIncident | null {
+  if (incidentLoaded) return cachedIncident;
+  incidentLoaded = true;
+  const { local } = getStorages();
+  const raw = safeGetItem(local, INCIDENT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ActiveIncident;
+    if (parsed && typeof parsed.id === "string") {
+      cachedIncident = parsed;
+      return parsed;
+    }
+  } catch {
+    /* noop */
+  }
+  return null;
+}
+
+function persistIncident(incident: ActiveIncident | null) {
+  const { local } = getStorages();
+  if (!local) return;
+  if (incident) {
+    safeSetItem(local, INCIDENT_KEY, JSON.stringify(incident));
+  } else {
+    try { local.removeItem(INCIDENT_KEY); } catch { /* noop */ }
+  }
+}
+
+export function beginRuntimeIncident(
+  kind: string,
+  meta: Record<string, unknown> = {},
+): string {
+  loadIncident();
+  const id = randomId("inc");
+  cachedIncident = {
+    id,
+    kind,
+    started_at: new Date().toISOString(),
+    meta,
+  };
+  persistIncident(cachedIncident);
+  return id;
+}
+
+export function endRuntimeIncident(reason?: string): string | null {
+  loadIncident();
+  const id = cachedIncident?.id ?? null;
+  if (cachedIncident && reason) {
+    cachedIncident = { ...cachedIncident, meta: { ...cachedIncident.meta, endReason: reason } };
+  }
+  cachedIncident = null;
+  persistIncident(null);
+  return id;
+}
+
+export function getActiveRuntimeIncidentId(): string | null {
+  loadIncident();
+  return cachedIncident?.id ?? null;
+}
+
+export function getActiveRuntimeIncident(): ActiveIncident | null {
+  loadIncident();
+  return cachedIncident;
+}
+
+// ── Keepalive transport (crash-survivable) ─────────────────────────
+
+function keepaliveFlush(rows: QueuedEvent[]): boolean {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || rows.length === 0) return false;
+  if (typeof fetch === "undefined") return false;
+  const clean = rows.map(({ __retry_count: _rc, occurred_at_server: _s, ...rest }) => rest);
+  try {
+    // fetch(..., keepalive:true) survives page teardown up to ~64KB.
+    void fetch(`${SUPABASE_URL}/rest/v1/client_runtime_events`, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify(clean),
+    }).catch(() => {
+      // On failure, ensure the row is durably queued for boot replay.
+      queue.push(...rows);
+      persistRetryQueue();
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function toErrorFields(err: unknown): {
   error_name: string | null;
   error_message: string | null;
