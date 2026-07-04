@@ -582,6 +582,8 @@ export function onAuthenticatedSessionRestored(
   void uploadUnresolvedCapsules("auth-session-restored").then((r) => {
     if (r.uploadedCapsules > 0 || r.uploadedEvents > 0) {
       emit("CAPSULE_UPLOAD_COMPLETED", "info", r);
+    }
+  });
 }
 
 // ── Verified append + manifest APIs (pipeline proof) ───────────────
