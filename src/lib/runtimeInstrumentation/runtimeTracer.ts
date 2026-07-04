@@ -1345,6 +1345,20 @@ export function bootRuntimeTracer(): void {
   void upsertInstance();
   installHistoryPatch();
 
+  // Boot the durable IndexedDB capsule + network listeners BEFORE
+  // React mounts. Emits NETWORK_STATUS_SNAPSHOT / NETWORK_ONLINE /
+  // NETWORK_OFFLINE / CAPSULE_* events through the tracer.
+  try {
+    bootVoiceCrashCapsule((name, severity, payload) => {
+      recordRuntimeEvent({
+        event_family: name.startsWith("CAPSULE_") ? "environment" : "environment",
+        event_name: name,
+        severity: severity as Severity,
+        payload,
+      });
+    });
+  } catch { /* diagnostic; swallow */ }
+
   // If we have replayed queued events from a prior tab, emit a
   // dedicated marker so post-relaunch analysis can pinpoint the
   // relaunch boundary. Replayed rows carry their original tab_session_id
