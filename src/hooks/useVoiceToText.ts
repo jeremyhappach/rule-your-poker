@@ -270,10 +270,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       };
     });
     try {
+      recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     setState('transcribing');
     const blob = await finished;
+    recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
     recorderRef.current = null;
     if (!opts.keepStream) releaseStream();
 
@@ -281,28 +283,41 @@ export function useVoiceToText(): UseVoiceToTextResult {
       cancelledRef.current = false;
       setState('idle');
       setError(null);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', 'cancelled');
+      endRuntimeIncident('cancelled');
       return null;
     }
 
     try {
+      recordDiagnostic('VOICE_ENCODE_START', `bytes=${blob.size}`);
       const base64 = await blobToBase64(blob);
+      recordDiagnostic('VOICE_ENCODE_COMPLETE', `chars=${base64.length}`);
+      recordDiagnostic('VOICE_FN_INVOKE_START', `bytes=${base64.length}`);
       const { data, error: fnError } = await supabase.functions.invoke('voice-to-text', {
         body: { audio: base64, mimeType },
       });
-      if (fnError) throw new Error(fnError.message || 'Transcription failed.');
+      if (fnError) {
+        recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        throw new Error(fnError.message || 'Transcription failed.');
+      }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
+      recordDiagnostic('VOICE_FN_INVOKE_RESPONSE', `hasTranscript=${!!transcript};len=${transcript.length}`);
       if (!transcript) {
         setError('No speech detected. Try again.');
         setState('error');
+        recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
         return null;
       }
       setState('idle');
       setError(null);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
       return transcript;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg || 'Transcription unavailable.');
       setState('error');
+      recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
+      recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
       return null;
     }
   }, [releaseStream]);
