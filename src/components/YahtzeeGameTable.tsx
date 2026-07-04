@@ -56,6 +56,8 @@ import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChatContext } from "@/hooks/GameChatContext";
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
+import { recordChatDeliveryEvent } from "@/lib/chatDelivery/chatDeliveryLedger";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
