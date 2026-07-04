@@ -27,6 +27,8 @@ import {
   beginRuntimeIncident,
   endRuntimeIncident,
   getActiveRuntimeIncidentId,
+  forceInstanceHeartbeat,
+  nextIncidentSequence,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
@@ -38,6 +40,14 @@ export type VoiceDiagnosticCode =
   | 'VOICE_CAPTURE_STARTED'
   | 'VOICE_CAPTURE_START'
   | 'VOICE_CAPTURE_STOP_REQUESTED'
+  | 'VOICE_RECORDING_HEARTBEAT'
+  | 'VOICE_STOP_BUTTON_TAPPED'
+  | 'VOICE_SEND_BUTTON_TAPPED_WHILE_RECORDING'
+  | 'VOICE_STOP_HANDLER_ENTERED'
+  | 'VOICE_STOP_HANDLER_EXITED'
+  | 'VOICE_MEDIARECORDER_STOP_CALLED'
+  | 'VOICE_MEDIARECORDER_ONSTOP_ENTERED'
+  | 'VOICE_MEDIARECORDER_DATAAVAILABLE'
   | 'VOICE_BLOB_READY'
   | 'VOICE_ENCODE_START'
   | 'VOICE_ENCODE_COMPLETE'
