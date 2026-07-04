@@ -383,6 +383,14 @@ async function upsertInstance(): Promise<void> {
     last_online_state:
       typeof navigator !== "undefined" ? navigator.onLine : null,
     last_known_chat_tab_state: ambient.active_tab,
+    origin:
+      typeof window !== "undefined" ? window.location.origin : null,
+    document_was_discarded:
+      typeof document !== "undefined"
+        ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ?? null
+        : null,
+    active_incident_id: getActiveRuntimeIncidentId(),
+    last_lifecycle_event: lastLifecycleEventName,
   };
   try {
     await supabase
@@ -401,6 +409,22 @@ function scheduleInstanceHeartbeat() {
     void upsertInstance();
   }, 2000);
 }
+
+/**
+ * Force an immediate instance-heartbeat write (bypasses the 2s debounce).
+ * Called at boot, at every voice-capture start, and at every lifecycle
+ * boundary so `client_runtime_instances` reflects real-time state.
+ */
+export function forceInstanceHeartbeat(lifecycleLabel?: string): void {
+  if (lifecycleLabel) lastLifecycleEventName = lifecycleLabel;
+  if (heartbeatTimer) {
+    clearTimeout(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  void upsertInstance();
+}
+
+let lastLifecycleEventName: string | null = null;
 
 // ── Event queue + flusher ──────────────────────────────────────────
 
