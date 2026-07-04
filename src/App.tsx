@@ -158,6 +158,7 @@ const App = () => {
                 <Route path="/debug-hands" element={<HandEvalDebug />} />
                 <Route path="/dice-preview" element={<DicePreview />} />
                 <Route path="/debug-deadlines" element={<DeadlineDebug />} />
+                <Route path="/diagnostics" element={<Diagnostics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
