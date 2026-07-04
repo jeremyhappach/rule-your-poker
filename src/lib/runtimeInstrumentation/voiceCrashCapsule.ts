@@ -582,6 +582,328 @@ export function onAuthenticatedSessionRestored(
   void uploadUnresolvedCapsules("auth-session-restored").then((r) => {
     if (r.uploadedCapsules > 0 || r.uploadedEvents > 0) {
       emit("CAPSULE_UPLOAD_COMPLETED", "info", r);
+}
+
+// ── Verified append + manifest APIs (pipeline proof) ───────────────
+
+export interface CapsuleAppendVerifyResult {
+  incidentId: string;
+  monotonicSequence: number | null;
+  dbName: string;
+  storeName: string;
+  recordKey: number | null;
+  appendSuccess: boolean;
+  readBackSuccess: boolean;
+  idbErrorName: string | null;
+  idbErrorMessage: string | null;
+  storagePersisted: boolean | null;
+  quotaEstimateBytes: number | null;
+  usageEstimateBytes: number | null;
+}
+
+export interface CapsuleManifestRow {
+  voiceCrashIncidentId: string;
+  latestSequence: number;
+  lastEventName: string;
+  lastLocalTimestamp: string;
+  uploadState: "pending" | "uploading" | "uploaded" | "failed";
+  updatedAt: string;
+  clientInstanceId: string;
+  tabSessionId: string;
+  origin: string | null;
+  route: string | null;
+}
+
+async function persistedAndQuota(): Promise<{
+  persisted: boolean | null;
+  quota: number | null;
+  usage: number | null;
+}> {
+  try {
+    const s = (navigator as Navigator & {
+      storage?: {
+        persisted?: () => Promise<boolean>;
+        estimate?: () => Promise<{ quota?: number; usage?: number }>;
+      };
+    }).storage;
+    const persisted = s?.persisted ? await s.persisted() : null;
+    const est = s?.estimate ? await s.estimate() : null;
+    return {
+      persisted,
+      quota: est?.quota ?? null,
+      usage: est?.usage ?? null,
+    };
+  } catch {
+    return { persisted: null, quota: null, usage: null };
+  }
+}
+
+/**
+ * Append + read-back in one transaction. Returns a diagnostic result the
+ * caller can use to emit CAPSULE_LOCAL_APPEND_VERIFIED / _FAILED. Never
+ * throws. Never blocks.
+ */
+export async function appendCapsuleEventVerified(input: {
+  voiceCrashIncidentId: string;
+  eventFamily: string;
+  eventName: string;
+  severity: string;
+  route: string | null;
+  clientInstanceId: string;
+  tabSessionId: string;
+  payload?: Record<string, unknown> | null;
+}): Promise<CapsuleAppendVerifyResult> {
+  const nowMs = Date.now();
+  const iso = new Date(nowMs).toISOString();
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  const online = nav ? nav.onLine : null;
+  const origin = typeof window !== "undefined" ? window.location.origin : null;
+  const snap = connectionSnapshot();
+  const quotaInfo = await persistedAndQuota();
+
+  const result: CapsuleAppendVerifyResult = {
+    incidentId: input.voiceCrashIncidentId,
+    monotonicSequence: null,
+    dbName: DB_NAME,
+    storeName: STORE_EVENTS,
+    recordKey: null,
+    appendSuccess: false,
+    readBackSuccess: false,
+    idbErrorName: null,
+    idbErrorMessage: null,
+    storagePersisted: quotaInfo.persisted,
+    quotaEstimateBytes: quotaInfo.quota,
+    usageEstimateBytes: quotaInfo.usage,
+  };
+
+  const db = await openDb();
+  if (!db) {
+    result.idbErrorName = "IDB_UNAVAILABLE";
+    result.idbErrorMessage = "indexedDB.open returned null";
+    return result;
+  }
+
+  let addedKey: number | null = null;
+  let nextSeq = 0;
+
+  await new Promise<void>((resolve) => {
+    try {
+      const t = tx(db, [STORE_CAPSULES, STORE_EVENTS, STORE_MANIFESTS], "readwrite");
+      const capsules = t.objectStore(STORE_CAPSULES);
+      const events = t.objectStore(STORE_EVENTS);
+      const manifests = t.objectStore(STORE_MANIFESTS);
+      const getReq = capsules.get(input.voiceCrashIncidentId);
+      getReq.onsuccess = () => {
+        const cap = getReq.result as
+          | { voiceCrashIncidentId: string; maxSequence?: number }
+          | undefined;
+        if (!cap) {
+          capsules.put({
+            voiceCrashIncidentId: input.voiceCrashIncidentId,
+            openedAt: iso,
+            openedTsMs: nowMs,
+            closedAt: null,
+            uploadedAt: null,
+            clientInstanceId: input.clientInstanceId,
+            tabSessionId: input.tabSessionId,
+            origin,
+            route: input.route,
+            userId: null,
+            maxSequence: 1,
+            meta: { synthesized: true },
+          });
+          nextSeq = 1;
+        } else {
+          cap.maxSequence = (cap.maxSequence ?? 0) + 1;
+          capsules.put(cap);
+          nextSeq = cap.maxSequence;
+        }
+        const evt: CapsuleEventRecord = {
+          voiceCrashIncidentId: input.voiceCrashIncidentId,
+          monotonicSequence: nextSeq,
+          localTimestamp: iso,
+          localTimestampMs: nowMs,
+          route: input.route,
+          origin,
+          clientInstanceId: input.clientInstanceId,
+          tabSessionId: input.tabSessionId,
+          navigatorOnline: online,
+          connectionType: snap.connectionType,
+          effectiveType: snap.effectiveType,
+          downlink: snap.downlink,
+          rtt: snap.rtt,
+          eventFamily: input.eventFamily,
+          eventName: input.eventName,
+          severity: input.severity,
+          payload: input.payload ?? null,
+          uploaded: 0,
+        };
+        const addReq = events.add(evt);
+        addReq.onsuccess = () => {
+          addedKey = typeof addReq.result === "number" ? addReq.result : null;
+        };
+        // Manifest upsert in same transaction
+        const manifest: CapsuleManifestRow = {
+          voiceCrashIncidentId: input.voiceCrashIncidentId,
+          latestSequence: nextSeq,
+          lastEventName: input.eventName,
+          lastLocalTimestamp: iso,
+          uploadState: "pending",
+          updatedAt: iso,
+          clientInstanceId: input.clientInstanceId,
+          tabSessionId: input.tabSessionId,
+          origin,
+          route: input.route,
+        };
+        manifests.put(manifest);
+      };
+      t.oncomplete = () => resolve();
+      t.onerror = () => {
+        result.idbErrorName = t.error?.name ?? "IDB_TX_ERROR";
+        result.idbErrorMessage = t.error?.message ?? null;
+        resolve();
+      };
+      t.onabort = () => {
+        result.idbErrorName = t.error?.name ?? "IDB_TX_ABORT";
+        result.idbErrorMessage = t.error?.message ?? null;
+        resolve();
+      };
+    } catch (err) {
+      result.idbErrorName = (err as Error)?.name ?? "IDB_THROW";
+      result.idbErrorMessage = (err as Error)?.message ?? String(err);
+      resolve();
     }
+  });
+
+  result.recordKey = addedKey;
+  result.monotonicSequence = nextSeq || null;
+  result.appendSuccess = addedKey !== null;
+
+  // Read-back in a fresh readonly tx
+  if (addedKey !== null) {
+    await new Promise<void>((resolve) => {
+      try {
+        const t = tx(db, [STORE_EVENTS], "readonly");
+        const req = t.objectStore(STORE_EVENTS).get(addedKey!);
+        req.onsuccess = () => {
+          const row = req.result as CapsuleEventRecord | undefined;
+          result.readBackSuccess =
+            !!row && row.monotonicSequence === nextSeq &&
+            row.eventName === input.eventName;
+          resolve();
+        };
+        req.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  return result;
+}
+
+export async function readCapsuleManifest(
+  incidentId: string,
+): Promise<CapsuleManifestRow | null> {
+  const db = await openDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const t = tx(db, [STORE_MANIFESTS], "readonly");
+      const req = t.objectStore(STORE_MANIFESTS).get(incidentId);
+      req.onsuccess = () => resolve((req.result as CapsuleManifestRow) ?? null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function listCapsuleManifests(): Promise<CapsuleManifestRow[]> {
+  const db = await openDb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const t = tx(db, [STORE_MANIFESTS], "readonly");
+      const req = t.objectStore(STORE_MANIFESTS).getAll();
+      req.onsuccess = () => resolve((req.result as CapsuleManifestRow[]) ?? []);
+      req.onerror = () => resolve([]);
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
+export async function setManifestUploadState(
+  incidentId: string,
+  state: CapsuleManifestRow["uploadState"],
+): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  await new Promise<void>((resolve) => {
+    try {
+      const t = tx(db, [STORE_MANIFESTS], "readwrite");
+      const store = t.objectStore(STORE_MANIFESTS);
+      const getReq = store.get(incidentId);
+      getReq.onsuccess = () => {
+        const row = getReq.result as CapsuleManifestRow | undefined;
+        if (row) {
+          row.uploadState = state;
+          row.updatedAt = new Date().toISOString();
+          store.put(row);
+        }
+      };
+      t.oncomplete = () => resolve();
+      t.onerror = () => resolve();
+      t.onabort = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+/**
+ * Early-boot scan: opens IndexedDB and lists unresolved capsules /
+ * manifests BEFORE React mounts and BEFORE auth exists. Never throws.
+ */
+export async function earlyBootCapsuleScan(): Promise<{
+  idbAvailable: boolean;
+  storagePersisted: boolean | null;
+  quotaBytes: number | null;
+  usageBytes: number | null;
+  unresolvedCapsuleCount: number;
+  unresolvedIncidentIds: string[];
+  manifestCount: number;
+  manifests: CapsuleManifestRow[];
+}> {
+  const quotaInfo = await persistedAndQuota();
+  const db = await openDb();
+  if (!db) {
+    return {
+      idbAvailable: false,
+      storagePersisted: quotaInfo.persisted,
+      quotaBytes: quotaInfo.quota,
+      usageBytes: quotaInfo.usage,
+      unresolvedCapsuleCount: 0,
+      unresolvedIncidentIds: [],
+      manifestCount: 0,
+      manifests: [],
+    };
+  }
+  const capsules = await listCapsules();
+  const unresolved = capsules.filter((c) => !c.uploadedAt);
+  const manifests = await listCapsuleManifests();
+  return {
+    idbAvailable: true,
+    storagePersisted: quotaInfo.persisted,
+    quotaBytes: quotaInfo.quota,
+    usageBytes: quotaInfo.usage,
+    unresolvedCapsuleCount: unresolved.length,
+    unresolvedIncidentIds: unresolved.map((c) => c.voiceCrashIncidentId),
+    manifestCount: manifests.length,
+    manifests,
+  };
+}
+
   });
 }
