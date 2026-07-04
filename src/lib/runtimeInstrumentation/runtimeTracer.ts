@@ -1282,6 +1282,61 @@ export function recordErrorBoundaryCaught(detail: {
   });
 }
 
+/**
+ * Emit VOICE_REQUEST_NETWORK_FAILURE when a voice-to-text edge-function
+ * request fails and there is reason to believe the failure is network
+ * related (navigator offline, TypeError from fetch, etc).
+ */
+export function recordVoiceRequestNetworkFailure(detail: {
+  phase: string;
+  message: string | null;
+  errorName?: string | null;
+  online?: boolean | null;
+  extra?: Record<string, unknown>;
+}): void {
+  recordRuntimeEvent({
+    event_family: "voice",
+    event_name: "VOICE_REQUEST_NETWORK_FAILURE",
+    severity: "error",
+    payload: {
+      phase: detail.phase,
+      message: detail.message,
+      errorName: detail.errorName ?? null,
+      online:
+        detail.online ??
+        (typeof navigator !== "undefined" ? navigator.onLine : null),
+      ...(detail.extra ?? {}),
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
+/**
+ * Emit DB_CRITICAL_WRITE_NETWORK_FAILURE from any critical DB write path
+ * (keepalive flush, outbox insert, incident upsert) that fails.
+ */
+export function recordDbCriticalWriteFailure(detail: {
+  target: string;
+  message: string | null;
+  errorName?: string | null;
+  extra?: Record<string, unknown>;
+}): void {
+  recordRuntimeEvent({
+    event_family: "environment",
+    event_name: "DB_CRITICAL_WRITE_NETWORK_FAILURE",
+    severity: "error",
+    payload: {
+      target: detail.target,
+      message: detail.message,
+      errorName: detail.errorName ?? null,
+      online:
+        typeof navigator !== "undefined" ? navigator.onLine : null,
+      ...(detail.extra ?? {}),
+      ...pageLifecycleBase(),
+    },
+  });
+}
+
 export function bootRuntimeTracer(): void {
   if (booted || typeof window === "undefined") return;
   booted = true;
