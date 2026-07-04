@@ -14,6 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_message_delivery_trace: {
+        Row: {
+          authoritative_row_at: string | null
+          correlation_id: string | null
+          created_at: string
+          db_insert_failure_at: string | null
+          db_insert_start_at: string | null
+          db_insert_success_at: string | null
+          dealer_game_id: string | null
+          delivery_status: string | null
+          failure_reason: string | null
+          game_id: string | null
+          id: string
+          is_voice: boolean
+          message_id: string
+          optimistic_created_at: string | null
+          payload: Json | null
+          realtime_broadcast_at: string | null
+          recipient_ack_source: string | null
+          recipient_client_instance_id: string
+          recipient_device_label: string | null
+          recipient_dom_mount_at: string | null
+          recipient_icon_pulse_at: string | null
+          recipient_panel_selector_at: string | null
+          recipient_persistent_unread_at: string | null
+          recipient_read_at: string | null
+          recipient_realtime_receipt_at: string | null
+          recipient_store_admission_at: string | null
+          recipient_tab_session_id: string | null
+          recipient_unread_evaluated_at: string | null
+          recipient_user_id: string | null
+          render_status: string | null
+          send_intent_at: string | null
+          sender_client_instance_id: string | null
+          sender_device_label: string | null
+          sender_tab_session_id: string | null
+          sender_user_id: string | null
+          session_id: string | null
+          source_type: string | null
+          table_id: string | null
+          unread_status: string | null
+          updated_at: string
+          voice_operation_id: string | null
+        }
+        Insert: {
+          authoritative_row_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          db_insert_failure_at?: string | null
+          db_insert_start_at?: string | null
+          db_insert_success_at?: string | null
+          dealer_game_id?: string | null
+          delivery_status?: string | null
+          failure_reason?: string | null
+          game_id?: string | null
+          id?: string
+          is_voice?: boolean
+          message_id: string
+          optimistic_created_at?: string | null
+          payload?: Json | null
+          realtime_broadcast_at?: string | null
+          recipient_ack_source?: string | null
+          recipient_client_instance_id: string
+          recipient_device_label?: string | null
+          recipient_dom_mount_at?: string | null
+          recipient_icon_pulse_at?: string | null
+          recipient_panel_selector_at?: string | null
+          recipient_persistent_unread_at?: string | null
+          recipient_read_at?: string | null
+          recipient_realtime_receipt_at?: string | null
+          recipient_store_admission_at?: string | null
+          recipient_tab_session_id?: string | null
+          recipient_unread_evaluated_at?: string | null
+          recipient_user_id?: string | null
+          render_status?: string | null
+          send_intent_at?: string | null
+          sender_client_instance_id?: string | null
+          sender_device_label?: string | null
+          sender_tab_session_id?: string | null
+          sender_user_id?: string | null
+          session_id?: string | null
+          source_type?: string | null
+          table_id?: string | null
+          unread_status?: string | null
+          updated_at?: string
+          voice_operation_id?: string | null
+        }
+        Update: {
+          authoritative_row_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          db_insert_failure_at?: string | null
+          db_insert_start_at?: string | null
+          db_insert_success_at?: string | null
+          dealer_game_id?: string | null
+          delivery_status?: string | null
+          failure_reason?: string | null
+          game_id?: string | null
+          id?: string
+          is_voice?: boolean
+          message_id?: string
+          optimistic_created_at?: string | null
+          payload?: Json | null
+          realtime_broadcast_at?: string | null
+          recipient_ack_source?: string | null
+          recipient_client_instance_id?: string
+          recipient_device_label?: string | null
+          recipient_dom_mount_at?: string | null
+          recipient_icon_pulse_at?: string | null
+          recipient_panel_selector_at?: string | null
+          recipient_persistent_unread_at?: string | null
+          recipient_read_at?: string | null
+          recipient_realtime_receipt_at?: string | null
+          recipient_store_admission_at?: string | null
+          recipient_tab_session_id?: string | null
+          recipient_unread_evaluated_at?: string | null
+          recipient_user_id?: string | null
+          render_status?: string | null
+          send_intent_at?: string | null
+          sender_client_instance_id?: string | null
+          sender_device_label?: string | null
+          sender_tab_session_id?: string | null
+          sender_user_id?: string | null
+          session_id?: string | null
+          source_type?: string | null
+          table_id?: string | null
+          unread_status?: string | null
+          updated_at?: string
+          voice_operation_id?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string
@@ -97,6 +229,252 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_runtime_events: {
+        Row: {
+          active_tab: string | null
+          client_instance_id: string
+          correlation_id: string | null
+          created_at: string
+          dealer_game_id: string | null
+          error_message: string | null
+          error_name: string | null
+          error_stack: string | null
+          event_family: string
+          event_name: string
+          game_id: string | null
+          game_status: string | null
+          game_type: string | null
+          id: string
+          is_committed_active_session: boolean | null
+          message_id: string | null
+          occurred_at_client: string | null
+          occurred_at_server: string
+          online_state: boolean | null
+          payload: Json | null
+          route: string | null
+          session_id: string | null
+          severity: string
+          tab_session_id: string | null
+          table_id: string | null
+          user_id: string | null
+          visibility_state: string | null
+          voice_operation_id: string | null
+        }
+        Insert: {
+          active_tab?: string | null
+          client_instance_id: string
+          correlation_id?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          error_message?: string | null
+          error_name?: string | null
+          error_stack?: string | null
+          event_family: string
+          event_name: string
+          game_id?: string | null
+          game_status?: string | null
+          game_type?: string | null
+          id?: string
+          is_committed_active_session?: boolean | null
+          message_id?: string | null
+          occurred_at_client?: string | null
+          occurred_at_server?: string
+          online_state?: boolean | null
+          payload?: Json | null
+          route?: string | null
+          session_id?: string | null
+          severity?: string
+          tab_session_id?: string | null
+          table_id?: string | null
+          user_id?: string | null
+          visibility_state?: string | null
+          voice_operation_id?: string | null
+        }
+        Update: {
+          active_tab?: string | null
+          client_instance_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          error_message?: string | null
+          error_name?: string | null
+          error_stack?: string | null
+          event_family?: string
+          event_name?: string
+          game_id?: string | null
+          game_status?: string | null
+          game_type?: string | null
+          id?: string
+          is_committed_active_session?: boolean | null
+          message_id?: string | null
+          occurred_at_client?: string | null
+          occurred_at_server?: string
+          online_state?: boolean | null
+          payload?: Json | null
+          route?: string | null
+          session_id?: string | null
+          severity?: string
+          tab_session_id?: string | null
+          table_id?: string | null
+          user_id?: string | null
+          visibility_state?: string | null
+          voice_operation_id?: string | null
+        }
+        Relationships: []
+      }
+      client_runtime_incidents: {
+        Row: {
+          breadcrumb_event_ids: Json | null
+          client_instance_id: string | null
+          created_at: string
+          detected_at: string
+          game_id: string | null
+          id: string
+          incident_type: string
+          message_id: string | null
+          payload: Json | null
+          resolved_at: string | null
+          root_cause_status: string | null
+          session_id: string | null
+          severity: string
+          started_at: string | null
+          status: string
+          summary: string | null
+          table_id: string | null
+          updated_at: string
+          user_id: string | null
+          voice_operation_id: string | null
+        }
+        Insert: {
+          breadcrumb_event_ids?: Json | null
+          client_instance_id?: string | null
+          created_at?: string
+          detected_at?: string
+          game_id?: string | null
+          id?: string
+          incident_type: string
+          message_id?: string | null
+          payload?: Json | null
+          resolved_at?: string | null
+          root_cause_status?: string | null
+          session_id?: string | null
+          severity?: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          table_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+          voice_operation_id?: string | null
+        }
+        Update: {
+          breadcrumb_event_ids?: Json | null
+          client_instance_id?: string | null
+          created_at?: string
+          detected_at?: string
+          game_id?: string | null
+          id?: string
+          incident_type?: string
+          message_id?: string | null
+          payload?: Json | null
+          resolved_at?: string | null
+          root_cause_status?: string | null
+          session_id?: string | null
+          severity?: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          table_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+          voice_operation_id?: string | null
+        }
+        Relationships: []
+      }
+      client_runtime_instances: {
+        Row: {
+          app_build_id: string | null
+          app_publish_version: string | null
+          browser: string | null
+          browser_version: string | null
+          client_instance_id: string
+          created_at: string
+          device_label: string | null
+          device_type: string | null
+          display_name: string | null
+          id: string
+          last_committed_session_id: string | null
+          last_dealer_game_id: string | null
+          last_game_id: string | null
+          last_known_chat_tab_state: string | null
+          last_online_state: boolean | null
+          last_route: string | null
+          last_seen_at: string
+          last_table_id: string | null
+          last_visibility_state: string | null
+          os: string | null
+          os_version: string | null
+          tab_session_id: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_build_id?: string | null
+          app_publish_version?: string | null
+          browser?: string | null
+          browser_version?: string | null
+          client_instance_id: string
+          created_at?: string
+          device_label?: string | null
+          device_type?: string | null
+          display_name?: string | null
+          id?: string
+          last_committed_session_id?: string | null
+          last_dealer_game_id?: string | null
+          last_game_id?: string | null
+          last_known_chat_tab_state?: string | null
+          last_online_state?: boolean | null
+          last_route?: string | null
+          last_seen_at?: string
+          last_table_id?: string | null
+          last_visibility_state?: string | null
+          os?: string | null
+          os_version?: string | null
+          tab_session_id?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_build_id?: string | null
+          app_publish_version?: string | null
+          browser?: string | null
+          browser_version?: string | null
+          client_instance_id?: string
+          created_at?: string
+          device_label?: string | null
+          device_type?: string | null
+          display_name?: string | null
+          id?: string
+          last_committed_session_id?: string | null
+          last_dealer_game_id?: string | null
+          last_game_id?: string | null
+          last_known_chat_tab_state?: string | null
+          last_online_state?: boolean | null
+          last_route?: string | null
+          last_seen_at?: string
+          last_table_id?: string | null
+          last_visibility_state?: string | null
+          os?: string | null
+          os_version?: string | null
+          tab_session_id?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       cribbage_events: {
         Row: {
