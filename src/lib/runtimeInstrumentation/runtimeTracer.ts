@@ -537,6 +537,8 @@ export function beginRuntimeIncident(
     meta,
   };
   persistIncident(cachedIncident);
+  // Open a DB row immediately so cross-origin recovery can find it.
+  void openDbIncidentRow(id, kind, meta);
   return id;
 }
 
@@ -545,6 +547,9 @@ export function endRuntimeIncident(reason?: string): string | null {
   const id = cachedIncident?.id ?? null;
   if (cachedIncident && reason) {
     cachedIncident = { ...cachedIncident, meta: { ...cachedIncident.meta, endReason: reason } };
+  }
+  if (id) {
+    void closeDbIncidentRow(id, reason ?? "ended");
   }
   cachedIncident = null;
   persistIncident(null);
