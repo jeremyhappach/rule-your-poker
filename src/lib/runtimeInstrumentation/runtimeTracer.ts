@@ -1168,6 +1168,7 @@ export function recordActiveSessionMarker(
   event: | "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK"
          | "ACTIVE_SESSION_ROUTE_EJECTED"
          | "ACTIVE_SESSION_SHELL_UNMOUNTED"
+         | "ACTIVE_SESSION_AUTH_REDIRECT"
          | "PERSISTED_SESSION_RESTORE_FAILED",
   detail: {
     caller: string;
