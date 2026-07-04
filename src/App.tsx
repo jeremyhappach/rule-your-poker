@@ -217,6 +217,7 @@ const App = () => {
                   /diagnostics and copy the ledger, even when the game
                   UI is gone. Pure link + copy; no auth/session mutation. */}
               <SessionLifecycleRecoveryPill />
+              <IncidentReportBanner />
 
 
 
