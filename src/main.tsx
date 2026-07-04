@@ -22,7 +22,8 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
-import { bootRuntimeTracer, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { bootRuntimeTracer, getClientInstanceId, getTabSessionId, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { runRuntimePersistenceSelfCheck } from "@/lib/runtimeInstrumentation/runtimePipelineProof";
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other
 // module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
