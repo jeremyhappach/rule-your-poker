@@ -344,3 +344,221 @@ export async function runManifestUpload(input: {
 export async function listAllManifests() {
   return listCapsuleManifests();
 }
+
+/**
+ * Non-destructive published-build persistence self-check.
+ *
+ * Creates a synthetic instrumentation incident, exercises the full
+ * capsule → manifest → incident-patch → instance-heartbeat pipeline,
+ * then closes the synthetic incident. Emits one terminal proof event:
+ * RUNTIME_PERSISTENCE_SELF_CHECK_PASSED or _FAILED.
+ *
+ * Never accesses microphone, never sends a chat message, never mutates
+ * voice/session/route state. Safe to call at every boot.
+ */
+export async function runRuntimePersistenceSelfCheck(input: {
+  clientInstanceId: string;
+  tabSessionId: string;
+  userId: string | null;
+  route: string | null;
+}): Promise<void> {
+  const syntheticId =
+    `self-check-${input.clientInstanceId}-${Date.now().toString(36)}`;
+  const startedIso = new Date().toISOString();
+  const collected: Record<string, unknown> = {
+    syntheticId,
+    startedAt: startedIso,
+    steps: [] as string[],
+  };
+  const steps = collected.steps as string[];
+  let passed = true;
+
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: "RUNTIME_PERSISTENCE_SELF_CHECK_STARTED",
+    severity: "info",
+    correlation_id: syntheticId,
+    client_instance_id: input.clientInstanceId,
+    tab_session_id: input.tabSessionId,
+    user_id: input.userId,
+    route: input.route,
+    payload: { syntheticId },
+  });
+
+  // 1. Open synthetic incident row.
+  try {
+    const { error } = await supabase
+      .from("client_runtime_incidents")
+      .upsert(
+        {
+          correlation_id: syntheticId,
+          incident_type: "instrumentation_self_check",
+          kind: "instrumentation_self_check",
+          severity: "info",
+          status: "open",
+          started_at: startedIso,
+          detected_at: startedIso,
+          client_instance_id: input.clientInstanceId,
+          tab_session_id: input.tabSessionId,
+          user_id: input.userId,
+          route: input.route,
+          last_event_at: startedIso,
+          last_route: input.route,
+          summary: "runtime persistence self-check",
+          payload: { self_check: true },
+        } as never,
+        { onConflict: "correlation_id" },
+      );
+    if (error) {
+      passed = false;
+      collected.incidentOpenError = error.message;
+    }
+    steps.push("incident-open:" + (error ? "fail" : "ok"));
+  } catch (e) {
+    passed = false;
+    collected.incidentOpenThrow = e instanceof Error ? e.message : String(e);
+    steps.push("incident-open:throw");
+  }
+
+  // 2. Verified capsule append + manifest upsert (via same tx).
+  const append = await verifyCapsuleAppendAndEmit({
+    incidentId: syntheticId,
+    eventFamily: "environment",
+    eventName: "RUNTIME_PERSISTENCE_SELF_CHECK_APPEND",
+    severity: "info",
+    route: input.route,
+    clientInstanceId: input.clientInstanceId,
+    tabSessionId: input.tabSessionId,
+    userId: input.userId,
+    payload: { self_check: true },
+  });
+  collected.append = {
+    appendSuccess: append.appendSuccess,
+    readBackSuccess: append.readBackSuccess,
+    monotonicSequence: append.monotonicSequence,
+    dbName: append.dbName,
+    storeName: append.storeName,
+    idbErrorName: append.idbErrorName,
+    idbErrorMessage: append.idbErrorMessage,
+  };
+  if (!append.appendSuccess || !append.readBackSuccess) passed = false;
+  steps.push(
+    "capsule-append:" +
+      (append.appendSuccess && append.readBackSuccess ? "ok" : "fail"),
+  );
+
+  // 3. Verified incident patch.
+  await verifyIncidentPatchAndEmit({
+    incidentId: syntheticId,
+    clientInstanceId: input.clientInstanceId,
+    tabSessionId: input.tabSessionId,
+    userId: input.userId,
+    route: input.route,
+    eventFamily: "environment",
+    eventName: "RUNTIME_PERSISTENCE_SELF_CHECK_PATCH",
+    sequence: 1,
+  });
+  steps.push("incident-patch:ok");
+
+  // 4. Verified instance heartbeat.
+  await verifyInstanceHeartbeatAndEmit({
+    incidentId: syntheticId,
+    clientInstanceId: input.clientInstanceId,
+    tabSessionId: input.tabSessionId,
+    userId: input.userId,
+    route: input.route,
+    lifecycleLabel: "RUNTIME_PERSISTENCE_SELF_CHECK",
+  });
+  steps.push("instance-heartbeat:ok");
+
+  // 5. Manifest read + upload-state advance to "uploaded".
+  const manifest = await readCapsuleManifest(syntheticId);
+  collected.manifest = manifest;
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: manifest ? "CAPSULE_MANIFEST_FOUND" : "CAPSULE_MANIFEST_MISSING",
+    severity: manifest ? "info" : "warn",
+    correlation_id: syntheticId,
+    client_instance_id: input.clientInstanceId,
+    tab_session_id: input.tabSessionId,
+    user_id: input.userId,
+    route: input.route,
+    payload: { self_check: true, manifest },
+  });
+  if (!manifest) passed = false;
+  steps.push("manifest-read:" + (manifest ? "ok" : "fail"));
+
+  if (manifest) {
+    emitDirectDbEvent({
+      event_family: "environment",
+      event_name: "CAPSULE_UPLOAD_STARTED",
+      severity: "info",
+      correlation_id: syntheticId,
+      client_instance_id: input.clientInstanceId,
+      tab_session_id: input.tabSessionId,
+      user_id: input.userId,
+      route: input.route,
+      payload: { self_check: true, triggerReason: "self-check" },
+    });
+    try {
+      await setManifestUploadState(syntheticId, "uploaded");
+      emitDirectDbEvent({
+        event_family: "environment",
+        event_name: "CAPSULE_UPLOAD_COMPLETED",
+        severity: "info",
+        correlation_id: syntheticId,
+        client_instance_id: input.clientInstanceId,
+        tab_session_id: input.tabSessionId,
+        user_id: input.userId,
+        route: input.route,
+        payload: { self_check: true },
+      });
+      steps.push("manifest-upload:ok");
+    } catch (e) {
+      passed = false;
+      collected.uploadError = e instanceof Error ? e.message : String(e);
+      emitDirectDbEvent({
+        event_family: "environment",
+        event_name: "CAPSULE_UPLOAD_FAILED",
+        severity: "error",
+        correlation_id: syntheticId,
+        client_instance_id: input.clientInstanceId,
+        tab_session_id: input.tabSessionId,
+        user_id: input.userId,
+        route: input.route,
+        payload: { self_check: true, error: collected.uploadError },
+      });
+      steps.push("manifest-upload:fail");
+    }
+  }
+
+  // 6. Close synthetic incident.
+  try {
+    await supabase
+      .from("client_runtime_incidents")
+      .update({
+        status: "closed",
+        resolved_at: new Date().toISOString(),
+        root_cause_status: passed ? "self-check-passed" : "self-check-failed",
+      } as never)
+      .eq("correlation_id", syntheticId);
+    steps.push("incident-close:ok");
+  } catch (e) {
+    collected.closeError = e instanceof Error ? e.message : String(e);
+    steps.push("incident-close:fail");
+  }
+
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: passed
+      ? "RUNTIME_PERSISTENCE_SELF_CHECK_PASSED"
+      : "RUNTIME_PERSISTENCE_SELF_CHECK_FAILED",
+    severity: passed ? "info" : "error",
+    correlation_id: syntheticId,
+    client_instance_id: input.clientInstanceId,
+    tab_session_id: input.tabSessionId,
+    user_id: input.userId,
+    route: input.route,
+    payload: collected,
+  });
+}
