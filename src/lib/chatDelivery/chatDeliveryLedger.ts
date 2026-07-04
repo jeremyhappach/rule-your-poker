@@ -73,7 +73,10 @@ export type ChatDeliveryConsumer =
   | 'unread-selector'
   | 'indicator-selector'
   | 'Game.tsx'
-  | 'MobileGameTable';
+  | 'MobileGameTable'
+  | 'ChatAttentionProvider'
+  | 'ShellTabBar'
+  | 'turn-attention-audit';
 
 type ChatLikeMessage = {
   id: string;
