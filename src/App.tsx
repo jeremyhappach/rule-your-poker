@@ -160,6 +160,7 @@ const App = () => {
                 <Route path="/dice-preview" element={<DicePreview />} />
                 <Route path="/debug-deadlines" element={<DeadlineDebug />} />
                 <Route path="/diagnostics" element={<Diagnostics />} />
+                <Route path="/runtime-diagnostics" element={<RuntimeDiagnostics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
