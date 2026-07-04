@@ -137,63 +137,18 @@ function WaitingSurfaceBody({
 
   const [activeTab, setActiveTab] = useState<ShellTabId>("cards");
 
-  // Unread-chat indicator: mirror the in-game rules (green flash + red
-  // dot only for genuinely new remote messages received while chat is
-  // not the active tab; cleared immediately on chat open; never lit
-  // for historical hydration, own sends, or remounts).
-  const [chatUnread, setChatUnread] = useState(false);
-  const [chatFlashing, setChatFlashing] = useState(false);
-  const chatHydratedRef = useRef(false);
-  const lastSeenChatIdRef = useRef<string | null>(null);
-  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Waiting-table chat attention consumes the canonical ChatAttention
+  // contract exactly like every gameplay surface. No local unread
+  // derivation, no green flash, no bespoke timeout.
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
 
-  const latestChatMessage = allMessages.length > 0
-    ? (allMessages[allMessages.length - 1] as { id?: string; user_id?: string } | undefined)
-    : undefined;
-  const latestChatId = latestChatMessage?.id ?? null;
-  const latestChatUserId = latestChatMessage?.user_id ?? null;
-
-  useEffect(() => {
-    // First hydration snapshot establishes the baseline without lighting.
-    if (!chatHydratedRef.current) {
-      if (latestChatId) {
-        lastSeenChatIdRef.current = latestChatId;
-      }
-      chatHydratedRef.current = true;
-      return;
-    }
-    if (!latestChatId) return;
-    if (latestChatId === lastSeenChatIdRef.current) return;
-    // Own sends never light the indicator.
-    if (currentUserId && latestChatUserId === currentUserId) {
-      lastSeenChatIdRef.current = latestChatId;
-      return;
-    }
-    if (activeTab === "chat") {
-      lastSeenChatIdRef.current = latestChatId;
-      return;
-    }
-    lastSeenChatIdRef.current = latestChatId;
-    setChatUnread(true);
-    setChatFlashing(true);
-    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-    flashTimeoutRef.current = setTimeout(() => setChatFlashing(false), 1500);
-  }, [latestChatId, latestChatUserId, activeTab, currentUserId]);
-
-  useEffect(() => {
-    if (activeTab !== "chat") return;
-    if (flashTimeoutRef.current) {
-      clearTimeout(flashTimeoutRef.current);
-      flashTimeoutRef.current = null;
-    }
-    setChatFlashing(false);
-    setChatUnread(false);
-    if (latestChatId) lastSeenChatIdRef.current = latestChatId;
-  }, [activeTab, latestChatId]);
-
-  useEffect(() => () => {
-    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-  }, []);
+  const handleOpenChatTab = () => {
+    setActiveTab("chat");
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
+  };
 
   usePublishShellFelt({
     gameKind: deriveFeltGameKind(gameType),
@@ -207,9 +162,11 @@ function WaitingSurfaceBody({
     cardsIcon: "spade",
     activeTab,
     setActiveTab,
-    chatIndicator: chatUnread ? "red" : null,
-    chatFlashing: chatFlashing ? "green" : null,
+    onOpenChat: handleOpenChatTab,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
   });
+
 
   const actions = useWaitingRoomActions({
     gameId,
