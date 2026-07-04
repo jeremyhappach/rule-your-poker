@@ -173,17 +173,75 @@ export const MobileChatPanel = ({
   }, [messages]);
 
 
-  const handleSend = () => {
-    if (inputMessage.trim() && !isSending) {
-      onSend(inputMessage.trim());
-      setInputMessage('');
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const sendInFlightRef = useRef(false);
+
+  const appendTranscript = (base: string, transcript: string): string => {
+    const remaining = Math.max(0, 100 - base.length);
+    const insertion = transcript.slice(0, remaining);
+    const joiner = base && !base.endsWith(' ') ? ' ' : '';
+    return (base + joiner + insertion).slice(0, 100);
+  };
+
+  const performSend = (text: string): boolean => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'empty-after-finalize');
+      return false;
+    }
+    onSend(trimmed);
+    setInputMessage('');
+    voice.recordDiagnostic('VOICE_SEND_COMPLETE', `len=${trimmed.length}`);
+    return true;
+  };
+
+  const handleSend = async () => {
+    if (sendInFlightRef.current) {
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'send-in-flight');
+      return;
+    }
+    if (isSending) {
+      voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'parent-sending');
+      return;
+    }
+
+    // Path A: recording in progress — atomic finalize + send.
+    if (voice.state === 'recording') {
+      sendInFlightRef.current = true;
+      setIsFinalizing(true);
+      voice.recordDiagnostic('VOICE_SEND_DURING_RECORDING');
+      try {
+        const transcript = await voice.finalize();
+        voice.recordDiagnostic('VOICE_FINALIZATION_COMPLETE', transcript ? `chars=${transcript.length}` : 'empty');
+        if (!transcript) {
+          voice.recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'no-transcript');
+          return;
+        }
+        const next = appendTranscript(inputMessage, transcript);
+        setInputMessage(next);
+        performSend(next);
+      } finally {
+        setIsFinalizing(false);
+        sendInFlightRef.current = false;
+      }
+      return;
+    }
+
+    // Path B: normal text send.
+    if (inputMessage.trim()) {
+      sendInFlightRef.current = true;
+      try {
+        performSend(inputMessage);
+      } finally {
+        sendInFlightRef.current = false;
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -196,15 +254,12 @@ export const MobileChatPanel = ({
   };
 
   const handleMicToggle = async () => {
+    if (isFinalizing) return;
     if (voice.state === 'recording') {
+      // Mic button = stop + insert as editable draft. Never auto-sends.
       const transcript = await voice.stop();
       if (transcript) {
-        // Insert as an editable draft only. Never auto-send.
-        const remaining = Math.max(0, 100 - inputMessage.length);
-        const insertion = transcript.slice(0, remaining);
-        setInputMessage(
-          (inputMessage + (inputMessage && !inputMessage.endsWith(' ') ? ' ' : '') + insertion).slice(0, 100)
-        );
+        setInputMessage(appendTranscript(inputMessage, transcript));
         inputRef.current?.focus();
       }
       return;
@@ -217,9 +272,10 @@ export const MobileChatPanel = ({
   };
 
   const micTitle =
-    voice.state === 'recording' ? 'Stop recording' :
+    voice.state === 'recording' ? 'Stop recording (insert as draft)' :
     voice.state === 'transcribing' ? 'Transcribing…' :
     voice.state === 'error' ? (voice.error || 'Voice input error') :
+    voice.permission === 'denied' ? 'Microphone blocked — enable in site settings' :
     voice.isSupported ? 'Voice to text' : 'Voice input unavailable';
 
   const MicIcon =
@@ -231,9 +287,15 @@ export const MobileChatPanel = ({
   const micIconClass = [
     'h-4 w-4',
     voice.state === 'recording' ? 'text-red-400 animate-pulse' : '',
-    voice.state === 'transcribing' ? 'animate-spin' : '',
+    voice.state === 'transcribing' || isFinalizing ? 'animate-spin' : '',
     voice.state === 'error' ? 'text-amber-400' : '',
+    voice.permission === 'denied' && voice.state === 'idle' ? 'text-amber-400' : '',
   ].filter(Boolean).join(' ');
+
+  const sendDisabled =
+    isFinalizing ||
+    isSending ||
+    (voice.state !== 'recording' && !inputMessage.trim());
 
   type CombinedMessage =
     | (ChatMessage & { isDealer?: false })
