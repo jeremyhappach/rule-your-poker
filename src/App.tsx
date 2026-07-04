@@ -49,7 +49,7 @@ import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/Hol
 import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
 import Diagnostics from "@/pages/Diagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
-import { recordSessionIncident, recordSessionLifecycleEvent } from "@/lib/sessionLifecycleLedger";
+import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 
 
 
