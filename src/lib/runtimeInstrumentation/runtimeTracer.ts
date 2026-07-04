@@ -341,6 +341,19 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   }
   if (userIdBecameSet) {
     void runOpenIncidentScan();
+    // Emit auth-linked boot-recovery proof event so early boot events
+    // (which had user_id=null) can be joined to this authenticated user.
+    try {
+      recordRuntimeEvent({
+        event_family: "session",
+        event_name: "BOOT_RECOVERY_AUTH_LINKED",
+        severity: "info",
+        payload: {
+          linkedAtIso: new Date().toISOString(),
+          earlyBootSummary: __earlyBootSummary,
+        },
+      });
+    } catch { /* noop */ }
     // Flush any local capsules that outlived a signed-out interval or
     // were captured under an anonymous client_instance_id.
     try {
@@ -353,7 +366,82 @@ export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
         });
       });
     } catch { /* diagnostic; swallow */ }
+    // Run manifest upload for any known open incident ids.
+    try {
+      if (__earlyBootSummary?.unresolvedIncidentIds?.length) {
+        for (const cid of __earlyBootSummary.unresolvedIncidentIds) {
+          void runManifestUpload({
+            incidentId: cid,
+            clientInstanceId: getClientInstanceId(),
+            tabSessionId: getTabSessionId(),
+            userId: ambient.user_id,
+            route: currentRoute(),
+            triggerReason: "auth-linked",
+          });
+        }
+      }
+    } catch { /* noop */ }
   }
+}
+
+/**
+ * Snapshot of the earliest boot scan; populated by
+ * runEarlyBootPipelineProof() before React mounts. Held in module scope
+ * so that BOOT_RECOVERY_AUTH_LINKED can carry it once auth exists.
+ */
+let __earlyBootSummary: Awaited<ReturnType<typeof earlyBootCapsuleScan>> | null =
+  null;
+
+/**
+ * Runs BEFORE React mounts, BEFORE auth exists. Emits:
+ *   RUNTIME_BOOT_EARLY   (direct DB event, no correlation)
+ *   CAPSULE_SCAN_COMPLETE (direct DB event, no correlation)
+ * with the IndexedDB scan result. Never throws.
+ */
+export async function runEarlyBootPipelineProof(): Promise<void> {
+  const cid = getClientInstanceId();
+  const tid = getTabSessionId();
+  const route = currentRoute();
+  emitDirectDbEvent({
+    event_family: "session",
+    event_name: "RUNTIME_BOOT_EARLY",
+    severity: "info",
+    correlation_id: null,
+    client_instance_id: cid,
+    tab_session_id: tid,
+    user_id: null,
+    route,
+    payload: {
+      href: typeof window !== "undefined" ? window.location.href : null,
+      origin: typeof window !== "undefined" ? window.location.origin : null,
+      navigatorOnline:
+        typeof navigator !== "undefined" ? navigator.onLine : null,
+      visibilityState:
+        typeof document !== "undefined" ? document.visibilityState : null,
+      wasDiscarded:
+        typeof document !== "undefined"
+          ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ??
+            null
+          : null,
+      bootTsIso: new Date().toISOString(),
+    },
+  });
+  try {
+    __earlyBootSummary = await earlyBootCapsuleScan();
+  } catch {
+    __earlyBootSummary = null;
+  }
+  emitDirectDbEvent({
+    event_family: "environment",
+    event_name: "CAPSULE_SCAN_COMPLETE",
+    severity: __earlyBootSummary?.unresolvedCapsuleCount ? "warn" : "info",
+    correlation_id: null,
+    client_instance_id: cid,
+    tab_session_id: tid,
+    user_id: null,
+    route,
+    payload: __earlyBootSummary ?? { idbAvailable: false },
+  });
 }
 
 // ── UA parsing (best-effort) ───────────────────────────────────────
