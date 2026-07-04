@@ -1934,7 +1934,7 @@ export const CribbageMobileGameTable = ({
   // any legacy/deal green pulses. Uses authoritative cribbageState +
   // viewState fallback — not a generic betting predicate.
   const cribbageLocalTurnEligible = (() => {
-    if (isPaused) return false;
+    // No pause signal exists on the cribbage surface today; skip.
     if (!currentPlayerId) return false;
     const semanticState: CribbageState | null =
       (viewState as CribbageState | null) ?? cribbageState;
