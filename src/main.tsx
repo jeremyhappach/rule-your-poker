@@ -41,6 +41,21 @@ installAuthEjectionHistoryListener();
 installSessionLifecycleListeners();
 bootRuntimeTracer();
 
+// Non-destructive persistence self-check: exercises the entire
+// capsule → manifest → incident-patch → instance-heartbeat pipeline
+// against a synthetic incident. Emits RUNTIME_PERSISTENCE_SELF_CHECK_PASSED
+// (or _FAILED) so every published build proves basic instrumentation
+// wiring before any user attempts a voice repro.
+void runRuntimePersistenceSelfCheck({
+  clientInstanceId: getClientInstanceId(),
+  tabSessionId: getTabSessionId(),
+  userId: null,
+  route:
+    typeof window !== "undefined"
+      ? window.location.pathname + window.location.search
+      : null,
+});
+
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
 // and subscribes to realtime updates so every device stays in sync.
