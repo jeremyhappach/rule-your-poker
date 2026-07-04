@@ -47,15 +47,17 @@ export default function RuntimeDiagnostics() {
   }, []);
   const { isAdmin, loading: adminLoading } = useIsAdmin(userId);
 
-  const [tab, setTab] = useState<"events" | "incidents" | "delivery" | "instances">("events");
+  const [tab, setTab] = useState<"events" | "incidents" | "delivery" | "instances" | "incident-merged">("events");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastMarkers, setLastMarkers] = useState<Row | null>(null);
 
   const runQuery = async () => {
     setLoading(true);
     setError(null);
+    setLastMarkers(null);
     try {
       const sinceIso = new Date(Date.now() - filters.sinceMinutes * 60_000).toISOString();
       if (tab === "events") {
@@ -98,6 +100,47 @@ export default function RuntimeDiagnostics() {
         const { data, error: e } = await q;
         if (e) throw e;
         setRows((data ?? []) as Row[]);
+      } else if (tab === "incident-merged") {
+        const cid = filters.correlationId.trim();
+        if (!cid) throw new Error("incident-merged view requires a correlation_id");
+        const merged: Row[] = [];
+        // 1. Incident row
+        const inc = await supabase.from("client_runtime_incidents").select("*").eq("correlation_id", cid).limit(5);
+        for (const r of inc.data ?? []) merged.push({ __source: "incident", __ts: (r as Row).detected_at, ...r });
+        // 2. Instance rows
+        const instClient = (inc.data?.[0] as { client_instance_id?: string } | undefined)?.client_instance_id;
+        if (instClient) {
+          const ins = await supabase.from("client_runtime_instances").select("*").eq("client_instance_id", instClient).limit(10);
+          for (const r of ins.data ?? []) merged.push({ __source: "instance", __ts: (r as Row).last_seen_at, ...r });
+        }
+        // 3. Server events
+        const evs = await supabase.from("client_runtime_events").select("*").eq("correlation_id", cid).order("occurred_at_client", { ascending: true }).limit(2000);
+        for (const r of evs.data ?? []) merged.push({ __source: "event", __ts: (r as Row).occurred_at_client, ...r });
+        // 4. Outbox rows
+        const obx = await supabase.from("client_runtime_event_outbox").select("*").eq("correlation_id", cid).order("created_at", { ascending: true }).limit(2000);
+        for (const r of obx.data ?? []) merged.push({ __source: "outbox", __ts: (r as Row).created_at, ...r });
+        merged.sort((a, b) => String(a.__ts ?? "").localeCompare(String(b.__ts ?? "")));
+
+        // Explicit markers
+        const evList = (evs.data ?? []) as Row[];
+        const outboxDelivered = (obx.data ?? []).filter((r) => (r as Row).status === "delivered") as Row[];
+        const findLast = (pred: (r: Row) => boolean) => {
+          for (let i = evList.length - 1; i >= 0; i--) if (pred(evList[i])) return evList[i];
+          return null;
+        };
+        setLastMarkers({
+          lastDbConfirmedEvent: outboxDelivered.length ? outboxDelivered[outboxDelivered.length - 1] : null,
+          lastReadBackVerifiedEvent: findLast((r) => r.event_name === "CAPSULE_LOCAL_APPEND_VERIFIED"),
+          lastIncidentPatch: findLast((r) => r.event_name === "INCIDENT_PATCH_VERIFIED"),
+          lastInstanceHeartbeat: findLast((r) => r.event_name === "INSTANCE_HEARTBEAT_VERIFIED"),
+          lastBootRecoveryEvent: findLast((r) =>
+            r.event_name === "RUNTIME_BOOT_EARLY" ||
+            r.event_name === "CAPSULE_SCAN_COMPLETE" ||
+            r.event_name === "BOOT_RECOVERY_AUTH_LINKED" ||
+            r.event_name === "CAPSULE_RECOVERED_AFTER_BOOT",
+          ),
+        });
+        setRows(merged);
       } else {
         let q = supabase.from("client_runtime_instances").select("*")
           .order("last_seen_at", { ascending: false })
