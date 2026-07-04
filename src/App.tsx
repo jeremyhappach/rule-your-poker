@@ -116,6 +116,14 @@ const App = () => {
           ts: Date.now(),
         },
       });
+      try {
+        recordSessionIncident("FATAL_RENDER_OR_PROMISE_REJECTION", {
+          source: "App#unhandledrejection",
+          error: String(event.reason?.message ?? event.reason ?? "unknown"),
+        });
+      } catch {
+        /* noop */
+      }
       toast.error("An error occurred. Please try again.");
       event.preventDefault();
     };
