@@ -557,6 +557,19 @@ export function beginRuntimeIncident(
   persistIncident(cachedIncident);
   // Open a DB row immediately so cross-origin recovery can find it.
   void openDbIncidentRow(id, kind, meta);
+  // Open the durable local IndexedDB capsule for this incident. Every
+  // downstream event that carries this correlation_id will be appended
+  // there first, so the causal chain survives connectivity loss.
+  void openCapsule(id, {
+    clientInstanceId: getClientInstanceId(),
+    tabSessionId: getTabSessionId(),
+    origin: typeof window !== "undefined" ? window.location.origin : null,
+    route: currentRoute(),
+    userId: ambient.user_id,
+    opened_at: cachedIncident.started_at,
+    openedTsMs: Date.now(),
+    extra: meta,
+  });
   return id;
 }
 
