@@ -131,6 +131,9 @@ function openDb(): Promise<IDBDatabase | null> {
           s.createIndex("byIncident", "voiceCrashIncidentId", { unique: false });
           s.createIndex("byUploaded", "uploaded", { unique: false });
         }
+        if (!db.objectStoreNames.contains(STORE_MANIFESTS)) {
+          db.createObjectStore(STORE_MANIFESTS, { keyPath: "voiceCrashIncidentId" });
+        }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
