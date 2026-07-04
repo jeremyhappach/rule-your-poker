@@ -58,6 +58,8 @@ import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChatContext } from '@/hooks/GameChatContext';
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
+import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 
