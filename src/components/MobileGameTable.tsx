@@ -4873,13 +4873,27 @@ export const MobileGameTable = ({
       : isYourTurnNotOnCardsTab
         ? 'red'
         : null;
+    // Turn-attention audit telemetry (read-only, no behavior change).
+    recordChatDeliveryEvent({
+      phase: 'turn-attention-evaluated',
+      consumer: 'turn-attention-audit',
+      payload: {
+        game: gameType ?? (isDiceGame ? 'dice-family' : 'holm-family'),
+        activeTab,
+        localTurnEligible: !!(isPlayerTurn && !hasDecided && !isPaused && roundStatus === 'betting'),
+        iconKind: isDiceGame ? 'dice' : 'spade',
+        shouldBeRed: isYourTurnNotOnCardsTab,
+        renderedRed: cardsFlash === 'red',
+        suppressReason: isPaused ? 'paused' : (activeTab === 'cards' ? 'on-cards-tab' : (!isPlayerTurn ? 'not-your-turn' : (hasDecided ? 'already-decided' : (roundStatus !== 'betting' ? `phase:${roundStatus}` : null)))),
+      },
+    });
     useShellTabBar({
       cardsIcon: isDiceGame ? 'dice' : 'spade',
       activeTab,
       setActiveTab,
       cardsFlashing: cardsFlash,
-      chatFlashing: showGreenChatIndicator ? 'green' : null,
-      chatIndicator: showRedChatIndicator ? 'red' : null,
+      chatFlashing: chatAttentionTabProps.chatFlashing,
+      chatIndicator: chatAttentionTabProps.chatIndicator,
       onOpenChat: handleOpenChatTab,
       isPaused: !!isPaused,
     });
