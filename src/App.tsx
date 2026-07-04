@@ -51,6 +51,7 @@ import Diagnostics from "@/pages/Diagnostics";
 import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
+import { IncidentReportBanner } from "@/components/IncidentReportBanner";
 
 
 
@@ -216,6 +217,7 @@ const App = () => {
                   /diagnostics and copy the ledger, even when the game
                   UI is gone. Pure link + copy; no auth/session mutation. */}
               <SessionLifecycleRecoveryPill />
+              <IncidentReportBanner />
 
 
 

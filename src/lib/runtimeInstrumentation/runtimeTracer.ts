@@ -38,6 +38,11 @@ import {
   verifyIncidentPatchAndEmit,
   verifyInstanceHeartbeatAndEmit,
 } from "@/lib/runtimeInstrumentation/runtimePipelineProof";
+import {
+  noteRuntimeEventForWatchdog,
+  triggerIncidentReport,
+  triggerIncidentReportImmediate,
+} from "@/lib/runtimeInstrumentation/incidentReportTrigger";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -757,6 +762,8 @@ export function beginRuntimeIncident(
     openedTsMs: Date.now(),
     extra: meta,
   });
+  // Trigger initial autopsy row immediately at incident open.
+  triggerIncidentReport(id, "incident-open");
   return id;
 }
 
@@ -769,6 +776,8 @@ export function endRuntimeIncident(reason?: string): string | null {
   if (id) {
     void closeDbIncidentRow(id, reason ?? "ended");
     void closeCapsule(id, reason ?? "ended");
+    // Final autopsy update at close — fire immediately (tab may end soon).
+    triggerIncidentReportImmediate(id, `incident-close:${reason ?? "ended"}`);
   }
   cachedIncident = null;
   persistIncident(null);
@@ -926,6 +935,16 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       route: evt.route,
       lifecycleLabel: evt.event_name,
     });
+  }
+  // Autopsy trigger: every event carrying a correlation_id feeds the
+  // per-incident watchdog and requests a server-side report regeneration.
+  // Debounced per-incident inside the trigger module.
+  if (evt.correlation_id) {
+    noteRuntimeEventForWatchdog(evt.correlation_id);
+    triggerIncidentReport(
+      evt.correlation_id,
+      `event:${evt.event_family}/${evt.event_name}`,
+    );
   }
   const immediate =
     evt.severity === "critical" ||

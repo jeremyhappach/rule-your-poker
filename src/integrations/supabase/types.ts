@@ -383,6 +383,126 @@ export type Database = {
         }
         Relationships: []
       }
+      client_runtime_incident_reports: {
+        Row: {
+          acknowledged_at: string | null
+          auth_findings: Json | null
+          completed_at: string | null
+          correlation_id: string
+          created_at: string
+          data_completeness: Json | null
+          event_count: number
+          first_event: Json | null
+          id: string
+          incident_row_id: string | null
+          last_capsule_event: Json | null
+          last_confirmed_local_event: Json | null
+          last_generated_reason: string | null
+          last_incident_patch: Json | null
+          last_instance_heartbeat: Json | null
+          last_outbox_result: Json | null
+          last_server_event: Json | null
+          lifecycle_findings: Json | null
+          missing_boundaries: Json | null
+          narrative: string | null
+          network_findings: Json | null
+          original_client_instance_id: string | null
+          original_origin: string | null
+          original_route: string | null
+          original_tab_session_id: string | null
+          outbox_count: number
+          recovery_client_instance_id: string | null
+          recovery_origin: string | null
+          recovery_route: string | null
+          recovery_status: Json | null
+          recovery_tab_session_id: string | null
+          report_status: string
+          route_findings: Json | null
+          session_findings: Json | null
+          timeline: Json | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          auth_findings?: Json | null
+          completed_at?: string | null
+          correlation_id: string
+          created_at?: string
+          data_completeness?: Json | null
+          event_count?: number
+          first_event?: Json | null
+          id?: string
+          incident_row_id?: string | null
+          last_capsule_event?: Json | null
+          last_confirmed_local_event?: Json | null
+          last_generated_reason?: string | null
+          last_incident_patch?: Json | null
+          last_instance_heartbeat?: Json | null
+          last_outbox_result?: Json | null
+          last_server_event?: Json | null
+          lifecycle_findings?: Json | null
+          missing_boundaries?: Json | null
+          narrative?: string | null
+          network_findings?: Json | null
+          original_client_instance_id?: string | null
+          original_origin?: string | null
+          original_route?: string | null
+          original_tab_session_id?: string | null
+          outbox_count?: number
+          recovery_client_instance_id?: string | null
+          recovery_origin?: string | null
+          recovery_route?: string | null
+          recovery_status?: Json | null
+          recovery_tab_session_id?: string | null
+          report_status?: string
+          route_findings?: Json | null
+          session_findings?: Json | null
+          timeline?: Json | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          auth_findings?: Json | null
+          completed_at?: string | null
+          correlation_id?: string
+          created_at?: string
+          data_completeness?: Json | null
+          event_count?: number
+          first_event?: Json | null
+          id?: string
+          incident_row_id?: string | null
+          last_capsule_event?: Json | null
+          last_confirmed_local_event?: Json | null
+          last_generated_reason?: string | null
+          last_incident_patch?: Json | null
+          last_instance_heartbeat?: Json | null
+          last_outbox_result?: Json | null
+          last_server_event?: Json | null
+          lifecycle_findings?: Json | null
+          missing_boundaries?: Json | null
+          narrative?: string | null
+          network_findings?: Json | null
+          original_client_instance_id?: string | null
+          original_origin?: string | null
+          original_route?: string | null
+          original_tab_session_id?: string | null
+          outbox_count?: number
+          recovery_client_instance_id?: string | null
+          recovery_origin?: string | null
+          recovery_route?: string | null
+          recovery_status?: Json | null
+          recovery_tab_session_id?: string | null
+          report_status?: string
+          route_findings?: Json | null
+          session_findings?: Json | null
+          timeline?: Json | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_runtime_incidents: {
         Row: {
           app_build_id: string | null
