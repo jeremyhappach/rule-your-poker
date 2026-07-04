@@ -48,6 +48,7 @@ import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
 import Diagnostics from "@/pages/Diagnostics";
+import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 
@@ -159,6 +160,7 @@ const App = () => {
                 <Route path="/dice-preview" element={<DicePreview />} />
                 <Route path="/debug-deadlines" element={<DeadlineDebug />} />
                 <Route path="/diagnostics" element={<Diagnostics />} />
+                <Route path="/runtime-diagnostics" element={<RuntimeDiagnostics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
@@ -96,6 +97,14 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const next = [...prev, evt];
       return next.length > 12 ? next.slice(next.length - 12) : next;
     });
+    try {
+      recordRuntimeEvent({
+        event_family: 'voice',
+        event_name: code,
+        severity: code === 'VOICE_SEND_BLOCKED_REASON' ? 'warn' : 'info',
+        payload: detail ? { detail } : undefined,
+      });
+    } catch { /* noop */ }
   }, []);
 
   const reset = useCallback(() => {

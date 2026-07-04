@@ -11,6 +11,11 @@ import {
   recordChatRealtimeCallbackEnd,
   recordSessionLifecycleEvent,
 } from '@/lib/sessionLifecycleLedger';
+import {
+  recordRuntimeEvent,
+  upsertDeliveryTrace,
+  getClientInstanceId,
+} from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 interface ChatMessage {
   id: string;
@@ -202,11 +207,21 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
+      const correlationId = `chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      const sendIntentAt = new Date().toISOString();
       recordChatDeliveryEvent({
         phase: 'send-intent',
         gameId,
         consumer: 'canonical-store',
-        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile), currentUserId: currentUserId ?? null },
+        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile), currentUserId: currentUserId ?? null, correlationId },
+      });
+      recordRuntimeEvent({
+        event_family: 'chat',
+        event_name: 'SEND_INTENT',
+        severity: 'info',
+        correlation_id: correlationId,
+        game_id: gameId,
+        payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile) },
       });
 
       setIsSending(true);
@@ -249,6 +264,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           return next;
         });
 
+        const dbStartAt = new Date().toISOString();
+        recordRuntimeEvent({
+          event_family: 'chat',
+          event_name: 'DB_INSERT_START',
+          correlation_id: correlationId,
+          game_id: gameId,
+        });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
@@ -258,19 +280,44 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
         if (error) {
           console.error('Error sending chat message:', error);
+          const failureAt = new Date().toISOString();
           recordChatDeliveryEvent({
             phase: 'insert-error',
             message: optimisticMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { error: error.message, optimisticId },
+            payload: { error: error.message, optimisticId, correlationId },
           });
           recordChatDeliveryViolation({
             violation: 'CHAT_MESSAGE_WRITE_NOT_CONFIRMED',
             message: optimisticMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { error: error.message, optimisticId },
+            payload: { error: error.message, optimisticId, correlationId },
+          });
+          recordRuntimeEvent({
+            event_family: 'chat',
+            event_name: 'DB_INSERT_FAILURE',
+            severity: 'error',
+            correlation_id: correlationId,
+            game_id: gameId,
+            error,
+            payload: { optimisticId },
+          });
+          void upsertDeliveryTrace({
+            message_id: optimisticId,
+            recipient_client_instance_id: getClientInstanceId(),
+            correlation_id: correlationId,
+            sender_user_id: userId,
+            sender_client_instance_id: getClientInstanceId(),
+            game_id: gameId,
+            source_type: 'text',
+            send_intent_at: sendIntentAt,
+            optimistic_created_at: sentAt,
+            db_insert_start_at: dbStartAt,
+            db_insert_failure_at: failureAt,
+            delivery_status: 'insert-error',
+            failure_reason: error.message,
           });
           setAllMessages(prev => {
             const next = prev.filter(m => m.id !== optimisticId);
@@ -286,12 +333,36 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             return next;
           });
         } else if (data) {
+          const successAt = new Date().toISOString();
           recordChatDeliveryEvent({
             phase: 'insert-success',
             message: data as ChatMessage,
             gameId,
             consumer: 'canonical-store',
-            payload: { optimisticId, authoritativeId: data.id },
+            payload: { optimisticId, authoritativeId: data.id, correlationId },
+          });
+          recordRuntimeEvent({
+            event_family: 'chat',
+            event_name: 'DB_INSERT_SUCCESS',
+            correlation_id: correlationId,
+            game_id: gameId,
+            message_id: data.id,
+            payload: { optimisticId },
+          });
+          void upsertDeliveryTrace({
+            message_id: data.id,
+            recipient_client_instance_id: getClientInstanceId(),
+            correlation_id: correlationId,
+            sender_user_id: userId,
+            sender_client_instance_id: getClientInstanceId(),
+            game_id: gameId,
+            source_type: 'text',
+            send_intent_at: sendIntentAt,
+            optimistic_created_at: sentAt,
+            db_insert_start_at: dbStartAt,
+            db_insert_success_at: successAt,
+            authoritative_row_at: (data as { created_at?: string }).created_at ?? successAt,
+            delivery_status: 'insert-success',
           });
           // Drop optimistic and merge authoritative row. Realtime may
           // also fire for the same id; mergeMessages dedupes.
@@ -522,12 +593,31 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             payloadGameId: newMessage.game_id,
           });
           try {
+            const receiptAt = new Date().toISOString();
             recordChatDeliveryEvent({
               phase: 'realtime-insert-received',
               message: newMessage,
               gameId,
               consumer: 'canonical-store',
               payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+            });
+            recordRuntimeEvent({
+              event_family: 'chat',
+              event_name: 'REALTIME_RECEIPT',
+              game_id: gameId,
+              message_id: newMessage.id,
+              payload: { sender_user_id: newMessage.user_id },
+            });
+            void upsertDeliveryTrace({
+              message_id: newMessage.id,
+              recipient_client_instance_id: getClientInstanceId(),
+              recipient_user_id: currentUserId ?? null,
+              sender_user_id: newMessage.user_id,
+              game_id: gameId,
+              source_type: 'text',
+              recipient_realtime_receipt_at: receiptAt,
+              authoritative_row_at: newMessage.created_at ?? receiptAt,
+              delivery_status: 'realtime-received',
             });
             if (newMessage.game_id !== gameId) {
               recordChatDeliveryViolation({
@@ -545,6 +635,11 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             });
             setLatestRealtimeMessage(newMessage);
             addBubble(newMessage);
+            void upsertDeliveryTrace({
+              message_id: newMessage.id,
+              recipient_client_instance_id: getClientInstanceId(),
+              recipient_store_admission_at: new Date().toISOString(),
+            });
             recordSessionLifecycleEvent('CHAT_STORE_UPDATE_END', {
               gameId,
               messageId: newMessage.id,

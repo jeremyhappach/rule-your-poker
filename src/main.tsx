@@ -22,6 +22,7 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
+import { bootRuntimeTracer, recordRuntimeEvent, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
 
 // Wartime: install the auth-ejection ledger history listener BEFORE any
 // route mounts so a redirect to /auth is captured with pre-teardown context.
@@ -32,6 +33,7 @@ installAuthEjectionHistoryListener();
 // the very first frame — including when the app boots directly onto
 // /auth or a legacy Join fallback screen.
 installSessionLifecycleListeners();
+bootRuntimeTracer();
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
@@ -72,6 +74,17 @@ supabase.auth.onAuthStateChange((event, session) => {
       },
       { userId: session?.user?.id ?? null },
     );
+  } catch {
+    /* noop */
+  }
+  try {
+    setRuntimeAmbient({ user_id: session?.user?.id ?? null });
+    recordRuntimeEvent({
+      event_family: "auth",
+      event_name: event === "TOKEN_REFRESHED" && !session ? "TOKEN_REFRESH_FAILED" : "AUTH_STATE_CHANGE",
+      severity: event === "TOKEN_REFRESHED" && !session ? "error" : "info",
+      payload: { supabaseEvent: event, hasSession: !!session, expiresAt: session?.expires_at ?? null },
+    });
   } catch {
     /* noop */
   }
