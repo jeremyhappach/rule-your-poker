@@ -1967,7 +1967,7 @@ export const CribbageMobileGameTable = ({
       renderedRed: cribbageCardsFlash === 'red',
       suppressReason: cribbageLocalTurnEligible
         ? (activeTab === 'cards' ? 'on-cards-tab' : null)
-        : (isPaused ? 'paused' : 'no-actionable-phase'),
+        : 'no-actionable-phase',
     },
   });
   useShellTabBar({
