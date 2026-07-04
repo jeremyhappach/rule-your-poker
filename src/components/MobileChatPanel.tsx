@@ -439,7 +439,7 @@ export const MobileChatPanel = ({
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value.slice(0, 100))}
             onKeyDown={handleKeyDown}
-            placeholder={voice.state === 'recording' ? 'Recording…' : 'Type…'}
+            placeholder={isFinalizing ? 'Finalizing…' : voice.state === 'recording' ? 'Recording…' : 'Type…'}
             className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 h-9 text-sm min-w-0"
             style={{ fontSize: '16px' }}
             maxLength={100}
