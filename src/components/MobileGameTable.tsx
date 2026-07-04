@@ -48,6 +48,11 @@ import {
 } from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import {
+  recordShellMount,
+  recordShellUnmount,
+  setSessionLifecycleAmbient,
+} from "@/lib/sessionLifecycleLedger";
 
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { useHolmLifecycleTrace } from "@/lib/holm/holmLifecycleTrace";
