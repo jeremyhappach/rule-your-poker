@@ -230,6 +230,66 @@ export type Database = {
           },
         ]
       }
+      client_runtime_event_outbox: {
+        Row: {
+          attempts: number
+          client_instance_id: string
+          correlation_id: string | null
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          error_name: string | null
+          event_family: string
+          event_name: string
+          event_row: Json
+          failed_at: string | null
+          id: string
+          severity: string | null
+          status: string
+          tab_session_id: string | null
+          transport: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          client_instance_id: string
+          correlation_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          error_name?: string | null
+          event_family: string
+          event_name: string
+          event_row: Json
+          failed_at?: string | null
+          id?: string
+          severity?: string | null
+          status?: string
+          tab_session_id?: string | null
+          transport?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          client_instance_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          error_name?: string | null
+          event_family?: string
+          event_name?: string
+          event_row?: Json
+          failed_at?: string | null
+          id?: string
+          severity?: string | null
+          status?: string
+          tab_session_id?: string | null
+          transport?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_runtime_events: {
         Row: {
           active_tab: string | null
@@ -325,66 +385,114 @@ export type Database = {
       }
       client_runtime_incidents: {
         Row: {
+          app_build_id: string | null
+          app_publish_version: string | null
           breadcrumb_event_ids: Json | null
           client_instance_id: string | null
+          correlation_id: string | null
           created_at: string
+          dealer_game_id: string | null
           detected_at: string
+          event_sequence: number
           game_id: string | null
           id: string
           incident_type: string
+          kind: string | null
+          last_error_message: string | null
+          last_error_name: string | null
+          last_event_at: string | null
+          last_lifecycle_event: string | null
+          last_route: string | null
+          last_visibility_state: string | null
+          last_voice_phase: string | null
           message_id: string | null
+          origin: string | null
           payload: Json | null
           resolved_at: string | null
           root_cause_status: string | null
+          route: string | null
           session_id: string | null
           severity: string
           started_at: string | null
           status: string
           summary: string | null
+          tab_session_id: string | null
           table_id: string | null
           updated_at: string
           user_id: string | null
           voice_operation_id: string | null
         }
         Insert: {
+          app_build_id?: string | null
+          app_publish_version?: string | null
           breadcrumb_event_ids?: Json | null
           client_instance_id?: string | null
+          correlation_id?: string | null
           created_at?: string
+          dealer_game_id?: string | null
           detected_at?: string
+          event_sequence?: number
           game_id?: string | null
           id?: string
           incident_type: string
+          kind?: string | null
+          last_error_message?: string | null
+          last_error_name?: string | null
+          last_event_at?: string | null
+          last_lifecycle_event?: string | null
+          last_route?: string | null
+          last_visibility_state?: string | null
+          last_voice_phase?: string | null
           message_id?: string | null
+          origin?: string | null
           payload?: Json | null
           resolved_at?: string | null
           root_cause_status?: string | null
+          route?: string | null
           session_id?: string | null
           severity?: string
           started_at?: string | null
           status?: string
           summary?: string | null
+          tab_session_id?: string | null
           table_id?: string | null
           updated_at?: string
           user_id?: string | null
           voice_operation_id?: string | null
         }
         Update: {
+          app_build_id?: string | null
+          app_publish_version?: string | null
           breadcrumb_event_ids?: Json | null
           client_instance_id?: string | null
+          correlation_id?: string | null
           created_at?: string
+          dealer_game_id?: string | null
           detected_at?: string
+          event_sequence?: number
           game_id?: string | null
           id?: string
           incident_type?: string
+          kind?: string | null
+          last_error_message?: string | null
+          last_error_name?: string | null
+          last_event_at?: string | null
+          last_lifecycle_event?: string | null
+          last_route?: string | null
+          last_visibility_state?: string | null
+          last_voice_phase?: string | null
           message_id?: string | null
+          origin?: string | null
           payload?: Json | null
           resolved_at?: string | null
           root_cause_status?: string | null
+          route?: string | null
           session_id?: string | null
           severity?: string
           started_at?: string | null
           status?: string
           summary?: string | null
+          tab_session_id?: string | null
           table_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -394,6 +502,7 @@ export type Database = {
       }
       client_runtime_instances: {
         Row: {
+          active_incident_id: string | null
           app_build_id: string | null
           app_publish_version: string | null
           browser: string | null
@@ -403,16 +512,19 @@ export type Database = {
           device_label: string | null
           device_type: string | null
           display_name: string | null
+          document_was_discarded: boolean | null
           id: string
           last_committed_session_id: string | null
           last_dealer_game_id: string | null
           last_game_id: string | null
           last_known_chat_tab_state: string | null
+          last_lifecycle_event: string | null
           last_online_state: boolean | null
           last_route: string | null
           last_seen_at: string
           last_table_id: string | null
           last_visibility_state: string | null
+          origin: string | null
           os: string | null
           os_version: string | null
           tab_session_id: string | null
@@ -421,6 +533,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          active_incident_id?: string | null
           app_build_id?: string | null
           app_publish_version?: string | null
           browser?: string | null
@@ -430,16 +543,19 @@ export type Database = {
           device_label?: string | null
           device_type?: string | null
           display_name?: string | null
+          document_was_discarded?: boolean | null
           id?: string
           last_committed_session_id?: string | null
           last_dealer_game_id?: string | null
           last_game_id?: string | null
           last_known_chat_tab_state?: string | null
+          last_lifecycle_event?: string | null
           last_online_state?: boolean | null
           last_route?: string | null
           last_seen_at?: string
           last_table_id?: string | null
           last_visibility_state?: string | null
+          origin?: string | null
           os?: string | null
           os_version?: string | null
           tab_session_id?: string | null
@@ -448,6 +564,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          active_incident_id?: string | null
           app_build_id?: string | null
           app_publish_version?: string | null
           browser?: string | null
@@ -457,16 +574,19 @@ export type Database = {
           device_label?: string | null
           device_type?: string | null
           display_name?: string | null
+          document_was_discarded?: boolean | null
           id?: string
           last_committed_session_id?: string | null
           last_dealer_game_id?: string | null
           last_game_id?: string | null
           last_known_chat_tab_state?: string | null
+          last_lifecycle_event?: string | null
           last_online_state?: boolean | null
           last_route?: string | null
           last_seen_at?: string
           last_table_id?: string | null
           last_visibility_state?: string | null
+          origin?: string | null
           os?: string | null
           os_version?: string | null
           tab_session_id?: string | null
