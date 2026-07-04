@@ -81,6 +81,8 @@ import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useKnockSound } from '@/hooks/useKnockSound';
 import { useGameChatContext } from '@/hooks/GameChatContext';
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
+import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
