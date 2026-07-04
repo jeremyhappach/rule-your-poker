@@ -29,7 +29,14 @@ type ChatLifecyclePhase =
   | 'indicator-cleared'
   | 'read-cursor-advanced'
   | 'realtime-eligible-observed'
-  | 'console-chat-indicator';
+  | 'console-chat-indicator'
+  | 'chat-attention-transition'
+  | 'chat-attention-pulse-armed'
+  | 'chat-attention-pulse-completed'
+  | 'chat-attention-pulse-cancelled'
+  | 'chat-attention-pulse-restarted'
+  | 'chat-attention-icon-resolved'
+  | 'turn-attention-evaluated';
 
 export type ChatDeliveryViolation =
   | 'CHAT_MESSAGE_WRITE_NOT_CONFIRMED'
