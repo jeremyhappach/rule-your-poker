@@ -253,21 +253,45 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const rec = new MediaRecorder(stream);
       rec.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        try {
+          recordDiagnostic(
+            'VOICE_MEDIARECORDER_DATAAVAILABLE',
+            `bytes=${e.data?.size ?? 0}`,
+          );
+        } catch { /* noop */ }
       };
       recorderRef.current = rec;
+      captureStartedAtRef.current = Date.now();
       rec.start();
       setError(null);
       setState('recording');
       // Open a durable runtime incident id that survives tab replacement
       // and browser relaunch. Every downstream event (encode, invoke,
       // send, page-lifecycle) attaches to this id via correlation_id.
-      const incidentId = beginRuntimeIncident('voice-send', {
+      const incidentId = beginRuntimeIncident('voice_capture', {
         opened_at: new Date().toISOString(),
         mimeType: rec.mimeType || 'audio/webm',
       });
+      // Force an immediate instance heartbeat so the DB shows this tab
+      // is actively capturing before any other event lands.
+      forceInstanceHeartbeat('VOICE_CAPTURE_START');
       recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId}`);
       // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
+
+      // 1s pre-stop heartbeat so the missing-boundary window between
+      // VOICE_CAPTURE_STARTED and VOICE_CAPTURE_STOP_REQUESTED is
+      // fully observable in the DB.
+      stopHeartbeat();
+      heartbeatTimerRef.current = setInterval(() => {
+        try {
+          const elapsed =
+            captureStartedAtRef.current !== null
+              ? Date.now() - captureStartedAtRef.current
+              : 0;
+          recordDiagnostic('VOICE_RECORDING_HEARTBEAT', `elapsedMs=${elapsed}`);
+        } catch { /* noop */ }
+      }, 1000);
     } catch (err) {
       const name = (err as { name?: string })?.name;
       const msg = err instanceof Error ? err.message : String(err);
@@ -282,8 +306,10 @@ export function useVoiceToText(): UseVoiceToTextResult {
       }
       setState('error');
       releaseStream();
+      stopHeartbeat();
+      captureStartedAtRef.current = null;
     }
-  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state]);
+  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
 
   // Internal: stop the recorder and transcribe. Optionally release the stream
   // after transcription. Returns the transcript, or null on error/empty.
