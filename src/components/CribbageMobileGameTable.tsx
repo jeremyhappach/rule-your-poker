@@ -713,6 +713,7 @@ export const CribbageMobileGameTable = ({
 
     setChatTabFlashing(false);
     setHasUnreadMessages(false);
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
     setActiveTab('chat');
 
     if (latestEligibleMessage && lastReadChatMessageIdRef.current !== latestEligibleMessage.id) {
