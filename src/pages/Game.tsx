@@ -214,6 +214,7 @@ function supportsDealerSelectionOverlay(gameType: string | null | undefined): bo
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { GameChatContextProvider } from "@/hooks/GameChatContext";
+import { ChatAttentionProvider } from "@/hooks/ChatAttention";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
