@@ -22,22 +22,40 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import {
+  recordRuntimeEvent,
+  beginRuntimeIncident,
+  endRuntimeIncident,
+  getActiveRuntimeIncidentId,
+} from '@/lib/runtimeInstrumentation/runtimeTracer';
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
 
+export type VoiceDiagnosticCode =
+  | 'VOICE_PERMISSION_STATE'
+  | 'VOICE_PERMISSION_REQUESTED'
+  | 'VOICE_CAPTURE_STARTED'
+  | 'VOICE_CAPTURE_START'
+  | 'VOICE_CAPTURE_STOP_REQUESTED'
+  | 'VOICE_BLOB_READY'
+  | 'VOICE_ENCODE_START'
+  | 'VOICE_ENCODE_COMPLETE'
+  | 'VOICE_FN_INVOKE_START'
+  | 'VOICE_FN_INVOKE_RESPONSE'
+  | 'VOICE_FN_INVOKE_ERROR'
+  | 'VOICE_FINALIZE_RETURN'
+  | 'VOICE_SEND_DURING_RECORDING'
+  | 'VOICE_FINALIZATION_COMPLETE'
+  | 'VOICE_SEND_BEGIN'
+  | 'VOICE_SEND_BLOCKED_REASON'
+  | 'VOICE_SEND_BLOCKED'
+  | 'VOICE_SEND_COMPLETE';
+
 export interface VoiceDiagnosticEvent {
   id: number;
   ts: number;
-  code:
-    | 'VOICE_PERMISSION_STATE'
-    | 'VOICE_PERMISSION_REQUESTED'
-    | 'VOICE_CAPTURE_STARTED'
-    | 'VOICE_SEND_DURING_RECORDING'
-    | 'VOICE_FINALIZATION_COMPLETE'
-    | 'VOICE_SEND_BLOCKED_REASON'
-    | 'VOICE_SEND_COMPLETE';
+  code: VoiceDiagnosticCode;
   detail?: string;
 }
 
