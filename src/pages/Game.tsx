@@ -13236,6 +13236,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           chatConversationKey,
         }}
       >
+      <ChatAttentionProvider currentUserId={user?.id}>
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
