@@ -6,6 +6,11 @@ import {
   recordChatDeliveryViolation,
   recordConsumerSubscription,
 } from '@/lib/chatDelivery/chatDeliveryLedger';
+import {
+  recordChatRealtimeCallbackBegin,
+  recordChatRealtimeCallbackEnd,
+  recordSessionLifecycleEvent,
+} from '@/lib/sessionLifecycleLedger';
 
 interface ChatMessage {
   id: string;
