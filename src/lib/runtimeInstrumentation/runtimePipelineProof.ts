@@ -141,6 +141,28 @@ export async function verifyCapsuleAppendAndEmit(input: {
       usageEstimateBytes: result.usageEstimateBytes,
     },
   });
+  // The verified-append transaction also upserts the manifest row for this
+  // incident (see appendCapsuleEventVerified). Emit a separate proof event
+  // so `CAPSULE_MANIFEST_UPDATED` can be queried independently of the
+  // append proof.
+  if (ok) {
+    emitDirectDbEvent({
+      event_family: "environment",
+      event_name: "CAPSULE_MANIFEST_UPDATED",
+      severity: "info",
+      correlation_id: input.incidentId,
+      client_instance_id: input.clientInstanceId,
+      tab_session_id: input.tabSessionId,
+      user_id: input.userId,
+      route: input.route,
+      payload: {
+        forEventName: input.eventName,
+        monotonicSequence: result.monotonicSequence,
+        manifestStore: "manifests",
+        dbName: result.dbName,
+      },
+    });
+  }
   return result;
 }
 
