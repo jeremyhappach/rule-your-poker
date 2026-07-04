@@ -907,5 +907,3 @@ export async function earlyBootCapsuleScan(): Promise<{
   };
 }
 
-  });
-}
