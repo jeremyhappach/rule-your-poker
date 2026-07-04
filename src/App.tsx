@@ -47,6 +47,9 @@ import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
+import Diagnostics from "@/pages/Diagnostics";
+import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
+import { recordSessionIncident, recordSessionLifecycleEvent } from "@/lib/sessionLifecycleLedger";
 
 
 
