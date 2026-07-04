@@ -34,9 +34,56 @@ const APP_PUBLISH_VERSION =
 const CLIENT_INSTANCE_KEY = "runtime-tracer:client-instance-id";
 const TAB_SESSION_KEY = "runtime-tracer:tab-session-id";
 const RETRY_QUEUE_KEY = "runtime-tracer:retry-queue-v1";
+const INCIDENT_KEY = "runtime-tracer:active-incident-v1";
 const RETRY_QUEUE_MAX = 500;
 const BATCH_MAX = 20;
 const BATCH_INTERVAL_MS = 800;
+
+const SUPABASE_URL =
+  (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    ?.VITE_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY =
+  (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    ?.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+
+/**
+ * Events that must reach the server even if the tab is about to be
+ * killed/discarded/relaunched. They are flushed synchronously via
+ * `fetch(..., {keepalive:true})` instead of the batched supabase-js path.
+ */
+const IMMEDIATE_EVENT_NAMES = new Set<string>([
+  // Voice boundaries
+  "VOICE_CAPTURE_START",
+  "VOICE_CAPTURE_STOP_REQUESTED",
+  "VOICE_BLOB_READY",
+  "VOICE_ENCODE_START",
+  "VOICE_ENCODE_COMPLETE",
+  "VOICE_FN_INVOKE_START",
+  "VOICE_FN_INVOKE_RESPONSE",
+  "VOICE_FN_INVOKE_ERROR",
+  "VOICE_FINALIZE_RETURN",
+  "VOICE_SEND_BEGIN",
+  "VOICE_SEND_COMPLETE",
+  "VOICE_SEND_BLOCKED",
+  // Page lifetime
+  "PAGE_HIDE",
+  "PAGE_SHOW",
+  "BEFORE_UNLOAD",
+  "UNLOAD",
+  "FREEZE",
+  "RESUME",
+  "WINDOW_ERROR",
+  "UNHANDLED_REJECTION",
+  "ERROR_BOUNDARY_CAUGHT",
+  "BOOT",
+  "BOOT_RECOVERY_REPLAY",
+  // Session/route markers
+  "ROUTE_REDIRECT",
+  "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+  "ACTIVE_SESSION_ROUTE_EJECTED",
+  "ACTIVE_SESSION_SHELL_UNMOUNTED",
+  "PERSISTED_SESSION_RESTORE_FAILED",
+]);
 
 type Severity = "debug" | "info" | "warn" | "error" | "critical";
 
