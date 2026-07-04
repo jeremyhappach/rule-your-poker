@@ -593,12 +593,31 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             payloadGameId: newMessage.game_id,
           });
           try {
+            const receiptAt = new Date().toISOString();
             recordChatDeliveryEvent({
               phase: 'realtime-insert-received',
               message: newMessage,
               gameId,
               consumer: 'canonical-store',
               payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
+            });
+            recordRuntimeEvent({
+              event_family: 'chat',
+              event_name: 'REALTIME_RECEIPT',
+              game_id: gameId,
+              message_id: newMessage.id,
+              payload: { sender_user_id: newMessage.user_id },
+            });
+            void upsertDeliveryTrace({
+              message_id: newMessage.id,
+              recipient_client_instance_id: getClientInstanceId(),
+              recipient_user_id: currentUserId ?? null,
+              sender_user_id: newMessage.user_id,
+              game_id: gameId,
+              source_type: 'text',
+              recipient_realtime_receipt_at: receiptAt,
+              authoritative_row_at: newMessage.created_at ?? receiptAt,
+              delivery_status: 'realtime-received',
             });
             if (newMessage.game_id !== gameId) {
               recordChatDeliveryViolation({
@@ -616,6 +635,11 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             });
             setLatestRealtimeMessage(newMessage);
             addBubble(newMessage);
+            void upsertDeliveryTrace({
+              message_id: newMessage.id,
+              recipient_client_instance_id: getClientInstanceId(),
+              recipient_store_admission_at: new Date().toISOString(),
+            });
             recordSessionLifecycleEvent('CHAT_STORE_UPDATE_END', {
               gameId,
               messageId: newMessage.id,
