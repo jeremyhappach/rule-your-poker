@@ -48,6 +48,7 @@ import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { ChatDeliveryExportPill } from "@/lib/chatDelivery/ChatDeliveryExportPill";
 import Diagnostics from "@/pages/Diagnostics";
+import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 
