@@ -38,6 +38,11 @@ import {
   verifyIncidentPatchAndEmit,
   verifyInstanceHeartbeatAndEmit,
 } from "@/lib/runtimeInstrumentation/runtimePipelineProof";
+import {
+  noteRuntimeEventForWatchdog,
+  triggerIncidentReport,
+  triggerIncidentReportImmediate,
+} from "@/lib/runtimeInstrumentation/incidentReportTrigger";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
