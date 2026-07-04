@@ -561,4 +561,32 @@ export async function runRuntimePersistenceSelfCheck(input: {
     route: input.route,
     payload: collected,
   });
+
+  // Kick the server-side autopsy generator for this synthetic incident.
+  // We wait 1500ms so the direct-DB events above have time to land, then
+  // fire once. The generator does its own consistent joins.
+  await new Promise((r) => setTimeout(r, 1500));
+  try {
+    const url =
+      (import.meta as unknown as { env?: Record<string, string | undefined> })
+        .env?.VITE_SUPABASE_URL ?? "";
+    const key =
+      (import.meta as unknown as { env?: Record<string, string | undefined> })
+        .env?.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+    if (url && key && typeof fetch !== "undefined") {
+      await fetch(`${url}/functions/v1/generate-incident-report`, {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          correlation_id: syntheticId,
+          reason: "self-check-final",
+        }),
+      });
+    }
+  } catch { /* proof failure is itself proof */ }
 }
