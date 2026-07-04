@@ -29,7 +29,14 @@ type ChatLifecyclePhase =
   | 'indicator-cleared'
   | 'read-cursor-advanced'
   | 'realtime-eligible-observed'
-  | 'console-chat-indicator';
+  | 'console-chat-indicator'
+  | 'chat-attention-transition'
+  | 'chat-attention-pulse-armed'
+  | 'chat-attention-pulse-completed'
+  | 'chat-attention-pulse-cancelled'
+  | 'chat-attention-pulse-restarted'
+  | 'chat-attention-icon-resolved'
+  | 'turn-attention-evaluated';
 
 export type ChatDeliveryViolation =
   | 'CHAT_MESSAGE_WRITE_NOT_CONFIRMED'
@@ -51,7 +58,12 @@ export type ChatDeliveryViolation =
   | 'CHAT_CONSUMER_NOT_SUBSCRIBED_TO_CANONICAL_STORE'
   | 'CHAT_CANONICAL_STORE_REPLACED_OR_WIPED'
   | 'CHAT_CONVERSATION_KEY_CHANGED_MID_SESSION'
-  | 'CHAT_CURSOR_ADVANCED_FROM_REALTIME_MESSAGE';
+  | 'CHAT_CURSOR_ADVANCED_FROM_REALTIME_MESSAGE'
+  | 'CHAT_NEW_MESSAGE_PULSE_NOT_ENTERED'
+  | 'CHAT_PULSE_DID_NOT_RESOLVE_TO_UNREAD_OUTLINE'
+  | 'CHAT_REPEAT_MESSAGE_DID_NOT_RESTART_PULSE'
+  | 'CHAT_ICON_STYLE_DOES_NOT_MATCH_ATTENTION_STATE'
+  | 'CHAT_ATTENTION_CLEARED_WITHOUT_READ';
 
 export type ChatDeliveryConsumer =
   | 'canonical-store'
@@ -61,7 +73,10 @@ export type ChatDeliveryConsumer =
   | 'unread-selector'
   | 'indicator-selector'
   | 'Game.tsx'
-  | 'MobileGameTable';
+  | 'MobileGameTable'
+  | 'ChatAttentionProvider'
+  | 'ShellTabBar'
+  | 'turn-attention-audit';
 
 type ChatLikeMessage = {
   id: string;

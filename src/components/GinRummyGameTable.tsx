@@ -81,6 +81,8 @@ import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useKnockSound } from '@/hooks/useKnockSound';
 import { useGameChatContext } from '@/hooks/GameChatContext';
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
+import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
@@ -693,6 +695,10 @@ export const GinRummyGameTable = ({
   const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
 
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
@@ -770,6 +776,7 @@ export const GinRummyGameTable = ({
 
     setChatTabFlashing(false);
     setHasUnreadMessages(false);
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
     setActiveTab('chat');
 
     if (latestEligibleMessage && lastReadChatMessageIdRef.current !== latestEligibleMessage.id) {
@@ -806,15 +813,28 @@ export const GinRummyGameTable = ({
         reason: 'chat-open',
       });
     }
-  }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+  }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
-  // Publish tab metadata to the shell-owned tab bar.
+  // Turn-attention audit telemetry (read-only, no behavior change).
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'gin-rummy',
+      activeTab,
+      localTurnEligible: null,
+      iconKind: 'spade',
+      shouldBeRed: null,
+      renderedRed: false,
+      suppressReason: 'no-turn-source-wired',
+    },
+  });
   useShellTabBar({
     cardsIcon: 'spade',
     activeTab,
     setActiveTab,
-    chatFlashing: showGreenChatIndicator ? 'green' : null,
-    chatIndicator: showRedChatIndicator ? 'red' : null,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
   });
 

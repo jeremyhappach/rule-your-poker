@@ -26,6 +26,7 @@ import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChatContext } from "@/hooks/GameChatContext";
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
@@ -1611,6 +1612,10 @@ export const MobileGameTable = ({
   const chatCtx = useGameChatContext();
   const isChatHydrated = chatCtx.isChatHydrated;
   const hydrationBaselineIds = chatCtx.hydrationBaselineIds;
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
   const hydrationBaselineIdSet = useMemo(
     () => (hydrationBaselineIds ? new Set(hydrationBaselineIds) : null),
     [hydrationBaselineIds]
@@ -1862,6 +1867,7 @@ export const MobileGameTable = ({
 
     setChatTabFlashing(false);
     setHasUnreadMessages(false);
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
     setActiveTab('chat');
 
     if (latestEligibleMessage && lastReadChatMessageId !== latestEligibleMessage.id) {
@@ -1910,6 +1916,7 @@ export const MobileGameTable = ({
       });
     }
   }, [
+    chatAttention,
     chatTabFlashing,
     eligibleIndicatorMessages,
     hasUnreadMessages,
@@ -4866,13 +4873,27 @@ export const MobileGameTable = ({
       : isYourTurnNotOnCardsTab
         ? 'red'
         : null;
+    // Turn-attention audit telemetry (read-only, no behavior change).
+    recordChatDeliveryEvent({
+      phase: 'turn-attention-evaluated',
+      consumer: 'turn-attention-audit',
+      payload: {
+        game: gameType ?? (isDiceGame ? 'dice-family' : 'holm-family'),
+        activeTab,
+        localTurnEligible: !!(isPlayerTurn && !hasDecided && !isPaused && roundStatus === 'betting'),
+        iconKind: isDiceGame ? 'dice' : 'spade',
+        shouldBeRed: isYourTurnNotOnCardsTab,
+        renderedRed: cardsFlash === 'red',
+        suppressReason: isPaused ? 'paused' : (activeTab === 'cards' ? 'on-cards-tab' : (!isPlayerTurn ? 'not-your-turn' : (hasDecided ? 'already-decided' : (roundStatus !== 'betting' ? `phase:${roundStatus}` : null)))),
+      },
+    });
     useShellTabBar({
       cardsIcon: isDiceGame ? 'dice' : 'spade',
       activeTab,
       setActiveTab,
       cardsFlashing: cardsFlash,
-      chatFlashing: showGreenChatIndicator ? 'green' : null,
-      chatIndicator: showRedChatIndicator ? 'red' : null,
+      chatFlashing: chatAttentionTabProps.chatFlashing,
+      chatIndicator: chatAttentionTabProps.chatIndicator,
       onOpenChat: handleOpenChatTab,
       isPaused: !!isPaused,
     });

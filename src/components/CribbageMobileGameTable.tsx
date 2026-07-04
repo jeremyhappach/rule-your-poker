@@ -58,6 +58,8 @@ import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChatContext } from '@/hooks/GameChatContext';
+import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
+import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 
@@ -630,6 +632,10 @@ export const CribbageMobileGameTable = ({
   const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showGreenChatIndicator = chatTabFlashing;
   const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
+  const chatAttention = useChatAttention();
+  useEffect(() => { chatAttention.notifyActiveTab(activeTab); }, [activeTab, chatAttention]);
+  useChatIconStyleGuard(chatAttention.attentionState);
+  const chatAttentionTabProps = chatAttentionToShellTabProps(chatAttention.attentionState);
 
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
@@ -707,6 +713,7 @@ export const CribbageMobileGameTable = ({
 
     setChatTabFlashing(false);
     setHasUnreadMessages(false);
+    chatAttention.markChatRead('chat-tab-opened-actual-read');
     setActiveTab('chat');
 
     if (latestEligibleMessage && lastReadChatMessageIdRef.current !== latestEligibleMessage.id) {
@@ -743,17 +750,31 @@ export const CribbageMobileGameTable = ({
         reason: 'chat-open',
       });
     }
-  }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+  }, [chatAttention, chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and the
   // gameplay-derived indicator state.
+  // Turn-attention audit telemetry (read-only, no behavior change).
+  recordChatDeliveryEvent({
+    phase: 'turn-attention-evaluated',
+    consumer: 'turn-attention-audit',
+    payload: {
+      game: 'cribbage',
+      activeTab,
+      localTurnEligible: null,
+      iconKind: 'spade',
+      shouldBeRed: null,
+      renderedRed: false,
+      suppressReason: 'no-turn-source-wired',
+    },
+  });
   useShellTabBar({
     cardsIcon: 'spade',
     activeTab,
     setActiveTab,
-    chatFlashing: showGreenChatIndicator ? 'green' : null,
-    chatIndicator: showRedChatIndicator ? 'red' : null,
+    chatFlashing: chatAttentionTabProps.chatFlashing,
+    chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
   });
 

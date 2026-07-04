@@ -185,13 +185,32 @@ export function ShellTabBar() {
     .filter(Boolean)
     .join(' ');
 
+  // Canonical chat-attention rendering contract:
+  //   chatFlash === 'red'  → NEW_MESSAGE_PULSE : outline+fill red, pulsing
+  //   chatFlash === 'green'→ (legacy waiting-surface only) green pulse
+  //   chatDot   === 'red'  → UNREAD_PERSISTENT : outline red, NO fill
   const chatIconClass = [
     'w-5 h-5',
     chatFlash === 'green' ? 'text-poker-chip-green fill-poker-chip-green animate-pulse' : '',
-    chatDot === 'red' && !chatFlash ? 'text-poker-chip-red fill-poker-chip-red' : '',
+    chatFlash === 'red' ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
+    chatDot === 'red' && !chatFlash ? 'text-poker-chip-red' : '',
   ]
     .filter(Boolean)
     .join(' ');
+  const chatIconResolvedStroke =
+    chatFlash === 'red' || (chatDot === 'red' && !chatFlash)
+      ? 'poker-chip-red'
+      : chatFlash === 'green'
+        ? 'poker-chip-green'
+        : 'inherit';
+  const chatIconResolvedFill =
+    chatFlash === 'red'
+      ? 'poker-chip-red'
+      : chatFlash === 'green'
+        ? 'poker-chip-green'
+        : 'none';
+  const chatAttentionRenderState =
+    chatFlash === 'red' ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
 
   const cardsRing =
     cardsFlash === 'green'
@@ -232,8 +251,11 @@ export function ShellTabBar() {
       <button
         onClick={handleChatClick}
         style={{ flex: '0 0 35%' }}
-        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle} ${chatFlash === 'green' ? 'animate-pulse' : ''}`}
+        className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle} ${chatFlash === 'green' || chatFlash === 'red' ? 'animate-pulse' : ''}`}
         aria-label="Chat"
+        data-chat-attention-state={chatAttentionRenderState}
+        data-chat-icon-stroke={chatIconResolvedStroke}
+        data-chat-icon-fill={chatIconResolvedFill}
       >
         <MessageSquare className={chatIconClass} />
       </button>

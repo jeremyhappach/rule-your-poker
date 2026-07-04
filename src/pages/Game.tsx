@@ -214,6 +214,7 @@ function supportsDealerSelectionOverlay(gameType: string | null | undefined): bo
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { GameChatContextProvider } from "@/hooks/GameChatContext";
+import { ChatAttentionProvider } from "@/hooks/ChatAttention";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -13235,6 +13236,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           chatConversationKey,
         }}
       >
+      <ChatAttentionProvider currentUserId={user?.id}>
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
@@ -13312,6 +13314,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       {/* StartupFlightRecorderOverlay is mounted once at App.tsx; do not
           duplicate here. */}
       <CribDealerDrawTraceOverlay gameId={gameId ?? null} />
+      </ChatAttentionProvider>
       </GameChatContextProvider>
     </VisualPreferencesProvider>
   );
