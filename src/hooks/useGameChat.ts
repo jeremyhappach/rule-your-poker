@@ -385,6 +385,7 @@ export const useGameChat = (
             error: error.message,
             optimisticId,
           }, { optimisticMessageId: optimisticId });
+          writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
           void finalizeServerChatOperation(
             correlationId,
             'db-insert-failed',
