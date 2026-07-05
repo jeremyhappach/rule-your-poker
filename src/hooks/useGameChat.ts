@@ -850,59 +850,71 @@ export const useGameChat = (
             if (newMessage.chat_operation_id && newMessage.user_id !== currentUserId) {
               const route = typeof window !== 'undefined' ? window.location.pathname : (chatIdentity?.route ?? `/game/${gameId}`);
               const sessionId = chatIdentity?.sessionId ?? `session:${gameId}`;
-              registerCurrentSessionChatOperation({
-                operationId: newMessage.chat_operation_id,
-                gameId,
-                sessionId,
-                route,
-                role: 'peer',
-              });
-              beginChatOperationSnapshotCapture(newMessage.chat_operation_id);
-              void appendChatPeerMilestone(
-                newMessage.chat_operation_id,
-                'REALTIME_RECEIPT',
-                {
-                  receiverUserId: currentUserId ?? null,
-                  senderUserId: newMessage.user_id,
+              const opId = newMessage.chat_operation_id;
+              const msgId = newMessage.id;
+              const senderUserId = newMessage.user_id;
+              // Peer telemetry gate: retain the observation in-memory
+              // and only flush operation-scoped writes after the durable
+              // sender operation row becomes visible (bounded 5 s).
+              // Message rendering / unread state / chat behavior above
+              // is untouched. Peer does NOT create a new chat operation
+              // — we only register once visibility is confirmed.
+              void awaitPeerOperationVisibility(opId, 5_000).then((visible) => {
+                if (!visible) return;
+                try {
+                  registerCurrentSessionChatOperation({
+                    operationId: opId,
+                    gameId,
+                    sessionId,
+                    route,
+                    role: 'peer',
+                  });
+                } catch { /* registry best-effort */ }
+                beginChatOperationSnapshotCapture(opId);
+                void appendChatPeerMilestone(
+                  opId,
+                  'REALTIME_RECEIPT',
+                  {
+                    receiverUserId: currentUserId ?? null,
+                    senderUserId,
+                    receiptAt,
+                    route,
+                  },
+                  msgId,
+                  getChatOperationSnapshots(opId),
+                );
+                void writeChatOperationPeerHeartbeat(opId, {
+                  phase: 'peer-realtime-receipt',
+                });
+                void markChatOperationDeliveryConfirmed(opId, 'peer-realtime-receipt', {
+                  messageId: msgId,
+                  senderUserId,
                   receiptAt,
-                  route,
-                },
-                newMessage.id,
-                getChatOperationSnapshots(newMessage.chat_operation_id),
-              );
-              // Observation window: peer MUST NOT finalize or write a
-              // terminal snapshot at realtime receipt. Mark delivery
-              // confirmed, immediately heartbeat, arm PEER_OPERATION_OBSERVED,
-              // and schedule a 30 s observation-window finalize.
-              void writeChatOperationPeerHeartbeat(newMessage.chat_operation_id, {
-                phase: 'peer-realtime-receipt',
+                });
+                try {
+                  recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
+                    operationId: opId,
+                    messageId: msgId,
+                    senderUserId,
+                    route,
+                  });
+                } catch { /* instrumentation only */ }
+                if (typeof window !== 'undefined') {
+                  window.setTimeout(() => {
+                    writeChatOperationTerminalSnapshot(
+                      opId,
+                      'peer-observation-window-expired',
+                      'completed-observation-window',
+                    );
+                    void finalizeServerChatOperation(
+                      opId,
+                      'completed-observation-window',
+                      'peer-30s-observation-window-expired',
+                      getChatOperationSnapshots(opId),
+                    );
+                  }, 30_000);
+                }
               });
-              void markChatOperationDeliveryConfirmed(newMessage.chat_operation_id, 'peer-realtime-receipt', {
-                messageId: newMessage.id,
-                senderUserId: newMessage.user_id,
-                receiptAt,
-              });
-              recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
-                operationId: newMessage.chat_operation_id,
-                messageId: newMessage.id,
-                senderUserId: newMessage.user_id,
-                route,
-              });
-              if (typeof window !== 'undefined') {
-                const opId = newMessage.chat_operation_id;
-                window.setTimeout(() => {
-                  writeChatOperationTerminalSnapshot(
-                    opId,
-                    'peer-observation-window-expired',
-                    'completed-observation-window',
-                  );
-                  void finalizeServerChatOperation(
-                    opId,
-                    'completed-observation-window',
-                    'peer-30s-observation-window-expired',
-                    getChatOperationSnapshots(opId),
-                  );
-                }, 30_000);
               }
             }
             void upsertDeliveryTrace({
