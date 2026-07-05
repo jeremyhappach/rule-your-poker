@@ -190,6 +190,19 @@ function evaluateInvariants(
       s.chatTabFill === s.cardsTabFill)
   ) {
     emit('CHAT_AND_CARDS_ATTENTION_COLLISION');
+    void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+      recordWaitingTableViolation('CHAT_AND_CARDS_ATTENTION_COLLISION', {
+        sourceFile: 'shellTabAttentionInstrumentation.ts',
+        sourceFunction: 'evaluateInvariants',
+        resolvedValues: {
+          chatTabFill: s.chatTabFill,
+          cardsTabFill: s.cardsTabFill,
+          chatGlyphPulse: s.chatGlyphPulse,
+          cardsGlyphPulse: s.cardsGlyphPulse,
+        },
+        renderContinuation: 'render',
+      });
+    });
   }
 
   // SHELL_TABBAR_REMOUNT_DURING_CHAT_OPERATION
@@ -202,6 +215,16 @@ function evaluateInvariants(
       openChatOperations: Array.from(activeChatOperations),
       prevRenderKey: prev.tabBarRenderKey,
       nextRenderKey: s.tabBarRenderKey,
+    });
+    void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+      recordWaitingTableViolation('SHELL_TABBAR_REMOUNT_DURING_CHAT_OPERATION', {
+        sourceFile: 'shellTabAttentionInstrumentation.ts',
+        sourceFunction: 'evaluateInvariants',
+        inputValues: { prevRenderKey: prev.tabBarRenderKey, nextRenderKey: s.tabBarRenderKey },
+        resolvedValues: { activeChatOperations: Array.from(activeChatOperations) },
+        remountRequested: true,
+        renderContinuation: 'render',
+      });
     });
   }
 
@@ -216,6 +239,71 @@ function evaluateInvariants(
       emit('TAB_COLOR_STATE_CHANGED_DURING_CHAT_OPERATION', {
         openChatOperations: Array.from(activeChatOperations),
         changedFields: diffs,
+      });
+      void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+        recordWaitingTableViolation('TAB_COLOR_STATE_CHANGED_DURING_CHAT_OPERATION', {
+          sourceFile: 'shellTabAttentionInstrumentation.ts',
+          sourceFunction: 'evaluateInvariants',
+          inputValues: Object.fromEntries(diffs.map((f) => [f, prev[f]])),
+          resolvedValues: Object.fromEntries(diffs.map((f) => [f, s[f]])),
+          renderContinuation: 'render',
+        });
+      });
+    }
+  }
+
+  // WAITING_TABLE_GAME_CONTROLLER_MISSING (derived: waiting table wants game logic but controller absent)
+  if (s.waitingTableComponent && !s.gameControllerPresent && (s.localTurnEligible || s.currentTurnPlayerId)) {
+    void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+      recordWaitingTableViolation('WAITING_TABLE_GAME_CONTROLLER_MISSING', {
+        sourceFile: 'shellTabAttentionInstrumentation.ts',
+        sourceFunction: 'evaluateInvariants',
+        inputValues: { waitingTableComponent: s.waitingTableComponent },
+        resolvedValues: {
+          gameControllerPresent: s.gameControllerPresent,
+          localTurnEligible: s.localTurnEligible,
+          currentTurnPlayerId: s.currentTurnPlayerId,
+        },
+        renderContinuation: 'render',
+      });
+    });
+  }
+
+  // WAITING_TABLE_CURRENT_TURN_MISSING (derived: local turn eligible but no turn player id)
+  if (s.waitingTableComponent && s.localTurnEligible && !s.currentTurnPlayerId) {
+    void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+      recordWaitingTableViolation('WAITING_TABLE_CURRENT_TURN_MISSING', {
+        sourceFile: 'shellTabAttentionInstrumentation.ts',
+        sourceFunction: 'evaluateInvariants',
+        resolvedValues: {
+          localTurnEligible: s.localTurnEligible,
+          currentTurnPlayerId: s.currentTurnPlayerId,
+        },
+        renderContinuation: 'render',
+      });
+    });
+  }
+
+  // WAITING_TABLE_CARDS_TAB_GAME_LOGIC_ENTERED / CHAT_TAB_GAME_LOGIC_ENTERED
+  // Fire on active-tab transitions while waiting-table is mounted.
+  if (s.waitingTableComponent && prev && prev.activeTab !== s.activeTab) {
+    const eventName: 'WAITING_TABLE_CARDS_TAB_GAME_LOGIC_ENTERED' | 'WAITING_TABLE_CHAT_TAB_GAME_LOGIC_ENTERED' | null =
+      s.activeTab === 'cards' ? 'WAITING_TABLE_CARDS_TAB_GAME_LOGIC_ENTERED'
+      : s.activeTab === 'chat' ? 'WAITING_TABLE_CHAT_TAB_GAME_LOGIC_ENTERED'
+      : null;
+    if (eventName) {
+      void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+        recordWaitingTableViolation(eventName, {
+          sourceFile: 'shellTabAttentionInstrumentation.ts',
+          sourceFunction: 'evaluateInvariants',
+          inputValues: { prevActiveTab: prev.activeTab },
+          resolvedValues: {
+            activeTab: s.activeTab,
+            gameControllerPresent: s.gameControllerPresent,
+            waitingTableComponent: s.waitingTableComponent,
+          },
+          renderContinuation: 'render',
+        });
       });
     }
   }
