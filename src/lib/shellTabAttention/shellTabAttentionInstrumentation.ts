@@ -239,6 +239,13 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
   });
 }
 
+export function beginChatOperationSnapshotCapture(correlationId: string): void {
+  activeChatOperations.add(correlationId);
+  if (!activeChatOperationSnapshots.has(correlationId)) {
+    activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
+  }
+}
+
 export function finalizeChatSendOperation(
   correlationId: string,
   outcome: 'success' | 'error' | 'aborted',
