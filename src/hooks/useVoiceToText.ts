@@ -41,6 +41,11 @@ import {
   writeClientVoiceEvent,
   triggerServerFinalizer,
 } from '@/lib/runtimeInstrumentation/serverVoiceOperation';
+import {
+  useVoiceOperationIdentity,
+  assertVoiceIdentityMatchesRoute,
+  type VoiceOperationIdentity,
+} from '@/hooks/VoiceOperationIdentityContext';
 
 function inferVoiceSurface(): string {
   if (typeof window === 'undefined') return 'unknown';
