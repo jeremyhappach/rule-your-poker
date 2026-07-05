@@ -214,10 +214,15 @@ serve(async (req) => {
       edge_function_status_code: 200,
     });
 
+    // Terminal server state — kick the finalizer immediately so a report
+    // exists even if the sender client never sends another event.
+    await runFinalizer();
+
     return new Response(
       JSON.stringify({ transcript }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
