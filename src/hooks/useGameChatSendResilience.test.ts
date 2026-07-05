@@ -117,11 +117,11 @@ const getSnapshots = vi.fn(() => ({}));
 const beginCapture = vi.fn(() => {});
 
 vi.mock('@/lib/shellTabAttention/shellTabAttentionInstrumentation', () => ({
-  openChatSendOperation: (...a: unknown[]) => openSendOp(...a),
-  finalizeChatSendOperation: (...a: unknown[]) => finalizeSendOp(...a),
-  writeChatOperationTerminalSnapshot: (...a: unknown[]) => writeTerminalSnapshot(...a),
-  getChatOperationSnapshots: (...a: unknown[]) => getSnapshots(...a),
-  beginChatOperationSnapshotCapture: (...a: unknown[]) => beginCapture(...a),
+  openChatSendOperation: (...a: unknown[]) => (openSendOp as (...x: unknown[]) => unknown)(...a),
+  finalizeChatSendOperation: (...a: unknown[]) => (finalizeSendOp as (...x: unknown[]) => unknown)(...a),
+  writeChatOperationTerminalSnapshot: (...a: unknown[]) => (writeTerminalSnapshot as (...x: unknown[]) => unknown)(...a),
+  getChatOperationSnapshots: (...a: unknown[]) => (getSnapshots as (...x: unknown[]) => unknown)(...a),
+  beginChatOperationSnapshotCapture: (...a: unknown[]) => (beginCapture as (...x: unknown[]) => unknown)(...a),
   recordWaitingChatTransition: vi.fn(),
 }));
 
