@@ -13238,7 +13238,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           chatConversationKey,
         }}
       >
+      <VoiceOperationIdentityProvider
+        value={{
+          isActiveGameRoute: true,
+          gameId: gameId ?? null,
+          sessionId: getTabSessionId(),
+          dealerGameId: (game as any)?.current_game_uuid ?? null,
+          gameType: game?.game_type ?? null,
+          shellPhase: game?.status ?? null,
+          activeTab: mobileActiveTab ?? null,
+          localPlayerId: currentPlayer?.id ?? null,
+        }}
+      >
       <ChatAttentionProvider currentUserId={user?.id}>
+
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
