@@ -14,6 +14,20 @@ export interface ChatOperationIdentity {
   activeTab?: string | null;
   shellPhase?: string | null;
   originSurface?: string | null;
+  // Extended waiting-table context (populated at operation-open from the
+  // canonical shell — no nullable ambient inference).
+  routeGameId?: string | null;
+  canonicalShellGameId?: string | null;
+  operationGameId?: string | null;
+  rawGameType?: string | null;
+  resolvedGameType?: string | null;
+  gameTypeSource?: string | null;
+  gameControllerPresent?: boolean | null;
+  currentTurnPlayerId?: string | null;
+  localTurnEligible?: boolean | null;
+  waitingTableComponent?: string | null;
+  activeGameComponent?: string | null;
+  tabBarRenderKey?: string | null;
 }
 
 export interface OpenChatOperationInput extends ChatOperationIdentity {
