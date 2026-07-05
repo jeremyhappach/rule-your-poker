@@ -217,17 +217,22 @@ export function ShellTabBar() {
   const prevChatDotRedRef = useRef<boolean>(false);
   useEffect(() => {
     void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
-      ({ recordShellTabAttentionSnapshot, recordWaitingChatTransition }) => {
+      ({ getShellTabAttentionContext, recordShellTabAttentionSnapshot, recordWaitingChatTransition }) => {
+        const ctx = getShellTabAttentionContext();
+        const resolvedGameId = ctx.gameId ?? gameIdFromRoute;
+        const resolvedSessionId = ctx.sessionId ?? (resolvedGameId ? `session:${resolvedGameId}` : null);
+        const resolvedRoute = ctx.route ?? routePath;
+        const resolvedShellPhase = ctx.shellPhase ?? null;
         recordShellTabAttentionSnapshot(
           {
-            gameId: gameIdFromRoute,
-            sessionId: null,
-            dealerGameId: null,
-            gameType: null,
-            route: routePath,
-            shellPhase: null,
-            activeGameComponent: null,
-            waitingTableComponent: null,
+            gameId: resolvedGameId,
+            sessionId: resolvedSessionId,
+            dealerGameId: ctx.dealerGameId ?? null,
+            gameType: ctx.gameType ?? null,
+            route: resolvedRoute,
+            shellPhase: resolvedShellPhase,
+            activeGameComponent: ctx.activeGameComponent ?? null,
+            waitingTableComponent: ctx.waitingTableComponent ?? null,
             activeTab,
             canonicalMessageRevision: null,
             localUnreadCount: null,
@@ -242,9 +247,9 @@ export function ShellTabBar() {
             cardsTabAttentionState: cardsAttentionRenderState,
             localTurnEligible: cardsFlash === 'red',
             turnAttentionSource: cardsFlash ? 'game-controller' : null,
-            gameControllerPresent: !!gameIdFromRoute,
+            gameControllerPresent: !!resolvedGameId,
             currentTurnPlayerId: null,
-            gameTypeResolved: null,
+            gameTypeResolved: ctx.gameType ?? null,
             chatTabFill: chatFlashRed ? 'poker-chip-red' : 'none',
             chatTabOutline: 'none',
             chatGlyphFill: chatIconResolvedFill,
