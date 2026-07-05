@@ -123,11 +123,11 @@ export function IncidentReportBanner() {
       <span>{label}</span>
       <span className="opacity-70">· {row.event_count} events</span>
       <button
-        onClick={copy}
+        onClick={exportJson}
         className="underline hover:no-underline"
         type="button"
       >
-        {copied ? "copied" : "copy"}
+        {copied ? "exported" : "export"}
       </button>
       <button
         onClick={dismiss}
