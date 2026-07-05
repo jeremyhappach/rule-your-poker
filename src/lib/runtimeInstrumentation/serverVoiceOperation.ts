@@ -114,7 +114,7 @@ export async function writeClientVoiceEvent(
       byte_count: extras.byte_count ?? null,
       error_category: extras.error_category ?? null,
       error_message: extras.error_message ?? null,
-      metadata: extras.metadata ?? {},
+      metadata: (extras.metadata ?? {}) as never,
     }]);
     await supabase
       .from("voice_operation_incidents")
