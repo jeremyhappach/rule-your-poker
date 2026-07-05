@@ -309,8 +309,103 @@ export function ShellTabBar() {
         });
       },
     );
+    return () => {
+      void import('@/lib/runtimeInstrumentation/runtimeTracer').then(({ recordRuntimeEvent }) => {
+        recordRuntimeEvent({
+          event_family: 'shell_tab_attention',
+          event_name: 'SHELL_TABBAR_UNMOUNTED',
+          severity: 'info',
+          payload: { note: 'shell-tabbar unmounted' },
+        });
+      });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Post-commit render evidence. Distinguishes an actual React commit
+  // from an inferred state change: this effect runs AFTER the tab-bar
+  // DOM is committed to the screen, on every commit, and emits three
+  // render-committed events (bar / chat tab / cards tab). Each carries
+  // renderCommitSequence + full resolved visual matrix + active
+  // operation ids, so the exported TXT can prove that the visual
+  // render actually happened at each capture point (mount, remount,
+  // per intra-operation change, terminal).
+  useEffect(() => {
+    void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
+      ({ nextInstrumentationSequence, getShellTabAttentionContext }) => {
+        void import('@/lib/waitingTable/waitingTableInstrumentation').then(
+          ({ getActiveChatOperationsForViolations }) => {
+            void import('@/lib/runtimeInstrumentation/runtimeTracer').then(({ recordRuntimeEvent }) => {
+              const activeOps = getActiveChatOperationsForViolations();
+              const activeOp = activeOps[0] ?? null;
+              const renderCommitSequence = nextInstrumentationSequence();
+              const ctx = getShellTabAttentionContext();
+              const visualMatrix = {
+                chatFlashRed,
+                chatDotRed: chatDot === 'red' && !chatFlashRed,
+                chatGlyphFill: chatIconResolvedFill,
+                chatGlyphOutline: chatIconResolvedStroke,
+                chatAttentionState: chatAttentionRenderState,
+                cardsFlash: cardsFlash ?? null,
+                cardsIcon,
+                cardsAttentionState: cardsAttentionRenderState,
+                activeTab,
+                tabBarRenderKey: 'shell-tabbar-singleton',
+              };
+              const commonPayload = {
+                renderCommitSequence,
+                activeOperationId: activeOp,
+                activeOperationIds: activeOps,
+                tabBarRenderKey: 'shell-tabbar-singleton',
+                activeTab,
+                visualMatrix,
+                waitingTableContext: {
+                  gameId: ctx.gameId ?? null,
+                  sessionId: ctx.sessionId ?? null,
+                  dealerGameId: ctx.dealerGameId ?? null,
+                  gameType: ctx.gameType ?? null,
+                  route: ctx.route ?? routePath,
+                  shellPhase: ctx.shellPhase ?? null,
+                  waitingTableComponent: ctx.waitingTableComponent ?? null,
+                  activeGameComponent: ctx.activeGameComponent ?? null,
+                },
+              };
+              const emit = (name: string, extra: Record<string, unknown> = {}) => {
+                recordRuntimeEvent({
+                  event_family: 'shell_tab_attention',
+                  event_name: name,
+                  severity: 'info',
+                  correlation_id: activeOp ?? undefined,
+                  route: routePath,
+                  active_tab: activeTab,
+                  payload: { ...commonPayload, ...extra },
+                });
+              };
+              emit('SHELL_TABBAR_RENDER_COMMITTED');
+              emit('CHAT_TAB_RENDER_COMMITTED', { tab: 'chat' });
+              emit('CARDS_TAB_RENDER_COMMITTED', { tab: 'cards' });
+
+              // If there is an active chat op, also persist an
+              // intermediate sender/peer milestone so the TXT ordered
+              // timeline records render-commit alongside snapshots.
+              if (activeOp) {
+                void import('@/lib/chatOperations/serverChatOperation').then(
+                  ({ appendChatSenderMilestone }) => {
+                    void appendChatSenderMilestone(
+                      activeOp,
+                      'SHELL_TABBAR_RENDER_COMMITTED',
+                      commonPayload,
+                    );
+                  },
+                );
+              }
+            });
+          },
+        );
+      },
+    );
+  });
+
 
 
   const handleChatClick = () => {
