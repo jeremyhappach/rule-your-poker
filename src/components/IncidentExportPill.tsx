@@ -185,6 +185,8 @@ export function IncidentExportPill(): JSX.Element | null {
         .from('voice_operation_reports')
         .select('voice_operation_id, sender_user_id, game_id, terminal_status, report_text, finalized_at')
         .gte('finalized_at', SESSION_START_ISO)
+        .not('voice_operation_id', 'ilike', 'self-check-%')
+        .not('terminal_status', 'ilike', 'self-check%')
         .order('finalized_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -193,6 +195,8 @@ export function IncidentExportPill(): JSX.Element | null {
         voice_operation_id: string; sender_user_id: string | null; game_id: string | null;
         terminal_status: string; report_text: string; finalized_at: string;
       };
+      if (row.voice_operation_id.startsWith('self-check-')) return;
+      if ((row.terminal_status ?? '').startsWith('self-check')) return;
       if (routeGameId && row.game_id && row.game_id !== routeGameId) return;
       const isPeer = !!(row.sender_user_id && row.sender_user_id !== userId);
       offer({
