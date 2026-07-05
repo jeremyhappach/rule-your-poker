@@ -181,7 +181,7 @@ export function recordChatBoundaryEvent(
   name: ChatBoundaryEventName,
   metadata: Record<string, unknown> = {},
 ): void {
-  void fanOut(name, metadata);
+  try { fanOut(name, metadata); } catch { /* isolated */ }
 }
 
 /** Install all global boundary listeners exactly once. Safe on SSR. */
