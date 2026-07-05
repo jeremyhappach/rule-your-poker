@@ -14,6 +14,7 @@ import {
   getCurrentSessionChatOperations,
   type CurrentSessionChatOperationRecord,
 } from './serverChatOperation';
+import { isInstrumentationRequest } from './chatOperationInstrumentationGuard';
 
 export type ChatBoundaryEventName =
   | 'WINDOW_LOCATION_ASSIGN'
@@ -74,6 +75,11 @@ export type ChatBoundaryEventName =
 
 let installed = false;
 let boundarySequence = 0;
+
+// Re-entrancy guard registry lives in `chatOperationInstrumentationGuard.ts`
+// (imported above) so the pure classifier is testable without pulling in
+// the supabase client. See that module for the full instrumentation
+// RPC/table registry.
 
 function nowIso() { return new Date().toISOString(); }
 
@@ -228,6 +234,15 @@ export function installChatBoundaryListeners(): void {
   // fetch instrumentation — supabase.co REST/RPC/Realtime HTTP requests
   // only. Records started/resolved/rejected without body, credentials, or
   // response payloads. AbortError is surfaced as FETCH_ABORT_ERROR.
+  //
+  // RE-ENTRANCY GUARD (per-request, concurrency-safe): every outbound
+  // request derived from chat-operation instrumentation itself
+  // (boundary/heartbeat/milestone/violation/recovery/finalize RPCs and
+  // the two instrumentation tables) is classified as INSTRUMENTATION and
+  // returned via origFetch WITHOUT emitting SUPABASE_FETCH_* events. The
+  // classifier is a pure function of request URL — no shared mutable
+  // state — so concurrent instrumentation and business requests cannot
+  // interfere.
   try {
     const origFetch = window.fetch.bind(window);
     let fetchSeq = 0;
@@ -245,21 +260,32 @@ export function installChatBoundaryListeners(): void {
       } catch { /* noop */ }
       const isSupabase = urlStr.includes('.supabase.co') || urlStr.includes('/rest/v1/') || urlStr.includes('/rpc/');
       if (!isSupabase) return origFetch(input as never, init);
-      const seq = ++fetchSeq;
       let purpose = 'unknown';
+      let leafName = '';
+      let kind: 'rpc' | 'rest' | 'other' = 'other';
       try {
         const u = new URL(urlStr, window.location.origin);
         const parts = u.pathname.split('/').filter(Boolean);
-        // /rest/v1/<table> or /rest/v1/rpc/<fn>
         const restIdx = parts.indexOf('v1');
         if (restIdx >= 0 && parts[restIdx + 1] === 'rpc') {
-          purpose = `rpc:${parts[restIdx + 2] ?? '?'}`;
+          leafName = parts[restIdx + 2] ?? '';
+          kind = 'rpc';
+          purpose = `rpc:${leafName || '?'}`;
         } else if (restIdx >= 0) {
-          purpose = `rest:${parts[restIdx + 1] ?? '?'}`;
+          leafName = parts[restIdx + 1] ?? '';
+          kind = 'rest';
+          purpose = `rest:${leafName || '?'}`;
         } else {
           purpose = `path:${u.pathname}`;
         }
       } catch { /* noop */ }
+
+      if (isInstrumentationRequest(kind, leafName)) {
+        // Instrumentation write: pass through untouched, emit nothing.
+        return origFetch(input as never, init);
+      }
+
+      const seq = ++fetchSeq;
       const method = (init?.method ?? 'GET').toUpperCase();
       recordChatBoundaryEvent('SUPABASE_FETCH_STARTED', { seq, purpose, method });
       try {
