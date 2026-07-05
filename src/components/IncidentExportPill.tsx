@@ -139,22 +139,29 @@ export function IncidentExportPill(): JSX.Element | null {
         )
         .eq('user_id', userId)
         .gte('updated_at', SESSION_START_ISO)
+        .not('correlation_id', 'ilike', 'self-check-%')
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (cancelled || !data) return;
       const row = data as Record<string, unknown>;
+      const cid = (row.correlation_id as string) ?? '';
+      if (cid.startsWith('self-check-')) return;
+      const status = (row.report_status as string) ?? '';
+      if (status.startsWith('self-check')) return;
+      const outcome = row.outcome as Record<string, unknown> | null;
+      if (outcome && outcome.self_check === true) return;
       const routeStr =
         (row.recovery_route as string | null) ?? (row.original_route as string | null) ?? null;
       const rowGameId = routeStr ? extractRouteGameId(routeStr) : null;
       if (routeGameId && rowGameId && rowGameId !== routeGameId) return;
       offer({
         kind: 'client_runtime',
-        key: `crir-${row.correlation_id as string}`,
+        key: `crir-${cid}`,
         gameId: rowGameId,
         createdAt: (row.updated_at as string) ?? SESSION_START_ISO,
         reportText: buildClientRuntimeTxt(row),
-        label: `runtime · ${(row.report_status as string) ?? 'pending'}`,
+        label: `runtime · ${status || 'pending'}`,
       });
     };
     void load();
@@ -178,6 +185,8 @@ export function IncidentExportPill(): JSX.Element | null {
         .from('voice_operation_reports')
         .select('voice_operation_id, sender_user_id, game_id, terminal_status, report_text, finalized_at')
         .gte('finalized_at', SESSION_START_ISO)
+        .not('voice_operation_id', 'ilike', 'self-check-%')
+        .not('terminal_status', 'ilike', 'self-check%')
         .order('finalized_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -186,6 +195,8 @@ export function IncidentExportPill(): JSX.Element | null {
         voice_operation_id: string; sender_user_id: string | null; game_id: string | null;
         terminal_status: string; report_text: string; finalized_at: string;
       };
+      if (row.voice_operation_id.startsWith('self-check-')) return;
+      if ((row.terminal_status ?? '').startsWith('self-check')) return;
       if (routeGameId && row.game_id && row.game_id !== routeGameId) return;
       const isPeer = !!(row.sender_user_id && row.sender_user_id !== userId);
       offer({

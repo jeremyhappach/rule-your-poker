@@ -241,3 +241,33 @@ function onSnapshotForChatOps(
 export function getLastShellTabAttentionSnapshot(): ShellTabAttentionSnapshot | null {
   return lastSnapshot;
 }
+
+/**
+ * Waiting-table transition events. Emitted only at the moment a specific
+ * canonical transition happens — never per render.
+ */
+export type WaitingChatTransitionName =
+  | 'WAITING_REMOTE_FIRST_MESSAGE_RECEIVED'
+  | 'WAITING_CHAT_SOLID_RED_APPLIED'
+  | 'WAITING_CHAT_SOLID_RED_CLEARED'
+  | 'WAITING_CHAT_OUTLINE_APPLIED'
+  | 'WAITING_CARDS_TAB_RENDER_DURING_CHAT_ATTENTION'
+  | 'WAITING_TAB_ATTENTION_COLLISION'
+  | 'WAITING_TABBAR_REMOUNT_DURING_CHAT_ATTENTION';
+
+export function recordWaitingChatTransition(
+  name: WaitingChatTransitionName,
+  extra: Record<string, unknown> = {},
+): void {
+  recordRuntimeEvent({
+    event_family: 'shell_tab_attention',
+    event_name: name,
+    severity: name === 'WAITING_TAB_ATTENTION_COLLISION' ||
+              name === 'WAITING_TABBAR_REMOUNT_DURING_CHAT_ATTENTION'
+              ? 'warn'
+              : 'info',
+    game_id: (lastSnapshot?.gameId ?? undefined) as string | undefined,
+    payload: { snapshot: lastSnapshot, ...extra },
+  });
+}
+
