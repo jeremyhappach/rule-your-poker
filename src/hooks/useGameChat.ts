@@ -394,7 +394,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
+        finalizeChatSendOperation(correlationId, 'error', {
+          message: (error as Error)?.message ?? String(error),
+        });
       } finally {
+        // finalize as success if no error branch above already finalized;
+        // safe because finalizeChatSendOperation is idempotent on cid removal.
+        finalizeChatSendOperation(correlationId, 'success');
         setIsSending(false);
       }
     },
