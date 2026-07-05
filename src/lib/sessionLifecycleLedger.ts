@@ -381,6 +381,28 @@ export function recordSessionIncident(
     ...detail,
     committedActiveSession,
   });
+  // Bridge context-teardown incidents to chat-operation boundary so an
+  // in-flight chat op captures why the sender vanished.
+  try {
+    const bridgeMap: Record<string, "GAME_CONTEXT_TEARDOWN" | "ACTIVE_SESSION_CLEARED" | "ACTIVE_SESSION_REPLACED" | "SHELL_UNMOUNT_CONTEXT" | "ACTIVE_SESSION_ROUTE_EJECTED" | "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK"> = {
+      ACTIVE_SESSION_ROUTE_EJECTED: "ACTIVE_SESSION_ROUTE_EJECTED",
+      ACTIVE_SESSION_LEGACY_JOIN_FALLBACK: "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+      ACTIVE_SESSION_SHELL_UNMOUNTED: "SHELL_UNMOUNT_CONTEXT",
+      ACTIVE_SESSION_MEMBERSHIP_REJECTED: "ACTIVE_SESSION_CLEARED",
+      ACTIVE_SESSION_TABLE_NOT_FOUND_OR_STALE: "GAME_CONTEXT_TEARDOWN",
+      ACTIVE_SESSION_AUTH_REDIRECT: "ACTIVE_SESSION_CLEARED",
+    };
+    const bridged = bridgeMap[kind];
+    if (bridged) {
+      void import("./chatOperations/chatOperationBoundary").then(({ recordChatBoundaryEvent }) => {
+        recordChatBoundaryEvent(bridged, {
+          source: `sessionLifecycleLedger.recordSessionIncident:${kind}`,
+          incident_kind: kind,
+          ...detail,
+        });
+      }).catch(() => {});
+    }
+  } catch { /* noop */ }
 }
 
 export function readSessionLifecycleEvents(): SessionLifecycleEvent[] {
