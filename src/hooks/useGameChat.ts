@@ -292,6 +292,14 @@ export const useGameChat = (
           setIsSending(false);
           return;
         }
+        // Immediate presence proof — a sender that dies in the first 3s
+        // still leaves durable heartbeat + armed-boundary evidence
+        // before optimistic mutation runs.
+        await writeChatOperationSenderHeartbeat(correlationId, { phase: 'operation-armed' });
+        recordChatBoundaryEvent('SENDER_OPERATION_ARMED' as never, {
+          operationId: correlationId,
+          route,
+        });
         openChatSendOperation(correlationId, {
           gameId,
           sessionId,
