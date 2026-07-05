@@ -13330,9 +13330,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           duplicate here. */}
       <CribDealerDrawTraceOverlay gameId={gameId ?? null} />
       </ChatAttentionProvider>
+      </VoiceOperationIdentityProvider>
       </GameChatContextProvider>
     </VisualPreferencesProvider>
   );
 };
+
 
 export default Game;
