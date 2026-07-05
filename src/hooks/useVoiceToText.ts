@@ -533,6 +533,11 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const abortController = new AbortController();
       const TIMEOUT_MS = 60000;
       const timeoutHandle = setTimeout(() => {
+        try {
+          void import('@/lib/chatOperations/chatOperationBoundary').then(({ recordChatAbortInitiated }) => {
+            recordChatAbortInitiated('useVoiceToText.timeout', 'voice-to-text-invoke', { timeout_ms: TIMEOUT_MS });
+          }).catch(() => {});
+        } catch { /* noop */ }
         try { abortController.abort('timeout'); } catch { /* noop */ }
         if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_TIMEOUT', {
           duration_ms: Math.round(performance.now() - invokeStartedAt),
