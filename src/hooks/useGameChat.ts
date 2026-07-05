@@ -492,6 +492,11 @@ export const useGameChat = (
         void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
           message: (error as Error)?.message ?? String(error),
         });
+        writeChatOperationTerminalSnapshot(
+          correlationId,
+          (error as Error)?.message ?? String(error),
+          'send-exception',
+        );
         void finalizeServerChatOperation(
           correlationId,
           'send-exception',
