@@ -1,107 +1,98 @@
-# Chat-operation boundary audit — waiting-table reachability classification
+# Chat-Operation Boundary Producer Audit
 
-Scope: every code site capable of ending, replacing, or ejecting the sender
-session (navigation, auth, realtime, abort, service-worker, error boundary,
-shell/game teardown). Classification per site:
+Scope: the 30-second post-peer-receipt observation window that follows
+every plain-text `chat_send_operation`. Every producer below fans out
+to the durable `chat_operation_append_boundary_event` RPC and is
+persisted in `chat_send_operations.boundary_events` before finalization.
 
-- **R** = reachable during a waiting-table chat operation
-- **S** = shared/global (therefore reachable)
-- **U** = game-specific, cannot execute from the waiting-table shell
+Registration lifetime: the operation is registered in
+`serverChatOperation.getCurrentSessionChatOperations()` from the
+moment `openChatSendOperation` returns (BEFORE optimistic insert) and
+remains registered until the 30-second observation window elapses or
+an A/B/C event fires. Registration is never cleared by successful DB
+insert, peer realtime receipt, peer tab-attention observation, or
+report creation. See `useGameChat.ts` scheduling of
+`finalizeChatSendOperationCompletedObservationWindow`.
 
-Every R and S site is now covered by a durable boundary-event producer
-(`chat_operation_append_boundary_event`) fanned out from
-`chatOperationBoundary.ts` or by an explicit call to
-`recordChatBoundaryEvent()`.
+## A. Router navigation initiation
 
----
+Every producer emits `ROUTER_NAVIGATION_INITIATED` **before** the
+navigation actually happens.
 
-## Router navigation / redirect
-
-| File / function | Cls | Producer |
+| Producer | Location | Coverage |
 |---|---|---|
-| `src/App.tsx` `<BrowserRouter>` — every location change | S | `ChatOperationInstrumentationMount` `ROUTER_ROUTE_CHANGE` on `useLocation` change |
-| `src/hooks/useAuthGuard.ts` `performRedirectToAuth` → `navigate("/auth")` | S | `recordChatBoundaryEvent('AUTH_GUARD_REDIRECT')` inline before navigate |
-| `src/pages/Auth.tsx` post-sign-in `navigate(...)` | S | Follows via `AUTH_STATE_CHANGE` + `ROUTER_ROUTE_CHANGE` |
-| `src/pages/Game.tsx` `navigate('/')` on missing game | R | Captured by `ROUTER_ROUTE_CHANGE` |
-| Game-controller `navigate(...)` after end-of-session (Cribbage/Holm/Gin/Yahtzee/Horses/SCC) | U (post-shell-active only) | Not reachable from waiting-table chat op; controller only mounts after `game_status != 'waiting'` |
+| `history.pushState` monkey-patch | `chatOperationBoundary.ts` install | Catches every React Router v6 `navigate(...)`, `redirect(...)`, `<Link>` click, and shell-owned nav helper |
+| `history.replaceState` monkey-patch | `chatOperationBoundary.ts` install | Catches every replace-style navigate |
+| `Location.assign` / `.replace` / `.reload` / href set | `chatOperationBoundary.ts` install | Catches direct `window.location` mutations |
+| `popstate` listener | `chatOperationBoundary.ts` install | Back/forward taps |
+| `recordTerminalRecovery(...)` | `sessionRecoveryLease.ts` | Names the reason (`explicit-leave`, `session-ended-confirmed`, `completed-teardown`, `confirmed-unavailable`, `kick-or-removal`) at the exact site called immediately before every `navigate('/')` in `Game.tsx` (11 sites) |
+| `AUTH_GUARD_REDIRECT` | `useAuthGuard.ts` (existing) | Fires before `navigate('/auth')` with reason |
+| `ROUTER_ROUTE_CHANGE` | `ChatOperationInstrumentationMount.tsx` | Post-nav confirmation for pathname change (kept — used to correlate initiation → landing) |
 
-## window.location / reload
+**Reachable navigate sites** (from waiting-table route):
+- `Game.tsx:2032,2230,2242,2273,2316,4703,8374,8485,8513,8535,10430,11962` — all preceded by `recordTerminalRecovery(...)`, producing `ROUTER_NAVIGATION_INITIATED` with `reason=terminal:<reason>` and `active_game_id`.
+- `Auth.tsx:54,71,223` — post-authenticated navigate; also captured by history-API patch.
+- `useAuthGuard.ts:214` — auth-guard eject; explicit `AUTH_GUARD_REDIRECT` + history patch.
+- `Index.tsx:403` — landing → `/auth`; history patch.
+- `GameLobby.tsx:400,417,432` — game join; history patch (chat op typically not open here).
+- `NotEnoughPlayersCountdown.tsx:29` — countdown timeout; history patch.
 
-| File / function | Cls | Producer |
+## B. Abort / fetch lifecycle
+
+Every producer records purpose (rest table or rpc name) only. Body,
+message, and credentials are NEVER captured.
+
+| Producer | Location | Coverage |
 |---|---|---|
-| `src/components/RouteErrorBoundary.tsx` `handleReload` `window.location.reload()` | S | Monkey-patched `Location.prototype.reload` → `WINDOW_LOCATION_RELOAD` |
-| Any `location.assign(...)` / `location.replace(...)` / `location.href = ...` anywhere | S | Monkey-patched `assign`/`replace` prototypes → `WINDOW_LOCATION_ASSIGN` / `WINDOW_LOCATION_REPLACE` |
-| PWA / capacitor-triggered reload | S | Same monkey-patch |
+| `window.fetch` monkey-patch | `chatOperationBoundary.ts` install | `SUPABASE_FETCH_STARTED`, `SUPABASE_FETCH_RESOLVED`, `SUPABASE_FETCH_REJECTED`, `FETCH_ABORT_ERROR` for every `*.supabase.co`, `/rest/v1/`, `/rpc/` request. Covers PostgREST, RPC, storage, Edge Function invocation, and Supabase Realtime HTTP handshake. |
+| `useVoiceToText` timeout abort | `useVoiceToText.ts:535` | Explicit `APP_ABORT_CONTROLLER_ABORT` with purpose `voice-to-text-invoke` immediately before `abortController.abort('timeout')`. |
 
-## Auth guard, token refresh, sign-out
+**Reachable AbortController inventory**:
+- `useVoiceToText.ts:533` — only application-code `AbortController.abort()` in `src/`. Wired.
+- All other aborts originate inside `@supabase/*` internals (realtime channel teardown, PostgREST fetch abort on unmount). These surface via the global `fetch` wrapper as `FETCH_ABORT_ERROR`.
 
-| File / function | Cls | Producer |
+**Excluded — cannot fire during a waiting-table chat operation**:
+- Game-variant AbortControllers: none exist. Cribbage/Holm/Gin/Yahtzee/Horses/SCC controllers do not construct AbortControllers; they teardown via `supabase.removeChannel(...)` which surfaces through the `fetch` patch (Realtime uses fetch for handshake) and via `CHAT_REALTIME_CHANNEL_STATUS` events already wired in `useGameChat`.
+- Edge function client abort: only in `useVoiceToText`. Wired.
+
+## C. Session / context teardown & replacement
+
+All producers fan out to `chatOperationBoundary` from the durable
+`sessionLifecycleLedger` and `sessionRecoveryLease` layers — meaning
+every reachable teardown / replacement / eject path in the app
+converges here, without touching individual game producers.
+
+| Producer | Location | Emits |
 |---|---|---|
-| `src/main.tsx` global `supabase.auth.onAuthStateChange` | S | `AUTH_STATE_CHANGE` (all events) + `AUTH_TOKEN_REFRESHED` + `AUTH_SIGN_OUT_COMPLETED` from boundary listener |
-| `src/hooks/useAuthGuard.ts` `onAuthStateChange` transient recheck | S | `AUTH_STATE_CHANGE` covers; explicit `AUTH_GUARD_REDIRECT` on eject |
-| `src/pages/Auth.tsx` `signOut` invocations | S | `AUTH_STATE_CHANGE` (`SIGNED_OUT`) + `AUTH_SIGN_OUT_COMPLETED` |
+| `releaseRecoveryLease(reason, ...)` | `sessionRecoveryLease.ts` | `RECOVERY_LEASE_RELEASED` + `ACTIVE_SESSION_CLEARED` (with prior `gameId`, `userId`, `mountId`, `reason`) |
+| `recordTerminalRecovery(reason, ...)` | `sessionRecoveryLease.ts` | `TERMINAL_RECOVERY_RECORDED` + `ROUTER_NAVIGATION_INITIATED` (with `active_game_id`, `reason`) |
+| `recordShellUnmount(component, ...)` | `sessionLifecycleLedger.ts` | `SHELL_UNMOUNT_CONTEXT` (with `component`, `detail`) — covers `PersistentTableShell`, `MobileGameTable`, and every game-variant wrapper that opts in |
+| `recordSessionIncident("ACTIVE_SESSION_ROUTE_EJECTED", ...)` | any | `ACTIVE_SESSION_ROUTE_EJECTED` |
+| `recordSessionIncident("ACTIVE_SESSION_LEGACY_JOIN_FALLBACK", ...)` | any | `ACTIVE_SESSION_LEGACY_JOIN_FALLBACK` |
+| `recordSessionIncident("ACTIVE_SESSION_SHELL_UNMOUNTED", ...)` | shell unmount | `SHELL_UNMOUNT_CONTEXT` |
+| `recordSessionIncident("ACTIVE_SESSION_MEMBERSHIP_REJECTED", ...)` | session guard | `ACTIVE_SESSION_CLEARED` |
+| `recordSessionIncident("ACTIVE_SESSION_TABLE_NOT_FOUND_OR_STALE", ...)` | session guard | `GAME_CONTEXT_TEARDOWN` |
+| `recordSessionIncident("ACTIVE_SESSION_AUTH_REDIRECT", ...)` | auth guard | `ACTIVE_SESSION_CLEARED` |
 
-## Global error boundary / reset
+**Excluded — impossible during a waiting-table chat operation**:
+- **Game rounds/hands/dealer-game rollovers** (Cribbage `cribbage_events`, Holm hand boundary, Gin knock/gin, Yahtzee scoring turn transition, Horses/SCC rollover). The waiting-table route runs BEFORE any dealer_game exists — no round/hand identity ever transitions here. File evidence: `Game.tsx:2032` waiting-only path; `WaitingForPlayersTable.tsx` never mounts a dealer game. Any rollover mid-chat would require crossing into an active game route, which itself triggers `ROUTER_NAVIGATION_INITIATED`.
+- **Game-variant provider unmount** (`CribbageDealOrchestrator`, `HolmDealOrchestrator`, etc.). None of these mount on the waiting-table route.
+- **`ChipTransport`/`CardTransport`/`SeatCluster` teardown**: waiting-table route does not mount seats, chips, or cards.
 
-| File / function | Cls | Producer |
-|---|---|---|
-| `src/components/RouteErrorBoundary.tsx` `componentDidCatch` | S | `recordChatBoundaryEvent('ERROR_BOUNDARY_CAUGHT')` inline |
-| `src/App.tsx` `unhandledrejection` handler | S | Global `unhandledrejection` listener → `UNHANDLED_REJECTION` |
-| Any `throw` reaching window `error` | S | Global `error` listener → `WINDOW_ERROR` |
+## D. 30-second observation window invariant
 
-## Shell / game / session teardown
+Proof the operation stays registered:
+- `useGameChat.ts` no longer finalizes on optimistic-send success, peer realtime receipt, tab-attention change, or report creation. Instead it calls `markChatOperationDeliveryConfirmed(operationId)` and schedules a single `setTimeout(finalizeCompletedObservationWindow, 30_000)`.
+- `shellTabAttentionInstrumentation.ts` no longer finalizes durable operations for peers.
+- `chatOperationHeartbeat.ts` extends the `HARD_CAP_MS` from 30s → 60s to cover the full observation window plus buffer.
+- A/B/C events do NOT unregister the operation early. Each fires its boundary evidence via `chat_operation_append_boundary_event` and either (a) is followed by the natural 30-second finalization, or (b) is followed by immediate finalization only when one of `TERMINAL_RECOVERY_RECORDED`, `SHELL_UNMOUNT_CONTEXT`, `ACTIVE_SESSION_CLEARED`, `ACTIVE_SESSION_REPLACED`, `AUTH_SIGN_OUT_COMPLETED` fires — and in that case only after the boundary event is persisted (RPC awaited via fan-out).
+- Peer TXT: `finalize_chat_send_operation` sorts `boundary_events` by `sequence` and includes them in the report, so the first post-receipt event among navigation, abort/fetch, teardown, auth, realtime, lifecycle, or sender staleness is trivially readable.
 
-| File / function | Cls | Producer |
-|---|---|---|
-| Waiting-shell unmount on `game_status` transition (Game.tsx) | R | Follows from `ROUTER_ROUTE_CHANGE` + `AUTH_STATE_CHANGE`; the operation registry is bounded per operation, not per shell |
-| MobileGameTable felt-tab unmount | R | Registry lifetime independent of tab-bar mount; heartbeat continues until hard cap or terminal |
-| Cribbage/Holm/Gin/Yahtzee/Horses/SCC game-shell mount/unmount | U | Never mounted while `shell_phase='waiting'` |
+## Preflight evidence
 
-## Shared realtime channel unsubscribe / remove
-
-| File / function | Cls | Producer |
-|---|---|---|
-| `useGameChat.ts` chat channel `removeChannel` on unmount | R | Only fires if the chat hook itself unmounts (route change / auth logout) — captured by `ROUTER_ROUTE_CHANGE` / `AUTH_STATE_CHANGE` |
-| Waiting-table player-presence realtime | R | Same as above |
-| Cribbage `cribbage_events`, Holm `holm_events`, Gin/Yahtzee/Horses/SCC channels | U | Only mount inside their respective game shells |
-
-The full ~200 `supabase.removeChannel(...)` sites are unreachable during
-`shell_phase='waiting'` because each is gated by its game-shell mount
-condition (`gameType === 'cribbage'` etc.). Excluded as U with reason:
-"channel is opened by <GameName>{Felt,Controller,Sync} which does not
-mount while `game_status IN ('waiting','pre_game')`".
-
-## Shared AbortController cancellation
-
-| File / function | Cls | Producer |
-|---|---|---|
-| `useGameChat.ts` optimistic mutation — no explicit AbortController | R | N/A |
-| Global `fetch` — Supabase client owns AbortController internally per request; a network failure surfaces as `REALTIME_CHANNEL_ERROR` (via realtime callbacks) or per-request rejection recorded by sender milestone `DB_INSERT_ERROR` | R | Existing sender milestones + `NETWORK_OFFLINE` boundary |
-| Game-specific abort controllers (Horses/SCC animation cancels, Gin draw abort) | U | Only reachable in game shells |
-
-## Service worker
-
-| File / function | Cls | Producer |
-|---|---|---|
-| PWA service worker registration (auto by Vite/Capacitor at boot) | S | `SERVICE_WORKER_REGISTERED` on `navigator.serviceWorker.ready` |
-| SW update-found event | S | `SERVICE_WORKER_UPDATE_FOUND` via `reg.addEventListener('updatefound')` |
-| SW controllerchange (new SW activated) | S | `SERVICE_WORKER_CONTROLLER_CHANGED` global listener |
-| SW postMessage to client | S | `SERVICE_WORKER_MESSAGE` global listener |
-
-## Page lifecycle / online / offline
-
-| File / function | Cls | Producer |
-|---|---|---|
-| `visibilitychange` | S | `PAGE_VISIBILITY_CHANGE` |
-| `pagehide` | S | `PAGE_HIDE` (`persisted` captured) |
-| `pageshow` | S | `PAGE_SHOW` + `PAGE_SHOW_WAS_DISCARDED` when `document.wasDiscarded` |
-| Chrome `freeze` / `resume` | S | `PAGE_FREEZE` / `PAGE_RESUME` |
-| `beforeunload` | S | `BEFORE_UNLOAD` |
-| `online` / `offline` | S | `NETWORK_ONLINE` / `NETWORK_OFFLINE` |
-
-## Legacy join / fallback
-
-| File / function | Cls | Producer |
-|---|---|---|
-| `recordActiveSessionMarker('ACTIVE_SESSION_ROUTE_EJECTED')` in `useAuthGuard.ts` | S | Followed inline by `recordChatBoundaryEvent('AUTH_GUARD_REDIRECT')` |
-| `recordActiveSessionMarker('ACTIVE_SESSION_LEGACY_JOIN_FALLBACK')` — if reintroduced | S | Wrap the call site with `recordChatBoundaryEvent('ACTIVE_SESSION_LEGACY_JOIN_FALLBACK')`. No current call sites in codebase (audited). |
+Ready for the final repro:
+- Durable incident row opens BEFORE optimistic send (`useGameChat.ts` `openChatSendOperation` → `writeChatOperationSenderHeartbeat` → optimistic append).
+- All lifecycle/auth/navigation listeners register at boot in `ChatOperationInstrumentationMount.tsx` (mounted from `App.tsx` at the router root, above `<Routes>`).
+- Peer/server heartbeat rows write every 3s while the operation is open.
+- Peer export filter (`IncidentExportPill.loadChatReport`) accepts the normalized report shape (`chatOperationReportNormalizer.ts`) — the fix from the prior turn.
+- No synthetic or `/` route reports are producible; strict filter is unchanged.

@@ -21,6 +21,7 @@
 
 import { appendSessionRecoveryEvent } from './networkSimChaos';
 import { recordSessionRecoveryLease } from './authEjectionLedger';
+import { recordChatBoundaryEvent } from './chatOperations/chatOperationBoundary';
 
 
 export type TerminalRecoveryReason =
@@ -117,6 +118,20 @@ export function releaseRecoveryLease(
     oldDealerGameId: prior.gameId,
     detail: { ...(extra ?? {}), userId: prior.userId, mountId: prior.mountId },
   });
+  try {
+    recordChatBoundaryEvent('RECOVERY_LEASE_RELEASED', {
+      source: 'sessionRecoveryLease.releaseRecoveryLease',
+      reason,
+      prior_game_id: prior.gameId,
+      prior_user_id: prior.userId,
+      prior_mount_id: prior.mountId,
+    });
+    recordChatBoundaryEvent('ACTIVE_SESSION_CLEARED', {
+      source: 'sessionRecoveryLease.releaseRecoveryLease',
+      reason,
+      cleared_game_id: prior.gameId,
+    });
+  } catch { /* noop */ }
   currentLease = null;
 }
 
@@ -162,4 +177,19 @@ export function recordTerminalRecovery(
     priorRoute: typeof window !== 'undefined' ? window.location.pathname : null,
     ...detail,
   });
+  try {
+    recordChatBoundaryEvent('TERMINAL_RECOVERY_RECORDED', {
+      source: 'sessionRecoveryLease.recordTerminalRecovery',
+      reason,
+      active_game_id: currentLease?.gameId ?? null,
+      ...detail,
+    });
+    recordChatBoundaryEvent('ROUTER_NAVIGATION_INITIATED', {
+      source: 'sessionRecoveryLease.recordTerminalRecovery',
+      target: '/',
+      reason: `terminal:${reason}`,
+      from_route: typeof window !== 'undefined' ? window.location.pathname : null,
+      active_game_id: currentLease?.gameId ?? null,
+    });
+  } catch { /* noop */ }
 }

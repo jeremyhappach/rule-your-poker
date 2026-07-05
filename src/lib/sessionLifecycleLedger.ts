@@ -381,6 +381,28 @@ export function recordSessionIncident(
     ...detail,
     committedActiveSession,
   });
+  // Bridge context-teardown incidents to chat-operation boundary so an
+  // in-flight chat op captures why the sender vanished.
+  try {
+    const bridgeMap: Record<string, "GAME_CONTEXT_TEARDOWN" | "ACTIVE_SESSION_CLEARED" | "ACTIVE_SESSION_REPLACED" | "SHELL_UNMOUNT_CONTEXT" | "ACTIVE_SESSION_ROUTE_EJECTED" | "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK"> = {
+      ACTIVE_SESSION_ROUTE_EJECTED: "ACTIVE_SESSION_ROUTE_EJECTED",
+      ACTIVE_SESSION_LEGACY_JOIN_FALLBACK: "ACTIVE_SESSION_LEGACY_JOIN_FALLBACK",
+      ACTIVE_SESSION_SHELL_UNMOUNTED: "SHELL_UNMOUNT_CONTEXT",
+      ACTIVE_SESSION_MEMBERSHIP_REJECTED: "ACTIVE_SESSION_CLEARED",
+      ACTIVE_SESSION_TABLE_NOT_FOUND_OR_STALE: "GAME_CONTEXT_TEARDOWN",
+      ACTIVE_SESSION_AUTH_REDIRECT: "ACTIVE_SESSION_CLEARED",
+    };
+    const bridged = bridgeMap[kind];
+    if (bridged) {
+      void import("./chatOperations/chatOperationBoundary").then(({ recordChatBoundaryEvent }) => {
+        recordChatBoundaryEvent(bridged, {
+          source: `sessionLifecycleLedger.recordSessionIncident:${kind}`,
+          incident_kind: kind,
+          ...detail,
+        });
+      }).catch(() => {});
+    }
+  } catch { /* noop */ }
 }
 
 export function readSessionLifecycleEvents(): SessionLifecycleEvent[] {
@@ -552,6 +574,17 @@ export function recordShellUnmount(
   detail: Record<string, unknown> = {},
 ): void {
   recordSessionLifecycleEvent("SHELL_UNMOUNT", { component, ...detail });
+  try {
+    // Bridge to chat-operation boundary so an in-flight chat op sees the
+    // teardown even if the shell hosting the pill is gone.
+    void import("./chatOperations/chatOperationBoundary").then(({ recordChatBoundaryEvent }) => {
+      recordChatBoundaryEvent("SHELL_UNMOUNT_CONTEXT", {
+        source: `sessionLifecycleLedger.recordShellUnmount:${component}`,
+        component,
+        ...detail,
+      });
+    }).catch(() => {});
+  } catch { /* noop */ }
   if (committedActiveSession) {
     recordSessionIncident("ACTIVE_SESSION_SHELL_UNMOUNTED", {
       component,
