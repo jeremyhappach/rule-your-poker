@@ -146,6 +146,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AppNetworkSim>
+              <ChatOperationInstrumentationMount />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
