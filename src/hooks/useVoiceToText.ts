@@ -279,6 +279,16 @@ export function useVoiceToText(): UseVoiceToTextResult {
       surface_context: snapshotVoiceSurfaceContext(),
     });
 
+    // Server-first: open the durable server-side incident row synchronously
+    // (fire-and-forget network write). This is the ONLY client prerequisite
+    // for full-fidelity diagnosis if this tab dies.
+    void openServerVoiceIncident({
+      voice_operation_id: incidentId,
+      surface,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+    });
+
+
     try {
       const stream = await ensureStream();
       if (!stream) {
