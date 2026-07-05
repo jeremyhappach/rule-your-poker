@@ -190,10 +190,12 @@ serve(async (req) => {
         edge_function_error_category: errCategory,
         edge_function_error_message: errMsg,
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: errMsg, detail: txt.slice(0, 512) }),
         { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     const payload = await upstream.json();
