@@ -407,19 +407,32 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
   activeChatOperations.add(correlationId);
   activeChatOperationRoles.set(correlationId, 'sender');
   activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
+  activeChatOperationBaselineWritten.delete(correlationId);
+  activeChatOperationTerminalWritten.delete(correlationId);
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
     registerActiveChatOperationForViolations(correlationId);
   });
+  const openedSequence = nextInstrumentationSequence();
   recordRuntimeEvent({
     event_family: 'chat',
-    event_name: 'CHAT_SEND_OPERATION_OPENED',
+    event_name: 'CHAT_OPERATION_OPENED',
     severity: 'info',
     correlation_id: correlationId,
-    payload: { snapshot: lastSnapshot, ...(extra ?? {}) },
+    payload: { sequence: openedSequence, snapshot: lastSnapshot, ...(extra ?? {}) },
   });
+  // Forced sender baseline — bypasses signature de-dupe so the operation
+  // always begins with a captured visual/context snapshot even when no
+  // subsequent state change occurs.
+  if (!activeChatOperationBaselineWritten.has(correlationId)) {
+    activeChatOperationBaselineWritten.add(correlationId);
+    writeForcedShellTabAttentionSnapshot('CHAT_OPERATION_BASELINE', correlationId, {
+      openedSequence,
+    });
+  }
 }
 
 export function beginChatOperationSnapshotCapture(correlationId: string): void {
+  const alreadyActive = activeChatOperations.has(correlationId);
   activeChatOperations.add(correlationId);
   activeChatOperationRoles.set(correlationId, 'peer');
   if (!activeChatOperationSnapshots.has(correlationId)) {
@@ -428,6 +441,20 @@ export function beginChatOperationSnapshotCapture(correlationId: string): void {
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
     registerActiveChatOperationForViolations(correlationId);
   });
+  const observedSequence = nextInstrumentationSequence();
+  recordRuntimeEvent({
+    event_family: 'chat',
+    event_name: 'PEER_CHAT_OPERATION_OBSERVED',
+    severity: 'info',
+    correlation_id: correlationId,
+    payload: { sequence: observedSequence, alreadyActive, snapshot: lastSnapshot },
+  });
+  if (!activeChatOperationBaselineWritten.has(correlationId)) {
+    activeChatOperationBaselineWritten.add(correlationId);
+    writeForcedShellTabAttentionSnapshot('PEER_OPERATION_BASELINE', correlationId, {
+      observedSequence,
+    });
+  }
 }
 
 export function finalizeChatSendOperation(
@@ -435,19 +462,34 @@ export function finalizeChatSendOperation(
   outcome: 'success' | 'error' | 'aborted',
   extra?: Record<string, unknown>,
 ): void {
+  if (!activeChatOperations.has(correlationId)) return;
+  // Terminal snapshot — bypass signature de-dupe.
+  writeChatOperationTerminalSnapshot(
+    correlationId,
+    (extra?.terminalReason as string) ?? `local-${outcome}`,
+    outcome,
+  );
   const snapshots = activeChatOperationSnapshots.get(correlationId) ?? [];
   activeChatOperations.delete(correlationId);
   activeChatOperationSnapshots.delete(correlationId);
   activeChatOperationRoles.delete(correlationId);
+  activeChatOperationBaselineWritten.delete(correlationId);
+  activeChatOperationTerminalWritten.delete(correlationId);
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ clearActiveChatOperationForViolations }) => {
     clearActiveChatOperationForViolations(correlationId);
   });
   recordRuntimeEvent({
     event_family: 'chat',
-    event_name: 'CHAT_SEND_OPERATION_FINALIZED',
+    event_name: 'CHAT_OPERATION_FINALIZED',
     severity: outcome === 'error' ? 'warn' : 'info',
     correlation_id: correlationId,
-    payload: { outcome, snapshot: lastSnapshot, snapshots, ...(extra ?? {}) },
+    payload: {
+      outcome,
+      sequence: nextInstrumentationSequence(),
+      snapshot: lastSnapshot,
+      snapshots,
+      ...(extra ?? {}),
+    },
   });
 }
 
