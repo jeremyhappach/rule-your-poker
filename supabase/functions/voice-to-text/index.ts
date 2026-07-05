@@ -109,10 +109,12 @@ serve(async (req) => {
         edge_function_error_category: "not-configured",
         edge_function_error_message: "not configured",
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: "voice-to-text capability not configured." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     if (!audio || typeof audio !== "string") {
