@@ -263,62 +263,80 @@ export const useGameChat = (
           chatIdentity?.route ??
           (typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId}`);
         const sessionId = chatIdentity?.sessionId ?? (gameId ? `session:${gameId}` : getTabSessionId());
-        // CRITICAL PATH RULE: instrumentation must NEVER gate, delay, or
-        // reject the business chat send. We register the operation into
-        // the client-side current-session registry synchronously (so
-        // boundary/heartbeat fan-out still targets it), then fire every
-        // durable instrumentation write fully fire-and-forget with
-        // isolated error handling. A failure to open the durable
-        // chat_send_operations row, to write the armed heartbeat, or to
-        // emit the SENDER_OPERATION_ARMED boundary event MUST NOT stop
-        // the chat_messages insert below.
-        try {
-          registerCurrentSessionChatOperation({
-            operationId: correlationId,
-            gameId,
-            sessionId,
-            route,
-            role: 'sender',
-          });
-        } catch { /* registry is best-effort */ }
-        try {
-          void openServerChatOperation({
-            operationId: correlationId,
-            senderUserId: userId,
-            gameId,
-            sessionId,
-            dealerGameId: chatIdentity?.dealerGameId ?? null,
-            route,
-            activeTab: chatIdentity?.activeTab ?? null,
-            shellPhase: chatIdentity?.shellPhase ?? null,
-            originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
-            messagePreview: message.trim(),
-            // Extended waiting-table identity/context
-            routeGameId: chatIdentity?.routeGameId ?? null,
-            canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
-            operationGameId: chatIdentity?.operationGameId ?? gameId,
-            rawGameType: chatIdentity?.rawGameType ?? null,
-            resolvedGameType: chatIdentity?.resolvedGameType ?? null,
-            gameTypeSource: chatIdentity?.gameTypeSource ?? null,
-            gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
-            currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
-            localTurnEligible: chatIdentity?.localTurnEligible ?? null,
-            waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
-            activeGameComponent: chatIdentity?.activeGameComponent ?? null,
-            tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
-          }).catch(() => { /* instrumentation only */ });
-        } catch { /* instrumentation only */ }
-        try {
+        // TELEMETRY ORDERING CONTRACT:
+        //   1. `telemetryReady` opens the durable chat_send_operations
+        //      row and (only on success) registers the operation into
+        //      the client-side current-session registry.
+        //   2. The business send path (optimistic mutation +
+        //      chat_messages.insert) below runs immediately and NEVER
+        //      awaits telemetryReady.
+        //   3. Every operation-scoped write (armed heartbeat, boundary
+        //      events, sender milestones, delivery-confirmed marker,
+        //      observation-window heartbeats/finalize, terminal
+        //      snapshots) is gated behind
+        //      `void telemetryReady.then((ok) => { if (!ok) return; ... })`
+        //      so no operation-scoped RPC can precede the durable open.
+        //   4. If the durable open fails, telemetry is marked
+        //      unavailable locally (`ok===false`); the chat send still
+        //      completes normally and no operation-scoped RPCs are
+        //      attempted against a missing row.
+        const telemetryReady: Promise<boolean> = openServerChatOperation({
+          operationId: correlationId,
+          senderUserId: userId,
+          gameId,
+          sessionId,
+          dealerGameId: chatIdentity?.dealerGameId ?? null,
+          route,
+          activeTab: chatIdentity?.activeTab ?? null,
+          shellPhase: chatIdentity?.shellPhase ?? null,
+          originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
+          messagePreview: message.trim(),
+          // Extended waiting-table identity/context
+          routeGameId: chatIdentity?.routeGameId ?? null,
+          canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
+          operationGameId: chatIdentity?.operationGameId ?? gameId,
+          rawGameType: chatIdentity?.rawGameType ?? null,
+          resolvedGameType: chatIdentity?.resolvedGameType ?? null,
+          gameTypeSource: chatIdentity?.gameTypeSource ?? null,
+          gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
+          currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
+          localTurnEligible: chatIdentity?.localTurnEligible ?? null,
+          waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
+          activeGameComponent: chatIdentity?.activeGameComponent ?? null,
+          tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
+        })
+          .then((ok) => {
+            if (ok) {
+              try {
+                registerCurrentSessionChatOperation({
+                  operationId: correlationId,
+                  gameId,
+                  sessionId,
+                  route,
+                  role: 'sender',
+                });
+              } catch { /* registry best-effort */ }
+            }
+            return ok;
+          })
+          .catch(() => false);
+
+        // Operation-scoped arming — strictly behind telemetryReady.
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
           void writeChatOperationSenderHeartbeat(correlationId, {
             phase: 'operation-armed',
           });
-        } catch { /* instrumentation only */ }
-        try {
-          recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
-            operationId: correlationId,
-            route,
-          });
-        } catch { /* instrumentation only */ }
+          try {
+            recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
+              operationId: correlationId,
+              route,
+            });
+          } catch { /* instrumentation only */ }
+        });
+
+        // Shell-attention capture is a client-side snapshot store with
+        // no dependency on the durable operation row; safe to open now.
         try {
           openChatSendOperation(correlationId, {
             gameId,
