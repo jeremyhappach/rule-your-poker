@@ -101,12 +101,18 @@ async function fanOut(
     user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     online: typeof navigator !== 'undefined' ? navigator.onLine : null,
   };
-  await Promise.all(ops.map((op: CurrentSessionChatOperationRecord) =>
-    (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
-      'chat_operation_append_boundary_event',
-      { _operation_id: op.operationId, _name: name, _role: op.role, _metadata: enriched },
-    ).catch(() => {}),
-  ));
+  for (const op of ops as CurrentSessionChatOperationRecord[]) {
+    void (async () => {
+      try {
+        await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+          'chat_operation_append_boundary_event',
+          { _operation_id: op.operationId, _name: op.role ? name : name, _role: op.role, _metadata: enriched },
+        );
+      } catch {
+        // Instrumentation failure must be silent and isolated.
+      }
+    })();
+  }
 }
 
 /**
