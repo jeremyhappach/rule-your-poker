@@ -457,7 +457,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
       endVoiceOperation('start-error');
     }
 
-  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
+  }, [buildBoundaryMeta, ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
 
   // Internal: stop the recorder and transcribe. Optionally release the stream
   // after transcription. Returns the transcript, or null on error/empty.
