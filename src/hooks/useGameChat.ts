@@ -777,6 +777,11 @@ export const useGameChat = (
                 newMessage.id,
                 getChatOperationSnapshots(newMessage.chat_operation_id),
               );
+              writeChatOperationTerminalSnapshot(
+                newMessage.chat_operation_id,
+                'peer-realtime-receipt-observed',
+                'peer-received',
+              );
               void finalizeServerChatOperation(
                 newMessage.chat_operation_id,
                 'peer-received',
