@@ -15,7 +15,20 @@ import {
   recordRuntimeEvent,
   upsertDeliveryTrace,
   getClientInstanceId,
+  getTabSessionId,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import {
+  appendChatPeerMilestone,
+  appendChatSenderMilestone,
+  createChatOperationId,
+  finalizeServerChatOperation,
+  openServerChatOperation,
+  type ChatOperationIdentity,
+} from '@/lib/chatOperations/serverChatOperation';
+import {
+  beginChatOperationSnapshotCapture,
+  getChatOperationSnapshots,
+} from '@/lib/shellTabAttention/shellTabAttentionInstrumentation';
 
 interface ChatMessage {
   id: string;
@@ -23,6 +36,7 @@ interface ChatMessage {
   user_id: string;
   message: string;
   image_url?: string | null;
+  chat_operation_id?: string | null;
   created_at: string;
   username?: string;
 }
@@ -44,7 +58,12 @@ interface ChatBubble extends ChatMessage {
  * chat bubbles) MUST derive from this projection. No component may
  * keep its own message array or filter by dealer-game.
  */
-export const useGameChat = (gameId: string | undefined, players: any[], currentUserId?: string) => {
+export const useGameChat = (
+  gameId: string | undefined,
+  players: any[],
+  currentUserId?: string,
+  chatIdentity?: Partial<ChatOperationIdentity>,
+) => {
   const [chatBubbles, setChatBubbles] = useState<ChatBubble[]>([]);
   const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -207,7 +226,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
-      const correlationId = `chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      const correlationId = createChatOperationId();
       const sendIntentAt = new Date().toISOString();
       recordChatDeliveryEvent({
         phase: 'send-intent',
@@ -223,14 +242,9 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         game_id: gameId,
         payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile) },
       });
-      const { openChatSendOperation, finalizeChatSendOperation } = await import(
+      const { openChatSendOperation, finalizeChatSendOperation, getChatOperationSnapshots } = await import(
         '@/lib/shellTabAttention/shellTabAttentionInstrumentation'
       );
-      openChatSendOperation(correlationId, {
-        gameId,
-        hasText: Boolean(message.trim()),
-        hasImage: Boolean(imageFile),
-      });
 
       setIsSending(true);
       try {
@@ -238,6 +252,34 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = currentUserId ?? sessionData.session?.user?.id;
         if (!userId) return;
+
+        const route =
+          chatIdentity?.route ??
+          (typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId}`);
+        const sessionId = chatIdentity?.sessionId ?? (gameId ? `session:${gameId}` : getTabSessionId());
+        const opened = await openServerChatOperation({
+          operationId: correlationId,
+          senderUserId: userId,
+          gameId,
+          sessionId,
+          dealerGameId: chatIdentity?.dealerGameId ?? null,
+          route,
+          activeTab: chatIdentity?.activeTab ?? null,
+          shellPhase: chatIdentity?.shellPhase ?? null,
+          originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
+          messagePreview: message.trim(),
+        });
+        if (!opened) {
+          setIsSending(false);
+          return;
+        }
+        openChatSendOperation(correlationId, {
+          gameId,
+          sessionId,
+          route,
+          hasText: Boolean(message.trim()),
+          hasImage: Boolean(imageFile),
+        });
 
         let imageUrl: string | null = null;
         if (imageFile) {
@@ -254,9 +296,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           user_id: userId,
           message: message.trim(),
           image_url: imageUrl,
+          chat_operation_id: correlationId,
           created_at: sentAt,
           username,
         };
+
+        void appendChatSenderMilestone(correlationId, 'OPTIMISTIC_MUTATION', {
+          optimisticId,
+          createdAt: sentAt,
+          hasImage: Boolean(imageUrl),
+        }, { optimisticMessageId: optimisticId });
 
         setAllMessages(prev => {
           const next = mergeMessages(prev, [optimisticMessage]);
@@ -279,11 +328,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           correlation_id: correlationId,
           game_id: gameId,
         });
+        void appendChatSenderMilestone(correlationId, 'DB_INSERT_START', {
+          optimisticId,
+          dbStartAt,
+        }, { optimisticMessageId: optimisticId });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
           message: message.trim(),
           image_url: imageUrl,
+          chat_operation_id: correlationId,
         }).select().single();
 
         if (error) {
@@ -312,6 +366,16 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             error,
             payload: { optimisticId },
           });
+          void appendChatSenderMilestone(correlationId, 'DB_INSERT_FAILURE', {
+            error: error.message,
+            optimisticId,
+          }, { optimisticMessageId: optimisticId });
+          void finalizeServerChatOperation(
+            correlationId,
+            'db-insert-failed',
+            error.message,
+            getChatOperationSnapshots(correlationId),
+          );
           void upsertDeliveryTrace({
             message_id: optimisticId,
             recipient_client_instance_id: getClientInstanceId(),
@@ -357,6 +421,11 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             message_id: data.id,
             payload: { optimisticId },
           });
+          void appendChatSenderMilestone(correlationId, 'DB_INSERT_SUCCESS', {
+            optimisticId,
+            authoritativeId: data.id,
+            successAt,
+          }, { messageId: data.id, optimisticMessageId: optimisticId });
           void upsertDeliveryTrace({
             message_id: data.id,
             recipient_client_instance_id: getClientInstanceId(),
@@ -391,12 +460,27 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
             });
             return next;
           });
+          void finalizeServerChatOperation(
+            correlationId,
+            'send-complete',
+            'authoritative-row-written',
+            getChatOperationSnapshots(correlationId),
+          );
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
         finalizeChatSendOperation(correlationId, 'error', {
           message: (error as Error)?.message ?? String(error),
         });
+        void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
+          message: (error as Error)?.message ?? String(error),
+        });
+        void finalizeServerChatOperation(
+          correlationId,
+          'send-exception',
+          (error as Error)?.message ?? String(error),
+          getChatOperationSnapshots(correlationId),
+        );
       } finally {
         // finalize as success if no error branch above already finalized;
         // safe because finalizeChatSendOperation is idempotent on cid removal.
@@ -404,7 +488,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         setIsSending(false);
       }
     },
-    [gameId, isSending, currentUserId, getUsernameForUserId, mergeMessages]
+    [gameId, isSending, currentUserId, getUsernameForUserId, mergeMessages, chatIdentity]
   );
 
   // Track whether we've seen the first remote message on this session/game.
@@ -648,6 +732,21 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
               message_id: newMessage.id,
               payload: { sender_user_id: newMessage.user_id },
             });
+            if (newMessage.chat_operation_id && newMessage.user_id !== currentUserId) {
+              beginChatOperationSnapshotCapture(newMessage.chat_operation_id);
+              void appendChatPeerMilestone(
+                newMessage.chat_operation_id,
+                'REALTIME_RECEIPT',
+                {
+                  receiverUserId: currentUserId ?? null,
+                  senderUserId: newMessage.user_id,
+                  receiptAt,
+                  route: typeof window !== 'undefined' ? window.location.pathname : null,
+                },
+                newMessage.id,
+                getChatOperationSnapshots(newMessage.chat_operation_id),
+              );
+            }
             void upsertDeliveryTrace({
               message_id: newMessage.id,
               recipient_client_instance_id: getClientInstanceId(),

@@ -215,7 +215,8 @@ import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "
 import { useGameChat } from "@/hooks/useGameChat";
 import { GameChatContextProvider } from "@/hooks/GameChatContext";
 import { VoiceOperationIdentityProvider } from "@/hooks/VoiceOperationIdentityContext";
-import { getTabSessionId } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { getTabSessionId, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { setShellTabAttentionContext } from "@/lib/shellTabAttention/shellTabAttentionInstrumentation";
 import { ChatAttentionProvider } from "@/hooks/ChatAttention";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
@@ -1648,6 +1649,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [lastReadChatMessageId, setLastReadChatMessageId] = useState<string | null>(null);
   // LIFTED chat input state - persists across MobileGameTable remounts
   const [mobileChatInput, setMobileChatInput] = useState('');
+  const normalShellSessionId = useMemo(() => (gameId ? `session:${gameId}` : null), [gameId]);
+  const chatOperationIdentity = useMemo(() => ({
+    gameId: gameId ?? undefined,
+    sessionId: normalShellSessionId ?? undefined,
+    dealerGameId: (game as any)?.current_game_uuid ?? null,
+    route: typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId ?? ''}`,
+    activeTab: mobileActiveTab,
+    shellPhase: game?.status ?? null,
+    originSurface: game?.status === 'in_progress' ? 'active_game_table' : 'waiting_table',
+  }), [gameId, normalShellSessionId, (game as any)?.current_game_uuid, mobileActiveTab, game?.status]);
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -1694,7 +1705,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isChatHydrated,
     hydrationBaselineIds,
     chatConversationKey,
-  } = useGameChat(gameId, players, user?.id);
+  } = useGameChat(gameId, players, user?.id, chatOperationIdentity);
+
+  useEffect(() => {
+    const route = typeof window !== 'undefined' ? window.location.pathname : null;
+    setRuntimeAmbient({
+      user_id: user?.id ?? null,
+      route,
+      active_tab: mobileActiveTab,
+      game_id: gameId ?? null,
+      table_id: gameId ?? null,
+      dealer_game_id: (game as any)?.current_game_uuid ?? null,
+      session_id: normalShellSessionId,
+      game_status: game?.status ?? null,
+      game_type: game?.game_type ?? null,
+      is_committed_active_session: !!gameId,
+      shell_phase: game?.status ?? null,
+      active_game_component: game?.status === 'in_progress' ? 'Game' : null,
+      waiting_table_component: game?.status !== 'in_progress' ? 'Game.waiting-shell' : null,
+    });
+    setShellTabAttentionContext({
+      gameId: gameId ?? null,
+      sessionId: normalShellSessionId,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      gameType: game?.game_type ?? null,
+      route,
+      shellPhase: game?.status ?? null,
+      activeGameComponent: game?.status === 'in_progress' ? 'Game' : null,
+      waitingTableComponent: game?.status !== 'in_progress' ? 'Game.waiting-shell' : null,
+    });
+  }, [gameId, normalShellSessionId, user?.id, mobileActiveTab, game?.status, game?.game_type, (game as any)?.current_game_uuid]);
 
   useEffect(() => {
     recordConsumerSubscription({
@@ -13242,7 +13282,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         value={{
           isActiveGameRoute: true,
           gameId: gameId ?? null,
-          sessionId: getTabSessionId(),
+          sessionId: normalShellSessionId,
           dealerGameId: (game as any)?.current_game_uuid ?? null,
           gameType: game?.game_type ?? null,
           shellPhase: game?.status ?? null,

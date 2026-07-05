@@ -74,6 +74,29 @@ export interface ShellTabAttentionSnapshot {
 let lastSignature: string | null = null;
 let lastSnapshot: ShellTabAttentionSnapshot | null = null;
 const activeChatOperations = new Set<string>();
+const activeChatOperationSnapshots = new Map<string, ShellTabAttentionSnapshot[]>();
+const activeChatOperationRoles = new Map<string, 'sender' | 'peer'>();
+
+interface ShellTabAttentionContextPatch {
+  gameId?: string | null;
+  sessionId?: string | null;
+  dealerGameId?: string | null;
+  gameType?: string | null;
+  route?: string | null;
+  shellPhase?: string | null;
+  activeGameComponent?: string | null;
+  waitingTableComponent?: string | null;
+}
+
+let shellTabAttentionContext: ShellTabAttentionContextPatch = {};
+
+export function setShellTabAttentionContext(patch: ShellTabAttentionContextPatch): void {
+  shellTabAttentionContext = { ...shellTabAttentionContext, ...patch };
+}
+
+export function getShellTabAttentionContext(): ShellTabAttentionContextPatch {
+  return shellTabAttentionContext;
+}
 
 /** Stable signature for de-dupe. */
 function signatureOf(s: ShellTabAttentionSnapshot): string {
@@ -90,12 +113,23 @@ export function recordShellTabAttentionSnapshot(
   const prev = lastSnapshot;
   lastSignature = sig;
   lastSnapshot = snapshot;
+  for (const cid of activeChatOperations) {
+    const list = activeChatOperationSnapshots.get(cid) ?? [];
+    list.push(snapshot);
+    activeChatOperationSnapshots.set(cid, list.slice(-20));
+  }
 
   recordRuntimeEvent({
     event_family: 'shell_tab_attention',
     event_name: 'SHELL_TAB_ATTENTION_SNAPSHOT',
     severity: 'info',
     game_id: snapshot.gameId ?? undefined,
+    session_id: snapshot.sessionId ?? undefined,
+    dealer_game_id: snapshot.dealerGameId ?? undefined,
+    route: snapshot.route,
+    active_tab: snapshot.activeTab,
+    game_status: snapshot.shellPhase ?? undefined,
+    game_type: snapshot.gameType ?? undefined,
     payload: { reason, snapshot },
   });
 
@@ -196,6 +230,8 @@ function evaluateInvariants(
  */
 export function openChatSendOperation(correlationId: string, extra?: Record<string, unknown>): void {
   activeChatOperations.add(correlationId);
+  activeChatOperationRoles.set(correlationId, 'sender');
+  activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
   recordRuntimeEvent({
     event_family: 'chat',
     event_name: 'CHAT_SEND_OPERATION_OPENED',
@@ -205,18 +241,29 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
   });
 }
 
+export function beginChatOperationSnapshotCapture(correlationId: string): void {
+  activeChatOperations.add(correlationId);
+  activeChatOperationRoles.set(correlationId, 'peer');
+  if (!activeChatOperationSnapshots.has(correlationId)) {
+    activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
+  }
+}
+
 export function finalizeChatSendOperation(
   correlationId: string,
   outcome: 'success' | 'error' | 'aborted',
   extra?: Record<string, unknown>,
 ): void {
+  const snapshots = activeChatOperationSnapshots.get(correlationId) ?? [];
   activeChatOperations.delete(correlationId);
+  activeChatOperationSnapshots.delete(correlationId);
+  activeChatOperationRoles.delete(correlationId);
   recordRuntimeEvent({
     event_family: 'chat',
     event_name: 'CHAT_SEND_OPERATION_FINALIZED',
     severity: outcome === 'error' ? 'warn' : 'info',
     correlation_id: correlationId,
-    payload: { outcome, snapshot: lastSnapshot, ...(extra ?? {}) },
+    payload: { outcome, snapshot: lastSnapshot, snapshots, ...(extra ?? {}) },
   });
 }
 
@@ -235,11 +282,34 @@ function onSnapshotForChatOps(
       game_id: s.gameId ?? undefined,
       payload: { snapshot: s },
     });
+    if (activeChatOperationRoles.get(cid) === 'peer') {
+      void import('@/lib/chatOperations/serverChatOperation').then(
+        ({ appendChatPeerMilestone, finalizeServerChatOperation }) => {
+          void appendChatPeerMilestone(
+            cid,
+            'SHELL_TAB_ATTENTION_SNAPSHOT',
+            { reason: 'resolved-tab-state-changed' },
+            null,
+            [s],
+          );
+          void finalizeServerChatOperation(
+            cid,
+            'peer-received',
+            'peer-tab-attention-observed',
+            getChatOperationSnapshots(cid),
+          );
+        },
+      );
+    }
   }
 }
 
 export function getLastShellTabAttentionSnapshot(): ShellTabAttentionSnapshot | null {
   return lastSnapshot;
+}
+
+export function getChatOperationSnapshots(correlationId: string): ShellTabAttentionSnapshot[] {
+  return activeChatOperationSnapshots.get(correlationId) ?? (lastSnapshot ? [lastSnapshot] : []);
 }
 
 /**
