@@ -235,8 +235,8 @@ describe('useGameChat.sendMessage — telemetry-failure resilience', () => {
   });
 
   it('recordChatBoundaryEvent throws synchronously → insert still called once, no composer error', async () => {
-    recordBoundary.mockImplementation(() => { throw new Error('boundary-sync-throw'); });
     await mount();
+    recordBoundary.mockImplementation(() => { throw new Error('boundary-sync-throw'); });
     await act(async () => { await captured!('hello'); });
     await flush();
     expect(insertMock).toHaveBeenCalledTimes(1);
