@@ -23,7 +23,14 @@ import {
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
 import { bootRuntimeTracer, getClientInstanceId, getTabSessionId, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
-import { runRuntimePersistenceSelfCheck } from "@/lib/runtimeInstrumentation/runtimePipelineProof";
+import {
+  runRuntimePersistenceSelfCheck,
+  runProductionVoiceFlowSelfChecks,
+} from "@/lib/runtimeInstrumentation/runtimePipelineProof";
+// Side-effect import: registers the durable voice-operation id getter
+// with the runtime tracer so voice-family event correlation enforcement
+// can resolve the active operation without a circular import.
+import "@/lib/runtimeInstrumentation/voiceOperation";
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other
 // module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
@@ -47,6 +54,21 @@ bootRuntimeTracer();
 // (or _FAILED) so every published build proves basic instrumentation
 // wiring before any user attempts a voice repro.
 void runRuntimePersistenceSelfCheck({
+  clientInstanceId: getClientInstanceId(),
+  tabSessionId: getTabSessionId(),
+  userId: null,
+  route:
+    typeof window !== "undefined"
+      ? window.location.pathname + window.location.search
+      : null,
+});
+
+// Production-path synthetic voice flows. Drives the exact same
+// beginVoiceOperation → recordRuntimeEvent (voice family) →
+// endVoiceOperation pipeline that a real recording uses. Verifies
+// correlation attribution + capsule/manifest/incident/heartbeat
+// verifications for both success and invoke-failure paths.
+void runProductionVoiceFlowSelfChecks({
   clientInstanceId: getClientInstanceId(),
   tabSessionId: getTabSessionId(),
   userId: null,
