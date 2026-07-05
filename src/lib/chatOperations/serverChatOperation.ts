@@ -116,7 +116,7 @@ export async function appendChatSenderMilestone(
     await supabase.rpc('chat_operation_append_sender_milestone', {
       _operation_id: operationId,
       _phase: phase,
-      _metadata: metadata,
+      _metadata: metadata as never,
       _message_id: ids.messageId ?? null,
       _optimistic_message_id: ids.optimisticMessageId ?? null,
     });
@@ -134,9 +134,9 @@ export async function appendChatPeerMilestone(
     await supabase.rpc('chat_operation_append_peer_milestone', {
       _operation_id: operationId,
       _phase: phase,
-      _metadata: metadata,
+      _metadata: metadata as never,
       _message_id: messageId ?? null,
-      _snapshots: snapshots,
+      _snapshots: snapshots as never,
     });
   } catch { /* best-effort evidence append */ }
 }
@@ -152,7 +152,7 @@ export async function finalizeServerChatOperation(
       _operation_id: operationId,
       _terminal_status: terminalStatus,
       _terminal_reason: terminalReason,
-      _extra_snapshots: snapshots,
+      _extra_snapshots: snapshots as never,
     });
   } catch { /* finalizer is retried by later peer/sender milestones */ }
 }
