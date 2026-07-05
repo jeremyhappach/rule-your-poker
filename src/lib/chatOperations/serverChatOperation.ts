@@ -228,6 +228,27 @@ export async function appendChatPeerMilestone(
   } catch { /* best-effort evidence append */ }
 }
 
+/**
+ * Append a waiting-table / shell violation onto the durable chat operation
+ * record. Best-effort — never blocks the send path.
+ */
+export async function appendChatOperationViolation(
+  operationId: string,
+  name: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+      'chat_operation_append_violation',
+      {
+        _operation_id: operationId,
+        _name: name,
+        _metadata: metadata,
+      },
+    );
+  } catch { /* best-effort */ }
+}
+
 export async function finalizeServerChatOperation(
   operationId: string,
   terminalStatus: string,
