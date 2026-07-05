@@ -1649,6 +1649,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [lastReadChatMessageId, setLastReadChatMessageId] = useState<string | null>(null);
   // LIFTED chat input state - persists across MobileGameTable remounts
   const [mobileChatInput, setMobileChatInput] = useState('');
+  const normalShellSessionId = useMemo(() => (gameId ? `session:${gameId}` : null), [gameId]);
+  const chatOperationIdentity = useMemo(() => ({
+    gameId: gameId ?? undefined,
+    sessionId: normalShellSessionId ?? undefined,
+    dealerGameId: (game as any)?.current_game_uuid ?? null,
+    route: typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId ?? ''}`,
+    activeTab: mobileActiveTab,
+    shellPhase: game?.status ?? null,
+    originSurface: game?.status === 'in_progress' ? 'active_game_table' : 'waiting_table',
+  }), [gameId, normalShellSessionId, (game as any)?.current_game_uuid, mobileActiveTab, game?.status]);
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -1695,9 +1705,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isChatHydrated,
     hydrationBaselineIds,
     chatConversationKey,
-  } = useGameChat(gameId, players, user?.id);
-
-  const normalShellSessionId = gameId ? `session:${gameId}` : null;
+  } = useGameChat(gameId, players, user?.id, chatOperationIdentity);
 
   useEffect(() => {
     const route = typeof window !== 'undefined' ? window.location.pathname : null;
