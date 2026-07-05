@@ -176,6 +176,114 @@ export function installChatBoundaryListeners(): void {
     };
   } catch { /* strict-mode locked location — skip */ }
 
+  // history API — patches all React Router navigate(...) calls at
+  // initiation. Emitted BEFORE the state actually changes so the boundary
+  // event is persisted even if the sender dies mid-navigation.
+  try {
+    const origPush = window.history.pushState.bind(window.history);
+    const origReplace = window.history.replaceState.bind(window.history);
+    window.history.pushState = function patched(
+      data: unknown,
+      unused: string,
+      url?: string | URL | null,
+    ) {
+      const target = url == null ? null : String(url);
+      recordChatBoundaryEvent('HISTORY_PUSH_STATE', {
+        from_route: window.location.pathname,
+        target,
+      });
+      recordChatBoundaryEvent('ROUTER_NAVIGATION_INITIATED', {
+        source: 'history.pushState',
+        target,
+        reason: 'router-push',
+        from_route: window.location.pathname,
+      });
+      return origPush(data as never, unused, url as never);
+    } as typeof window.history.pushState;
+    window.history.replaceState = function patched(
+      data: unknown,
+      unused: string,
+      url?: string | URL | null,
+    ) {
+      const target = url == null ? null : String(url);
+      recordChatBoundaryEvent('HISTORY_REPLACE_STATE', {
+        from_route: window.location.pathname,
+        target,
+      });
+      recordChatBoundaryEvent('ROUTER_NAVIGATION_INITIATED', {
+        source: 'history.replaceState',
+        target,
+        reason: 'router-replace',
+        from_route: window.location.pathname,
+      });
+      return origReplace(data as never, unused, url as never);
+    } as typeof window.history.replaceState;
+    window.addEventListener('popstate', () => {
+      recordChatBoundaryEvent('HISTORY_POP_STATE', {
+        route: window.location.pathname,
+      });
+    });
+  } catch { /* noop */ }
+
+  // fetch instrumentation — supabase.co REST/RPC/Realtime HTTP requests
+  // only. Records started/resolved/rejected without body, credentials, or
+  // response payloads. AbortError is surfaced as FETCH_ABORT_ERROR.
+  try {
+    const origFetch = window.fetch.bind(window);
+    let fetchSeq = 0;
+    window.fetch = async function patched(
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) {
+      let urlStr = '';
+      try {
+        urlStr = typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      } catch { /* noop */ }
+      const isSupabase = urlStr.includes('.supabase.co') || urlStr.includes('/rest/v1/') || urlStr.includes('/rpc/');
+      if (!isSupabase) return origFetch(input as never, init);
+      const seq = ++fetchSeq;
+      let purpose = 'unknown';
+      try {
+        const u = new URL(urlStr, window.location.origin);
+        const parts = u.pathname.split('/').filter(Boolean);
+        // /rest/v1/<table> or /rest/v1/rpc/<fn>
+        const restIdx = parts.indexOf('v1');
+        if (restIdx >= 0 && parts[restIdx + 1] === 'rpc') {
+          purpose = `rpc:${parts[restIdx + 2] ?? '?'}`;
+        } else if (restIdx >= 0) {
+          purpose = `rest:${parts[restIdx + 1] ?? '?'}`;
+        } else {
+          purpose = `path:${u.pathname}`;
+        }
+      } catch { /* noop */ }
+      const method = (init?.method ?? 'GET').toUpperCase();
+      recordChatBoundaryEvent('SUPABASE_FETCH_STARTED', { seq, purpose, method });
+      try {
+        const res = await origFetch(input as never, init);
+        recordChatBoundaryEvent('SUPABASE_FETCH_RESOLVED', {
+          seq, purpose, method, status: res.status, ok: res.ok,
+        });
+        return res;
+      } catch (err) {
+        const name = err instanceof Error ? err.name : String(err);
+        const message = err instanceof Error ? err.message : String(err);
+        if (name === 'AbortError') {
+          recordChatBoundaryEvent('FETCH_ABORT_ERROR', { seq, purpose, method, message });
+        } else {
+          recordChatBoundaryEvent('SUPABASE_FETCH_REJECTED', {
+            seq, purpose, method, name, message,
+          });
+        }
+        throw err;
+      }
+    } as typeof window.fetch;
+  } catch { /* noop */ }
+
+
   // page lifecycle
   window.addEventListener('visibilitychange', () => {
     recordChatBoundaryEvent('PAGE_VISIBILITY_CHANGE', { visibility_state: document.visibilityState });
