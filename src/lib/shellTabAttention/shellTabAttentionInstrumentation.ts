@@ -264,6 +264,9 @@ export function finalizeChatSendOperation(
   activeChatOperations.delete(correlationId);
   activeChatOperationSnapshots.delete(correlationId);
   activeChatOperationRoles.delete(correlationId);
+  void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ clearActiveChatOperationForViolations }) => {
+    clearActiveChatOperationForViolations(correlationId);
+  });
   recordRuntimeEvent({
     event_family: 'chat',
     event_name: 'CHAT_SEND_OPERATION_FINALIZED',
