@@ -22,7 +22,7 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
-import { bootRuntimeTracer, getClientInstanceId, getTabSessionId, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { bootRuntimeTracer, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
 // Side-effect import: registers the durable voice-operation id getter
 // with the runtime tracer so voice-family event correlation enforcement
 // can resolve the active operation without a circular import.
