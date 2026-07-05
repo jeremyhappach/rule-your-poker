@@ -22,10 +22,14 @@ import {
   appendChatSenderMilestone,
   createChatOperationId,
   finalizeServerChatOperation,
+  markChatOperationDeliveryConfirmed,
   openServerChatOperation,
   registerCurrentSessionChatOperation,
+  writeChatOperationPeerHeartbeat,
+  writeChatOperationSenderHeartbeat,
   type ChatOperationIdentity,
 } from '@/lib/chatOperations/serverChatOperation';
+import { recordChatBoundaryEvent } from '@/lib/chatOperations/chatOperationBoundary';
 import {
   beginChatOperationSnapshotCapture,
   getChatOperationSnapshots,
