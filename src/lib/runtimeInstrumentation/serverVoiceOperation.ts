@@ -104,7 +104,7 @@ export async function writeClientVoiceEvent(
 ): Promise<void> {
   const user_id = await getUserId();
   try {
-    await supabase.from("voice_operation_events").insert({
+    await supabase.from("voice_operation_events").insert([{
       voice_operation_id,
       origin: "client",
       phase,
@@ -115,7 +115,7 @@ export async function writeClientVoiceEvent(
       error_category: extras.error_category ?? null,
       error_message: extras.error_message ?? null,
       metadata: extras.metadata ?? {},
-    });
+    }]);
     await supabase
       .from("voice_operation_incidents")
       .update({
