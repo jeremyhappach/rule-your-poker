@@ -207,6 +207,10 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
           },
         });
       } catch { /* noop */ }
+      try {
+        const mod = await import('@/lib/chatOperations/chatOperationBoundary');
+        mod.recordChatBoundaryEvent('AUTH_GUARD_REDIRECT', { reason, target: '/auth' });
+      } catch { /* noop */ }
       navigate("/auth");
     }
 
