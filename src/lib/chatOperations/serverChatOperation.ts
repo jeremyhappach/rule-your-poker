@@ -249,22 +249,26 @@ export async function appendChatOperationViolation(
   } catch { /* best-effort */ }
 }
 
+/**
+ * Invokes the server-side `finalize_chat_send_operation` RPC.
+ *
+ * OWNERSHIP CONTRACT: This function does NOT write any terminal
+ * client-side attention snapshot. Terminal snapshots are strictly
+ * owned by the client whose role produced them:
+ *   - the sender client writes CHAT_OPERATION_TERMINAL_SNAPSHOT
+ *     BEFORE calling this function on its own send-finalize path;
+ *   - the peer client writes PEER_OPERATION_TERMINAL_SNAPSHOT
+ *     BEFORE calling this function from its observation path.
+ * If either terminal snapshot is missing, the exported TXT records
+ * "missing client terminal snapshot" rather than fabricating one
+ * from the server-side finalizer.
+ */
 export async function finalizeServerChatOperation(
   operationId: string,
   terminalStatus: string,
   terminalReason: string,
   snapshots: ShellTabAttentionSnapshot[] = [],
 ): Promise<void> {
-  // Force a terminal snapshot for whichever role is active (sender or
-  // peer) BEFORE the server RPC — this guarantees the finalizer sees a
-  // real terminal SHELL_TAB_ATTENTION_SNAPSHOT, not merely the last
-  // intermediate one.
-  try {
-    const { writeChatOperationTerminalSnapshot } = await import(
-      '@/lib/shellTabAttention/shellTabAttentionInstrumentation'
-    );
-    writeChatOperationTerminalSnapshot(operationId, terminalReason, terminalStatus);
-  } catch { /* best-effort */ }
   try {
     await supabase.rpc('finalize_chat_send_operation', {
       _operation_id: operationId,
