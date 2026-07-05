@@ -15,6 +15,7 @@ import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { VoiceOperationPresenceMount } from "@/components/VoiceOperationPresenceMount";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { NetworkSimIndicator } from "@/components/NetworkSimIndicator";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
