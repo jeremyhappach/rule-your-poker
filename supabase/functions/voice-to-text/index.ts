@@ -238,6 +238,8 @@ serve(async (req) => {
       edge_function_error_category: "unhandled",
       edge_function_error_message: message.slice(0, 500),
     });
+    await runFinalizer();
+
     return new Response(
       JSON.stringify({ error: message || "voice-to-text error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
