@@ -29,6 +29,7 @@ import {
 import {
   beginChatOperationSnapshotCapture,
   getChatOperationSnapshots,
+  writeChatOperationTerminalSnapshot,
 } from '@/lib/shellTabAttention/shellTabAttentionInstrumentation';
 
 interface ChatMessage {
@@ -384,6 +385,7 @@ export const useGameChat = (
             error: error.message,
             optimisticId,
           }, { optimisticMessageId: optimisticId });
+          writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
           void finalizeServerChatOperation(
             correlationId,
             'db-insert-failed',
@@ -474,6 +476,7 @@ export const useGameChat = (
             });
             return next;
           });
+          writeChatOperationTerminalSnapshot(correlationId, 'authoritative-row-written', 'send-complete');
           void finalizeServerChatOperation(
             correlationId,
             'send-complete',
@@ -489,6 +492,11 @@ export const useGameChat = (
         void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
           message: (error as Error)?.message ?? String(error),
         });
+        writeChatOperationTerminalSnapshot(
+          correlationId,
+          (error as Error)?.message ?? String(error),
+          'send-exception',
+        );
         void finalizeServerChatOperation(
           correlationId,
           'send-exception',
@@ -768,6 +776,11 @@ export const useGameChat = (
                 },
                 newMessage.id,
                 getChatOperationSnapshots(newMessage.chat_operation_id),
+              );
+              writeChatOperationTerminalSnapshot(
+                newMessage.chat_operation_id,
+                'peer-realtime-receipt-observed',
+                'peer-received',
               );
               void finalizeServerChatOperation(
                 newMessage.chat_operation_id,
