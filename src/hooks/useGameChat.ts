@@ -407,6 +407,9 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     [gameId, isSending, currentUserId, getUsernameForUserId, mergeMessages]
   );
 
+  // Track whether we've seen the first remote message on this session/game.
+  const seenFirstRemoteForGameRef = useRef<string | null>(null);
+
   // Add a new bubble and merge into canonical projection.
   const addBubble = useCallback(async (msg: ChatMessage) => {
     const currentPlayers = playersRef.current;
@@ -423,6 +426,29 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     }
 
     const msgWithUsername: ChatMessage = { ...msg, username };
+    const isRemote = !!currentUserId && msg.user_id !== currentUserId;
+
+    if (isRemote) {
+      recordRuntimeEvent({
+        event_family: 'chat',
+        event_name: 'CHAT_REALTIME_TO_PEER_RECEIVED',
+        game_id: msg.game_id,
+        message_id: msg.id,
+        payload: { senderUserId: msg.user_id, receiverUserId: currentUserId },
+      });
+      if (seenFirstRemoteForGameRef.current !== msg.game_id) {
+        seenFirstRemoteForGameRef.current = msg.game_id;
+        void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
+          ({ recordWaitingChatTransition }) => {
+            recordWaitingChatTransition('WAITING_REMOTE_FIRST_MESSAGE_RECEIVED', {
+              gameId: msg.game_id,
+              messageId: msg.id,
+              senderUserId: msg.user_id,
+            });
+          },
+        );
+      }
+    }
 
     recordChatDeliveryEvent({
       phase: 'realtime-payload-admitted',
