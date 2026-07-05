@@ -552,6 +552,17 @@ export function recordShellUnmount(
   detail: Record<string, unknown> = {},
 ): void {
   recordSessionLifecycleEvent("SHELL_UNMOUNT", { component, ...detail });
+  try {
+    // Bridge to chat-operation boundary so an in-flight chat op sees the
+    // teardown even if the shell hosting the pill is gone.
+    void import("./chatOperations/chatOperationBoundary").then(({ recordChatBoundaryEvent }) => {
+      recordChatBoundaryEvent("SHELL_UNMOUNT_CONTEXT", {
+        source: `sessionLifecycleLedger.recordShellUnmount:${component}`,
+        component,
+        ...detail,
+      });
+    }).catch(() => {});
+  } catch { /* noop */ }
   if (committedActiveSession) {
     recordSessionIncident("ACTIVE_SESSION_SHELL_UNMOUNTED", {
       component,
