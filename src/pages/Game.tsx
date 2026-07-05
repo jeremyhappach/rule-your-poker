@@ -1650,15 +1650,84 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // LIFTED chat input state - persists across MobileGameTable remounts
   const [mobileChatInput, setMobileChatInput] = useState('');
   const normalShellSessionId = useMemo(() => (gameId ? `session:${gameId}` : null), [gameId]);
-  const chatOperationIdentity = useMemo(() => ({
-    gameId: gameId ?? undefined,
-    sessionId: normalShellSessionId ?? undefined,
-    dealerGameId: (game as any)?.current_game_uuid ?? null,
-    route: typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId ?? ''}`,
-    activeTab: mobileActiveTab,
-    shellPhase: game?.status ?? null,
-    originSurface: game?.status === 'in_progress' ? 'active_game_table' : 'waiting_table',
-  }), [gameId, normalShellSessionId, (game as any)?.current_game_uuid, mobileActiveTab, game?.status]);
+  const chatOperationIdentity = useMemo(() => {
+    const rawGameType = (game as any)?.game_type ?? null;
+    const gameTypeSource: string = rawGameType == null ? 'null' : 'games.game_type';
+    const resolvedGameType: string | null = rawGameType;
+    const gameControllerPresent = Boolean(game?.status === 'in_progress' && rawGameType);
+    const currentTurnPlayerId =
+      ((game as any)?.current_turn_player_id as string | undefined) ??
+      ((game as any)?.current_turn as string | undefined) ??
+      null;
+    const localTurnEligible = Boolean(
+      currentTurnPlayerId && user?.id && (players ?? []).some((p: any) => p.id === currentTurnPlayerId && p.user_id === user.id)
+    );
+    const shellPhase = game?.status ?? null;
+    const isWaiting = shellPhase !== 'in_progress';
+    const waitingTableComponent = isWaiting ? 'MobileGameTable/WaitingTable' : null;
+    const activeGameComponent = !isWaiting ? `MobileGameTable/${resolvedGameType ?? 'unknown'}` : null;
+    const route = typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId ?? ''}`;
+    const routeGameId = gameId ?? null;
+
+    // Fire producers (best-effort; each producer dedupes internally against active ops).
+    void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ recordWaitingTableViolation }) => {
+      recordWaitingTableViolation('WAITING_TABLE_GAME_TYPE_READ', {
+        sourceFile: 'src/pages/Game.tsx',
+        sourceFunction: 'chatOperationIdentity',
+        inputValues: { rawGameType, shellPhase },
+        resolvedValues: { resolvedGameType, gameTypeSource },
+        renderContinuation: 'render',
+      });
+      if (rawGameType == null) {
+        recordWaitingTableViolation('WAITING_TABLE_GAME_TYPE_NULL', {
+          sourceFile: 'src/pages/Game.tsx',
+          sourceFunction: 'chatOperationIdentity',
+          inputValues: { shellPhase, gameId: routeGameId },
+          resolvedValues: { resolvedGameType: null },
+          fallbackApplied: 'none',
+          renderContinuation: 'render',
+        });
+      }
+      recordWaitingTableViolation('WAITING_TABLE_GAME_CONTROLLER_LOOKUP', {
+        sourceFile: 'src/pages/Game.tsx',
+        sourceFunction: 'chatOperationIdentity',
+        inputValues: { shellPhase, rawGameType },
+        resolvedValues: { gameControllerPresent },
+        renderContinuation: 'render',
+      });
+      recordWaitingTableViolation('WAITING_TABLE_CURRENT_TURN_LOOKUP', {
+        sourceFile: 'src/pages/Game.tsx',
+        sourceFunction: 'chatOperationIdentity',
+        inputValues: { rawGameType },
+        resolvedValues: { currentTurnPlayerId, localTurnEligible },
+        renderContinuation: 'render',
+      });
+    });
+
+    return {
+      gameId: gameId ?? undefined,
+      sessionId: normalShellSessionId ?? undefined,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      route,
+      activeTab: mobileActiveTab,
+      shellPhase,
+      originSurface: !isWaiting ? 'active_game_table' : 'waiting_table',
+      // Extended context
+      routeGameId,
+      canonicalShellGameId: gameId ?? null,
+      operationGameId: gameId ?? null,
+      rawGameType,
+      resolvedGameType,
+      gameTypeSource,
+      gameControllerPresent,
+      currentTurnPlayerId,
+      localTurnEligible,
+      waitingTableComponent,
+      activeGameComponent,
+      tabBarRenderKey: `${gameId ?? 'no-game'}:${shellPhase ?? 'no-phase'}`,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, normalShellSessionId, (game as any)?.current_game_uuid, mobileActiveTab, game?.status, (game as any)?.game_type, (game as any)?.current_turn_player_id, (game as any)?.current_turn, user?.id, players]);
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);

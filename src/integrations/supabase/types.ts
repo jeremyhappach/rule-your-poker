@@ -257,21 +257,31 @@ export type Database = {
       }
       chat_send_operations: {
         Row: {
+          active_game_component: string | null
           active_tab: string | null
+          canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
+          current_turn_player_id: string | null
           dealer_game_id: string | null
+          game_controller_present: boolean | null
           game_id: string
+          game_type_source: string | null
           id: string
+          local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          operation_game_id: string | null
           operation_id: string
           operation_type: string
           optimistic_message_id: string | null
           origin_surface: string | null
           peer_milestones: Json
+          raw_game_type: string | null
           report_status: string
+          resolved_game_type: string | null
           route: string
+          route_game_id: string | null
           sender_client_instance_id: string | null
           sender_milestones: Json
           sender_tab_session_id: string | null
@@ -282,26 +292,39 @@ export type Database = {
           started_at: string
           status: string
           tab_attention_snapshots: Json
+          tab_bar_render_key: string | null
           terminal_reason: string | null
           terminal_status: string | null
           updated_at: string
+          violations: Json
+          waiting_table_component: string | null
         }
         Insert: {
+          active_game_component?: string | null
           active_tab?: string | null
+          canonical_shell_game_id?: string | null
           completed_at?: string | null
           created_at?: string
+          current_turn_player_id?: string | null
           dealer_game_id?: string | null
+          game_controller_present?: boolean | null
           game_id: string
+          game_type_source?: string | null
           id?: string
+          local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
+          operation_game_id?: string | null
           operation_id: string
           operation_type?: string
           optimistic_message_id?: string | null
           origin_surface?: string | null
           peer_milestones?: Json
+          raw_game_type?: string | null
           report_status?: string
+          resolved_game_type?: string | null
           route: string
+          route_game_id?: string | null
           sender_client_instance_id?: string | null
           sender_milestones?: Json
           sender_tab_session_id?: string | null
@@ -312,26 +335,39 @@ export type Database = {
           started_at?: string
           status?: string
           tab_attention_snapshots?: Json
+          tab_bar_render_key?: string | null
           terminal_reason?: string | null
           terminal_status?: string | null
           updated_at?: string
+          violations?: Json
+          waiting_table_component?: string | null
         }
         Update: {
+          active_game_component?: string | null
           active_tab?: string | null
+          canonical_shell_game_id?: string | null
           completed_at?: string | null
           created_at?: string
+          current_turn_player_id?: string | null
           dealer_game_id?: string | null
+          game_controller_present?: boolean | null
           game_id?: string
+          game_type_source?: string | null
           id?: string
+          local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
+          operation_game_id?: string | null
           operation_id?: string
           operation_type?: string
           optimistic_message_id?: string | null
           origin_surface?: string | null
           peer_milestones?: Json
+          raw_game_type?: string | null
           report_status?: string
+          resolved_game_type?: string | null
           route?: string
+          route_game_id?: string | null
           sender_client_instance_id?: string | null
           sender_milestones?: Json
           sender_tab_session_id?: string | null
@@ -342,9 +378,12 @@ export type Database = {
           started_at?: string
           status?: string
           tab_attention_snapshots?: Json
+          tab_bar_render_key?: string | null
           terminal_reason?: string | null
           terminal_status?: string | null
           updated_at?: string
+          violations?: Json
+          waiting_table_component?: string | null
         }
         Relationships: [
           {
@@ -2868,21 +2907,31 @@ export type Database = {
           _snapshots?: Json
         }
         Returns: {
+          active_game_component: string | null
           active_tab: string | null
+          canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
+          current_turn_player_id: string | null
           dealer_game_id: string | null
+          game_controller_present: boolean | null
           game_id: string
+          game_type_source: string | null
           id: string
+          local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          operation_game_id: string | null
           operation_id: string
           operation_type: string
           optimistic_message_id: string | null
           origin_surface: string | null
           peer_milestones: Json
+          raw_game_type: string | null
           report_status: string
+          resolved_game_type: string | null
           route: string
+          route_game_id: string | null
           sender_client_instance_id: string | null
           sender_milestones: Json
           sender_tab_session_id: string | null
@@ -2893,9 +2942,12 @@ export type Database = {
           started_at: string
           status: string
           tab_attention_snapshots: Json
+          tab_bar_render_key: string | null
           terminal_reason: string | null
           terminal_status: string | null
           updated_at: string
+          violations: Json
+          waiting_table_component: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2913,21 +2965,31 @@ export type Database = {
           _phase: string
         }
         Returns: {
+          active_game_component: string | null
           active_tab: string | null
+          canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
+          current_turn_player_id: string | null
           dealer_game_id: string | null
+          game_controller_present: boolean | null
           game_id: string
+          game_type_source: string | null
           id: string
+          local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          operation_game_id: string | null
           operation_id: string
           operation_type: string
           optimistic_message_id: string | null
           origin_surface: string | null
           peer_milestones: Json
+          raw_game_type: string | null
           report_status: string
+          resolved_game_type: string | null
           route: string
+          route_game_id: string | null
           sender_client_instance_id: string | null
           sender_milestones: Json
           sender_tab_session_id: string | null
@@ -2938,9 +3000,64 @@ export type Database = {
           started_at: string
           status: string
           tab_attention_snapshots: Json
+          tab_bar_render_key: string | null
           terminal_reason: string | null
           terminal_status: string | null
           updated_at: string
+          violations: Json
+          waiting_table_component: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "chat_send_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      chat_operation_append_violation: {
+        Args: { _metadata?: Json; _name: string; _operation_id: string }
+        Returns: {
+          active_game_component: string | null
+          active_tab: string | null
+          canonical_shell_game_id: string | null
+          completed_at: string | null
+          created_at: string
+          current_turn_player_id: string | null
+          dealer_game_id: string | null
+          game_controller_present: boolean | null
+          game_id: string
+          game_type_source: string | null
+          id: string
+          local_turn_eligible: boolean | null
+          message_id: string | null
+          message_preview: string | null
+          operation_game_id: string | null
+          operation_id: string
+          operation_type: string
+          optimistic_message_id: string | null
+          origin_surface: string | null
+          peer_milestones: Json
+          raw_game_type: string | null
+          report_status: string
+          resolved_game_type: string | null
+          route: string
+          route_game_id: string | null
+          sender_client_instance_id: string | null
+          sender_milestones: Json
+          sender_tab_session_id: string | null
+          sender_user_id: string | null
+          session_id: string
+          shell_phase: string | null
+          source_kind: string
+          started_at: string
+          status: string
+          tab_attention_snapshots: Json
+          tab_bar_render_key: string | null
+          terminal_reason: string | null
+          terminal_status: string | null
+          updated_at: string
+          violations: Json
+          waiting_table_component: string | null
         }
         SetofOptions: {
           from: "*"

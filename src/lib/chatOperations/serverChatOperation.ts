@@ -14,6 +14,20 @@ export interface ChatOperationIdentity {
   activeTab?: string | null;
   shellPhase?: string | null;
   originSurface?: string | null;
+  // Extended waiting-table context (populated at operation-open from the
+  // canonical shell — no nullable ambient inference).
+  routeGameId?: string | null;
+  canonicalShellGameId?: string | null;
+  operationGameId?: string | null;
+  rawGameType?: string | null;
+  resolvedGameType?: string | null;
+  gameTypeSource?: string | null;
+  gameControllerPresent?: boolean | null;
+  currentTurnPlayerId?: string | null;
+  localTurnEligible?: boolean | null;
+  waitingTableComponent?: string | null;
+  activeGameComponent?: string | null;
+  tabBarRenderKey?: string | null;
 }
 
 export interface OpenChatOperationInput extends ChatOperationIdentity {
@@ -129,7 +143,20 @@ export async function openServerChatOperation(input: OpenChatOperationInput): Pr
     source_kind: 'real',
     sender_milestones: [openingMilestone],
     started_at: startedAt,
-  });
+    // Extended waiting-table context
+    route_game_id: input.routeGameId ?? null,
+    canonical_shell_game_id: input.canonicalShellGameId ?? null,
+    operation_game_id: input.operationGameId ?? input.gameId,
+    raw_game_type: input.rawGameType ?? null,
+    resolved_game_type: input.resolvedGameType ?? null,
+    game_type_source: input.gameTypeSource ?? null,
+    game_controller_present: input.gameControllerPresent ?? null,
+    current_turn_player_id: input.currentTurnPlayerId ?? null,
+    local_turn_eligible: input.localTurnEligible ?? null,
+    waiting_table_component: input.waitingTableComponent ?? null,
+    active_game_component: input.activeGameComponent ?? null,
+    tab_bar_render_key: input.tabBarRenderKey ?? null,
+  } as never);
 
   if (error) {
     recordRuntimeEvent({
@@ -199,6 +226,27 @@ export async function appendChatPeerMilestone(
       _snapshots: snapshots as never,
     });
   } catch { /* best-effort evidence append */ }
+}
+
+/**
+ * Append a waiting-table / shell violation onto the durable chat operation
+ * record. Best-effort — never blocks the send path.
+ */
+export async function appendChatOperationViolation(
+  operationId: string,
+  name: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+      'chat_operation_append_violation',
+      {
+        _operation_id: operationId,
+        _name: name,
+        _metadata: metadata,
+      },
+    );
+  } catch { /* best-effort */ }
 }
 
 export async function finalizeServerChatOperation(
