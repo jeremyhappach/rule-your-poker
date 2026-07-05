@@ -46,6 +46,16 @@ async function writeEdgeEvent(
   } catch { /* durability-best-effort */ }
 }
 
+/** Fire-and-forget: run the server-side finalizer immediately so any
+ * eligible incident (including this one) is turned into a report even if
+ * the sender client never sends another event. */
+async function runFinalizer(): Promise<void> {
+  if (!admin) return;
+  try { await admin.rpc("finalize_voice_operations"); } catch { /* noop */ }
+}
+
+
+
 async function patchIncident(
   voice_operation_id: string | null | undefined,
   patch: Record<string, unknown>,
