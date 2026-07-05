@@ -8,6 +8,7 @@ import {
   subscribeCurrentSessionChatOperations,
   type CurrentSessionChatOperationRecord,
 } from '@/lib/chatOperations/serverChatOperation';
+import { normalizeChatOperationReport } from '@/lib/chatOperations/chatOperationReportNormalizer';
 
 const SESSION_START_ISO = new Date().toISOString();
 const SESSION_TOKEN = `normal-shell-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -148,34 +149,36 @@ export function IncidentExportPill(): JSX.Element | null {
     if (!operation) return;
     const { data } = await supabase
       .from('chat_operation_reports')
-      .select('operation_id, sender_user_id, game_id, session_id, terminal_status, report_text, report_json, finalized_at')
+      .select('id, operation_id, sender_user_id, game_id, session_id, terminal_status, report_text, report_json, finalized_at')
       .eq('operation_id', operationId)
       .eq('game_id', routeGameId)
       .eq('session_id', routeSessionId)
       .maybeSingle();
     if (!data) return;
-    const json = (data.report_json ?? {}) as Record<string, unknown>;
-    const route = String(json.route ?? '');
-    if (json.operation_type !== 'chat_send') {
-      emitInvalid('not-chat-send-report-json', { operationId, operationType: json.operation_type });
+    const normalized = normalizeChatOperationReport(data as never);
+    if (!normalized) {
+      emitInvalid('normalizer-rejected', { operationId });
       return;
     }
-    const peerMilestones = Array.isArray(json.peer_milestones) ? json.peer_milestones : [];
-    const snapshots = Array.isArray(json.tab_attention_snapshots) ? json.tab_attention_snapshots : [];
+    if (normalized.operationType !== 'chat_send') {
+      emitInvalid('not-chat-send-report-json', { operationId, operationType: normalized.operationType });
+      return;
+    }
     offer({
-      operationId: data.operation_id,
-      gameId: data.game_id,
-      sessionId: data.session_id,
-      route,
-      senderUserId: data.sender_user_id,
-      terminalStatus: data.terminal_status,
-      startedAt: String(json.started_at ?? data.finalized_at),
-      finalizedAt: data.finalized_at,
-      reportText: data.report_text,
-      snapshotCount: typeof json.snapshot_count === 'number' ? json.snapshot_count : snapshots.length,
-      peerMilestoneCount: typeof json.peer_milestone_count === 'number' ? json.peer_milestone_count : peerMilestones.length,
+      operationId: normalized.operationId,
+      gameId: normalized.gameId,
+      sessionId: normalized.sessionId,
+      route: normalized.route,
+      senderUserId: normalized.senderUserId,
+      terminalStatus: normalized.terminalStatus,
+      startedAt: normalized.startedAt,
+      finalizedAt: normalized.finalizedAt,
+      reportText: normalized.reportText,
+      snapshotCount: normalized.snapshotCount,
+      peerMilestoneCount: normalized.peerMilestoneCount,
     });
   }, [operationById, offer, routeGameId, routeSessionId]);
+
 
   useEffect(() => {
     if (!routeGameId || !routeSessionId) return;
