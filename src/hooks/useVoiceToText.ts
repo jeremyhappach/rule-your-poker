@@ -455,6 +455,8 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('idle');
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
+      if (opId) void writeClientVoiceEvent(opId, 'SEND_COMPLETE', { metadata: { transcript_length: transcript.length } });
+      triggerServerFinalizer();
       captureStartedAtRef.current = null;
       recordDiagnostic('VOICE_STOP_HANDLER_EXITED', `chars=${transcript.length}`);
       return transcript;
@@ -465,10 +467,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('error');
       recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
+      const opId2 = getActiveVoiceOperationId();
+      if (opId2) void writeClientVoiceEvent(opId2, 'SEND_FAILED', {
+        error_category: name ?? 'unknown', error_message: msg.slice(0, 500),
+      });
+      triggerServerFinalizer();
       try {
-        // TypeError from fetch / offline / DNS all bubble as generic
-        // Error. Surface as a network-family failure so the DB
-        // timeline shows the outage boundary immediately.
         const looksNetworky =
           name === 'TypeError' ||
           /network|fetch|failed to fetch|load failed/i.test(msg);
