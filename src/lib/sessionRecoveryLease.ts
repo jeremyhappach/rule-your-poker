@@ -177,4 +177,19 @@ export function recordTerminalRecovery(
     priorRoute: typeof window !== 'undefined' ? window.location.pathname : null,
     ...detail,
   });
+  try {
+    recordChatBoundaryEvent('TERMINAL_RECOVERY_RECORDED', {
+      source: 'sessionRecoveryLease.recordTerminalRecovery',
+      reason,
+      active_game_id: currentLease?.gameId ?? null,
+      ...detail,
+    });
+    recordChatBoundaryEvent('ROUTER_NAVIGATION_INITIATED', {
+      source: 'sessionRecoveryLease.recordTerminalRecovery',
+      target: '/',
+      reason: `terminal:${reason}`,
+      from_route: typeof window !== 'undefined' ? window.location.pathname : null,
+      active_game_id: currentLease?.gameId ?? null,
+    });
+  } catch { /* noop */ }
 }
