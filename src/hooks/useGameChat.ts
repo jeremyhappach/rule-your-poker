@@ -810,17 +810,40 @@ export const useGameChat = (
                 newMessage.id,
                 getChatOperationSnapshots(newMessage.chat_operation_id),
               );
-              writeChatOperationTerminalSnapshot(
-                newMessage.chat_operation_id,
-                'peer-realtime-receipt-observed',
-                'peer-received',
-              );
-              void finalizeServerChatOperation(
-                newMessage.chat_operation_id,
-                'peer-received',
-                'peer-realtime-receipt-observed',
-                getChatOperationSnapshots(newMessage.chat_operation_id),
-              );
+              // Observation window: peer MUST NOT finalize or write a
+              // terminal snapshot at realtime receipt. Mark delivery
+              // confirmed, immediately heartbeat, arm PEER_OPERATION_OBSERVED,
+              // and schedule a 30 s observation-window finalize.
+              void writeChatOperationPeerHeartbeat(newMessage.chat_operation_id, {
+                phase: 'peer-realtime-receipt',
+              });
+              void markChatOperationDeliveryConfirmed(newMessage.chat_operation_id, 'peer-realtime-receipt', {
+                messageId: newMessage.id,
+                senderUserId: newMessage.user_id,
+                receiptAt,
+              });
+              recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
+                operationId: newMessage.chat_operation_id,
+                messageId: newMessage.id,
+                senderUserId: newMessage.user_id,
+                route,
+              });
+              if (typeof window !== 'undefined') {
+                const opId = newMessage.chat_operation_id;
+                window.setTimeout(() => {
+                  writeChatOperationTerminalSnapshot(
+                    opId,
+                    'peer-observation-window-expired',
+                    'completed-observation-window',
+                  );
+                  void finalizeServerChatOperation(
+                    opId,
+                    'completed-observation-window',
+                    'peer-30s-observation-window-expired',
+                    getChatOperationSnapshots(opId),
+                  );
+                }, 30_000);
+              }
             }
             void upsertDeliveryTrace({
               message_id: newMessage.id,
