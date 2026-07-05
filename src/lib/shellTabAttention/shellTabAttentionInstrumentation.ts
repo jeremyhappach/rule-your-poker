@@ -75,6 +75,7 @@ let lastSignature: string | null = null;
 let lastSnapshot: ShellTabAttentionSnapshot | null = null;
 const activeChatOperations = new Set<string>();
 const activeChatOperationSnapshots = new Map<string, ShellTabAttentionSnapshot[]>();
+const activeChatOperationRoles = new Map<string, 'sender' | 'peer'>();
 
 interface ShellTabAttentionContextPatch {
   gameId?: string | null;
@@ -229,6 +230,7 @@ function evaluateInvariants(
  */
 export function openChatSendOperation(correlationId: string, extra?: Record<string, unknown>): void {
   activeChatOperations.add(correlationId);
+  activeChatOperationRoles.set(correlationId, 'sender');
   activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
   recordRuntimeEvent({
     event_family: 'chat',
@@ -241,6 +243,7 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
 
 export function beginChatOperationSnapshotCapture(correlationId: string): void {
   activeChatOperations.add(correlationId);
+  activeChatOperationRoles.set(correlationId, 'peer');
   if (!activeChatOperationSnapshots.has(correlationId)) {
     activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
   }
@@ -254,6 +257,7 @@ export function finalizeChatSendOperation(
   const snapshots = activeChatOperationSnapshots.get(correlationId) ?? [];
   activeChatOperations.delete(correlationId);
   activeChatOperationSnapshots.delete(correlationId);
+  activeChatOperationRoles.delete(correlationId);
   recordRuntimeEvent({
     event_family: 'chat',
     event_name: 'CHAT_SEND_OPERATION_FINALIZED',
@@ -278,6 +282,25 @@ function onSnapshotForChatOps(
       game_id: s.gameId ?? undefined,
       payload: { snapshot: s },
     });
+    if (activeChatOperationRoles.get(cid) === 'peer') {
+      void import('@/lib/chatOperations/serverChatOperation').then(
+        ({ appendChatPeerMilestone, finalizeServerChatOperation }) => {
+          void appendChatPeerMilestone(
+            cid,
+            'SHELL_TAB_ATTENTION_SNAPSHOT',
+            { reason: 'resolved-tab-state-changed' },
+            null,
+            [s],
+          );
+          void finalizeServerChatOperation(
+            cid,
+            'peer-received',
+            'peer-tab-attention-observed',
+            getChatOperationSnapshots(cid),
+          );
+        },
+      );
+    }
   }
 }
 
