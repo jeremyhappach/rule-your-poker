@@ -86,16 +86,16 @@ const finalizeServer = vi.fn(async () => undefined);
 const registerCurrent = vi.fn(() => {});
 
 vi.mock('@/lib/chatOperations/serverChatOperation', () => ({
-  openServerChatOperation: (...a: unknown[]) => openServer(...a),
-  writeChatOperationSenderHeartbeat: (...a: unknown[]) => senderHeartbeat(...a),
+  openServerChatOperation: (...a: unknown[]) => (openServer as (...x: unknown[]) => unknown)(...a),
+  writeChatOperationSenderHeartbeat: (...a: unknown[]) => (senderHeartbeat as (...x: unknown[]) => unknown)(...a),
   writeChatOperationPeerHeartbeat: vi.fn(async () => undefined),
-  appendChatSenderMilestone: (...a: unknown[]) => appendSenderMilestone(...a),
+  appendChatSenderMilestone: (...a: unknown[]) => (appendSenderMilestone as (...x: unknown[]) => unknown)(...a),
   appendChatPeerMilestone: vi.fn(async () => undefined),
   awaitPeerOperationVisibility: vi.fn(async () => undefined),
   createChatOperationId: () => 'chat-test-op-id',
-  finalizeServerChatOperation: (...a: unknown[]) => finalizeServer(...a),
-  markChatOperationDeliveryConfirmed: (...a: unknown[]) => markDeliveryConfirmed(...a),
-  registerCurrentSessionChatOperation: (...a: unknown[]) => registerCurrent(...a),
+  finalizeServerChatOperation: (...a: unknown[]) => (finalizeServer as (...x: unknown[]) => unknown)(...a),
+  markChatOperationDeliveryConfirmed: (...a: unknown[]) => (markDeliveryConfirmed as (...x: unknown[]) => unknown)(...a),
+  registerCurrentSessionChatOperation: (...a: unknown[]) => (registerCurrent as (...x: unknown[]) => unknown)(...a),
   getCurrentSessionChatOperations: () => [],
   subscribeCurrentSessionChatOperations: () => () => {},
 }));
