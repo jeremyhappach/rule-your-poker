@@ -71,6 +71,15 @@ function ensureLoaded(): void {
   }
 }
 
+// Register with tracer at module load so enforceVoiceCorrelation can
+// consult the durable voice-operation id without importing back.
+try {
+  registerVoiceOperationIdGetter(() => {
+    ensureLoaded();
+    return active?.id ?? null;
+  });
+} catch { /* noop */ }
+
 /**
  * Synchronously create the active voice operation. This MUST be called
  * before any recording state, MediaRecorder, timer, or async work.
