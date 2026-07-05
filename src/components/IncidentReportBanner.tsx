@@ -79,9 +79,19 @@ export function IncidentReportBanner() {
   const bgColor =
     row.report_status === "incomplete" ? "bg-amber-600" : "bg-emerald-700";
 
-  const copy = async () => {
+  const exportJson = () => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(row, null, 2));
+      const blob = new Blob([JSON.stringify(row, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `voice-incident-${row.correlation_id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     } catch {
