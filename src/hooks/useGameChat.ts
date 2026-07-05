@@ -305,7 +305,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           });
           recordRuntimeEvent({
             event_family: 'chat',
-            event_name: 'DB_INSERT_FAILURE',
+            event_name: 'CHAT_DB_INSERT_FAILURE',
             severity: 'error',
             correlation_id: correlationId,
             game_id: gameId,
