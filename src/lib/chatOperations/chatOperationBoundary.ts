@@ -106,7 +106,7 @@ async function fanOut(
       try {
         await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
           'chat_operation_append_boundary_event',
-          { _operation_id: op.operationId, _name: op.role ? name : name, _role: op.role, _metadata: enriched },
+          { _operation_id: op.operationId, _name: name, _role: op.role, _metadata: enriched },
         );
       } catch {
         // Instrumentation failure must be silent and isolated.
