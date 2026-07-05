@@ -375,6 +375,11 @@ interface AmbientContext {
   game_type: string | null;
   is_committed_active_session: boolean | null;
   device_label: string | null;
+  voice_surface: string | null;
+  shell_phase: string | null;
+  active_game_component: string | null;
+  waiting_table_component: string | null;
+  modal_blocking_state: string | null;
 }
 
 const ambient: AmbientContext = {
@@ -390,7 +395,30 @@ const ambient: AmbientContext = {
   game_type: null,
   is_committed_active_session: null,
   device_label: null,
+  voice_surface: null,
+  shell_phase: null,
+  active_game_component: null,
+  waiting_table_component: null,
+  modal_blocking_state: null,
 };
+
+/** Snapshot of surface-attribution fields (immutable at emit time). */
+export function snapshotVoiceSurfaceContext(): Record<string, unknown> {
+  return {
+    voice_surface: ambient.voice_surface ?? "unknown",
+    shell_phase: ambient.shell_phase,
+    active_game_component: ambient.active_game_component,
+    waiting_table_component: ambient.waiting_table_component,
+    modal_blocking_state: ambient.modal_blocking_state,
+    game_id: ambient.game_id,
+    dealer_game_id: ambient.dealer_game_id,
+    session_id: ambient.session_id,
+    active_tab: ambient.active_tab,
+    game_status: ambient.game_status,
+    game_type: ambient.game_type,
+    route: ambient.route ?? currentRoute(),
+  };
+}
 
 export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   let changed = false;
