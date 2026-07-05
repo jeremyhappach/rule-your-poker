@@ -214,6 +214,8 @@ function supportsDealerSelectionOverlay(gameType: string | null | undefined): bo
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { GameChatContextProvider } from "@/hooks/GameChatContext";
+import { VoiceOperationIdentityProvider } from "@/hooks/VoiceOperationIdentityContext";
+import { getTabSessionId } from "@/lib/runtimeInstrumentation/runtimeTracer";
 import { ChatAttentionProvider } from "@/hooks/ChatAttention";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
@@ -13236,7 +13238,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           chatConversationKey,
         }}
       >
+      <VoiceOperationIdentityProvider
+        value={{
+          isActiveGameRoute: true,
+          gameId: gameId ?? null,
+          sessionId: getTabSessionId(),
+          dealerGameId: (game as any)?.current_game_uuid ?? null,
+          gameType: game?.game_type ?? null,
+          shellPhase: game?.status ?? null,
+          activeTab: mobileActiveTab ?? null,
+          localPlayerId: currentPlayer?.id ?? null,
+        }}
+      >
       <ChatAttentionProvider currentUserId={user?.id}>
+
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
@@ -13315,9 +13330,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           duplicate here. */}
       <CribDealerDrawTraceOverlay gameId={gameId ?? null} />
       </ChatAttentionProvider>
+      </VoiceOperationIdentityProvider>
       </GameChatContextProvider>
     </VisualPreferencesProvider>
   );
 };
+
 
 export default Game;

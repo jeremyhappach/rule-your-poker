@@ -41,6 +41,11 @@ import {
   writeClientVoiceEvent,
   triggerServerFinalizer,
 } from '@/lib/runtimeInstrumentation/serverVoiceOperation';
+import {
+  useVoiceOperationIdentity,
+  assertVoiceIdentityMatchesRoute,
+  type VoiceOperationIdentity,
+} from '@/hooks/VoiceOperationIdentityContext';
 
 function inferVoiceSurface(): string {
   if (typeof window === 'undefined') return 'unknown';
@@ -137,7 +142,44 @@ export function useVoiceToText(): UseVoiceToTextResult {
   const captureStartedAtRef = useRef<number | null>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Canonical active game identity (see VoiceOperationIdentityContext).
+  // This is the ONLY source of game/session identity for a voice operation.
+  // It replaces the previous ambient-tracer snapshot approach, which could
+  // return NULL on real active-game routes and broke peer RLS linkage.
+  const identity: VoiceOperationIdentity = useVoiceOperationIdentity();
+  const identityRef = useRef<VoiceOperationIdentity>(identity);
+  identityRef.current = identity;
+  const boundarySeqRef = useRef(0);
+
+  /** Build the persisted metadata payload for a start-path boundary event. */
+  const buildBoundaryMeta = useCallback((): Record<string, unknown> => {
+    boundarySeqRef.current += 1;
+    const stream = streamRef.current;
+    const track = stream?.getAudioTracks?.()[0] ?? null;
+    const rec = recorderRef.current;
+    const id = identityRef.current;
+    return {
+      monotonic_sequence: boundarySeqRef.current,
+      game_id: id.gameId,
+      session_id: id.sessionId,
+      dealer_game_id: id.dealerGameId,
+      game_type: id.gameType,
+      shell_phase: id.shellPhase,
+      active_tab: id.activeTab,
+      local_player_id: id.localPlayerId,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+      media_recorder_state: rec?.state ?? null,
+      audio_track_ready_state: track?.readyState ?? null,
+      audio_track_muted: track?.muted ?? null,
+      navigator_online:
+        typeof navigator !== 'undefined' ? navigator.onLine : null,
+      visibility_state:
+        typeof document !== 'undefined' ? document.visibilityState : null,
+    };
+  }, []);
+
   const isSupported = detectSupport();
+
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatTimerRef.current) {
@@ -278,19 +320,24 @@ export function useVoiceToText(): UseVoiceToTextResult {
       voice_surface: surface,
       surface_context: snapshotVoiceSurfaceContext(),
     });
+    boundarySeqRef.current = 0;
 
-    // Server-first: open the durable server-side incident row synchronously
-    // (fire-and-forget network write). Persist game/session identity at OPEN
-    // so the finalizer can link peer readers via RLS even if the sender
-    // client dies immediately after this call.
-    const ctx = snapshotVoiceSurfaceContext() as Record<string, unknown>;
-    const openGameId = typeof ctx.game_id === 'string' ? (ctx.game_id as string) : null;
-    const openDealerGameId = typeof ctx.dealer_game_id === 'string' ? (ctx.dealer_game_id as string) : null;
-    const openSessionId = typeof ctx.session_id === 'string' ? (ctx.session_id as string) : null;
-    const onGameRoute = typeof window !== 'undefined' && /^\/game\//.test(window.location.pathname || '');
-    if (onGameRoute && !openGameId) {
-      recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'VOICE_OPERATION_IDENTITY_INCOMPLETE:no-game-id');
-    }
+    // CANONICAL identity source: the immutable operation context injected by
+    // the mounted Game.tsx shell via VoiceOperationIdentityProvider. We do
+    // NOT source game/session identity from the nullable ambient tracer
+    // snapshot anymore — that path proved unreliable on real active-game
+    // routes (see op 15511b7f-…: opened on /game/… but game_id NULL).
+    const id = identityRef.current;
+    const openGameId = id.gameId;
+    const openDealerGameId = id.dealerGameId;
+    const openSessionId = id.sessionId;
+
+    // Enforce: on an active `/game/:gameId` route the shell identity gameId
+    // must equal the route param. `assertVoiceIdentityMatchesRoute` emits the
+    // DB-persisted `VOICE_ACTIVE_GAME_IDENTITY_MISSING` invariant on any
+    // mismatch (route present but shell gameId null or different).
+    assertVoiceIdentityMatchesRoute(id, 'useVoiceToText.start');
+
     void openServerVoiceIncident({
       voice_operation_id: incidentId,
       surface,
@@ -298,20 +345,40 @@ export function useVoiceToText(): UseVoiceToTextResult {
       game_id: openGameId,
       dealer_game_id: openDealerGameId,
       session_id: openSessionId,
+      sender_player_id: id.localPlayerId ?? null,
     });
 
-
+    // Start-path boundary #1: handler entered (before any async work).
+    void writeClientVoiceEvent(incidentId, 'VOICE_START_HANDLER_ENTERED', {
+      metadata: buildBoundaryMeta(),
+    });
 
     try {
+      void writeClientVoiceEvent(incidentId, 'VOICE_GET_USER_MEDIA_BEGIN', {
+        metadata: buildBoundaryMeta(),
+      });
       const stream = await ensureStream();
       if (!stream) {
         // ensureStream set error; end operation with grace so acks land.
         endVoiceOperation('start-no-stream');
+        void writeClientVoiceEvent(incidentId, 'VOICE_START_HANDLER_EXITED', {
+          metadata: { ...buildBoundaryMeta(), exit_reason: 'no-stream' },
+        });
         return;
       }
+      void writeClientVoiceEvent(incidentId, 'VOICE_GET_USER_MEDIA_RESOLVED', {
+        metadata: buildBoundaryMeta(),
+      });
+      // Now that streamRef is populated, the audio-track fields resolve.
+      void writeClientVoiceEvent(incidentId, 'VOICE_AUDIO_TRACK_ACQUIRED', {
+        metadata: buildBoundaryMeta(),
+      });
 
       chunksRef.current = [];
       cancelledRef.current = false;
+      void writeClientVoiceEvent(incidentId, 'VOICE_MEDIARECORDER_CONSTRUCT_BEGIN', {
+        metadata: buildBoundaryMeta(),
+      });
       const rec = new MediaRecorder(stream);
       rec.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
@@ -323,10 +390,22 @@ export function useVoiceToText(): UseVoiceToTextResult {
         } catch { /* noop */ }
       };
       recorderRef.current = rec;
+      void writeClientVoiceEvent(incidentId, 'VOICE_MEDIARECORDER_CONSTRUCTED', {
+        metadata: buildBoundaryMeta(),
+      });
       captureStartedAtRef.current = Date.now();
+      void writeClientVoiceEvent(incidentId, 'VOICE_MEDIARECORDER_START_BEGIN', {
+        metadata: buildBoundaryMeta(),
+      });
       rec.start();
+      void writeClientVoiceEvent(incidentId, 'VOICE_MEDIARECORDER_START_RETURNED', {
+        metadata: buildBoundaryMeta(),
+      });
       setError(null);
       setState('recording');
+      void writeClientVoiceEvent(incidentId, 'VOICE_RECORDING_STATE_COMMITTED', {
+        metadata: buildBoundaryMeta(),
+      });
       // Force an immediate instance heartbeat so the DB shows this tab
       // is actively capturing before any other event lands.
       forceInstanceHeartbeat('VOICE_CAPTURE_START');
@@ -348,6 +427,9 @@ export function useVoiceToText(): UseVoiceToTextResult {
           recordDiagnostic('VOICE_RECORDING_HEARTBEAT', `elapsedMs=${elapsed}`);
         } catch { /* noop */ }
       }, 1000);
+      void writeClientVoiceEvent(incidentId, 'VOICE_START_HANDLER_EXITED', {
+        metadata: { ...buildBoundaryMeta(), exit_reason: 'ok' },
+      });
     } catch (err) {
       const name = (err as { name?: string })?.name;
       const msg = err instanceof Error ? err.message : String(err);
@@ -364,9 +446,18 @@ export function useVoiceToText(): UseVoiceToTextResult {
       releaseStream();
       stopHeartbeat();
       captureStartedAtRef.current = null;
+      void writeClientVoiceEvent(incidentId, 'VOICE_START_HANDLER_EXITED', {
+        metadata: {
+          ...buildBoundaryMeta(),
+          exit_reason: 'error',
+          error_name: name ?? null,
+          error_message: msg.slice(0, 500),
+        },
+      });
       endVoiceOperation('start-error');
     }
-  }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
+
+  }, [buildBoundaryMeta, ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
 
   // Internal: stop the recorder and transcribe. Optionally release the stream
   // after transcription. Returns the transcript, or null on error/empty.
