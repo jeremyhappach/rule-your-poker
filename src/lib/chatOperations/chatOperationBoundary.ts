@@ -76,46 +76,10 @@ export type ChatBoundaryEventName =
 let installed = false;
 let boundarySequence = 0;
 
-/**
- * Exact-match registry of chat-operation instrumentation RPCs and REST
- * tables. Any outbound Supabase HTTP request whose leaf path segment is
- * in this set is treated as INSTRUMENTATION and passed through the
- * fetch wrapper WITHOUT emitting SUPABASE_FETCH_* boundary events.
- *
- * This is the sole source of truth for the re-entrancy guard. Adding a
- * new instrumentation RPC/table? Add it here in the same commit.
- */
-const INSTRUMENTATION_RPCS: ReadonlySet<string> = new Set([
-  'chat_operation_append_boundary_event',
-  'chat_operation_sender_heartbeat',
-  'chat_operation_peer_heartbeat',
-  'chat_operation_read_sender_presence',
-  'chat_operation_append_sender_milestone',
-  'chat_operation_append_peer_milestone',
-  'chat_operation_mark_delivery_confirmed',
-  'chat_operation_append_violation',
-  'chat_operation_append_recovery_correlation',
-  'finalize_chat_send_operation',
-]);
-const INSTRUMENTATION_TABLES: ReadonlySet<string> = new Set([
-  'chat_send_operations',
-  'chat_operation_reports',
-]);
-
-/**
- * Pure classifier — no shared mutable state. Safe under arbitrary
- * concurrency: two concurrent requests each independently classify
- * themselves from their own URL. An instrumentation write cannot be
- * miscounted as a business call even if it interleaves with one.
- */
-export function isInstrumentationRequest(
-  kind: 'rpc' | 'rest' | 'other',
-  leafName: string,
-): boolean {
-  if (kind === 'rpc') return INSTRUMENTATION_RPCS.has(leafName);
-  if (kind === 'rest') return INSTRUMENTATION_TABLES.has(leafName);
-  return false;
-}
+// Re-entrancy guard registry lives in `chatOperationInstrumentationGuard.ts`
+// (imported above) so the pure classifier is testable without pulling in
+// the supabase client. See that module for the full instrumentation
+// RPC/table registry.
 
 function nowIso() { return new Date().toISOString(); }
 
