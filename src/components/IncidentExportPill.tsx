@@ -139,22 +139,29 @@ export function IncidentExportPill(): JSX.Element | null {
         )
         .eq('user_id', userId)
         .gte('updated_at', SESSION_START_ISO)
+        .not('correlation_id', 'ilike', 'self-check-%')
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (cancelled || !data) return;
       const row = data as Record<string, unknown>;
+      const cid = (row.correlation_id as string) ?? '';
+      if (cid.startsWith('self-check-')) return;
+      const status = (row.report_status as string) ?? '';
+      if (status.startsWith('self-check')) return;
+      const outcome = row.outcome as Record<string, unknown> | null;
+      if (outcome && outcome.self_check === true) return;
       const routeStr =
         (row.recovery_route as string | null) ?? (row.original_route as string | null) ?? null;
       const rowGameId = routeStr ? extractRouteGameId(routeStr) : null;
       if (routeGameId && rowGameId && rowGameId !== routeGameId) return;
       offer({
         kind: 'client_runtime',
-        key: `crir-${row.correlation_id as string}`,
+        key: `crir-${cid}`,
         gameId: rowGameId,
         createdAt: (row.updated_at as string) ?? SESSION_START_ISO,
         reportText: buildClientRuntimeTxt(row),
-        label: `runtime · ${(row.report_status as string) ?? 'pending'}`,
+        label: `runtime · ${status || 'pending'}`,
       });
     };
     void load();
