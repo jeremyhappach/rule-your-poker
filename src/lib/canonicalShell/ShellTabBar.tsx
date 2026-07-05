@@ -205,10 +205,70 @@ export function ShellTabBar() {
   const chatAttentionRenderState =
     chatFlashRed ? 'NEW_MESSAGE_PULSE' : chatDot === 'red' ? 'UNREAD_PERSISTENT' : 'NONE';
 
+  const cardsAttentionRenderState =
+    cardsFlash === 'red' ? 'LOCAL_TURN' : cardsFlash === 'green' ? 'NEW_DEAL' : 'NONE';
 
-  // Turn-attention visual scope: glyph-only. No ring / border / bg on the
-  // gameplay tab container. Chat attention is handled separately on its
-  // own glyph/container above.
+  // SHELL_TAB_ATTENTION_SNAPSHOT — narrow, contract-driven persistence of
+  // the resolved tab-bar visual state for the waiting-table / no-real-game
+  // Cards+Chat attention path.
+  const routePath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const gameIdFromRoute = routePath.match(/\/game\/([0-9a-f-]{8,})/i)?.[1] ?? null;
+  useEffect(() => {
+    void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
+      ({ recordShellTabAttentionSnapshot }) => {
+        recordShellTabAttentionSnapshot(
+          {
+            gameId: gameIdFromRoute,
+            sessionId: null,
+            dealerGameId: null,
+            gameType: null,
+            route: routePath,
+            shellPhase: null,
+            activeGameComponent: null,
+            waitingTableComponent: null,
+            activeTab,
+            canonicalMessageRevision: null,
+            localUnreadCount: null,
+            remoteUnreadCount: null,
+            isChatOpen: activeTab === 'chat',
+            chatAttentionState: chatAttentionRenderState,
+            chatPulseActive: chatFlashRed,
+            chatPulseDeadline: null,
+            lastRemoteMessageId: null,
+            cardsTabKind: cardsIcon === 'dice' ? 'dice' : 'cards',
+            cardsIconKind: cardsIcon,
+            cardsTabAttentionState: cardsAttentionRenderState,
+            localTurnEligible: cardsFlash === 'red',
+            turnAttentionSource: cardsFlash ? 'game-controller' : null,
+            gameControllerPresent: !!gameIdFromRoute,
+            currentTurnPlayerId: null,
+            gameTypeResolved: null,
+            chatTabFill: chatFlashRed ? 'poker-chip-red' : 'none',
+            chatTabOutline: 'none',
+            chatGlyphFill: chatIconResolvedFill,
+            chatGlyphOutline: chatIconResolvedStroke,
+            chatGlyphPulse: chatFlashRed,
+            cardsTabFill: 'none',
+            cardsTabOutline: 'none',
+            cardsGlyphFill: cardsFlash === 'red' ? 'poker-chip-red' : cardsFlash === 'green' ? 'poker-chip-green' : 'currentColor',
+            cardsGlyphOutline: 'inherit',
+            cardsGlyphPulse: cardsFlash === 'red' || cardsFlash === 'green',
+            tabBarMounted: true,
+            tabBarRenderKey: 'shell-tabbar-singleton',
+            shellTabBarOwner: 'PersistentTableShell',
+            pointerEventsBlockerPresent: false,
+            blockerSource: null,
+          },
+          'shell-tabbar-render',
+        );
+      },
+    );
+  }, [
+    activeTab, cardsIcon, cardsFlash, chatFlashRed,
+    chatAttentionRenderState, cardsAttentionRenderState,
+    chatIconResolvedFill, chatIconResolvedStroke,
+    gameIdFromRoute, routePath,
+  ]);
 
   const handleChatClick = () => {
     if (onOpenChat) onOpenChat();

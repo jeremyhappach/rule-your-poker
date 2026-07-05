@@ -223,6 +223,14 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         game_id: gameId,
         payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile) },
       });
+      const { openChatSendOperation, finalizeChatSendOperation } = await import(
+        '@/lib/shellTabAttention/shellTabAttentionInstrumentation'
+      );
+      openChatSendOperation(correlationId, {
+        gameId,
+        hasText: Boolean(message.trim()),
+        hasImage: Boolean(imageFile),
+      });
 
       setIsSending(true);
       try {
@@ -386,7 +394,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
+        finalizeChatSendOperation(correlationId, 'error', {
+          message: (error as Error)?.message ?? String(error),
+        });
       } finally {
+        // finalize as success if no error branch above already finalized;
+        // safe because finalizeChatSendOperation is idempotent on cid removal.
+        finalizeChatSendOperation(correlationId, 'success');
         setIsSending(false);
       }
     },
