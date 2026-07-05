@@ -213,9 +213,11 @@ export function ShellTabBar() {
   // Cards+Chat attention path.
   const routePath = typeof window !== 'undefined' ? window.location.pathname : '';
   const gameIdFromRoute = routePath.match(/\/game\/([0-9a-f-]{8,})/i)?.[1] ?? null;
+  const prevChatFlashRedRef = useRef<boolean>(false);
+  const prevChatDotRedRef = useRef<boolean>(false);
   useEffect(() => {
     void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
-      ({ recordShellTabAttentionSnapshot }) => {
+      ({ recordShellTabAttentionSnapshot, recordWaitingChatTransition }) => {
         recordShellTabAttentionSnapshot(
           {
             gameId: gameIdFromRoute,
@@ -261,14 +263,50 @@ export function ShellTabBar() {
           },
           'shell-tabbar-render',
         );
+
+        const wasRed = prevChatFlashRedRef.current;
+        if (chatFlashRed && !wasRed) {
+          recordWaitingChatTransition('WAITING_CHAT_SOLID_RED_APPLIED');
+        } else if (!chatFlashRed && wasRed) {
+          recordWaitingChatTransition('WAITING_CHAT_SOLID_RED_CLEARED');
+        }
+        prevChatFlashRedRef.current = chatFlashRed;
+
+        const dotRedNow = chatDot === 'red' && !chatFlashRed;
+        if (dotRedNow && !prevChatDotRedRef.current) {
+          recordWaitingChatTransition('WAITING_CHAT_OUTLINE_APPLIED');
+        }
+        prevChatDotRedRef.current = dotRedNow;
+
+        const chatAttentionActive = chatFlashRed || dotRedNow;
+        if (chatAttentionActive && (cardsFlash === 'red' || cardsFlash === 'green')) {
+          recordWaitingChatTransition('WAITING_TAB_ATTENTION_COLLISION', {
+            chatFlashRed, cardsFlash,
+          });
+        }
+        if (chatAttentionActive && activeTab === 'cards') {
+          recordWaitingChatTransition('WAITING_CARDS_TAB_RENDER_DURING_CHAT_ATTENTION');
+        }
       },
     );
   }, [
-    activeTab, cardsIcon, cardsFlash, chatFlashRed,
+    activeTab, cardsIcon, cardsFlash, chatFlashRed, chatDot,
     chatAttentionRenderState, cardsAttentionRenderState,
     chatIconResolvedFill, chatIconResolvedStroke,
     gameIdFromRoute, routePath,
   ]);
+
+  useEffect(() => {
+    void import('@/lib/shellTabAttention/shellTabAttentionInstrumentation').then(
+      ({ recordWaitingChatTransition }) => {
+        recordWaitingChatTransition('WAITING_TABBAR_REMOUNT_DURING_CHAT_ATTENTION', {
+          note: 'shell-tabbar mounted',
+        });
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleChatClick = () => {
     if (onOpenChat) onOpenChat();
