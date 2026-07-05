@@ -60,7 +60,7 @@ export async function openServerVoiceIncident(input: OpenIncidentInput): Promise
   const tab_id = getTabId();
   const nowIso = new Date().toISOString();
   try {
-    await supabase.from("voice_operation_incidents").insert({
+    await supabase.from("voice_operation_incidents").insert([{
       voice_operation_id: input.voice_operation_id,
       sender_user_id: user_id,
       sender_player_id: input.sender_player_id ?? null,
@@ -73,7 +73,7 @@ export async function openServerVoiceIncident(input: OpenIncidentInput): Promise
       origin_surface: input.surface ?? null,
       client_last_phase: "OPENED",
       client_last_phase_at: nowIso,
-    });
+    }]);
   } catch { /* best-effort */ }
 }
 
