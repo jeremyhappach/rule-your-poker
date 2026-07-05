@@ -83,35 +83,56 @@ let boundarySequence = 0;
 
 function nowIso() { return new Date().toISOString(); }
 
-async function fanOut(
+/**
+ * Fan out a boundary event to every currently registered chat
+ * operation. Exception-isolated end-to-end:
+ *   - synchronous throws in registry read, metadata enrichment, or
+ *     RPC construction are swallowed by the outer try/catch;
+ *   - each per-operation RPC runs inside its own async IIFE with a
+ *     try/catch, so a rejected/thrown RPC (including thenables that
+ *     lack `.catch`) cannot produce an unhandledrejection;
+ *   - `fanOut` returns `void`; no caller awaits it.
+ */
+function fanOut(
   name: ChatBoundaryEventName,
   metadata: Record<string, unknown>,
-): Promise<void> {
-  const ops = getCurrentSessionChatOperations();
-  if (ops.length === 0) return;
-  const enriched: Record<string, unknown> = {
-    ...metadata,
-    at: nowIso(),
-    sequence: ++boundarySequence,
-    route: typeof window !== 'undefined' ? window.location.pathname : null,
-    origin: typeof window !== 'undefined' ? window.location.origin : null,
-    href: typeof window !== 'undefined' ? window.location.href : null,
-    visibility_state: typeof document !== 'undefined' ? document.visibilityState : null,
-    was_discarded: typeof document !== 'undefined' ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ?? false : false,
-    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    online: typeof navigator !== 'undefined' ? navigator.onLine : null,
-  };
-  for (const op of ops as CurrentSessionChatOperationRecord[]) {
-    void (async () => {
-      try {
-        await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
-          'chat_operation_append_boundary_event',
-          { _operation_id: op.operationId, _name: name, _role: op.role, _metadata: enriched },
-        );
-      } catch {
-        // Instrumentation failure must be silent and isolated.
-      }
-    })();
+): void {
+  try {
+    const ops = getCurrentSessionChatOperations();
+    if (ops.length === 0) return;
+    const enriched: Record<string, unknown> = {
+      ...metadata,
+      at: nowIso(),
+      sequence: ++boundarySequence,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+      origin: typeof window !== 'undefined' ? window.location.origin : null,
+      href: typeof window !== 'undefined' ? window.location.href : null,
+      visibility_state: typeof document !== 'undefined' ? document.visibilityState : null,
+      was_discarded: typeof document !== 'undefined' ? (document as Document & { wasDiscarded?: boolean }).wasDiscarded ?? false : false,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      online: typeof navigator !== 'undefined' ? navigator.onLine : null,
+    };
+    for (const op of ops as CurrentSessionChatOperationRecord[]) {
+      // Isolated async task per operation. NEVER chain `.catch`/`.then`
+      // directly on the RPC return value — some Supabase RPC results
+      // are non-Promise thenables and calling `.catch` on them throws
+      // synchronously ("rpc(...).catch is not a function"). `await`
+      // inside try/catch normalizes both real Promises and thenables.
+      void (async () => {
+        try {
+          await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+            'chat_operation_append_boundary_event',
+            { _operation_id: op.operationId, _name: name, _role: op.role, _metadata: enriched },
+          );
+        } catch {
+          // Instrumentation failure must be silent and isolated.
+        }
+      })();
+    }
+  } catch {
+    // Any synchronous failure in registry read / enrichment / RPC
+    // construction is swallowed — instrumentation must never take
+    // down the host callback.
   }
 }
 
