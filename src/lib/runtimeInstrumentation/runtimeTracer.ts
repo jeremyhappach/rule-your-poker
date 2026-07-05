@@ -1002,9 +1002,11 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       // Mark the outbox row delivered/failed via supabase-js best-effort.
       void finalizeOutboxRow(outboxId, sent);
     }
+    maybeAutoFinalizeIncident(evt);
     return;
   }
   queue.push(evt);
+  maybeAutoFinalizeIncident(evt);
   if (evt.severity === "error") {
     void flushNow();
   } else if (queue.length >= BATCH_MAX) {
