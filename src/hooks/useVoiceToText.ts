@@ -280,13 +280,26 @@ export function useVoiceToText(): UseVoiceToTextResult {
     });
 
     // Server-first: open the durable server-side incident row synchronously
-    // (fire-and-forget network write). This is the ONLY client prerequisite
-    // for full-fidelity diagnosis if this tab dies.
+    // (fire-and-forget network write). Persist game/session identity at OPEN
+    // so the finalizer can link peer readers via RLS even if the sender
+    // client dies immediately after this call.
+    const ctx = snapshotVoiceSurfaceContext() as Record<string, unknown>;
+    const openGameId = typeof ctx.game_id === 'string' ? (ctx.game_id as string) : null;
+    const openDealerGameId = typeof ctx.dealer_game_id === 'string' ? (ctx.dealer_game_id as string) : null;
+    const openSessionId = typeof ctx.session_id === 'string' ? (ctx.session_id as string) : null;
+    const onGameRoute = typeof window !== 'undefined' && /^\/game\//.test(window.location.pathname || '');
+    if (onGameRoute && !openGameId) {
+      recordDiagnostic('VOICE_SEND_BLOCKED_REASON', 'VOICE_OPERATION_IDENTITY_INCOMPLETE:no-game-id');
+    }
     void openServerVoiceIncident({
       voice_operation_id: incidentId,
       surface,
       route: typeof window !== 'undefined' ? window.location.pathname : null,
+      game_id: openGameId,
+      dealer_game_id: openDealerGameId,
+      session_id: openSessionId,
     });
+
 
 
     try {
