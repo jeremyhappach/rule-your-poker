@@ -385,12 +385,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
     try {
       recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
       recordDiagnostic('VOICE_MEDIARECORDER_STOP_CALLED', `state=${rec.state}`);
+      const opId = getActiveVoiceOperationId();
+      if (opId) void writeClientVoiceEvent(opId, 'CAPTURE_STOP_REQUESTED');
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     stopHeartbeat();
     setState('transcribing');
     const blob = await finished;
     recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
+    { const opId = getActiveVoiceOperationId(); if (opId) void writeClientVoiceEvent(opId, 'BLOB_READY', { byte_count: blob.size }); }
     recorderRef.current = null;
     if (!opts.keepStream) releaseStream();
 
