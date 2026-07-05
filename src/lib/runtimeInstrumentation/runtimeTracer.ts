@@ -907,7 +907,10 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       typeof document !== "undefined" ? document.visibilityState : null,
     online_state:
       typeof navigator !== "undefined" ? navigator.onLine : null,
-    payload: input.payload ?? null,
+    payload: {
+      ...(input.payload ?? {}),
+      __voice_surface_context: snapshotVoiceSurfaceContext(),
+    },
     ...errFields,
   };
   // Local capsule FIRST — every event with an active runtime incident
