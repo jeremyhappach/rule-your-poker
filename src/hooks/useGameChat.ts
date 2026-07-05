@@ -896,6 +896,12 @@ export const useGameChat = (
           consumer: 'canonical-store',
           payload: { channelTopic, status, error: err ? String(err) : null },
         });
+        recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_STATUS', {
+          channelTopic,
+          status,
+          error: err ? String(err) : null,
+          gameId,
+        });
         if (status === 'CHANNEL_ERROR') {
           console.error('[useGameChat] Channel error:', err);
           recordChatDeliveryViolation({
@@ -906,6 +912,7 @@ export const useGameChat = (
           });
         } else if (status === 'TIMED_OUT') {
           console.error('[useGameChat] Channel subscription timed out');
+          recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_TIMED_OUT', { channelTopic, gameId });
           recordChatDeliveryViolation({
             violation: 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY',
             gameId,
@@ -922,7 +929,10 @@ export const useGameChat = (
         consumer: 'canonical-store',
         payload: { channelTopic },
       });
+      recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_REMOVE_INITIATED', { channelTopic, gameId });
       supabase.removeChannel(channel);
+      recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_REMOVED', { channelTopic, gameId });
+      recordChatBoundaryEvent('CHAT_HOOK_UNMOUNT', { gameId });
     };
   }, [gameId, addBubble, currentUserId, chatIdentity?.route, chatIdentity?.sessionId]);
 
