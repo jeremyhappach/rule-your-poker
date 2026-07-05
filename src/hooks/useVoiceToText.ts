@@ -30,7 +30,17 @@ import {
   getActiveRuntimeIncidentId,
   forceInstanceHeartbeat,
   nextIncidentSequence,
+  setRuntimeAmbient,
+  snapshotVoiceSurfaceContext,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
+
+function inferVoiceSurface(): string {
+  if (typeof window === 'undefined') return 'unknown';
+  const p = window.location.pathname || '';
+  if (/^\/game\//.test(p)) return 'active_game_table';
+  if (/^\/(lobby|waiting|$)/.test(p) || p === '/' || p === '/index') return 'waiting_table';
+  return 'unknown';
+}
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
