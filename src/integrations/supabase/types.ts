@@ -188,6 +188,164 @@ export type Database = {
           },
         ]
       }
+      chat_operation_reports: {
+        Row: {
+          created_at: string
+          finalized_at: string
+          game_id: string
+          id: string
+          operation_id: string
+          report_json: Json
+          report_text: string
+          sender_user_id: string | null
+          session_id: string
+          terminal_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          finalized_at?: string
+          game_id: string
+          id?: string
+          operation_id: string
+          report_json?: Json
+          report_text: string
+          sender_user_id?: string | null
+          session_id: string
+          terminal_status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          finalized_at?: string
+          game_id?: string
+          id?: string
+          operation_id?: string
+          report_json?: Json
+          report_text?: string
+          sender_user_id?: string | null
+          session_id?: string
+          terminal_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_operation_reports_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_operation_reports_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: true
+            referencedRelation: "chat_send_operations"
+            referencedColumns: ["operation_id"]
+          },
+        ]
+      }
+      chat_send_operations: {
+        Row: {
+          active_tab: string | null
+          completed_at: string | null
+          created_at: string
+          dealer_game_id: string | null
+          game_id: string
+          id: string
+          message_id: string | null
+          message_preview: string | null
+          operation_id: string
+          operation_type: string
+          optimistic_message_id: string | null
+          origin_surface: string | null
+          peer_milestones: Json
+          report_status: string
+          route: string
+          sender_client_instance_id: string | null
+          sender_milestones: Json
+          sender_tab_session_id: string | null
+          sender_user_id: string | null
+          session_id: string
+          shell_phase: string | null
+          source_kind: string
+          started_at: string
+          status: string
+          tab_attention_snapshots: Json
+          terminal_reason: string | null
+          terminal_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_tab?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          game_id: string
+          id?: string
+          message_id?: string | null
+          message_preview?: string | null
+          operation_id: string
+          operation_type?: string
+          optimistic_message_id?: string | null
+          origin_surface?: string | null
+          peer_milestones?: Json
+          report_status?: string
+          route: string
+          sender_client_instance_id?: string | null
+          sender_milestones?: Json
+          sender_tab_session_id?: string | null
+          sender_user_id?: string | null
+          session_id: string
+          shell_phase?: string | null
+          source_kind?: string
+          started_at?: string
+          status?: string
+          tab_attention_snapshots?: Json
+          terminal_reason?: string | null
+          terminal_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_tab?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          game_id?: string
+          id?: string
+          message_id?: string | null
+          message_preview?: string | null
+          operation_id?: string
+          operation_type?: string
+          optimistic_message_id?: string | null
+          origin_surface?: string | null
+          peer_milestones?: Json
+          report_status?: string
+          route?: string
+          sender_client_instance_id?: string | null
+          sender_milestones?: Json
+          sender_tab_session_id?: string | null
+          sender_user_id?: string | null
+          session_id?: string
+          shell_phase?: string | null
+          source_kind?: string
+          started_at?: string
+          status?: string
+          tab_attention_snapshots?: Json
+          terminal_reason?: string | null
+          terminal_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_send_operations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chip_stack_emoticons: {
         Row: {
           created_at: string
@@ -2691,6 +2849,96 @@ export type Database = {
         }
         Returns: Json
       }
+      chat_operation_append_peer_milestone: {
+        Args: {
+          _message_id?: string
+          _metadata?: Json
+          _operation_id: string
+          _phase: string
+          _snapshots?: Json
+        }
+        Returns: {
+          active_tab: string | null
+          completed_at: string | null
+          created_at: string
+          dealer_game_id: string | null
+          game_id: string
+          id: string
+          message_id: string | null
+          message_preview: string | null
+          operation_id: string
+          operation_type: string
+          optimistic_message_id: string | null
+          origin_surface: string | null
+          peer_milestones: Json
+          report_status: string
+          route: string
+          sender_client_instance_id: string | null
+          sender_milestones: Json
+          sender_tab_session_id: string | null
+          sender_user_id: string | null
+          session_id: string
+          shell_phase: string | null
+          source_kind: string
+          started_at: string
+          status: string
+          tab_attention_snapshots: Json
+          terminal_reason: string | null
+          terminal_status: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "chat_send_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      chat_operation_append_sender_milestone: {
+        Args: {
+          _message_id?: string
+          _metadata?: Json
+          _operation_id: string
+          _optimistic_message_id?: string
+          _phase: string
+        }
+        Returns: {
+          active_tab: string | null
+          completed_at: string | null
+          created_at: string
+          dealer_game_id: string | null
+          game_id: string
+          id: string
+          message_id: string | null
+          message_preview: string | null
+          operation_id: string
+          operation_type: string
+          optimistic_message_id: string | null
+          origin_surface: string | null
+          peer_milestones: Json
+          report_status: string
+          route: string
+          sender_client_instance_id: string | null
+          sender_milestones: Json
+          sender_tab_session_id: string | null
+          sender_user_id: string | null
+          session_id: string
+          shell_phase: string | null
+          source_kind: string
+          started_at: string
+          status: string
+          tab_attention_snapshots: Json
+          terminal_reason: string | null
+          terminal_status: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "chat_send_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       claim_horses_bot_controller: {
         Args: { _round_id: string }
         Returns: Json
@@ -2710,6 +2958,15 @@ export type Database = {
       decrement_player_chips: {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
+      }
+      finalize_chat_send_operation: {
+        Args: {
+          _extra_snapshots?: Json
+          _operation_id: string
+          _terminal_reason?: string
+          _terminal_status?: string
+        }
+        Returns: Json
       }
       finalize_voice_operations: { Args: never; Returns: number }
       handle_config_deadline_timeout: {
