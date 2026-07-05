@@ -15,6 +15,7 @@ import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { VoiceOperationPresenceMount } from "@/components/VoiceOperationPresenceMount";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { NetworkSimIndicator } from "@/components/NetworkSimIndicator";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
@@ -52,6 +53,7 @@ import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 import { IncidentReportBanner } from "@/components/IncidentReportBanner";
+import { VoiceOperationReportBanner } from "@/components/VoiceOperationReportBanner";
 
 
 
@@ -152,10 +154,12 @@ const App = () => {
                   path="/game/:gameId"
                   element={
                     <RouteErrorBoundary title="Game screen crashed">
+                      <VoiceOperationPresenceMount />
                       <Game />
                     </RouteErrorBoundary>
                   }
                 />
+
                 <Route path="/test-hands" element={<HandEvalTest />} />
                 <Route path="/debug-hands" element={<HandEvalDebug />} />
                 <Route path="/dice-preview" element={<DicePreview />} />
@@ -218,6 +222,7 @@ const App = () => {
                   UI is gone. Pure link + copy; no auth/session mutation. */}
               <SessionLifecycleRecoveryPill />
               <IncidentReportBanner />
+              <VoiceOperationReportBanner />
 
 
 

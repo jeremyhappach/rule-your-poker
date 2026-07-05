@@ -2407,6 +2407,276 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_operation_events: {
+        Row: {
+          actor_player_id: string | null
+          actor_user_id: string | null
+          byte_count: number | null
+          created_at: string
+          duration_ms: number | null
+          error_category: string | null
+          error_message: string | null
+          id: string
+          metadata: Json
+          occurred_at: string
+          origin: string
+          phase: string
+          status_code: number | null
+          voice_operation_id: string
+        }
+        Insert: {
+          actor_player_id?: string | null
+          actor_user_id?: string | null
+          byte_count?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          error_category?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          origin: string
+          phase: string
+          status_code?: number | null
+          voice_operation_id: string
+        }
+        Update: {
+          actor_player_id?: string | null
+          actor_user_id?: string | null
+          byte_count?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          error_category?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          origin?: string
+          phase?: string
+          status_code?: number | null
+          voice_operation_id?: string
+        }
+        Relationships: []
+      }
+      voice_operation_incidents: {
+        Row: {
+          client_heartbeat_last_at: string | null
+          client_last_phase: string | null
+          client_last_phase_at: string | null
+          completed_at: string | null
+          created_at: string
+          dealer_game_id: string | null
+          edge_function_error_category: string | null
+          edge_function_error_message: string | null
+          edge_function_last_phase: string | null
+          edge_function_last_phase_at: string | null
+          edge_function_status_code: number | null
+          game_id: string | null
+          id: string
+          origin_instance_id: string | null
+          origin_route: string | null
+          origin_surface: string | null
+          origin_tab_id: string | null
+          peer_heartbeat_last_at: string | null
+          peer_witness_status: string
+          presence_outcome: string | null
+          report_status: string
+          sender_player_id: string | null
+          sender_user_id: string | null
+          server_last_phase: string | null
+          server_last_phase_at: string | null
+          session_id: string | null
+          started_at: string
+          terminal_reason: string | null
+          terminal_status: string | null
+          updated_at: string
+          voice_operation_id: string
+        }
+        Insert: {
+          client_heartbeat_last_at?: string | null
+          client_last_phase?: string | null
+          client_last_phase_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          edge_function_error_category?: string | null
+          edge_function_error_message?: string | null
+          edge_function_last_phase?: string | null
+          edge_function_last_phase_at?: string | null
+          edge_function_status_code?: number | null
+          game_id?: string | null
+          id?: string
+          origin_instance_id?: string | null
+          origin_route?: string | null
+          origin_surface?: string | null
+          origin_tab_id?: string | null
+          peer_heartbeat_last_at?: string | null
+          peer_witness_status?: string
+          presence_outcome?: string | null
+          report_status?: string
+          sender_player_id?: string | null
+          sender_user_id?: string | null
+          server_last_phase?: string | null
+          server_last_phase_at?: string | null
+          session_id?: string | null
+          started_at?: string
+          terminal_reason?: string | null
+          terminal_status?: string | null
+          updated_at?: string
+          voice_operation_id: string
+        }
+        Update: {
+          client_heartbeat_last_at?: string | null
+          client_last_phase?: string | null
+          client_last_phase_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dealer_game_id?: string | null
+          edge_function_error_category?: string | null
+          edge_function_error_message?: string | null
+          edge_function_last_phase?: string | null
+          edge_function_last_phase_at?: string | null
+          edge_function_status_code?: number | null
+          game_id?: string | null
+          id?: string
+          origin_instance_id?: string | null
+          origin_route?: string | null
+          origin_surface?: string | null
+          origin_tab_id?: string | null
+          peer_heartbeat_last_at?: string | null
+          peer_witness_status?: string
+          presence_outcome?: string | null
+          report_status?: string
+          sender_player_id?: string | null
+          sender_user_id?: string | null
+          server_last_phase?: string | null
+          server_last_phase_at?: string | null
+          session_id?: string | null
+          started_at?: string
+          terminal_reason?: string | null
+          terminal_status?: string | null
+          updated_at?: string
+          voice_operation_id?: string
+        }
+        Relationships: []
+      }
+      voice_operation_reports: {
+        Row: {
+          created_at: string
+          finalized_at: string
+          game_id: string | null
+          id: string
+          report_json: Json
+          report_text: string
+          sender_user_id: string | null
+          terminal_status: string
+          updated_at: string
+          voice_operation_id: string
+        }
+        Insert: {
+          created_at?: string
+          finalized_at?: string
+          game_id?: string | null
+          id?: string
+          report_json?: Json
+          report_text: string
+          sender_user_id?: string | null
+          terminal_status: string
+          updated_at?: string
+          voice_operation_id: string
+        }
+        Update: {
+          created_at?: string
+          finalized_at?: string
+          game_id?: string | null
+          id?: string
+          report_json?: Json
+          report_text?: string
+          sender_user_id?: string | null
+          terminal_status?: string
+          updated_at?: string
+          voice_operation_id?: string
+        }
+        Relationships: []
+      }
+      voice_peer_witness_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          game_id: string | null
+          id: string
+          metadata: Json
+          observed_at: string
+          peer_player_id: string | null
+          peer_user_id: string
+          voice_operation_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          game_id?: string | null
+          id?: string
+          metadata?: Json
+          observed_at?: string
+          peer_player_id?: string | null
+          peer_user_id: string
+          voice_operation_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          game_id?: string | null
+          id?: string
+          metadata?: Json
+          observed_at?: string
+          peer_player_id?: string | null
+          peer_user_id?: string
+          voice_operation_id?: string
+        }
+        Relationships: []
+      }
+      voice_presence_heartbeats: {
+        Row: {
+          active_voice_operation_id: string | null
+          created_at: string
+          game_id: string | null
+          id: string
+          last_heartbeat_at: string
+          route: string | null
+          session_id: string | null
+          status: string
+          tab_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_voice_operation_id?: string | null
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          route?: string | null
+          session_id?: string | null
+          status?: string
+          tab_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_voice_operation_id?: string | null
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          route?: string | null
+          session_id?: string | null
+          status?: string
+          tab_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2441,6 +2711,7 @@ export type Database = {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
       }
+      finalize_voice_operations: { Args: never; Returns: number }
       handle_config_deadline_timeout: {
         Args: { _game_id: string }
         Returns: Json

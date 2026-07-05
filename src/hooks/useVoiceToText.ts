@@ -36,6 +36,11 @@ import {
   endVoiceOperation,
   getActiveVoiceOperationId,
 } from '@/lib/runtimeInstrumentation/voiceOperation';
+import {
+  openServerVoiceIncident,
+  writeClientVoiceEvent,
+  triggerServerFinalizer,
+} from '@/lib/runtimeInstrumentation/serverVoiceOperation';
 
 function inferVoiceSurface(): string {
   if (typeof window === 'undefined') return 'unknown';
@@ -274,6 +279,16 @@ export function useVoiceToText(): UseVoiceToTextResult {
       surface_context: snapshotVoiceSurfaceContext(),
     });
 
+    // Server-first: open the durable server-side incident row synchronously
+    // (fire-and-forget network write). This is the ONLY client prerequisite
+    // for full-fidelity diagnosis if this tab dies.
+    void openServerVoiceIncident({
+      voice_operation_id: incidentId,
+      surface,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+    });
+
+
     try {
       const stream = await ensureStream();
       if (!stream) {
@@ -305,6 +320,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
       recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId};surface=${surface}`);
       // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
+      void writeClientVoiceEvent(incidentId, 'CAPTURE_STARTED', { metadata: { surface } });
 
       // 1s pre-stop heartbeat so the missing-boundary window between
       // VOICE_CAPTURE_STARTED and VOICE_CAPTURE_STOP_REQUESTED is
@@ -370,12 +386,15 @@ export function useVoiceToText(): UseVoiceToTextResult {
     try {
       recordDiagnostic('VOICE_CAPTURE_STOP_REQUESTED');
       recordDiagnostic('VOICE_MEDIARECORDER_STOP_CALLED', `state=${rec.state}`);
+      const opId = getActiveVoiceOperationId();
+      if (opId) void writeClientVoiceEvent(opId, 'CAPTURE_STOP_REQUESTED');
       if (rec.state !== 'inactive') rec.stop();
     } catch { /* ignore */ }
     stopHeartbeat();
     setState('transcribing');
     const blob = await finished;
     recordDiagnostic('VOICE_BLOB_READY', `bytes=${blob.size};mime=${mimeType}`);
+    { const opId = getActiveVoiceOperationId(); if (opId) void writeClientVoiceEvent(opId, 'BLOB_READY', { byte_count: blob.size }); }
     recorderRef.current = null;
     if (!opts.keepStream) releaseStream();
 
@@ -395,11 +414,20 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const base64 = await blobToBase64(blob);
       recordDiagnostic('VOICE_ENCODE_COMPLETE', `chars=${base64.length}`);
       recordDiagnostic('VOICE_FN_INVOKE_START', `bytes=${base64.length}`);
+      const opId = getActiveVoiceOperationId();
+      if (opId) {
+        void writeClientVoiceEvent(opId, 'ENCODE_COMPLETE', { byte_count: base64.length });
+        void writeClientVoiceEvent(opId, 'FN_INVOKE_START', { byte_count: base64.length });
+      }
       const { data, error: fnError } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64, mimeType },
+        body: { audio: base64, mimeType, voice_operation_id: opId },
       });
       if (fnError) {
         recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        if (opId) void writeClientVoiceEvent(opId, 'FN_INVOKE_ERROR', {
+          error_category: 'invoke-failed',
+          error_message: (fnError.message ?? 'invoke-failed').slice(0, 500),
+        });
         try {
           recordVoiceRequestNetworkFailure({
             phase: 'edge-function-invoke',
@@ -411,10 +439,16 @@ export function useVoiceToText(): UseVoiceToTextResult {
       }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
       recordDiagnostic('VOICE_FN_INVOKE_RESPONSE', `hasTranscript=${!!transcript};len=${transcript.length}`);
+      if (opId) void writeClientVoiceEvent(opId, 'FN_INVOKE_RESPONSE', {
+        status_code: 200,
+        metadata: { transcript_length: transcript.length },
+      });
       if (!transcript) {
         setError('No speech detected. Try again.');
         setState('error');
         recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
+        if (opId) void writeClientVoiceEvent(opId, 'SEND_FAILED', { error_category: 'empty-transcript' });
+        triggerServerFinalizer();
         captureStartedAtRef.current = null;
         recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'empty');
         return null;
@@ -422,6 +456,8 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('idle');
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', `chars=${transcript.length}`);
+      if (opId) void writeClientVoiceEvent(opId, 'SEND_COMPLETE', { metadata: { transcript_length: transcript.length } });
+      triggerServerFinalizer();
       captureStartedAtRef.current = null;
       recordDiagnostic('VOICE_STOP_HANDLER_EXITED', `chars=${transcript.length}`);
       return transcript;
@@ -432,10 +468,12 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('error');
       recordDiagnostic('VOICE_FN_INVOKE_ERROR', msg);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'error');
+      const opId2 = getActiveVoiceOperationId();
+      if (opId2) void writeClientVoiceEvent(opId2, 'SEND_FAILED', {
+        error_category: name ?? 'unknown', error_message: msg.slice(0, 500),
+      });
+      triggerServerFinalizer();
       try {
-        // TypeError from fetch / offline / DNS all bubble as generic
-        // Error. Surface as a network-family failure so the DB
-        // timeline shows the outage boundary immediately.
         const looksNetworky =
           name === 'TypeError' ||
           /network|fetch|failed to fetch|load failed/i.test(msg);

@@ -31,6 +31,11 @@ import {
 // with the runtime tracer so voice-family event correlation enforcement
 // can resolve the active operation without a circular import.
 import "@/lib/runtimeInstrumentation/voiceOperation";
+import { startVoicePresenceHeartbeat } from "@/lib/runtimeInstrumentation/voicePresenceHeartbeat";
+
+// Server-first: start the presence heartbeat as soon as the app boots.
+// Every tab visible to the server publishes route + active voice op every ~4s.
+startVoicePresenceHeartbeat();
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other
 // module boots. RUNTIME_BOOT_EARLY + CAPSULE_SCAN_COMPLETE land via
