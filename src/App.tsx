@@ -209,9 +209,11 @@ const App = () => {
               <Wave5GridOverlayToggle />
               </div>
 
-              {/* Chat delivery export pill — always visible in published builds,
-                  outside DebugTray/hideDebugUI gating, persistent across routes. */}
-              <ChatDeliveryExportPill />
+              {/* Single, session-scoped incident export pill.
+                  Replaces ChatDeliveryExportPill, IncidentReportBanner,
+                  and VoiceOperationReportBanner — exactly one "Export
+                  Incident" surface per current session/game. */}
+              <IncidentExportPill />
 
               {/* P0: always-mounted session lifecycle recovery pill.
                   Persists across every route (including /auth and any
@@ -219,8 +221,6 @@ const App = () => {
                   /diagnostics and copy the ledger, even when the game
                   UI is gone. Pure link + copy; no auth/session mutation. */}
               <SessionLifecycleRecoveryPill />
-              <IncidentReportBanner />
-              <VoiceOperationReportBanner />
 
 
 
