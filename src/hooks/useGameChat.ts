@@ -223,6 +223,14 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         game_id: gameId,
         payload: { hasText: Boolean(message.trim()), hasImage: Boolean(imageFile) },
       });
+      const { openChatSendOperation, finalizeChatSendOperation } = await import(
+        '@/lib/shellTabAttention/shellTabAttentionInstrumentation'
+      );
+      openChatSendOperation(correlationId, {
+        gameId,
+        hasText: Boolean(message.trim()),
+        hasImage: Boolean(imageFile),
+      });
 
       setIsSending(true);
       try {
