@@ -1,27 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Download, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getClientInstanceId, recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import { recordRuntimeEvent } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import {
+  getCurrentSessionChatOperations,
+  subscribeCurrentSessionChatOperations,
+  type CurrentSessionChatOperationRecord,
+} from '@/lib/chatOperations/serverChatOperation';
 
 const SESSION_START_ISO = new Date().toISOString();
 const SESSION_TOKEN = `normal-shell-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
-type IncidentKind = 'chat_send' | 'voice_operation';
-
-interface CurrentIncident {
-  kind: IncidentKind;
+interface CurrentChatIncident {
   operationId: string;
   gameId: string;
   sessionId: string;
   route: string;
   senderUserId: string | null;
-  senderClientInstanceId?: string | null;
   terminalStatus: string;
   startedAt: string;
   finalizedAt: string;
   reportText: string;
-  label: string;
+  snapshotCount: number;
+  peerMilestoneCount: number;
 }
 
 function extractRouteGameId(pathname: string): string | null {
@@ -60,13 +62,14 @@ function emitInvalid(reason: string, payload: Record<string, unknown>): void {
 }
 
 function validateIncident(
-  incident: CurrentIncident,
+  incident: CurrentChatIncident,
+  operation: CurrentSessionChatOperationRecord | null,
   routeGameId: string | null,
   routeSessionId: string | null,
 ): boolean {
   const invalid = (reason: string) => {
     emitInvalid(reason, {
-      type: incident.kind,
+      type: 'chat_send',
       operationId: incident.operationId,
       gameId: incident.gameId,
       sessionId: incident.sessionId,
@@ -75,11 +78,14 @@ function validateIncident(
       sessionStart: SESSION_START_ISO,
       routeGameId,
       routeSessionId,
+      observedOperation: operation,
     });
     return false;
   };
 
-  if (incident.kind !== 'chat_send' && incident.kind !== 'voice_operation') return invalid('forbidden-type');
+  if (!operation) return invalid('not-current-session-operation');
+  if (operation.role !== 'sender' && operation.role !== 'peer') return invalid('invalid-current-session-role');
+  if (!incident.operationId.startsWith('chat-')) return invalid('forbidden-type');
   if (isForbiddenValue(incident.operationId) || isForbiddenValue(incident.terminalStatus)) return invalid('synthetic-or-self-check');
   if (!incident.gameId || !incident.sessionId) return invalid('missing-game-or-session');
   if (!incident.route || incident.route === '/') return invalid('root-route');
@@ -87,6 +93,11 @@ function validateIncident(
   if (!routeGameId || incident.gameId !== routeGameId) return invalid('game-mismatch');
   if (!routeSessionId || incident.sessionId !== routeSessionId) return invalid('session-mismatch');
   if (!incident.route.includes(routeGameId)) return invalid('route-mismatch');
+  if (operation.gameId !== incident.gameId || operation.sessionId !== incident.sessionId) return invalid('operation-identity-mismatch');
+  if (operation.route !== incident.route) return invalid('operation-route-mismatch');
+  if (incident.peerMilestoneCount < 1) return invalid('missing-peer-milestone');
+  if (incident.snapshotCount < 1) return invalid('missing-tab-attention-snapshot');
+  if (!incident.reportText.startsWith('CHAT SEND INCIDENT REPORT')) return invalid('not-chat-report-text');
   return true;
 }
 
@@ -94,27 +105,33 @@ export function IncidentExportPill(): JSX.Element | null {
   const location = useLocation();
   const routeGameId = useMemo(() => extractRouteGameId(location.pathname), [location.pathname]);
   const routeSessionId = useMemo(() => normalSessionIdForGame(routeGameId), [routeGameId]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [current, setCurrent] = useState<CurrentIncident | null>(null);
+  const [trackedOps, setTrackedOps] = useState<CurrentSessionChatOperationRecord[]>(() => getCurrentSessionChatOperations());
+  const [current, setCurrent] = useState<CurrentChatIncident | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
   const exportedRef = useRef<Set<string>>(new Set());
+
+  const operationById = useMemo(() => {
+    const map = new Map<string, CurrentSessionChatOperationRecord>();
+    for (const op of trackedOps) map.set(op.operationId, op);
+    return map;
+  }, [trackedOps]);
 
   useEffect(() => {
     setCurrent(null);
   }, [routeGameId, routeSessionId]);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
-      setCurrent(null);
+    const sync = () => setTrackedOps(getCurrentSessionChatOperations());
+    sync();
+    return subscribeCurrentSessionChatOperations(() => {
+      sync();
     });
-    return () => sub.subscription.unsubscribe();
   }, []);
 
-  const offer = (incident: CurrentIncident) => {
+  const offer = useCallback((incident: CurrentChatIncident) => {
     if (dismissedRef.current.has(incident.operationId) || exportedRef.current.has(incident.operationId)) return;
-    if (!validateIncident(incident, routeGameId, routeSessionId)) {
+    const operation = operationById.get(incident.operationId) ?? null;
+    if (!validateIncident(incident, operation, routeGameId, routeSessionId)) {
       setCurrent((prev) => (prev?.operationId === incident.operationId ? null : prev));
       return;
     }
@@ -123,107 +140,69 @@ export function IncidentExportPill(): JSX.Element | null {
       if (dismissedRef.current.has(prev.operationId) || exportedRef.current.has(prev.operationId)) return incident;
       return new Date(incident.finalizedAt) >= new Date(prev.finalizedAt) ? incident : prev;
     });
-  };
+  }, [operationById, routeGameId, routeSessionId]);
+
+  const loadChatReport = useCallback(async (operationId: string) => {
+    if (!routeGameId || !routeSessionId) return;
+    const operation = operationById.get(operationId);
+    if (!operation) return;
+    const { data } = await supabase
+      .from('chat_operation_reports')
+      .select('operation_id, sender_user_id, game_id, session_id, terminal_status, report_text, report_json, finalized_at')
+      .eq('operation_id', operationId)
+      .eq('game_id', routeGameId)
+      .eq('session_id', routeSessionId)
+      .maybeSingle();
+    if (!data) return;
+    const json = (data.report_json ?? {}) as Record<string, unknown>;
+    const route = String(json.route ?? '');
+    if (json.operation_type !== 'chat_send') {
+      emitInvalid('not-chat-send-report-json', { operationId, operationType: json.operation_type });
+      return;
+    }
+    const peerMilestones = Array.isArray(json.peer_milestones) ? json.peer_milestones : [];
+    const snapshots = Array.isArray(json.tab_attention_snapshots) ? json.tab_attention_snapshots : [];
+    offer({
+      operationId: data.operation_id,
+      gameId: data.game_id,
+      sessionId: data.session_id,
+      route,
+      senderUserId: data.sender_user_id,
+      terminalStatus: data.terminal_status,
+      startedAt: String(json.started_at ?? data.finalized_at),
+      finalizedAt: data.finalized_at,
+      reportText: data.report_text,
+      snapshotCount: typeof json.snapshot_count === 'number' ? json.snapshot_count : snapshots.length,
+      peerMilestoneCount: typeof json.peer_milestone_count === 'number' ? json.peer_milestone_count : peerMilestones.length,
+    });
+  }, [operationById, offer, routeGameId, routeSessionId]);
 
   useEffect(() => {
-    if (!userId || !routeGameId || !routeSessionId) return;
+    if (!routeGameId || !routeSessionId) return;
     let cancelled = false;
-
-    const loadChat = async () => {
-      const { data } = await supabase
-        .from('chat_operation_reports')
-        .select('operation_id, sender_user_id, game_id, session_id, terminal_status, report_text, report_json, finalized_at')
-        .eq('game_id', routeGameId)
-        .eq('session_id', routeSessionId)
-        .gte('finalized_at', SESSION_START_ISO)
-        .order('finalized_at', { ascending: false })
-        .limit(5);
-      if (cancelled) return;
-      for (const row of data ?? []) {
-        const json = (row.report_json ?? {}) as Record<string, unknown>;
-        const route = String(json.route ?? '');
-        const senderClientInstanceId = json.sender_client_instance_id as string | null | undefined;
-        const isCreator = senderClientInstanceId === getClientInstanceId() || row.sender_user_id === userId;
-        const peerMilestones = Array.isArray(json.peer_milestones) ? json.peer_milestones : [];
-        if (!isCreator && peerMilestones.length === 0) continue;
-        offer({
-          kind: 'chat_send',
-          operationId: row.operation_id,
-          gameId: row.game_id,
-          sessionId: row.session_id,
-          route,
-          senderUserId: row.sender_user_id,
-          senderClientInstanceId,
-          terminalStatus: row.terminal_status,
-          startedAt: String(json.started_at ?? row.finalized_at),
-          finalizedAt: row.finalized_at,
-          reportText: row.report_text,
-          label: `Export Chat Incident · ${shortId(row.operation_id)} · ${startedTime(String(json.started_at ?? row.finalized_at))}`,
-        });
-        break;
+    for (const op of trackedOps) {
+      if (op.gameId === routeGameId && op.sessionId === routeSessionId) {
+        void loadChatReport(op.operationId);
       }
-    };
-
-    void loadChat();
+    }
     const ch = supabase
       .channel(`normal-incident-chat-${routeGameId}-${SESSION_TOKEN}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_operation_reports', filter: `game_id=eq.${routeGameId}` },
-        () => { void loadChat(); },
+        (payload) => {
+          const row = payload.new as { operation_id?: string; session_id?: string } | null;
+          if (!row?.operation_id || row.session_id !== routeSessionId) return;
+          if (!operationById.has(row.operation_id)) return;
+          if (!cancelled) void loadChatReport(row.operation_id);
+        },
       )
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId, routeGameId, routeSessionId]);
-
-  useEffect(() => {
-    if (!userId || !routeGameId || !routeSessionId) return;
-    let cancelled = false;
-    const loadVoice = async () => {
-      if (current?.kind === 'chat_send') return;
-      const { data } = await supabase
-        .from('voice_operation_reports')
-        .select('voice_operation_id, sender_user_id, game_id, terminal_status, report_text, report_json, finalized_at')
-        .eq('game_id', routeGameId)
-        .gte('finalized_at', SESSION_START_ISO)
-        .order('finalized_at', { ascending: false })
-        .limit(5);
-      if (cancelled) return;
-      for (const row of data ?? []) {
-        const json = (row.report_json ?? {}) as Record<string, unknown>;
-        const sessionId = String(json.session_id ?? '');
-        const route = String(json.origin_route ?? json.route ?? '');
-        if (sessionId !== routeSessionId) continue;
-        offer({
-          kind: 'voice_operation',
-          operationId: row.voice_operation_id,
-          gameId: row.game_id ?? '',
-          sessionId,
-          route,
-          senderUserId: row.sender_user_id,
-          terminalStatus: row.terminal_status,
-          startedAt: String(json.started_at ?? row.finalized_at),
-          finalizedAt: row.finalized_at,
-          reportText: row.report_text,
-          label: `Export Voice Incident · ${shortId(row.voice_operation_id)} · ${startedTime(String(json.started_at ?? row.finalized_at))}`,
-        });
-        break;
-      }
-    };
-    void loadVoice();
-    const ch = supabase
-      .channel(`normal-incident-voice-${routeGameId}-${SESSION_TOKEN}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'voice_operation_reports', filter: `game_id=eq.${routeGameId}` },
-        () => { void loadVoice(); },
-      )
-      .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId, routeGameId, routeSessionId, current?.kind]);
+  }, [loadChatReport, operationById, routeGameId, routeSessionId, trackedOps]);
 
   if (!current) return null;
-  if (!validateIncident(current, routeGameId, routeSessionId)) return null;
+  if (!validateIncident(current, operationById.get(current.operationId) ?? null, routeGameId, routeSessionId)) return null;
 
   const clear = () => {
     dismissedRef.current.add(current.operationId);
@@ -235,7 +214,7 @@ export function IncidentExportPill(): JSX.Element | null {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${current.kind === 'chat_send' ? 'chat' : 'voice'}-incident-${current.operationId}.txt`;
+    a.download = `chat-incident-${current.operationId}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -249,10 +228,12 @@ export function IncidentExportPill(): JSX.Element | null {
       role="status"
       data-normal-incident-export-pill=""
       data-incident-session-token={SESSION_TOKEN}
-      data-incident-kind={current.kind}
+      data-incident-kind="chat_send"
       data-incident-operation-id={current.operationId}
-      aria-label={`${current.label}; operation ${current.operationId}; started ${current.startedAt}; game ${current.gameId}; session ${current.sessionId}`}
-      title={`${current.label}\nOperation: ${current.operationId}\nStarted: ${current.startedAt}`}
+      data-incident-snapshot-count={current.snapshotCount}
+      data-incident-peer-milestone-count={current.peerMilestoneCount}
+      aria-label={`Export Chat Incident; operation ${current.operationId}; started ${current.startedAt}; game ${current.gameId}; session ${current.sessionId}`}
+      title={`Export Chat Incident\nOperation: ${current.operationId}\nStarted: ${current.startedAt}\nSnapshots: ${current.snapshotCount}`}
       style={{
         position: 'fixed',
         top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
@@ -262,22 +243,22 @@ export function IncidentExportPill(): JSX.Element | null {
         maxWidth: '92vw',
         pointerEvents: 'auto',
       }}
-      className="flex items-center gap-2 rounded border border-amber-400/60 bg-black/85 px-3 py-1.5 text-[11px] text-amber-100 shadow-lg"
+      className="flex items-center gap-2 rounded border border-amber-500/70 bg-card/95 px-3 py-1.5 text-[11px] text-card-foreground shadow-lg"
     >
-      <span className="font-semibold">{current.kind === 'chat_send' ? 'Export Chat Incident' : 'Export Voice Incident'}</span>
+      <span className="font-semibold text-amber-200">Export Chat Incident</span>
       <span className="opacity-70">· {shortId(current.operationId)} · {startedTime(current.startedAt)}</span>
       <button
         type="button"
         onClick={download}
-        className="ml-1 inline-flex h-5 items-center gap-1 rounded px-1.5 hover:bg-white/15"
-        aria-label={`Download ${current.kind === 'chat_send' ? 'chat' : 'voice'} incident ${shortId(current.operationId)} TXT`}
+        className="ml-1 inline-flex h-5 items-center gap-1 rounded px-1.5 hover:bg-accent"
+        aria-label={`Download chat incident ${shortId(current.operationId)} TXT`}
       >
         <Download className="h-3 w-3" /> .txt
       </button>
       <button
         type="button"
         onClick={clear}
-        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-white/15"
+        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-accent"
         aria-label={`Dismiss incident ${shortId(current.operationId)}`}
       >
         <X className="h-3 w-3" />
