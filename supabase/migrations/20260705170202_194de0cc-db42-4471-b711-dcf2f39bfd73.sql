@@ -1,0 +1,1 @@
+ALTER TABLE public.client_runtime_incident_reports ADD COLUMN IF NOT EXISTS outcome jsonb;

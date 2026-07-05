@@ -411,6 +411,7 @@ export type Database = {
           original_route: string | null
           original_tab_session_id: string | null
           outbox_count: number
+          outcome: Json | null
           recovery_client_instance_id: string | null
           recovery_origin: string | null
           recovery_route: string | null
@@ -450,6 +451,7 @@ export type Database = {
           original_route?: string | null
           original_tab_session_id?: string | null
           outbox_count?: number
+          outcome?: Json | null
           recovery_client_instance_id?: string | null
           recovery_origin?: string | null
           recovery_route?: string | null
@@ -489,6 +491,7 @@ export type Database = {
           original_route?: string | null
           original_tab_session_id?: string | null
           outbox_count?: number
+          outcome?: Json | null
           recovery_client_instance_id?: string | null
           recovery_origin?: string | null
           recovery_route?: string | null
