@@ -367,11 +367,14 @@ export const useGameChat = (
           username,
         };
 
-        void appendChatSenderMilestone(correlationId, 'OPTIMISTIC_MUTATION', {
-          optimisticId,
-          createdAt: sentAt,
-          hasImage: Boolean(imageUrl),
-        }, { optimisticMessageId: optimisticId });
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'OPTIMISTIC_MUTATION', {
+            optimisticId,
+            createdAt: sentAt,
+            hasImage: Boolean(imageUrl),
+          }, { optimisticMessageId: optimisticId });
+        });
 
         setAllMessages(prev => {
           const next = mergeMessages(prev, [optimisticMessage]);
