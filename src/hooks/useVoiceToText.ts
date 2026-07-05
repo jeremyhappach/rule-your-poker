@@ -142,7 +142,44 @@ export function useVoiceToText(): UseVoiceToTextResult {
   const captureStartedAtRef = useRef<number | null>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Canonical active game identity (see VoiceOperationIdentityContext).
+  // This is the ONLY source of game/session identity for a voice operation.
+  // It replaces the previous ambient-tracer snapshot approach, which could
+  // return NULL on real active-game routes and broke peer RLS linkage.
+  const identity: VoiceOperationIdentity = useVoiceOperationIdentity();
+  const identityRef = useRef<VoiceOperationIdentity>(identity);
+  identityRef.current = identity;
+  const boundarySeqRef = useRef(0);
+
+  /** Build the persisted metadata payload for a start-path boundary event. */
+  const buildBoundaryMeta = useCallback((): Record<string, unknown> => {
+    boundarySeqRef.current += 1;
+    const stream = streamRef.current;
+    const track = stream?.getAudioTracks?.()[0] ?? null;
+    const rec = recorderRef.current;
+    const id = identityRef.current;
+    return {
+      monotonic_sequence: boundarySeqRef.current,
+      game_id: id.gameId,
+      session_id: id.sessionId,
+      dealer_game_id: id.dealerGameId,
+      game_type: id.gameType,
+      shell_phase: id.shellPhase,
+      active_tab: id.activeTab,
+      local_player_id: id.localPlayerId,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+      media_recorder_state: rec?.state ?? null,
+      audio_track_ready_state: track?.readyState ?? null,
+      audio_track_muted: track?.muted ?? null,
+      navigator_online:
+        typeof navigator !== 'undefined' ? navigator.onLine : null,
+      visibility_state:
+        typeof document !== 'undefined' ? document.visibilityState : null,
+    };
+  }, []);
+
   const isSupported = detectSupport();
+
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatTimerRef.current) {
