@@ -88,7 +88,21 @@ export type ClientEventPhase =
   | "FN_INVOKE_ERROR"
   | "SEND_COMPLETE"
   | "SEND_FAILED"
-  | "CANCELLED";
+  | "CANCELLED"
+  // Recording-start path boundaries (part B). These are persisted with the
+  // same voice_operation_id and canonical game context so the finalizer can
+  // deterministically distinguish CAPTURE_STARTED-with-no-subsequent-boundary
+  // failures from later-stage failures.
+  | "VOICE_START_HANDLER_ENTERED"
+  | "VOICE_GET_USER_MEDIA_BEGIN"
+  | "VOICE_GET_USER_MEDIA_RESOLVED"
+  | "VOICE_AUDIO_TRACK_ACQUIRED"
+  | "VOICE_MEDIARECORDER_CONSTRUCT_BEGIN"
+  | "VOICE_MEDIARECORDER_CONSTRUCTED"
+  | "VOICE_MEDIARECORDER_START_BEGIN"
+  | "VOICE_MEDIARECORDER_START_RETURNED"
+  | "VOICE_RECORDING_STATE_COMMITTED"
+  | "VOICE_START_HANDLER_EXITED";
 
 export async function writeClientVoiceEvent(
   voice_operation_id: string,
@@ -132,3 +146,4 @@ export function triggerServerFinalizer(): void {
     supabase.functions.invoke("finalize-voice-operations", { body: {} }).catch(() => {});
   } catch { /* noop */ }
 }
+
