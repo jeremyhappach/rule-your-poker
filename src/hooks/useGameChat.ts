@@ -20,6 +20,7 @@ import {
 import {
   appendChatPeerMilestone,
   appendChatSenderMilestone,
+  awaitPeerOperationVisibility,
   createChatOperationId,
   finalizeServerChatOperation,
   markChatOperationDeliveryConfirmed,
