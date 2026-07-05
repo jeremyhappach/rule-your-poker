@@ -269,28 +269,130 @@ serve(async (req) => {
 
     let status: "pending" | "complete" | "incomplete" = "pending";
     let completedAt: string | null = null;
+    let voiceOutcome:
+      | "voice-send-completed"
+      | "voice-terminal-error"
+      | "voice-in-progress"
+      | "voice-no-progress-timeout"
+      | "unknown" = "unknown";
 
-    if (sendComplete && incidentRow?.status === "closed") {
+    if (sendComplete) {
       status = "complete";
       completedAt = nowIso;
+      voiceOutcome = "voice-send-completed";
     } else if (uploadCompleted) {
       status = "complete";
       completedAt = nowIso;
+      voiceOutcome = "voice-terminal-error";
     } else if (terminalError && (recoveryEvents.length > 0 || noProgress10s)) {
       status = noProgress10s && recoveryEvents.length === 0 ? "incomplete" : "complete";
       completedAt = nowIso;
+      voiceOutcome = "voice-terminal-error";
     } else if (incidentRow?.status === "closed") {
       status = "complete";
       completedAt = nowIso;
+      voiceOutcome = terminalError ? "voice-terminal-error" : "voice-send-completed";
     } else if (noProgress10s) {
       status = "incomplete";
+      completedAt = nowIso;
+      voiceOutcome = "voice-no-progress-timeout";
     } else {
       status = "pending";
+      voiceOutcome = "voice-in-progress";
     }
+
+    // ── Surface attribution (from incident payload or first voice event) ──
+    const incidentPayload =
+      (incidentRow?.payload as Record<string, unknown> | null) ?? null;
+    const firstVoiceEvent = (events ?? []).find((e) =>
+      (e.event_name as string).startsWith("VOICE_"),
+    );
+    const firstVoicePayload =
+      (firstVoiceEvent?.payload as Record<string, unknown> | null) ?? null;
+    const firstSurfaceCtx =
+      (firstVoicePayload?.__voice_surface_context as
+        | Record<string, unknown>
+        | undefined) ?? null;
+    const surface =
+      (incidentPayload?.voice_surface as string | undefined) ??
+      (firstSurfaceCtx?.voice_surface as string | undefined) ??
+      "unknown";
+
+    // ── Capsule persistence status ─────────────────────────────────
+    const capsuleAppendCount = (events ?? []).filter(
+      (e) => e.event_name === "CAPSULE_LOCAL_APPEND_VERIFIED",
+    ).length;
+    const capsuleAppendFailedCount = (events ?? []).filter(
+      (e) => e.event_name === "CAPSULE_LOCAL_APPEND_FAILED",
+    ).length;
+    const capsuleManifestUpdatedCount = (events ?? []).filter(
+      (e) => e.event_name === "CAPSULE_MANIFEST_UPDATED",
+    ).length;
+    const capsuleUploadCompletedCount = (events ?? []).filter(
+      (e) => e.event_name === "CAPSULE_UPLOAD_COMPLETED",
+    ).length;
+    let capsulePersistenceStatus:
+      | "verified"
+      | "partial"
+      | "absent"
+      | "failed" = "absent";
+    if (capsuleAppendFailedCount > 0) capsulePersistenceStatus = "failed";
+    else if (capsuleAppendCount > 0 && capsuleManifestUpdatedCount > 0)
+      capsulePersistenceStatus = "verified";
+    else if (capsuleAppendCount > 0 || capsuleManifestUpdatedCount > 0)
+      capsulePersistenceStatus = "partial";
+
+    const lastObservedBoundary =
+      (events ?? [])
+        .filter((e) => (e.event_name as string).startsWith("VOICE_"))
+        .slice(-1)[0]?.event_name ??
+      lastServerEventRow?.event_name ??
+      null;
+
+    // Post-boundary evidence: any event AFTER the last VOICE_* boundary.
+    const lastVoiceIdx = (() => {
+      const arr = events ?? [];
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if ((arr[i].event_name as string).startsWith("VOICE_")) return i;
+      }
+      return -1;
+    })();
+    const postBoundaryEvidencePresent =
+      lastVoiceIdx >= 0 && lastVoiceIdx < (events?.length ?? 0) - 1;
+
+    const nextEvidenceExpected =
+      status === "complete"
+        ? "none"
+        : status === "incomplete"
+          ? "boot-recovery-or-capsule-upload"
+          : "next-voice-boundary-or-10s-watchdog";
+
+    const outcomeBlock = {
+      surface,
+      voiceOutcome,
+      incidentStatus: incidentRow?.status ?? "unknown",
+      lastObservedBoundary,
+      postBoundaryEvidencePresent,
+      capsulePersistenceStatus,
+      capsulePersistenceCounts: {
+        append_verified: capsuleAppendCount,
+        append_failed: capsuleAppendFailedCount,
+        manifest_updated: capsuleManifestUpdatedCount,
+        upload_completed: capsuleUploadCompletedCount,
+      },
+      reportFinalizedAt: completedAt,
+      nextEvidenceExpected,
+      surface_context: firstSurfaceCtx ?? incidentPayload ?? null,
+    };
 
     // Narrative — evidence only.
     const narrativeLines: string[] = [];
     narrativeLines.push(`Correlation: ${correlationId}`);
+    narrativeLines.push(`Surface: ${surface}`);
+    narrativeLines.push(`Voice outcome: ${voiceOutcome}`);
+    narrativeLines.push(
+      `Capsule persistence: ${capsulePersistenceStatus} (append_verified=${capsuleAppendCount}, manifest_updated=${capsuleManifestUpdatedCount})`,
+    );
     narrativeLines.push(`Trigger reason: ${reason}`);
     narrativeLines.push(`Events persisted: ${events?.length ?? 0}`);
     narrativeLines.push(`Outbox rows: ${outbox?.length ?? 0}`);
@@ -299,25 +401,10 @@ serve(async (req) => {
       `First recorded event: ${firstEvent?.name ?? "none"} @ ${firstEvent?.t ?? "n/a"}`,
     );
     narrativeLines.push(
-      `Last recorded event: ${lastServerEventRow?.event_name ?? "none"} @ ${
-        lastServerEventRow?.occurred_at_client ?? lastServerEventRow?.occurred_at_server ?? "n/a"
-      }`,
+      `Last observed voice boundary: ${lastObservedBoundary ?? "none"}`,
     );
     narrativeLines.push(
       `Missing voice boundaries: ${missing.voice.join(", ") || "none"}`,
-    );
-    narrativeLines.push(
-      `Missing lifecycle events: ${missing.lifecycle.join(", ") || "none"}`,
-    );
-    narrativeLines.push(
-      `Missing network transitions: ${missing.network.join(", ") || "none"}`,
-    );
-    narrativeLines.push(
-      `Recovery evidence: ${
-        recoveryEvents.length > 0
-          ? recoveryEvents.map((r) => r.event_name).join(", ")
-          : "none"
-      }`,
     );
     narrativeLines.push(
       `Send completed: ${sendComplete ? "yes" : "no"}; upload completed: ${uploadCompleted ? "yes" : "no"}; terminal error observed: ${terminalError ? "yes" : "no"}.`,
@@ -327,6 +414,7 @@ serve(async (req) => {
         ? "No conclusion possible from current evidence — recovery evidence missing."
         : "Report reflects only persisted evidence. No behavioral root cause is inferred.",
     );
+
 
     const dataCompleteness = {
       has_incident_row: !!incidentRow,
