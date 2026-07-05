@@ -915,8 +915,8 @@ export const useGameChat = (
                   }, 30_000);
                 }
               });
-              }
             }
+
             void upsertDeliveryTrace({
               message_id: newMessage.id,
               recipient_client_instance_id: getClientInstanceId(),
