@@ -52,6 +52,7 @@ import Diagnostics from "@/pages/Diagnostics";
 import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
+import { ChatOperationInstrumentationMount } from "@/lib/chatOperations/ChatOperationInstrumentationMount";
 
 
 
@@ -145,6 +146,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AppNetworkSim>
+              <ChatOperationInstrumentationMount />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />

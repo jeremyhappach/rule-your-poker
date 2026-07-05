@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 import { recordErrorBoundaryCaught } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { recordChatBoundaryEvent } from "@/lib/chatOperations/chatOperationBoundary";
 
 type Props = {
   children: React.ReactNode;
@@ -53,6 +54,13 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
     } catch {
       /* noop */
     }
+    try {
+      recordChatBoundaryEvent('ERROR_BOUNDARY_CAUGHT', {
+        source: 'RouteErrorBoundary',
+        title: this.props.title ?? null,
+        message: (error as Error)?.message ?? String(error),
+      });
+    } catch { /* noop */ }
   }
 
   private handleReload = () => {
