@@ -842,7 +842,7 @@ export const useGameChat = (
       });
       supabase.removeChannel(channel);
     };
-  }, [gameId, addBubble]);
+  }, [gameId, addBubble, currentUserId, chatIdentity?.route, chatIdentity?.sessionId]);
 
   return {
     chatBubbles,
