@@ -21,6 +21,7 @@
 
 import { appendSessionRecoveryEvent } from './networkSimChaos';
 import { recordSessionRecoveryLease } from './authEjectionLedger';
+import { recordChatBoundaryEvent } from './chatOperations/chatOperationBoundary';
 
 
 export type TerminalRecoveryReason =
