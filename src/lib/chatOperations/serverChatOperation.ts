@@ -143,7 +143,20 @@ export async function openServerChatOperation(input: OpenChatOperationInput): Pr
     source_kind: 'real',
     sender_milestones: [openingMilestone],
     started_at: startedAt,
-  });
+    // Extended waiting-table context
+    route_game_id: input.routeGameId ?? null,
+    canonical_shell_game_id: input.canonicalShellGameId ?? null,
+    operation_game_id: input.operationGameId ?? input.gameId,
+    raw_game_type: input.rawGameType ?? null,
+    resolved_game_type: input.resolvedGameType ?? null,
+    game_type_source: input.gameTypeSource ?? null,
+    game_controller_present: input.gameControllerPresent ?? null,
+    current_turn_player_id: input.currentTurnPlayerId ?? null,
+    local_turn_eligible: input.localTurnEligible ?? null,
+    waiting_table_component: input.waitingTableComponent ?? null,
+    active_game_component: input.activeGameComponent ?? null,
+    tab_bar_render_key: input.tabBarRenderKey ?? null,
+  } as never);
 
   if (error) {
     recordRuntimeEvent({
