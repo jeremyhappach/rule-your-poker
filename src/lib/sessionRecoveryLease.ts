@@ -118,6 +118,20 @@ export function releaseRecoveryLease(
     oldDealerGameId: prior.gameId,
     detail: { ...(extra ?? {}), userId: prior.userId, mountId: prior.mountId },
   });
+  try {
+    recordChatBoundaryEvent('RECOVERY_LEASE_RELEASED', {
+      source: 'sessionRecoveryLease.releaseRecoveryLease',
+      reason,
+      prior_game_id: prior.gameId,
+      prior_user_id: prior.userId,
+      prior_mount_id: prior.mountId,
+    });
+    recordChatBoundaryEvent('ACTIVE_SESSION_CLEARED', {
+      source: 'sessionRecoveryLease.releaseRecoveryLease',
+      reason,
+      cleared_game_id: prior.gameId,
+    });
+  } catch { /* noop */ }
   currentLease = null;
 }
 
