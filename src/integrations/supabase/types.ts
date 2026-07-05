@@ -265,6 +265,8 @@ export type Database = {
           created_at: string
           current_turn_player_id: string | null
           dealer_game_id: string | null
+          delivery_confirmed_at: string | null
+          delivery_confirmed_kind: string | null
           game_controller_present: boolean | null
           game_id: string
           game_type_source: string | null
@@ -275,6 +277,8 @@ export type Database = {
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          observation_window_end_at: string | null
+          observation_window_start_at: string | null
           operation_game_id: string | null
           operation_id: string
           operation_type: string
@@ -313,6 +317,8 @@ export type Database = {
           created_at?: string
           current_turn_player_id?: string | null
           dealer_game_id?: string | null
+          delivery_confirmed_at?: string | null
+          delivery_confirmed_kind?: string | null
           game_controller_present?: boolean | null
           game_id: string
           game_type_source?: string | null
@@ -323,6 +329,8 @@ export type Database = {
           local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
+          observation_window_end_at?: string | null
+          observation_window_start_at?: string | null
           operation_game_id?: string | null
           operation_id: string
           operation_type?: string
@@ -361,6 +369,8 @@ export type Database = {
           created_at?: string
           current_turn_player_id?: string | null
           dealer_game_id?: string | null
+          delivery_confirmed_at?: string | null
+          delivery_confirmed_kind?: string | null
           game_controller_present?: boolean | null
           game_id?: string
           game_type_source?: string | null
@@ -371,6 +381,8 @@ export type Database = {
           local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
+          observation_window_end_at?: string | null
+          observation_window_start_at?: string | null
           operation_game_id?: string | null
           operation_id?: string
           operation_type?: string
@@ -2939,6 +2951,8 @@ export type Database = {
           created_at: string
           current_turn_player_id: string | null
           dealer_game_id: string | null
+          delivery_confirmed_at: string | null
+          delivery_confirmed_kind: string | null
           game_controller_present: boolean | null
           game_id: string
           game_type_source: string | null
@@ -2949,6 +2963,8 @@ export type Database = {
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          observation_window_end_at: string | null
+          observation_window_start_at: string | null
           operation_game_id: string | null
           operation_id: string
           operation_type: string
@@ -3006,6 +3022,8 @@ export type Database = {
           created_at: string
           current_turn_player_id: string | null
           dealer_game_id: string | null
+          delivery_confirmed_at: string | null
+          delivery_confirmed_kind: string | null
           game_controller_present: boolean | null
           game_id: string
           game_type_source: string | null
@@ -3016,6 +3034,8 @@ export type Database = {
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          observation_window_end_at: string | null
+          observation_window_start_at: string | null
           operation_game_id: string | null
           operation_id: string
           operation_type: string
@@ -3063,6 +3083,8 @@ export type Database = {
           created_at: string
           current_turn_player_id: string | null
           dealer_game_id: string | null
+          delivery_confirmed_at: string | null
+          delivery_confirmed_kind: string | null
           game_controller_present: boolean | null
           game_id: string
           game_type_source: string | null
@@ -3073,6 +3095,8 @@ export type Database = {
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
+          observation_window_end_at: string | null
+          observation_window_start_at: string | null
           operation_game_id: string | null
           operation_id: string
           operation_type: string
@@ -3108,6 +3132,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      chat_operation_mark_delivery_confirmed: {
+        Args: { _kind: string; _metadata?: Json; _operation_id: string }
+        Returns: undefined
       }
       chat_operation_peer_heartbeat: {
         Args: { _metadata?: Json; _operation_id: string }

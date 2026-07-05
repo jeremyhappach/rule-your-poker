@@ -23,7 +23,7 @@ import {
 
 const HEARTBEAT_INTERVAL_MS = 3_000;
 const SENDER_STALE_MS = 10_000;
-const HARD_CAP_MS = 30_000;
+const HARD_CAP_MS = 60_000;
 
 interface HeartbeatState {
   operationId: string;

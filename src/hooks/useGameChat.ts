@@ -22,10 +22,14 @@ import {
   appendChatSenderMilestone,
   createChatOperationId,
   finalizeServerChatOperation,
+  markChatOperationDeliveryConfirmed,
   openServerChatOperation,
   registerCurrentSessionChatOperation,
+  writeChatOperationPeerHeartbeat,
+  writeChatOperationSenderHeartbeat,
   type ChatOperationIdentity,
 } from '@/lib/chatOperations/serverChatOperation';
+import { recordChatBoundaryEvent } from '@/lib/chatOperations/chatOperationBoundary';
 import {
   beginChatOperationSnapshotCapture,
   getChatOperationSnapshots,
@@ -288,6 +292,14 @@ export const useGameChat = (
           setIsSending(false);
           return;
         }
+        // Immediate presence proof — a sender that dies in the first 3s
+        // still leaves durable heartbeat + armed-boundary evidence
+        // before optimistic mutation runs.
+        await writeChatOperationSenderHeartbeat(correlationId, { phase: 'operation-armed' });
+        recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
+          operationId: correlationId,
+          route,
+        });
         openChatSendOperation(correlationId, {
           gameId,
           sessionId,
@@ -476,13 +488,35 @@ export const useGameChat = (
             });
             return next;
           });
-          writeChatOperationTerminalSnapshot(correlationId, 'authoritative-row-written', 'send-complete');
-          void finalizeServerChatOperation(
-            correlationId,
-            'send-complete',
-            'authoritative-row-written',
-            getChatOperationSnapshots(correlationId),
-          );
+          // Observation window: do NOT finalize on DB success. Mark
+          // delivery confirmed, keep sender heartbeats + boundary
+          // listeners armed for 30s, then finalize with
+          // completed-observation-window unless a real terminator
+          // (sender-lost, error boundary, auth sign-out, navigation
+          // ejection, etc.) fires first.
+          void markChatOperationDeliveryConfirmed(correlationId, 'sender-db-success', {
+            authoritativeId: data.id,
+            confirmedAt: successAt,
+          });
+          void writeChatOperationSenderHeartbeat(correlationId, {
+            phase: 'post-db-success',
+          });
+          if (typeof window !== 'undefined') {
+            window.setTimeout(() => {
+              writeChatOperationTerminalSnapshot(
+                correlationId,
+                'observation-window-expired',
+                'completed-observation-window',
+              );
+              void finalizeServerChatOperation(
+                correlationId,
+                'completed-observation-window',
+                '30s-observation-window-expired-no-terminator',
+                getChatOperationSnapshots(correlationId),
+              );
+              finalizeChatSendOperation(correlationId, 'success');
+            }, 30_000);
+          }
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
@@ -504,9 +538,8 @@ export const useGameChat = (
           getChatOperationSnapshots(correlationId),
         );
       } finally {
-        // finalize as success if no error branch above already finalized;
-        // safe because finalizeChatSendOperation is idempotent on cid removal.
-        finalizeChatSendOperation(correlationId, 'success');
+        // NOTE: no unconditional finalize here — the observation window
+        // owns success finalization. Only setIsSending is cleared.
         setIsSending(false);
       }
     },
@@ -777,17 +810,40 @@ export const useGameChat = (
                 newMessage.id,
                 getChatOperationSnapshots(newMessage.chat_operation_id),
               );
-              writeChatOperationTerminalSnapshot(
-                newMessage.chat_operation_id,
-                'peer-realtime-receipt-observed',
-                'peer-received',
-              );
-              void finalizeServerChatOperation(
-                newMessage.chat_operation_id,
-                'peer-received',
-                'peer-realtime-receipt-observed',
-                getChatOperationSnapshots(newMessage.chat_operation_id),
-              );
+              // Observation window: peer MUST NOT finalize or write a
+              // terminal snapshot at realtime receipt. Mark delivery
+              // confirmed, immediately heartbeat, arm PEER_OPERATION_OBSERVED,
+              // and schedule a 30 s observation-window finalize.
+              void writeChatOperationPeerHeartbeat(newMessage.chat_operation_id, {
+                phase: 'peer-realtime-receipt',
+              });
+              void markChatOperationDeliveryConfirmed(newMessage.chat_operation_id, 'peer-realtime-receipt', {
+                messageId: newMessage.id,
+                senderUserId: newMessage.user_id,
+                receiptAt,
+              });
+              recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
+                operationId: newMessage.chat_operation_id,
+                messageId: newMessage.id,
+                senderUserId: newMessage.user_id,
+                route,
+              });
+              if (typeof window !== 'undefined') {
+                const opId = newMessage.chat_operation_id;
+                window.setTimeout(() => {
+                  writeChatOperationTerminalSnapshot(
+                    opId,
+                    'peer-observation-window-expired',
+                    'completed-observation-window',
+                  );
+                  void finalizeServerChatOperation(
+                    opId,
+                    'completed-observation-window',
+                    'peer-30s-observation-window-expired',
+                    getChatOperationSnapshots(opId),
+                  );
+                }, 30_000);
+              }
             }
             void upsertDeliveryTrace({
               message_id: newMessage.id,
@@ -840,6 +896,12 @@ export const useGameChat = (
           consumer: 'canonical-store',
           payload: { channelTopic, status, error: err ? String(err) : null },
         });
+        recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_STATUS', {
+          channelTopic,
+          status,
+          error: err ? String(err) : null,
+          gameId,
+        });
         if (status === 'CHANNEL_ERROR') {
           console.error('[useGameChat] Channel error:', err);
           recordChatDeliveryViolation({
@@ -850,6 +912,7 @@ export const useGameChat = (
           });
         } else if (status === 'TIMED_OUT') {
           console.error('[useGameChat] Channel subscription timed out');
+          recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_TIMED_OUT', { channelTopic, gameId });
           recordChatDeliveryViolation({
             violation: 'CHAT_REALTIME_SUBSCRIPTION_NOT_READY',
             gameId,
@@ -866,7 +929,10 @@ export const useGameChat = (
         consumer: 'canonical-store',
         payload: { channelTopic },
       });
+      recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_REMOVE_INITIATED', { channelTopic, gameId });
       supabase.removeChannel(channel);
+      recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_REMOVED', { channelTopic, gameId });
+      recordChatBoundaryEvent('CHAT_HOOK_UNMOUNT', { gameId });
     };
   }, [gameId, addBubble, currentUserId, chatIdentity?.route, chatIdentity?.sessionId]);
 

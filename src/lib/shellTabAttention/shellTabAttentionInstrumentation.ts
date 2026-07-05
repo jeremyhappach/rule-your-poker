@@ -510,7 +510,7 @@ function onSnapshotForChatOps(
     });
     if (activeChatOperationRoles.get(cid) === 'peer') {
       void import('@/lib/chatOperations/serverChatOperation').then(
-        ({ appendChatPeerMilestone, finalizeServerChatOperation }) => {
+        ({ appendChatPeerMilestone }) => {
           void appendChatPeerMilestone(
             cid,
             'SHELL_TAB_ATTENTION_SNAPSHOT',
@@ -518,12 +518,12 @@ function onSnapshotForChatOps(
             null,
             [s],
           );
-          void finalizeServerChatOperation(
-            cid,
-            'peer-received',
-            'peer-tab-attention-observed',
-            getChatOperationSnapshots(cid),
-          );
+          // NOTE: Do NOT finalize the durable operation here. The
+          // observation-window contract requires the operation to stay
+          // open through the full 30 s post-receipt window so any real
+          // terminator (sender-lost, navigation, auth, error boundary,
+          // etc.) is captured. Tab-attention changes are evidence,
+          // not terminal events.
         },
       );
     }

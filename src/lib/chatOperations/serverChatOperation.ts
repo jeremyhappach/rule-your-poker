@@ -229,6 +229,56 @@ export async function appendChatPeerMilestone(
 }
 
 /**
+ * Immediate sender heartbeat — used at operation-open so a sender that
+ * dies in the first 3 s still leaves durable presence evidence.
+ */
+export async function writeChatOperationSenderHeartbeat(
+  operationId: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+      'chat_operation_sender_heartbeat',
+      { _operation_id: operationId, _metadata: { at: new Date().toISOString(), ...metadata } },
+    );
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Immediate peer heartbeat — used the moment a peer observes realtime
+ * receipt so peer presence is durable even before the interval starts.
+ */
+export async function writeChatOperationPeerHeartbeat(
+  operationId: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+      'chat_operation_peer_heartbeat',
+      { _operation_id: operationId, _metadata: { at: new Date().toISOString(), ...metadata } },
+    );
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Mark the operation as delivery-confirmed and open the 30-second
+ * observation window. Idempotent server-side (first caller wins for
+ * delivery_confirmed_at/kind and observation_window_start_at).
+ */
+export async function markChatOperationDeliveryConfirmed(
+  operationId: string,
+  kind: 'sender-db-success' | 'peer-realtime-receipt',
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)(
+      'chat_operation_mark_delivery_confirmed',
+      { _operation_id: operationId, _kind: kind, _metadata: { at: new Date().toISOString(), ...metadata } },
+    );
+  } catch { /* best-effort */ }
+}
+
+/**
  * Append a waiting-table / shell violation onto the durable chat operation
  * record. Best-effort — never blocks the send path.
  */
