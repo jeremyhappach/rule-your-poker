@@ -54,6 +54,13 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
     } catch {
       /* noop */
     }
+    try {
+      recordChatBoundaryEvent('ERROR_BOUNDARY_CAUGHT', {
+        source: 'RouteErrorBoundary',
+        title: this.props.title ?? null,
+        message: (error as Error)?.message ?? String(error),
+      });
+    } catch { /* noop */ }
   }
 
   private handleReload = () => {
