@@ -30,7 +30,17 @@ import {
   getActiveRuntimeIncidentId,
   forceInstanceHeartbeat,
   nextIncidentSequence,
+  setRuntimeAmbient,
+  snapshotVoiceSurfaceContext,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
+
+function inferVoiceSurface(): string {
+  if (typeof window === 'undefined') return 'unknown';
+  const p = window.location.pathname || '';
+  if (/^\/game\//.test(p)) return 'active_game_table';
+  if (/^\/(lobby|waiting|$)/.test(p) || p === '/' || p === '/index') return 'waiting_table';
+  return 'unknown';
+}
 
 export type VoiceToTextState = 'idle' | 'recording' | 'transcribing' | 'error';
 export type VoicePermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
@@ -269,14 +279,18 @@ export function useVoiceToText(): UseVoiceToTextResult {
       // Open a durable runtime incident id that survives tab replacement
       // and browser relaunch. Every downstream event (encode, invoke,
       // send, page-lifecycle) attaches to this id via correlation_id.
+      const surface = inferVoiceSurface();
+      try { setRuntimeAmbient({ voice_surface: surface }); } catch { /* noop */ }
       const incidentId = beginRuntimeIncident('voice_capture', {
         opened_at: new Date().toISOString(),
         mimeType: rec.mimeType || 'audio/webm',
+        voice_surface: surface,
+        surface_context: snapshotVoiceSurfaceContext(),
       });
       // Force an immediate instance heartbeat so the DB shows this tab
       // is actively capturing before any other event lands.
       forceInstanceHeartbeat('VOICE_CAPTURE_START');
-      recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId}`);
+      recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId};surface=${surface}`);
       // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
 

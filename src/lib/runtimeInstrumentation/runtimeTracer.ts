@@ -375,6 +375,11 @@ interface AmbientContext {
   game_type: string | null;
   is_committed_active_session: boolean | null;
   device_label: string | null;
+  voice_surface: string | null;
+  shell_phase: string | null;
+  active_game_component: string | null;
+  waiting_table_component: string | null;
+  modal_blocking_state: string | null;
 }
 
 const ambient: AmbientContext = {
@@ -390,7 +395,30 @@ const ambient: AmbientContext = {
   game_type: null,
   is_committed_active_session: null,
   device_label: null,
+  voice_surface: null,
+  shell_phase: null,
+  active_game_component: null,
+  waiting_table_component: null,
+  modal_blocking_state: null,
 };
+
+/** Snapshot of surface-attribution fields (immutable at emit time). */
+export function snapshotVoiceSurfaceContext(): Record<string, unknown> {
+  return {
+    voice_surface: ambient.voice_surface ?? "unknown",
+    shell_phase: ambient.shell_phase,
+    active_game_component: ambient.active_game_component,
+    waiting_table_component: ambient.waiting_table_component,
+    modal_blocking_state: ambient.modal_blocking_state,
+    game_id: ambient.game_id,
+    dealer_game_id: ambient.dealer_game_id,
+    session_id: ambient.session_id,
+    active_tab: ambient.active_tab,
+    game_status: ambient.game_status,
+    game_type: ambient.game_type,
+    route: ambient.route ?? currentRoute(),
+  };
+}
 
 export function setRuntimeAmbient(partial: Partial<AmbientContext>): void {
   let changed = false;
@@ -849,6 +877,32 @@ function toErrorFields(err: unknown): {
   };
 }
 
+/**
+ * When a voice incident reaches VOICE_SEND_COMPLETE, close the incident
+ * immediately, classify the outcome, and trigger a final autopsy without
+ * waiting for the 10s watchdog or any user action. Idempotent per incident.
+ */
+const autoFinalizedIncidents = new Set<string>();
+function maybeAutoFinalizeIncident(evt: QueuedEvent): void {
+  if (!evt.correlation_id) return;
+  if (evt.event_name !== "VOICE_SEND_COMPLETE") return;
+  const active = getActiveRuntimeIncidentId();
+  if (active !== evt.correlation_id) return;
+  if (autoFinalizedIncidents.has(evt.correlation_id)) return;
+  autoFinalizedIncidents.add(evt.correlation_id);
+  try {
+    endRuntimeIncident("voice-send-completed");
+  } catch { /* noop */ }
+  try {
+    triggerIncidentReportImmediate(
+      evt.correlation_id,
+      "voice-send-completed",
+    );
+  } catch { /* noop */ }
+}
+
+
+
 export function recordRuntimeEvent(input: RuntimeEventInput): void {
   if (typeof window === "undefined") return;
   const errFields = toErrorFields(input.error);
@@ -879,7 +933,10 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       typeof document !== "undefined" ? document.visibilityState : null,
     online_state:
       typeof navigator !== "undefined" ? navigator.onLine : null,
-    payload: input.payload ?? null,
+    payload: {
+      ...(input.payload ?? {}),
+      __voice_surface_context: snapshotVoiceSurfaceContext(),
+    },
     ...errFields,
   };
   // Local capsule FIRST — every event with an active runtime incident
@@ -971,9 +1028,11 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
       // Mark the outbox row delivered/failed via supabase-js best-effort.
       void finalizeOutboxRow(outboxId, sent);
     }
+    maybeAutoFinalizeIncident(evt);
     return;
   }
   queue.push(evt);
+  maybeAutoFinalizeIncident(evt);
   if (evt.severity === "error") {
     void flushNow();
   } else if (queue.length >= BATCH_MAX) {
