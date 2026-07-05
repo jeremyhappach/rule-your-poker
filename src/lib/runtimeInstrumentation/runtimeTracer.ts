@@ -734,6 +734,20 @@ interface ActiveIncident {
 let cachedIncident: ActiveIncident | null = null;
 let incidentLoaded = false;
 
+// Late-bound getter registered by voiceOperation module to break the
+// circular dep. When set, voice-family events that arrive without a
+// correlation_id will attribute to the active voice operation id
+// (including its post-end grace window).
+let voiceOperationIdGetter: (() => string | null) | null = null;
+export function registerVoiceOperationIdGetter(
+  getter: () => string | null,
+): void {
+  voiceOperationIdGetter = getter;
+}
+function activeVoiceOperationId(): string | null {
+  try { return voiceOperationIdGetter?.() ?? null; } catch { return null; }
+}
+
 function loadIncident(): ActiveIncident | null {
   if (incidentLoaded) return cachedIncident;
   incidentLoaded = true;
@@ -765,9 +779,10 @@ function persistIncident(incident: ActiveIncident | null) {
 export function beginRuntimeIncident(
   kind: string,
   meta: Record<string, unknown> = {},
+  presetId?: string,
 ): string {
   loadIncident();
-  const id = randomId("inc");
+  const id = presetId ?? randomId("inc");
   cachedIncident = {
     id,
     kind,
@@ -879,10 +894,12 @@ function toErrorFields(err: unknown): {
 
 /**
  * When a voice incident reaches VOICE_SEND_COMPLETE, close the incident
- * immediately, classify the outcome, and trigger a final autopsy without
- * waiting for the 10s watchdog or any user action. Idempotent per incident.
+ * with a grace window so late pipeline acks (capsule, manifest, patch,
+ * report trigger) still land under the same correlation_id. Idempotent
+ * per incident.
  */
 const autoFinalizedIncidents = new Set<string>();
+const VOICE_AUTO_FINALIZE_GRACE_MS = 1500;
 function maybeAutoFinalizeIncident(evt: QueuedEvent): void {
   if (!evt.correlation_id) return;
   if (evt.event_name !== "VOICE_SEND_COMPLETE") return;
@@ -890,22 +907,66 @@ function maybeAutoFinalizeIncident(evt: QueuedEvent): void {
   if (active !== evt.correlation_id) return;
   if (autoFinalizedIncidents.has(evt.correlation_id)) return;
   autoFinalizedIncidents.add(evt.correlation_id);
-  try {
-    endRuntimeIncident("voice-send-completed");
-  } catch { /* noop */ }
+  // Fire the autopsy immediately so a report row is produced even if
+  // the tab dies during the grace window.
   try {
     triggerIncidentReportImmediate(
       evt.correlation_id,
       "voice-send-completed",
     );
   } catch { /* noop */ }
+  // Delay the actual endRuntimeIncident until the ack window closes so
+  // subsequent CAPSULE_LOCAL_APPEND_VERIFIED / CAPSULE_MANIFEST_UPDATED /
+  // INCIDENT_PATCH_VERIFIED / INSTANCE_HEARTBEAT_VERIFIED events fire
+  // under the same correlation_id.
+  setTimeout(() => {
+    try { endRuntimeIncident("voice-send-completed"); } catch { /* noop */ }
+  }, VOICE_AUTO_FINALIZE_GRACE_MS);
 }
 
 
+/**
+ * Enforce: every voice-family event must carry a correlation_id. If it
+ * arrives without one AND no active voice operation can be resolved, we
+ * emit a DB-persisted VOICE_EVENT_MISSING_CORRELATION_ID marker so the
+ * gap is provable in the autopsy timeline.
+ */
+function enforceVoiceCorrelation(
+  input: RuntimeEventInput,
+  resolved: string | null,
+): string | null {
+  if (input.event_family !== "voice") return resolved;
+  if (resolved) return resolved;
+  const fallback = activeVoiceOperationId();
+  if (fallback) return fallback;
+  try {
+    emitDirectDbEvent({
+      event_family: "environment",
+      event_name: "VOICE_EVENT_MISSING_CORRELATION_ID",
+      severity: "error",
+      correlation_id: null,
+      client_instance_id: getClientInstanceId(),
+      tab_session_id: getTabSessionId(),
+      user_id: ambient.user_id,
+      route: ambient.route ?? currentRoute(),
+      payload: {
+        forEventFamily: input.event_family,
+        forEventName: input.event_name,
+        activeRuntimeIncidentId: getActiveRuntimeIncidentId(),
+        detectedAtIso: new Date().toISOString(),
+      },
+    });
+  } catch { /* noop */ }
+  return null;
+}
 
 export function recordRuntimeEvent(input: RuntimeEventInput): void {
   if (typeof window === "undefined") return;
   const errFields = toErrorFields(input.error);
+  const resolvedCorrelation = enforceVoiceCorrelation(
+    input,
+    input.correlation_id ?? getActiveRuntimeIncidentId() ?? activeVoiceOperationId() ?? null,
+  );
   const evt: QueuedEvent = {
     occurred_at_client: new Date().toISOString(),
     client_instance_id: getClientInstanceId(),
@@ -916,8 +977,8 @@ export function recordRuntimeEvent(input: RuntimeEventInput): void {
     dealer_game_id: input.dealer_game_id ?? ambient.dealer_game_id ?? null,
     session_id: input.session_id ?? ambient.session_id ?? null,
     message_id: input.message_id ?? null,
-    voice_operation_id: input.voice_operation_id ?? null,
-    correlation_id: input.correlation_id ?? getActiveRuntimeIncidentId() ?? null,
+    voice_operation_id: input.voice_operation_id ?? activeVoiceOperationId() ?? null,
+    correlation_id: resolvedCorrelation,
     event_family: input.event_family,
     event_name: input.event_name,
     severity: input.severity ?? "info",
