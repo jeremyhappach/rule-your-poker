@@ -29,6 +29,7 @@ import {
 import {
   beginChatOperationSnapshotCapture,
   getChatOperationSnapshots,
+  writeChatOperationTerminalSnapshot,
 } from '@/lib/shellTabAttention/shellTabAttentionInstrumentation';
 
 interface ChatMessage {
