@@ -397,10 +397,13 @@ export const useGameChat = (
           correlation_id: correlationId,
           game_id: gameId,
         });
-        void appendChatSenderMilestone(correlationId, 'DB_INSERT_START', {
-          optimisticId,
-          dbStartAt,
-        }, { optimisticMessageId: optimisticId });
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'DB_INSERT_START', {
+            optimisticId,
+            dbStartAt,
+          }, { optimisticMessageId: optimisticId });
+        });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
