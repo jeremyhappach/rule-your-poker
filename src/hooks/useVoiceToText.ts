@@ -413,11 +413,20 @@ export function useVoiceToText(): UseVoiceToTextResult {
       const base64 = await blobToBase64(blob);
       recordDiagnostic('VOICE_ENCODE_COMPLETE', `chars=${base64.length}`);
       recordDiagnostic('VOICE_FN_INVOKE_START', `bytes=${base64.length}`);
+      const opId = getActiveVoiceOperationId();
+      if (opId) {
+        void writeClientVoiceEvent(opId, 'ENCODE_COMPLETE', { byte_count: base64.length });
+        void writeClientVoiceEvent(opId, 'FN_INVOKE_START', { byte_count: base64.length });
+      }
       const { data, error: fnError } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64, mimeType },
+        body: { audio: base64, mimeType, voice_operation_id: opId },
       });
       if (fnError) {
         recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
+        if (opId) void writeClientVoiceEvent(opId, 'FN_INVOKE_ERROR', {
+          error_category: 'invoke-failed',
+          error_message: (fnError.message ?? 'invoke-failed').slice(0, 500),
+        });
         try {
           recordVoiceRequestNetworkFailure({
             phase: 'edge-function-invoke',
@@ -429,10 +438,16 @@ export function useVoiceToText(): UseVoiceToTextResult {
       }
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
       recordDiagnostic('VOICE_FN_INVOKE_RESPONSE', `hasTranscript=${!!transcript};len=${transcript.length}`);
+      if (opId) void writeClientVoiceEvent(opId, 'FN_INVOKE_RESPONSE', {
+        status_code: 200,
+        metadata: { transcript_length: transcript.length },
+      });
       if (!transcript) {
         setError('No speech detected. Try again.');
         setState('error');
         recordDiagnostic('VOICE_FINALIZE_RETURN', 'empty');
+        if (opId) void writeClientVoiceEvent(opId, 'SEND_FAILED', { error_category: 'empty-transcript' });
+        triggerServerFinalizer();
         captureStartedAtRef.current = null;
         recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'empty');
         return null;
