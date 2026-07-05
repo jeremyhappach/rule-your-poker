@@ -438,17 +438,20 @@ export const useGameChat = (
             error,
             payload: { optimisticId },
           });
-          void appendChatSenderMilestone(correlationId, 'DB_INSERT_FAILURE', {
-            error: error.message,
-            optimisticId,
-          }, { optimisticMessageId: optimisticId });
-          writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
-          void finalizeServerChatOperation(
-            correlationId,
-            'db-insert-failed',
-            error.message,
-            getChatOperationSnapshots(correlationId),
-          );
+          void telemetryReady.then((ready) => {
+            if (!ready) return;
+            void appendChatSenderMilestone(correlationId, 'DB_INSERT_FAILURE', {
+              error: error.message,
+              optimisticId,
+            }, { optimisticMessageId: optimisticId });
+            writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
+            void finalizeServerChatOperation(
+              correlationId,
+              'db-insert-failed',
+              error.message,
+              getChatOperationSnapshots(correlationId),
+            );
+          });
           void upsertDeliveryTrace({
             message_id: optimisticId,
             recipient_client_instance_id: getClientInstanceId(),
