@@ -275,7 +275,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         const dbStartAt = new Date().toISOString();
         recordRuntimeEvent({
           event_family: 'chat',
-          event_name: 'DB_INSERT_START',
+          event_name: 'CHAT_DB_INSERT_START',
           correlation_id: correlationId,
           game_id: gameId,
         });
