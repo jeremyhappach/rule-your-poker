@@ -186,7 +186,7 @@ async function unmount() {
  * ------------------------------------------------------------------ */
 
 const errorFinalizeCalls = () =>
-  finalizeSendOp.mock.calls.filter((c) => c[1] === 'error');
+  (finalizeSendOp.mock.calls as unknown[][]).filter((c) => c[1] === 'error');
 
 beforeEach(() => {
   insertShouldError = false;
