@@ -877,6 +877,32 @@ function toErrorFields(err: unknown): {
   };
 }
 
+/**
+ * When a voice incident reaches VOICE_SEND_COMPLETE, close the incident
+ * immediately, classify the outcome, and trigger a final autopsy without
+ * waiting for the 10s watchdog or any user action. Idempotent per incident.
+ */
+const autoFinalizedIncidents = new Set<string>();
+function maybeAutoFinalizeIncident(evt: QueuedEvent): void {
+  if (!evt.correlation_id) return;
+  if (evt.event_name !== "VOICE_SEND_COMPLETE") return;
+  const active = getActiveRuntimeIncidentId();
+  if (active !== evt.correlation_id) return;
+  if (autoFinalizedIncidents.has(evt.correlation_id)) return;
+  autoFinalizedIncidents.add(evt.correlation_id);
+  try {
+    endRuntimeIncident("voice-send-completed");
+  } catch { /* noop */ }
+  try {
+    triggerIncidentReportImmediate(
+      evt.correlation_id,
+      "voice-send-completed",
+    );
+  } catch { /* noop */ }
+}
+
+
+
 export function recordRuntimeEvent(input: RuntimeEventInput): void {
   if (typeof window === "undefined") return;
   const errFields = toErrorFields(input.error);
