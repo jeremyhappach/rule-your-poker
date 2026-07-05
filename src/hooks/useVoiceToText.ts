@@ -320,6 +320,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
       recordDiagnostic('VOICE_CAPTURE_START', `incident=${incidentId};surface=${surface}`);
       // Legacy alias retained for existing UI diagnostic pane.
       recordDiagnostic('VOICE_CAPTURE_STARTED');
+      void writeClientVoiceEvent(incidentId, 'CAPTURE_STARTED', { metadata: { surface } });
 
       // 1s pre-stop heartbeat so the missing-boundary window between
       // VOICE_CAPTURE_STARTED and VOICE_CAPTURE_STOP_REQUESTED is
