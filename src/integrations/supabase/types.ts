@@ -148,6 +148,7 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          chat_operation_id: string | null
           created_at: string
           game_id: string
           id: string
@@ -156,6 +157,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          chat_operation_id?: string | null
           created_at?: string
           game_id: string
           id?: string
@@ -164,6 +166,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          chat_operation_id?: string | null
           created_at?: string
           game_id?: string
           id?: string
@@ -172,6 +175,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_chat_operation_id_fkey"
+            columns: ["chat_operation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_send_operations"
+            referencedColumns: ["operation_id"]
+          },
           {
             foreignKeyName: "chat_messages_game_id_fkey"
             columns: ["game_id"]
