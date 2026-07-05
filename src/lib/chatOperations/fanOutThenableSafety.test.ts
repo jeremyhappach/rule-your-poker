@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Regression test for the observed crash:
  *   `rpc(...).catch is not a function`
