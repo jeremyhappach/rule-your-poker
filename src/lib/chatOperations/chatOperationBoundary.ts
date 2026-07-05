@@ -104,6 +104,43 @@ async function fanOut(
 }
 
 /**
+ * Explicit navigation-initiation recorder. Call BEFORE `navigate(...)`
+ * / `redirect(...)` / any session-affecting router action so the
+ * boundary event is persisted even if the sender dies before
+ * destination-route code runs.
+ */
+export function recordChatNavigationInitiated(
+  source: string,
+  target: string,
+  reason: string,
+  extra: Record<string, unknown> = {},
+): void {
+  recordChatBoundaryEvent('ROUTER_NAVIGATION_INITIATED', {
+    source,
+    target,
+    reason,
+    from_route: typeof window !== 'undefined' ? window.location.pathname : null,
+    ...extra,
+  });
+}
+
+/**
+ * Explicit AbortController.abort() recorder. Call immediately BEFORE
+ * `controller.abort()` at reachable sites.
+ */
+export function recordChatAbortInitiated(
+  source: string,
+  purpose: string,
+  extra: Record<string, unknown> = {},
+): void {
+  recordChatBoundaryEvent('APP_ABORT_CONTROLLER_ABORT', {
+    source,
+    purpose,
+    ...extra,
+  });
+}
+
+/**
  * Public recorder — safe to call from anywhere; a no-op when no chat
  * operation is currently open.
  */
