@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { recordSessionIncident } from "@/lib/sessionLifecycleLedger";
 import { recordErrorBoundaryCaught } from "@/lib/runtimeInstrumentation/runtimeTracer";
+import { recordChatBoundaryEvent } from "@/lib/chatOperations/chatOperationBoundary";
 
 type Props = {
   children: React.ReactNode;
