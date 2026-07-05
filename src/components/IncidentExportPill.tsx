@@ -8,6 +8,7 @@ import {
   subscribeCurrentSessionChatOperations,
   type CurrentSessionChatOperationRecord,
 } from '@/lib/chatOperations/serverChatOperation';
+import { normalizeChatOperationReport } from '@/lib/chatOperations/chatOperationReportNormalizer';
 
 const SESSION_START_ISO = new Date().toISOString();
 const SESSION_TOKEN = `normal-shell-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
