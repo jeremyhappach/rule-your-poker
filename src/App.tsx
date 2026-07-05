@@ -221,6 +221,7 @@ const App = () => {
                   UI is gone. Pure link + copy; no auth/session mutation. */}
               <SessionLifecycleRecoveryPill />
               <IncidentReportBanner />
+              <VoiceOperationReportBanner />
 
 
 
