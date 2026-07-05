@@ -512,6 +512,7 @@ serve(async (req) => {
       report_status: status,
       event_count: events?.length ?? 0,
       missing,
+      outcome: outcomeBlock,
       reason,
     });
   } catch (e) {
