@@ -8,7 +8,7 @@
  * auth token refresh, generic RPCs) remain captured.
  */
 import { describe, it, expect } from 'vitest';
-import { isInstrumentationRequest } from './chatOperationBoundary';
+import { isInstrumentationRequest } from './chatOperationInstrumentationGuard';
 
 const INSTRUMENTATION_RPCS = [
   'chat_operation_append_boundary_event',
