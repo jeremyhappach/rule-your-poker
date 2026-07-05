@@ -253,6 +253,9 @@ export const useGameChat = (
       );
 
       setIsSending(true);
+      // Hoisted so the outer `catch` can still gate SEND_EXCEPTION
+      // telemetry behind the durable-open promise.
+      let telemetryReady: Promise<boolean> = Promise.resolve(false);
       try {
         // IMPORTANT: Avoid supabase.auth.getUser() here — it can clear a valid session.
         const { data: sessionData } = await supabase.auth.getSession();
