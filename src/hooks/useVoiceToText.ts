@@ -523,9 +523,142 @@ export function useVoiceToText(): UseVoiceToTextResult {
         void writeClientVoiceEvent(opId, 'ENCODE_COMPLETE', { byte_count: base64.length });
         void writeClientVoiceEvent(opId, 'FN_INVOKE_START', { byte_count: base64.length });
       }
-      const { data, error: fnError } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64, mimeType, voice_operation_id: opId },
+
+      // Direct-fetch invoke path. We instrument every observable transport
+      // boundary so the finalizer can name the exact opaque segment when the
+      // client never observes an Edge response that the server logged as
+      // EDGE_RESPONSE_SENT. Behavior is preserved: same URL, same body,
+      // same JSON response shape as supabase.functions.invoke would use.
+      const invokeStartedAt = performance.now();
+      const abortController = new AbortController();
+      const TIMEOUT_MS = 60000;
+      const timeoutHandle = setTimeout(() => {
+        try { abortController.abort('timeout'); } catch { /* noop */ }
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_TIMEOUT', {
+          duration_ms: Math.round(performance.now() - invokeStartedAt),
+          metadata: { timeout_ms: TIMEOUT_MS },
+        });
+      }, TIMEOUT_MS);
+
+      const requestBody = JSON.stringify({ audio: base64, mimeType, voice_operation_id: opId });
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token ?? supabaseKey;
+      const invokeUrl = `${supabaseUrl}/functions/v1/voice-to-text`;
+
+      if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_CLIENT_CALL_ENTERED', {
+        byte_count: requestBody.length,
+        metadata: {
+          abort_signal_aborted: abortController.signal.aborted,
+          timeout_ms: TIMEOUT_MS,
+          route: typeof window !== 'undefined' ? window.location.pathname : null,
+          navigator_online: typeof navigator !== 'undefined' ? navigator.onLine : null,
+        },
       });
+
+      let data: { transcript?: string; error?: string } | null = null;
+      let fnError: { name?: string; message?: string } | null = null;
+
+      try {
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_FETCH_DISPATCHED', {
+          byte_count: requestBody.length,
+          metadata: { url_host: (() => { try { return new URL(invokeUrl).host; } catch { return null; } })() },
+        });
+
+        const response = await fetch(invokeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': supabaseKey,
+          },
+          body: requestBody,
+          signal: abortController.signal,
+        });
+
+        const contentType = response.headers.get('content-type');
+        const contentLengthHeader = response.headers.get('content-length');
+        const contentLength = contentLengthHeader ? Number(contentLengthHeader) : null;
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_RESPONSE_HEADERS_RECEIVED', {
+          status_code: response.status,
+          duration_ms: Math.round(performance.now() - invokeStartedAt),
+          metadata: {
+            http_status: response.status,
+            content_type: contentType,
+            content_length: contentLength,
+          },
+        });
+
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_RESPONSE_BODY_READ_STARTED', {
+          status_code: response.status,
+        });
+        const bodyText = await response.text();
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_RESPONSE_BODY_READ_COMPLETED', {
+          status_code: response.status,
+          byte_count: bodyText.length,
+        });
+
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_RESPONSE_PARSE_STARTED', {
+          byte_count: bodyText.length,
+        });
+        let parsed: { transcript?: string; error?: string } | null = null;
+        try {
+          parsed = bodyText ? JSON.parse(bodyText) : null;
+        } catch (parseErr) {
+          if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_PROMISE_REJECTED', {
+            error_category: 'parse-error',
+            error_message: (parseErr instanceof Error ? parseErr.message : String(parseErr)).slice(0, 500),
+            metadata: { errorName: 'SyntaxError', snippet: bodyText.slice(0, 256) },
+          });
+          throw parseErr;
+        }
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_RESPONSE_PARSE_COMPLETED', {
+          metadata: {
+            hasTranscript: typeof parsed?.transcript === 'string' && parsed.transcript.length > 0,
+            transcriptLength: typeof parsed?.transcript === 'string' ? parsed.transcript.length : 0,
+          },
+        });
+
+        if (!response.ok) {
+          fnError = { name: 'FunctionsHttpError', message: parsed?.error ?? `HTTP ${response.status}` };
+        } else {
+          data = parsed;
+        }
+
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_PROMISE_RESOLVED', {
+          status_code: response.status,
+          duration_ms: Math.round(performance.now() - invokeStartedAt),
+          metadata: { ok: response.ok },
+        });
+      } catch (invokeErr) {
+        const name = (invokeErr as { name?: string })?.name ?? 'Error';
+        const message = invokeErr instanceof Error ? invokeErr.message : String(invokeErr);
+        const aborted = abortController.signal.aborted;
+        if (opId) {
+          if (aborted) {
+            void writeClientVoiceEvent(opId, 'VOICE_INVOKE_ABORTED', {
+              duration_ms: Math.round(performance.now() - invokeStartedAt),
+              metadata: { reason: String(abortController.signal.reason ?? 'aborted') },
+            });
+          }
+          void writeClientVoiceEvent(opId, 'VOICE_INVOKE_PROMISE_REJECTED', {
+            error_category: aborted ? 'aborted' : (name === 'TypeError' ? 'network' : 'fetch-error'),
+            error_message: message.slice(0, 500),
+            metadata: { errorName: name, aborted },
+          });
+        }
+        fnError = { name, message };
+      } finally {
+        clearTimeout(timeoutHandle);
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_FINALLY_ENTERED', {
+          duration_ms: Math.round(performance.now() - invokeStartedAt),
+        });
+        if (opId) void writeClientVoiceEvent(opId, 'VOICE_INVOKE_FINALLY_EXITED', {
+          duration_ms: Math.round(performance.now() - invokeStartedAt),
+        });
+      }
+
       if (fnError) {
         recordDiagnostic('VOICE_FN_INVOKE_ERROR', fnError.message || 'invoke-failed');
         if (opId) void writeClientVoiceEvent(opId, 'FN_INVOKE_ERROR', {
@@ -536,7 +669,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
           recordVoiceRequestNetworkFailure({
             phase: 'edge-function-invoke',
             message: fnError.message ?? null,
-            errorName: (fnError as { name?: string }).name ?? null,
+            errorName: fnError.name ?? null,
           });
         } catch { /* noop */ }
         throw new Error(fnError.message || 'Transcription failed.');
