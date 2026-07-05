@@ -255,6 +255,16 @@ export async function finalizeServerChatOperation(
   terminalReason: string,
   snapshots: ShellTabAttentionSnapshot[] = [],
 ): Promise<void> {
+  // Force a terminal snapshot for whichever role is active (sender or
+  // peer) BEFORE the server RPC — this guarantees the finalizer sees a
+  // real terminal SHELL_TAB_ATTENTION_SNAPSHOT, not merely the last
+  // intermediate one.
+  try {
+    const { writeChatOperationTerminalSnapshot } = await import(
+      '@/lib/shellTabAttention/shellTabAttentionInstrumentation'
+    );
+    writeChatOperationTerminalSnapshot(operationId, terminalReason, terminalStatus);
+  } catch { /* best-effort */ }
   try {
     await supabase.rpc('finalize_chat_send_operation', {
       _operation_id: operationId,
