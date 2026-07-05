@@ -102,7 +102,24 @@ export type ClientEventPhase =
   | "VOICE_MEDIARECORDER_START_BEGIN"
   | "VOICE_MEDIARECORDER_START_RETURNED"
   | "VOICE_RECORDING_STATE_COMMITTED"
-  | "VOICE_START_HANDLER_EXITED";
+  | "VOICE_START_HANDLER_EXITED"
+  // Invoke-response boundary events (part C). These bracket the exact
+  // supabase.functions.invoke('voice-to-text') call so the finalizer can
+  // pinpoint the opaque segment between EDGE_RESPONSE_SENT and the client's
+  // observation of that response.
+  | "VOICE_INVOKE_CLIENT_CALL_ENTERED"
+  | "VOICE_INVOKE_FETCH_DISPATCHED"
+  | "VOICE_INVOKE_RESPONSE_HEADERS_RECEIVED"
+  | "VOICE_INVOKE_RESPONSE_BODY_READ_STARTED"
+  | "VOICE_INVOKE_RESPONSE_BODY_READ_COMPLETED"
+  | "VOICE_INVOKE_RESPONSE_PARSE_STARTED"
+  | "VOICE_INVOKE_RESPONSE_PARSE_COMPLETED"
+  | "VOICE_INVOKE_PROMISE_RESOLVED"
+  | "VOICE_INVOKE_PROMISE_REJECTED"
+  | "VOICE_INVOKE_ABORTED"
+  | "VOICE_INVOKE_TIMEOUT"
+  | "VOICE_INVOKE_FINALLY_ENTERED"
+  | "VOICE_INVOKE_FINALLY_EXITED";
 
 export async function writeClientVoiceEvent(
   voice_operation_id: string,
