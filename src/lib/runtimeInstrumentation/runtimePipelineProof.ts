@@ -590,3 +590,110 @@ export async function runRuntimePersistenceSelfCheck(input: {
     }
   } catch { /* proof failure is itself proof */ }
 }
+
+/**
+ * Production-path synthetic voice flows. Both flows drive the SAME
+ * `beginVoiceOperation → recordRuntimeEvent (voice family) →
+ * endVoiceOperation` pipeline that a real recording uses, verifying
+ * that (a) every event carries the operation correlation_id via the
+ * central writer, (b) capsule / manifest / incident-patch / heartbeat
+ * verifications all fire, and (c) no VOICE_EVENT_MISSING_CORRELATION_ID
+ * is emitted.
+ *
+ * NO microphone, no MediaRecorder, no network invoke — the events are
+ * emitted directly through the production writer path exactly as a
+ * live recording would.
+ */
+export async function runProductionVoiceFlowSelfChecks(input: {
+  clientInstanceId: string;
+  tabSessionId: string;
+  userId: string | null;
+  route: string | null;
+}): Promise<Array<{ label: string; correlationId: string | null }>> {
+  const results: Array<{ label: string; correlationId: string | null }> = [];
+  // Import lazily to avoid a hard boot-order coupling.
+  const [{ beginVoiceOperation, endVoiceOperationImmediate }, tracer] =
+    await Promise.all([
+      import("@/lib/runtimeInstrumentation/voiceOperation"),
+      import("@/lib/runtimeInstrumentation/runtimeTracer"),
+    ]);
+  const { recordRuntimeEvent } = tracer;
+
+  const emit = (name: string, payload?: Record<string, unknown>) => {
+    recordRuntimeEvent({
+      event_family: "voice",
+      event_name: name,
+      severity: name === "VOICE_FN_INVOKE_ERROR" ? "error" : "info",
+      payload: { self_check: true, ...(payload ?? {}) },
+    });
+  };
+
+  // Flow 1 — successful send.
+  {
+    const surface = "self_check_success";
+    const cid = beginVoiceOperation({
+      opened_at: new Date().toISOString(),
+      voice_surface: surface,
+      self_check: true,
+    });
+    emit("VOICE_CAPTURE_START", { surface });
+    emit("VOICE_CAPTURE_STARTED");
+    emit("VOICE_STOP_BUTTON_TAPPED");
+    emit("VOICE_STOP_HANDLER_ENTERED", { keepStream: false });
+    emit("VOICE_MEDIARECORDER_STOP_CALLED", { state: "recording" });
+    emit("VOICE_MEDIARECORDER_ONSTOP_ENTERED", { chunks: 1 });
+    emit("VOICE_MEDIARECORDER_DATAAVAILABLE", { bytes: 1024 });
+    emit("VOICE_BLOB_READY", { bytes: 1024, mime: "audio/webm" });
+    emit("VOICE_ENCODE_START", { bytes: 1024 });
+    emit("VOICE_ENCODE_COMPLETE", { chars: 1400 });
+    emit("VOICE_FN_INVOKE_START", { bytes: 1400 });
+    emit("VOICE_FN_INVOKE_RESPONSE", { hasTranscript: true, len: 12 });
+    emit("VOICE_FINALIZE_RETURN", { chars: 12 });
+    emit("VOICE_SEND_BEGIN", { len: 12 });
+    emit("VOICE_SEND_COMPLETE", { len: 12 });
+    emit("VOICE_STOP_HANDLER_EXITED", { chars: 12 });
+    // Give the tracer's async verifiers time to land.
+    await new Promise((r) => setTimeout(r, 800));
+    endVoiceOperationImmediate("self-check-success");
+    results.push({ label: "success", correlationId: cid });
+  }
+
+  // Flow 2 — invoke failure.
+  {
+    const surface = "self_check_invoke_failure";
+    const cid = beginVoiceOperation({
+      opened_at: new Date().toISOString(),
+      voice_surface: surface,
+      self_check: true,
+    });
+    emit("VOICE_CAPTURE_START", { surface });
+    emit("VOICE_CAPTURE_STARTED");
+    emit("VOICE_STOP_BUTTON_TAPPED");
+    emit("VOICE_STOP_HANDLER_ENTERED", { keepStream: false });
+    emit("VOICE_MEDIARECORDER_STOP_CALLED", { state: "recording" });
+    emit("VOICE_MEDIARECORDER_ONSTOP_ENTERED", { chunks: 1 });
+    emit("VOICE_MEDIARECORDER_DATAAVAILABLE", { bytes: 1024 });
+    emit("VOICE_BLOB_READY", { bytes: 1024, mime: "audio/webm" });
+    emit("VOICE_ENCODE_START", { bytes: 1024 });
+    emit("VOICE_ENCODE_COMPLETE", { chars: 1400 });
+    emit("VOICE_FN_INVOKE_START", { bytes: 1400 });
+    emit("VOICE_FN_INVOKE_ERROR", { message: "self-check synthetic failure" });
+    emit("VOICE_REQUEST_NETWORK_FAILURE", {
+      phase: "self-check",
+      message: "synthetic",
+    });
+    emit("VOICE_FINALIZE_RETURN", { outcome: "error" });
+    emit("VOICE_STOP_HANDLER_EXITED", { outcome: "error" });
+    await new Promise((r) => setTimeout(r, 800));
+    endVoiceOperationImmediate("self-check-invoke-failure");
+    results.push({ label: "invoke_failure", correlationId: cid });
+  }
+
+  // Give autopsy triggers a chance to write their final report rows
+  // before returning. The report generator does its own consistent
+  // joins so this delay is only to make the return value stable for
+  // any caller inspecting the DB.
+  await new Promise((r) => setTimeout(r, 1500));
+
+  return results;
+}

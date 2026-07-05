@@ -25,14 +25,17 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   recordRuntimeEvent,
   recordVoiceRequestNetworkFailure,
-  beginRuntimeIncident,
-  endRuntimeIncident,
   getActiveRuntimeIncidentId,
   forceInstanceHeartbeat,
   nextIncidentSequence,
   setRuntimeAmbient,
   snapshotVoiceSurfaceContext,
 } from '@/lib/runtimeInstrumentation/runtimeTracer';
+import {
+  beginVoiceOperation,
+  endVoiceOperation,
+  getActiveVoiceOperationId,
+} from '@/lib/runtimeInstrumentation/voiceOperation';
 
 function inferVoiceSurface(): string {
   if (typeof window === 'undefined') return 'unknown';
@@ -146,7 +149,11 @@ export function useVoiceToText(): UseVoiceToTextResult {
       return next.length > 12 ? next.slice(next.length - 12) : next;
     });
     try {
-      const incidentId = getActiveRuntimeIncidentId();
+      // Prefer the durable voice-operation id so recording still
+      // attributes correctly after `endVoiceOperation` has fired its
+      // grace-window close of the runtime incident.
+      const incidentId =
+        getActiveVoiceOperationId() ?? getActiveRuntimeIncidentId();
       const seq = incidentId ? nextIncidentSequence(incidentId) : null;
       const elapsedMs =
         captureStartedAtRef.current !== null
@@ -255,9 +262,25 @@ export function useVoiceToText(): UseVoiceToTextResult {
     }
     if (state === 'recording' || state === 'transcribing') return;
 
+    // INVARIANT A: create the durable voice-operation correlation id
+    // SYNCHRONOUSLY, BEFORE any async work (ensureStream), any
+    // MediaRecorder construction, or any timer. Every downstream voice
+    // event reads this id from the durable voiceOperation ref.
+    const surface = inferVoiceSurface();
+    try { setRuntimeAmbient({ voice_surface: surface }); } catch { /* noop */ }
+    const incidentId = beginVoiceOperation({
+      opened_at: new Date().toISOString(),
+      voice_surface: surface,
+      surface_context: snapshotVoiceSurfaceContext(),
+    });
+
     try {
       const stream = await ensureStream();
-      if (!stream) return; // error already set
+      if (!stream) {
+        // ensureStream set error; end operation with grace so acks land.
+        endVoiceOperation('start-no-stream');
+        return;
+      }
 
       chunksRef.current = [];
       cancelledRef.current = false;
@@ -276,17 +299,6 @@ export function useVoiceToText(): UseVoiceToTextResult {
       rec.start();
       setError(null);
       setState('recording');
-      // Open a durable runtime incident id that survives tab replacement
-      // and browser relaunch. Every downstream event (encode, invoke,
-      // send, page-lifecycle) attaches to this id via correlation_id.
-      const surface = inferVoiceSurface();
-      try { setRuntimeAmbient({ voice_surface: surface }); } catch { /* noop */ }
-      const incidentId = beginRuntimeIncident('voice_capture', {
-        opened_at: new Date().toISOString(),
-        mimeType: rec.mimeType || 'audio/webm',
-        voice_surface: surface,
-        surface_context: snapshotVoiceSurfaceContext(),
-      });
       // Force an immediate instance heartbeat so the DB shows this tab
       // is actively capturing before any other event lands.
       forceInstanceHeartbeat('VOICE_CAPTURE_START');
@@ -323,6 +335,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
       releaseStream();
       stopHeartbeat();
       captureStartedAtRef.current = null;
+      endVoiceOperation('start-error');
     }
   }, [ensureStream, isSupported, recordDiagnostic, releaseStream, state, stopHeartbeat]);
 
@@ -371,7 +384,7 @@ export function useVoiceToText(): UseVoiceToTextResult {
       setState('idle');
       setError(null);
       recordDiagnostic('VOICE_FINALIZE_RETURN', 'cancelled');
-      endRuntimeIncident('cancelled');
+      endVoiceOperation('cancelled');
       captureStartedAtRef.current = null;
       recordDiagnostic('VOICE_STOP_HANDLER_EXITED', 'cancelled');
       return null;
