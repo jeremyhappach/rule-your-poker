@@ -103,7 +103,7 @@ vi.mock('@/lib/chatOperations/serverChatOperation', () => ({
 // ---- Boundary event recorder --------------------------------------
 const recordBoundary = vi.fn(() => {});
 vi.mock('@/lib/chatOperations/chatOperationBoundary', () => ({
-  recordChatBoundaryEvent: (...a: unknown[]) => recordBoundary(...a),
+  recordChatBoundaryEvent: (...a: unknown[]) => (recordBoundary as (...x: unknown[]) => unknown)(...a),
   recordChatNavigationInitiated: vi.fn(),
   recordChatAbortInitiated: vi.fn(),
   installChatBoundaryListeners: vi.fn(),
