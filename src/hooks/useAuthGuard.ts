@@ -31,6 +31,7 @@ import {
   installAuthStorageWatcher,
   type RefreshOutcome,
 } from "@/lib/authInvalidationCause";
+import { recordChatBoundaryEvent } from "@/lib/chatOperations/chatOperationBoundary";
 
 const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
 
