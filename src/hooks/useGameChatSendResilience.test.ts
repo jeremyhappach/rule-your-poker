@@ -42,14 +42,19 @@ insertMock.mockImplementation(async () => {
 });
 
 vi.mock('@/integrations/supabase/client', () => {
+  const eqBuilder = () => ({
+    order: async () => ({ data: [], error: null }),
+    single: async () => ({ data: null, error: null }),
+    eq: () => eqBuilder(),
+  });
   const chatMessagesBuilder = () => ({
     insert: () => ({
       select: () => ({ single: () => insertMock() }),
     }),
-    // hydration fetch
     select: () => ({
-      eq: () => ({ order: async () => ({ data: [], error: null }) }),
+      eq: () => eqBuilder(),
       in: async () => ({ data: [], error: null }),
+      order: async () => ({ data: [], error: null }),
     }),
   });
   const from = vi.fn((_table: string) => chatMessagesBuilder());
