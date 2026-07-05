@@ -488,13 +488,35 @@ export const useGameChat = (
             });
             return next;
           });
-          writeChatOperationTerminalSnapshot(correlationId, 'authoritative-row-written', 'send-complete');
-          void finalizeServerChatOperation(
-            correlationId,
-            'send-complete',
-            'authoritative-row-written',
-            getChatOperationSnapshots(correlationId),
-          );
+          // Observation window: do NOT finalize on DB success. Mark
+          // delivery confirmed, keep sender heartbeats + boundary
+          // listeners armed for 30s, then finalize with
+          // completed-observation-window unless a real terminator
+          // (sender-lost, error boundary, auth sign-out, navigation
+          // ejection, etc.) fires first.
+          void markChatOperationDeliveryConfirmed(correlationId, 'sender-db-success', {
+            authoritativeId: data.id,
+            confirmedAt: successAt,
+          });
+          void writeChatOperationSenderHeartbeat(correlationId, {
+            phase: 'post-db-success',
+          });
+          if (typeof window !== 'undefined') {
+            window.setTimeout(() => {
+              writeChatOperationTerminalSnapshot(
+                correlationId,
+                'observation-window-expired',
+                'completed-observation-window',
+              );
+              void finalizeServerChatOperation(
+                correlationId,
+                'completed-observation-window',
+                '30s-observation-window-expired-no-terminator',
+                getChatOperationSnapshots(correlationId),
+              );
+              finalizeChatSendOperation(correlationId, 'success');
+            }, 30_000);
+          }
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
@@ -516,9 +538,8 @@ export const useGameChat = (
           getChatOperationSnapshots(correlationId),
         );
       } finally {
-        // finalize as success if no error branch above already finalized;
-        // safe because finalizeChatSendOperation is idempotent on cid removal.
-        finalizeChatSendOperation(correlationId, 'success');
+        // NOTE: no unconditional finalize here — the observation window
+        // owns success finalization. Only setIsSending is cleared.
         setIsSending(false);
       }
     },
