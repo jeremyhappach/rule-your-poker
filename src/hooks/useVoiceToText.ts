@@ -36,6 +36,11 @@ import {
   endVoiceOperation,
   getActiveVoiceOperationId,
 } from '@/lib/runtimeInstrumentation/voiceOperation';
+import {
+  openServerVoiceIncident,
+  writeClientVoiceEvent,
+  triggerServerFinalizer,
+} from '@/lib/runtimeInstrumentation/serverVoiceOperation';
 
 function inferVoiceSurface(): string {
   if (typeof window === 'undefined') return 'unknown';
