@@ -22,6 +22,59 @@ export interface OpenChatOperationInput extends ChatOperationIdentity {
   messagePreview: string;
 }
 
+export interface CurrentSessionChatOperationRecord {
+  operationId: string;
+  gameId: string;
+  sessionId: string;
+  route: string;
+  role: 'sender' | 'peer';
+  observedAt: string;
+}
+
+const CURRENT_SESSION_CHAT_OPERATION_EVENT = 'ptown-current-session-chat-operation';
+const currentSessionChatOperations = new Map<string, CurrentSessionChatOperationRecord>();
+
+function validCurrentSessionChatOperation(record: CurrentSessionChatOperationRecord): boolean {
+  return Boolean(
+    record.operationId &&
+    record.operationId.startsWith('chat-') &&
+    record.gameId &&
+    record.sessionId &&
+    record.route &&
+    record.route !== '/',
+  );
+}
+
+export function registerCurrentSessionChatOperation(
+  record: Omit<CurrentSessionChatOperationRecord, 'observedAt'> & { observedAt?: string },
+): void {
+  const normalized: CurrentSessionChatOperationRecord = {
+    ...record,
+    observedAt: record.observedAt ?? new Date().toISOString(),
+  };
+  if (!validCurrentSessionChatOperation(normalized)) return;
+  currentSessionChatOperations.set(normalized.operationId, normalized);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(CURRENT_SESSION_CHAT_OPERATION_EVENT, { detail: normalized }));
+  }
+}
+
+export function getCurrentSessionChatOperations(): CurrentSessionChatOperationRecord[] {
+  return Array.from(currentSessionChatOperations.values());
+}
+
+export function subscribeCurrentSessionChatOperations(
+  listener: (record: CurrentSessionChatOperationRecord) => void,
+): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (event: Event) => {
+    const record = (event as CustomEvent<CurrentSessionChatOperationRecord>).detail;
+    if (record) listener(record);
+  };
+  window.addEventListener(CURRENT_SESSION_CHAT_OPERATION_EVENT, handler);
+  return () => window.removeEventListener(CURRENT_SESSION_CHAT_OPERATION_EVENT, handler);
+}
+
 export function createChatOperationId(): string {
   const raw =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -102,6 +155,13 @@ export async function openServerChatOperation(input: OpenChatOperationInput): Pr
     active_tab: input.activeTab ?? null,
     game_status: input.shellPhase ?? null,
     payload: { operationId: input.operationId },
+  });
+  registerCurrentSessionChatOperation({
+    operationId: input.operationId,
+    gameId: input.gameId,
+    sessionId: input.sessionId,
+    route,
+    role: 'sender',
   });
   return true;
 }

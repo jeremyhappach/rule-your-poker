@@ -23,6 +23,7 @@ import {
   createChatOperationId,
   finalizeServerChatOperation,
   openServerChatOperation,
+  registerCurrentSessionChatOperation,
   type ChatOperationIdentity,
 } from '@/lib/chatOperations/serverChatOperation';
 import {
@@ -733,6 +734,15 @@ export const useGameChat = (
               payload: { sender_user_id: newMessage.user_id },
             });
             if (newMessage.chat_operation_id && newMessage.user_id !== currentUserId) {
+              const route = typeof window !== 'undefined' ? window.location.pathname : (chatIdentity?.route ?? `/game/${gameId}`);
+              const sessionId = chatIdentity?.sessionId ?? `session:${gameId}`;
+              registerCurrentSessionChatOperation({
+                operationId: newMessage.chat_operation_id,
+                gameId,
+                sessionId,
+                route,
+                role: 'peer',
+              });
               beginChatOperationSnapshotCapture(newMessage.chat_operation_id);
               void appendChatPeerMilestone(
                 newMessage.chat_operation_id,
@@ -741,9 +751,15 @@ export const useGameChat = (
                   receiverUserId: currentUserId ?? null,
                   senderUserId: newMessage.user_id,
                   receiptAt,
-                  route: typeof window !== 'undefined' ? window.location.pathname : null,
+                  route,
                 },
                 newMessage.id,
+                getChatOperationSnapshots(newMessage.chat_operation_id),
+              );
+              void finalizeServerChatOperation(
+                newMessage.chat_operation_id,
+                'peer-received',
+                'peer-realtime-receipt-observed',
                 getChatOperationSnapshots(newMessage.chat_operation_id),
               );
             }
@@ -826,7 +842,7 @@ export const useGameChat = (
       });
       supabase.removeChannel(channel);
     };
-  }, [gameId, addBubble]);
+  }, [gameId, addBubble, currentUserId, chatIdentity?.route, chatIdentity?.sessionId]);
 
   return {
     chatBubbles,

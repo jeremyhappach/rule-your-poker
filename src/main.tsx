@@ -22,11 +22,7 @@ import {
   installSessionLifecycleListeners,
   recordSessionLifecycleEvent,
 } from "@/lib/sessionLifecycleLedger";
-import { bootRuntimeTracer, getClientInstanceId, getTabSessionId, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
-import {
-  runRuntimePersistenceSelfCheck,
-  runProductionVoiceFlowSelfChecks,
-} from "@/lib/runtimeInstrumentation/runtimePipelineProof";
+import { bootRuntimeTracer, recordRuntimeEvent, runEarlyBootPipelineProof, setRuntimeAmbient } from "@/lib/runtimeInstrumentation/runtimeTracer";
 // Side-effect import: registers the durable voice-operation id getter
 // with the runtime tracer so voice-family event correlation enforcement
 // can resolve the active operation without a circular import.
@@ -52,36 +48,6 @@ installAuthEjectionHistoryListener();
 // /auth or a legacy Join fallback screen.
 installSessionLifecycleListeners();
 bootRuntimeTracer();
-
-// Non-destructive persistence self-check: exercises the entire
-// capsule → manifest → incident-patch → instance-heartbeat pipeline
-// against a synthetic incident. Emits RUNTIME_PERSISTENCE_SELF_CHECK_PASSED
-// (or _FAILED) so every published build proves basic instrumentation
-// wiring before any user attempts a voice repro.
-void runRuntimePersistenceSelfCheck({
-  clientInstanceId: getClientInstanceId(),
-  tabSessionId: getTabSessionId(),
-  userId: null,
-  route:
-    typeof window !== "undefined"
-      ? window.location.pathname + window.location.search
-      : null,
-});
-
-// Production-path synthetic voice flows. Drives the exact same
-// beginVoiceOperation → recordRuntimeEvent (voice family) →
-// endVoiceOperation pipeline that a real recording uses. Verifies
-// correlation attribution + capsule/manifest/incident/heartbeat
-// verifications for both success and invoke-failure paths.
-void runProductionVoiceFlowSelfChecks({
-  clientInstanceId: getClientInstanceId(),
-  tabSessionId: getTabSessionId(),
-  userId: null,
-  route:
-    typeof window !== "undefined"
-      ? window.location.pathname + window.location.search
-      : null,
-});
 
 // Rehydrate global Geometry Lab config before first render. Applies
 // baked defaults synchronously, fetches DB-backed authoritative values,
