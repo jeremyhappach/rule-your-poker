@@ -296,7 +296,7 @@ export const useGameChat = (
         // still leaves durable heartbeat + armed-boundary evidence
         // before optimistic mutation runs.
         await writeChatOperationSenderHeartbeat(correlationId, { phase: 'operation-armed' });
-        recordChatBoundaryEvent('SENDER_OPERATION_ARMED' as never, {
+        recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
           operationId: correlationId,
           route,
         });
