@@ -130,10 +130,12 @@ serve(async (req) => {
         edge_function_status_code: 400,
         edge_function_error_category: "validation",
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: "Missing audio payload." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_VALIDATED", {
