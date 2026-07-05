@@ -232,6 +232,9 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
   activeChatOperations.add(correlationId);
   activeChatOperationRoles.set(correlationId, 'sender');
   activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
+  void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
+    registerActiveChatOperationForViolations(correlationId);
+  });
   recordRuntimeEvent({
     event_family: 'chat',
     event_name: 'CHAT_SEND_OPERATION_OPENED',
@@ -247,6 +250,9 @@ export function beginChatOperationSnapshotCapture(correlationId: string): void {
   if (!activeChatOperationSnapshots.has(correlationId)) {
     activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
   }
+  void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
+    registerActiveChatOperationForViolations(correlationId);
+  });
 }
 
 export function finalizeChatSendOperation(
