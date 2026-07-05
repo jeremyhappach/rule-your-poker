@@ -497,11 +497,14 @@ export const useGameChat = (
             message_id: data.id,
             payload: { optimisticId },
           });
-          void appendChatSenderMilestone(correlationId, 'DB_INSERT_SUCCESS', {
-            optimisticId,
-            authoritativeId: data.id,
-            successAt,
-          }, { messageId: data.id, optimisticMessageId: optimisticId });
+          void telemetryReady.then((ready) => {
+            if (!ready) return;
+            void appendChatSenderMilestone(correlationId, 'DB_INSERT_SUCCESS', {
+              optimisticId,
+              authoritativeId: data.id,
+              successAt,
+            }, { messageId: data.id, optimisticMessageId: optimisticId });
+          });
           void upsertDeliveryTrace({
             message_id: data.id,
             recipient_client_instance_id: getClientInstanceId(),
