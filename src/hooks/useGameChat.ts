@@ -283,7 +283,7 @@ export const useGameChat = (
         //      unavailable locally (`ok===false`); the chat send still
         //      completes normally and no operation-scoped RPCs are
         //      attempted against a missing row.
-        const telemetryReady: Promise<boolean> = openServerChatOperation({
+        telemetryReady = openServerChatOperation({
           operationId: correlationId,
           senderUserId: userId,
           gameId,
