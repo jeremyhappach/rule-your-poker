@@ -259,6 +259,7 @@ export type Database = {
         Row: {
           active_game_component: string | null
           active_tab: string | null
+          boundary_events: Json
           canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
@@ -268,6 +269,9 @@ export type Database = {
           game_id: string
           game_type_source: string | null
           id: string
+          last_peer_heartbeat_at: string | null
+          last_sender_event_at: string | null
+          last_sender_heartbeat_at: string | null
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
@@ -278,6 +282,7 @@ export type Database = {
           origin_surface: string | null
           peer_milestones: Json
           raw_game_type: string | null
+          recovery_correlations: Json
           report_status: string
           resolved_game_type: string | null
           route: string
@@ -302,6 +307,7 @@ export type Database = {
         Insert: {
           active_game_component?: string | null
           active_tab?: string | null
+          boundary_events?: Json
           canonical_shell_game_id?: string | null
           completed_at?: string | null
           created_at?: string
@@ -311,6 +317,9 @@ export type Database = {
           game_id: string
           game_type_source?: string | null
           id?: string
+          last_peer_heartbeat_at?: string | null
+          last_sender_event_at?: string | null
+          last_sender_heartbeat_at?: string | null
           local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
@@ -321,6 +330,7 @@ export type Database = {
           origin_surface?: string | null
           peer_milestones?: Json
           raw_game_type?: string | null
+          recovery_correlations?: Json
           report_status?: string
           resolved_game_type?: string | null
           route: string
@@ -345,6 +355,7 @@ export type Database = {
         Update: {
           active_game_component?: string | null
           active_tab?: string | null
+          boundary_events?: Json
           canonical_shell_game_id?: string | null
           completed_at?: string | null
           created_at?: string
@@ -354,6 +365,9 @@ export type Database = {
           game_id?: string
           game_type_source?: string | null
           id?: string
+          last_peer_heartbeat_at?: string | null
+          last_sender_event_at?: string | null
+          last_sender_heartbeat_at?: string | null
           local_turn_eligible?: boolean | null
           message_id?: string | null
           message_preview?: string | null
@@ -364,6 +378,7 @@ export type Database = {
           origin_surface?: string | null
           peer_milestones?: Json
           raw_game_type?: string | null
+          recovery_correlations?: Json
           report_status?: string
           resolved_game_type?: string | null
           route?: string
@@ -2898,6 +2913,15 @@ export type Database = {
         }
         Returns: Json
       }
+      chat_operation_append_boundary_event: {
+        Args: {
+          _metadata?: Json
+          _name: string
+          _operation_id: string
+          _role: string
+        }
+        Returns: undefined
+      }
       chat_operation_append_peer_milestone: {
         Args: {
           _message_id?: string
@@ -2909,6 +2933,7 @@ export type Database = {
         Returns: {
           active_game_component: string | null
           active_tab: string | null
+          boundary_events: Json
           canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
@@ -2918,6 +2943,9 @@ export type Database = {
           game_id: string
           game_type_source: string | null
           id: string
+          last_peer_heartbeat_at: string | null
+          last_sender_event_at: string | null
+          last_sender_heartbeat_at: string | null
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
@@ -2928,6 +2956,7 @@ export type Database = {
           origin_surface: string | null
           peer_milestones: Json
           raw_game_type: string | null
+          recovery_correlations: Json
           report_status: string
           resolved_game_type: string | null
           route: string
@@ -2956,6 +2985,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      chat_operation_append_recovery_correlation: {
+        Args: { _metadata?: Json; _operation_id: string }
+        Returns: undefined
+      }
       chat_operation_append_sender_milestone: {
         Args: {
           _message_id?: string
@@ -2967,6 +3000,7 @@ export type Database = {
         Returns: {
           active_game_component: string | null
           active_tab: string | null
+          boundary_events: Json
           canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
@@ -2976,6 +3010,9 @@ export type Database = {
           game_id: string
           game_type_source: string | null
           id: string
+          last_peer_heartbeat_at: string | null
+          last_sender_event_at: string | null
+          last_sender_heartbeat_at: string | null
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
@@ -2986,6 +3023,7 @@ export type Database = {
           origin_surface: string | null
           peer_milestones: Json
           raw_game_type: string | null
+          recovery_correlations: Json
           report_status: string
           resolved_game_type: string | null
           route: string
@@ -3019,6 +3057,7 @@ export type Database = {
         Returns: {
           active_game_component: string | null
           active_tab: string | null
+          boundary_events: Json
           canonical_shell_game_id: string | null
           completed_at: string | null
           created_at: string
@@ -3028,6 +3067,9 @@ export type Database = {
           game_id: string
           game_type_source: string | null
           id: string
+          last_peer_heartbeat_at: string | null
+          last_sender_event_at: string | null
+          last_sender_heartbeat_at: string | null
           local_turn_eligible: boolean | null
           message_id: string | null
           message_preview: string | null
@@ -3038,6 +3080,7 @@ export type Database = {
           origin_surface: string | null
           peer_milestones: Json
           raw_game_type: string | null
+          recovery_correlations: Json
           report_status: string
           resolved_game_type: string | null
           route: string
@@ -3065,6 +3108,25 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      chat_operation_peer_heartbeat: {
+        Args: { _metadata?: Json; _operation_id: string }
+        Returns: undefined
+      }
+      chat_operation_read_sender_presence: {
+        Args: { _operation_id: string }
+        Returns: {
+          last_peer_heartbeat_at: string
+          last_sender_event_at: string
+          last_sender_heartbeat_at: string
+          now_at: string
+          status: string
+          terminal_status: string
+        }[]
+      }
+      chat_operation_sender_heartbeat: {
+        Args: { _metadata?: Json; _operation_id: string }
+        Returns: undefined
       }
       claim_horses_bot_controller: {
         Args: { _round_id: string }
