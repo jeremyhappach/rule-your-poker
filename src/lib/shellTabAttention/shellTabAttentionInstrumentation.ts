@@ -76,6 +76,16 @@ let lastSnapshot: ShellTabAttentionSnapshot | null = null;
 const activeChatOperations = new Set<string>();
 const activeChatOperationSnapshots = new Map<string, ShellTabAttentionSnapshot[]>();
 const activeChatOperationRoles = new Map<string, 'sender' | 'peer'>();
+const activeChatOperationBaselineWritten = new Set<string>();
+const activeChatOperationTerminalWritten = new Set<string>();
+
+// Monotonic sequence for any forced/baseline/terminal/render-commit event so
+// downstream TXT rendering can order events even when timestamps collide.
+let monotonicSequence = 0;
+export function nextInstrumentationSequence(): number {
+  monotonicSequence += 1;
+  return monotonicSequence;
+}
 
 interface ShellTabAttentionContextPatch {
   gameId?: string | null;
@@ -101,6 +111,83 @@ export function getShellTabAttentionContext(): ShellTabAttentionContextPatch {
 /** Stable signature for de-dupe. */
 function signatureOf(s: ShellTabAttentionSnapshot): string {
   return JSON.stringify(s);
+}
+
+/**
+ * Forced snapshot write — bypasses signature de-dupe. Used for
+ * operation-open baselines (sender + peer) and terminal snapshots.
+ * Emits the SHELL_TAB_ATTENTION_SNAPSHOT event with an explicit
+ * reason string so the finalizer can identify baseline / terminal /
+ * intermediate snapshots.
+ */
+export function writeForcedShellTabAttentionSnapshot(
+  reason: string,
+  correlationId: string | null,
+  extra: Record<string, unknown> = {},
+): ShellTabAttentionSnapshot | null {
+  const snapshot = lastSnapshot;
+  if (!snapshot) return null;
+  const sequence = nextInstrumentationSequence();
+  if (correlationId) {
+    const list = activeChatOperationSnapshots.get(correlationId) ?? [];
+    list.push(snapshot);
+    activeChatOperationSnapshots.set(correlationId, list.slice(-24));
+  } else {
+    for (const cid of activeChatOperations) {
+      const list = activeChatOperationSnapshots.get(cid) ?? [];
+      list.push(snapshot);
+      activeChatOperationSnapshots.set(cid, list.slice(-24));
+    }
+  }
+  recordRuntimeEvent({
+    event_family: 'shell_tab_attention',
+    event_name: 'SHELL_TAB_ATTENTION_SNAPSHOT',
+    severity: 'info',
+    correlation_id: correlationId ?? undefined,
+    game_id: snapshot.gameId ?? undefined,
+    session_id: snapshot.sessionId ?? undefined,
+    dealer_game_id: snapshot.dealerGameId ?? undefined,
+    route: snapshot.route,
+    active_tab: snapshot.activeTab,
+    game_status: snapshot.shellPhase ?? undefined,
+    game_type: snapshot.gameType ?? undefined,
+    payload: { reason, forced: true, sequence, correlationId, snapshot, ...extra },
+  });
+  // Persist onto durable server chat operation record too so the exported
+  // TXT can identify baseline/terminal snapshots explicitly.
+  if (correlationId) {
+    void import('@/lib/chatOperations/serverChatOperation').then(
+      ({ appendChatSenderMilestone, appendChatPeerMilestone }) => {
+        const role = activeChatOperationRoles.get(correlationId);
+        const metadata = { reason, forced: true, sequence, snapshot, ...extra };
+        if (role === 'peer') {
+          void appendChatPeerMilestone(correlationId, reason, metadata, null, [snapshot]);
+        } else {
+          void appendChatSenderMilestone(correlationId, reason, metadata);
+        }
+      },
+    );
+  }
+  return snapshot;
+}
+
+/** Public: force sender/peer terminal snapshot for a given correlation id. */
+export function writeChatOperationTerminalSnapshot(
+  correlationId: string,
+  terminalReason: string,
+  terminalStatus: string,
+): void {
+  if (!activeChatOperations.has(correlationId)) return;
+  if (activeChatOperationTerminalWritten.has(correlationId)) return;
+  activeChatOperationTerminalWritten.add(correlationId);
+  const role = activeChatOperationRoles.get(correlationId);
+  const reason =
+    role === 'peer' ? 'PEER_OPERATION_TERMINAL_SNAPSHOT' : 'CHAT_OPERATION_TERMINAL_SNAPSHOT';
+  writeForcedShellTabAttentionSnapshot(reason, correlationId, {
+    terminalReason,
+    terminalStatus,
+    role: role ?? 'sender',
+  });
 }
 
 /** Public: emit the snapshot if any tracked field changed. */
@@ -320,19 +407,32 @@ export function openChatSendOperation(correlationId: string, extra?: Record<stri
   activeChatOperations.add(correlationId);
   activeChatOperationRoles.set(correlationId, 'sender');
   activeChatOperationSnapshots.set(correlationId, lastSnapshot ? [lastSnapshot] : []);
+  activeChatOperationBaselineWritten.delete(correlationId);
+  activeChatOperationTerminalWritten.delete(correlationId);
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
     registerActiveChatOperationForViolations(correlationId);
   });
+  const openedSequence = nextInstrumentationSequence();
   recordRuntimeEvent({
     event_family: 'chat',
-    event_name: 'CHAT_SEND_OPERATION_OPENED',
+    event_name: 'CHAT_OPERATION_OPENED',
     severity: 'info',
     correlation_id: correlationId,
-    payload: { snapshot: lastSnapshot, ...(extra ?? {}) },
+    payload: { sequence: openedSequence, snapshot: lastSnapshot, ...(extra ?? {}) },
   });
+  // Forced sender baseline — bypasses signature de-dupe so the operation
+  // always begins with a captured visual/context snapshot even when no
+  // subsequent state change occurs.
+  if (!activeChatOperationBaselineWritten.has(correlationId)) {
+    activeChatOperationBaselineWritten.add(correlationId);
+    writeForcedShellTabAttentionSnapshot('CHAT_OPERATION_BASELINE', correlationId, {
+      openedSequence,
+    });
+  }
 }
 
 export function beginChatOperationSnapshotCapture(correlationId: string): void {
+  const alreadyActive = activeChatOperations.has(correlationId);
   activeChatOperations.add(correlationId);
   activeChatOperationRoles.set(correlationId, 'peer');
   if (!activeChatOperationSnapshots.has(correlationId)) {
@@ -341,6 +441,20 @@ export function beginChatOperationSnapshotCapture(correlationId: string): void {
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ registerActiveChatOperationForViolations }) => {
     registerActiveChatOperationForViolations(correlationId);
   });
+  const observedSequence = nextInstrumentationSequence();
+  recordRuntimeEvent({
+    event_family: 'chat',
+    event_name: 'PEER_CHAT_OPERATION_OBSERVED',
+    severity: 'info',
+    correlation_id: correlationId,
+    payload: { sequence: observedSequence, alreadyActive, snapshot: lastSnapshot },
+  });
+  if (!activeChatOperationBaselineWritten.has(correlationId)) {
+    activeChatOperationBaselineWritten.add(correlationId);
+    writeForcedShellTabAttentionSnapshot('PEER_OPERATION_BASELINE', correlationId, {
+      observedSequence,
+    });
+  }
 }
 
 export function finalizeChatSendOperation(
@@ -348,19 +462,34 @@ export function finalizeChatSendOperation(
   outcome: 'success' | 'error' | 'aborted',
   extra?: Record<string, unknown>,
 ): void {
+  if (!activeChatOperations.has(correlationId)) return;
+  // Terminal snapshot — bypass signature de-dupe.
+  writeChatOperationTerminalSnapshot(
+    correlationId,
+    (extra?.terminalReason as string) ?? `local-${outcome}`,
+    outcome,
+  );
   const snapshots = activeChatOperationSnapshots.get(correlationId) ?? [];
   activeChatOperations.delete(correlationId);
   activeChatOperationSnapshots.delete(correlationId);
   activeChatOperationRoles.delete(correlationId);
+  activeChatOperationBaselineWritten.delete(correlationId);
+  activeChatOperationTerminalWritten.delete(correlationId);
   void import('@/lib/waitingTable/waitingTableInstrumentation').then(({ clearActiveChatOperationForViolations }) => {
     clearActiveChatOperationForViolations(correlationId);
   });
   recordRuntimeEvent({
     event_family: 'chat',
-    event_name: 'CHAT_SEND_OPERATION_FINALIZED',
+    event_name: 'CHAT_OPERATION_FINALIZED',
     severity: outcome === 'error' ? 'warn' : 'info',
     correlation_id: correlationId,
-    payload: { outcome, snapshot: lastSnapshot, snapshots, ...(extra ?? {}) },
+    payload: {
+      outcome,
+      sequence: nextInstrumentationSequence(),
+      snapshot: lastSnapshot,
+      snapshots,
+      ...(extra ?? {}),
+    },
   });
 }
 
