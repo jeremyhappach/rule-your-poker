@@ -14,6 +14,7 @@ import {
   getCurrentSessionChatOperations,
   type CurrentSessionChatOperationRecord,
 } from './serverChatOperation';
+import { isInstrumentationRequest } from './chatOperationInstrumentationGuard';
 
 export type ChatBoundaryEventName =
   | 'WINDOW_LOCATION_ASSIGN'
