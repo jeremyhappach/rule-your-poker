@@ -269,6 +269,19 @@ export const useGameChat = (
           shellPhase: chatIdentity?.shellPhase ?? null,
           originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
           messagePreview: message.trim(),
+          // Extended waiting-table identity/context
+          routeGameId: chatIdentity?.routeGameId ?? null,
+          canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
+          operationGameId: chatIdentity?.operationGameId ?? gameId,
+          rawGameType: chatIdentity?.rawGameType ?? null,
+          resolvedGameType: chatIdentity?.resolvedGameType ?? null,
+          gameTypeSource: chatIdentity?.gameTypeSource ?? null,
+          gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
+          currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
+          localTurnEligible: chatIdentity?.localTurnEligible ?? null,
+          waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
+          activeGameComponent: chatIdentity?.activeGameComponent ?? null,
+          tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
         });
         if (!opened) {
           setIsSending(false);
