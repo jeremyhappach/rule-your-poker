@@ -577,20 +577,23 @@ export const useGameChat = (
         finalizeChatSendOperation(correlationId, 'error', {
           message: (error as Error)?.message ?? String(error),
         });
-        void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
-          message: (error as Error)?.message ?? String(error),
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
+            message: (error as Error)?.message ?? String(error),
+          });
+          writeChatOperationTerminalSnapshot(
+            correlationId,
+            (error as Error)?.message ?? String(error),
+            'send-exception',
+          );
+          void finalizeServerChatOperation(
+            correlationId,
+            'send-exception',
+            (error as Error)?.message ?? String(error),
+            getChatOperationSnapshots(correlationId),
+          );
         });
-        writeChatOperationTerminalSnapshot(
-          correlationId,
-          (error as Error)?.message ?? String(error),
-          'send-exception',
-        );
-        void finalizeServerChatOperation(
-          correlationId,
-          'send-exception',
-          (error as Error)?.message ?? String(error),
-          getChatOperationSnapshots(correlationId),
-        );
       } finally {
         // NOTE: no unconditional finalize here — the observation window
         // owns success finalization. Only setIsSending is cleared.
