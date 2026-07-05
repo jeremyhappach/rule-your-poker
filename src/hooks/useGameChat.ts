@@ -263,50 +263,71 @@ export const useGameChat = (
           chatIdentity?.route ??
           (typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId}`);
         const sessionId = chatIdentity?.sessionId ?? (gameId ? `session:${gameId}` : getTabSessionId());
-        const opened = await openServerChatOperation({
-          operationId: correlationId,
-          senderUserId: userId,
-          gameId,
-          sessionId,
-          dealerGameId: chatIdentity?.dealerGameId ?? null,
-          route,
-          activeTab: chatIdentity?.activeTab ?? null,
-          shellPhase: chatIdentity?.shellPhase ?? null,
-          originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
-          messagePreview: message.trim(),
-          // Extended waiting-table identity/context
-          routeGameId: chatIdentity?.routeGameId ?? null,
-          canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
-          operationGameId: chatIdentity?.operationGameId ?? gameId,
-          rawGameType: chatIdentity?.rawGameType ?? null,
-          resolvedGameType: chatIdentity?.resolvedGameType ?? null,
-          gameTypeSource: chatIdentity?.gameTypeSource ?? null,
-          gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
-          currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
-          localTurnEligible: chatIdentity?.localTurnEligible ?? null,
-          waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
-          activeGameComponent: chatIdentity?.activeGameComponent ?? null,
-          tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
-        });
-        if (!opened) {
-          setIsSending(false);
-          return;
-        }
-        // Immediate presence proof — a sender that dies in the first 3s
-        // still leaves durable heartbeat + armed-boundary evidence
-        // before optimistic mutation runs.
-        await writeChatOperationSenderHeartbeat(correlationId, { phase: 'operation-armed' });
-        recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
-          operationId: correlationId,
-          route,
-        });
-        openChatSendOperation(correlationId, {
-          gameId,
-          sessionId,
-          route,
-          hasText: Boolean(message.trim()),
-          hasImage: Boolean(imageFile),
-        });
+        // CRITICAL PATH RULE: instrumentation must NEVER gate, delay, or
+        // reject the business chat send. We register the operation into
+        // the client-side current-session registry synchronously (so
+        // boundary/heartbeat fan-out still targets it), then fire every
+        // durable instrumentation write fully fire-and-forget with
+        // isolated error handling. A failure to open the durable
+        // chat_send_operations row, to write the armed heartbeat, or to
+        // emit the SENDER_OPERATION_ARMED boundary event MUST NOT stop
+        // the chat_messages insert below.
+        try {
+          registerCurrentSessionChatOperation({
+            operationId: correlationId,
+            gameId,
+            sessionId,
+            route,
+            role: 'sender',
+          });
+        } catch { /* registry is best-effort */ }
+        try {
+          void openServerChatOperation({
+            operationId: correlationId,
+            senderUserId: userId,
+            gameId,
+            sessionId,
+            dealerGameId: chatIdentity?.dealerGameId ?? null,
+            route,
+            activeTab: chatIdentity?.activeTab ?? null,
+            shellPhase: chatIdentity?.shellPhase ?? null,
+            originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
+            messagePreview: message.trim(),
+            // Extended waiting-table identity/context
+            routeGameId: chatIdentity?.routeGameId ?? null,
+            canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
+            operationGameId: chatIdentity?.operationGameId ?? gameId,
+            rawGameType: chatIdentity?.rawGameType ?? null,
+            resolvedGameType: chatIdentity?.resolvedGameType ?? null,
+            gameTypeSource: chatIdentity?.gameTypeSource ?? null,
+            gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
+            currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
+            localTurnEligible: chatIdentity?.localTurnEligible ?? null,
+            waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
+            activeGameComponent: chatIdentity?.activeGameComponent ?? null,
+            tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
+          }).catch(() => { /* instrumentation only */ });
+        } catch { /* instrumentation only */ }
+        try {
+          void writeChatOperationSenderHeartbeat(correlationId, {
+            phase: 'operation-armed',
+          });
+        } catch { /* instrumentation only */ }
+        try {
+          recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
+            operationId: correlationId,
+            route,
+          });
+        } catch { /* instrumentation only */ }
+        try {
+          openChatSendOperation(correlationId, {
+            gameId,
+            sessionId,
+            route,
+            hasText: Boolean(message.trim()),
+            hasImage: Boolean(imageFile),
+          });
+        } catch { /* instrumentation only */ }
 
         let imageUrl: string | null = null;
         if (imageFile) {
