@@ -20,6 +20,7 @@ import {
 import {
   appendChatPeerMilestone,
   appendChatSenderMilestone,
+  awaitPeerOperationVisibility,
   createChatOperationId,
   finalizeServerChatOperation,
   markChatOperationDeliveryConfirmed,
@@ -253,6 +254,9 @@ export const useGameChat = (
       );
 
       setIsSending(true);
+      // Hoisted so the outer `catch` can still gate SEND_EXCEPTION
+      // telemetry behind the durable-open promise.
+      let telemetryReady: Promise<boolean> = Promise.resolve(false);
       try {
         // IMPORTANT: Avoid supabase.auth.getUser() here — it can clear a valid session.
         const { data: sessionData } = await supabase.auth.getSession();
@@ -263,62 +267,80 @@ export const useGameChat = (
           chatIdentity?.route ??
           (typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId}`);
         const sessionId = chatIdentity?.sessionId ?? (gameId ? `session:${gameId}` : getTabSessionId());
-        // CRITICAL PATH RULE: instrumentation must NEVER gate, delay, or
-        // reject the business chat send. We register the operation into
-        // the client-side current-session registry synchronously (so
-        // boundary/heartbeat fan-out still targets it), then fire every
-        // durable instrumentation write fully fire-and-forget with
-        // isolated error handling. A failure to open the durable
-        // chat_send_operations row, to write the armed heartbeat, or to
-        // emit the SENDER_OPERATION_ARMED boundary event MUST NOT stop
-        // the chat_messages insert below.
-        try {
-          registerCurrentSessionChatOperation({
-            operationId: correlationId,
-            gameId,
-            sessionId,
-            route,
-            role: 'sender',
-          });
-        } catch { /* registry is best-effort */ }
-        try {
-          void openServerChatOperation({
-            operationId: correlationId,
-            senderUserId: userId,
-            gameId,
-            sessionId,
-            dealerGameId: chatIdentity?.dealerGameId ?? null,
-            route,
-            activeTab: chatIdentity?.activeTab ?? null,
-            shellPhase: chatIdentity?.shellPhase ?? null,
-            originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
-            messagePreview: message.trim(),
-            // Extended waiting-table identity/context
-            routeGameId: chatIdentity?.routeGameId ?? null,
-            canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
-            operationGameId: chatIdentity?.operationGameId ?? gameId,
-            rawGameType: chatIdentity?.rawGameType ?? null,
-            resolvedGameType: chatIdentity?.resolvedGameType ?? null,
-            gameTypeSource: chatIdentity?.gameTypeSource ?? null,
-            gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
-            currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
-            localTurnEligible: chatIdentity?.localTurnEligible ?? null,
-            waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
-            activeGameComponent: chatIdentity?.activeGameComponent ?? null,
-            tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
-          }).catch(() => { /* instrumentation only */ });
-        } catch { /* instrumentation only */ }
-        try {
+        // TELEMETRY ORDERING CONTRACT:
+        //   1. `telemetryReady` opens the durable chat_send_operations
+        //      row and (only on success) registers the operation into
+        //      the client-side current-session registry.
+        //   2. The business send path (optimistic mutation +
+        //      chat_messages.insert) below runs immediately and NEVER
+        //      awaits telemetryReady.
+        //   3. Every operation-scoped write (armed heartbeat, boundary
+        //      events, sender milestones, delivery-confirmed marker,
+        //      observation-window heartbeats/finalize, terminal
+        //      snapshots) is gated behind
+        //      `void telemetryReady.then((ok) => { if (!ok) return; ... })`
+        //      so no operation-scoped RPC can precede the durable open.
+        //   4. If the durable open fails, telemetry is marked
+        //      unavailable locally (`ok===false`); the chat send still
+        //      completes normally and no operation-scoped RPCs are
+        //      attempted against a missing row.
+        telemetryReady = openServerChatOperation({
+          operationId: correlationId,
+          senderUserId: userId,
+          gameId,
+          sessionId,
+          dealerGameId: chatIdentity?.dealerGameId ?? null,
+          route,
+          activeTab: chatIdentity?.activeTab ?? null,
+          shellPhase: chatIdentity?.shellPhase ?? null,
+          originSurface: chatIdentity?.originSurface ?? 'normal_chat_composer',
+          messagePreview: message.trim(),
+          // Extended waiting-table identity/context
+          routeGameId: chatIdentity?.routeGameId ?? null,
+          canonicalShellGameId: chatIdentity?.canonicalShellGameId ?? null,
+          operationGameId: chatIdentity?.operationGameId ?? gameId,
+          rawGameType: chatIdentity?.rawGameType ?? null,
+          resolvedGameType: chatIdentity?.resolvedGameType ?? null,
+          gameTypeSource: chatIdentity?.gameTypeSource ?? null,
+          gameControllerPresent: chatIdentity?.gameControllerPresent ?? null,
+          currentTurnPlayerId: chatIdentity?.currentTurnPlayerId ?? null,
+          localTurnEligible: chatIdentity?.localTurnEligible ?? null,
+          waitingTableComponent: chatIdentity?.waitingTableComponent ?? null,
+          activeGameComponent: chatIdentity?.activeGameComponent ?? null,
+          tabBarRenderKey: chatIdentity?.tabBarRenderKey ?? null,
+        })
+          .then((ok) => {
+            if (ok) {
+              try {
+                registerCurrentSessionChatOperation({
+                  operationId: correlationId,
+                  gameId,
+                  sessionId,
+                  route,
+                  role: 'sender',
+                });
+              } catch { /* registry best-effort */ }
+            }
+            return ok;
+          })
+          .catch(() => false);
+
+        // Operation-scoped arming — strictly behind telemetryReady.
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
           void writeChatOperationSenderHeartbeat(correlationId, {
             phase: 'operation-armed',
           });
-        } catch { /* instrumentation only */ }
-        try {
-          recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
-            operationId: correlationId,
-            route,
-          });
-        } catch { /* instrumentation only */ }
+          try {
+            recordChatBoundaryEvent('SENDER_OPERATION_ARMED', {
+              operationId: correlationId,
+              route,
+            });
+          } catch { /* instrumentation only */ }
+        });
+
+        // Shell-attention capture is a client-side snapshot store with
+        // no dependency on the durable operation row; safe to open now.
         try {
           openChatSendOperation(correlationId, {
             gameId,
@@ -349,11 +371,14 @@ export const useGameChat = (
           username,
         };
 
-        void appendChatSenderMilestone(correlationId, 'OPTIMISTIC_MUTATION', {
-          optimisticId,
-          createdAt: sentAt,
-          hasImage: Boolean(imageUrl),
-        }, { optimisticMessageId: optimisticId });
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'OPTIMISTIC_MUTATION', {
+            optimisticId,
+            createdAt: sentAt,
+            hasImage: Boolean(imageUrl),
+          }, { optimisticMessageId: optimisticId });
+        });
 
         setAllMessages(prev => {
           const next = mergeMessages(prev, [optimisticMessage]);
@@ -376,10 +401,13 @@ export const useGameChat = (
           correlation_id: correlationId,
           game_id: gameId,
         });
-        void appendChatSenderMilestone(correlationId, 'DB_INSERT_START', {
-          optimisticId,
-          dbStartAt,
-        }, { optimisticMessageId: optimisticId });
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'DB_INSERT_START', {
+            optimisticId,
+            dbStartAt,
+          }, { optimisticMessageId: optimisticId });
+        });
         const { data, error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
           user_id: userId,
@@ -414,17 +442,20 @@ export const useGameChat = (
             error,
             payload: { optimisticId },
           });
-          void appendChatSenderMilestone(correlationId, 'DB_INSERT_FAILURE', {
-            error: error.message,
-            optimisticId,
-          }, { optimisticMessageId: optimisticId });
-          writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
-          void finalizeServerChatOperation(
-            correlationId,
-            'db-insert-failed',
-            error.message,
-            getChatOperationSnapshots(correlationId),
-          );
+          void telemetryReady.then((ready) => {
+            if (!ready) return;
+            void appendChatSenderMilestone(correlationId, 'DB_INSERT_FAILURE', {
+              error: error.message,
+              optimisticId,
+            }, { optimisticMessageId: optimisticId });
+            writeChatOperationTerminalSnapshot(correlationId, error.message, 'db-insert-failed');
+            void finalizeServerChatOperation(
+              correlationId,
+              'db-insert-failed',
+              error.message,
+              getChatOperationSnapshots(correlationId),
+            );
+          });
           void upsertDeliveryTrace({
             message_id: optimisticId,
             recipient_client_instance_id: getClientInstanceId(),
@@ -470,11 +501,14 @@ export const useGameChat = (
             message_id: data.id,
             payload: { optimisticId },
           });
-          void appendChatSenderMilestone(correlationId, 'DB_INSERT_SUCCESS', {
-            optimisticId,
-            authoritativeId: data.id,
-            successAt,
-          }, { messageId: data.id, optimisticMessageId: optimisticId });
+          void telemetryReady.then((ready) => {
+            if (!ready) return;
+            void appendChatSenderMilestone(correlationId, 'DB_INSERT_SUCCESS', {
+              optimisticId,
+              authoritativeId: data.id,
+              successAt,
+            }, { messageId: data.id, optimisticMessageId: optimisticId });
+          });
           void upsertDeliveryTrace({
             message_id: data.id,
             recipient_client_instance_id: getClientInstanceId(),
@@ -515,49 +549,55 @@ export const useGameChat = (
           // completed-observation-window unless a real terminator
           // (sender-lost, error boundary, auth sign-out, navigation
           // ejection, etc.) fires first.
-          void markChatOperationDeliveryConfirmed(correlationId, 'sender-db-success', {
-            authoritativeId: data.id,
-            confirmedAt: successAt,
+          void telemetryReady.then((ready) => {
+            if (!ready) return;
+            void markChatOperationDeliveryConfirmed(correlationId, 'sender-db-success', {
+              authoritativeId: data.id,
+              confirmedAt: successAt,
+            });
+            void writeChatOperationSenderHeartbeat(correlationId, {
+              phase: 'post-db-success',
+            });
+            if (typeof window !== 'undefined') {
+              window.setTimeout(() => {
+                writeChatOperationTerminalSnapshot(
+                  correlationId,
+                  'observation-window-expired',
+                  'completed-observation-window',
+                );
+                void finalizeServerChatOperation(
+                  correlationId,
+                  'completed-observation-window',
+                  '30s-observation-window-expired-no-terminator',
+                  getChatOperationSnapshots(correlationId),
+                );
+                finalizeChatSendOperation(correlationId, 'success');
+              }, 30_000);
+            }
           });
-          void writeChatOperationSenderHeartbeat(correlationId, {
-            phase: 'post-db-success',
-          });
-          if (typeof window !== 'undefined') {
-            window.setTimeout(() => {
-              writeChatOperationTerminalSnapshot(
-                correlationId,
-                'observation-window-expired',
-                'completed-observation-window',
-              );
-              void finalizeServerChatOperation(
-                correlationId,
-                'completed-observation-window',
-                '30s-observation-window-expired-no-terminator',
-                getChatOperationSnapshots(correlationId),
-              );
-              finalizeChatSendOperation(correlationId, 'success');
-            }, 30_000);
-          }
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
         finalizeChatSendOperation(correlationId, 'error', {
           message: (error as Error)?.message ?? String(error),
         });
-        void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
-          message: (error as Error)?.message ?? String(error),
+        void telemetryReady.then((ready) => {
+          if (!ready) return;
+          void appendChatSenderMilestone(correlationId, 'SEND_EXCEPTION', {
+            message: (error as Error)?.message ?? String(error),
+          });
+          writeChatOperationTerminalSnapshot(
+            correlationId,
+            (error as Error)?.message ?? String(error),
+            'send-exception',
+          );
+          void finalizeServerChatOperation(
+            correlationId,
+            'send-exception',
+            (error as Error)?.message ?? String(error),
+            getChatOperationSnapshots(correlationId),
+          );
         });
-        writeChatOperationTerminalSnapshot(
-          correlationId,
-          (error as Error)?.message ?? String(error),
-          'send-exception',
-        );
-        void finalizeServerChatOperation(
-          correlationId,
-          'send-exception',
-          (error as Error)?.message ?? String(error),
-          getChatOperationSnapshots(correlationId),
-        );
       } finally {
         // NOTE: no unconditional finalize here — the observation window
         // owns success finalization. Only setIsSending is cleared.
@@ -811,61 +851,73 @@ export const useGameChat = (
             if (newMessage.chat_operation_id && newMessage.user_id !== currentUserId) {
               const route = typeof window !== 'undefined' ? window.location.pathname : (chatIdentity?.route ?? `/game/${gameId}`);
               const sessionId = chatIdentity?.sessionId ?? `session:${gameId}`;
-              registerCurrentSessionChatOperation({
-                operationId: newMessage.chat_operation_id,
-                gameId,
-                sessionId,
-                route,
-                role: 'peer',
-              });
-              beginChatOperationSnapshotCapture(newMessage.chat_operation_id);
-              void appendChatPeerMilestone(
-                newMessage.chat_operation_id,
-                'REALTIME_RECEIPT',
-                {
-                  receiverUserId: currentUserId ?? null,
-                  senderUserId: newMessage.user_id,
+              const opId = newMessage.chat_operation_id;
+              const msgId = newMessage.id;
+              const senderUserId = newMessage.user_id;
+              // Peer telemetry gate: retain the observation in-memory
+              // and only flush operation-scoped writes after the durable
+              // sender operation row becomes visible (bounded 5 s).
+              // Message rendering / unread state / chat behavior above
+              // is untouched. Peer does NOT create a new chat operation
+              // — we only register once visibility is confirmed.
+              void awaitPeerOperationVisibility(opId, 5_000).then((visible) => {
+                if (!visible) return;
+                try {
+                  registerCurrentSessionChatOperation({
+                    operationId: opId,
+                    gameId,
+                    sessionId,
+                    route,
+                    role: 'peer',
+                  });
+                } catch { /* registry best-effort */ }
+                beginChatOperationSnapshotCapture(opId);
+                void appendChatPeerMilestone(
+                  opId,
+                  'REALTIME_RECEIPT',
+                  {
+                    receiverUserId: currentUserId ?? null,
+                    senderUserId,
+                    receiptAt,
+                    route,
+                  },
+                  msgId,
+                  getChatOperationSnapshots(opId),
+                );
+                void writeChatOperationPeerHeartbeat(opId, {
+                  phase: 'peer-realtime-receipt',
+                });
+                void markChatOperationDeliveryConfirmed(opId, 'peer-realtime-receipt', {
+                  messageId: msgId,
+                  senderUserId,
                   receiptAt,
-                  route,
-                },
-                newMessage.id,
-                getChatOperationSnapshots(newMessage.chat_operation_id),
-              );
-              // Observation window: peer MUST NOT finalize or write a
-              // terminal snapshot at realtime receipt. Mark delivery
-              // confirmed, immediately heartbeat, arm PEER_OPERATION_OBSERVED,
-              // and schedule a 30 s observation-window finalize.
-              void writeChatOperationPeerHeartbeat(newMessage.chat_operation_id, {
-                phase: 'peer-realtime-receipt',
+                });
+                try {
+                  recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
+                    operationId: opId,
+                    messageId: msgId,
+                    senderUserId,
+                    route,
+                  });
+                } catch { /* instrumentation only */ }
+                if (typeof window !== 'undefined') {
+                  window.setTimeout(() => {
+                    writeChatOperationTerminalSnapshot(
+                      opId,
+                      'peer-observation-window-expired',
+                      'completed-observation-window',
+                    );
+                    void finalizeServerChatOperation(
+                      opId,
+                      'completed-observation-window',
+                      'peer-30s-observation-window-expired',
+                      getChatOperationSnapshots(opId),
+                    );
+                  }, 30_000);
+                }
               });
-              void markChatOperationDeliveryConfirmed(newMessage.chat_operation_id, 'peer-realtime-receipt', {
-                messageId: newMessage.id,
-                senderUserId: newMessage.user_id,
-                receiptAt,
-              });
-              recordChatBoundaryEvent('PEER_OPERATION_OBSERVED', {
-                operationId: newMessage.chat_operation_id,
-                messageId: newMessage.id,
-                senderUserId: newMessage.user_id,
-                route,
-              });
-              if (typeof window !== 'undefined') {
-                const opId = newMessage.chat_operation_id;
-                window.setTimeout(() => {
-                  writeChatOperationTerminalSnapshot(
-                    opId,
-                    'peer-observation-window-expired',
-                    'completed-observation-window',
-                  );
-                  void finalizeServerChatOperation(
-                    opId,
-                    'completed-observation-window',
-                    'peer-30s-observation-window-expired',
-                    getChatOperationSnapshots(opId),
-                  );
-                }, 30_000);
-              }
             }
+
             void upsertDeliveryTrace({
               message_id: newMessage.id,
               recipient_client_instance_id: getClientInstanceId(),

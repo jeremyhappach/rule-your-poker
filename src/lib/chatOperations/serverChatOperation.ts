@@ -261,6 +261,40 @@ export async function writeChatOperationPeerHeartbeat(
 }
 
 /**
+ * Peer-side bounded visibility probe. A peer that observes a realtime
+ * chat_messages INSERT may race ahead of the sender's durable
+ * `chat_send_operations` row. This helper polls
+ * `chat_operation_read_sender_presence` at 500 ms intervals for up to
+ * `maxMs` (default 5 s) and resolves `true` the first time the row is
+ * visible, or `false` when the window elapses. Never throws; never
+ * gates message rendering or unread state — the caller MUST leave the
+ * business projection untouched and only use the resolved boolean to
+ * decide whether to attempt operation-scoped peer telemetry writes.
+ */
+export async function awaitPeerOperationVisibility(
+  operationId: string,
+  maxMs = 5_000,
+): Promise<boolean> {
+  const deadline = Date.now() + maxMs;
+  // Fast path: probe once immediately.
+  const probe = async (): Promise<boolean> => {
+    try {
+      const { data } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown[] | null }>)(
+        'chat_operation_read_sender_presence',
+        { _operation_id: operationId },
+      );
+      return Array.isArray(data) && data.length > 0;
+    } catch { return false; }
+  };
+  if (await probe()) return true;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 500));
+    if (await probe()) return true;
+  }
+  return false;
+}
+
+/**
  * Mark the operation as delivery-confirmed and open the 30-second
  * observation window. Idempotent server-side (first caller wins for
  * delivery_confirmed_at/kind and observation_window_start_at).
