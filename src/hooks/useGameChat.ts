@@ -476,6 +476,7 @@ export const useGameChat = (
             });
             return next;
           });
+          writeChatOperationTerminalSnapshot(correlationId, 'authoritative-row-written', 'send-complete');
           void finalizeServerChatOperation(
             correlationId,
             'send-complete',
