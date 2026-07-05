@@ -46,6 +46,16 @@ async function writeEdgeEvent(
   } catch { /* durability-best-effort */ }
 }
 
+/** Fire-and-forget: run the server-side finalizer immediately so any
+ * eligible incident (including this one) is turned into a report even if
+ * the sender client never sends another event. */
+async function runFinalizer(): Promise<void> {
+  if (!admin) return;
+  try { await admin.rpc("finalize_voice_operations"); } catch { /* noop */ }
+}
+
+
+
 async function patchIncident(
   voice_operation_id: string | null | undefined,
   patch: Record<string, unknown>,
@@ -99,10 +109,12 @@ serve(async (req) => {
         edge_function_error_category: "not-configured",
         edge_function_error_message: "not configured",
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: "voice-to-text capability not configured." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     if (!audio || typeof audio !== "string") {
@@ -118,10 +130,12 @@ serve(async (req) => {
         edge_function_status_code: 400,
         edge_function_error_category: "validation",
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: "Missing audio payload." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_VALIDATED", {
@@ -176,10 +190,12 @@ serve(async (req) => {
         edge_function_error_category: errCategory,
         edge_function_error_message: errMsg,
       });
+      await runFinalizer();
       return new Response(
         JSON.stringify({ error: errMsg, detail: txt.slice(0, 512) }),
         { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     const payload = await upstream.json();
@@ -204,10 +220,15 @@ serve(async (req) => {
       edge_function_status_code: 200,
     });
 
+    // Terminal server state — kick the finalizer immediately so a report
+    // exists even if the sender client never sends another event.
+    await runFinalizer();
+
     return new Response(
       JSON.stringify({ transcript }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
@@ -223,6 +244,8 @@ serve(async (req) => {
       edge_function_error_category: "unhandled",
       edge_function_error_message: message.slice(0, 500),
     });
+    await runFinalizer();
+
     return new Response(
       JSON.stringify({ error: message || "voice-to-text error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
