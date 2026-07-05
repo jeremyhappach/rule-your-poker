@@ -152,10 +152,12 @@ const App = () => {
                   path="/game/:gameId"
                   element={
                     <RouteErrorBoundary title="Game screen crashed">
+                      <VoiceOperationPresenceMount />
                       <Game />
                     </RouteErrorBoundary>
                   }
                 />
+
                 <Route path="/test-hands" element={<HandEvalTest />} />
                 <Route path="/debug-hands" element={<HandEvalDebug />} />
                 <Route path="/dice-preview" element={<DicePreview />} />
