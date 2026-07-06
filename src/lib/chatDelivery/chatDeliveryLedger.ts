@@ -340,7 +340,16 @@ export function recordChatDeliveryEvent(input: {
   state.events.push(event);
   if (state.events.length > MAX_EVENTS) state.events.splice(0, state.events.length - MAX_EVENTS);
   touchMessage(state, messageId, input.phase, gameId);
-  saveState(state);
+  if (DURABLE_DELIVERY_PHASES.has(input.phase)) {
+    saveState(state);
+  } else {
+    // UI-observation phase (panel-open/closed, message-mounted,
+    // selector-recomputed, consumer-mounted/unmounted, attention-*,
+    // indicator-*, unread-*, react-render-observed, console taps, etc.)
+    // Never persist synchronously — that caused the iPhone Chat idle
+    // boot loop (CHAT-ISO-B5A).
+    saveStateMemoryOnly(state);
+  }
 }
 
 export function recordChatDeliveryViolation(input: {
