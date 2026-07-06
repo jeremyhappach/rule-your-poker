@@ -97,6 +97,9 @@ export const MobileChatPanelIsoB5A = ({
   onChatInputChange,
   dealerMessages = [],
   currentUserId,
+  instrumentationCurrentUserId,
+  diagnosticGameId,
+  diagnosticDealerGameId,
 }: MobileChatPanelProps) => {
   const [internalInputMessage, setInternalInputMessage] = useState('');
   const inputMessage = chatInputValue ?? internalInputMessage;
