@@ -666,29 +666,17 @@ function WaitingSurfaceBody({
 
           {activeTab === "chat" && (
             <div className="h-full p-2 flex flex-col min-h-0">
-              {/* CHAT-ISO-B1: real MobileChatPanel restored, only voice
-                  subtree disabled. All other panel logic (messages,
-                  composer, mute preference, ledger/events, selector/
-                  render effects, incident/export subtree) preserved. */}
+              {/* CHAT-ISO-B2: render-only Chat panel. Same visual DOM
+                  and layout as MobileChatPanel, but ZERO side effects
+                  (no hooks/effects, no profile fetch, no ledger, no
+                  tracing/selector-proof, no incident/export, no
+                  realtime/read-state, no listeners, no timers,
+                  no voice). */}
               <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT-ISO-B1
+                CHAT-ISO-B2 — VISUAL ONLY
               </div>
               <div className="flex-1 min-h-0">
-                {onSendChat ? (
-                  <MobileChatPanelIsoB1
-                    messages={allMessages ?? []}
-                    onSend={onSendChat}
-                    isSending={isChatSending}
-                    currentUserId={currentUserId}
-                    instrumentationCurrentUserId={currentUserId}
-                    diagnosticGameId={gameId ?? null}
-                    diagnosticDealerGameId={null}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-white/50 text-sm">
-                    Chat not available
-                  </div>
-                )}
+                <MobileChatPanelIsoB2 messages={allMessages ?? []} />
               </div>
             </div>
           )}
