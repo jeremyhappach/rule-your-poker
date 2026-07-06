@@ -114,19 +114,25 @@ export const MobileChatPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    recordReactRenderObserved({
-      consumer: 'MobileChatPanel',
-      sourceCollection: messages,
-      gameId: diagnosticGameId ?? null,
-      dealerGameId: diagnosticDealerGameId ?? null,
-      payload: {
-        currentUserId: diagnosticUserId ?? null,
-        dealerCount: dealerMessages.length,
-        muteDealerChat,
-      },
-    });
-  });
+  // REMOVED: per-render `recordReactRenderObserved` effect.
+  // ROOT CAUSE (iPhone Chat idle boot loop, CHAT-ISO-B5A):
+  //   useEffect with no dep array → recordReactRenderObserved()
+  //     → recordChatDeliveryEvent()
+  //       → loadState() + state.events.push()
+  //         → saveState()
+  //           → JSON.stringify(entire ledger) + localStorage.setItem(...)  (sync main-thread write, grows each render)
+  //           → window.dispatchEvent('chat-delivery-ledger-updated')
+  //   On mobile Safari/WebView the sync localStorage write of a growing
+  //   blob per commit stalls the main thread and, on quota pressure,
+  //   throws → bubbles into session/auth recovery → shell teardown / boot.
+  //
+  // PERMANENT RULE: a React render-observation function must be
+  // observational only. Never mutate React state, contexts consumed by
+  // the panel, subscribed stores, dispatch panel-visible events, or
+  // perform sync network/storage writes per render. This effect
+  // violated all of the above and is deleted from production.
+  // Dev-only sampling (if ever needed) lives behind a build-time flag
+  // in the ledger itself and is a no-op in published builds.
 
   useEffect(() => {
     if (!currentUserId) {
