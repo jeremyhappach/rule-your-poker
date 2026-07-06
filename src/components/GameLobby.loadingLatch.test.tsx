@@ -153,10 +153,9 @@ beforeEach(() => {
   root = createRoot(container);
   toastMock.mockClear();
   nextGamesOutcome = { kind: 'ok', data: [] };
-
-  nextGamesOutcome = { kind: 'ok', data: [] };
   pendingOverride = null;
 });
+
 
 afterEach(async () => {
   try { await act(async () => { root.unmount(); }); } catch { /* ignore */ }
