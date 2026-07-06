@@ -218,6 +218,43 @@ function saveState(state: ChatLedgerState) {
   }
 }
 
+/**
+ * PERMANENT POLICY (CHAT-ISO-B5A postmortem):
+ * UI observation must NEVER synchronously persist the delivery ledger.
+ * Any ledger write triggered by a React render/commit, panel mount,
+ * message DOM mount, selector recomputation, or violation heuristic
+ * MUST go through saveStateMemoryOnly — no localStorage.setItem, no
+ * JSON.stringify of the growing ledger, no CustomEvent dispatch.
+ *
+ * Durable persistence is reserved for actual chat delivery-state
+ * boundaries listed in DURABLE_DELIVERY_PHASES.
+ */
+function saveStateMemoryOnly(state: ChatLedgerState) {
+  memoryState = state;
+}
+
+const DURABLE_DELIVERY_PHASES: ReadonlySet<ChatLifecyclePhase> = new Set<ChatLifecyclePhase>([
+  'send-intent',
+  'optimistic-merged',
+  'insert-success',
+  'insert-error',
+  'realtime-subscribe-start',
+  'realtime-subscribe-status',
+  'realtime-unsubscribe',
+  'realtime-insert-received',
+  'realtime-payload-admitted',
+  'store-message-merged',
+  'hydration-start',
+  'hydration-merge',
+  'optimistic-reconciliation',
+  'canonical-projection-updated',
+  'identity-change',
+  'realtime-eligible-observed',
+  'read-cursor-advanced',
+]);
+
+export const __CHAT_DELIVERY_DURABLE_PHASES_FOR_TESTS = DURABLE_DELIVERY_PHASES;
+
 export function getCollectionRefId(value: unknown): string {
   if (value == null) return 'null';
   if (typeof value !== 'object' && typeof value !== 'function') return `${typeof value}:${String(value)}`;
