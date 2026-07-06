@@ -290,7 +290,7 @@ export const MobileChatPanelIsoB4 = ({
         </div>
 
         <div className="mt-1 px-1 text-[10px] text-white/60 leading-tight font-mono">
-          CHAT-ISO-B4 — PROFILE FETCH ONLY
+          CHAT-ISO-B4 — CONTROL
         </div>
 
         <div className="flex items-center gap-2 mt-2 px-1">
