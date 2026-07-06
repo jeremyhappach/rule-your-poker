@@ -291,14 +291,14 @@ describe('useGameChat.sendMessage — telemetry-failure resilience', () => {
     expect(errorFinalizeCalls().length).toBeGreaterThanOrEqual(1);
   });
 
-  it('chat_messages.insert returning { error } does NOT surface as composer error (business insert-error is a separate, handled path)', async () => {
+  it('chat_messages.insert returning { error } surfaces as composer error (same user-visible failure as thrown insert)', async () => {
     insertShouldError = true;
     await mount();
     await act(async () => { await captured!('hello'); });
     await flush();
     expect(insertMock).toHaveBeenCalledTimes(1);
-    // The outer catch is only for thrown exceptions; a returned {error}
-    // is handled inline and does NOT trigger finalizeChatSendOperation('error').
-    expect(errorFinalizeCalls()).toHaveLength(0);
+    // A returned {error} is a real message-submit failure and MUST
+    // trigger the composer error path just like a thrown exception.
+    expect(errorFinalizeCalls().length).toBeGreaterThanOrEqual(1);
   });
 });
