@@ -45,8 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-// CHAT-ISO-B: MobileChatPanel import removed to guarantee subtree never mounts.
-// import { MobileChatPanel } from "@/components/MobileChatPanel";
+// CHAT-ISO-B1: Real MobileChatPanel restored via voice-disabled variant.
+import { MobileChatPanelIsoB1 } from "@/components/MobileChatPanelIsoB1";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
@@ -665,19 +665,30 @@ function WaitingSurfaceBody({
           )}
 
           {activeTab === "chat" && (
-            <div className="h-full p-2">
-              {/* CHAT-ISO-B: MobileChatPanel intentionally not mounted.
-                  Preserves activeTab='chat' branch, container layout,
-                  shell, route, session, realtime, and auth. No child
-                  hooks, no voice, no profile fetch, no ledger, no
-                  selector/render instrumentation, no composer. */}
-              <div className="h-full flex flex-col items-center justify-center bg-black/90 rounded-lg border border-white/20 text-center px-4">
-                <div className="text-white text-lg font-semibold">
-                  CHAT STUB — MOBILE PANEL DISABLED
-                </div>
-                <div className="mt-2 text-white/60 text-xs font-mono">
-                  CHAT-ISO-B
-                </div>
+            <div className="h-full p-2 flex flex-col min-h-0">
+              {/* CHAT-ISO-B1: real MobileChatPanel restored, only voice
+                  subtree disabled. All other panel logic (messages,
+                  composer, mute preference, ledger/events, selector/
+                  render effects, incident/export subtree) preserved. */}
+              <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
+                CHAT-ISO-B1
+              </div>
+              <div className="flex-1 min-h-0">
+                {onSendChat ? (
+                  <MobileChatPanelIsoB1
+                    messages={allMessages ?? []}
+                    onSend={onSendChat}
+                    isSending={isChatSending}
+                    currentUserId={currentUserId}
+                    instrumentationCurrentUserId={currentUserId}
+                    diagnosticGameId={gameId ?? null}
+                    diagnosticDealerGameId={null}
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-white/50 text-sm">
+                    Chat not available
+                  </div>
+                )}
               </div>
             </div>
           )}
