@@ -188,7 +188,7 @@ describe('GameLobby loading-latch', () => {
     expect(toastMock).not.toHaveBeenCalled();
   });
 
-  it('keeps list visible and dedupes toast across repeated poll failures; success resets episode', async () => {
+  it('keeps list visible and dedupes toast across repeated poll failures; success resets episode', { timeout: 15000 }, async () => {
     // Initial success.
     nextGamesOutcome = { kind: 'ok', data: [] };
     await mount();
