@@ -45,7 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-import { MobileChatPanel } from "@/components/MobileChatPanel";
+// CHAT-ISO-B: MobileChatPanel import removed to guarantee subtree never mounts.
+// import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
@@ -665,18 +666,19 @@ function WaitingSurfaceBody({
 
           {activeTab === "chat" && (
             <div className="h-full p-2">
-              {onSendChat ? (
-                <MobileChatPanel
-                  messages={allMessages}
-                  onSend={onSendChat}
-                  isSending={isChatSending}
-                  currentUserId={currentUserId}
-                />
-              ) : (
-                <p className="text-muted-foreground text-sm text-center mt-6">
-                  Chat not available
-                </p>
-              )}
+              {/* CHAT-ISO-B: MobileChatPanel intentionally not mounted.
+                  Preserves activeTab='chat' branch, container layout,
+                  shell, route, session, realtime, and auth. No child
+                  hooks, no voice, no profile fetch, no ledger, no
+                  selector/render instrumentation, no composer. */}
+              <div className="h-full flex flex-col items-center justify-center bg-black/90 rounded-lg border border-white/20 text-center px-4">
+                <div className="text-white text-lg font-semibold">
+                  CHAT STUB — MOBILE PANEL DISABLED
+                </div>
+                <div className="mt-2 text-white/60 text-xs font-mono">
+                  CHAT-ISO-B
+                </div>
+              </div>
             </div>
           )}
 
