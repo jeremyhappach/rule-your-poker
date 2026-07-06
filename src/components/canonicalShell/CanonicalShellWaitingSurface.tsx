@@ -46,7 +46,7 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 // CHAT-ISO-B4 — CONTROL: exact B4 rollback panel.
-import { MobileChatPanelIsoB4 } from "@/components/MobileChatPanelIsoB4";
+import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
