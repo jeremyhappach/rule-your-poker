@@ -46,7 +46,7 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 // CHAT-ISO-B4 — CONTROL: exact B4 rollback panel.
-import { MobileChatPanelIsoB4 } from "@/components/MobileChatPanelIsoB4";
+import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
@@ -666,12 +666,9 @@ function WaitingSurfaceBody({
 
           {activeTab === "chat" && (
             <div className="h-full p-2 flex flex-col min-h-0">
-              <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT-ISO-B4 — CONTROL
-              </div>
               <div className="flex-1 min-h-0">
                 {onSendChat ? (
-                  <MobileChatPanelIsoB4
+                  <MobileChatPanel
                     messages={allMessages ?? []}
                     onSend={onSendChat}
                     isSending={isChatSending}
