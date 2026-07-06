@@ -10,7 +10,6 @@ import {
   recordChatDeliveryEvent,
   recordChatDeliveryViolation,
   recordConsumerSubscription,
-  recordReactRenderObserved,
   recordSelectorProof,
 } from '@/lib/chatDelivery/chatDeliveryLedger';
 
