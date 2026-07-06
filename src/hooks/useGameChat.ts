@@ -616,18 +616,43 @@ export const useGameChat = (
   const seenFirstRemoteForGameRef = useRef<string | null>(null);
 
   // Add a new bubble and merge into canonical projection.
-  const addBubble = useCallback(async (msg: ChatMessage) => {
+  //
+  // INVARIANT (CHAT-RENDER-B1): `setAllMessages` MUST run synchronously
+  // in the same tick as the realtime callback. A prior version awaited
+  // `getOrFetchObserverUsername` BEFORE `setAllMessages`, which meant
+  // that any stall on the `profiles` fetch (RLS, PostgREST saturation,
+  // network hiccup) held the entire canonical projection off React
+  // state until the fetch resolved. On the iPhone incident this
+  // manifested as a 30–45s delay in which realtime was proven healthy
+  // (`realtime-payload-admitted` fired), but the message never reached
+  // the DOM until an unrelated composer state update forced a rerender.
+  //
+  // The fix: resolve username from purely-synchronous sources (seated
+  // player, self observer, cached observer). If none match we admit
+  // the row immediately with the placeholder `'Unknown'` and, only
+  // then, fire an async best-effort `profiles` lookup that patches
+  // the existing row in-place. This guarantees that a new remote id
+  // enters `allMessages` on the same tick as the realtime callback
+  // regardless of any downstream network stalls.
+  const addBubble = useCallback((msg: ChatMessage) => {
     const currentPlayers = playersRef.current;
 
     const player = currentPlayers.find(p => p.user_id === msg.user_id);
 
     let username: string;
+    let usernameResolvedSync = true;
     if (player?.profiles?.username) {
       username = player.profiles.username;
     } else if (msg.user_id === currentUserId && currentUserProfileRef.current?.username) {
       username = `${currentUserProfileRef.current.username} (observer)`;
     } else {
-      username = (await getOrFetchObserverUsername(msg.user_id)) ?? 'Unknown';
+      const cached = observerUsernameCacheRef.current.get(msg.user_id);
+      if (cached) {
+        username = cached;
+      } else {
+        username = 'Unknown';
+        usernameResolvedSync = false;
+      }
     }
 
     const msgWithUsername: ChatMessage = { ...msg, username };
@@ -660,7 +685,7 @@ export const useGameChat = (
       message: msgWithUsername,
       gameId: msgWithUsername.game_id,
       consumer: 'canonical-store',
-      payload: { username, currentUserId: currentUserId ?? null },
+      payload: { username, currentUserId: currentUserId ?? null, usernameResolvedSync },
     });
 
     const bubble: ChatBubble = {
@@ -673,6 +698,9 @@ export const useGameChat = (
       return updated.slice(-10);
     });
 
+    // Synchronous merge — happens in the same tick as the realtime
+    // callback, before any await. This is the load-bearing line for
+    // CHAT-RENDER-B1.
     setAllMessages(prev => {
       const next = mergeMessages(prev, [msgWithUsername]);
       recordCanonicalProjection({
@@ -682,10 +710,40 @@ export const useGameChat = (
         currentUserId,
         incomingIds: [msgWithUsername.id],
         prevIds: prev.map((m) => m.id),
-        payload: { refSource: 'addBubble.realtime', username },
+        payload: { refSource: 'addBubble.realtime', username, usernameResolvedSync },
       });
       return next;
     });
+
+    // Deferred username resolution: fire-and-forget. If it succeeds,
+    // patch the already-admitted row in-place. If it fails/stalls, the
+    // row stays visible with the placeholder — never blocks render.
+    if (!usernameResolvedSync) {
+      void getOrFetchObserverUsername(msg.user_id).then((resolved) => {
+        if (!resolved) return;
+        setAllMessages(prev => {
+          let changed = false;
+          const next = prev.map((m) => {
+            if (m.id === msg.id && m.username !== resolved) {
+              changed = true;
+              return { ...m, username: resolved };
+            }
+            return m;
+          });
+          if (!changed) return prev;
+          recordCanonicalProjection({
+            source: 'realtime-merge',
+            messages: next,
+            gameId: msg.game_id,
+            currentUserId,
+            incomingIds: [msg.id],
+            prevIds: prev.map((m) => m.id),
+            payload: { refSource: 'addBubble.observerUsernamePatch', resolved },
+          });
+          return next;
+        });
+      });
+    }
   }, [currentUserId, getOrFetchObserverUsername, mergeMessages]);
 
   // Clean up expired bubbles
