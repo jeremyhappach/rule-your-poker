@@ -101,7 +101,8 @@ export const MobileChatPanel = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const voice = useVoiceToText();
+  // CHAT-ISO-B1: voice hook intentionally not invoked.
+  const voice = VOICE_ISO_B1_STUB;
 
   const diagnosticUserId = currentUserId ?? instrumentationCurrentUserId;
 
