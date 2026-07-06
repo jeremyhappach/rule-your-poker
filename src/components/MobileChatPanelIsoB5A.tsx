@@ -114,6 +114,24 @@ export const MobileChatPanelIsoB5A = ({
 
   const voice = VOICE_ISO_B5A_STUB;
 
+  const diagnosticUserId = currentUserId ?? instrumentationCurrentUserId;
+
+  // CHAT-ISO-B5A: restore ONLY the render-observed ledger effect. No deps
+  // array — fires every render, exactly as in real MobileChatPanel.
+  useEffect(() => {
+    recordReactRenderObserved({
+      consumer: 'MobileChatPanel',
+      sourceCollection: messages,
+      gameId: diagnosticGameId ?? null,
+      dealerGameId: diagnosticDealerGameId ?? null,
+      payload: {
+        currentUserId: diagnosticUserId ?? null,
+        dealerCount: dealerMessages.length,
+        muteDealerChat,
+      },
+    });
+  });
+
   // CHAT-ISO-B4: restore ONLY the profile read. Fire-and-forget, local
   // try/catch, never rethrows, never triggers navigation/session work.
   useEffect(() => {
