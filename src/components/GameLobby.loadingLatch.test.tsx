@@ -198,10 +198,12 @@ describe('GameLobby loading-latch', () => {
     // Simulate 3 back-to-back poll failures by directly re-invoking
     // fetchGames via the visibilitychange listener (which the component
     // registers and calls fetchGames on `visible`). Toast should fire ONCE.
+    // Refresh is debounced (~1.5s) inside the component; wait past it.
     async function fail(msg: string) {
       nextGamesOutcome = { kind: 'error', message: msg };
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
       await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+      await new Promise((r) => setTimeout(r, 1700));
       await flush();
     }
     await fail('p1');
@@ -215,7 +217,9 @@ describe('GameLobby loading-latch', () => {
     nextGamesOutcome = { kind: 'ok', data: [] };
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
     await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    await new Promise((r) => setTimeout(r, 1700));
     await flush();
+
 
     // Next failure re-toasts once.
     await fail('p4');
