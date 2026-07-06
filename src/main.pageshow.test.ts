@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { handlePageShowForTest } from "./main";
+import { handlePageShow as handlePageShowForTest } from "./lib/pageResumeHandler";
 
 describe("pageshow BFCache/back-forward restore handler", () => {
   let reloadSpy: ReturnType<typeof vi.fn>;
