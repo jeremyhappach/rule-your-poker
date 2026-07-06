@@ -666,20 +666,12 @@ function WaitingSurfaceBody({
 
           {activeTab === "chat" && (
             <div className="h-full p-2 flex flex-col min-h-0">
-              {/* Real MobileChatPanel — CHAT-ISO isolation complete.
-                  Root cause of the iPhone Chat idle boot was the
-                  no-dep-array `recordReactRenderObserved` effect
-                  writing localStorage per render. That effect is
-                  removed from MobileChatPanel and the ledger function
-                  is now a production no-op. All other B4 behaviors
-                  (profile fetch, voice, panel ledger/events other than
-                  render-observed) are restored via the real panel. */}
               <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT — RENDER-OBSERVED PERMANENTLY DISABLED
+                CHAT-ISO-B4 — CONTROL
               </div>
               <div className="flex-1 min-h-0">
                 {onSendChat ? (
-                  <MobileChatPanel
+                  <MobileChatPanelIsoB4
                     messages={allMessages ?? []}
                     onSend={onSendChat}
                     isSending={isChatSending}
