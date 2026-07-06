@@ -122,29 +122,39 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 
-// iOS Safari can restore pages from the Back/Forward Cache (BFCache), which may
-// resurrect an *old published build* and show stale lobby content.
+// BFCache / back-forward restore handler.
 //
-// 1) Adding an `unload` listener is a well-known way to disable BFCache.
-// 2) As a fallback, if BFCache still happens, detect back_forward restores and
-//    force a reload so the latest published assets/HTML are fetched.
-window.addEventListener("unload", () => {
-  // no-op
-});
-
-window.addEventListener("pageshow", (event) => {
-  // `persisted` indicates BFCache restore in WebKit.
-  const persisted = (event as PageTransitionEvent).persisted;
-
-  // Some browsers expose the navigation type.
+// A BFCache restore is NOT an application error — the browser has handed us
+// back a live, already-hydrated page. Forcing `window.location.reload()` on
+// restore causes the observed "booted → blank table → eventually hydrates"
+// symptom on iOS Safari when a foreground tab (e.g. the Chat tab on the
+// waiting table) is evicted to BFCache and then resumed.
+//
+// Instead of reloading we dispatch a single internal `app:page-resumed`
+// event. Consumers (realtime channel health checks, session refreshers) may
+// listen for this and perform bounded reconciliation. This handler itself
+// must never navigate, reload, clear auth/session, unmount the shell, or
+// mutate route state.
+export function handlePageShowForTest(event: PageTransitionEvent) {
+  const persisted = event.persisted;
   const navEntry = performance.getEntriesByType("navigation")[0] as
     | PerformanceNavigationTiming
     | undefined;
   const backForward = navEntry?.type === "back_forward";
-
-  if (persisted || backForward) {
-    window.location.reload();
+  if (!persisted && !backForward) return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent("app:page-resumed", {
+        detail: { persisted, backForward },
+      }),
+    );
+  } catch {
+    /* noop */
   }
+}
+
+window.addEventListener("pageshow", (event) => {
+  handlePageShowForTest(event as PageTransitionEvent);
 });
 
 createRoot(document.getElementById("root")!).render(<App />);
