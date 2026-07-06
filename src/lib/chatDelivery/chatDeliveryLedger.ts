@@ -386,7 +386,8 @@ export function recordChatDeliveryViolation(input: {
   };
   state.violations.push(violation);
   if (state.violations.length > MAX_VIOLATIONS) state.violations.splice(0, state.violations.length - MAX_VIOLATIONS);
-  saveState(state);
+  // Violations are heuristic / observational — never persist synchronously.
+  saveStateMemoryOnly(state);
 }
 
 export function recordConsumerSubscription(input: {
