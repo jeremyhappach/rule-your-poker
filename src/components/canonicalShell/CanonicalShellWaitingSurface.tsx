@@ -45,8 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-// CHAT-ISO-B2: render-only Chat panel (no hooks/effects/network/events).
-import { MobileChatPanelIsoB2 } from "@/components/MobileChatPanelIsoB2";
+// CHAT-ISO-B3: real MobileChatPanel visual DOM + local state, all mount-time external work disabled.
+import { MobileChatPanelIsoB3 } from "@/components/MobileChatPanelIsoB3";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
@@ -666,17 +666,31 @@ function WaitingSurfaceBody({
 
           {activeTab === "chat" && (
             <div className="h-full p-2 flex flex-col min-h-0">
-              {/* CHAT-ISO-B2: render-only Chat panel. Same visual DOM
-                  and layout as MobileChatPanel, but ZERO side effects
-                  (no hooks/effects, no profile fetch, no ledger, no
-                  tracing/selector-proof, no incident/export, no
-                  realtime/read-state, no listeners, no timers,
-                  no voice). */}
+              {/* CHAT-ISO-B3: real MobileChatPanel visual DOM + local
+                  React state + composer + scroll + local mute state,
+                  with ALL mount-time external work disabled (no
+                  profiles fetch, no chatDeliveryLedger writes, no
+                  window.dispatchEvent, no incident/export subtree, no
+                  runtime tracer, no voice). */}
               <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT-ISO-B2 — VISUAL ONLY
+                CHAT-ISO-B3 — NO MOUNT EXTERNAL WORK
               </div>
               <div className="flex-1 min-h-0">
-                <MobileChatPanelIsoB2 messages={allMessages ?? []} />
+                {onSendChat ? (
+                  <MobileChatPanelIsoB3
+                    messages={allMessages ?? []}
+                    onSend={onSendChat}
+                    isSending={isChatSending}
+                    currentUserId={currentUserId}
+                    instrumentationCurrentUserId={currentUserId}
+                    diagnosticGameId={gameId ?? null}
+                    diagnosticDealerGameId={null}
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-white/50 text-sm">
+                    Chat not available
+                  </div>
+                )}
               </div>
             </div>
           )}
