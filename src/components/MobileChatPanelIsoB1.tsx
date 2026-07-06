@@ -516,19 +516,18 @@ export const MobileChatPanel = ({
             </PopoverContent>
           </Popover>
 
-          {/* Voice-to-text mic (replaces prior attachment paperclip).
-              Fails gracefully: when unsupported or errored, the button
-              still renders and never blocks text chat. */}
+          {/* CHAT-ISO-B1: disabled mic affordance. No onClick, no active
+              controller, no capability detection. */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleMicToggle}
-            disabled={voice.state === 'transcribing' || isFinalizing || !voice.isSupported}
-            className="h-9 w-9 text-white hover:bg-white/20 flex-shrink-0"
-            title={micTitle}
-            aria-label={micTitle}
+            disabled
+            aria-disabled="true"
+            className="h-9 w-9 text-white/40 flex-shrink-0 cursor-not-allowed"
+            title="VOICE DISABLED — ISO B1"
+            aria-label="VOICE DISABLED — ISO B1"
           >
-            <MicIcon className={micIconClass} />
+            <Mic className="h-4 w-4" />
           </Button>
 
           <Button
