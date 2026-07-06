@@ -46,7 +46,7 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 // CHAT-ISO-B3: real MobileChatPanel visual DOM + local state, all mount-time external work disabled.
-import { MobileChatPanelIsoB3 } from "@/components/MobileChatPanelIsoB3";
+import { MobileChatPanelIsoB4 } from "@/components/MobileChatPanelIsoB4";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
@@ -673,11 +673,11 @@ function WaitingSurfaceBody({
                   window.dispatchEvent, no incident/export subtree, no
                   runtime tracer, no voice). */}
               <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT-ISO-B3 — NO MOUNT EXTERNAL WORK
+                CHAT-ISO-B4 — PROFILE FETCH ONLY
               </div>
               <div className="flex-1 min-h-0">
                 {onSendChat ? (
-                  <MobileChatPanelIsoB3
+                  <MobileChatPanelIsoB4
                     messages={allMessages ?? []}
                     onSend={onSendChat}
                     isSending={isChatSending}
