@@ -45,7 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-import { MobileChatPanel } from "@/components/MobileChatPanel";
+// CHAT-ISO-B: MobileChatPanel import removed to guarantee subtree never mounts.
+// import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
