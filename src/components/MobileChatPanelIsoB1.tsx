@@ -323,11 +323,8 @@ export const MobileChatPanel = ({
     voice.permission === 'denied' ? 'Microphone blocked — enable in site settings' :
     voice.isSupported ? 'Voice to text' : 'Voice input unavailable';
 
-  const MicIcon =
-    voice.state === 'recording' ? MicOff :
-    voice.state === 'transcribing' ? Loader2 :
-    voice.state === 'error' ? AlertCircle :
-    Mic;
+  // CHAT-ISO-B1: no active mic controller — always render inert Mic icon.
+  const MicIcon = Mic;
 
   const micIconClass = [
     'h-4 w-4',
