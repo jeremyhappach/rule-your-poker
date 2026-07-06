@@ -46,7 +46,7 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 // CHAT-ISO-B3: real MobileChatPanel visual DOM + local state, all mount-time external work disabled.
-import { MobileChatPanelIsoB3 } from "@/components/MobileChatPanelIsoB3";
+import { MobileChatPanelIsoB4 } from "@/components/MobileChatPanelIsoB4";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
