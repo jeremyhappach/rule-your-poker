@@ -407,7 +407,8 @@ export function recordConsumerSubscription(input: {
     existing.lastUnmountTs = Date.now();
   }
   state.consumerSubscriptions[input.consumer] = existing;
-  saveState(state);
+  // Consumer mount/unmount is UI observation only.
+  saveStateMemoryOnly(state);
   recordChatDeliveryEvent({
     phase: input.mounted ? 'consumer-mounted' : 'consumer-unmounted',
     consumer: input.consumer,
