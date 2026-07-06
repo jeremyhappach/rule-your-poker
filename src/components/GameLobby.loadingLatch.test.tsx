@@ -21,6 +21,16 @@ import React from 'react';
 
 /* ---------------- Mocks ---------------- */
 
+/**
+ * Chainable builder. The new GameLobby uses:
+ *   supabase.from('games').select(cols).in('status', ...).order(...)  → active
+ *   supabase.from('games').select(cols).eq('status','session_ended').order(...).limit(...) → historical
+ *   supabase.from('profiles').select(cols).eq('id', uid).maybeSingle()
+ *   supabase.from('session_player_snapshots').select(cols).in('game_id', ids)
+ *
+ * Every non-terminal method returns the builder; the terminal await goes
+ * through .then() which resolves based on (table, current filters).
+ */
 type QueryOutcome =
   | { kind: 'ok'; data: any[] }
   | { kind: 'error'; message: string }
@@ -29,36 +39,66 @@ type QueryOutcome =
 let nextGamesOutcome: QueryOutcome = { kind: 'ok', data: [] };
 let pendingOverride: null | (() => Promise<any>) = null;
 
-const orderMock = vi.fn(async () => {
-  if (pendingOverride) {
-    const fn = pendingOverride;
-    pendingOverride = null;
-    return await fn();
-  }
-  const o = nextGamesOutcome;
-  if (o.kind === 'throw') throw o.error;
-  if (o.kind === 'error') return { data: null, error: { message: o.message } };
-  return { data: o.data, error: null };
-});
-const inMock = vi.fn(async () => ({ data: [], error: null }));
-const maybeSingleMock = vi.fn(async () => ({ data: null, error: null }));
-const eqMock = vi.fn(() => ({ maybeSingle: maybeSingleMock }));
-const selectMock = vi.fn(() => ({ order: orderMock, in: inMock, eq: eqMock }));
-const fromMock = vi.fn(() => ({ select: selectMock }));
+const toastMock = vi.fn();
+const removeChannelMock = vi.fn();
+
+function makeGamesBuilder() {
+  const b: any = {
+    filters: [] as any[],
+    in(col: string, vals: any[]) { this.filters.push({ op: 'in', col, vals }); return this; },
+    eq(col: string, val: any) { this.filters.push({ op: 'eq', col, val }); return this; },
+    order() { return this; },
+    limit() { return this; },
+    then(res: any, rej: any) {
+      if (pendingOverride) {
+        const fn = pendingOverride;
+        pendingOverride = null;
+        return fn().then(res, rej);
+      }
+      const o = nextGamesOutcome;
+      if (o.kind === 'throw') return Promise.reject(o.error).then(res, rej);
+      if (o.kind === 'error') return Promise.resolve({ data: null, error: { message: o.message } }).then(res, rej);
+      return Promise.resolve({ data: o.data, error: null }).then(res, rej);
+    },
+  };
+  return b;
+}
+
+function makeProfilesBuilder() {
+  const b: any = {
+    eq() { return this; },
+    async maybeSingle() { return { data: null, error: null }; },
+  };
+  return b;
+}
+
+function makeSnapshotsBuilder() {
+  const b: any = {
+    in() { return this; },
+    then(res: any, rej: any) { return Promise.resolve({ data: [], error: null }).then(res, rej); },
+  };
+  return b;
+}
+
 const channelObj: any = {
   on: vi.fn(function (this: any) { return channelObj; }),
   subscribe: vi.fn(function (this: any) { return channelObj; }),
 };
-const removeChannelMock = vi.fn();
-const toastMock = vi.fn();
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: (...a: any[]) => (fromMock as any)(...a),
+    from: (table: string) => ({
+      select: (_cols: string) => {
+        if (table === 'profiles') return makeProfilesBuilder();
+        if (table === 'session_player_snapshots') return makeSnapshotsBuilder();
+        return makeGamesBuilder();
+      },
+    }),
     channel: () => channelObj,
     removeChannel: (...a: any[]) => (removeChannelMock as any)(...a),
   },
 }));
+
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: toastMock }) }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('@/hooks/useMaintenanceMode', () => ({
@@ -112,11 +152,10 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   toastMock.mockClear();
-  orderMock.mockClear();
-  inMock.mockClear();
   nextGamesOutcome = { kind: 'ok', data: [] };
   pendingOverride = null;
 });
+
 
 afterEach(async () => {
   try { await act(async () => { root.unmount(); }); } catch { /* ignore */ }
@@ -149,7 +188,7 @@ describe('GameLobby loading-latch', () => {
     expect(toastMock).not.toHaveBeenCalled();
   });
 
-  it('keeps list visible and dedupes toast across repeated poll failures; success resets episode', async () => {
+  it('keeps list visible and dedupes toast across repeated poll failures; success resets episode', { timeout: 15000 }, async () => {
     // Initial success.
     nextGamesOutcome = { kind: 'ok', data: [] };
     await mount();
@@ -159,10 +198,12 @@ describe('GameLobby loading-latch', () => {
     // Simulate 3 back-to-back poll failures by directly re-invoking
     // fetchGames via the visibilitychange listener (which the component
     // registers and calls fetchGames on `visible`). Toast should fire ONCE.
+    // Refresh is debounced (~1.5s) inside the component; wait past it.
     async function fail(msg: string) {
       nextGamesOutcome = { kind: 'error', message: msg };
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
       await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+      await new Promise((r) => setTimeout(r, 1700));
       await flush();
     }
     await fail('p1');
@@ -176,7 +217,9 @@ describe('GameLobby loading-latch', () => {
     nextGamesOutcome = { kind: 'ok', data: [] };
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
     await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    await new Promise((r) => setTimeout(r, 1700));
     await flush();
+
 
     // Next failure re-toasts once.
     await fail('p4');
