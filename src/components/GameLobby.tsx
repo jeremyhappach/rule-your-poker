@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,6 +90,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   // Always start with empty array - never use cached/restored state
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gamesFetchError, setGamesFetchError] = useState<string | null>(null);
+  // Refs (do not trigger re-renders): mount guard, in-flight guard,
+  // monotonic request seq (drop stale results), and toast-episode latch.
+  const mountedRef = useRef(true);
+  const inflightRef = useRef(false);
+  const requestSeqRef = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
+  const errorEpisodeRef = useRef(false);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
@@ -170,6 +178,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .subscribe();
 
     return () => {
+      mountedRef.current = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleWindowFocus);
       clearInterval(pollingInterval);
@@ -189,123 +198,182 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     setIsSuperuser((data as any)?.is_superuser || false);
   };
 
-  const fetchGames = async () => {
-    const perf = new PerfSession("GameLobby.fetchGames", 300);
-
-    // Fetch games + their current players in ONE query (avoid N+1).
-    const { data: gamesData, error } = await perf.step("games.select", () =>
-      supabase
-        .from("games")
-        .select(
-          `
-            *,
-            players:players(
-              id,
-              user_id,
-              position,
-              chips,
-              legs,
-              is_bot,
-              sitting_out,
-              created_at,
-              profiles(username)
-            )
-          `
-        )
-        .order("created_at", { ascending: false })
-    );
-
-    if (error) {
+  const handleFetchFailure = (message: string) => {
+    // Never wipe the last-known-good games list on failure. Set a bounded
+    // error state and toast at most once per failure episode. A successful
+    // fetch resets the episode.
+    setGamesFetchError(message || "Failed to fetch games");
+    if (!errorEpisodeRef.current) {
+      errorEpisodeRef.current = true;
       toast({
         title: "Error",
         description: "Failed to fetch games",
         variant: "destructive",
       });
-      perf.done({ error: error.message });
-      return;
     }
+  };
 
-    // Batch fetch snapshots for ended sessions (so we can include departed players in counts)
-    const endedGameIds = (gamesData || [])
-      .filter((g: any) => g.status === "session_ended")
-      .map((g: any) => g.id);
+  const fetchGames = async () => {
+    // Prevent overlapping fetches (poll + realtime + focus can race).
+    if (inflightRef.current) return;
+    inflightRef.current = true;
+    const seq = ++requestSeqRef.current;
+    const perf = new PerfSession("GameLobby.fetchGames", 300);
 
-    const snapshotCounts: Record<string, number> = {};
-
-    if (endedGameIds.length > 0) {
-      const { data: snapshots, error: snapError } = await perf.step("snapshots.select", () =>
+    try {
+      // Fetch games + their current players in ONE query (avoid N+1).
+      const { data: gamesData, error } = await perf.step("games.select", () =>
         supabase
-          .from("session_player_snapshots")
-          .select("game_id, user_id, player_id, is_bot")
-          .in("game_id", endedGameIds)
+          .from("games")
+          .select(
+            `
+              *,
+              players:players(
+                id,
+                user_id,
+                position,
+                chips,
+                legs,
+                is_bot,
+                sitting_out,
+                created_at,
+                profiles(username)
+              )
+            `
+          )
+          .order("created_at", { ascending: false })
       );
 
-      if (!snapError && snapshots?.length) {
-        const perGameKeys = new Map<string, Set<string>>();
-        for (const snap of snapshots as any[]) {
-          const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-          const set = perGameKeys.get(snap.game_id) ?? new Set<string>();
-          set.add(key);
-          perGameKeys.set(snap.game_id, set);
+      // Drop stale results if a newer request has already superseded us,
+      // or if the component unmounted while awaiting.
+      if (!mountedRef.current || seq !== requestSeqRef.current) {
+        perf.done({ dropped: "stale-or-unmounted" });
+        return;
+      }
+
+      if (error) {
+        handleFetchFailure(error.message);
+        perf.done({ error: error.message });
+        return;
+      }
+
+      // Batch fetch snapshots for ended sessions (so we can include departed players in counts)
+      const endedGameIds = (gamesData || [])
+        .filter((g: any) => g.status === "session_ended")
+        .map((g: any) => g.id);
+
+      const snapshotCounts: Record<string, number> = {};
+
+      if (endedGameIds.length > 0) {
+        const { data: snapshots, error: snapError } = await perf.step("snapshots.select", () =>
+          supabase
+            .from("session_player_snapshots")
+            .select("game_id, user_id, player_id, is_bot")
+            .in("game_id", endedGameIds)
+        );
+
+        if (!mountedRef.current || seq !== requestSeqRef.current) {
+          perf.done({ dropped: "stale-or-unmounted" });
+          return;
         }
-        for (const [gid, set] of perGameKeys.entries()) {
-          snapshotCounts[gid] = set.size;
+
+        if (!snapError && snapshots?.length) {
+          const perGameKeys = new Map<string, Set<string>>();
+          for (const snap of snapshots as any[]) {
+            const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+            const set = perGameKeys.get(snap.game_id) ?? new Set<string>();
+            set.add(key);
+            perGameKeys.set(snap.game_id, set);
+          }
+          for (const [gid, set] of perGameKeys.entries()) {
+            snapshotCounts[gid] = set.size;
+          }
         }
       }
+
+      const gamesWithPlayers = await perf.step("games.enrich", async () =>
+        (gamesData || []).map((game: any) => {
+          const playersData = (game.players ?? []) as any[];
+
+          // Host is the first human player who joined (earliest created_at)
+          const humanPlayers = playersData.filter((p) => !p.is_bot);
+          const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
+            return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          });
+          const hostPlayer = sortedByJoinTime[0];
+          const host_username = hostPlayer?.profiles?.username || "Unknown";
+
+          const isCreator = hostPlayer?.user_id === userId;
+          const isPlayer = playersData.some((p) => p.user_id === userId);
+
+          // Calculate duration
+          const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
+
+          // Use snapshot count for ended sessions, current players otherwise
+          const playerCount =
+            game.status === "session_ended" && snapshotCounts[game.id] !== undefined
+              ? snapshotCounts[game.id]
+              : playersData.length;
+
+          return {
+            ...game,
+            player_count: playerCount,
+            is_creator: isCreator,
+            is_player: isPlayer,
+            host_username,
+            duration_minutes: durationMinutes,
+            players:
+              playersData.map((p) => ({
+                id: p.id,
+                username: p.is_bot
+                  ? getBotAlias(
+                      playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
+                      p.user_id
+                    )
+                  : (p.profiles?.username || "Unknown"),
+                chips: p.chips,
+                legs: p.legs,
+                is_bot: p.is_bot,
+                sitting_out: p.sitting_out,
+              })) || [],
+          };
+        })
+      );
+
+      if (!mountedRef.current || seq !== requestSeqRef.current) {
+        perf.done({ dropped: "stale-or-unmounted" });
+        return;
+      }
+
+      setGames(gamesWithPlayers);
+      setGamesFetchError(null);
+      errorEpisodeRef.current = false;
+      hasLoadedOnceRef.current = true;
+      perf.done({ gameCount: gamesData?.length ?? 0 });
+    } catch (err: any) {
+      if (!mountedRef.current || seq !== requestSeqRef.current) {
+        perf.done({ dropped: "stale-or-unmounted-after-throw" });
+        return;
+      }
+      // Aborts during teardown/backgrounding must not wipe games or spam toasts.
+      const name = err?.name ?? "";
+      const message = err?.message ?? String(err);
+      if (name === "AbortError" || /abort/i.test(message)) {
+        perf.done({ aborted: true });
+        return;
+      }
+      handleFetchFailure(message);
+      perf.done({ threw: message });
+    } finally {
+      // `loading` means "initial fetch in progress", never "last fetch
+      // succeeded". Clear it on every completion path, but only from the
+      // request that is still current, so a stale response doesn't
+      // flicker the spinner off before the newer one settles.
+      if (mountedRef.current && seq === requestSeqRef.current) {
+        setLoading(false);
+      }
+      inflightRef.current = false;
     }
-
-    const gamesWithPlayers = await perf.step("games.enrich", async () =>
-      (gamesData || []).map((game: any) => {
-        const playersData = (game.players ?? []) as any[];
-
-        // Host is the first human player who joined (earliest created_at)
-        const humanPlayers = playersData.filter((p) => !p.is_bot);
-        const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        });
-        const hostPlayer = sortedByJoinTime[0];
-        const host_username = hostPlayer?.profiles?.username || "Unknown";
-
-        const isCreator = hostPlayer?.user_id === userId;
-        const isPlayer = playersData.some((p) => p.user_id === userId);
-
-        // Calculate duration
-        const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
-
-        // Use snapshot count for ended sessions, current players otherwise
-        const playerCount =
-          game.status === "session_ended" && snapshotCounts[game.id] !== undefined
-            ? snapshotCounts[game.id]
-            : playersData.length;
-
-        return {
-          ...game,
-          player_count: playerCount,
-          is_creator: isCreator,
-          is_player: isPlayer,
-          host_username,
-          duration_minutes: durationMinutes,
-          players:
-            playersData.map((p) => ({
-              id: p.id,
-              username: p.is_bot
-                ? getBotAlias(
-                    playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
-                    p.user_id
-                  )
-                : (p.profiles?.username || "Unknown"),
-              chips: p.chips,
-              legs: p.legs,
-              is_bot: p.is_bot,
-              sitting_out: p.sitting_out,
-            })) || [],
-        };
-      })
-    );
-
-    setGames(gamesWithPlayers);
-    setLoading(false);
-    perf.done({ gameCount: gamesData?.length ?? 0 });
   };
 
   const createGame = async () => {
