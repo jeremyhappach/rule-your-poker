@@ -591,6 +591,32 @@ export function recordSelectorProof(input: {
   }
 }
 
+/**
+ * DEPRECATED FOR PRODUCTION.
+ *
+ * Per-render observation caused a mobile Safari boot loop (CHAT-ISO-B5A):
+ * calling this from a no-dep useEffect writes the growing ledger to
+ * localStorage synchronously on every commit and dispatches a global
+ * event, which stalls the main thread and can throw under quota
+ * pressure, cascading into shell/auth recovery.
+ *
+ * Rule: a React render-observation function must be observational only.
+ * It MUST NOT mutate React state, mutate contexts consumed by
+ * MobileChatPanel, dispatch events that trigger panel/shell rerenders,
+ * write network/storage per render, or schedule recursive work.
+ *
+ * Production behavior: no-op. Dev-only sampling is gated behind an
+ * explicit build-time flag and capped to a single in-memory record per
+ * caller — it never writes storage, never dispatches events, never
+ * touches any subscriber.
+ */
+const RENDER_OBSERVED_DEV_ENABLED =
+  typeof import.meta !== 'undefined' &&
+  (import.meta as { env?: { DEV?: boolean; VITE_CHAT_RENDER_OBSERVED_DEV?: string } }).env?.DEV === true &&
+  (import.meta as { env?: { VITE_CHAT_RENDER_OBSERVED_DEV?: string } }).env?.VITE_CHAT_RENDER_OBSERVED_DEV === '1';
+
+const renderObservedDevSeen = new Set<string>();
+
 export function recordReactRenderObserved(input: {
   consumer: ChatDeliveryConsumer;
   sourceCollection?: readonly ChatLikeMessage[] | null;
@@ -598,22 +624,14 @@ export function recordReactRenderObserved(input: {
   dealerGameId?: string | null;
   payload?: Record<string, unknown>;
 }) {
-  const projection = getChatDeliveryLedger().projection;
-  recordChatDeliveryEvent({
-    phase: 'react-render-observed',
-    consumer: input.consumer,
-    gameId: input.gameId,
-    dealerGameId: input.dealerGameId,
-    payload: {
-      renderTs: now(),
-      sourceRefId: getCollectionRefId(input.sourceCollection ?? null),
-      sourceLength: input.sourceCollection?.length ?? 0,
-      sourceIds: ids(input.sourceCollection ?? []),
-      projectionVersion: projection?.version ?? null,
-      projectionRefId: projection?.refId ?? null,
-      ...(input.payload ?? {}),
-    },
-  });
+  // Production / published builds: hard no-op. No storage write, no
+  // event dispatch, no state mutation, no network call.
+  if (!RENDER_OBSERVED_DEV_ENABLED) return;
+  // Dev-only: one in-memory record per (consumer, gameId) pair per
+  // panel mount, in-memory only.
+  const key = `${input.consumer}::${input.gameId ?? ''}::${input.dealerGameId ?? ''}`;
+  if (renderObservedDevSeen.has(key)) return;
+  renderObservedDevSeen.add(key);
 }
 
 export function markUnreadEvaluated(input: {
