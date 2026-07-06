@@ -673,11 +673,11 @@ function WaitingSurfaceBody({
                   window.dispatchEvent, no incident/export subtree, no
                   runtime tracer, no voice). */}
               <div className="text-[10px] font-mono text-white/40 mb-1 flex-shrink-0">
-                CHAT-ISO-B3 — NO MOUNT EXTERNAL WORK
+                CHAT-ISO-B4 — PROFILE FETCH ONLY
               </div>
               <div className="flex-1 min-h-0">
                 {onSendChat ? (
-                  <MobileChatPanelIsoB3
+                  <MobileChatPanelIsoB4
                     messages={allMessages ?? []}
                     onSend={onSendChat}
                     isSending={isChatSending}
