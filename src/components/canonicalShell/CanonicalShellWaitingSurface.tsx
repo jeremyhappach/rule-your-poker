@@ -45,12 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-// CHAT-ISO complete: real MobileChatPanel restored. Root cause was
-// `recordReactRenderObserved` firing per render (no dep array) →
-// synchronous localStorage write of growing ledger + global event
-// dispatch. That effect is deleted from the panel and the ledger
-// function is a hard no-op in production.
-import { MobileChatPanel } from "@/components/MobileChatPanel";
+// CHAT-ISO-B4 — CONTROL: exact B4 rollback panel.
+import { MobileChatPanelIsoB4 } from "@/components/MobileChatPanelIsoB4";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
