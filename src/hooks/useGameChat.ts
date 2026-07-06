@@ -418,6 +418,11 @@ export const useGameChat = (
 
         if (error) {
           console.error('Error sending chat message:', error);
+          finalizeChatSendOperation(correlationId, 'error', {
+            message: error.message,
+            phase: 'db-insert-failed',
+            optimisticId,
+          });
           const failureAt = new Date().toISOString();
           recordChatDeliveryEvent({
             phase: 'insert-error',
