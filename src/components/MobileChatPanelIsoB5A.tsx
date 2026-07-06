@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
+import { recordReactRenderObserved } from '@/lib/chatDelivery/chatDeliveryLedger';
 
 type VoiceState = 'idle' | 'recording' | 'transcribing' | 'error';
 type VoicePermission = 'prompt' | 'granted' | 'denied';
