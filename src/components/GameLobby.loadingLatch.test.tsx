@@ -152,8 +152,8 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   toastMock.mockClear();
-  orderMock.mockClear();
-  inMock.mockClear();
+  nextGamesOutcome = { kind: 'ok', data: [] };
+
   nextGamesOutcome = { kind: 'ok', data: [] };
   pendingOverride = null;
 });
