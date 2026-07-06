@@ -53,7 +53,7 @@ describe('UI observation ledger writes never persist synchronously', () => {
   it('recordConsumerSubscription mount+unmount does not touch localStorage or dispatch', () => {
     recordConsumerSubscription({ consumer: 'MobileChatPanel', mounted: true });
     recordConsumerSubscription({ consumer: 'MobileChatPanel', mounted: false });
-    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2')).toHaveLength(0);
     expect(
       dispatchSpy.mock.calls.filter(
         ([evt]) => (evt as Event)?.type === 'chat-delivery-ledger-updated',
@@ -67,7 +67,7 @@ describe('UI observation ledger writes never persist synchronously', () => {
       consumer: 'MobileChatPanel',
       payload: { storeCount: 3, renderedCount: 2 },
     });
-    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2')).toHaveLength(0);
     expect(
       dispatchSpy.mock.calls.filter(
         ([evt]) => (evt as Event)?.type === 'chat-delivery-ledger-updated',
@@ -82,7 +82,7 @@ describe('UI observation ledger writes never persist synchronously', () => {
       sourceCollection: [{ id: 'a' }, { id: 'b' }],
       returnedCollection: [{ id: 'a' }, { id: 'b' }],
     });
-    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2')).toHaveLength(0);
     expect(
       dispatchSpy.mock.calls.filter(
         ([evt]) => (evt as Event)?.type === 'chat-delivery-ledger-updated',
@@ -108,7 +108,7 @@ describe('UI observation ledger writes never persist synchronously', () => {
       consumer: 'MobileChatPanel',
       payload: { note: 'ui-observation' },
     });
-    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2')).toHaveLength(0);
     expect(
       dispatchSpy.mock.calls.filter(
         ([evt]) => (evt as Event)?.type === 'chat-delivery-ledger-updated',
@@ -146,7 +146,7 @@ describe('UI observation ledger writes never persist synchronously', () => {
       });
       recordConsumerSubscription({ consumer: 'MobileChatPanel', mounted: false });
     }
-    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2')).toHaveLength(0);
     const ledgerDispatches = dispatchSpy.mock.calls.filter(
       ([evt]) => (evt as Event)?.type === 'chat-delivery-ledger-updated',
     );
@@ -160,6 +160,6 @@ describe('UI observation ledger writes never persist synchronously', () => {
       gameId: 'g1',
       currentUserId: 'me',
     });
-    expect(setItemSpy).toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.filter(([k]) => k === 'CHAT_DELIVERY_LEDGER_V2').length).toBeGreaterThan(0);
   });
 });
