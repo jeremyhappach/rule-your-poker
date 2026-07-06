@@ -88,7 +88,7 @@ interface MobileChatPanelProps {
   diagnosticDealerGameId?: string | null;
 }
 
-export const MobileChatPanel = ({
+export const MobileChatPanelIsoB1 = ({
   messages,
   onSend,
   isSending,
