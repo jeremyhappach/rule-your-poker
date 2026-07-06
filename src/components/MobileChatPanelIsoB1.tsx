@@ -23,19 +23,29 @@ import {
   recordSelectorProof,
 } from '@/lib/chatDelivery/chatDeliveryLedger';
 
-// Inert voice stub — no hook calls, no permission query, no media
-// detection, no timers. Shape mirrors the parts of useVoiceToText()
-// this component reads, so downstream branches keep type-checking.
-const VOICE_ISO_B1_STUB = {
-  state: 'idle' as const,
-  error: null as string | null,
-  permission: 'prompt' as const,
+type VoiceState = 'idle' | 'recording' | 'transcribing' | 'error';
+type VoicePermission = 'prompt' | 'granted' | 'denied';
+const VOICE_ISO_B1_STUB: {
+  state: VoiceState;
+  error: string | null;
+  permission: VoicePermission;
+  isSupported: boolean;
+  diagnostics: { code: string; detail?: string }[];
+  recordDiagnostic: (code: string, detail?: string) => void;
+  finalize: () => Promise<string>;
+  stop: () => Promise<string>;
+  start: () => Promise<void>;
+  reset: () => void;
+} = {
+  state: 'idle',
+  error: null,
+  permission: 'prompt',
   isSupported: false,
-  diagnostics: [] as { code: string; detail?: string }[],
-  recordDiagnostic: (_code: string, _detail?: string) => {},
-  finalize: async (): Promise<string> => '',
-  stop: async (): Promise<string> => '',
-  start: async (): Promise<void> => {},
+  diagnostics: [],
+  recordDiagnostic: () => {},
+  finalize: async () => '',
+  stop: async () => '',
+  start: async () => {},
   reset: () => {},
 };
 
