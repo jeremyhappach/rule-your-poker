@@ -45,8 +45,8 @@ import {
   useShellTabBar,
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
-// CHAT-ISO-B2: render-only Chat panel (no hooks/effects/network/events).
-import { MobileChatPanelIsoB2 } from "@/components/MobileChatPanelIsoB2";
+// CHAT-ISO-B3: real MobileChatPanel visual DOM + local state, all mount-time external work disabled.
+import { MobileChatPanelIsoB3 } from "@/components/MobileChatPanelIsoB3";
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from "@/hooks/ChatAttention";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
