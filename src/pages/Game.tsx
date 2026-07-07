@@ -12155,7 +12155,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             neutralActiveTab={mobileActiveTab}
-            onNeutralActiveTabChange={setMobileActiveTab}
+            onNeutralActiveTabChange={setMobileActiveTabWithTrace}
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
@@ -13532,6 +13532,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             />
             {innerTree}
           </PersistentTableShell>
+          <GinPhaseTracePill />
           {/* Gin-only readiness probe (capability-driven, not shell branching).
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}
