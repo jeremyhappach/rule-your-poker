@@ -618,6 +618,7 @@ export function PlayfieldSlotController({
           participants={neutralParticipants}
           currentUserId={neutralCurrentUserId ?? null}
           participantGameType={neutralParticipantGameType ?? null}
+          renderPane={neutralRenderPane}
         />
       ) : (
         <div
