@@ -121,49 +121,11 @@ export function getChatFlightPillState(): ChatFlightPillState {
  *
  * Fire-and-forget: never awaited by callers.
  */
-export function ensureChatFlightRecorderArmed(gameId: string | null | undefined): void {
-  try {
-    if (!gameId) return;
-    if (armed?.gameId === gameId) return;
-    if (armInflightGameId === gameId) return;
-
-    // New game — clear stale state.
-    if (armed && armed.gameId !== gameId) {
-      armed = null;
-      localSenderMessageIds.clear();
-      explicitCompletion = false;
-      perMessageSeq.clear();
-      perMessageCount.clear();
-      notify();
-    }
-
-    armInflightGameId = gameId;
-    void (async () => {
-      try {
-        const { data, error } = await supabase.rpc('ensure_chat_diagnostic_session', {
-          _game_id: gameId,
-        });
-        if (error || !data) return;
-        const row = Array.isArray(data) ? data[0] : (data as any);
-        if (!row?.diagnostic_session_id) return;
-        armed = {
-          gameId,
-          diagnosticSessionId: row.diagnostic_session_id as string,
-          armedAt: row.armed_at ? Date.parse(row.armed_at as string) : Date.now(),
-          expiresAt: row.expires_at
-            ? Date.parse(row.expires_at as string)
-            : Date.now() + 15 * 60_000,
-        };
-        notify();
-      } catch {
-        /* swallow */
-      } finally {
-        if (armInflightGameId === gameId) armInflightGameId = null;
-      }
-    })();
-  } catch {
-    /* swallow */
-  }
+export function ensureChatFlightRecorderArmed(_gameId: string | null | undefined): void {
+  // Auto-arming disabled per containment. Schema/export code remain
+  // available for exporting previously captured evidence, but no new
+  // arming, event emission, or visible pill will occur.
+  return;
 }
 
 /** Mark the pill READY due to explicit user action. */
