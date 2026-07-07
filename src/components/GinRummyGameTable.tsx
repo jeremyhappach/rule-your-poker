@@ -1302,6 +1302,14 @@ export const GinRummyGameTable = ({
           return;
         }
         const result = ginSync.receiveAuthoritativeUpdate(state);
+        recordGinPhaseTrace({
+          kind: 'state-replacement',
+          summary: `Gin fetched authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+          sourceFile: 'src/components/GinRummyGameTable.tsx',
+          sourceFunction: 'fetchLatestState',
+          identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+          detail: { source: 'hydration', accepted: result.accepted, phase: state.phase, stateHandNumber: state.handNumber ?? null },
+        });
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
           installAcceptedPresentation(fetchProvenance!, state);
@@ -1405,6 +1413,22 @@ export const GinRummyGameTable = ({
       });
       // Route ALL external updates through the sync framework's progress-vector gate.
       const result = ginSync.receiveAuthoritativeUpdate(state);
+      recordGinPhaseTrace({
+        kind: 'state-replacement',
+        summary: `Gin ${source} authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'applyState',
+        identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+        detail: {
+          source,
+          accepted: result.accepted,
+          phaseBefore: viewState?.phase ?? null,
+          phaseAfter: state.phase,
+          stateHandNumber: state.handNumber ?? null,
+          actionCount: state.actionCount ?? null,
+          currentTurnPlayerId: state.currentTurnPlayerId ?? null,
+        },
+      });
       recordStartupFlight('SYNC TIMELINE', 'Gin receiveAuthoritativeUpdate from applyState returned', {
         file: 'src/components/GinRummyGameTable.tsx',
         function: 'applyState',
@@ -2360,6 +2384,14 @@ export const GinRummyGameTable = ({
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
     localOptimisticSignatureRef.current = signatureForGinRunback(newState);
     ginSync.applyOptimistic(newState);
+    recordGinPhaseTrace({
+      kind: 'state-replacement',
+      summary: 'Gin optimistic state applied before server action',
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'updateState',
+      identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+      detail: { source: 'optimistic', phaseBefore: ginState?.phase ?? null, phaseAfter: newState.phase, stateHandNumber: newState.handNumber ?? null },
+    });
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
@@ -2380,6 +2412,14 @@ export const GinRummyGameTable = ({
       });
       // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
+      recordGinPhaseTrace({
+        kind: 'state-replacement',
+        summary: 'Gin server action confirmed local state',
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'updateState',
+        identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+        detail: { source: 'server action', phaseAfter: newState.phase, stateHandNumber: newState.handNumber ?? null },
+      });
     } catch (err) {
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
