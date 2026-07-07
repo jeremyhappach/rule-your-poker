@@ -156,6 +156,7 @@ export function PlayfieldSlotController({
   neutralParticipants,
   neutralCurrentUserId,
   neutralParticipantGameType,
+  neutralRenderPane,
   isTerminalSessionEndHandoff = false,
   children,
 
