@@ -15,7 +15,6 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-// @ts-expect-error vite raw import of the deployed edge function source
 import edgeSource from "../../../supabase/functions/generate-incident-report/index.ts?raw";
 
 import {
