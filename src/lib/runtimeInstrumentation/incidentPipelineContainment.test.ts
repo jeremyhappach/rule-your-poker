@@ -15,8 +15,8 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import * as fs from "fs";
+import * as path from "path";
 
 import {
   INCIDENT_PIPELINE_DISABLED,
@@ -56,8 +56,7 @@ describe("incidentReportTrigger (contained)", () => {
 
   it("triggerIncidentReport performs no fetch for any id (valid or malformed)", () => {
     const fetchSpy = vi.fn();
-    // @ts-expect-error install fetch spy on jsdom global
-    globalThis.fetch = fetchSpy;
+    (globalThis as unknown as { fetch: unknown }).fetch = fetchSpy;
 
     triggerIncidentReport(validId, "test");
     triggerIncidentReport("d0be90ac", "malformed");
@@ -69,8 +68,7 @@ describe("incidentReportTrigger (contained)", () => {
 
   it("triggerIncidentReportImmediate performs no fetch", () => {
     const fetchSpy = vi.fn();
-    // @ts-expect-error install fetch spy on jsdom global
-    globalThis.fetch = fetchSpy;
+    (globalThis as unknown as { fetch: unknown }).fetch = fetchSpy;
 
     triggerIncidentReportImmediate(validId, "test");
     triggerIncidentReportImmediate("d0be90ac", "malformed");
