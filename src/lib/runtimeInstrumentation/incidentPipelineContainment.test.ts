@@ -90,10 +90,7 @@ describe("incidentReportTrigger (contained)", () => {
 });
 
 describe("generate-incident-report Edge Function (disabled path)", () => {
-  const src = readFileSync(
-    resolve(__dirname, "../../../supabase/functions/generate-incident-report/index.ts"),
-    "utf8",
-  );
+  const src: string = edgeSource as string;
 
   it("does not import supabase-js", () => {
     expect(src).not.toMatch(/@supabase\/supabase-js/);
