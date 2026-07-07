@@ -36,6 +36,8 @@ import {
   getChatOperationSnapshots,
   writeChatOperationTerminalSnapshot,
 } from '@/lib/shellTabAttention/shellTabAttentionInstrumentation';
+import { emitChatFlightEvent } from '@/lib/chatFlightRecorder';
+import { generateUUID } from '@/lib/uuid';
 
 interface ChatMessage {
   id: string;
@@ -44,12 +46,24 @@ interface ChatMessage {
   message: string;
   image_url?: string | null;
   chat_operation_id?: string | null;
+  client_message_id?: string | null;
   created_at: string;
   username?: string;
 }
 
 interface ChatBubble extends ChatMessage {
   expiresAt: number;
+}
+
+// Helper: last 10 ids from a projection, for compact state snapshots.
+const last10Ids = (arr: { id: string; client_message_id?: string | null }[]) =>
+  arr.slice(-10).map(m => ({ id: m.id, cmid: m.client_message_id ?? null }));
+
+// Non-cryptographic content hash so diagnostics never carry message text.
+function hashMessage(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16);
 }
 
 /**
@@ -233,7 +247,23 @@ export const useGameChat = (
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
+      // Durable correlation id: one uuid per attempted send, generated
+      // BEFORE optimistic insertion, included in optimistic message,
+      // sent verbatim in the DB insert, and echoed via realtime.
+      // NEVER regenerated during retry/reconcile.
+      const clientMessageId = generateUUID();
       const correlationId = createChatOperationId();
+      emitChatFlightEvent({
+        clientMessageId, gameId, role: 'sender',
+        eventName: 'SEND_HANDLER_ENTER',
+        sourceFile: 'src/hooks/useGameChat.ts',
+        sourceFunction: 'sendMessage',
+        stateSnapshot: {
+          msgLen: message.trim().length,
+          msgHash: hashMessage(message.trim()),
+          hasImage: Boolean(imageFile),
+        },
+      });
       const sendIntentAt = new Date().toISOString();
       recordChatDeliveryEvent({
         phase: 'send-intent',
@@ -267,6 +297,16 @@ export const useGameChat = (
           chatIdentity?.route ??
           (typeof window !== 'undefined' ? window.location.pathname : `/game/${gameId}`);
         const sessionId = chatIdentity?.sessionId ?? (gameId ? `session:${gameId}` : getTabSessionId());
+        emitChatFlightEvent({
+          clientMessageId, gameId, sessionId, role: 'sender',
+          eventName: 'IDENTITY_RESOLVED',
+          sourceFile: 'src/hooks/useGameChat.ts',
+          sourceFunction: 'sendMessage',
+          stateSnapshot: {
+            userId, route, activeTab: chatIdentity?.activeTab ?? null,
+            dealerGameId: chatIdentity?.dealerGameId ?? null,
+          },
+        });
         // TELEMETRY ORDERING CONTRACT:
         //   1. `telemetryReady` opens the durable chat_send_operations
         //      row and (only on success) registers the operation into
@@ -367,6 +407,7 @@ export const useGameChat = (
           message: message.trim(),
           image_url: imageUrl,
           chat_operation_id: correlationId,
+          client_message_id: clientMessageId,
           created_at: sentAt,
           username,
         };
@@ -380,6 +421,13 @@ export const useGameChat = (
           }, { optimisticMessageId: optimisticId });
         });
 
+        emitChatFlightEvent({
+          clientMessageId, gameId, sessionId, role: 'sender',
+          eventName: 'OPTIMISTIC_ADD_BEGIN',
+          sourceFile: 'src/hooks/useGameChat.ts',
+          sourceFunction: 'sendMessage/setAllMessages(optimistic-merged)',
+          stateSnapshot: { optimisticId },
+        });
         setAllMessages(prev => {
           const next = mergeMessages(prev, [optimisticMessage]);
           recordCanonicalProjection({
@@ -390,6 +438,19 @@ export const useGameChat = (
             incomingIds: [optimisticId],
             prevIds: prev.map((m) => m.id),
             payload: { optimisticId, refSource: 'sendMessage.optimistic' },
+          });
+          emitChatFlightEvent({
+            clientMessageId, gameId, sessionId, role: 'sender',
+            eventName: 'OPTIMISTIC_ADD_COMMITTED',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'sendMessage/setAllMessages(optimistic-merged)',
+            reason: 'union-merge-by-id',
+            stateSnapshot: {
+              optimisticId,
+              messageCount: next.length,
+              containsClientMessageId: next.some(m => m.client_message_id === clientMessageId),
+              last10: last10Ids(next),
+            },
           });
           return next;
         });
@@ -408,13 +469,54 @@ export const useGameChat = (
             dbStartAt,
           }, { optimisticMessageId: optimisticId });
         });
-        const { data, error } = await supabase.from('chat_messages').insert({
-          game_id: gameId,
-          user_id: userId,
-          message: message.trim(),
-          image_url: imageUrl,
-          chat_operation_id: correlationId,
-        }).select().single();
+        emitChatFlightEvent({
+          clientMessageId, gameId, sessionId, role: 'sender',
+          eventName: 'DB_INSERT_BEGIN',
+          sourceFile: 'src/hooks/useGameChat.ts',
+          sourceFunction: 'sendMessage/supabase.from(chat_messages).insert',
+          stateSnapshot: { optimisticId, dbStartAt },
+        });
+        let insertData: any = null;
+        let insertError: any = null;
+        try {
+          const resp = await supabase.from('chat_messages').insert({
+            game_id: gameId,
+            user_id: userId,
+            message: message.trim(),
+            image_url: imageUrl,
+            chat_operation_id: correlationId,
+            client_message_id: clientMessageId,
+          }).select().single();
+          insertData = resp.data;
+          insertError = resp.error;
+        } catch (thrown) {
+          emitChatFlightEvent({
+            clientMessageId, gameId, sessionId, role: 'sender',
+            eventName: 'DB_INSERT_THROWN',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'sendMessage/supabase.from(chat_messages).insert',
+            reason: (thrown as Error)?.message ?? String(thrown),
+            stateSnapshot: { optimisticId },
+          });
+          throw thrown;
+        }
+        const data = insertData;
+        const error = insertError;
+        emitChatFlightEvent({
+          clientMessageId, gameId, sessionId, role: 'sender',
+          eventName: 'DB_INSERT_RETURNED',
+          sourceFile: 'src/hooks/useGameChat.ts',
+          sourceFunction: 'sendMessage/supabase.from(chat_messages).insert',
+          reason: error ? (error.code ?? error.message ?? 'error') : 'success',
+          stateSnapshot: {
+            optimisticId,
+            resultCategory: error ? 'error' : 'success',
+            returnedDbId: data?.id ?? null,
+            returnedClientMessageId: (data as any)?.client_message_id ?? null,
+            errorCode: (error as any)?.code ?? null,
+            errorMessage: error?.message ?? null,
+          },
+        });
 
         if (error) {
           console.error('Error sending chat message:', error);
@@ -476,7 +578,15 @@ export const useGameChat = (
             delivery_status: 'insert-error',
             failure_reason: error.message,
           });
+          emitChatFlightEvent({
+            clientMessageId, gameId, sessionId, role: 'sender',
+            eventName: 'OPTIMISTIC_MESSAGE_REMOVAL_BEGIN',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'sendMessage/setAllMessages(insert-error-removed)',
+            reason: 'db-insert-error',
+          });
           setAllMessages(prev => {
+            const beforeIds = last10Ids(prev);
             const next = prev.filter(m => m.id !== optimisticId);
             recordCanonicalProjection({
               source: 'optimistic-reconciliation',
@@ -486,6 +596,19 @@ export const useGameChat = (
               incomingIds: [],
               prevIds: prev.map((m) => m.id),
               payload: { optimisticId, outcome: 'insert-error-removed' },
+            });
+            emitChatFlightEvent({
+              clientMessageId, gameId, sessionId, role: 'sender',
+              eventName: 'OPTIMISTIC_MESSAGE_REMOVAL_COMMITTED',
+              sourceFile: 'src/hooks/useGameChat.ts',
+              sourceFunction: 'sendMessage/setAllMessages(insert-error-removed)',
+              reason: 'predicate: m.id !== optimisticId; db-insert-error',
+              stateSnapshot: {
+                optimisticId,
+                before: beforeIds,
+                after: last10Ids(next),
+                stillContainsClientMessageId: next.some(m => m.client_message_id === clientMessageId),
+              },
             });
             return next;
           });
@@ -531,7 +654,15 @@ export const useGameChat = (
           });
           // Drop optimistic and merge authoritative row. Realtime may
           // also fire for the same id; mergeMessages dedupes.
+          emitChatFlightEvent({
+            clientMessageId, gameId, sessionId, role: 'sender',
+            eventName: 'CANONICAL_MERGE_BEGIN',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'sendMessage/setAllMessages(insert-success-reconciled)',
+            stateSnapshot: { optimisticId, authoritativeId: data.id },
+          });
           setAllMessages(prev => {
+            const beforeIds = last10Ids(prev);
             const withoutOptimistic = prev.filter(m => m.id !== optimisticId);
             const next = mergeMessages(
               withoutOptimistic,
@@ -545,6 +676,31 @@ export const useGameChat = (
               incomingIds: [data.id],
               prevIds: prev.map((m) => m.id),
               payload: { optimisticId, authoritativeId: data.id, outcome: 'insert-success-reconciled' },
+            });
+            emitChatFlightEvent({
+              clientMessageId, gameId, sessionId, role: 'sender',
+              eventName: 'OPTIMISTIC_MESSAGE_REMOVAL_COMMITTED',
+              sourceFile: 'src/hooks/useGameChat.ts',
+              sourceFunction: 'sendMessage/setAllMessages(insert-success-reconciled)',
+              reason: 'predicate: m.id !== optimisticId; replaced-by-authoritative-row',
+              stateSnapshot: {
+                optimisticId,
+                authoritativeId: data.id,
+                before: beforeIds,
+                after: last10Ids(next),
+                stillContainsClientMessageId: next.some(m => m.client_message_id === clientMessageId),
+              },
+            });
+            emitChatFlightEvent({
+              clientMessageId, gameId, sessionId, role: 'sender',
+              eventName: 'CANONICAL_MERGE_COMMITTED',
+              sourceFile: 'src/hooks/useGameChat.ts',
+              sourceFunction: 'sendMessage/setAllMessages(insert-success-reconciled)',
+              stateSnapshot: {
+                authoritativeId: data.id,
+                containsClientMessageId: next.some(m => m.client_message_id === clientMessageId),
+                last10: last10Ids(next),
+              },
             });
             return next;
           });
@@ -684,6 +840,21 @@ export const useGameChat = (
         prevIds: prev.map((m) => m.id),
         payload: { refSource: 'addBubble.realtime', username },
       });
+      emitChatFlightEvent({
+        clientMessageId: msgWithUsername.client_message_id ?? null,
+        gameId: msgWithUsername.game_id,
+        role: 'receiver',
+        eventName: 'RECEIVER_MERGE_COMMITTED',
+        sourceFile: 'src/hooks/useGameChat.ts',
+        sourceFunction: 'addBubble/setAllMessages(realtime-merge)',
+        stateSnapshot: {
+          messageDbId: msgWithUsername.id,
+          senderUserId: msgWithUsername.user_id,
+          containsClientMessageId: !!msgWithUsername.client_message_id &&
+            next.some(m => m.client_message_id === msgWithUsername.client_message_id),
+          last10: last10Ids(next),
+        },
+      });
       return next;
     });
   }, [currentUserId, getOrFetchObserverUsername, mergeMessages]);
@@ -770,6 +941,29 @@ export const useGameChat = (
           prevIds: prev.map((m) => m.id),
           payload: { fetchedCount: data.length, refSource: 'fetchMessages' },
         });
+        // Emit one HYDRATION_RESULT per fetched client_message_id so
+        // sender and receiver reports can prove whether the durable
+        // row was visible to hydration.
+        const hydratedCmids = new Set<string>(
+          messagesWithUsernames
+            .map(m => (m as { client_message_id?: string | null }).client_message_id)
+            .filter((x): x is string => !!x)
+        );
+        hydratedCmids.forEach((cmid) => {
+          emitChatFlightEvent({
+            clientMessageId: cmid,
+            gameId,
+            role: 'receiver',
+            eventName: 'HYDRATION_RESULT',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'fetchMessages/setAllMessages(hydration-merge)',
+            reason: 'included-in-hydration',
+            stateSnapshot: {
+              fetchedCount: data.length,
+              containsClientMessageId: true,
+            },
+          });
+        });
         return next;
       });
 
@@ -836,6 +1030,22 @@ export const useGameChat = (
             gameId,
             messageId: newMessage.id,
             payloadGameId: newMessage.game_id,
+          });
+          emitChatFlightEvent({
+            clientMessageId: newMessage.client_message_id ?? null,
+            gameId,
+            role: 'receiver',
+            eventName: 'REALTIME_INSERT_RECEIVED',
+            sourceFile: 'src/hooks/useGameChat.ts',
+            sourceFunction: 'chat-<gameId> postgres_changes INSERT',
+            stateSnapshot: {
+              messageDbId: newMessage.id,
+              payloadGameId: newMessage.game_id,
+              expectedGameId: gameId,
+              senderUserId: newMessage.user_id,
+              receiverUserId: currentUserId ?? null,
+              hasClientMessageId: Boolean(newMessage.client_message_id),
+            },
           });
           try {
             const receiptAt = new Date().toISOString();
@@ -942,8 +1152,31 @@ export const useGameChat = (
                 consumer: 'canonical-store',
                 payload: { channelTopic, payloadGameId: newMessage.game_id, expectedGameId: gameId },
               });
+              emitChatFlightEvent({
+                clientMessageId: newMessage.client_message_id ?? null,
+                gameId,
+                role: 'receiver',
+                eventName: 'REALTIME_PAYLOAD_REJECTED',
+                sourceFile: 'src/hooks/useGameChat.ts',
+                sourceFunction: 'chat-<gameId> postgres_changes INSERT',
+                reason: 'predicate: newMessage.game_id !== expectedGameId',
+                stateSnapshot: {
+                  payloadGameId: newMessage.game_id,
+                  expectedGameId: gameId,
+                  messageDbId: newMessage.id,
+                },
+              });
               return;
             }
+            emitChatFlightEvent({
+              clientMessageId: newMessage.client_message_id ?? null,
+              gameId,
+              role: 'receiver',
+              eventName: 'REALTIME_PAYLOAD_ACCEPTED',
+              sourceFile: 'src/hooks/useGameChat.ts',
+              sourceFunction: 'chat-<gameId> postgres_changes INSERT',
+              stateSnapshot: { messageDbId: newMessage.id },
+            });
             recordSessionLifecycleEvent('CHAT_STORE_UPDATE_BEGIN', {
               gameId,
               messageId: newMessage.id,

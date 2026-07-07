@@ -146,9 +146,67 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_message_diagnostic_events: {
+        Row: {
+          actor_user_id: string | null
+          client_message_id: string | null
+          client_role: string
+          created_at: string
+          diagnostic_session_id: string
+          event_name: string
+          event_sequence: number
+          game_id: string | null
+          id: string
+          monotonic_ms: number | null
+          reason: string | null
+          session_id: string | null
+          source_file: string | null
+          source_function: string | null
+          state_snapshot: Json
+          wall_clock_at: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          client_message_id?: string | null
+          client_role: string
+          created_at?: string
+          diagnostic_session_id: string
+          event_name: string
+          event_sequence: number
+          game_id?: string | null
+          id?: string
+          monotonic_ms?: number | null
+          reason?: string | null
+          session_id?: string | null
+          source_file?: string | null
+          source_function?: string | null
+          state_snapshot?: Json
+          wall_clock_at?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          client_message_id?: string | null
+          client_role?: string
+          created_at?: string
+          diagnostic_session_id?: string
+          event_name?: string
+          event_sequence?: number
+          game_id?: string | null
+          id?: string
+          monotonic_ms?: number | null
+          reason?: string | null
+          session_id?: string | null
+          source_file?: string | null
+          source_function?: string | null
+          state_snapshot?: Json
+          wall_clock_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           chat_operation_id: string | null
+          client_message_id: string | null
           created_at: string
           game_id: string
           id: string
@@ -158,6 +216,7 @@ export type Database = {
         }
         Insert: {
           chat_operation_id?: string | null
+          client_message_id?: string | null
           created_at?: string
           game_id: string
           id?: string
@@ -167,6 +226,7 @@ export type Database = {
         }
         Update: {
           chat_operation_id?: string | null
+          client_message_id?: string | null
           created_at?: string
           game_id?: string
           id?: string
@@ -3210,6 +3270,23 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      record_chat_flight_event: {
+        Args: {
+          _client_message_id: string
+          _client_role: string
+          _diagnostic_session_id: string
+          _event_name: string
+          _event_sequence: number
+          _game_id: string
+          _monotonic_ms: number
+          _reason: string
+          _session_id: string
+          _source_file: string
+          _source_function: string
+          _state_snapshot: Json
+        }
+        Returns: undefined
+      }
       start_holm_initial_hand: {
         Args: { _game_id: string; _skip_ante_collection?: boolean }
         Returns: Json
