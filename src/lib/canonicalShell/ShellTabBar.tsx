@@ -37,6 +37,7 @@ import {
   Spade as SpadeIcon,
   Dices as DiceIcon,
 } from 'lucide-react';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 export type ShellTabId = 'cards' | 'chat' | 'lobby' | 'history';
 export type ShellCardsTabIcon = 'spade' | 'dice';
@@ -207,6 +208,26 @@ export function ShellTabBar() {
 
   const cardsAttentionRenderState =
     cardsFlash === 'red' ? 'LOCAL_TURN' : cardsFlash === 'green' ? 'NEW_DEAL' : 'NONE';
+
+  useEffect(() => {
+    recordGinPhaseTrace({
+      kind: 'tab-disabled-calculation',
+      summary: 'Shell tab bar disabled-state calculation',
+      sourceFile: 'src/lib/canonicalShell/ShellTabBar.tsx',
+      sourceFunction: 'ShellTabBar',
+      detail: {
+        activeTab,
+        disabledByTab: { cards: false, chat: false, lobby: false, history: false },
+        predicates: {
+          shellTabBarStatePresent: true,
+          isPaused: !!isPaused,
+          cardsFlashing: cardsFlash ?? null,
+          chatFlashing: chatFlash ?? null,
+          chatIndicator: chatDot ?? null,
+        },
+      },
+    });
+  }, [activeTab, isPaused, cardsFlash, chatFlash, chatDot]);
 
   // SHELL_TAB_ATTENTION_SNAPSHOT — narrow, contract-driven persistence of
   // the resolved tab-bar visual state for the waiting-table / no-real-game
@@ -432,7 +453,40 @@ export function ShellTabBar() {
 
 
 
+  const requestTab = (tab: 'cards' | 'chat' | 'lobby' | 'history', owner: string, action: () => void) => {
+    recordGinPhaseTrace({
+      kind: 'tab-request',
+      summary: `Tab requested: ${tab}`,
+      sourceFile: 'src/lib/canonicalShell/ShellTabBar.tsx',
+      sourceFunction: owner,
+      detail: {
+        requestedTab: tab,
+        activeTabBefore: activeTab,
+        accepted: true,
+        rejected: false,
+        rejectionOwner: null,
+        rejectionReason: null,
+      },
+    });
+    action();
+  };
+
   const handleChatClick = () => {
+    recordGinPhaseTrace({
+      kind: 'tab-request',
+      summary: 'Tab requested: chat',
+      sourceFile: 'src/lib/canonicalShell/ShellTabBar.tsx',
+      sourceFunction: 'ShellTabBar.handleChatClick',
+      detail: {
+        requestedTab: 'chat',
+        activeTabBefore: activeTab,
+        accepted: true,
+        rejected: false,
+        rejectionOwner: null,
+        rejectionReason: null,
+        handler: onOpenChat ? 'onOpenChat' : 'setActiveTab',
+      },
+    });
     if (onOpenChat) onOpenChat();
     else setActiveTab('chat');
   };
@@ -450,7 +504,7 @@ export function ShellTabBar() {
     >
 
       <button
-        onClick={() => setActiveTab('cards')}
+        onClick={() => requestTab('cards', 'ShellTabBar.cardsButton', () => setActiveTab('cards'))}
         style={{ flex: '0 0 35%' }}
         className={`${tabBase} ${activeTab === 'cards' ? tabActive : tabIdle}`}
         aria-label="Cards"
@@ -475,7 +529,7 @@ export function ShellTabBar() {
       </button>
 
       <button
-        onClick={() => setActiveTab('lobby')}
+        onClick={() => requestTab('lobby', 'ShellTabBar.lobbyButton', () => setActiveTab('lobby'))}
         style={{ flex: '0 0 15%' }}
         className={`${tabBase} ${activeTab === 'lobby' ? tabActive : tabIdle}`}
         aria-label="Lobby"
@@ -483,7 +537,7 @@ export function ShellTabBar() {
         <User className="w-5 h-5" />
       </button>
       <button
-        onClick={() => setActiveTab('history')}
+        onClick={() => requestTab('history', 'ShellTabBar.historyButton', () => setActiveTab('history'))}
         style={{ flex: '0 0 15%' }}
         className={`${tabBase} ${activeTab === 'history' ? tabActive : tabIdle}`}
         aria-label="History"

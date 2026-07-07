@@ -106,6 +106,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 // Local card-id helpers (formerly in ginSelfDrawTrace) — used by the
 // self-draw withhold registry.
@@ -195,6 +196,20 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * immediately" path (useDealRuntime() returns null).
  */
 function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+  useEffect(() => {
+    recordGinPhaseTrace({
+      kind: handContextId ? 'deal-runtime-host' : 'deal-runtime-reset',
+      summary: handContextId ? 'Gin DealRuntime host has handContextId' : 'Gin DealRuntime host has no handContextId',
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'DealRuntimeMaybe',
+      identity: { handContextId: handContextId ?? null },
+      detail: {
+        runtimeKey: handContextId ?? null,
+        keyInputs: handContextId ? handContextId.split('#') : [],
+        mounted: !!handContextId,
+      },
+    });
+  }, [handContextId]);
   if (!handContextId) return <>{children}</>;
   return (
     <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy">
@@ -622,6 +637,20 @@ export const GinRummyGameTable = ({
       return;
     }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    recordGinPhaseTrace({
+      kind: 'state-replacement',
+      summary: `Gin bootstrap authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'bootstrapState apply useEffect',
+      identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+      detail: {
+        source: 'hydration',
+        accepted: result.accepted,
+        phase: bootstrapState.phase,
+        stateHandNumber: bootstrapState.handNumber ?? null,
+        presentationBefore: renderAcceptedPresentation?.state?.phase ?? null,
+      },
+    });
     recordStartupFlight('SYNC TIMELINE', 'bootstrapState receiveAuthoritativeUpdate returned', {
       file: 'src/components/GinRummyGameTable.tsx',
       function: 'bootstrapState apply useEffect',
@@ -681,9 +710,32 @@ export const GinRummyGameTable = ({
     () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
   );
   const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    recordGinPhaseTrace({
+      kind: 'tab-active-change',
+      summary: `Gin active tab mutation requested: ${next}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'GinRummyGameTable.setActiveTab',
+      identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+      detail: { before: activeTab, after: next, cause: 'user-request' },
+    });
     writePersistedMatchChatTab(gameId, next);
     setActiveTabRaw(next);
-  }, [gameId]);
+  }, [gameId, activeTab, dealerGameId, roundId, handNumber, handContextId]);
+  const lastActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    const before = lastActiveTabRef.current;
+    if (before !== activeTab) {
+      recordGinPhaseTrace({
+        kind: 'tab-active-change',
+        summary: `Gin active tab changed: ${before} → ${activeTab}`,
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'GinRummyGameTable.activeTabEffect',
+        identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+        detail: { before, after: activeTab, cause: 'user-request' },
+      });
+      lastActiveTabRef.current = activeTab;
+    }
+  }, [activeTab, gameId, dealerGameId, roundId, handNumber, handContextId]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
   // Chat indicator: hydration guard + replay guard
@@ -1250,6 +1302,14 @@ export const GinRummyGameTable = ({
           return;
         }
         const result = ginSync.receiveAuthoritativeUpdate(state);
+        recordGinPhaseTrace({
+          kind: 'state-replacement',
+          summary: `Gin fetched authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+          sourceFile: 'src/components/GinRummyGameTable.tsx',
+          sourceFunction: 'fetchLatestState',
+          identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+          detail: { source: 'hydration', accepted: result.accepted, phase: state.phase, stateHandNumber: state.handNumber ?? null },
+        });
         if (result.accepted) {
           lastAuthoritativeSignatureRef.current = signatureForGinRunback(state);
           installAcceptedPresentation(fetchProvenance!, state);
@@ -1353,6 +1413,22 @@ export const GinRummyGameTable = ({
       });
       // Route ALL external updates through the sync framework's progress-vector gate.
       const result = ginSync.receiveAuthoritativeUpdate(state);
+      recordGinPhaseTrace({
+        kind: 'state-replacement',
+        summary: `Gin ${source} authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'applyState',
+        identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+        detail: {
+          source,
+          accepted: result.accepted,
+          phaseBefore: viewState?.phase ?? null,
+          phaseAfter: state.phase,
+          stateHandNumber: state.handNumber ?? null,
+          actionCount: state.actionCount ?? null,
+          currentTurnPlayerId: state.currentTurnPlayerId ?? null,
+        },
+      });
       recordStartupFlight('SYNC TIMELINE', 'Gin receiveAuthoritativeUpdate from applyState returned', {
         file: 'src/components/GinRummyGameTable.tsx',
         function: 'applyState',
@@ -2308,6 +2384,14 @@ export const GinRummyGameTable = ({
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
     localOptimisticSignatureRef.current = signatureForGinRunback(newState);
     ginSync.applyOptimistic(newState);
+    recordGinPhaseTrace({
+      kind: 'state-replacement',
+      summary: 'Gin optimistic state applied before server action',
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'updateState',
+      identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+      detail: { source: 'optimistic', phaseBefore: ginState?.phase ?? null, phaseAfter: newState.phase, stateHandNumber: newState.handNumber ?? null },
+    });
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
@@ -2328,6 +2412,14 @@ export const GinRummyGameTable = ({
       });
       // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
+      recordGinPhaseTrace({
+        kind: 'state-replacement',
+        summary: 'Gin server action confirmed local state',
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'updateState',
+        identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+        detail: { source: 'server action', phaseAfter: newState.phase, stateHandNumber: newState.handNumber ?? null },
+      });
     } catch (err) {
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2680,6 +2772,26 @@ export const GinRummyGameTable = ({
 
   useEffect(() => {
   }, [gameId, authIdentity?.roundId, authIdentity?.handNumber, currentRoundId, currentHandNumber, viewState?.handNumber, viewState?.phase, ginState?.handNumber, ginState?.phase, isStaleHandPresentation, isPlayable, currentPlayerId, opponentId]);
+
+  useEffect(() => {
+    recordGinPhaseTrace({
+      kind: 'pane-selected',
+      summary: `Gin pane selected: ${activeTab}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'GinRummyGameTable.ShellHudGrid.pane',
+      identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+      detail: {
+        activeTab,
+        paneOwner: 'GinRummyGameTable',
+        contentMounted: activeTab === 'cards'
+          ? !!(currentPlayer && visiblePlayable && viewState)
+          : activeTab === 'chat' || activeTab === 'lobby' || activeTab === 'history',
+        cardsVisiblePlayable: !!visiblePlayable,
+        hasCurrentPlayer: !!currentPlayer,
+        hasViewState: !!viewState,
+      },
+    });
+  }, [activeTab, gameId, dealerGameId, roundId, handNumber, handContextId, currentPlayer, visiblePlayable, viewState]);
 
   if (!isPlayable && !placeholderPaintedRef.current) {
     placeholderPaintedRef.current = true;

@@ -29,6 +29,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 
 interface SeatEntry {
@@ -84,6 +85,27 @@ export function GinRummyDealOrchestrator({
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
+    recordGinPhaseTrace({
+      kind: 'deal-orchestrator-mount',
+      summary: 'Gin opening deal orchestrator mounted',
+      sourceFile: 'src/components/GinRummyDealOrchestrator.tsx',
+      sourceFunction: 'GinRummyDealOrchestrator.mountEffect',
+      identity: { handContextId, dealerPlayerId },
+      detail: { nonDealerPlayerId, selfPlayerId, cardsPerPlayer },
+    });
+    return () => {
+      recordGinPhaseTrace({
+        kind: 'deal-orchestrator-unmount',
+        summary: 'Gin opening deal orchestrator unmounted',
+        sourceFile: 'src/components/GinRummyDealOrchestrator.tsx',
+        sourceFunction: 'GinRummyDealOrchestrator.unmountEffect',
+        identity: { handContextId, dealerPlayerId },
+        detail: { nonDealerPlayerId, selfPlayerId, cardsPerPlayer },
+      });
+    };
+  }, [handContextId, dealerPlayerId, nonDealerPlayerId, selfPlayerId, cardsPerPlayer]);
+
+  useEffect(() => {
     if (!deal || dispatchedRef.current) return;
     // Identity-bound opening-deal ownership: a remount under the same
     // handContextId (full 3-axis identity tuple) must observe the prior
@@ -91,6 +113,14 @@ export function GinRummyDealOrchestrator({
     // re-running beginDeal/dispatchMany for the same hand.
     if (dispatchedOpeningDealManifests.has(handContextId)) {
       dispatchedRef.current = true;
+      recordGinPhaseTrace({
+        kind: 'deal-orchestrator-skip',
+        summary: 'Gin opening deal skipped; manifest already dispatched',
+        sourceFile: 'src/components/GinRummyDealOrchestrator.tsx',
+        sourceFunction: 'GinRummyDealOrchestrator.dispatchEffect',
+        identity: { handContextId, dealerPlayerId },
+        detail: { reason: 'already-dispatched-opening-deal-manifest' },
+      });
       return;
     }
     if (!dealTimingHydrated) {
@@ -226,6 +256,21 @@ export function GinRummyDealOrchestrator({
 
     dispatchedRef.current = true;
     dispatchedOpeningDealManifests.add(handContextId);
+    recordGinPhaseTrace({
+      kind: 'deal-orchestrator-start',
+      summary: 'Gin opening deal orchestrator starts transport',
+      sourceFile: 'src/components/GinRummyDealOrchestrator.tsx',
+      sourceFunction: 'GinRummyDealOrchestrator.dispatchEffect',
+      identity: { handContextId, dealerPlayerId },
+      detail: {
+        expectedCount: intents.length,
+        firstIntentId: intents[0]?.id ?? null,
+        lastIntentId: intents[intents.length - 1]?.id ?? null,
+        selfHandCount: selfHand.length,
+        discardTop: discardTop ? toVisibleFace(discardTop) : null,
+        dealOrigin: dealerOrigin,
+      },
+    });
     deal.beginDeal(intents.length);
     ct.dispatchMany(intents);
 

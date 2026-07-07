@@ -273,8 +273,12 @@ import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
-import { MobileChatPanel } from "@/components/MobileChatPanel";
-import { getDisplayName } from "@/lib/botAlias";
+import {
+  GinPhaseTracePill,
+  armGinPhaseTrace,
+  markGinPhaseTraceAnteResolved,
+  recordGinPhaseTrace,
+} from "@/lib/ginPhaseTrace";
 // Win-presentation instrumentation was removed.
 import {
   AlertDialog,
@@ -1651,6 +1655,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  const setMobileActiveTabWithTrace = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    recordGinPhaseTrace({
+      kind: 'tab-active-change',
+      summary: `Shell mobile active tab mutation requested: ${next}`,
+      sourceFile: 'src/pages/Game.tsx',
+      sourceFunction: 'setMobileActiveTabWithTrace',
+      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: null, handNumber: null },
+      detail: { before: mobileActiveTab, after: next, cause: 'user-request' },
+    });
+    setMobileActiveTab(next);
+  }, [gameId, game, mobileActiveTab]);
+  const lastMobileActiveTabRef = useRef(mobileActiveTab);
+  useEffect(() => {
+    const before = lastMobileActiveTabRef.current;
+    if (before === mobileActiveTab) return;
+    recordGinPhaseTrace({
+      kind: 'tab-active-change',
+      summary: `Shell mobile active tab changed: ${before} → ${mobileActiveTab}`,
+      sourceFile: 'src/pages/Game.tsx',
+      sourceFunction: 'Game.mobileActiveTabEffect',
+      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: null, handNumber: null },
+      detail: { before, after: mobileActiveTab, cause: 'user-request' },
+    });
+    lastMobileActiveTabRef.current = mobileActiveTab;
+  }, [mobileActiveTab, gameId, game]);
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
   // LIFTED chat watermark - last seen eligible other-human message ID, survives MobileGameTable remounts
@@ -2503,6 +2532,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (!prev) return prev;
         const rounds = prev.rounds ?? [];
         const idx = rounds.findIndex((r) => r.id === roundId);
+        recordGinPhaseTrace({
+          kind: 'state-replacement',
+          summary: 'Game rounds state patched from realtime',
+          sourceFile: 'src/pages/Game.tsx',
+          sourceFunction: 'applyRoundRealtimePatch',
+          identity: { gameId: gameId ?? null, dealerGameId: newRound?.dealer_game_id ?? (prev as any)?.current_game_uuid ?? null, roundId, handNumber: newRound?.hand_number ?? null },
+          detail: {
+            source: 'realtime',
+            statusBefore: prev.status ?? null,
+            statusAfter: prev.status ?? null,
+            activeTabBefore: mobileActiveTab,
+            activeTabAfter: mobileActiveTab,
+            roundPatchMode: idx === -1 ? 'insert' : 'update',
+            hasGinRummyState: !!newRound?.gin_rummy_state,
+          },
+        });
         if (idx === -1) {
           // INSERT path: append authoritative row so currentRound can be derived
           // immediately, without waiting for the fetchGameData round-trip.
@@ -2515,7 +2560,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } catch (err) {
       console.error('[REALTIME] Error in applyRoundRealtimePatch:', err);
     }
-  }, []);
+  }, [gameId, mobileActiveTab]);
 
   // CRITICAL: React Router does not remount this page when only :gameId changes.
   // If we keep lifted caches, a new game's first hand can render the last hand's cards.
@@ -2635,7 +2680,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [game?.game_type, game?.id]);
 
-
+  const ginPhaseTracePrevAuthRef = useRef<{
+    status: string | null;
+    phase: string | null;
+    gameType: string | null;
+    dealerGameId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+    activeTab: typeof mobileActiveTab;
+  } | null>(null);
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
   useEffect(() => {
@@ -5095,6 +5148,68 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  useEffect(() => {
+    const routeShellGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+    const humanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
+    const isTwoHumanGin = humanPlayers.length === 2 && routeShellGameType === 'gin-rummy';
+    const isSetup = isTwoHumanGin && (
+      game?.status === 'dealer_selection' ||
+      game?.status === 'game_selection' ||
+      game?.status === 'configuring'
+    );
+    const current = {
+      status: game?.status ?? null,
+      phase: ((currentRound as any)?.gin_rummy_state as any)?.phase ?? null,
+      gameType: game?.game_type ?? routeShellGameType ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      roundId: currentRound?.id ?? null,
+      handNumber: (currentRound as any)?.hand_number ?? null,
+      activeTab: mobileActiveTab,
+    };
+    if (isSetup) {
+      armGinPhaseTrace({
+        sessionKey: `${gameId ?? 'no-game'}:${current.dealerGameId ?? 'no-dealer-game'}:${current.status}`,
+        identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
+        detail: {
+          owner: 'Game shell',
+          status: current.status,
+          routeShellGameType,
+          humanPlayerCount: humanPlayers.length,
+          activeTab: mobileActiveTab,
+        },
+      });
+    }
+    if (!isTwoHumanGin && routeShellGameType !== 'gin-rummy') return;
+    const prev = ginPhaseTracePrevAuthRef.current;
+    const anteDecisions = players.map((p) => ({ id: p.id, isBot: p.is_bot, anteDecision: p.ante_decision ?? null, status: p.status, sittingOut: p.sitting_out }));
+    const activeHumans = humanPlayers.filter((p) => !p.sitting_out);
+    const allHumanAntesResolved = activeHumans.length > 0 && activeHumans.every((p) => !!p.ante_decision || p.sitting_out);
+    recordGinPhaseTrace({
+      kind: 'authoritative-state-update',
+      summary: `Game authoritative state ${prev?.status ?? '(init)'} → ${current.status}`,
+      sourceFile: 'src/pages/Game.tsx',
+      sourceFunction: 'Game.ginPhaseTraceAuthoritativeEffect',
+      identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
+      detail: {
+        source: 'hydration/realtime/fetch React state projection',
+        before: prev,
+        after: current,
+        activeTabBefore: prev?.activeTab ?? null,
+        activeTabAfter: current.activeTab,
+        anteDecisions,
+        allHumanAntesResolved,
+        activeHumanCount: activeHumans.length,
+      },
+    });
+    if (prev?.status === 'ante_decision' && current.status === 'in_progress') {
+      markGinPhaseTraceAnteResolved({
+        identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
+        detail: { before: prev, after: current, anteDecisions, allHumanAntesResolved },
+      });
+    }
+    ginPhaseTracePrevAuthRef.current = current;
+  }, [game, players, currentRound, mobileActiveTab, gameId, previousGameConfig]);
 
   useEffect(() => {
     recordStartupValue('STATUS TIMELINE', 'Game.status', game?.status ?? null, {
@@ -12040,81 +12155,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             neutralActiveTab={mobileActiveTab}
-            onNeutralActiveTabChange={setMobileActiveTab}
+            onNeutralActiveTabChange={setMobileActiveTabWithTrace}
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
-            neutralRenderPane={(tab) => {
-              // Presentation-only tab-pane projection for the neutral
-              // interstitial (opponent next-game configuration). Chat /
-              // Lobby / History are functional; Cards intentionally
-              // returns null — the active hand does not exist yet.
-              // MUST NOT touch deal runtime, transport, or reveal state;
-              // MUST NOT force tab switches. Tab selection is user-
-              // persistent shell state honored across the interstitial.
-              if (tab === 'chat') {
-                return (
-                  <div className="h-full px-3 pb-3 flex flex-col overflow-hidden min-h-0">
-                    {sendChatMessage ? (
-                      <div className="flex-1 min-h-0 flex flex-col">
-                        <MobileChatPanel
-                          messages={allMessages}
-                          onSend={sendChatMessage}
-                          isSending={isChatSending}
-                          currentUserId={user?.id ?? null}
-                          instrumentationCurrentUserId={user?.id ?? null}
-                          diagnosticGameId={gameId ?? null}
-                          diagnosticDealerGameId={(game as any)?.current_game_uuid ?? null}
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground text-sm text-center">Chat not available</p>
-                    )}
-                  </div>
-                );
-              }
-              if (tab === 'lobby') {
-                return (
-                  <div className="h-full px-3 pb-2 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                      <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
-                    </div>
-                    <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
-                      {(players ?? []).map((p: any) => {
-                        const isSelf = p.user_id === user?.id;
-                        const label = p.is_bot
-                          ? getDisplayName(players as any, p, p.profiles?.username ?? 'Bot')
-                          : (p.profiles?.username ?? `P${p.position}`);
-                        return (
-                          <div
-                            key={p.id}
-                            className={
-                              'flex items-center justify-between py-1.5 px-2 rounded-md ' +
-                              (isSelf ? 'bg-primary/10' : 'bg-transparent')
-                            }
-                          >
-                            <span className={'text-sm font-medium truncate ' + (isSelf ? 'text-primary' : 'text-foreground')}>
-                              {label}
-                            </span>
-                            <span className="text-right min-w-[45px] font-bold text-sm text-poker-gold">
-                              ${Math.round(p.chips ?? 0).toLocaleString()}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
-              if (tab === 'history') {
-                return (
-                  <div className="h-full px-4 py-6 text-center text-muted-foreground text-sm">
-                    History will appear after the next hand starts.
-                  </div>
-                );
-              }
-              return null;
-            }}
             preGameOverlay={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
@@ -13488,6 +13532,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             />
             {innerTree}
           </PersistentTableShell>
+          <GinPhaseTracePill />
           {/* Gin-only readiness probe (capability-driven, not shell branching).
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}

@@ -12,6 +12,7 @@ import { MeasuredActiveHandFan } from './activeHand/MeasuredActiveHandFan';
 import { useActiveHandLayoutPolicy } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -231,6 +232,52 @@ export const GinRummyMobileCardsTab = ({
     if (allowed >= rawMyState.hand.length) return rawMyState;
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, dealBoundToThisHand, currentPlayerId, forceFullProjection, deal?.phase, deal?.settledCardIds]);
+
+  const lastProjectionTraceRef = useRef<string | null>(null);
+  useEffect(() => {
+    const renderedCount = myState?.hand?.length ?? 0;
+    const authoritativeCount = stableMyStateAuthoritative?.hand?.length ?? 0;
+    const projectionMode = forceFullProjection ? 'full-authoritative' : 'canonical-settled-hand';
+    const settledForPlayer = dealBoundToThisHand ? deal?.getSettledCountForPlayer(currentPlayerId) ?? 0 : null;
+    const sig = JSON.stringify({
+      localHandIdentityKey,
+      projectionMode,
+      renderedCount,
+      authoritativeCount,
+      dealPhase: deal?.phase ?? null,
+      settledForPlayer,
+    });
+    if (lastProjectionTraceRef.current === sig) return;
+    const prev = lastProjectionTraceRef.current ? JSON.parse(lastProjectionTraceRef.current) : null;
+    lastProjectionTraceRef.current = sig;
+    const boundary = renderedCount >= GIN_CARDS_PER_PLAYER && (!prev || prev.renderedCount < GIN_CARDS_PER_PLAYER)
+      ? 'all-cards-visible'
+      : null;
+    recordGinPhaseTrace({
+      kind: 'card-projection',
+      summary: `Gin self-card projection ${projectionMode} rendered=${renderedCount}/${authoritativeCount}`,
+      sourceFile: 'src/components/GinRummyMobileCardsTab.tsx',
+      sourceFunction: 'GinRummyMobileCardsTab.projectionEffect',
+      identity: { gameId, handContextId: handIdentityKey ?? null },
+      detail: {
+        localHandIdentityKey,
+        playerId: currentPlayerId,
+        projectionMode,
+        source: projectionMode === 'canonical-settled-hand' ? 'DealRuntime.getSettledCountForPlayer' : 'authoritative-admitted-local-hand',
+        renderedCount,
+        authoritativeCount,
+        rawAuthoritativeHandCount,
+        dealBoundToThisHand,
+        dealPhase: deal?.phase ?? null,
+        dealExpectedCount: deal?.expectedCount ?? null,
+        dealSettledCount: deal?.settledCardIds.size ?? null,
+        settledForPlayer,
+        forceFullProjection,
+        boundary,
+        boundaryCause: boundary ? (forceFullProjection ? 'full-authoritative-projection' : 'canonical-settled-hand-reached-full-count') : null,
+      },
+    });
+  }, [myState?.hand?.length, stableMyStateAuthoritative?.hand?.length, rawAuthoritativeHandCount, forceFullProjection, localHandIdentityKey, dealBoundToThisHand, deal?.phase, deal?.expectedCount, deal?.settledCardIds, currentPlayerId, gameId, handIdentityKey]);
 
   // Single-owner discard contract: Take must be disabled until the
   // opening discard intent for the current hand has settled.

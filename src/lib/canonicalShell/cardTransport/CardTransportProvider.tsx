@@ -22,6 +22,7 @@ import type { CardTransportIntent } from './types';
 import { describeCardEndpoint } from './types';
 import { cardTransportDbgUpsert } from './cardTransportDbg';
 import { ffRecord } from './holmFullForensics';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;
@@ -152,13 +153,32 @@ export function CardTransportProvider({
           nextActiveCount: activeIntentsRef.current.length + 1,
         },
       });
+      if (gameType === 'gin-rummy') {
+        recordGinPhaseTrace({
+          kind: 'card-transport-dispatch',
+          summary: 'Gin card transport accepted intent',
+          sourceFile: 'src/lib/canonicalShell/cardTransport/CardTransportProvider.tsx',
+          sourceFunction: 'CardTransportProvider.acceptOne',
+          identity: { gameId, handContextId: intent.handContextId ?? null },
+          detail: {
+            intentId: intent.id,
+            cardId: intent.cardId,
+            face: intent.face,
+            from: describeCardEndpoint(intent.from),
+            to: describeCardEndpoint(intent.to),
+            recipientPlayerId: intent.recipientPlayerId ?? null,
+            enqueueSeq,
+            priorActiveCount: activeIntentsRef.current.length,
+          },
+        });
+      }
       setActiveIntents((prev) => [
         ...prev,
         { ...intent, enqueueSeq, enqueuedAt: now },
       ]);
       return true;
     },
-    [gameId],
+    [gameId, gameType],
   );
 
   const dispatch = useCallback(
@@ -204,9 +224,24 @@ export function CardTransportProvider({
           nextActiveCount: activeIntentsRef.current.length,
         },
       });
+      if (gameType === 'gin-rummy') {
+        recordGinPhaseTrace({
+          kind: 'card-transport-dispatch',
+          summary: 'Gin card transport dispatchMany complete',
+          sourceFile: 'src/lib/canonicalShell/cardTransport/CardTransportProvider.tsx',
+          sourceFunction: 'CardTransportProvider.dispatchMany',
+          identity: { gameId, handContextId: intents[0]?.handContextId ?? null },
+          detail: {
+            incoming: intents.length,
+            accepted,
+            rejectedAsDuplicateOrEmpty: intents.length - accepted,
+            handContextIds: Array.from(new Set(intents.map((i) => i.handContextId ?? null))),
+          },
+        });
+      }
       return accepted;
     },
-    [acceptOne, gameId],
+    [acceptOne, gameId, gameType],
   );
 
   const fireCallbacks = useCallback((intentId: string, cardId: string) => {
@@ -252,6 +287,23 @@ export function CardTransportProvider({
         handContextId: intent?.handContextId ?? null,
       },
     });
+    if (gameType === 'gin-rummy') {
+      recordGinPhaseTrace({
+        kind: 'card-transport-settle',
+        summary: 'Gin card transport settled intent',
+        sourceFile: 'src/lib/canonicalShell/cardTransport/CardTransportProvider.tsx',
+        sourceFunction: 'CardTransportProvider.markSettled',
+        identity: { gameId, handContextId: intent?.handContextId ?? null },
+        detail: {
+          intentId,
+          cardId,
+          source,
+          from: intent ? describeCardEndpoint(intent.from) : null,
+          to: intent ? describeCardEndpoint(intent.to) : null,
+          recipientPlayerId: intent?.recipientPlayerId ?? null,
+        },
+      });
+    }
     fireCallbacks(intentId, cardId);
     cardTransportDbgUpsert(intentId, {
       cardId,
@@ -269,7 +321,7 @@ export function CardTransportProvider({
     } else {
       setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
     }
-  }, [fireCallbacks, gameId]);
+  }, [fireCallbacks, gameId, gameType]);
 
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
