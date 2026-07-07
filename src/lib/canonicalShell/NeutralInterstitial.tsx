@@ -99,6 +99,20 @@ export interface NeutralInterstitialProps {
   participants?: InterstitialParticipant[];
   currentUserId?: string | null;
   participantGameType?: string | null;
+  /**
+   * Optional tab-pane renderer. Invoked with the interstitial's current
+   * tab id; the returned node is rendered in ShellHudGrid row 4. This
+   * makes Chat / Lobby / History functional during opponent next-game
+   * configuration (game_selection / configuring / game_over) — the
+   * user's tab selection is honored even while no active gameplay
+   * surface owns the pane. Cards tab may return null (waiting-for-hand).
+   *
+   * Contract: this MUST be a presentation-only projection. It MUST NOT
+   * remount the game/deal runtime, MUST NOT reset transport/reveal
+   * state, and MUST NOT force any tab switch. Tab selection is user-
+   * persistent shell state.
+   */
+  renderPane?: (tab: ShellTabId) => import('react').ReactNode;
 }
 
 
