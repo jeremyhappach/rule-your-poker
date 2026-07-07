@@ -473,10 +473,12 @@ export function NeutralInterstitial({
         style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
       />
       {/* HUD region — shell-owned 5-row proportional grid (Phase 2).
-          Interstitial has no timer / pane / identity content; the rows
-          still render at their token heights so composition matches
-          gameplay surfaces. */}
-      <ShellHudGrid />
+          Row 4 (pane) is optionally supplied by `renderPane` so Chat /
+          Lobby / History remain functional during opponent next-game
+          configuration. Cards tab returns null here — no active hand
+          exists yet during interstitial. Tabs are always selectable;
+          only the pane content adapts. */}
+      <ShellHudGrid pane={renderPane ? renderPane(neutralTab) : undefined} />
     </div>
 
   );
