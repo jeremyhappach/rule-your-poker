@@ -696,9 +696,32 @@ export const GinRummyGameTable = ({
     () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
   );
   const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
+    recordGinPhaseTrace({
+      kind: 'tab-active-change',
+      summary: `Gin active tab mutation requested: ${next}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'GinRummyGameTable.setActiveTab',
+      identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+      detail: { before: activeTab, after: next, cause: 'user-request' },
+    });
     writePersistedMatchChatTab(gameId, next);
     setActiveTabRaw(next);
-  }, [gameId]);
+  }, [gameId, activeTab, dealerGameId, roundId, handNumber, handContextId]);
+  const lastActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    const before = lastActiveTabRef.current;
+    if (before !== activeTab) {
+      recordGinPhaseTrace({
+        kind: 'tab-active-change',
+        summary: `Gin active tab changed: ${before} → ${activeTab}`,
+        sourceFile: 'src/components/GinRummyGameTable.tsx',
+        sourceFunction: 'GinRummyGameTable.activeTabEffect',
+        identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+        detail: { before, after: activeTab, cause: 'user-request' },
+      });
+      lastActiveTabRef.current = activeTab;
+    }
+  }, [activeTab, gameId, dealerGameId, roundId, handNumber, handContextId]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
   // Chat indicator: hydration guard + replay guard
