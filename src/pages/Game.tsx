@@ -273,6 +273,8 @@ import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
+import { MobileChatPanel } from "@/components/MobileChatPanel";
+import { getDisplayName } from "@/lib/botAlias";
 // Win-presentation instrumentation was removed.
 import {
   AlertDialog,
