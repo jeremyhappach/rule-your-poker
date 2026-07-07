@@ -484,7 +484,6 @@ export const useGameChat = (
             user_id: userId,
             message: message.trim(),
             image_url: imageUrl,
-            chat_operation_id: correlationId,
             client_message_id: clientMessageId,
           }).select().single();
           insertData = resp.data;
