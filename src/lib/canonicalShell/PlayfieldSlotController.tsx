@@ -567,6 +567,7 @@ export function PlayfieldSlotController({
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
+              renderPane={neutralRenderPane}
             />
           </div>
         )}
