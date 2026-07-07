@@ -14,8 +14,8 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt } from './ShellOwnedFeltHost';
-import { ShellHudGrid } from './ShellHudGrid';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
@@ -99,20 +99,6 @@ export interface NeutralInterstitialProps {
   participants?: InterstitialParticipant[];
   currentUserId?: string | null;
   participantGameType?: string | null;
-  /**
-   * Optional tab-pane renderer. Invoked with the interstitial's current
-   * tab id; the returned node is rendered in ShellHudGrid row 4. This
-   * makes Chat / Lobby / History functional during opponent next-game
-   * configuration (game_selection / configuring / game_over) — the
-   * user's tab selection is honored even while no active gameplay
-   * surface owns the pane. Cards tab may return null (waiting-for-hand).
-   *
-   * Contract: this MUST be a presentation-only projection. It MUST NOT
-   * remount the game/deal runtime, MUST NOT reset transport/reveal
-   * state, and MUST NOT force any tab switch. Tab selection is user-
-   * persistent shell state.
-   */
-  renderPane?: (tab: ShellTabId) => import('react').ReactNode;
 }
 
 
@@ -126,7 +112,6 @@ export function NeutralInterstitial({
   participants,
   currentUserId,
   participantGameType,
-  renderPane,
 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
@@ -211,6 +196,23 @@ export function NeutralInterstitial({
     [neutralTab, handleSetNeutralTab],
   );
   useShellTabBar(baselineTabState);
+
+  useEffect(() => {
+    if (participantGameType !== 'gin-rummy' && gameKind !== 'gin-rummy') return;
+    recordGinPhaseTrace({
+      kind: 'pane-selected',
+      summary: `Neutral interstitial pane selected: ${neutralTab}`,
+      sourceFile: 'src/lib/canonicalShell/NeutralInterstitial.tsx',
+      sourceFunction: 'NeutralInterstitial',
+      identity: { gameId: gameId ?? null },
+      detail: {
+        activeTab: neutralTab,
+        paneOwner: 'NeutralInterstitial',
+        contentMounted: false,
+        reason: reason ?? null,
+      },
+    });
+  }, [neutralTab, gameId, participantGameType, gameKind, reason]);
 
 
 
@@ -472,13 +474,6 @@ export function NeutralInterstitial({
         data-canonical-shell-play-bottom-spacer=""
         style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
       />
-      {/* HUD region — shell-owned 5-row proportional grid (Phase 2).
-          Row 4 (pane) is optionally supplied by `renderPane` so Chat /
-          Lobby / History remain functional during opponent next-game
-          configuration. Cards tab returns null here — no active hand
-          exists yet during interstitial. Tabs are always selectable;
-          only the pane content adapts. */}
-      <ShellHudGrid pane={renderPane ? renderPane(neutralTab) : undefined} />
     </div>
 
   );
