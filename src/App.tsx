@@ -216,6 +216,7 @@ const App = () => {
                   and VoiceOperationReportBanner — exactly one "Export
                   Incident" surface per current session/game. */}
               <IncidentExportPill />
+              <ChatFlightPill />
 
               {/* P0: always-mounted session lifecycle recovery pill.
                   Persists across every route (including /auth and any
