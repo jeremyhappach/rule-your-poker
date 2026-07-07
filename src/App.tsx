@@ -25,6 +25,7 @@ import { ExtraDebugPills } from "@/lib/canonicalShell/ExtraDebugPills";
 import { LayoutFaultBadge } from "@/lib/wave4LayoutResolver/LayoutFaultBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
+import { ChatFlightPill } from "@/lib/chatFlightRecorder/ChatFlightPill";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
 import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
