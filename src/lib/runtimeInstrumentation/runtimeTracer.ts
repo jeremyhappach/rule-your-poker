@@ -43,6 +43,7 @@ import {
   triggerIncidentReport,
   triggerIncidentReportImmediate,
 } from "@/lib/runtimeInstrumentation/incidentReportTrigger";
+import { INCIDENT_PIPELINE_DISABLED } from "@/lib/runtimeInstrumentation/incidentPipelineContainment";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
