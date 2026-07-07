@@ -543,6 +543,7 @@ export function PlayfieldSlotController({
               participants={neutralParticipants}
               currentUserId={neutralCurrentUserId}
               participantGameType={neutralParticipantGameType}
+              renderPane={neutralRenderPane}
             />
           </div>
         </div>
