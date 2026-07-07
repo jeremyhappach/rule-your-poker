@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_diagnostic_sessions: {
+        Row: {
+          armed_at: string
+          created_at: string
+          diagnostic_session_id: string
+          expires_at: string
+          game_id: string
+        }
+        Insert: {
+          armed_at?: string
+          created_at?: string
+          diagnostic_session_id?: string
+          expires_at?: string
+          game_id: string
+        }
+        Update: {
+          armed_at?: string
+          created_at?: string
+          diagnostic_session_id?: string
+          expires_at?: string
+          game_id?: string
+        }
+        Relationships: []
+      }
       chat_message_delivery_trace: {
         Row: {
           authoritative_row_at: string | null
@@ -3236,6 +3260,14 @@ export type Database = {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
       }
+      ensure_chat_diagnostic_session: {
+        Args: { _game_id: string }
+        Returns: {
+          armed_at: string
+          diagnostic_session_id: string
+          expires_at: string
+        }[]
+      }
       finalize_chat_send_operation: {
         Args: {
           _extra_snapshots?: Json
@@ -3246,6 +3278,7 @@ export type Database = {
         Returns: Json
       }
       finalize_voice_operations: { Args: never; Returns: number }
+      get_chat_flight_report: { Args: { _game_id: string }; Returns: Json }
       handle_config_deadline_timeout: {
         Args: { _game_id: string }
         Returns: Json
