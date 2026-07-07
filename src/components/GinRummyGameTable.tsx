@@ -2773,6 +2773,26 @@ export const GinRummyGameTable = ({
   useEffect(() => {
   }, [gameId, authIdentity?.roundId, authIdentity?.handNumber, currentRoundId, currentHandNumber, viewState?.handNumber, viewState?.phase, ginState?.handNumber, ginState?.phase, isStaleHandPresentation, isPlayable, currentPlayerId, opponentId]);
 
+  useEffect(() => {
+    recordGinPhaseTrace({
+      kind: 'pane-selected',
+      summary: `Gin pane selected: ${activeTab}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'GinRummyGameTable.ShellHudGrid.pane',
+      identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
+      detail: {
+        activeTab,
+        paneOwner: 'GinRummyGameTable',
+        contentMounted: activeTab === 'cards'
+          ? !!(currentPlayer && visiblePlayable && viewState)
+          : activeTab === 'chat' || activeTab === 'lobby' || activeTab === 'history',
+        cardsVisiblePlayable: !!visiblePlayable,
+        hasCurrentPlayer: !!currentPlayer,
+        hasViewState: !!viewState,
+      },
+    });
+  }, [activeTab, gameId, dealerGameId, roundId, handNumber, handContextId, currentPlayer, visiblePlayable, viewState]);
+
   if (!isPlayable && !placeholderPaintedRef.current) {
     placeholderPaintedRef.current = true;
     recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
