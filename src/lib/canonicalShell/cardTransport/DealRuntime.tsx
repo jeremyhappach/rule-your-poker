@@ -44,6 +44,7 @@ import {
   notifyCommunitySettleToSampler,
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -149,6 +150,14 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       payload: { gameType },
     });
     if (gameType === 'gin-rummy') {
+      recordGinPhaseTrace({
+        kind: 'deal-runtime-mount',
+        summary: 'Gin DealRuntime mounted',
+        sourceFile: 'src/lib/canonicalShell/cardTransport/DealRuntime.tsx',
+        sourceFunction: 'DealRuntime.mountEffect',
+        identity: { handContextId },
+        detail: { runtimeKey: handContextId, gameType },
+      });
     }
     return () => {
       ffRecord({
@@ -159,6 +168,14 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         payload: { gameType },
       });
       if (gameType === 'gin-rummy') {
+        recordGinPhaseTrace({
+          kind: 'deal-runtime-unmount',
+          summary: 'Gin DealRuntime unmounted',
+          sourceFile: 'src/lib/canonicalShell/cardTransport/DealRuntime.tsx',
+          sourceFunction: 'DealRuntime.unmountEffect',
+          identity: { handContextId },
+          detail: { runtimeKey: handContextId, gameType },
+        });
       }
     };
   }, [handContextId, gameType]);
@@ -207,6 +224,21 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         const expected = expectedRef.current;
         const ready = expected > 0 && next.size >= expected;
         if (gameType === 'gin-rummy') {
+          recordGinPhaseTrace({
+            kind: ready ? 'deal-runtime-complete' : 'card-transport-settle',
+            summary: ready ? 'Gin DealRuntime completed expected settles' : 'Gin DealRuntime accepted settled card',
+            sourceFile: 'src/lib/canonicalShell/cardTransport/DealRuntime.tsx',
+            sourceFunction: 'DealRuntime.onCardSettledIntent',
+            identity: { handContextId },
+            detail: {
+              cardId,
+              intentId: intent.id,
+              recipientPlayerId: intent.recipientPlayerId ?? null,
+              settledSize: next.size,
+              expectedCount: expected,
+              ready,
+            },
+          });
         }
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
@@ -238,6 +270,20 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
 
   const beginDeal = useCallback((count: number) => {
     if (gameType === 'gin-rummy') {
+      recordGinPhaseTrace({
+        kind: 'deal-runtime-start',
+        summary: 'Gin DealRuntime beginDeal',
+        sourceFile: 'src/lib/canonicalShell/cardTransport/DealRuntime.tsx',
+        sourceFunction: 'DealRuntime.beginDeal',
+        identity: { handContextId },
+        detail: {
+          expectedCount: count,
+          runtimeKey: handContextId,
+          previousPhase: phase,
+          previousExpectedCount: expectedCount,
+          previousSettledCount: settledCardIds.size,
+        },
+      });
     }
     setExpectedCount(count);
     setSettledCardIds(new Set());
@@ -254,7 +300,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       dealSettled: false,
       enterGameplayCalledAt: null,
     });
-  }, [handContextId, gameType]);
+  }, [handContextId, gameType, phase, expectedCount, settledCardIds.size]);
 
   const beginWave = useCallback((addedCount: number) => {
     // Preserve settledCardIds / settledByRecipient — ownership is
