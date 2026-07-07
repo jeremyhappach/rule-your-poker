@@ -1661,11 +1661,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       summary: `Shell mobile active tab mutation requested: ${next}`,
       sourceFile: 'src/pages/Game.tsx',
       sourceFunction: 'setMobileActiveTabWithTrace',
-      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null, handNumber: (currentRound as any)?.hand_number ?? null },
+      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: null, handNumber: null },
       detail: { before: mobileActiveTab, after: next, cause: 'user-request' },
     });
     setMobileActiveTab(next);
-  }, [gameId, game, currentRound, mobileActiveTab]);
+  }, [gameId, game, mobileActiveTab]);
   const lastMobileActiveTabRef = useRef(mobileActiveTab);
   useEffect(() => {
     const before = lastMobileActiveTabRef.current;
@@ -1675,11 +1675,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       summary: `Shell mobile active tab changed: ${before} → ${mobileActiveTab}`,
       sourceFile: 'src/pages/Game.tsx',
       sourceFunction: 'Game.mobileActiveTabEffect',
-      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null, handNumber: (currentRound as any)?.hand_number ?? null },
+      identity: { gameId: gameId ?? null, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: null, handNumber: null },
       detail: { before, after: mobileActiveTab, cause: 'user-request' },
     });
     lastMobileActiveTabRef.current = mobileActiveTab;
-  }, [mobileActiveTab, gameId, game, currentRound]);
+  }, [mobileActiveTab, gameId, game]);
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
   // LIFTED chat watermark - last seen eligible other-human message ID, survives MobileGameTable remounts
