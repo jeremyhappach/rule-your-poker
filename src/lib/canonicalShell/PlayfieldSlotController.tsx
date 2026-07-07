@@ -112,14 +112,6 @@ export interface PlayfieldSlotControllerProps {
   neutralCurrentUserId?: string | null;
   neutralParticipantGameType?: string | null;
   /**
-   * Optional tab-pane renderer forwarded to NeutralInterstitial. See
-   * NeutralInterstitialProps.renderPane. This is how Chat / Lobby /
-   * History become functional while the slot is in neutral (opponent
-   * next-game configuration). Presentation-only — must not touch deal
-   * runtime or force tab switches.
-   */
-  neutralRenderPane?: (tab: import('./ShellTabBar').ShellTabId) => ReactNode;
-  /**
    * Authoritative session-end handoff flag. Derived in Game.tsx from
    * the SAME game snapshot that clears current_game_uuid:
    *   game_type === 'holm-game' && status === 'game_over' && current_game_uuid == null
@@ -156,7 +148,6 @@ export function PlayfieldSlotController({
   neutralParticipants,
   neutralCurrentUserId,
   neutralParticipantGameType,
-  neutralRenderPane,
   isTerminalSessionEndHandoff = false,
   children,
 
@@ -543,7 +534,6 @@ export function PlayfieldSlotController({
               participants={neutralParticipants}
               currentUserId={neutralCurrentUserId}
               participantGameType={neutralParticipantGameType}
-              renderPane={neutralRenderPane}
             />
           </div>
         </div>
@@ -567,7 +557,6 @@ export function PlayfieldSlotController({
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
-              renderPane={neutralRenderPane}
             />
           </div>
         )}
@@ -618,7 +607,6 @@ export function PlayfieldSlotController({
           participants={neutralParticipants}
           currentUserId={neutralCurrentUserId ?? null}
           participantGameType={neutralParticipantGameType ?? null}
-          renderPane={neutralRenderPane}
         />
       ) : (
         <div
