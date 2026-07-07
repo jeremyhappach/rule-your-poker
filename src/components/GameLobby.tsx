@@ -106,17 +106,20 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Lobby-load request lifecycle guard. Only the newest request may
+  // mutate `games` / `loading` / show an error toast. Older responses
+  // (including aborted ones) are ignored silently.
+  const requestSeqRef = useRef(0);
+  const activeAbortRef = useRef<AbortController | null>(null);
+  const lastErrorToastKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    // Force clear any stale state on mount - this ensures we always start fresh
     setGames([]);
     setLoading(true);
 
     fetchGames();
     checkSuperuser();
 
-    // iOS Safari (and some mobile browsers) can keep SPA pages "alive" while hidden
-    // or restore them from memory. Refresh the lobby when the page becomes visible
-    // again so we don't display stale game lists after publishes/settings changes.
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         fetchGames();
@@ -132,7 +135,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleWindowFocus);
 
-    // Polling fallback for realtime reliability - poll every 10 seconds (NOT 1 second - that hammers DB)
     const pollingInterval = setInterval(() => {
       fetchGames();
     }, 10000);
@@ -141,32 +143,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .channel('games-lobby-channel')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'games'
-        },
-        () => {
-          // Realtime triggered - fetch updates
-          fetchGames();
-        }
+        { event: '*', schema: 'public', table: 'games' },
+        () => { fetchGames(); },
       )
       .subscribe();
 
-    // Also subscribe to players table to update player counts in real-time
     const playersChannel = supabase
       .channel('players-lobby-channel')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players'
-        },
-        () => {
-          // Realtime triggered - fetch updates
-          fetchGames();
-        }
+        { event: '*', schema: 'public', table: 'players' },
+        () => { fetchGames(); },
       )
       .subscribe();
 
@@ -176,7 +163,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       clearInterval(pollingInterval);
       supabase.removeChannel(gamesChannel);
       supabase.removeChannel(playersChannel);
+      // Cancel any in-flight lobby request when the component unmounts
+      // so a late reply cannot try to setState on an unmounted tree.
+      activeAbortRef.current?.abort();
+      activeAbortRef.current = null;
+      requestSeqRef.current = -1;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const checkSuperuser = async () => {
@@ -185,129 +178,61 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    
+
     console.log('[SUPERUSER CHECK]', { userId, data, error });
     setIsSuperuser((data as any)?.is_superuser || false);
   };
 
   const fetchGames = async () => {
+    // Cancel any in-flight request; only one lobby-load runs at a time.
+    activeAbortRef.current?.abort();
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+
     const perf = new PerfSession("GameLobby.fetchGames", 300);
+    const mySeq = ++requestSeqRef.current;
 
-    // Fetch games + their current players in ONE query (avoid N+1).
-    const { data: gamesData, error } = await perf.step("games.select", () =>
-      supabase
-        .from("games")
-        .select(
-          `
-            *,
-            players:players(
-              id,
-              user_id,
-              position,
-              chips,
-              legs,
-              is_bot,
-              sitting_out,
-              created_at,
-              profiles(username)
-            )
-          `
-        )
-        .order("created_at", { ascending: false })
-    );
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch games",
-        variant: "destructive",
-      });
-      perf.done({ error: error.message });
-      return;
-    }
-
-    // Batch fetch snapshots for ended sessions (so we can include departed players in counts)
-    const endedGameIds = (gamesData || [])
-      .filter((g: any) => g.status === "session_ended")
-      .map((g: any) => g.id);
-
-    const snapshotCounts: Record<string, number> = {};
-
-    if (endedGameIds.length > 0) {
-      const { data: snapshots, error: snapError } = await perf.step("snapshots.select", () =>
-        supabase
-          .from("session_player_snapshots")
-          .select("game_id, user_id, player_id, is_bot")
-          .in("game_id", endedGameIds)
+    try {
+      const result = await perf.step("lobby.fetch", () =>
+        fetchLobbyGames({ userId, signal: controller.signal }),
       );
-
-      if (!snapError && snapshots?.length) {
-        const perGameKeys = new Map<string, Set<string>>();
-        for (const snap of snapshots as any[]) {
-          const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-          const set = perGameKeys.get(snap.game_id) ?? new Set<string>();
-          set.add(key);
-          perGameKeys.set(snap.game_id, set);
-        }
-        for (const [gid, set] of perGameKeys.entries()) {
-          snapshotCounts[gid] = set.size;
-        }
+      // Stale-response guard: newer request superseded this one.
+      if (mySeq !== requestSeqRef.current) {
+        perf.done({ stale: true });
+        return;
+      }
+      setGames(result);
+      lastErrorToastKeyRef.current = null;
+      perf.done({ gameCount: result.length });
+    } catch (err) {
+      // Silent for intentional aborts or superseded requests.
+      if (err instanceof LobbyFetchAbortedError || controller.signal.aborted) {
+        perf.done({ aborted: true });
+        return;
+      }
+      if (mySeq !== requestSeqRef.current) {
+        perf.done({ stale: true });
+        return;
+      }
+      // Preserve the last successful list on transient failure.
+      const errKey = (err as any)?.code || (err as any)?.message || "unknown";
+      if (lastErrorToastKeyRef.current !== errKey) {
+        lastErrorToastKeyRef.current = errKey;
+        toast({
+          title: "Error",
+          description: "Failed to fetch games",
+          variant: "destructive",
+        });
+      }
+      perf.done({ error: String((err as any)?.message ?? err) });
+    } finally {
+      if (mySeq === requestSeqRef.current) {
+        setLoading(false);
       }
     }
-
-    const gamesWithPlayers = await perf.step("games.enrich", async () =>
-      (gamesData || []).map((game: any) => {
-        const playersData = (game.players ?? []) as any[];
-
-        // Host is the first human player who joined (earliest created_at)
-        const humanPlayers = playersData.filter((p) => !p.is_bot);
-        const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        });
-        const hostPlayer = sortedByJoinTime[0];
-        const host_username = hostPlayer?.profiles?.username || "Unknown";
-
-        const isCreator = hostPlayer?.user_id === userId;
-        const isPlayer = playersData.some((p) => p.user_id === userId);
-
-        // Calculate duration
-        const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
-
-        // Use snapshot count for ended sessions, current players otherwise
-        const playerCount =
-          game.status === "session_ended" && snapshotCounts[game.id] !== undefined
-            ? snapshotCounts[game.id]
-            : playersData.length;
-
-        return {
-          ...game,
-          player_count: playerCount,
-          is_creator: isCreator,
-          is_player: isPlayer,
-          host_username,
-          duration_minutes: durationMinutes,
-          players:
-            playersData.map((p) => ({
-              id: p.id,
-              username: p.is_bot
-                ? getBotAlias(
-                    playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
-                    p.user_id
-                  )
-                : (p.profiles?.username || "Unknown"),
-              chips: p.chips,
-              legs: p.legs,
-              is_bot: p.is_bot,
-              sitting_out: p.sitting_out,
-            })) || [],
-        };
-      })
-    );
-
-    setGames(gamesWithPlayers);
-    setLoading(false);
-    perf.done({ gameCount: gamesData?.length ?? 0 });
   };
+
+
 
   const createGame = async () => {
     // Prevent double-clicks
