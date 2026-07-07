@@ -128,6 +128,12 @@ export const WaitingForPlayersTable = ({
     gameId,
     playerCount: players.length,
   });
+
+  // Auto-arm the Chat Flight Recorder for this game_id (idempotent per game,
+  // 15-minute window). Fire-and-forget; no manual DB action required.
+  useEffect(() => {
+    ensureChatFlightRecorderArmed(gameId);
+  }, [gameId]);
   useEffect(() => {
     recordWaitingLifecycle('WaitingTable ready (poker-variant)', {
       gameId,
