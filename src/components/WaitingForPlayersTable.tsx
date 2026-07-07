@@ -19,6 +19,7 @@ import {
 } from "@/lib/canonicalShell/waitingTableFlight";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { formatChipValue } from "@/lib/utils";
+import { ensureChatFlightRecorderArmed } from "@/lib/chatFlightRecorder";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
