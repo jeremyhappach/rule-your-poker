@@ -17,6 +17,7 @@ import {
   listCapsuleManifests,
   type CapsuleAppendVerifyResult,
 } from "@/lib/runtimeInstrumentation/voiceCrashCapsule";
+import { INCIDENT_PIPELINE_DISABLED } from "@/lib/runtimeInstrumentation/incidentPipelineContainment";
 
 const SUPABASE_URL =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -42,6 +43,7 @@ export interface DirectEventInput {
  * Returns true if the fetch was dispatched. Never awaits response.
  */
 export function emitDirectDbEvent(input: DirectEventInput): boolean {
+  if (INCIDENT_PIPELINE_DISABLED) return false;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
   if (typeof fetch === "undefined") return false;
   const nowIso = new Date().toISOString();
