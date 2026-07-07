@@ -35,6 +35,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { INCIDENT_PIPELINE_DISABLED } from "@/lib/runtimeInstrumentation/incidentPipelineContainment";
 
 export const DB_NAME = "voice_network_crash_capsule_v1";
 export const DB_VERSION = 2;
@@ -415,6 +416,7 @@ let uploadInFlight = false;
 export async function uploadUnresolvedCapsules(
   triggerReason: string,
 ): Promise<{ uploadedCapsules: number; uploadedEvents: number }> {
+  if (INCIDENT_PIPELINE_DISABLED) return { uploadedCapsules: 0, uploadedEvents: 0 };
   if (uploadInFlight) return { uploadedCapsules: 0, uploadedEvents: 0 };
   uploadInFlight = true;
   let uploadedCapsules = 0;
