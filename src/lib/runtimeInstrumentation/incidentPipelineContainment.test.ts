@@ -97,11 +97,20 @@ describe("generate-incident-report Edge Function (disabled path)", () => {
   });
 
   it("performs zero DB reads/writes on the disabled path", () => {
-    expect(src).not.toMatch(/\.from\(/);
-    expect(src).not.toMatch(/client_runtime_events/);
-    expect(src).not.toMatch(/client_runtime_incident_reports/);
-    expect(src).not.toMatch(/client_runtime_incidents/);
-    expect(src).not.toMatch(/debug_events/);
+    // Strip line comments so the header preamble doesn't false-positive.
+    const code = src
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
+      .join("\n");
+    expect(code).not.toMatch(/\.from\(/);
+    expect(code).not.toMatch(/\.insert\(/);
+    expect(code).not.toMatch(/\.upsert\(/);
+    expect(code).not.toMatch(/\.update\(/);
+    expect(code).not.toMatch(/\.select\(/);
+    expect(code).not.toMatch(/client_runtime_events/);
+    expect(code).not.toMatch(/client_runtime_incident_reports/);
+    expect(code).not.toMatch(/client_runtime_incidents/);
+    expect(code).not.toMatch(/debug_events/);
   });
 
   it("returns a 200 no-op response so callers cannot retry on error", () => {
