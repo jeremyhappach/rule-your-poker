@@ -1,27 +1,22 @@
-// Chat Message Flight Recorder — bounded, fire-and-forget.
+// Chat Message Flight Recorder — bounded, fire-and-forget, auto-armed per game.
 //
-// This module is instrumentation-only. It:
+// Model:
+//   • One diagnostic_session_id per game_id (durable row in
+//     public.chat_diagnostic_sessions), created on first ensureArmedFor call.
+//   • Auto-armed for 15 minutes from creation. No manual toggle. No
+//     system_settings row.
+//   • Server RPC gates on that row; caps (80 events/msg, 3 sender msgs/session)
+//     enforced server-side and mirrored client-side.
+//
+// Isolation guarantees:
 //   • never awaits from the send/receive path
 //   • never throws
-//   • never mutates React state
+//   • never mutates React state directly (subscribers opt in)
 //   • never touches localStorage
-//   • never uses cron, polling, heartbeats, global fetch/history patches,
-//     retry workers, or background jobs
-//   • silently drops evidence if the arming/session/message caps have
-//     been reached or if the DB call fails.
-//
-// Enablement is a single row in `system_settings`:
-//   key   = 'chat_flight_recorder'
-//   value = { enabled: true, game_id: <uuid>, expires_at: <iso> }
-// Server-side caps: 3 sender client_message_ids per diagnostic_session,
-// 80 events per client_message_id, 15-minute window (expires_at).
-//
-// Client-side we additionally short-circuit before the RPC when a
-// per-message cap has been reached in-memory, so a hot loop cannot
-// stampede the RPC while the server is silently dropping.
+//   • no cron, polling, heartbeats, retries, global listeners,
+//     fetch monkeypatches, or chat-operation telemetry revival.
 
 import { supabase } from '@/integrations/supabase/client';
-import { generateUUID } from '@/lib/uuid';
 
 export type ChatFlightRole = 'sender' | 'receiver';
 
@@ -37,80 +32,149 @@ export interface ChatFlightEmitInput {
   stateSnapshot?: Record<string, unknown>;
 }
 
-interface ArmingSnapshot {
-  enabled: boolean;
+export type ChatFlightPillPhase =
+  | 'idle'          // no armed session
+  | 'armed'         // armed, count < cap, not expired
+  | 'ready';        // ≥3 sender attempts on this client, expired, or explicit completion
+
+export interface ChatFlightPillState {
+  phase: ChatFlightPillPhase;
+  senderCountLocal: number;   // sender attempts observed by THIS client
+  senderCap: number;
   gameId: string | null;
-  expiresAt: number | null; // epoch ms
+  diagnosticSessionId: string | null;
+  armedAt: number | null;
+  expiresAt: number | null;
 }
 
-const CFG_KEY = 'chat_flight_recorder';
-const ARMING_TTL_MS = 15_000; // refresh at most every 15s
 const PER_MSG_CAP = 80;
 const PER_SESSION_SENDER_MSG_CAP = 3;
 
-const diagnosticSessionId = generateUUID();
 const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
-let armingCache: ArmingSnapshot | null = null;
-let armingFetchedAt = 0;
-let armingInflight: Promise<ArmingSnapshot> | null = null;
+interface ArmedSession {
+  gameId: string;
+  diagnosticSessionId: string;
+  armedAt: number;
+  expiresAt: number;
+}
 
+let armed: ArmedSession | null = null;
+let armInflightGameId: string | null = null;
+
+// Per-message local caps.
 const perMessageSeq = new Map<string, number>();
 const perMessageCount = new Map<string, number>();
-const senderMessageIds = new Set<string>();
+
+// Local sender attempts observed on this client (unique client_message_ids).
+const localSenderMessageIds = new Set<string>();
+let explicitCompletion = false;
+
+const subscribers = new Set<(s: ChatFlightPillState) => void>();
 
 function monotonicMs(): number {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
   return now - t0;
 }
 
-async function fetchArming(): Promise<ArmingSnapshot> {
+function computePhase(): ChatFlightPillPhase {
+  if (!armed) return 'idle';
+  if (explicitCompletion) return 'ready';
+  if (Date.now() > armed.expiresAt) return 'ready';
+  if (localSenderMessageIds.size >= PER_SESSION_SENDER_MSG_CAP) return 'ready';
+  return 'armed';
+}
+
+function snapshot(): ChatFlightPillState {
+  return {
+    phase: computePhase(),
+    senderCountLocal: localSenderMessageIds.size,
+    senderCap: PER_SESSION_SENDER_MSG_CAP,
+    gameId: armed?.gameId ?? null,
+    diagnosticSessionId: armed?.diagnosticSessionId ?? null,
+    armedAt: armed?.armedAt ?? null,
+    expiresAt: armed?.expiresAt ?? null,
+  };
+}
+
+function notify(): void {
+  const s = snapshot();
+  for (const cb of subscribers) {
+    try { cb(s); } catch { /* swallow */ }
+  }
+}
+
+export function subscribeChatFlightPill(cb: (s: ChatFlightPillState) => void): () => void {
+  subscribers.add(cb);
+  try { cb(snapshot()); } catch { /* swallow */ }
+  return () => { subscribers.delete(cb); };
+}
+
+export function getChatFlightPillState(): ChatFlightPillState {
+  return snapshot();
+}
+
+/**
+ * Auto-arm for a specific game_id. Idempotent per game. If the same gameId is
+ * already armed, this is a no-op. Switching gameId clears stale local counters
+ * so no prior-session recorder state leaks into the new session.
+ *
+ * Fire-and-forget: never awaited by callers.
+ */
+export function ensureChatFlightRecorderArmed(gameId: string | null | undefined): void {
   try {
-    const { data } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', CFG_KEY)
-      .maybeSingle();
-    const v = (data?.value ?? {}) as {
-      enabled?: boolean; game_id?: string | null; expires_at?: string | null;
-    };
-    const expiresAtIso = v.expires_at ?? null;
-    return {
-      enabled: v.enabled === true,
-      gameId: v.game_id ?? null,
-      expiresAt: expiresAtIso ? Date.parse(expiresAtIso) : null,
-    };
+    if (!gameId) return;
+    if (armed?.gameId === gameId) return;
+    if (armInflightGameId === gameId) return;
+
+    // New game — clear stale state.
+    if (armed && armed.gameId !== gameId) {
+      armed = null;
+      localSenderMessageIds.clear();
+      explicitCompletion = false;
+      perMessageSeq.clear();
+      perMessageCount.clear();
+      notify();
+    }
+
+    armInflightGameId = gameId;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('ensure_chat_diagnostic_session', {
+          _game_id: gameId,
+        });
+        if (error || !data) return;
+        const row = Array.isArray(data) ? data[0] : (data as any);
+        if (!row?.diagnostic_session_id) return;
+        armed = {
+          gameId,
+          diagnosticSessionId: row.diagnostic_session_id as string,
+          armedAt: row.armed_at ? Date.parse(row.armed_at as string) : Date.now(),
+          expiresAt: row.expires_at
+            ? Date.parse(row.expires_at as string)
+            : Date.now() + 15 * 60_000,
+        };
+        notify();
+      } catch {
+        /* swallow */
+      } finally {
+        if (armInflightGameId === gameId) armInflightGameId = null;
+      }
+    })();
   } catch {
-    return { enabled: false, gameId: null, expiresAt: null };
+    /* swallow */
   }
 }
 
-function getArming(): Promise<ArmingSnapshot> {
-  const now = Date.now();
-  if (armingCache && now - armingFetchedAt < ARMING_TTL_MS) {
-    return Promise.resolve(armingCache);
-  }
-  if (armingInflight) return armingInflight;
-  armingInflight = fetchArming().then((snap) => {
-    armingCache = snap;
-    armingFetchedAt = Date.now();
-    armingInflight = null;
-    return snap;
-  }).catch(() => {
-    armingInflight = null;
-    const fallback: ArmingSnapshot = { enabled: false, gameId: null, expiresAt: null };
-    armingCache = fallback;
-    armingFetchedAt = Date.now();
-    return fallback;
-  });
-  return armingInflight;
+/** Mark the pill READY due to explicit user action. */
+export function completeChatFlightRecorder(): void {
+  if (!armed) return;
+  explicitCompletion = true;
+  notify();
 }
 
-function isArmedForGame(snap: ArmingSnapshot, gameId: string | null | undefined): boolean {
-  if (!snap.enabled) return false;
-  if (snap.expiresAt && Date.now() > snap.expiresAt) return false;
-  if (snap.gameId && gameId && snap.gameId !== gameId) return false;
-  return true;
+export function chatFlightRecorderDiagnosticSessionId(): string | null {
+  return armed?.diagnosticSessionId ?? null;
 }
 
 /**
@@ -132,11 +196,17 @@ export function emitChatFlightEvent(input: ChatFlightEmitInput): void {
       stateSnapshot,
     } = input;
 
-    // Client-side sender-message cap (defense in depth).
+    // No armed session? Drop silently. (Still track sender-count locally
+    // in case arming resolves mid-flight — but only when armed for gameId.)
+    if (!armed || (gameId && armed.gameId !== gameId)) return;
+    if (Date.now() > armed.expiresAt) return;
+
+    // Client-side sender-message cap + pill counter.
     if (role === 'sender' && clientMessageId) {
-      if (!senderMessageIds.has(clientMessageId)) {
-        if (senderMessageIds.size >= PER_SESSION_SENDER_MSG_CAP) return;
-        senderMessageIds.add(clientMessageId);
+      if (!localSenderMessageIds.has(clientMessageId)) {
+        if (localSenderMessageIds.size >= PER_SESSION_SENDER_MSG_CAP) return;
+        localSenderMessageIds.add(clientMessageId);
+        notify();
       }
     }
 
@@ -149,12 +219,11 @@ export function emitChatFlightEvent(input: ChatFlightEmitInput): void {
     const seq = (perMessageSeq.get(clientMessageId ?? '__no_msg__') ?? 0) + 1;
     perMessageSeq.set(clientMessageId ?? '__no_msg__', seq);
 
-    // Kick the arming check and RPC off the microtask queue so the
-    // caller's setState (and the surrounding React commit) return
-    // synchronously. Never awaited.
-    void getArming().then((snap) => {
-      if (!isArmedForGame(snap, gameId)) return;
-      return supabase.rpc('record_chat_flight_event', {
+    const diagnosticSessionId = armed.diagnosticSessionId;
+
+    // Kick RPC off the microtask queue.
+    void Promise.resolve().then(() =>
+      supabase.rpc('record_chat_flight_event', {
         _diagnostic_session_id: diagnosticSessionId,
         _client_message_id: clientMessageId,
         _game_id: gameId,
@@ -167,13 +236,9 @@ export function emitChatFlightEvent(input: ChatFlightEmitInput): void {
         _source_function: sourceFunction ?? null,
         _reason: reason ?? null,
         _state_snapshot: (stateSnapshot ?? {}) as never,
-      });
-    }).catch(() => { /* silently drop */ });
+      })
+    ).catch(() => { /* silently drop */ });
   } catch {
     /* silently drop */
   }
-}
-
-export function chatFlightRecorderDiagnosticSessionId(): string {
-  return diagnosticSessionId;
 }
