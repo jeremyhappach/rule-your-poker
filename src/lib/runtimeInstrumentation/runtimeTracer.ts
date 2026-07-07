@@ -841,6 +841,7 @@ export function getActiveRuntimeIncident(): ActiveIncident | null {
 // ── Keepalive transport (crash-survivable) ─────────────────────────
 
 function keepaliveFlush(rows: QueuedEvent[]): boolean {
+  if (INCIDENT_PIPELINE_DISABLED) return false;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || rows.length === 0) return false;
   if (typeof fetch === "undefined") return false;
   const clean = rows.map(({ __retry_count: _rc, occurred_at_server: _s, ...rest }) => rest);
@@ -962,6 +963,7 @@ function enforceVoiceCorrelation(
 }
 
 export function recordRuntimeEvent(input: RuntimeEventInput): void {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   if (typeof window === "undefined") return;
   const errFields = toErrorFields(input.error);
   const resolvedCorrelation = enforceVoiceCorrelation(
@@ -1120,6 +1122,7 @@ async function openDbIncidentRow(
   kind: string,
   meta: Record<string, unknown>,
 ): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   try {
     const now = new Date().toISOString();
     const row = {
@@ -1163,6 +1166,7 @@ async function closeDbIncidentRow(
   correlationId: string,
   reason: string,
 ): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   try {
     await supabase
       .from("client_runtime_incidents")
@@ -1178,6 +1182,7 @@ async function closeDbIncidentRow(
 }
 
 async function patchDbIncidentRow(evt: QueuedEvent): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   if (!evt.correlation_id) return;
   const patch: Record<string, unknown> = {
     last_event_at: evt.occurred_at_client,
