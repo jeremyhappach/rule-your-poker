@@ -243,7 +243,7 @@ export function ChatFlightPill() {
         _game_id: state.gameId!,
       });
       if (rpcError) throw new Error(rpcError.message);
-      const report = (data ?? {}) as Report;
+      const report = (data ?? {}) as unknown as Report;
       if (report.error) throw new Error(report.error);
       const txt = formatReportTxt(report);
       const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
