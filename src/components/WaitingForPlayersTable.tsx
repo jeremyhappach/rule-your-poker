@@ -19,6 +19,7 @@ import {
 } from "@/lib/canonicalShell/waitingTableFlight";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { formatChipValue } from "@/lib/utils";
+import { ensureChatFlightRecorderArmed } from "@/lib/chatFlightRecorder";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -127,6 +128,12 @@ export const WaitingForPlayersTable = ({
     gameId,
     playerCount: players.length,
   });
+
+  // Auto-arm the Chat Flight Recorder for this game_id (idempotent per game,
+  // 15-minute window). Fire-and-forget; no manual DB action required.
+  useEffect(() => {
+    ensureChatFlightRecorderArmed(gameId);
+  }, [gameId]);
   useEffect(() => {
     recordWaitingLifecycle('WaitingTable ready (poker-variant)', {
       gameId,
