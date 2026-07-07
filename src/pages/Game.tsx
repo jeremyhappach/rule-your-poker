@@ -832,6 +832,14 @@ const Game = () => {
     });
   }, [gameId, game?.total_hands]);
 
+  // Auto-arm Chat Flight Recorder for this game_id (idempotent, 15-min window).
+  useEffect(() => {
+    if (!gameId) return;
+    import("@/lib/chatFlightRecorder").then(({ ensureChatFlightRecorderArmed }) => {
+      ensureChatFlightRecorderArmed(gameId);
+    }).catch(() => {});
+  }, [gameId]);
+
   // Wartime AUTH_EJECTION_LEDGER: record waiting-table mount / unmount /
   // lookup outcomes so a redirect back to /auth can be traced against
   // the pre-teardown table membership.
