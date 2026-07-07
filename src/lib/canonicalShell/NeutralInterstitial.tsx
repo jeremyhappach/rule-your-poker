@@ -126,6 +126,7 @@ export function NeutralInterstitial({
   participants,
   currentUserId,
   participantGameType,
+  renderPane,
 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
