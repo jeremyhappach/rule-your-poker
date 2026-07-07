@@ -637,6 +637,20 @@ export const GinRummyGameTable = ({
       return;
     }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    recordGinPhaseTrace({
+      kind: 'state-replacement',
+      summary: `Gin bootstrap authoritative projection ${result.accepted ? 'accepted' : 'rejected'}`,
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'bootstrapState apply useEffect',
+      identity: { gameId, dealerGameId, roundId, handNumber, handContextId },
+      detail: {
+        source: 'hydration',
+        accepted: result.accepted,
+        phase: bootstrapState.phase,
+        stateHandNumber: bootstrapState.handNumber ?? null,
+        presentationBefore: renderAcceptedPresentation?.state?.phase ?? null,
+      },
+    });
     recordStartupFlight('SYNC TIMELINE', 'bootstrapState receiveAuthoritativeUpdate returned', {
       file: 'src/components/GinRummyGameTable.tsx',
       function: 'bootstrapState apply useEffect',
