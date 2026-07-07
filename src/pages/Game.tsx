@@ -2689,69 +2689,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handNumber: number | null;
     activeTab: typeof mobileActiveTab;
   } | null>(null);
-  useEffect(() => {
-    const routeShellGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
-    const humanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
-    const isTwoHumanGin = humanPlayers.length === 2 && routeShellGameType === 'gin-rummy';
-    const isSetup = isTwoHumanGin && (
-      game?.status === 'dealer_selection' ||
-      game?.status === 'game_selection' ||
-      game?.status === 'configuring'
-    );
-    const current = {
-      status: game?.status ?? null,
-      phase: ((currentRound as any)?.gin_rummy_state as any)?.phase ?? null,
-      gameType: game?.game_type ?? routeShellGameType ?? null,
-      dealerGameId: (game as any)?.current_game_uuid ?? null,
-      roundId: currentRound?.id ?? null,
-      handNumber: (currentRound as any)?.hand_number ?? null,
-      activeTab: mobileActiveTab,
-    };
-    if (isSetup) {
-      armGinPhaseTrace({
-        sessionKey: `${gameId ?? 'no-game'}:${current.dealerGameId ?? 'no-dealer-game'}:${current.status}`,
-        identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
-        detail: {
-          owner: 'Game shell',
-          status: current.status,
-          routeShellGameType,
-          humanPlayerCount: humanPlayers.length,
-          activeTab: mobileActiveTab,
-        },
-      });
-    }
-    if (!isTwoHumanGin && routeShellGameType !== 'gin-rummy') return;
-    const prev = ginPhaseTracePrevAuthRef.current;
-    const anteDecisions = players.map((p) => ({ id: p.id, isBot: p.is_bot, anteDecision: p.ante_decision ?? null, status: p.status, sittingOut: p.sitting_out }));
-    const activeHumans = humanPlayers.filter((p) => !p.sitting_out);
-    const allHumanAntesResolved = activeHumans.length > 0 && activeHumans.every((p) => !!p.ante_decision || p.sitting_out);
-    recordGinPhaseTrace({
-      kind: 'authoritative-state-update',
-      summary: `Game authoritative state ${prev?.status ?? '(init)'} → ${current.status}`,
-      sourceFile: 'src/pages/Game.tsx',
-      sourceFunction: 'Game.ginPhaseTraceAuthoritativeEffect',
-      identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
-      detail: {
-        source: 'hydration/realtime/fetch React state projection',
-        before: prev,
-        after: current,
-        activeTabBefore: prev?.activeTab ?? null,
-        activeTabAfter: current.activeTab,
-        anteDecisions,
-        allHumanAntesResolved,
-        activeHumanCount: activeHumans.length,
-      },
-    });
-    if (prev?.status === 'ante_decision' && current.status === 'in_progress') {
-      markGinPhaseTraceAnteResolved({
-        identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
-        detail: { before: prev, after: current, anteDecisions, allHumanAntesResolved },
-      });
-    }
-    ginPhaseTracePrevAuthRef.current = current;
-  }, [game, players, currentRound, mobileActiveTab, gameId, previousGameConfig]);
-
-
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
   useEffect(() => {
