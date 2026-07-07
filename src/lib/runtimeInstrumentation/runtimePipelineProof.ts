@@ -179,6 +179,7 @@ export async function verifyIncidentPatchAndEmit(input: {
   eventName: string;
   sequence: number | null;
 }): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   const patch: Record<string, unknown> = {
     last_event_at: new Date().toISOString(),
     last_route: input.route,
@@ -245,6 +246,7 @@ export async function verifyInstanceHeartbeatAndEmit(input: {
   lifecycleLabel: string;
   extra?: Record<string, unknown>;
 }): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   const row = {
     client_instance_id: input.clientInstanceId,
     tab_session_id: input.tabSessionId,
@@ -309,6 +311,7 @@ export async function runManifestUpload(input: {
   route: string | null;
   triggerReason: string;
 }): Promise<{ found: boolean; uploadState: string | null }> {
+  if (INCIDENT_PIPELINE_DISABLED) return { found: false, uploadState: null };
   const manifest = await readCapsuleManifest(input.incidentId);
   emitDirectDbEvent({
     event_family: "environment",
@@ -364,6 +367,7 @@ export async function runRuntimePersistenceSelfCheck(input: {
   userId: string | null;
   route: string | null;
 }): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   const syntheticId =
     `self-check-${input.clientInstanceId}-${Date.now().toString(36)}`;
   const startedIso = new Date().toISOString();
@@ -612,6 +616,7 @@ export async function runProductionVoiceFlowSelfChecks(input: {
   userId: string | null;
   route: string | null;
 }): Promise<Array<{ label: string; correlationId: string | null }>> {
+  if (INCIDENT_PIPELINE_DISABLED) return [];
   const results: Array<{ label: string; correlationId: string | null }> = [];
   // Import lazily to avoid a hard boot-order coupling.
   const [{ beginVoiceOperation, endVoiceOperationImmediate }, tracer] =
