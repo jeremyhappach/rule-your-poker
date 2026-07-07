@@ -106,6 +106,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 
 // Local card-id helpers (formerly in ginSelfDrawTrace) — used by the
 // self-draw withhold registry.
@@ -195,6 +196,20 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * immediately" path (useDealRuntime() returns null).
  */
 function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+  useEffect(() => {
+    recordGinPhaseTrace({
+      kind: handContextId ? 'deal-runtime-host' : 'deal-runtime-reset',
+      summary: handContextId ? 'Gin DealRuntime host has handContextId' : 'Gin DealRuntime host has no handContextId',
+      sourceFile: 'src/components/GinRummyGameTable.tsx',
+      sourceFunction: 'DealRuntimeMaybe',
+      identity: { handContextId: handContextId ?? null },
+      detail: {
+        runtimeKey: handContextId ?? null,
+        keyInputs: handContextId ? handContextId.split('#') : [],
+        mounted: !!handContextId,
+      },
+    });
+  }, [handContextId]);
   if (!handContextId) return <>{children}</>;
   return (
     <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy">
