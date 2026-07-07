@@ -43,6 +43,7 @@ import {
   triggerIncidentReport,
   triggerIncidentReportImmediate,
 } from "@/lib/runtimeInstrumentation/incidentReportTrigger";
+import { INCIDENT_PIPELINE_DISABLED } from "@/lib/runtimeInstrumentation/incidentPipelineContainment";
 
 const APP_BUILD_ID =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -840,6 +841,7 @@ export function getActiveRuntimeIncident(): ActiveIncident | null {
 // ── Keepalive transport (crash-survivable) ─────────────────────────
 
 function keepaliveFlush(rows: QueuedEvent[]): boolean {
+  if (INCIDENT_PIPELINE_DISABLED) return false;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || rows.length === 0) return false;
   if (typeof fetch === "undefined") return false;
   const clean = rows.map(({ __retry_count: _rc, occurred_at_server: _s, ...rest }) => rest);
@@ -961,6 +963,7 @@ function enforceVoiceCorrelation(
 }
 
 export function recordRuntimeEvent(input: RuntimeEventInput): void {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   if (typeof window === "undefined") return;
   const errFields = toErrorFields(input.error);
   const resolvedCorrelation = enforceVoiceCorrelation(
@@ -1119,6 +1122,7 @@ async function openDbIncidentRow(
   kind: string,
   meta: Record<string, unknown>,
 ): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   try {
     const now = new Date().toISOString();
     const row = {
@@ -1162,6 +1166,7 @@ async function closeDbIncidentRow(
   correlationId: string,
   reason: string,
 ): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   try {
     await supabase
       .from("client_runtime_incidents")
@@ -1177,6 +1182,7 @@ async function closeDbIncidentRow(
 }
 
 async function patchDbIncidentRow(evt: QueuedEvent): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   if (!evt.correlation_id) return;
   const patch: Record<string, unknown> = {
     last_event_at: evt.occurred_at_client,
@@ -1210,6 +1216,7 @@ async function patchDbIncidentRow(evt: QueuedEvent): Promise<void> {
 // ── Authoritative outbox for critical events ───────────────────────
 
 function writeOutboxPending(evt: QueuedEvent): string | null {
+  if (INCIDENT_PIPELINE_DISABLED) return null;
   try {
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1242,6 +1249,7 @@ function writeOutboxPending(evt: QueuedEvent): string | null {
 }
 
 async function finalizeOutboxRow(id: string, delivered: boolean): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   try {
     const patch = delivered
       ? { status: "delivered", delivered_at: new Date().toISOString() }
@@ -1260,6 +1268,7 @@ async function finalizeOutboxRow(id: string, delivered: boolean): Promise<void> 
 let openIncidentScanRan = false;
 
 async function runOpenIncidentScan(): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) return;
   if (openIncidentScanRan) return;
   if (!ambient.user_id) return;
   openIncidentScanRan = true;
@@ -1330,6 +1339,7 @@ function scheduleFlush() {
 }
 
 async function flushNow(): Promise<void> {
+  if (INCIDENT_PIPELINE_DISABLED) { queue.length = 0; return; }
   if (flushing || queue.length === 0) return;
   if (!instanceRegistered) {
     void upsertInstance();
@@ -1362,6 +1372,7 @@ async function flushNow(): Promise<void> {
 // ── Incident + delivery-trace APIs ─────────────────────────────────
 
 export async function openIncident(input: IncidentInput): Promise<string | null> {
+  if (INCIDENT_PIPELINE_DISABLED) return null;
   try {
     const row = {
       incident_type: input.incident_type,
