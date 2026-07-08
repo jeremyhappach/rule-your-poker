@@ -88,6 +88,33 @@ export function getGinPhaseTraceSnapshot(): { armed: boolean; events: GinPhaseTr
   return cachedSnapshot;
 }
 
+export function getGinPhaseTraceStatus(): {
+  armedRaw: boolean;
+  capturing: boolean;
+  hasEvents: boolean;
+  captureUntilMs: number | null;
+  sessionKey: string | null;
+  eventCount: number;
+} {
+  return {
+    armedRaw: armed,
+    capturing: isCapturing(),
+    hasEvents: buffer.length > 0,
+    captureUntilMs,
+    sessionKey: armedSessionKey,
+    eventCount: buffer.length,
+  };
+}
+
+/** Store latest eligibility inputs so exports carry the exact predicate. */
+let latestEligibility: Record<string, unknown> | null = null;
+export function setGinPhaseTraceEligibility(inputs: Record<string, unknown>): void {
+  latestEligibility = { ...inputs, evaluatedAtIso: new Date().toISOString() };
+}
+export function getGinPhaseTraceEligibility(): Record<string, unknown> | null {
+  return latestEligibility;
+}
+
 export function armGinPhaseTrace(args: { sessionKey: string; identity?: GinPhaseTraceIdentity; detail?: Record<string, unknown> }): void {
   const reset = !armed || armedSessionKey !== args.sessionKey || !isCapturing();
   armed = true;
@@ -185,11 +212,19 @@ function boundaryLine(label: string, e: GinPhaseTraceEvent | null): string[] {
 }
 
 export function formatGinPhaseTraceText(): string {
+  const status = getGinPhaseTraceStatus();
   const lines = [
     '# Gin phase transition trace',
     `exportedAt=${new Date().toISOString()}`,
-    `armed=${isCapturing()}`,
-    `eventCount=${buffer.length}`,
+    `armedRaw=${status.armedRaw}`,
+    `capturing=${status.capturing}`,
+    `hasEvents=${status.hasEvents}`,
+    `captureUntilMs=${status.captureUntilMs ?? '-'}`,
+    `sessionKey=${status.sessionKey ?? '-'}`,
+    `eventCount=${status.eventCount}`,
+    '',
+    '# Eligibility inputs (from pill owner)',
+    latestEligibility ? JSON.stringify(latestEligibility, null, 2) : 'NO ELIGIBILITY INPUTS RECORDED',
     '',
     'seq | +ms | kind | source | identity | summary | detail',
   ];
@@ -230,18 +265,93 @@ export function exportGinPhaseTraceTxt(): void {
   URL.revokeObjectURL(url);
 }
 
-export function GinPhaseTracePill() {
+export interface GinPhaseTracePillProps {
+  /**
+   * Whether this route is a two-human Gin game — the only gate for
+   * rendering. When true the pill is ALWAYS visible and shows one of the
+   * five explicit states (WAITING/ARMED/CAPTURING/READY/DISABLED).
+   */
+  eligible: boolean;
+  /** Human-readable reason surfaced as `DISABLED — <reason>` when disabled. */
+  disabledReason?: string | null;
+  /** Authoritative inputs — embedded in exports and hover title. */
+  gameId?: string | null;
+  gameType?: string | null;
+  status?: string | null;
+  phase?: string | null;
+  dealerGameId?: string | null;
+  humanPlayerCount?: number | null;
+}
+
+export function GinPhaseTracePill(props: GinPhaseTracePillProps) {
   const snapshot = useSyncExternalStore(subscribeGinPhaseTrace, getGinPhaseTraceSnapshot, getGinPhaseTraceSnapshot);
-  if (!snapshot.armed) return null;
+  // Record eligibility inputs on every render so exports carry the truth.
+  setGinPhaseTraceEligibility({
+    eligible: props.eligible,
+    disabledReason: props.disabledReason ?? null,
+    gameId: props.gameId ?? null,
+    gameType: props.gameType ?? null,
+    status: props.status ?? null,
+    phase: props.phase ?? null,
+    dealerGameId: props.dealerGameId ?? null,
+    humanPlayerCount: props.humanPlayerCount ?? null,
+  });
+
+  if (!props.eligible) {
+    // Explicit page-root pill for every eligible two-human Gin page.
+    // When ineligible we render nothing — this is the ONLY silent path,
+    // and it applies only to non-Gin / non-two-human routes.
+    return null;
+  }
+
+  const status = getGinPhaseTraceStatus();
+  let label = 'GIN TRACE · WAITING FOR SETUP';
+  let bg = 'bg-slate-900/90';
+  let border = 'border-slate-400/70';
+  let text = 'text-slate-100';
+  if (props.disabledReason) {
+    label = `GIN TRACE · DISABLED — ${props.disabledReason}`;
+    bg = 'bg-red-900/90';
+    border = 'border-red-300/80';
+    text = 'text-red-50';
+  } else if (status.armedRaw && status.capturing && status.hasEvents) {
+    label = 'GIN TRACE · CAPTURING';
+    bg = 'bg-amber-600/90';
+    border = 'border-amber-200/80';
+    text = 'text-amber-50';
+  } else if (status.armedRaw && status.capturing) {
+    label = 'GIN TRACE · ARMED';
+    bg = 'bg-emerald-700/90';
+    border = 'border-emerald-200/80';
+    text = 'text-emerald-50';
+  } else if (status.hasEvents) {
+    label = 'GIN TRACE · READY TO EXPORT';
+    bg = 'bg-sky-700/90';
+    border = 'border-sky-200/80';
+    text = 'text-sky-50';
+  }
+
   return (
     <button
       type="button"
       onClick={exportGinPhaseTraceTxt}
-      className="fixed right-3 top-14 z-[120] rounded-md border border-poker-gold/70 bg-background/95 px-2.5 py-1 text-[11px] font-bold text-poker-gold shadow-lg"
-      aria-label="Export Gin phase trace"
-      data-gin-phase-trace-pill="armed"
+      title={`status=${props.status ?? '-'} phase=${props.phase ?? '-'} humans=${props.humanPlayerCount ?? '-'} events=${status.eventCount}`}
+      className={`fixed right-3 top-14 rounded-md border ${border} ${bg} ${text} px-2.5 py-1 text-[11px] font-bold shadow-lg whitespace-nowrap`}
+      style={{ zIndex: 2147483646, pointerEvents: 'auto' }}
+      aria-label="Gin phase trace diagnostic"
+      data-gin-phase-trace-pill={
+        props.disabledReason
+          ? 'disabled'
+          : status.armedRaw && status.capturing && status.hasEvents
+            ? 'capturing'
+            : status.armedRaw && status.capturing
+              ? 'armed'
+              : status.hasEvents
+                ? 'ready'
+                : 'waiting'
+      }
     >
-      GIN PHASE TRACE · ARMED
+      {label}
     </button>
   );
 }
