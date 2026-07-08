@@ -68,7 +68,7 @@ export interface ShellTabBarState {
   isPaused?: boolean;
 }
 
-const ShellTabBarStateContext = createContext<ShellTabBarState | null>(null);
+export const ShellTabBarStateContext = createContext<ShellTabBarState | null>(null);
 type ShellTabBarRegister = (registrationId: number, state: ShellTabBarState | null) => void;
 const ShellTabBarRegisterContext = createContext<ShellTabBarRegister | null>(null);
 let nextShellTabBarRegistrationId = 1;
