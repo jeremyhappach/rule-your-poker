@@ -13533,7 +13533,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             />
             {innerTree}
           </PersistentTableShell>
-          <GinPhaseTracePill />
+          
           {/* Gin-only readiness probe (capability-driven, not shell branching).
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}
