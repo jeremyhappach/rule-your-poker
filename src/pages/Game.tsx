@@ -28,8 +28,6 @@ import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
-import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
-import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
@@ -274,7 +272,6 @@ import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/G
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
 import {
-  GinPhaseTracePill,
   armGinPhaseTrace,
   markGinPhaseTraceAnteResolved,
   recordGinPhaseTrace,
@@ -12745,21 +12742,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             return (
               <>
-                <GinIdentityGateTracer
-                  gameStatus={game.status ?? null}
-                  gameType={game.game_type ?? null}
-                  currentGameUuid={(game as any).current_game_uuid ?? null}
-                  currentRoundId={currentRound?.id ?? null}
-                  currentRoundDealerGameId={(currentRound as any)?.dealer_game_id ?? null}
-                  currentRoundHandNumber={currentRound?.hand_number ?? null}
-                  hasGinRummyState={!!((currentRound as any)?.gin_rummy_state)}
-                  isInProgress={isInProgress}
-                  isAnteDecision={isAnteDecision}
-                  isGinRummyDealerSelection={isGinRummyDealerSelection}
-                  isGinRummyGameOver={isGinRummyGameOver}
-                  effectivePropRoundId={_ginEffRoundId}
-                  effectivePropDealerGameId={_ginEffDealerGameId}
-                />
+
                 <GinRummyGameTable
                   key={_ginEffDealerGameId ?? 'none'}
                   gameId={gameId!}
@@ -13573,46 +13556,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         playerDeckColorMode={currentPlayer?.deck_color_mode}
         onModeChange={() => {}}
       />
-      {(() => {
-        // Page-root Gin trace pill. Mounted OUTSIDE tabs / panes / modals /
-        // interstitials / deal runtime / shell so it cannot be hidden by
-        // phase, active tab, waiting state, dealer role, or trace-buffer
-        // state. Eligibility is derived from the same authoritative inputs
-        // used elsewhere in this file.
-        const _pillRouteGameType =
-          game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
-        const _pillHumanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
-        const _pillTwoHumans = _pillHumanPlayers.length === 2;
-        const _pillIsGin = _pillRouteGameType === 'gin-rummy';
-        // Generic pre-play eligibility: during dealer/game/ante setup the
-        // gameType may be null. Any two-human session in a non-terminal
-        // status is eligible so the pill and its buffer arm before Gin
-        // is selected.
-        const _pillStatus = game?.status ?? null;
-        const _pillInPrePlay =
-          _pillTwoHumans &&
-          !!_pillStatus &&
-          _pillStatus !== 'game_over' &&
-          _pillStatus !== 'session_ended' &&
-          (_pillRouteGameType === null || _pillIsGin);
-        const _pillEligible = (_pillIsGin && _pillTwoHumans) || _pillInPrePlay;
-        let _pillDisabledReason: string | null = null;
-        if (_pillIsGin && !_pillTwoHumans) {
-          _pillDisabledReason = `humans=${_pillHumanPlayers.length}`;
-        }
-        return (
-          <GinPhaseTracePill
-            eligible={_pillEligible || (_pillIsGin && !!_pillDisabledReason)}
-            disabledReason={_pillDisabledReason}
-            gameId={gameId ?? null}
-            gameType={_pillRouteGameType}
-            status={game?.status ?? null}
-            phase={((currentRound as any)?.gin_rummy_state as any)?.phase ?? null}
-            dealerGameId={(game as any)?.current_game_uuid ?? null}
-            humanPlayerCount={_pillHumanPlayers.length}
-          />
-        );
-      })()}
+      {/* Gin phase trace pill removed — investigation retired. */}
       {enableOuterShell ? (
         <SurfaceReadinessProvider>
 
@@ -13659,18 +13603,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}
           {game.game_type === 'gin-rummy' && game.current_game_uuid && currentRound?.id ? (
-            <>
-              <GinRummyReadinessProbe
-                dealerGameId={game.current_game_uuid}
-                roundId={currentRound.id}
-                parentHasGinState={Boolean((currentRound as any)?.gin_rummy_state)}
-              />
-              <GinStartupIdentityTracer
-                currentGameUuid={game.current_game_uuid}
-                currentRoundId={currentRound.id}
-                currentRoundDealerGameId={(currentRound as any).dealer_game_id ?? null}
-              />
-            </>
+            <GinRummyReadinessProbe
+              dealerGameId={game.current_game_uuid}
+              roundId={currentRound.id}
+              parentHasGinState={Boolean((currentRound as any)?.gin_rummy_state)}
+            />
           ) : null}
         </SurfaceReadinessProvider>
       ) : (
