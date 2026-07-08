@@ -743,7 +743,7 @@ export function ShellTabBar() {
                 left: portalRect.left,
                 width: portalRect.width,
                 height: portalRect.height,
-                zIndex: 10000,
+                zIndex: SHELL_Z.HUD_TAB_RAIL,
                 // Explicitly opt back into pointer events — Radix modal
                 // dialogs set `pointer-events: none` on <body>, which
                 // would otherwise cascade into this portal container.
