@@ -630,12 +630,12 @@ export function ShellTabBar() {
     };
     update();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleUpdate) : null;
-    ro.observe(el);
+    ro?.observe(el);
     window.addEventListener('resize', scheduleUpdate);
     window.addEventListener('scroll', scheduleUpdate, true);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      ro.disconnect();
+      ro?.disconnect();
       window.removeEventListener('resize', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate, true);
     };
