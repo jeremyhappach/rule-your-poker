@@ -43,6 +43,12 @@ interface GinRummyMobileCardsTabProps {
   gameId: string;
   /** Full current-hand identity from the Gin shell: dealer-game + round + hand. */
   handIdentityKey?: string | null;
+  /** Lifted per-hand visual-selection state (parent-owned so it
+   *  survives Cards<->Chat tab unmount). Keyed to handContextId. */
+  selectedCardIndex: number | null;
+  onSelectedCardIndexChange: (index: number | null) => void;
+  drawnCard: { rank: string; suit: string } | null;
+  onDrawnCardChange: (card: { rank: string; suit: string } | null) => void;
   /** Cards to hide from the rendered hand while their self-draw
    *  transport animations are in flight. Each entry is keyed by its
    *  own intent and released independently on its own settle. */
