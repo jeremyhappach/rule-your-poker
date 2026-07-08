@@ -580,26 +580,41 @@ export function ShellTabBar() {
 
   // ── Placeholder + portal layering repair ────────────────────────────
   //
-  // Trace evidence (gin-phase-trace-2026-07-08): when a Radix Dialog
-  // opens (e.g. AnteUpDialog during ante_decision), the framework sets
-  //   body { pointer-events: none }
-  // and mounts DialogOverlay (`fixed inset-0` z-9998) plus DialogContent
-  // (`fixed left-[50%] top-[50%]` z-9999). Both effects rendered every
-  // tab as computedPointerEvents:"none" and coveredAtCenter:true, so
-  // Chat/Cards/Lobby/History became physically non-interactive while
-  // the shell still computed them as enabled.
+  // Two orthogonal problems are being solved here:
   //
-  // Fix: keep an in-place placeholder that reserves the shell's tab-row
-  // height (so `ShellHudGrid` row 3 layout is untouched), and portal the
-  // actual interactive tab bar into `document.body` at fixed coords
-  // matching the placeholder rect. The portal container carries
-  // `pointer-events:auto` (escaping the body-level Radix lock) and
-  // `z-index:10000` (above the DialogOverlay/Content z-9998/9999).
+  //   (a) INTERACTIVITY. When a Radix Dialog opens (AnteUpDialog,
+  //       DealerConfig, etc.), the framework sets
+  //         body { pointer-events: none }
+  //       which cascades into every descendant, including the shell
+  //       tab row. The tab rail must remain physically clickable for
+  //       passive/waiting players even while a modal is mounted for
+  //       another player.
   //
-  // This is deliberately still below any modal that renders at
-  // z-index >= 10001; those are treated as "true blocking modals" and
-  // keep the tab bar covered. No AnteUpDialog / DealerConfig / other
-  // passive interstitial reaches that band today.
+  //   (b) LAYERING. The tab rail must sit in a well-defined shell z
+  //       band: above passive waiting/setup overlays, below true
+  //       blocking modals (Radix DialogOverlay/Content at 9998/9999),
+  //       and below chip/card transport so cards and chips visibly
+  //       fly OVER the rail during deal/settlement.
+  //
+  // Fix: reserve the tab-row height with an in-place placeholder
+  // (keeps `ShellHudGrid` layout byte-identical), and portal the
+  // interactive tab bar into `document.body` at fixed coords matching
+  // the placeholder rect. The portal container:
+  //
+  //   - carries `pointer-events: auto` — escapes the body-level Radix
+  //     lock (solves (a));
+  //   - uses `SHELL_Z.HUD_TAB_RAIL` (40) — sits above passive overlays
+  //     (`SHELL_Z.PASSIVE_OVERLAY`, 30), below chip/card transport
+  //     (80/82), and far below Radix DialogOverlay/Content (9998/9999)
+  //     (solves (b)).
+  //
+  // Prior geometry used `zIndex: 10000` — that was ABOVE the Radix
+  // modal band and therefore visually promoted the tab rail above
+  // legitimate blocking modals and above transport, which broke both
+  // the dealer-setup modal presentation and the deal fly-over. The
+  // fix here is z-drop only; the placeholder + portal + pointer-events
+  // escape are unchanged, so interactivity during body-lock is
+  // preserved.
   const placeholderRef = useRef<HTMLDivElement | null>(null);
   const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
