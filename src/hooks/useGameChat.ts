@@ -136,6 +136,18 @@ export const useGameChat = (
     currentUserProfileRef.current = currentUserProfile;
   }, [currentUserProfile]);
 
+  // Chat identity fields consumed inside the realtime callback for
+  // telemetry only. Held in refs so they do NOT force resubscribe of
+  // the chat channel when they change during a live session. Every
+  // resubscribe opens a window where inbound INSERTs are dropped;
+  // on mobile Safari that window is user-visible.
+  const chatIdentityRouteRef = useRef<string | null>(chatIdentity?.route ?? null);
+  const chatIdentitySessionIdRef = useRef<string | null>(chatIdentity?.sessionId ?? null);
+  useEffect(() => {
+    chatIdentityRouteRef.current = chatIdentity?.route ?? null;
+    chatIdentitySessionIdRef.current = chatIdentity?.sessionId ?? null;
+  }, [chatIdentity?.route, chatIdentity?.sessionId]);
+
   // Cache usernames for observers (not seated players) so we don't re-query per message.
   const observerUsernameCacheRef = useRef<Map<string, string>>(new Map());
 
