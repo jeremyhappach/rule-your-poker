@@ -54,6 +54,8 @@ const listeners = new Set<() => void>();
 let seq = 0;
 let armed = false;
 let armedSessionKey: string | null = null;
+let cachedSnapshot: { armed: boolean; events: GinPhaseTraceEvent[] } = { armed: false, events: [] };
+let snapshotDirty = true;
 let captureUntilMs: number | null = null;
 const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
