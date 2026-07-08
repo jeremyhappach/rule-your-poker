@@ -282,6 +282,14 @@ interface GinRummyGameTableProps {
   isHost: boolean;
   onGameComplete: () => void;
   bootstrapState?: GinRummyState | null;
+  // Lifted mobile tab + chat compose ownership. When supplied by the
+  // shell (Game.tsx), these become the single source of truth so the
+  // Gin table cannot reset activeTab to 'cards' on mount/phase change
+  // and the user's in-progress chat draft survives table remount.
+  activeTab?: 'cards' | 'chat' | 'lobby' | 'history';
+  onActiveTabChange?: (next: 'cards' | 'chat' | 'lobby' | 'history') => void;
+  chatInputValue?: string;
+  onChatInputChange?: (value: string) => void;
 }
 
 type AcceptedGinPresentation = {
@@ -302,6 +310,10 @@ export const GinRummyGameTable = ({
   isHost,
   onGameComplete,
   bootstrapState = null,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
+  chatInputValue,
+  onChatInputChange,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
   useStartupMountTrace('GinRummyGameTable', { gameId, dealerGameId: dealerGameId ?? null, propRoundId: propRoundId ?? null });
