@@ -5153,11 +5153,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const routeShellGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
     const humanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
     const isTwoHumanGin = humanPlayers.length === 2 && routeShellGameType === 'gin-rummy';
-    const isSetup = isTwoHumanGin && (
-      game?.status === 'dealer_selection' ||
-      game?.status === 'game_selection' ||
-      game?.status === 'configuring'
-    );
+    // Broaden auto-arm: any two-human Gin game with a known authoritative
+    // status arms the recorder. Prior gate ("dealer_selection /
+    // game_selection / configuring") was speculative and prevented capture
+    // on the live setup phases actually emitted by the shell.
+    const isSetup = isTwoHumanGin && !!game?.status && game.status !== 'game_over' && game.status !== 'session_ended';
     const current = {
       status: game?.status ?? null,
       phase: ((currentRound as any)?.gin_rummy_state as any)?.phase ?? null,
@@ -5174,6 +5174,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         detail: {
           owner: 'Game shell',
           status: current.status,
+          phase: current.phase,
           routeShellGameType,
           humanPlayerCount: humanPlayers.length,
           activeTab: mobileActiveTab,
