@@ -54,12 +54,15 @@ const listeners = new Set<() => void>();
 let seq = 0;
 let armed = false;
 let armedSessionKey: string | null = null;
+let cachedSnapshot: { armed: boolean; events: GinPhaseTraceEvent[] } = { armed: false, events: [] };
+let snapshotDirty = true;
 let captureUntilMs: number | null = null;
 const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 function notify(): void {
+  snapshotDirty = true;
   for (const l of listeners) {
     try { l(); } catch { /* UI observer only */ }
   }
@@ -77,7 +80,12 @@ export function subscribeGinPhaseTrace(listener: () => void): () => void {
 }
 
 export function getGinPhaseTraceSnapshot(): { armed: boolean; events: GinPhaseTraceEvent[] } {
-  return { armed: isCapturing(), events: buffer.slice() };
+  const capturing = isCapturing();
+  if (snapshotDirty || cachedSnapshot.armed !== capturing) {
+    cachedSnapshot = { armed: capturing, events: buffer.slice() };
+    snapshotDirty = false;
+  }
+  return cachedSnapshot;
 }
 
 export function armGinPhaseTrace(args: { sessionKey: string; identity?: GinPhaseTraceIdentity; detail?: Record<string, unknown> }): void {
