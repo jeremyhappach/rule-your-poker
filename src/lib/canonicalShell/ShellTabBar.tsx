@@ -578,20 +578,83 @@ export function ShellTabBar() {
     });
   });
 
-  return (
+  // ── Placeholder + portal layering repair ────────────────────────────
+  //
+  // Trace evidence (gin-phase-trace-2026-07-08): when a Radix Dialog
+  // opens (e.g. AnteUpDialog during ante_decision), the framework sets
+  //   body { pointer-events: none }
+  // and mounts DialogOverlay (`fixed inset-0` z-9998) plus DialogContent
+  // (`fixed left-[50%] top-[50%]` z-9999). Both effects rendered every
+  // tab as computedPointerEvents:"none" and coveredAtCenter:true, so
+  // Chat/Cards/Lobby/History became physically non-interactive while
+  // the shell still computed them as enabled.
+  //
+  // Fix: keep an in-place placeholder that reserves the shell's tab-row
+  // height (so `ShellHudGrid` row 3 layout is untouched), and portal the
+  // actual interactive tab bar into `document.body` at fixed coords
+  // matching the placeholder rect. The portal container carries
+  // `pointer-events:auto` (escaping the body-level Radix lock) and
+  // `z-index:10000` (above the DialogOverlay/Content z-9998/9999).
+  //
+  // This is deliberately still below any modal that renders at
+  // z-index >= 10001; those are treated as "true blocking modals" and
+  // keep the tab bar covered. No AnteUpDialog / DealerConfig / other
+  // passive interstitial reaches that band today.
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
+  const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    const el = placeholderRef.current;
+    if (!el) return;
+    let raf = 0;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      setPortalRect(prev => {
+        const next = { top: r.top, left: r.left, width: r.width, height: r.height };
+        if (
+          prev &&
+          Math.abs(prev.top - next.top) < 0.5 &&
+          Math.abs(prev.left - next.left) < 0.5 &&
+          Math.abs(prev.width - next.width) < 0.5 &&
+          Math.abs(prev.height - next.height) < 0.5
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+    const scheduleUpdate = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    update();
+    const ro = new ResizeObserver(scheduleUpdate);
+    ro.observe(el);
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('scroll', scheduleUpdate, true);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate, true);
+    };
+  }, []);
+
+  const tabBarContent = (
     <div
       ref={tabBarRef}
       data-canonical-shell-tabbar=""
+      data-canonical-shell-tabbar-portaled="1"
       className="flex items-center justify-center gap-1 px-3 py-1 border-t border-border/50 bg-background"
       style={{
-        // Phase 2: token-driven proportional height (--hud-h-tabs).
-        height: 'var(--hud-h-tabs)',
-        minHeight: 'var(--hud-h-tabs)',
+        width: '100%',
+        height: '100%',
         overflow: 'hidden',
+        // Escape body { pointer-events: none } set by Radix modal dialogs.
+        pointerEvents: 'auto',
       }}
     >
-
-
       <button
         ref={cardsBtnRef}
         onClick={() => requestTab('cards', 'ShellTabBar.cardsButton', () => setActiveTab('cards'))}
@@ -639,4 +702,45 @@ export function ShellTabBar() {
       </button>
     </div>
   );
+
+  return (
+    <>
+      {/* In-place placeholder — reserves the shell's tab-row height so
+          ShellHudGrid layout is byte-identical to prior geometry. The
+          interactive bar itself is portaled into document.body below. */}
+      <div
+        ref={placeholderRef}
+        data-canonical-shell-tabbar-placeholder=""
+        aria-hidden="true"
+        style={{
+          height: 'var(--hud-h-tabs)',
+          minHeight: 'var(--hud-h-tabs)',
+          width: '100%',
+        }}
+      />
+      {typeof document !== 'undefined' && portalRect
+        ? createPortal(
+            <div
+              data-canonical-shell-tabbar-portal-root=""
+              style={{
+                position: 'fixed',
+                top: portalRect.top,
+                left: portalRect.left,
+                width: portalRect.width,
+                height: portalRect.height,
+                zIndex: 10000,
+                // Explicitly opt back into pointer events — Radix modal
+                // dialogs set `pointer-events: none` on <body>, which
+                // would otherwise cascade into this portal container.
+                pointerEvents: 'auto',
+              }}
+            >
+              {tabBarContent}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
+
