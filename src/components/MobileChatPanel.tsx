@@ -538,11 +538,7 @@ export const MobileChatPanel = ({
           </div>
         )}
 
-        {voice.diagnostics.length > 0 && (
-          <div className="mt-1 px-1 text-[9px] text-white/40 leading-tight font-mono truncate" aria-hidden>
-            voice: {voice.diagnostics.slice(-3).map((d) => d.code.replace('VOICE_', '') + (d.detail ? `(${d.detail})` : '')).join(' · ')}
-          </div>
-        )}
+        {/* Voice diagnostics helper string removed as polish. */}
 
         <div className="flex items-center gap-2 mt-2 px-1">
           <Checkbox
