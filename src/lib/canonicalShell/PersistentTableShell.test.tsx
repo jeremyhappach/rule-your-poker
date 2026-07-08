@@ -78,15 +78,30 @@ describe('PersistentTableShell', () => {
     });
     const column = container.querySelector('[data-canonical-shell-column]') as HTMLElement | null;
     const rail = container.querySelector('[data-canonical-shell-announcement-rail]') as HTMLElement | null;
-    const tabbar = container.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
+    // ShellTabBar now renders an in-place placeholder (still under the
+    // shell container) and portals the interactive bar to document.body
+    // so it survives Radix modal body { pointer-events: none } and z-index
+    // covers. Assert both halves are present.
+    const placeholder = container.querySelector('[data-canonical-shell-tabbar-placeholder]') as HTMLElement | null;
+    const tabbar = document.body.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
+    const portalRoot = document.body.querySelector('[data-canonical-shell-tabbar-portal-root]') as HTMLElement | null;
     const children = container.querySelector('[data-canonical-shell-children]') as HTMLElement | null;
-    expect(column?.style.gridTemplateRows).toBe('auto minmax(0, 1fr)');
+    expect(column?.style.gridTemplateRows).toBe('var(--shell-header-h) minmax(0, 1fr)');
     expect(container.querySelector('[data-canonical-shell-spacer]')).toBeNull();
     expect(children).toBeTruthy();
     expect(rail).toBeTruthy();
+    expect(placeholder).toBeTruthy();
     expect(tabbar).toBeTruthy();
-    expect(rail!.nextElementSibling).toBe(tabbar);
-    expect(tabbar!.style.height).toBe('44px');
+    expect(portalRoot).toBeTruthy();
+    // Rail's in-place sibling is now the placeholder that reserves the
+    // shell tab-row height; the actual tabbar lives in document.body.
+    expect(rail!.nextElementSibling).toBe(placeholder);
+    expect(placeholder!.style.height).toBe('var(--hud-h-tabs)');
+    // Portal container escapes body-level pointer-events lock and
+    // sits above Radix modal z-9998/9999.
+    expect(portalRoot!.style.pointerEvents).toBe('auto');
+    expect(portalRoot!.style.zIndex).toBe('10000');
+    expect(portalRoot!.style.position).toBe('fixed');
   });
 
   it('does not mount SeatAnchorLayer when seats are not provided', () => {
