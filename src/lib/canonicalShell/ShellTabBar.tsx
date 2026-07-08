@@ -629,7 +629,7 @@ export function ShellTabBar() {
       raf = requestAnimationFrame(update);
     };
     update();
-    const ro = new ResizeObserver(scheduleUpdate);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleUpdate) : null;
     ro.observe(el);
     window.addEventListener('resize', scheduleUpdate);
     window.addEventListener('scroll', scheduleUpdate, true);
