@@ -1258,7 +1258,56 @@ export const useGameChat = (
       recordChatBoundaryEvent('CHAT_REALTIME_CHANNEL_REMOVED', { channelTopic, gameId });
       recordChatBoundaryEvent('CHAT_HOOK_UNMOUNT', { gameId });
     };
-  }, [gameId, addBubble, currentUserId, chatIdentity?.route, chatIdentity?.sessionId]);
+  }, [gameId, addBubble, currentUserId]);
+
+  // Mobile catch-up: browsers (mobile Safari in particular) suspend
+  // WebSockets when the tab is hidden/backgrounded, so realtime INSERT
+  // events emitted during that window are never delivered. When the
+  // tab becomes visible again we re-fetch chat_messages for the
+  // current gameId and merge; mergeMessages dedupes by id so this is
+  // idempotent. Persistence + initial fetch are known-good, so this
+  // is a receiver-side realtime miss repair only.
+  useEffect(() => {
+    if (!gameId) return;
+    if (typeof document === 'undefined') return;
+
+    const catchUp = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: true });
+      if (error || !data || data.length === 0) return;
+      const currentPlayers = playersRef.current;
+      const currentProfile = currentUserProfileRef.current;
+      const withUsernames = data.map((msg: any) => {
+        const player = currentPlayers.find((p) => p.user_id === msg.user_id);
+        if (player?.profiles?.username) return { ...msg, username: player.profiles.username };
+        if (msg.user_id === currentUserId && currentProfile?.username) {
+          return { ...msg, username: `${currentProfile.username} (observer)` };
+        }
+        const cached = observerUsernameCacheRef.current.get(msg.user_id);
+        return { ...msg, username: cached ?? 'Unknown' };
+      });
+      setAllMessages((prev) => mergeMessages(prev, withUsernames));
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void catchUp();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    // Also cover the mobile Safari case where the socket resumes on
+    // focus without a visibilitychange event.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onVisibility);
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', onVisibility);
+      }
+    };
+  }, [gameId, currentUserId, mergeMessages]);
 
   return {
     chatBubbles,
