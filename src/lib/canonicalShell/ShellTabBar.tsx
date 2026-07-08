@@ -40,6 +40,7 @@ import {
   Dices as DiceIcon,
 } from 'lucide-react';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
+import { SHELL_Z } from './zLayers';
 
 export type ShellTabId = 'cards' | 'chat' | 'lobby' | 'history';
 export type ShellCardsTabIcon = 'spade' | 'dice';
