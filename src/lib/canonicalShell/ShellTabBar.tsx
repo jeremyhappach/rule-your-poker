@@ -491,8 +491,94 @@ export function ShellTabBar() {
     else setActiveTab('chat');
   };
 
+  const tabBarRef = useRef<HTMLDivElement | null>(null);
+  const cardsBtnRef = useRef<HTMLButtonElement | null>(null);
+  const chatBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lobbyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const historyBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const lastDomInteractivitySigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const snap = (btn: HTMLButtonElement | null, name: string) => {
+      if (!btn) return { name, mounted: false };
+      const cs = window.getComputedStyle(btn);
+      // Walk ancestors for inert / pointer-events blockers.
+      let inertAncestor: string | null = null;
+      let peNoneAncestor: string | null = null;
+      let el: HTMLElement | null = btn.parentElement;
+      let depth = 0;
+      while (el && depth < 20) {
+        if ((el as any).inert === true || el.hasAttribute('inert')) {
+          if (!inertAncestor) inertAncestor = el.tagName + (el.className ? '.' + String(el.className).split(' ').slice(0, 2).join('.') : '');
+        }
+        const acs = window.getComputedStyle(el);
+        if (acs.pointerEvents === 'none' && !peNoneAncestor) {
+          peNoneAncestor = el.tagName + (el.className ? '.' + String(el.className).split(' ').slice(0, 2).join('.') : '');
+        }
+        el = el.parentElement; depth++;
+      }
+      const rect = btn.getBoundingClientRect();
+      const cx = Math.round(rect.left + rect.width / 2);
+      const cy = Math.round(rect.top + rect.height / 2);
+      const topEl = document.elementFromPoint(cx, cy) as HTMLElement | null;
+      const covered = !!topEl && topEl !== btn && !btn.contains(topEl);
+      const covererTag = covered && topEl
+        ? topEl.tagName + (topEl.className ? '.' + String(topEl.className).split(' ').slice(0, 2).join('.') : '')
+        : null;
+      const coverer = covered && topEl
+        ? topEl.closest('[data-canonical-shell-tabbar],[data-shell-owner],[data-canonical-neutral-interstitial],[data-canonical-shell-waiting],[data-canonical-shell-modal]') as HTMLElement | null
+        : null;
+      return {
+        name,
+        mounted: true,
+        disabled: btn.disabled,
+        ariaDisabled: btn.getAttribute('aria-disabled'),
+        tabIndex: btn.tabIndex,
+        computedPointerEvents: cs.pointerEvents,
+        computedCursor: cs.cursor,
+        computedOpacity: cs.opacity,
+        computedVisibility: cs.visibility,
+        selfInert: (btn as any).inert === true || btn.hasAttribute('inert'),
+        inertAncestor,
+        pointerEventsNoneAncestor: peNoneAncestor,
+        rect: { x: Math.round(rect.left), y: Math.round(rect.top), w: Math.round(rect.width), h: Math.round(rect.height) },
+        coveredAtCenter: covered,
+        covererTag,
+        covererOwnerAttr: coverer ? (coverer.getAttribute('data-canonical-shell-tabbar') !== null ? 'canonical-shell-tabbar' : coverer.getAttribute('data-shell-owner') ?? coverer.getAttribute('data-canonical-neutral-interstitial') ?? coverer.getAttribute('data-canonical-shell-waiting') ?? coverer.getAttribute('data-canonical-shell-modal') ?? 'unknown-shell-layer') : null,
+      };
+    };
+    const barMounted = !!tabBarRef.current;
+    const snaps = {
+      cards: snap(cardsBtnRef.current, 'cards'),
+      chat: snap(chatBtnRef.current, 'chat'),
+      lobby: snap(lobbyBtnRef.current, 'lobby'),
+      history: snap(historyBtnRef.current, 'history'),
+    };
+    const sig = JSON.stringify({ barMounted, activeTab, snaps });
+    if (lastDomInteractivitySigRef.current === sig) return;
+    lastDomInteractivitySigRef.current = sig;
+    recordGinPhaseTrace({
+      kind: 'tab-dom-interactivity',
+      summary: `Shell tab-bar DOM interactivity snapshot (activeTab=${activeTab})`,
+      sourceFile: 'src/lib/canonicalShell/ShellTabBar.tsx',
+      sourceFunction: 'ShellTabBar.domInteractivityEffect',
+      detail: {
+        barMounted,
+        activeTab,
+        predicates: {
+          isPaused: !!isPaused,
+          hasOnOpenChat: !!onOpenChat,
+        },
+        buttons: snaps,
+        source: 'ShellTabBar (canonical); disabled/aria/tabIndex from React props; overlay via document.elementFromPoint at button center',
+      },
+    });
+  });
+
   return (
     <div
+      ref={tabBarRef}
       data-canonical-shell-tabbar=""
       className="flex items-center justify-center gap-1 px-3 py-1 border-t border-border/50 bg-background"
       style={{
@@ -502,6 +588,7 @@ export function ShellTabBar() {
         overflow: 'hidden',
       }}
     >
+
 
       <button
         onClick={() => requestTab('cards', 'ShellTabBar.cardsButton', () => setActiveTab('cards'))}
