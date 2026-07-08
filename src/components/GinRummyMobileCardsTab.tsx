@@ -328,11 +328,28 @@ export const GinRummyMobileCardsTab = ({
     }
   }, [isMyTurn, ginState.phase]);
 
-  // Clear selected card on phase transition
+  // Clear selected card on real phase transition (not on tab remount).
   useEffect(() => {
-    setSelectedCardIndex(null);
-    onLayOffCardSelected?.(null);
-  }, [ginState.phase]);
+    if (prevPhaseRef.current !== ginState.phase) {
+      prevPhaseRef.current = ginState.phase;
+      setSelectedCardIndex(null);
+      onLayOffCardSelected?.(null);
+    }
+  }, [ginState.phase, onLayOffCardSelected, setSelectedCardIndex]);
+
+  // Validate lifted selection/drawnCard against current hand. If the
+  // selected index no longer points to a card, or the drawn card is no
+  // longer in hand, clear so highlights don't render against stale ids.
+  useEffect(() => {
+    if (!myState) return;
+    if (selectedCardIndex !== null && !myState.hand[selectedCardIndex]) {
+      setSelectedCardIndex(null);
+      onLayOffCardSelected?.(null);
+    }
+    if (drawnCard && !myState.hand.some(c => c.rank === drawnCard.rank && c.suit === drawnCard.suit)) {
+      setDrawnCard(null);
+    }
+  }, [myState, selectedCardIndex, drawnCard, setSelectedCardIndex, setDrawnCard, onLayOffCardSelected]);
 
   // Knock/Gin checks
   const handAfterDiscard = useMemo(() => {
