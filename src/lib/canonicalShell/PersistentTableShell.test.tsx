@@ -86,7 +86,7 @@ describe('PersistentTableShell', () => {
     const tabbar = document.body.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
     const portalRoot = document.body.querySelector('[data-canonical-shell-tabbar-portal-root]') as HTMLElement | null;
     const children = container.querySelector('[data-canonical-shell-children]') as HTMLElement | null;
-    expect(column?.style.gridTemplateRows).toBe('auto minmax(0, 1fr)');
+    expect(column?.style.gridTemplateRows).toBe('var(--shell-header-h) minmax(0, 1fr)');
     expect(container.querySelector('[data-canonical-shell-spacer]')).toBeNull();
     expect(children).toBeTruthy();
     expect(rail).toBeTruthy();
