@@ -1655,6 +1655,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  // Late refs — populated by effects declared below where their
+  // authoritative sources become in-scope. Read here so the tab-mutation
+  // observer can classify without forward-referencing block-scoped vars.
+  const composeDraftLateRef = useRef<string>('');
+  const currentRoundLateRef = useRef<any>(null);
+  const gameStatusLateRef = useRef<string | null>(null);
   // Marker: when the user explicitly requested a tab change via the
   // canonical setter, we stamp the target + wall time. The observing
   // effect uses this to classify whether an observed mutation is a
@@ -1682,15 +1688,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const matchedUserRequest =
       !!marker && marker.next === mobileActiveTab && now - marker.tMs < 200;
     // Classify the mutation. When we observe a change that did NOT
-    // come through the canonical user-request setter, it must be:
-    //   - forced-projection: an ancestor recomputed activeTab from
-    //     phase/status (deal-start, ante-close, etc.);
-    //   - remount-default: the state initializer ran again due to
-    //     component remount (would reset to 'cards');
-    //   - state-reset: an imperative setter called from outside the
-    //     canonical user-request path;
-    //   - shell-reinit: shell tree reinitialized during this event.
-    let cause: string = matchedUserRequest ? 'user-request' : 'forced-projection';
+    // come through the canonical user-request setter, it must be one
+    // of: forced-projection (ancestor recomputed activeTab from
+    // phase/status), remount-default (state initializer re-ran),
+    // imperative state-reset from outside the canonical path, or
+    // shell reinit.
+    const cause: string = matchedUserRequest ? 'user-request' : 'forced-projection';
     let mutationClass: string;
     if (matchedUserRequest) {
       mutationClass = 'explicit-user-request';
@@ -1699,16 +1702,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else {
       mutationClass = 'imperative-state-change-non-user';
     }
-    const composeDraftPresent = (mobileChatInput ?? '').trim().length > 0;
-    // Snapshot deal-start context so a forced-mutation coincident
-    // with deal onset is attributable to that transition without
-    // reading the trace buffer.
+    const composeDraftPresent = (composeDraftLateRef.current ?? '').trim().length > 0;
     const dealStartContext = {
-      gameStatus: game?.status ?? null,
-      gamePhase: ((currentRound as any)?.gin_rummy_state as any)?.phase ?? null,
+      gameStatus: gameStatusLateRef.current,
+      gamePhase: ((currentRoundLateRef.current as any)?.gin_rummy_state as any)?.phase ?? null,
       dealerGameId: (game as any)?.current_game_uuid ?? null,
-      roundId: currentRound?.id ?? null,
-      handNumber: (currentRound as any)?.hand_number ?? null,
+      roundId: currentRoundLateRef.current?.id ?? null,
+      handNumber: (currentRoundLateRef.current as any)?.hand_number ?? null,
     };
     recordGinPhaseTrace({
       kind: matchedUserRequest ? 'tab-active-change' : 'forced-tab-projection',
@@ -1726,16 +1726,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         matchedUserRequest,
         userRequestMarker: marker ? { next: marker.next, ageMs: Math.round(now - marker.tMs) } : null,
         composeDraftPresent,
-        composeDraftLength: (mobileChatInput ?? '').length,
+        composeDraftLength: (composeDraftLateRef.current ?? '').length,
         dealStartContext,
         source: 'Game.tsx#mobileActiveTab useState projection',
       },
     });
     lastMobileActiveTabRef.current = mobileActiveTab;
-    // Clear the marker once consumed to avoid mis-labelling later
-    // spurious mutations as user-requests.
     if (matchedUserRequest) userRequestedTabMarkerRef.current = null;
-  }, [mobileActiveTab, gameId, game, currentRound, mobileChatInput]);
+  }, [mobileActiveTab, gameId, game]);
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
   // LIFTED chat watermark - last seen eligible other-human message ID, survives MobileGameTable remounts
