@@ -523,7 +523,7 @@ export function ShellTabBar() {
       const rect = btn.getBoundingClientRect();
       const cx = Math.round(rect.left + rect.width / 2);
       const cy = Math.round(rect.top + rect.height / 2);
-      const topEl = document.elementFromPoint(cx, cy) as HTMLElement | null;
+      const topEl = (typeof document.elementFromPoint === 'function' ? document.elementFromPoint(cx, cy) : null) as HTMLElement | null;
       const covered = !!topEl && topEl !== btn && !btn.contains(topEl);
       const covererTag = covered && topEl
         ? topEl.tagName + (topEl.className ? '.' + String(topEl.className).split(' ').slice(0, 2).join('.') : '')
