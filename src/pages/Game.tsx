@@ -28,8 +28,6 @@ import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
-import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
-import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
