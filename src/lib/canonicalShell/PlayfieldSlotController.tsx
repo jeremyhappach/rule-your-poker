@@ -571,7 +571,21 @@ export function PlayfieldSlotController({
             data-canonical-shell-pregame-overlay=""
             className="absolute inset-0 flex flex-col pointer-events-none z-20"
           >
-            <div className="flex-1 min-h-0 relative pointer-events-auto">
+            {/* FOCUS/POINTER CONTRACT — for the waiting/non-configuring
+                player during dealer setup (dealer_selection /
+                game_selection / configuring), `preGameOverlay` renders
+                either null (HighCardDealerSelection shim) or a
+                body-portaled modal (DealerGameSetup). Neither needs a
+                blanket `pointer-events-auto` layer over the entire
+                pane region. The previous inner wrapper claimed the
+                full inset-0 rect and blocked focus/typing on the Chat
+                input beneath it. Keep this wrapper non-interactive by
+                default; any inline overlay that needs pointer events
+                must opt in on its own root element. */}
+            <div
+              data-canonical-shell-pregame-overlay-inner=""
+              className="flex-1 min-h-0 relative pointer-events-none"
+            >
               {preGameOverlay}
             </div>
           </div>
