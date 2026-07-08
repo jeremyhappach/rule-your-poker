@@ -52,7 +52,10 @@ vi.mock('@/integrations/supabase/client', () => {
     };
   };
   const profilesSelect = () => ({
-    eq: () => ({ single: async () => ({ data: { username: 'me' }, error: null }) }),
+    eq: () => ({
+      single: async () => ({ data: { username: 'me' }, error: null }),
+      maybeSingle: async () => ({ data: { username: 'other' }, error: null }),
+    }),
     in: async () => ({ data: [], error: null }),
   });
   const from = vi.fn((table: string) => ({
