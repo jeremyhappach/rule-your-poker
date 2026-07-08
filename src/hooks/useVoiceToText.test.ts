@@ -61,9 +61,16 @@ describe('useVoiceToText isolation (static)', () => {
     'localStorage',
     'sessionStorage',
   ];
+  // Strip line/block comments so the forbidden-strings check inspects
+  // only executable code, not documentation that names the systems.
+  const codeOnly = (useVoiceToTextSource as string)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+    .join('\n');
   for (const forbidden of FORBIDDEN) {
     it(`does not import or reference "${forbidden}"`, () => {
-      expect((useVoiceToTextSource as string).includes(forbidden)).toBe(false);
+      expect(codeOnly.includes(forbidden)).toBe(false);
     });
   }
 });
