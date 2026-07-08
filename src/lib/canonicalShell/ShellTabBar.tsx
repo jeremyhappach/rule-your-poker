@@ -591,6 +591,7 @@ export function ShellTabBar() {
 
 
       <button
+        ref={cardsBtnRef}
         onClick={() => requestTab('cards', 'ShellTabBar.cardsButton', () => setActiveTab('cards'))}
         style={{ flex: '0 0 35%' }}
         className={`${tabBase} ${activeTab === 'cards' ? tabActive : tabIdle}`}
@@ -604,6 +605,7 @@ export function ShellTabBar() {
         )}
       </button>
       <button
+        ref={chatBtnRef}
         onClick={handleChatClick}
         style={{ flex: '0 0 35%' }}
         className={`${tabBase} ${activeTab === 'chat' ? tabActive : tabIdle}`}
@@ -616,6 +618,7 @@ export function ShellTabBar() {
       </button>
 
       <button
+        ref={lobbyBtnRef}
         onClick={() => requestTab('lobby', 'ShellTabBar.lobbyButton', () => setActiveTab('lobby'))}
         style={{ flex: '0 0 15%' }}
         className={`${tabBase} ${activeTab === 'lobby' ? tabActive : tabIdle}`}
@@ -624,6 +627,7 @@ export function ShellTabBar() {
         <User className="w-5 h-5" />
       </button>
       <button
+        ref={historyBtnRef}
         onClick={() => requestTab('history', 'ShellTabBar.historyButton', () => setActiveTab('history'))}
         style={{ flex: '0 0 15%' }}
         className={`${tabBase} ${activeTab === 'history' ? tabActive : tabIdle}`}
