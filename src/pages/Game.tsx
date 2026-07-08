@@ -12776,6 +12776,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   bootstrapState={
                     ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null
                   }
+                  // Lifted mobile tab + chat compose state (single source of
+                  // truth at Game.tsx). Gin table must NOT own its own
+                  // activeTab: without this, seeding from persistence would
+                  // force 'cards' on mount when ante wait had 'chat' active,
+                  // and the chat compose draft would vanish on table remount.
+                  activeTab={mobileActiveTab}
+                  onActiveTabChange={setMobileActiveTab}
+                  chatInputValue={mobileChatInput}
+                  onChatInputChange={setMobileChatInput}
                 />
               </>
             );

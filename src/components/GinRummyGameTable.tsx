@@ -282,6 +282,14 @@ interface GinRummyGameTableProps {
   isHost: boolean;
   onGameComplete: () => void;
   bootstrapState?: GinRummyState | null;
+  // Lifted mobile tab + chat compose ownership. When supplied by the
+  // shell (Game.tsx), these become the single source of truth so the
+  // Gin table cannot reset activeTab to 'cards' on mount/phase change
+  // and the user's in-progress chat draft survives table remount.
+  activeTab?: 'cards' | 'chat' | 'lobby' | 'history';
+  onActiveTabChange?: (next: 'cards' | 'chat' | 'lobby' | 'history') => void;
+  chatInputValue?: string;
+  onChatInputChange?: (value: string) => void;
 }
 
 type AcceptedGinPresentation = {
@@ -302,6 +310,10 @@ export const GinRummyGameTable = ({
   isHost,
   onGameComplete,
   bootstrapState = null,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
+  chatInputValue,
+  onChatInputChange,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
   useStartupMountTrace('GinRummyGameTable', { gameId, dealerGameId: dealerGameId ?? null, propRoundId: propRoundId ?? null });
@@ -706,9 +718,19 @@ export const GinRummyGameTable = ({
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
-    () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
+  // Fallback-only internal state: used ONLY when the shell does not
+  // control the tab (legacy call sites without activeTab prop). When
+  // externalActiveTab is provided by the shell, we DO NOT seed from
+  // readPersistedMatchChatTab and we DO NOT write persistence from
+  // lifecycle projections — the shell owns the canonical selection.
+  const [internalActiveTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
+    () => (externalActiveTab
+      ? externalActiveTab
+      : (readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'))
   );
+  const activeTab: 'cards' | 'chat' | 'lobby' | 'history' =
+    externalActiveTab ?? internalActiveTab;
+  const isTabControlled = externalActiveTab !== undefined;
   const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
     recordGinPhaseTrace({
       kind: 'tab-active-change',
@@ -716,11 +738,17 @@ export const GinRummyGameTable = ({
       sourceFile: 'src/components/GinRummyGameTable.tsx',
       sourceFunction: 'GinRummyGameTable.setActiveTab',
       identity: { gameId, dealerGameId: dealerGameId ?? null, roundId: roundId || null, handNumber, handContextId },
-      detail: { before: activeTab, after: next, cause: 'user-request' },
+      detail: { before: activeTab, after: next, cause: 'user-request', controlled: isTabControlled },
     });
+    // Only user-requested tab selections persist. Lifecycle/default
+    // projections must not overwrite the persisted preference.
     writePersistedMatchChatTab(gameId, next);
-    setActiveTabRaw(next);
-  }, [gameId, activeTab, dealerGameId, roundId, handNumber, handContextId]);
+    if (isTabControlled) {
+      onActiveTabChange?.(next);
+    } else {
+      setActiveTabRaw(next);
+    }
+  }, [gameId, activeTab, dealerGameId, roundId, handNumber, handContextId, isTabControlled, onActiveTabChange]);
   const lastActiveTabRef = useRef(activeTab);
   useEffect(() => {
     const before = lastActiveTabRef.current;
@@ -3205,6 +3233,8 @@ export const GinRummyGameTable = ({
                   onSend={sendMessage}
                   isSending={isChatSending}
                   currentUserId={currentUserId}
+                  chatInputValue={chatInputValue}
+                  onChatInputChange={onChatInputChange}
                 />
               </div>
             )}
