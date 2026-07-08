@@ -212,11 +212,19 @@ function boundaryLine(label: string, e: GinPhaseTraceEvent | null): string[] {
 }
 
 export function formatGinPhaseTraceText(): string {
+  const status = getGinPhaseTraceStatus();
   const lines = [
     '# Gin phase transition trace',
     `exportedAt=${new Date().toISOString()}`,
-    `armed=${isCapturing()}`,
-    `eventCount=${buffer.length}`,
+    `armedRaw=${status.armedRaw}`,
+    `capturing=${status.capturing}`,
+    `hasEvents=${status.hasEvents}`,
+    `captureUntilMs=${status.captureUntilMs ?? '-'}`,
+    `sessionKey=${status.sessionKey ?? '-'}`,
+    `eventCount=${status.eventCount}`,
+    '',
+    '# Eligibility inputs (from pill owner)',
+    latestEligibility ? JSON.stringify(latestEligibility, null, 2) : 'NO ELIGIBILITY INPUTS RECORDED',
     '',
     'seq | +ms | kind | source | identity | summary | detail',
   ];
