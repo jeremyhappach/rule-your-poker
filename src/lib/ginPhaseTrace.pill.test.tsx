@@ -23,11 +23,18 @@ function derive(props: {
   humans: number;
 }) {
   const isGin = props.gameType === 'gin-rummy';
-  const eligible = isGin && props.humans === 2;
+  const twoHumans = props.humans === 2;
+  const inPrePlay =
+    twoHumans &&
+    !!props.status &&
+    props.status !== 'game_over' &&
+    props.status !== 'session_ended' &&
+    (props.gameType === null || isGin);
+  const eligibleBase = (isGin && twoHumans) || inPrePlay;
   let disabledReason: string | null = null;
-  if (isGin && props.humans !== 2) disabledReason = `humans=${props.humans}`;
+  if (isGin && !twoHumans) disabledReason = `humans=${props.humans}`;
   return {
-    eligible: eligible || (isGin && !!disabledReason),
+    eligible: eligibleBase || (isGin && !!disabledReason),
     disabledReason,
     status: props.status,
     gameType: props.gameType,
