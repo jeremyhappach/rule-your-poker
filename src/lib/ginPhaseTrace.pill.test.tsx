@@ -99,6 +99,23 @@ describe('GinPhaseTracePill visibility contract at Game.tsx boundary', () => {
     expect(pill).toBeNull();
   });
 
+  it('two-human generic dealer setup (no game type yet) → pill visible', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'dealer_selection', gameType: null, humans: 2 })} />);
+    expect(pill).not.toBeNull();
+    expect(pill!.getAttribute('data-gin-phase-trace-pill')).not.toBe('disabled');
+  });
+
+  it('two-human generic game_selection (no game type yet) → pill visible', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'game_selection', gameType: null, humans: 2 })} />);
+    expect(pill).not.toBeNull();
+  });
+
+  it('one-human generic setup → pill silent (bot/solo not armed)', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'dealer_selection', gameType: null, humans: 1 })} />);
+    expect(pill).toBeNull();
+  });
+
+
   it('pill export works before ante resolves', () => {
     armGinPhaseTrace({ sessionKey: 'export-1', identity: { gameId: 'g' } });
     let clicked = false;
