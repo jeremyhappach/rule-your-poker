@@ -3233,6 +3233,8 @@ export const GinRummyGameTable = ({
                   onSend={sendMessage}
                   isSending={isChatSending}
                   currentUserId={currentUserId}
+                  chatInputValue={chatInputValue}
+                  onChatInputChange={onChatInputChange}
                 />
               </div>
             )}
