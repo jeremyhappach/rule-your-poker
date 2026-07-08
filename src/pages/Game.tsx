@@ -5203,6 +5203,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
+  // Populate the late refs read by the mobile-active-tab observer above
+  // (declared at the top of Game for stable-hook order).
+  useEffect(() => {
+    currentRoundLateRef.current = currentRound ?? null;
+    gameStatusLateRef.current = game?.status ?? null;
+    composeDraftLateRef.current = mobileChatInput ?? '';
+  });
+
+
   useEffect(() => {
     const routeShellGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
     const humanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
