@@ -167,20 +167,14 @@ function installMediaEnv(opts: {
     },
   });
 
-  if (supported) {
-    (globalThis as unknown as { MediaRecorder: typeof FakeMediaRecorder }).MediaRecorder =
-      FakeMediaRecorder;
-    Object.defineProperty(globalThis.window, 'MediaRecorder', {
-      configurable: true,
-      value: FakeMediaRecorder,
-    });
-  } else {
-    delete (globalThis as unknown as { MediaRecorder?: unknown }).MediaRecorder;
-    Object.defineProperty(globalThis.window, 'MediaRecorder', {
-      configurable: true,
-      value: undefined,
-    });
-  }
+  Object.defineProperty(globalThis, 'MediaRecorder', {
+    configurable: true,
+    value: supported ? FakeMediaRecorder : undefined,
+  });
+  Object.defineProperty(globalThis.window, 'MediaRecorder', {
+    configurable: true,
+    value: supported ? FakeMediaRecorder : undefined,
+  });
   return { stream, tracks };
 }
 
