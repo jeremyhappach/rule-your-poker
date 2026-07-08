@@ -717,6 +717,19 @@ export const GinRummyGameTable = ({
 
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
+  // Lifted per-hand visual selection state so it survives Cards<->Chat
+  // tab switches (child unmounts on switch). Keyed to handContextId;
+  // resets on hand identity changes. Not persisted.
+  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
+  const prevHandContextIdRef = useRef<string | null>(handContextId);
+  useEffect(() => {
+    if (prevHandContextIdRef.current !== handContextId) {
+      prevHandContextIdRef.current = handContextId;
+      setSelectedCardIndex(null);
+      setDrawnCard(null);
+    }
+  }, [handContextId]);
   const [isProcessing, setIsProcessing] = useState(false);
   // Fallback-only internal state: used ONLY when the shell does not
   // control the tab (legacy call sites without activeTab prop). When
@@ -3202,6 +3215,10 @@ export const GinRummyGameTable = ({
                 currentPlayer={currentPlayer}
                 gameId={gameId}
                 handIdentityKey={handContextId}
+                selectedCardIndex={selectedCardIndex}
+                onSelectedCardIndexChange={setSelectedCardIndex}
+                drawnCard={drawnCard}
+                onDrawnCardChange={setDrawnCard}
                 withheldDrawnCards={Object.values(selfDrawIntents)
                   .map(i => i.card)
                   .filter((c): c is GinRummyCard => !!c)

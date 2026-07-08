@@ -522,9 +522,9 @@ export const MobileChatPanel = ({
           </Button>
         </div>
 
-        {isFinalizing && (
-          <div className="mt-1 px-1 text-[10px] text-white/70 leading-tight">Finalizing transcription…</div>
-        )}
+        {/* Transient voice-finalization helper line removed as polish.
+            Error and permission-denied lines below are kept because
+            they signal actual failure conditions. */}
 
         {voice.state === 'error' && voice.error && (
           <div className="mt-1 px-1 text-[10px] text-amber-300/90 leading-tight">
@@ -538,11 +538,7 @@ export const MobileChatPanel = ({
           </div>
         )}
 
-        {voice.diagnostics.length > 0 && (
-          <div className="mt-1 px-1 text-[9px] text-white/40 leading-tight font-mono truncate" aria-hidden>
-            voice: {voice.diagnostics.slice(-3).map((d) => d.code.replace('VOICE_', '') + (d.detail ? `(${d.detail})` : '')).join(' · ')}
-          </div>
-        )}
+        {/* Voice diagnostics helper string removed as polish. */}
 
         <div className="flex items-center gap-2 mt-2 px-1">
           <Checkbox
