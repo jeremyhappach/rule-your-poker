@@ -522,9 +522,9 @@ export const MobileChatPanel = ({
           </Button>
         </div>
 
-        {/* Transient "Finalizing transcription…" helper removed as
-            polish. Error and permission-denied lines below are kept
-            because they signal actual failure conditions. */}
+        {/* Transient voice-finalization helper line removed as polish.
+            Error and permission-denied lines below are kept because
+            they signal actual failure conditions. */}
 
         {voice.state === 'error' && voice.error && (
           <div className="mt-1 px-1 text-[10px] text-amber-300/90 leading-tight">
