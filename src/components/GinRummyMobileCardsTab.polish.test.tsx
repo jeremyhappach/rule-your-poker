@@ -1,14 +1,10 @@
+// @ts-nocheck
 // Polish contract: Gin per-hand visual selection state is lifted above
-// the disposable Cards tab. We assert the contract statically by scanning
-// the source file: (1) selectedCardIndex/drawnCard are props, not local
-// useState in this component; (2) reset is gated by prevPhaseRef so a
-// tab remount does not clear selection; (3) selectedCardIndex is validated
-// against the current hand so stale indexes don't render highlights;
-// (4) successful discard/knock/layoff still clear selection.
+// the disposable Cards tab. Source-level asserts.
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const src = readFileSync(
   join(__dirname, 'GinRummyMobileCardsTab.tsx'),
