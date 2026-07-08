@@ -24,7 +24,8 @@ export type GinPhaseTraceKind =
   | 'deal-orchestrator-skip'
   | 'card-transport-dispatch'
   | 'card-transport-settle'
-  | 'card-projection';
+  | 'card-projection'
+  | 'tab-dom-interactivity';
 
 export interface GinPhaseTraceIdentity {
   gameId?: string | null;
