@@ -272,7 +272,6 @@ import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/G
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
 import {
-  GinPhaseTracePill,
   armGinPhaseTrace,
   markGinPhaseTraceAnteResolved,
   recordGinPhaseTrace,
