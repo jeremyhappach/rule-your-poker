@@ -196,10 +196,18 @@ export const GinRummyMobileCardsTab = ({
   // admitted local projection. ginState.phase is intentionally NOT
   // used as a reveal gate (the server flips to `first_draw` the same
   // moment it deals, which would collapse the card-by-card reveal).
-  const dealBoundDealing = dealBoundToThisHand && deal!.phase === 'DEALING';
+  // Proven projection contract: while a matching opening DealRuntime
+  // exists for this hand and has not yet reached terminal (READY /
+  // GAMEPLAY), the projection MUST derive from
+  // DealRuntime.getSettledCountForPlayer — never from the authoritative
+  // hand. PRE_DEAL renders zero; DEALING reveals per settle. Only when
+  // no matching runtime is bound, or when that runtime has released
+  // canonical readiness, may full-authoritative projection be used.
+  const dealTerminal =
+    dealBoundToThisHand && (deal!.phase === 'READY' || deal!.phase === 'GAMEPLAY');
   const authHandLen = stableMyStateAuthoritative?.hand?.length ?? 0;
   const forceFullProjection =
-    !dealBoundDealing || authHandLen > GIN_CARDS_PER_PLAYER;
+    !dealBoundToThisHand || dealTerminal || authHandLen > GIN_CARDS_PER_PLAYER;
 
   const rawMyState = useMemo(() => {
     if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;

@@ -5152,12 +5152,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const routeShellGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
     const humanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
-    const isTwoHumanGin = humanPlayers.length === 2 && routeShellGameType === 'gin-rummy';
-    // Broaden auto-arm: any two-human Gin game with a known authoritative
-    // status arms the recorder. Prior gate ("dealer_selection /
-    // game_selection / configuring") was speculative and prevented capture
-    // on the live setup phases actually emitted by the shell.
-    const isSetup = isTwoHumanGin && !!game?.status && game.status !== 'game_over' && game.status !== 'session_ended';
+    const isTwoHuman = humanPlayers.length === 2;
+    const isTwoHumanGin = isTwoHuman && routeShellGameType === 'gin-rummy';
+    // Generic pre-play arm: two human players in any non-terminal status
+    // arm the recorder regardless of whether the game type has been
+    // chosen yet. Bot-only and single-player sessions never arm. Once a
+    // game type becomes known and is not Gin, we stop re-arming but do
+    // NOT flush existing events; Gin-specific events downstream simply
+    // won't be produced.
+    const isGenericPrePlay =
+      isTwoHuman &&
+      !!game?.status &&
+      game.status !== 'game_over' &&
+      game.status !== 'session_ended' &&
+      (routeShellGameType === null || routeShellGameType === 'gin-rummy');
     const current = {
       status: game?.status ?? null,
       phase: ((currentRound as any)?.gin_rummy_state as any)?.phase ?? null,
@@ -5167,9 +5175,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       handNumber: (currentRound as any)?.hand_number ?? null,
       activeTab: mobileActiveTab,
     };
-    if (isSetup) {
+    if (isGenericPrePlay || isTwoHumanGin) {
       armGinPhaseTrace({
-        sessionKey: `${gameId ?? 'no-game'}:${current.dealerGameId ?? 'no-dealer-game'}:${current.status}`,
+        sessionKey: `${gameId ?? 'no-game'}:${current.dealerGameId ?? 'no-dealer-game'}`,
         identity: { gameId: gameId ?? null, dealerGameId: current.dealerGameId, roundId: current.roundId, handNumber: current.handNumber },
         detail: {
           owner: 'Game shell',
@@ -5178,6 +5186,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           routeShellGameType,
           humanPlayerCount: humanPlayers.length,
           activeTab: mobileActiveTab,
+          armCause: isTwoHumanGin ? 'two-human-gin' : 'two-human-generic-pre-play',
         },
       });
     }
@@ -13501,10 +13510,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const _pillRouteGameType =
           game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
         const _pillHumanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
+        const _pillTwoHumans = _pillHumanPlayers.length === 2;
         const _pillIsGin = _pillRouteGameType === 'gin-rummy';
-        const _pillEligible = _pillIsGin && _pillHumanPlayers.length === 2;
+        // Generic pre-play eligibility: during dealer/game/ante setup the
+        // gameType may be null. Any two-human session in a non-terminal
+        // status is eligible so the pill and its buffer arm before Gin
+        // is selected.
+        const _pillStatus = game?.status ?? null;
+        const _pillInPrePlay =
+          _pillTwoHumans &&
+          !!_pillStatus &&
+          _pillStatus !== 'game_over' &&
+          _pillStatus !== 'session_ended' &&
+          (_pillRouteGameType === null || _pillIsGin);
+        const _pillEligible = (_pillIsGin && _pillTwoHumans) || _pillInPrePlay;
         let _pillDisabledReason: string | null = null;
-        if (_pillIsGin && _pillHumanPlayers.length !== 2) {
+        if (_pillIsGin && !_pillTwoHumans) {
           _pillDisabledReason = `humans=${_pillHumanPlayers.length}`;
         }
         return (

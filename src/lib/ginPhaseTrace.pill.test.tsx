@@ -23,11 +23,18 @@ function derive(props: {
   humans: number;
 }) {
   const isGin = props.gameType === 'gin-rummy';
-  const eligible = isGin && props.humans === 2;
+  const twoHumans = props.humans === 2;
+  const inPrePlay =
+    twoHumans &&
+    !!props.status &&
+    props.status !== 'game_over' &&
+    props.status !== 'session_ended' &&
+    (props.gameType === null || isGin);
+  const eligibleBase = (isGin && twoHumans) || inPrePlay;
   let disabledReason: string | null = null;
-  if (isGin && props.humans !== 2) disabledReason = `humans=${props.humans}`;
+  if (isGin && !twoHumans) disabledReason = `humans=${props.humans}`;
   return {
-    eligible: eligible || (isGin && !!disabledReason),
+    eligible: eligibleBase || (isGin && !!disabledReason),
     disabledReason,
     status: props.status,
     gameType: props.gameType,
@@ -91,6 +98,23 @@ describe('GinPhaseTracePill visibility contract at Game.tsx boundary', () => {
     const pill = mount(<GinPhaseTracePill {...derive({ status: 'in_progress', gameType: 'holm-game', humans: 2 })} />);
     expect(pill).toBeNull();
   });
+
+  it('two-human generic dealer setup (no game type yet) → pill visible', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'dealer_selection', gameType: null, humans: 2 })} />);
+    expect(pill).not.toBeNull();
+    expect(pill!.getAttribute('data-gin-phase-trace-pill')).not.toBe('disabled');
+  });
+
+  it('two-human generic game_selection (no game type yet) → pill visible', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'game_selection', gameType: null, humans: 2 })} />);
+    expect(pill).not.toBeNull();
+  });
+
+  it('one-human generic setup → pill silent (bot/solo not armed)', () => {
+    const pill = mount(<GinPhaseTracePill {...derive({ status: 'dealer_selection', gameType: null, humans: 1 })} />);
+    expect(pill).toBeNull();
+  });
+
 
   it('pill export works before ante resolves', () => {
     armGinPhaseTrace({ sessionKey: 'export-1', identity: { gameId: 'g' } });
