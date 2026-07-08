@@ -13501,10 +13501,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const _pillRouteGameType =
           game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
         const _pillHumanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
+        const _pillTwoHumans = _pillHumanPlayers.length === 2;
         const _pillIsGin = _pillRouteGameType === 'gin-rummy';
-        const _pillEligible = _pillIsGin && _pillHumanPlayers.length === 2;
+        // Generic pre-play eligibility: during dealer/game/ante setup the
+        // gameType may be null. Any two-human session in a non-terminal
+        // status is eligible so the pill and its buffer arm before Gin
+        // is selected.
+        const _pillStatus = game?.status ?? null;
+        const _pillInPrePlay =
+          _pillTwoHumans &&
+          !!_pillStatus &&
+          _pillStatus !== 'game_over' &&
+          _pillStatus !== 'session_ended' &&
+          (_pillRouteGameType === null || _pillIsGin);
+        const _pillEligible = (_pillIsGin && _pillTwoHumans) || _pillInPrePlay;
         let _pillDisabledReason: string | null = null;
-        if (_pillIsGin && _pillHumanPlayers.length !== 2) {
+        if (_pillIsGin && !_pillTwoHumans) {
           _pillDisabledReason = `humans=${_pillHumanPlayers.length}`;
         }
         return (
