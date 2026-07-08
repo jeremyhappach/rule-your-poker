@@ -131,7 +131,7 @@ describe('ShellTabBar canonical z-layer contract', () => {
 
   it('contains no hardcoded z-index 10000 in ShellTabBar source (magic-number regression guard)', () => {
     const src = readFileSync(
-      path.resolve(__dirname, 'ShellTabBar.tsx'),
+      join(__dirname, 'ShellTabBar.tsx'),
       'utf8',
     );
     // Strip comments so the historical explanation of the 10000 fix
