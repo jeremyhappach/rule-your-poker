@@ -1,28 +1,33 @@
+// @ts-nocheck
 // @vitest-environment jsdom
 
 /**
  * ShellTabBar portal / layering repair.
  *
- * Regression contract for the Fix #1 change: ShellTabBar must remain
- * physically clickable even when a Radix Dialog imposes
- * `body { pointer-events: none }` and mounts an overlay at z-9998.
+ * Two invariants:
  *
- * Prior geometry (grid-row-native tabbar) failed the exported trace:
- *   pointerEventsNoneAncestor: "DIV.flex.items-center"
- *   computedPointerEvents:   "none"
- *   coveredAtCenter:         true (covererTag: DIV.fixed.inset-0)
+ *   1. INTERACTIVITY — the tab bar must remain physically clickable
+ *      even when Radix Dialog imposes `body { pointer-events: none }`.
+ *      Solved by portaling into `document.body` with
+ *      `pointer-events: auto` on the portal root.
  *
- * Post-fix geometry (portal container in document.body):
- *   - pointer-events: auto on the portal root escapes the body lock
- *   - z-index: 10000 covers Radix Dialog z-9998/9999
- *   - in-place placeholder preserves ShellHudGrid row height
+ *   2. LAYERING — the tab bar must sit in the canonical
+ *      `SHELL_Z.HUD_TAB_RAIL` band: above passive overlays, below
+ *      chip/card transport, and FAR below Radix DialogOverlay/Content.
+ *      The previous fix used `zIndex: 10000` which overcorrected the
+ *      interactivity problem by promoting the rail above true blocking
+ *      modals and above transport. That specific magic number is now
+ *      forbidden.
  */
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ShellTabBar, ShellTabBarStateContext, type ShellTabBarState } from './ShellTabBar';
+import { SHELL_Z } from './zLayers';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -36,7 +41,6 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
-  // Clean any lingering body-level lock a prior test may have set.
   document.body.style.pointerEvents = '';
 });
 
@@ -65,43 +69,88 @@ describe('ShellTabBar portal / layering repair', () => {
     expect(placeholder!.style.minHeight).toBe('var(--hud-h-tabs)');
   });
 
-  it('portals the interactive tab bar into document.body with pointer-events:auto and z-index:10000', () => {
+  it('portals the interactive tab bar into document.body with pointer-events:auto', () => {
     renderTabBar();
     const portalRoot = document.body.querySelector(
       '[data-canonical-shell-tabbar-portal-root]',
     ) as HTMLElement | null;
     expect(portalRoot).toBeTruthy();
-    // Portal is a direct child of document.body, escaping any
-    // container-level or shell-column-level stacking context.
     expect(portalRoot!.parentElement).toBe(document.body);
     expect(portalRoot!.style.position).toBe('fixed');
-    expect(portalRoot!.style.zIndex).toBe('10000');
     expect(portalRoot!.style.pointerEvents).toBe('auto');
   });
 
   it('keeps buttons interactive when body { pointer-events: none } is imposed (Radix modal simulation)', () => {
     renderTabBar();
-    // Simulate what Radix Dialog does on open.
     document.body.style.pointerEvents = 'none';
     const chatBtn = document.body.querySelector(
       '[data-canonical-shell-tabbar-portal-root] [aria-label="Chat"]',
     ) as HTMLElement | null;
     expect(chatBtn).toBeTruthy();
-    // The portal container explicitly opts back into pointer events,
-    // so the button's own computed pointer-events remains 'auto'.
     const portalRoot = chatBtn!.closest('[data-canonical-shell-tabbar-portal-root]') as HTMLElement;
     expect(portalRoot.style.pointerEvents).toBe('auto');
     const tabbarWrapper = document.body.querySelector('[data-canonical-shell-tabbar]') as HTMLElement;
     expect(tabbarWrapper.style.pointerEvents).toBe('auto');
   });
+});
 
-  it('sits above Radix DialogOverlay (z-9998) and DialogContent (z-9999)', () => {
+describe('ShellTabBar canonical z-layer contract', () => {
+  it('uses SHELL_Z.HUD_TAB_RAIL for the portal container z-index', () => {
     renderTabBar();
     const portalRoot = document.body.querySelector(
       '[data-canonical-shell-tabbar-portal-root]',
     ) as HTMLElement;
-    // Numeric comparison so we cannot regress by dropping below the
-    // Radix modal band (9998/9999) without failing the test.
-    expect(Number(portalRoot.style.zIndex)).toBeGreaterThan(9999);
+    expect(Number(portalRoot.style.zIndex)).toBe(SHELL_Z.HUD_TAB_RAIL);
+  });
+
+  it('sits ABOVE passive shell overlays', () => {
+    renderTabBar();
+    const portalRoot = document.body.querySelector(
+      '[data-canonical-shell-tabbar-portal-root]',
+    ) as HTMLElement;
+    expect(Number(portalRoot.style.zIndex)).toBeGreaterThan(SHELL_Z.PASSIVE_OVERLAY);
+  });
+
+  it('sits BELOW deal/chip transport so cards and chips fly over the rail', () => {
+    renderTabBar();
+    const portalRoot = document.body.querySelector(
+      '[data-canonical-shell-tabbar-portal-root]',
+    ) as HTMLElement;
+    expect(Number(portalRoot.style.zIndex)).toBeLessThan(SHELL_Z.CHIP_TRANSPORT);
+    expect(Number(portalRoot.style.zIndex)).toBeLessThan(SHELL_Z.CARD_TRANSPORT);
+  });
+
+  it('sits BELOW Radix DialogOverlay/Content so true blocking modals cover the rail', () => {
+    renderTabBar();
+    const portalRoot = document.body.querySelector(
+      '[data-canonical-shell-tabbar-portal-root]',
+    ) as HTMLElement;
+    expect(Number(portalRoot.style.zIndex)).toBeLessThan(SHELL_Z.MODAL_OVERLAY);
+    expect(Number(portalRoot.style.zIndex)).toBeLessThan(SHELL_Z.MODAL_CONTENT);
+  });
+
+  it('contains no hardcoded z-index 10000 in ShellTabBar source (magic-number regression guard)', () => {
+    const src = readFileSync(
+      join(__dirname, 'ShellTabBar.tsx'),
+      'utf8',
+    );
+    // Strip comments so the historical explanation of the 10000 fix
+    // does not trip the guard.
+    const stripped = src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    expect(stripped).not.toMatch(/\b10000\b/);
+    expect(stripped).not.toMatch(/zIndex\s*:\s*10000/);
+  });
+
+  it('exposes an ordered z-layer contract (felt < passive < tab rail < transport < modal)', () => {
+    expect(SHELL_Z.FELT_BASE).toBeLessThan(SHELL_Z.PASSIVE_OVERLAY);
+    expect(SHELL_Z.PASSIVE_OVERLAY).toBeLessThan(SHELL_Z.HUD_TAB_RAIL);
+    expect(SHELL_Z.HUD_TAB_RAIL).toBeLessThan(SHELL_Z.CHIP_TRANSPORT);
+    expect(SHELL_Z.CHIP_TRANSPORT).toBeLessThanOrEqual(SHELL_Z.CARD_TRANSPORT);
+    expect(SHELL_Z.CARD_TRANSPORT).toBeLessThan(SHELL_Z.CELEBRATION);
+    expect(SHELL_Z.CELEBRATION).toBeLessThan(SHELL_Z.MODAL_OVERLAY);
+    expect(SHELL_Z.MODAL_OVERLAY).toBeLessThan(SHELL_Z.MODAL_CONTENT);
   });
 });
+
