@@ -98,9 +98,12 @@ describe('PersistentTableShell', () => {
     expect(rail!.nextElementSibling).toBe(placeholder);
     expect(placeholder!.style.height).toBe('var(--hud-h-tabs)');
     // Portal container escapes body-level pointer-events lock and
-    // sits above Radix modal z-9998/9999.
+    // sits in the canonical HUD_TAB_RAIL band — above passive
+    // overlays, below chip/card transport (80/82), and far below
+    // Radix DialogOverlay/Content (9998/9999).
     expect(portalRoot!.style.pointerEvents).toBe('auto');
-    expect(portalRoot!.style.zIndex).toBe('10000');
+    expect(Number(portalRoot!.style.zIndex)).toBeGreaterThan(0);
+    expect(Number(portalRoot!.style.zIndex)).toBeLessThan(80);
     expect(portalRoot!.style.position).toBe('fixed');
   });
 
