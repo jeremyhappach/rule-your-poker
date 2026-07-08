@@ -118,12 +118,17 @@ export const GinRummyMobileCardsTab = ({
   currentPlayer,
   gameId,
   handIdentityKey,
+  selectedCardIndex,
+  onSelectedCardIndexChange,
+  drawnCard,
+  onDrawnCardChange,
   withheldDrawnCards,
 }: GinRummyMobileCardsTabProps) => {
-  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
-  
-  const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
+  const setSelectedCardIndex = onSelectedCardIndexChange;
+  const setDrawnCard = onDrawnCardChange;
+
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
+  const prevPhaseRef = useRef(ginState.phase);
 
   // Active-hand policy consumed only by the shared MeasuredActiveHandFan.
   // No local instrumentation pill remains.
