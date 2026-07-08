@@ -1075,8 +1075,10 @@ export const useGameChat = (
               payload: { sender_user_id: newMessage.user_id },
             });
             if (newMessage.chat_operation_id && newMessage.user_id !== currentUserId) {
-              const route = typeof window !== 'undefined' ? window.location.pathname : (chatIdentity?.route ?? `/game/${gameId}`);
-              const sessionId = chatIdentity?.sessionId ?? `session:${gameId}`;
+              const route = typeof window !== 'undefined'
+                ? window.location.pathname
+                : (chatIdentityRouteRef.current ?? `/game/${gameId}`);
+              const sessionId = chatIdentitySessionIdRef.current ?? `session:${gameId}`;
               const opId = newMessage.chat_operation_id;
               const msgId = newMessage.id;
               const senderUserId = newMessage.user_id;
