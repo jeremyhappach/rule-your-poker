@@ -88,6 +88,33 @@ export function getGinPhaseTraceSnapshot(): { armed: boolean; events: GinPhaseTr
   return cachedSnapshot;
 }
 
+export function getGinPhaseTraceStatus(): {
+  armedRaw: boolean;
+  capturing: boolean;
+  hasEvents: boolean;
+  captureUntilMs: number | null;
+  sessionKey: string | null;
+  eventCount: number;
+} {
+  return {
+    armedRaw: armed,
+    capturing: isCapturing(),
+    hasEvents: buffer.length > 0,
+    captureUntilMs,
+    sessionKey: armedSessionKey,
+    eventCount: buffer.length,
+  };
+}
+
+/** Store latest eligibility inputs so exports carry the exact predicate. */
+let latestEligibility: Record<string, unknown> | null = null;
+export function setGinPhaseTraceEligibility(inputs: Record<string, unknown>): void {
+  latestEligibility = { ...inputs, evaluatedAtIso: new Date().toISOString() };
+}
+export function getGinPhaseTraceEligibility(): Record<string, unknown> | null {
+  return latestEligibility;
+}
+
 export function armGinPhaseTrace(args: { sessionKey: string; identity?: GinPhaseTraceIdentity; detail?: Record<string, unknown> }): void {
   const reset = !armed || armedSessionKey !== args.sessionKey || !isCapturing();
   armed = true;
