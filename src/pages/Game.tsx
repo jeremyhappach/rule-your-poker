@@ -13492,6 +13492,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         playerDeckColorMode={currentPlayer?.deck_color_mode}
         onModeChange={() => {}}
       />
+      {(() => {
+        // Page-root Gin trace pill. Mounted OUTSIDE tabs / panes / modals /
+        // interstitials / deal runtime / shell so it cannot be hidden by
+        // phase, active tab, waiting state, dealer role, or trace-buffer
+        // state. Eligibility is derived from the same authoritative inputs
+        // used elsewhere in this file.
+        const _pillRouteGameType =
+          game?.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+        const _pillHumanPlayers = players.filter((p) => !p.is_bot && p.status !== 'left');
+        const _pillIsGin = _pillRouteGameType === 'gin-rummy';
+        const _pillEligible = _pillIsGin && _pillHumanPlayers.length === 2;
+        let _pillDisabledReason: string | null = null;
+        if (_pillIsGin && _pillHumanPlayers.length !== 2) {
+          _pillDisabledReason = `humans=${_pillHumanPlayers.length}`;
+        }
+        return (
+          <GinPhaseTracePill
+            eligible={_pillEligible || (_pillIsGin && !!_pillDisabledReason)}
+            disabledReason={_pillDisabledReason}
+            gameId={gameId ?? null}
+            gameType={_pillRouteGameType}
+            status={game?.status ?? null}
+            phase={((currentRound as any)?.gin_rummy_state as any)?.phase ?? null}
+            dealerGameId={(game as any)?.current_game_uuid ?? null}
+            humanPlayerCount={_pillHumanPlayers.length}
+          />
+        );
+      })()}
       {enableOuterShell ? (
         <SurfaceReadinessProvider>
 
