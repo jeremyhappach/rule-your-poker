@@ -12743,21 +12743,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             return (
               <>
-                <GinIdentityGateTracer
-                  gameStatus={game.status ?? null}
-                  gameType={game.game_type ?? null}
-                  currentGameUuid={(game as any).current_game_uuid ?? null}
-                  currentRoundId={currentRound?.id ?? null}
-                  currentRoundDealerGameId={(currentRound as any)?.dealer_game_id ?? null}
-                  currentRoundHandNumber={currentRound?.hand_number ?? null}
-                  hasGinRummyState={!!((currentRound as any)?.gin_rummy_state)}
-                  isInProgress={isInProgress}
-                  isAnteDecision={isAnteDecision}
-                  isGinRummyDealerSelection={isGinRummyDealerSelection}
-                  isGinRummyGameOver={isGinRummyGameOver}
-                  effectivePropRoundId={_ginEffRoundId}
-                  effectivePropDealerGameId={_ginEffDealerGameId}
-                />
+
                 <GinRummyGameTable
                   key={_ginEffDealerGameId ?? 'none'}
                   gameId={gameId!}
