@@ -21,8 +21,8 @@
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ShellTabBar, ShellTabBarStateContext, type ShellTabBarState } from './ShellTabBar';
