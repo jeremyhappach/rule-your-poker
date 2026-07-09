@@ -227,7 +227,7 @@ export function ActiveHandFan({
     return () => observers.forEach((ro) => ro.disconnect());
   }, [game, cards.length, activeHandFanRenderKey, cardIds?.join('|')]);
 
-  if (!layout || cards.length === 0) {
+  if (cards.length === 0) {
     return (
       <div
         {...{ [dataAttribute ?? `data-active-hand-fan`]: game }}
@@ -240,6 +240,35 @@ export function ActiveHandFan({
       />
     );
   }
+
+  // Fallback path: cards are present but the layout resolver returned
+  // null (stage rect unmeasured or zero-sized). Instead of rendering an
+  // empty container — which hides authoritative cards until the stage
+  // measures — synthesize a minimal fixed-size row so renderCard still
+  // fires once per card and the cards remain visible. When the stage
+  // measures, the resolver produces a proper `layout` and the normal
+  // path takes over on the next render.
+  const effectiveLayout: ResolvedActiveHandRow = layout ?? (() => {
+    const fallbackCardWidth = 44;
+    const fallbackCardHeight = Math.round(fallbackCardWidth / aspect);
+    const N0 = cards.length;
+    const fallbackOverlap = N0 > 4 ? Math.round(fallbackCardWidth * 0.4) : Math.round(fallbackCardWidth * 0.15);
+    const totalWidth = N0 * fallbackCardWidth - (N0 - 1) * fallbackOverlap;
+    return {
+      cardWidth: fallbackCardWidth,
+      cardHeight: fallbackCardHeight,
+      overlapPx: fallbackOverlap,
+      totalWidth,
+      appliedOverlap: fallbackOverlap / fallbackCardWidth,
+      fanArchDeg: 0,
+      visualBounds: { width: totalWidth, height: fallbackCardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: fallbackCardHeight },
+      rowOffsetX: 0,
+      rowOffsetY: 0,
+      stageRect: resolvedStageRect ?? { width: totalWidth, height: fallbackCardHeight },
+      stageTopInsetPx: 0,
+      stageBottomInsetPx: 0,
+    } as ResolvedActiveHandRow;
+  })();
 
   const tier = tierFromCardWidth(layout.cardWidth);
   const N = cards.length;
