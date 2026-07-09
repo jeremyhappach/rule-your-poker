@@ -6043,7 +6043,7 @@ export const CribbageMobileGameTable = ({
   const cardsTabStateSource = cardsTabMounted
     ? (primaryMountOk ? 'viewState' : 'authoritative')
     : 'not-mounted';
-  void (cardsTabTruth?.visibleDomCardNodeCount ?? 0);
+  
   // Panel is intentionally kept mounted whenever the cards tab is active,
   // regardless of whether cards are currently visible. Jeremy owns
   // acceptance; do not auto-hide the diagnostics on first successful
