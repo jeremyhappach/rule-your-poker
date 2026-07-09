@@ -13,6 +13,7 @@ import {
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
   hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
@@ -126,20 +127,78 @@ export const CribbageMobileCardsTab = ({
   // each transport arrives. PRE_DEAL → 0. READY/GAMEPLAY / no runtime
   // → full hand (legacy path).
   const deal = useDealRuntime();
-  const dealClippedSourceHand = (() => {
-    if (activeHandBlocked) return [];
+  const authoritativeHand = renderTrace?.authoritativeHand ?? null;
+  const isPostDealPhase =
+    cribbageState.phase === 'discarding' ||
+    cribbageState.phase === 'cutting' ||
+    cribbageState.phase === 'pegging' ||
+    cribbageState.phase === 'counting';
+  const clippedHand = (() => {
+    if (activeHandBlocked) return [] as CribbageCard[];
     if (!deal) return sourceHand;
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return sourceHand;
-    if (deal.phase === 'PRE_DEAL') return [];
+    if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
     const allowed = deal.getSettledCountForPlayer(currentPlayerId);
     return sourceHand.slice(0, allowed);
   })();
+  // P0 SELF-HEAL: If clipped presentation hand is empty but the authoritative
+  // hand exists and we are past the dealing phase, render authoritative. This
+  // guarantees the invariant "authoritative non-empty ⇒ visible cards" even
+  // when identity-mismatch, stuck deal-runtime PRE_DEAL, unsettled transports,
+  // or stale presentation would otherwise leave the player with zero cards.
+  const shouldSelfHeal =
+    clippedHand.length === 0 &&
+    !!authoritativeHand &&
+    authoritativeHand.length > 0 &&
+    isPostDealPhase;
+  const dealClippedSourceHand: CribbageCard[] = shouldSelfHeal
+    ? (authoritativeHand as CribbageCard[])
+    : clippedHand;
   const renderedHand = dealClippedSourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
   const sourceFingerprint = sourceCardIds.join(',');
   const renderedFingerprint = renderedCardIds.join(',');
-  const activeHandSourceName = 'cribbageState.playerStates[currentPlayerId].hand';
+  const activeHandSourceName = shouldSelfHeal
+    ? 'renderTrace.authoritativeHand (self-heal)'
+    : 'cribbageState.playerStates[currentPlayerId].hand';
+
+  // Compute derived counts / decision kind for the P0 invariant ledger.
+  // Actual record call is fired from a useEffect below, keyed by fingerprint
+  // to avoid unbounded writes on every render.
+  const authCount = authoritativeHand?.length ?? 0;
+  const presentationCount = sourceHand.length;
+  const renderedCount = renderedHand.length;
+  const decisionKind: 'render-authoritative' | 'render-presentation' | 'render-clipped-partial' | 'render-empty-pre-deal' | 'render-empty-blocked' | 'self-heal-fallback-to-authoritative' = (() => {
+    if (shouldSelfHeal) return 'self-heal-fallback-to-authoritative';
+    if (activeHandBlocked) return 'render-empty-blocked';
+    if (deal?.phase === 'PRE_DEAL' && renderedCount === 0) return 'render-empty-pre-deal';
+    if (clippedHand.length > 0 && clippedHand.length < sourceHand.length) return 'render-clipped-partial';
+    if (renderedCount > 0) return 'render-presentation';
+    return 'render-empty-blocked';
+  })();
+  const invariantDecisionFingerprint = `${decisionKind}|a=${authCount}|p=${presentationCount}|r=${renderedCount}|b=${activeHandBlocked ? 1 : 0}|dp=${deal?.phase ?? 'none'}|ph=${cribbageState.phase}`;
+  const prevInvariantFingerprintRef = useRef<string>('');
+  useEffect(() => {
+    if (invariantDecisionFingerprint === prevInvariantFingerprintRef.current) return;
+    prevInvariantFingerprintRef.current = invariantDecisionFingerprint;
+    recordCribbageHandRenderDecision({
+      clientId,
+      gameId,
+      handNumber: renderTrace?.handNumber ?? null,
+      phase: cribbageState.phase,
+      decision: decisionKind,
+      authoritativeHandCount: authCount,
+      presentationHandCount: presentationCount,
+      renderedHandCount: renderedCount,
+      activeHandBlocked,
+      dealPhase: deal?.phase ?? null,
+      identityMismatch: roundIdentityMismatch || handIdentityMismatch,
+      reason: shouldSelfHeal
+        ? 'authoritative non-empty; clipped empty; post-deal phase → fallback'
+        : decisionKind,
+    });
+  }, [invariantDecisionFingerprint, clientId, gameId, renderTrace?.handNumber, cribbageState.phase, decisionKind, authCount, presentationCount, renderedCount, activeHandBlocked, deal?.phase, roundIdentityMismatch, handIdentityMismatch, shouldSelfHeal]);
 
   const prevRenderSourceFingerprintRef = useRef<string>('');
   const prevBlockedFingerprintRef = useRef<string>('');

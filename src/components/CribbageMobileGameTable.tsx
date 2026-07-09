@@ -6961,35 +6961,72 @@ export const CribbageMobileGameTable = ({
               }
               return null;
             })()}
-            {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && interactionsAllowed && (
-              <CribbageMobileCardsTab
-                key={renderHandKey}
-                cribbageState={viewState}
-                currentPlayerId={currentPlayerId}
-                playerCount={players.length}
-                isProcessing={isProcessing}
-                onDiscard={handleDiscard}
-                onPlayCard={handlePlayCard}
-                currentPlayer={currentPlayer}
-                gameId={gameId}
-                isDealer={isCribDealer(currentPlayerId)}
-                roundId={roundId}
-                renderTrace={{
-                  renderHandKey,
-                  currentHandKey,
-                  dealerGameId: dealerGameId ?? null,
-                  isFrozen: syncHandle.isFrozen,
-                  authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
-                  renderSource: 'sync-presentation',
-                  expectedRoundId: roundId ?? null,
-                  sourceRoundId: currentRoundId ?? null,
-                  handNumber,
-                  isGameplayMode,
-                  viewStateIsCurrentRound,
-                  interactionsAllowed,
-                }}
-              />
-            )}
+            {(() => {
+              // Primary render gate — presentation-driven path.
+              const primaryMountOk = !!(
+                activeTab === 'cards' &&
+                isGameplayMode &&
+                currentPlayer &&
+                viewState &&
+                !isTransitioning &&
+                !countingStateSnapshot &&
+                !countingAnimationActiveRef.current &&
+                interactionsAllowed
+              );
+              // P0 SELF-HEAL: if the primary gate blocks but authoritative
+              // Cribbage state contains this player's post-deal hand, mount
+              // the tab against authoritative state. This satisfies the
+              // invariant: authoritative non-empty ⇒ visible cards, no
+              // refresh required.
+              const authState = cribbageState;
+              const authHandLen = authState?.playerStates?.[currentPlayerId]?.hand?.length ?? 0;
+              const authPhase = authState?.phase;
+              const authIsPostDeal =
+                authPhase === 'discarding' ||
+                authPhase === 'cutting' ||
+                authPhase === 'pegging' ||
+                authPhase === 'counting';
+              const selfHealMountOk = !!(
+                !primaryMountOk &&
+                activeTab === 'cards' &&
+                currentPlayer &&
+                authState &&
+                authIsPostDeal &&
+                authHandLen > 0 &&
+                !countingStateSnapshot
+              );
+              if (!primaryMountOk && !selfHealMountOk) return null;
+              const stateForRender = primaryMountOk ? viewState! : authState!;
+              return (
+                <CribbageMobileCardsTab
+                  key={renderHandKey || `crib-selfheal-${currentPlayerId}`}
+                  cribbageState={stateForRender}
+                  currentPlayerId={currentPlayerId}
+                  playerCount={players.length}
+                  isProcessing={isProcessing}
+                  onDiscard={handleDiscard}
+                  onPlayCard={handlePlayCard}
+                  currentPlayer={currentPlayer}
+                  gameId={gameId}
+                  isDealer={isCribDealer(currentPlayerId)}
+                  roundId={roundId}
+                  renderTrace={{
+                    renderHandKey,
+                    currentHandKey,
+                    dealerGameId: dealerGameId ?? null,
+                    isFrozen: syncHandle.isFrozen,
+                    authoritativeHand: authState?.playerStates[currentPlayerId]?.hand ?? null,
+                    renderSource: primaryMountOk ? 'sync-presentation' : 'self-heal-authoritative',
+                    expectedRoundId: roundId ?? null,
+                    sourceRoundId: currentRoundId ?? null,
+                    handNumber,
+                    isGameplayMode,
+                    viewStateIsCurrentRound,
+                    interactionsAllowed: primaryMountOk ? interactionsAllowed : false,
+                  }}
+                />
+              );
+            })()}
 
             {/* Counting animation placeholder */}
             {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
