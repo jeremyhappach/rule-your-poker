@@ -1729,10 +1729,10 @@ export const CribbageMobileGameTable = ({
         }
       ) : false;
       // Inline check for whether cards tab would be mounted (isGameplayMode is declared later)
-      const wouldBeGameplayMode = !effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey;
+      const wouldBeGameplayMode = parentAuthoritativeGameplayFallback || (!effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey);
       const cardsTabMounted = activeTab === 'cards' && wouldBeGameplayMode && !isTransitioning
         && !countingStateSnapshot && !countingAnimationActiveRef.current
-        && renderHandKey === currentHandKey && !!viewState;
+        && ((renderHandKey === currentHandKey && !!viewState) || parentAuthoritativeGameplayFallback);
 
       checkCribbageTapFailure({
         gameId,
@@ -1753,6 +1753,8 @@ export const CribbageMobileGameTable = ({
           isFrozen: syncHandle.isFrozen,
           activeTab,
           wouldBeGameplayMode,
+          parentAuthoritativeGameplayFallback,
+          authoritativeHandCounts: cribbageAuthoritativeHandCounts(cribbageState),
         },
       });
     }
@@ -6680,7 +6682,7 @@ export const CribbageMobileGameTable = ({
                 No felt-level placeholder text — would split ownership. */}
 
             {/* GAMEPLAY MODE: full game content */}
-            {isGameplayMode && viewState && (
+            {isGameplayMode && gameplayRenderState && (
               <>
                 {/* Canonical deal substrate (Wave 1) — DealRuntime keyed by
                     handContextId so a new hand naturally resets phase +
@@ -6706,20 +6708,20 @@ export const CribbageMobileGameTable = ({
                     ellipse clip aligns with the true canonical geometry
                     (no legacy giant-circle backing artifact). */}
                 <CribbageTurnSpotlight
-                  currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+                  currentTurnPlayerId={gameplayRenderState.pegging.currentTurnPlayerId}
                   currentPlayerId={currentPlayerId || ''}
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
                   totalPlayers={activeSeatPlayers.length}
                   opponentIds={projectedSeatPlayers.map(o => o.id)}
                   currentTurnPosition={
-                    viewState.pegging.currentTurnPlayerId
-                      ? activeSeatPlayers.find(p => p.id === viewState.pegging.currentTurnPlayerId)?.position ?? null
+                    gameplayRenderState.pegging.currentTurnPlayerId
+                      ? activeSeatPlayers.find(p => p.id === gameplayRenderState.pegging.currentTurnPlayerId)?.position ?? null
                       : null
                   }
                   currentPlayerPosition={currentPlayer?.position ?? null}
                   currentTurnSlot={
                     viewState.pegging.currentTurnPlayerId
-                      ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
+                      ? playerSlotById.get(gameplayRenderState.pegging.currentTurnPlayerId) ?? null
                       : null
                   }
                   shellOwned={true}
@@ -6731,7 +6733,7 @@ export const CribbageMobileGameTable = ({
 
                 {/* Felt Content */}
                 <CribbageFeltContent
-                  cribbageState={viewState}
+                  cribbageState={gameplayRenderState}
                   players={players}
                   currentPlayerId={currentPlayerId}
                   sequenceStartIndex={sequenceStartIndex}
@@ -6812,9 +6814,9 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
               Wave4CribCutGroupSlot. */}
-          {!isHighCardMode && viewState && (
+          {!isHighCardMode && gameplayRenderState && (
             <CribbageAnchoredCribCutMount
-              cribbageState={viewState}
+              cribbageState={gameplayRenderState}
               cardBackColors={cardBackColors}
               handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
               terminalPath={terminalPath}
@@ -6826,9 +6828,9 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
               Wave4CribCutGroupSlot. */}
-          {!isHighCardMode && viewState && (
+          {!isHighCardMode && gameplayRenderState && (
             <CribbageAnchoredPeggingRowMount
-              cribbageState={viewState}
+              cribbageState={gameplayRenderState}
               sequenceStartIndex={sequenceStartIndex}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
@@ -6857,7 +6859,7 @@ export const CribbageMobileGameTable = ({
                 chips: seatPlayer.chips,
               }))}
             presentation={{
-              dealerPip: (p) => isGameplayMode && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === p.id,
+              dealerPip: (p) => isGameplayMode && !!gameplayRenderState?.dealerPlayerId && gameplayRenderState.dealerPlayerId === p.id,
               statusRing: (p) => {
                 if (!isGameplayMode) {
                   const seatPlayer = projectedSeatPlayers.find(sp => sp.id === p.id);
@@ -6872,8 +6874,8 @@ export const CribbageMobileGameTable = ({
               // fly is in flight (see useChipTransportSuppressedSeats).
 
               cardBacks: (p) => {
-                if (!isGameplayMode || !viewState) return null;
-                const seatState = viewState.playerStates[p.id];
+                if (!isGameplayMode || !gameplayRenderState) return null;
+                const seatState = gameplayRenderState.playerStates[p.id];
                 if (!seatState || seatState.hand.length === 0) return null;
                 const showSeatCardBacks = isObserver || p.id !== currentPlayerId;
                 return {
