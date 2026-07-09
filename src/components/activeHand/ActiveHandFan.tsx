@@ -249,6 +249,54 @@ export function ActiveHandFan({
     return () => observers.forEach((ro) => ro.disconnect());
   }, [game, cards.length, activeHandFanRenderKey, cardIds?.join('|')]);
 
+  // ── ActiveHandFan Layout Truth Reporter ─────────────────────────
+  // Emit a single snapshot per render describing whether the resolver
+  // succeeded, whether the null-layout fallback was used, and the DOM
+  // rects of the container and first card. Consumed by the Cribbage
+  // Render Truth Pill (and safe for other games to ignore).
+  const _isFallbackForReport = layout == null;
+  const _fallbackReasonForReport: string | null = !_isFallbackForReport
+    ? null
+    : !resolvedStageRect
+      ? 'no-stage-rect'
+      : (resolvedStageRect.width <= 0 || resolvedStageRect.height <= 0)
+        ? 'zero-stage-rect'
+        : 'resolver-null';
+  const _reportCardWidth = layout?.cardWidth ?? null;
+  const _reportCardHeight = layout?.cardHeight ?? null;
+  useLayoutEffect(() => {
+    if (!onLayoutTruth) return;
+    const root = rootRef.current;
+    let containerRect: { x: number; y: number; width: number; height: number } | null = null;
+    let firstCardRect: { x: number; y: number; width: number; height: number } | null = null;
+    let effectiveCardW = _reportCardWidth ?? 0;
+    let effectiveCardH = _reportCardHeight ?? 0;
+    if (root) {
+      const r = root.getBoundingClientRect();
+      containerRect = { x: r.x, y: r.y, width: r.width, height: r.height };
+      const firstCard = root.querySelector<HTMLElement>('[data-playing-card-root]');
+      if (firstCard) {
+        const cr = firstCard.getBoundingClientRect();
+        firstCardRect = { x: cr.x, y: cr.y, width: cr.width, height: cr.height };
+        if (!effectiveCardW) effectiveCardW = cr.width;
+        if (!effectiveCardH) effectiveCardH = cr.height;
+      }
+    }
+    onLayoutTruth({
+      wasFallback: _isFallbackForReport,
+      fallbackReason: _fallbackReasonForReport,
+      normalLayoutAvailable: !_isFallbackForReport,
+      cardWidthPx: effectiveCardW,
+      cardHeightPx: effectiveCardH,
+      measuredStageWidth: resolvedStageRect?.width ?? null,
+      measuredStageHeight: resolvedStageRect?.height ?? null,
+      containerRect,
+      firstCardRect,
+      anchorX: firstCardRect ? firstCardRect.x : (containerRect ? containerRect.x : null),
+      anchorY: firstCardRect ? firstCardRect.y : (containerRect ? containerRect.y : null),
+    });
+  });
+
   if (cards.length === 0) {
     return (
       <div
