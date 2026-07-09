@@ -644,6 +644,7 @@ export const CribbageMobileCardsTab = ({
     sourceCardIds,
     renderedCardIds,
     domDiagnostics,
+    layoutTruth,
   ]);
 
   // Phase-capacity sizing contract:
