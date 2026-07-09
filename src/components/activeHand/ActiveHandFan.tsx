@@ -172,10 +172,10 @@ export function ActiveHandFan({
   // final size, with no post-settle snap.
   const publishRect = useMemo(
     () =>
-      layout && layout.cardWidth > 0 && layout.cardHeight > 0
+      layout && effectiveLayout.cardWidth > 0 && effectiveLayout.cardHeight > 0
         ? {
-            cardWidthPx: layout.cardWidth,
-            cardHeightPx: layout.cardHeight,
+            cardWidthPx: effectiveLayout.cardWidth,
+            cardHeightPx: effectiveLayout.cardHeight,
             publishedAt: performance.now(),
             activeHandFanRenderKey: activeHandFanRenderKey ?? null,
           }
@@ -270,9 +270,9 @@ export function ActiveHandFan({
     } as ResolvedActiveHandRow;
   })();
 
-  const tier = tierFromCardWidth(layout.cardWidth);
+  const tier = tierFromCardWidth(effectiveLayout.cardWidth);
   const N = cards.length;
-  const archDeg = applyFan ? layout.fanArchDeg : 0;
+  const archDeg = applyFan ? effectiveLayout.fanArchDeg : 0;
   const perCardDeg = N > 1 ? archDeg / (N - 1) : 0;
 
   return (
@@ -295,11 +295,11 @@ export function ActiveHandFan({
     >
       <div
         style={{
-          width: layout.totalWidth,
+          width: effectiveLayout.totalWidth,
           position: 'absolute',
           left: 0,
           top: 0,
-          transform: `translate(${layout.rowOffsetX.toFixed(3)}px, ${layout.rowOffsetY.toFixed(3)}px)`,
+          transform: `translate(${effectiveLayout.rowOffsetX.toFixed(3)}px, ${effectiveLayout.rowOffsetY.toFixed(3)}px)`,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'flex-end',
@@ -309,7 +309,7 @@ export function ActiveHandFan({
           const rotationDeg = applyFan
             ? -archDeg / 2 + perCardDeg * index
             : 0;
-          const marginLeft = index === 0 ? 0 : -layout.overlapPx;
+          const marginLeft = index === 0 ? 0 : -effectiveLayout.overlapPx;
           // Rotation is applied to the wrapper so that any selection /
           // interaction outline rendered by `renderCard` (rings,
           // highlights, lifts) inherits the exact same transform frame
@@ -324,10 +324,10 @@ export function ActiveHandFan({
               card={card}
               tier={tier}
               activeHandShell
-              faceFillPx={layout.cardWidth}
+              faceFillPx={effectiveLayout.cardWidth}
               style={{
-                width: layout.cardWidth,
-                height: layout.cardHeight,
+                width: effectiveLayout.cardWidth,
+                height: effectiveLayout.cardHeight,
               }}
             />
           );
@@ -351,10 +351,10 @@ export function ActiveHandFan({
                 {renderCard({
                   card,
                   index,
-                  cardWidthPx: layout.cardWidth,
-                  cardHeightPx: layout.cardHeight,
+                  cardWidthPx: effectiveLayout.cardWidth,
+                  cardHeightPx: effectiveLayout.cardHeight,
                   rotationDeg,
-                  overlapPx: layout.overlapPx,
+                  overlapPx: effectiveLayout.overlapPx,
                   tier,
                   card_node: cardNode,
                 })}
