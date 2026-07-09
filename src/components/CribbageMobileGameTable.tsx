@@ -787,6 +787,24 @@ export const CribbageMobileGameTable = ({
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ── Phase 2: framework-owned authoritative identity ─────────────
+  // Subscribes to `rounds` filtered by `dealer_game_id`, so the client observes
+  // INSERT/UPDATE for NEW rounds without re-keying any round-id-scoped channel.
+  // This eliminates the stale-identity blind window: when a peer client advances
+  // the hand, we learn about the new round id synchronously rather than waiting
+  // for the parent prop to lag-catch up.
+  const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+
+  // Local tracking of current round for proper hand transitions.
+  // Forward-only — never regress, even if a prop or identity feed momentarily lags.
+  const [currentRoundId, setCurrentRoundId] = useState(roundId);
+  const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
+  const roundBoundaryGuardKey = useMemo(
+    () => buildBoundaryGuardKey(dealerGameId, currentRoundId, currentHandNumber),
+    [dealerGameId, currentRoundId, currentHandNumber],
+  );
+
+
 
   // Forward-only merge of (a) parent props and (b) authoritative-identity feed.
   //
