@@ -726,7 +726,11 @@ export const CribbageMobileCardsTab = ({
           applyFan
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
+            renderCountersRef.current.called += 1;
             if (!card) return null;
+            const cid = cardId(card);
+            renderCountersRef.current.rendered += 1;
+            renderCountersRef.current.ids.push(cid);
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
@@ -734,6 +738,7 @@ export const CribbageMobileCardsTab = ({
             return (
               <button
                 data-cribbage-visible-card-node="true"
+                data-card-id={cid}
                 onClick={() => handleCardClick(index)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
