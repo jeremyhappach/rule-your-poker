@@ -81,6 +81,22 @@ export interface CribbageCardsTabTruthSnapshot {
   runtimeKey: string | null;
   handContextId: string | null;
   graceExpired: boolean;
+  // ── P0 render-pipeline instrumentation (read-only) ──
+  cardsArrayPassedToFanCount: number;
+  activeHandFanReceivedCardsCount: number;
+  renderCardCalledCount: number;
+  renderedCardComponentCount: number;
+  sourceCardIds: string[];
+  renderedCardIds: string[];
+  domCardIds: string[];
+  activeHandFanMounted: boolean;
+  containerExists: boolean;
+  containerRect: { x: number; y: number; width: number; height: number } | null;
+  containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
+  firstCardRect: { x: number; y: number; width: number; height: number } | null;
+  firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
+  overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
+  finalRenderedCountButNoDom: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
