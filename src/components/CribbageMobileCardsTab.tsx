@@ -527,36 +527,15 @@ export const CribbageMobileCardsTab = ({
           capacity={phaseCapacity}
           stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
           applyFan
-          onLayoutTruth={(info) => {
-            setLayoutTruth((prev) => {
-              if (
-                prev &&
-                prev.wasFallback === info.wasFallback &&
-                prev.fallbackReason === info.fallbackReason &&
-                prev.cardWidthPx === info.cardWidthPx &&
-                prev.cardHeightPx === info.cardHeightPx &&
-                prev.anchorX === info.anchorX &&
-                prev.anchorY === info.anchorY &&
-                prev.measuredStageWidth === info.measuredStageWidth &&
-                prev.measuredStageHeight === info.measuredStageHeight
-              ) return prev;
-              return info;
-            });
-          }}
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
-            renderCountersRef.current.called += 1;
-            cumulativeCountersRef.current.called += 1;
             if (!card) return null;
-            const cid = cardId(card);
-            renderCountersRef.current.rendered += 1;
-            cumulativeCountersRef.current.rendered += 1;
-            renderCountersRef.current.ids.push(cid);
 
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
+
             return (
               <button
                 data-cribbage-visible-card-node="true"
