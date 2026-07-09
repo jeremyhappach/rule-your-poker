@@ -87,7 +87,10 @@ export interface CribbageCardsTabTruthSnapshot {
   renderCardCalledCount: number;
   renderedCardComponentCount: number;
   sourceCardIds: string[];
+  /** @deprecated retained field name; mirrors sourceCardIds (pre-render). */
   renderedCardIds: string[];
+  /** IDs captured inside the ActiveHandFan renderCard callback. */
+  renderCardInvokedIds: string[];
   domCardIds: string[];
   activeHandFanMounted: boolean;
   containerExists: boolean;
