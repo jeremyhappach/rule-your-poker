@@ -107,7 +107,10 @@ export function resolveVisibleLocalHand<Card>(
     };
   }
 
-  // Rule 4 — presentation is non-empty (possibly a legitimate partial
-  // reveal); trust it.
+  // Rule 4 — presentation may be non-empty (partial reveal) or empty
+  // during a legitimate opening deal window.
+  if (presCount === 0 && allowPreDealEmpty) {
+    return { hand: [], decision: 'render-empty-pre-deal' };
+  }
   return { hand: presentationHand, decision: 'render-presentation' };
 }
