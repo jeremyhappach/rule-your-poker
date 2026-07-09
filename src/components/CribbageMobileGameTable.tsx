@@ -96,6 +96,7 @@ import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/mat
 import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
+  hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
 } from '@/lib/cribbage/cribbageRenderGuards';
 
@@ -5928,13 +5929,18 @@ export const CribbageMobileGameTable = ({
     !postCountingTransitionActive &&
     !isTransitioning
   );
-  const isHighCardMode = effectiveShowHighCardSelection;
+  const rawHighCardMode = effectiveShowHighCardSelection;
+  const authoritativePostDealCardsPresent = !!(
+    cribbageState &&
+    isCribbagePostDealPhase(cribbageState.phase) &&
+    hasAnyCribbageAuthoritativeHand(cribbageState)
+  );
   // P0 Cribbage hand visibility invariant: if authoritative current-hand
   // Cribbage state already has dealt cards, parent bootstrap/readiness gates
   // must not swallow the table or Cards pane. Actions remain separately gated.
   const renderMode = deriveCribbageParentRenderMode({
     isDealerSelection,
-    isHighCardMode,
+    isHighCardMode: rawHighCardMode,
     initialLoadComplete,
     renderHandKey,
     currentHandKey,
@@ -5946,6 +5952,7 @@ export const CribbageMobileGameTable = ({
   const parentAuthoritativeGameplayFallback = renderMode.parentAuthoritativeGameplayFallback;
   const isBootstrapMode = renderMode.isBootstrapMode;
   const isGameplayMode = renderMode.isGameplayMode;
+  const isHighCardMode = rawHighCardMode && !authoritativePostDealCardsPresent && !parentAuthoritativeGameplayFallback;
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`

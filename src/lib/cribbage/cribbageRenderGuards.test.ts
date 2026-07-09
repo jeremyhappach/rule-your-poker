@@ -88,6 +88,23 @@ describe('Cribbage render guards', () => {
     expect(mode.isGameplayMode).toBe(false);
   });
 
+  it('post-deal authoritative cards override a stale high-card flag once session dealer selection has ended', () => {
+    const mode = deriveCribbageParentRenderMode({
+      isDealerSelection: false,
+      isHighCardMode: true,
+      initialLoadComplete: false,
+      renderHandKey: 'p1:A,2,3,4,5,6',
+      currentHandKey: 'p1:A,2,3,4,5,6',
+      currentPlayerId: 'p1',
+      isObserver: false,
+      isStaleCompleteAwaitingNext: false,
+      authoritativeState: state('discarding'),
+    });
+    expect(mode.parentAuthoritativeGameplayFallback).toBe(true);
+    expect(mode.isGameplayMode).toBe(true);
+    expect(mode.isBootstrapMode).toBe(false);
+  });
+
   it('invokes the shared visible-hand helper when parent is suppressed', () => {
     const result = resolveCribbageVisibleHand({
       authoritativeHand: hand,
@@ -216,6 +233,21 @@ describe('Cribbage render guards', () => {
     });
     expect(result.decision).toBe('render-presentation');
     expect(result.hand).toEqual(hand.slice(0, 2));
+  });
+
+  it('lifecycle: in-flight transport with zero visible progress self-heals after the stall fuse', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 4,
+      graceExpired: true,
+    });
+    expect(result.decision).toBe('render-authoritative-self-heal');
+    expect(result.hand).toEqual(hand);
+    expect(result.reason).toContain('in-flight without visible progress');
   });
 
 

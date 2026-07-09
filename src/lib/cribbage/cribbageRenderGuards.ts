@@ -47,7 +47,6 @@ export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArg
   );
 
   const parentAuthoritativeGameplayFallback = !!(
-    !args.isHighCardMode &&
     !args.isDealerSelection &&
     // NB: intentionally does NOT require currentHandKey. When live/realtime
     // viewState is null or stale, currentHandKey is empty — but the parent
@@ -66,7 +65,6 @@ export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArg
   );
 
   const isGameplayMode = !!(
-    !args.isHighCardMode &&
     (
       (!isBootstrapMode && viewStateIsCurrentRound) ||
       parentAuthoritativeGameplayFallback
@@ -162,7 +160,12 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
     isOpeningPhase &&
     !transportTerminal &&
     (
-      transportInFlight ||
+      // In-flight transport owns the window while it is making visible
+      // progress (or while the bounded stall fuse has not expired). Under
+      // chaos, an active intent can remain stuck before any local card is
+      // visible; after the fuse expires, authoritative cards must recover
+      // the no-card UI instead of waiting forever on that intent.
+      (transportInFlight && (!graceExpired || presCount > 0)) ||
       ((transportDealingIdle || transportPreStart) && !graceExpired)
     );
 
@@ -175,6 +178,8 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
           ? 'transport terminalized (READY/GAMEPLAY); presentation stale'
           : !isOpeningPhase
             ? 'phase past opening-deal window; deal-window closed'
+            : transportInFlight
+              ? 'transport in-flight without visible progress; stall fuse tripped'
             : parentSuppressed
               ? 'parent suppressed; stall fuse tripped'
               : 'transport lifecycle absent; stall fuse tripped',
