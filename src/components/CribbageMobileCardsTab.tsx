@@ -11,7 +11,7 @@ import {
   useActiveHandLayoutPolicy,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
-import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import { ActiveHandFan, type ActiveHandFanLayoutTruth } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
