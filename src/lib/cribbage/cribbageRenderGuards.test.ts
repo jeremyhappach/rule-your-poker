@@ -102,7 +102,7 @@ describe('Cribbage render guards', () => {
     expect(result.hand).toEqual(hand);
   });
 
-  it('recovers partial stale transport after the launch queue is empty', () => {
+  it('recovers partial stale transport after the launch queue is empty and grace has expired', () => {
     const result = resolveCribbageVisibleHand({
       authoritativeHand: hand,
       presentationHand: hand.slice(0, 1),
@@ -110,8 +110,42 @@ describe('Cribbage render guards', () => {
       dealPhase: 'DEALING',
       dealExpectedCount: 12,
       dealActiveIntentCount: 0,
+      graceExpired: true,
     });
+    expect(result.decision).toBe('render-authoritative-self-heal');
     expect(result.hand).toEqual(hand);
+  });
+
+  it('opening-deal window: authoritative present but transport not yet started → render empty presentation (no flash)', () => {
+    // Fresh hand: authoritative flipped to discarding + 6 cards, but the
+    // orchestrator has not yet called beginDeal(). Grace has NOT expired.
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'PRE_DEAL',
+      dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+      graceExpired: false,
+    });
+    expect(result.decision).toBe('render-empty-pre-deal');
+    expect(result.hand).toEqual([]);
+  });
+
+  it('opening-deal window: DEALING with zero active intents but within grace → render presentation (no flash)', () => {
+    // The tick between `beginDeal(12)` and `dispatchMany` — phase is
+    // DEALING, no intents in flight yet. Presentation legitimately empty.
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 0,
+      graceExpired: false,
+    });
+    expect(result.decision).toBe('render-empty-pre-deal');
+    expect(result.hand).toEqual([]);
   });
 
   it('normal healthy deal animation can still show a partial hand while intents are active', () => {
@@ -125,6 +159,34 @@ describe('Cribbage render guards', () => {
     });
     expect(result.decision).toBe('render-presentation');
     expect(result.hand).toEqual(hand.slice(0, 1));
+  });
+
+  it('grace expired + transport pre-start still empty → self-heal (parent-stuck post-deal)', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'PRE_DEAL',
+      dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+      graceExpired: true,
+    });
+    expect(result.decision).toBe('render-authoritative-self-heal');
+    expect(result.hand).toEqual(hand);
+  });
+
+  it('past discarding (pegging) with stale presentation self-heals immediately regardless of grace', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'pegging',
+      dealPhase: 'PRE_DEAL',
+      dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+      graceExpired: false,
+    });
+    expect(result.decision).toBe('render-authoritative-self-heal');
+    expect(result.hand).toEqual(hand);
   });
 
   it('hydration and live fallback converge without refresh', () => {
@@ -146,3 +208,4 @@ describe('Cribbage render guards', () => {
     expect(live.hand).toEqual(hydration.hand);
   });
 });
+
