@@ -11,7 +11,7 @@ import {
   useActiveHandLayoutPolicy,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
-import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import { ActiveHandFan, type ActiveHandFanLayoutTruth } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
@@ -100,6 +100,18 @@ export interface CribbageCardsTabTruthSnapshot {
   firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
   overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
   finalRenderedCountButNoDom: boolean;
+  // ── ActiveHandFan layout-truth (fallback vs. measured) ──
+  layoutWasFallback: boolean;
+  layoutFallbackReason: string | null;
+  layoutNormalAvailable: boolean;
+  layoutCardWidth: number;
+  layoutCardHeight: number;
+  layoutAnchorX: number | null;
+  layoutAnchorY: number | null;
+  layoutContainerRect: { x: number; y: number; width: number; height: number } | null;
+  layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
+  layoutMeasuredStageWidth: number | null;
+  layoutMeasuredStageHeight: number | null;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -454,6 +466,8 @@ export const CribbageMobileCardsTab = ({
     activeHandFanMounted: false,
   });
 
+  const [layoutTruth, setLayoutTruth] = useState<ActiveHandFanLayoutTruth | null>(null);
+
   // renderCard invocation counters — reset per render token
   const renderTokenRef = useRef<string>('');
   const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
@@ -597,6 +611,17 @@ export const CribbageMobileCardsTab = ({
       firstCardComputed: domDiagnostics.firstCardComputed,
       overlayCovererAtCenter: domDiagnostics.overlayCovererAtCenter,
       finalRenderedCountButNoDom,
+      layoutWasFallback: layoutTruth?.wasFallback ?? false,
+      layoutFallbackReason: layoutTruth?.fallbackReason ?? null,
+      layoutNormalAvailable: layoutTruth?.normalLayoutAvailable ?? false,
+      layoutCardWidth: layoutTruth?.cardWidthPx ?? 0,
+      layoutCardHeight: layoutTruth?.cardHeightPx ?? 0,
+      layoutAnchorX: layoutTruth?.anchorX ?? null,
+      layoutAnchorY: layoutTruth?.anchorY ?? null,
+      layoutContainerRect: layoutTruth?.containerRect ?? null,
+      layoutFirstCardRect: layoutTruth?.firstCardRect ?? null,
+      layoutMeasuredStageWidth: layoutTruth?.measuredStageWidth ?? null,
+      layoutMeasuredStageHeight: layoutTruth?.measuredStageHeight ?? null,
     });
   }, [
     onTruthSnapshot,
@@ -619,6 +644,7 @@ export const CribbageMobileCardsTab = ({
     sourceCardIds,
     renderedCardIds,
     domDiagnostics,
+    layoutTruth,
   ]);
 
   // Phase-capacity sizing contract:
@@ -728,6 +754,22 @@ export const CribbageMobileCardsTab = ({
           capacity={phaseCapacity}
           stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
           applyFan
+          onLayoutTruth={(info) => {
+            setLayoutTruth((prev) => {
+              if (
+                prev &&
+                prev.wasFallback === info.wasFallback &&
+                prev.fallbackReason === info.fallbackReason &&
+                prev.cardWidthPx === info.cardWidthPx &&
+                prev.cardHeightPx === info.cardHeightPx &&
+                prev.anchorX === info.anchorX &&
+                prev.anchorY === info.anchorY &&
+                prev.measuredStageWidth === info.measuredStageWidth &&
+                prev.measuredStageHeight === info.measuredStageHeight
+              ) return prev;
+              return info;
+            });
+          }}
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
             renderCountersRef.current.called += 1;

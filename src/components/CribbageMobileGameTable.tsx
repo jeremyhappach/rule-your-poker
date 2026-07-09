@@ -6043,16 +6043,13 @@ export const CribbageMobileGameTable = ({
   const cardsTabStateSource = cardsTabMounted
     ? (primaryMountOk ? 'viewState' : 'authoritative')
     : 'not-mounted';
-  const parentVisibleCardCount = cardsTabTruth?.visibleDomCardNodeCount ?? 0;
-  const showCribbageRenderTruthPanel = !!(
-    activeTab === 'cards' &&
-    parentVisibleCardCount === 0 &&
-    (
-      authoritativeLocalHandCount > 0 ||
-      isCribbagePostDealPhase(cribbageState?.phase) ||
-      isCribbagePostDealPhase(viewState?.phase)
-    )
-  );
+  
+  // Panel is intentionally kept mounted whenever the cards tab is active,
+  // regardless of whether cards are currently visible. Jeremy owns
+  // acceptance; do not auto-hide the diagnostics on first successful
+  // render — the panel is our only channel for post-fix regressions
+  // (e.g. wrong-position fallback layout).
+  const showCribbageRenderTruthPanel = activeTab === 'cards';
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
@@ -7206,6 +7203,22 @@ export const CribbageMobileGameTable = ({
                   beginDealCalled: dealOrchestratorTruth.beginDealCalled,
                   dispatchManyCalled: dealOrchestratorTruth.dispatchManyCalled,
                   finalRenderedCountButNoDom: cardsTabTruth?.finalRenderedCountButNoDom ?? false,
+                  Layout: '',
+                  layoutWasFallback: cardsTabTruth?.layoutWasFallback ?? 'unmounted',
+                  layoutFallbackReason: cardsTabTruth?.layoutFallbackReason ?? 'null',
+                  layoutNormalAvailable: cardsTabTruth?.layoutNormalAvailable ?? 'unmounted',
+                  layoutCardWidth: cardsTabTruth?.layoutCardWidth ?? 0,
+                  layoutCardHeight: cardsTabTruth?.layoutCardHeight ?? 0,
+                  layoutAnchorX: cardsTabTruth?.layoutAnchorX ?? 'null',
+                  layoutAnchorY: cardsTabTruth?.layoutAnchorY ?? 'null',
+                  layoutMeasuredStageWidth: cardsTabTruth?.layoutMeasuredStageWidth ?? 'null',
+                  layoutMeasuredStageHeight: cardsTabTruth?.layoutMeasuredStageHeight ?? 'null',
+                  layoutContainerRect: cardsTabTruth?.layoutContainerRect
+                    ? `${Math.round(cardsTabTruth.layoutContainerRect.x)},${Math.round(cardsTabTruth.layoutContainerRect.y)} ${Math.round(cardsTabTruth.layoutContainerRect.width)}x${Math.round(cardsTabTruth.layoutContainerRect.height)}`
+                    : 'null',
+                  layoutFirstCardRect: cardsTabTruth?.layoutFirstCardRect
+                    ? `${Math.round(cardsTabTruth.layoutFirstCardRect.x)},${Math.round(cardsTabTruth.layoutFirstCardRect.y)} ${Math.round(cardsTabTruth.layoutFirstCardRect.width)}x${Math.round(cardsTabTruth.layoutFirstCardRect.height)}`
+                    : 'null',
                 }}
                 alert={!!cardsTabTruth?.finalRenderedCountButNoDom}
               />

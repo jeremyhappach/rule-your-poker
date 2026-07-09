@@ -22,7 +22,7 @@ export function CribbageRenderTruthPill({ fields, alert }: Props) {
   const formatText = () =>
     Object.entries(fields)
       .map(([k, v]) => {
-        if (v === '' && (k === 'Parent' || k === 'Child' || k === 'DOM' || k === 'Transport')) {
+        if (v === '' && (k === 'Parent' || k === 'Child' || k === 'DOM' || k === 'Transport' || k === 'Layout')) {
           return `\n── ${k} ──`;
         }
         return `${k}=${String(v)}`;
