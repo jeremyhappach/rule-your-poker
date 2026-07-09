@@ -14,6 +14,7 @@ import {
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
+import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
   hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
@@ -128,11 +129,7 @@ export const CribbageMobileCardsTab = ({
   // → full hand (legacy path).
   const deal = useDealRuntime();
   const authoritativeHand = renderTrace?.authoritativeHand ?? null;
-  const isPostDealPhase =
-    cribbageState.phase === 'discarding' ||
-    cribbageState.phase === 'cutting' ||
-    cribbageState.phase === 'pegging' ||
-    cribbageState.phase === 'counting';
+  const isPostDealPhase = isCribbagePostDealPhase(cribbageState.phase);
   const clippedHand = (() => {
     if (activeHandBlocked) return [] as CribbageCard[];
     if (!deal) return sourceHand;
@@ -141,19 +138,21 @@ export const CribbageMobileCardsTab = ({
     const allowed = deal.getSettledCountForPlayer(currentPlayerId);
     return sourceHand.slice(0, allowed);
   })();
-  // P0 SELF-HEAL: If clipped presentation hand is empty but the authoritative
-  // hand exists and we are past the dealing phase, render authoritative. This
-  // guarantees the invariant "authoritative non-empty ⇒ visible cards" even
-  // when identity-mismatch, stuck deal-runtime PRE_DEAL, unsettled transports,
-  // or stale presentation would otherwise leave the player with zero cards.
-  const shouldSelfHeal =
-    clippedHand.length === 0 &&
-    !!authoritativeHand &&
-    authoritativeHand.length > 0 &&
-    isPostDealPhase;
-  const dealClippedSourceHand: CribbageCard[] = shouldSelfHeal
-    ? (authoritativeHand as CribbageCard[])
-    : clippedHand;
+  // P0 SELF-HEAL: Run every rendered Cribbage self-hand through the shared
+  // invariant helper. Presentation may animate card-by-card only while the
+  // transport is actively in flight; once authoritative post-deal cards exist
+  // and transport is empty/stale/blocked, authoritative cards win.
+  const visibleHandDecision = resolveCribbageVisibleHand({
+    authoritativeHand,
+    presentationHand: clippedHand,
+    phase: cribbageState.phase,
+    parentSuppressed: activeHandBlocked,
+    dealPhase: deal?.phase ?? null,
+    dealExpectedCount: deal?.expectedCount ?? 0,
+    dealActiveIntentCount: deal?.activeIntentsForHand ?? 0,
+  });
+  const shouldSelfHeal = visibleHandDecision.decision === 'render-authoritative-self-heal';
+  const dealClippedSourceHand: CribbageCard[] = visibleHandDecision.hand as CribbageCard[];
   const renderedHand = dealClippedSourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
@@ -195,10 +194,10 @@ export const CribbageMobileCardsTab = ({
       dealPhase: deal?.phase ?? null,
       identityMismatch: roundIdentityMismatch || handIdentityMismatch,
       reason: shouldSelfHeal
-        ? 'authoritative non-empty; clipped empty; post-deal phase → fallback'
+        ? visibleHandDecision.reason
         : decisionKind,
     });
-  }, [invariantDecisionFingerprint, clientId, gameId, renderTrace?.handNumber, cribbageState.phase, decisionKind, authCount, presentationCount, renderedCount, activeHandBlocked, deal?.phase, roundIdentityMismatch, handIdentityMismatch, shouldSelfHeal]);
+  }, [invariantDecisionFingerprint, clientId, gameId, renderTrace?.handNumber, cribbageState.phase, decisionKind, authCount, presentationCount, renderedCount, activeHandBlocked, deal?.phase, roundIdentityMismatch, handIdentityMismatch, shouldSelfHeal, visibleHandDecision.reason]);
 
   const prevRenderSourceFingerprintRef = useRef<string>('');
   const prevBlockedFingerprintRef = useRef<string>('');
