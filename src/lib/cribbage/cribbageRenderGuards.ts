@@ -49,7 +49,10 @@ export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArg
   const parentAuthoritativeGameplayFallback = !!(
     !args.isHighCardMode &&
     !args.isDealerSelection &&
-    args.currentHandKey &&
+    // NB: intentionally does NOT require currentHandKey. When live/realtime
+    // viewState is null or stale, currentHandKey is empty — but the parent
+    // must still enter gameplay-render mode if authoritative post-deal
+    // state exists with a non-empty hand. This is the invariant.
     args.authoritativeState &&
     isCribbagePostDealPhase(args.authoritativeState.phase) &&
     hasAnyCribbageAuthoritativeHand(args.authoritativeState)

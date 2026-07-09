@@ -470,7 +470,12 @@ export const CribbageMobileCardsTab = ({
   // shell-owned: rendered by CribbageMobileGameTable in ShellHudGrid's
   // `identity` slot so it persists across all tabs, matching Yahtzee.
 
-  if (activeHandBlocked) {
+  // Parent suppression (identity mismatch / interactionsAllowed=false) is
+  // honored only if the P0 self-heal did NOT recover authoritative cards.
+  // When self-heal is active, authoritative cards must render even though
+  // interactions remain disabled — buttons are guarded by `isProcessing`
+  // and phase gates below.
+  if (activeHandBlocked && !shouldSelfHeal) {
     return (
       <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
         <div data-crib-active-hand-stage="" className="overflow-hidden" />
