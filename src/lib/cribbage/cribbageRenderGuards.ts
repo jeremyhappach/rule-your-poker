@@ -162,7 +162,12 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
     isOpeningPhase &&
     !transportTerminal &&
     (
-      transportInFlight ||
+      // In-flight transport owns the window while it is making visible
+      // progress (or while the bounded stall fuse has not expired). Under
+      // chaos, an active intent can remain stuck before any local card is
+      // visible; after the fuse expires, authoritative cards must recover
+      // the no-card UI instead of waiting forever on that intent.
+      (transportInFlight && (!graceExpired || presCount > 0)) ||
       ((transportDealingIdle || transportPreStart) && !graceExpired)
     );
 
