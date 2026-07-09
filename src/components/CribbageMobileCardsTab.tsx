@@ -587,6 +587,7 @@ export const CribbageMobileCardsTab = ({
       renderedCardComponentCount: renderCountersRef.current.rendered,
       sourceCardIds,
       renderedCardIds,
+      renderCardInvokedIds: [...renderCountersRef.current.ids],
       domCardIds: domDiagnostics.domCardIds,
       activeHandFanMounted: domDiagnostics.activeHandFanMounted,
       containerExists: domDiagnostics.containerExists,
