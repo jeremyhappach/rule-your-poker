@@ -93,6 +93,11 @@ import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
+import {
+  cribbageAuthoritativeHandCounts,
+  deriveCribbageParentRenderMode,
+  isCribbagePostDealPhase,
+} from '@/lib/cribbage/cribbageRenderGuards';
 
 
 import {
@@ -496,7 +501,12 @@ function DealClippedOpponentSeatLayer(props: {
         if (deal.phase === 'PRE_DEAL') {
           return { ...baseBacks, count: 0, visible: false };
         }
-        // DEALING
+        // DEALING. If the transport runtime has no active intents left but
+        // never promoted to READY/GAMEPLAY, do not let stale clipping hide all
+        // opponent card backs indefinitely; authoritative hand count wins.
+        if (deal.expectedCount > 0 && deal.activeIntentsForHand === 0) {
+          return baseBacks;
+        }
         const allowed = deal.getSettledCountForPlayer(p.id);
         const clipped = Math.min(baseBacks.count, allowed);
         if (clipped <= 0) return { ...baseBacks, count: 0, visible: false };
@@ -1724,10 +1734,10 @@ export const CribbageMobileGameTable = ({
         }
       ) : false;
       // Inline check for whether cards tab would be mounted (isGameplayMode is declared later)
-      const wouldBeGameplayMode = !effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey;
+      const wouldBeGameplayMode = parentAuthoritativeGameplayFallback || (!effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey);
       const cardsTabMounted = activeTab === 'cards' && wouldBeGameplayMode && !isTransitioning
         && !countingStateSnapshot && !countingAnimationActiveRef.current
-        && renderHandKey === currentHandKey && !!viewState;
+        && ((renderHandKey === currentHandKey && !!viewState) || parentAuthoritativeGameplayFallback);
 
       checkCribbageTapFailure({
         gameId,
@@ -1748,6 +1758,8 @@ export const CribbageMobileGameTable = ({
           isFrozen: syncHandle.isFrozen,
           activeTab,
           wouldBeGameplayMode,
+          parentAuthoritativeGameplayFallback,
+          authoritativeHandCounts: cribbageAuthoritativeHandCounts(cribbageState),
         },
       });
     }
@@ -5917,18 +5929,23 @@ export const CribbageMobileGameTable = ({
     !isTransitioning
   );
   const isHighCardMode = effectiveShowHighCardSelection;
-  // OBSERVER FIX: observers have no currentPlayerId by definition. Gating
-  // bootstrap on `!currentPlayerId` kept observers permanently in the
-  // "Preparing next hand…" shell with no gameplay surface. Only require
-  // currentPlayerId for seated participants; observers bypass this gate
-  // and proceed to gameplay rendering (read-only view).
-  const isBootstrapMode = !isDealerSelection && (
-    !initialLoadComplete ||
-    !renderHandKey ||
-    (!currentPlayerId && !isObserver) ||
-    isStaleCompleteAwaitingNext
-  );
-  const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
+  // P0 Cribbage hand visibility invariant: if authoritative current-hand
+  // Cribbage state already has dealt cards, parent bootstrap/readiness gates
+  // must not swallow the table or Cards pane. Actions remain separately gated.
+  const renderMode = deriveCribbageParentRenderMode({
+    isDealerSelection,
+    isHighCardMode,
+    initialLoadComplete,
+    renderHandKey,
+    currentHandKey,
+    currentPlayerId,
+    isObserver,
+    isStaleCompleteAwaitingNext,
+    authoritativeState: cribbageState,
+  });
+  const parentAuthoritativeGameplayFallback = renderMode.parentAuthoritativeGameplayFallback;
+  const isBootstrapMode = renderMode.isBootstrapMode;
+  const isGameplayMode = renderMode.isGameplayMode;
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
@@ -5944,10 +5961,12 @@ export const CribbageMobileGameTable = ({
   // completion and the framework reset settling).
 
   // Latch pegboard data whenever we have valid gameplay state
-  if (isGameplayMode && viewState) {
+  const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
+
+  if (isGameplayMode && gameplayRenderState) {
     latchedPegboardDataRef.current = {
-      playerStates: viewState.playerStates,
-      winningScore: viewState.pointsToWin,
+      playerStates: gameplayRenderState.playerStates,
+      winningScore: gameplayRenderState.pointsToWin,
     };
   }
   const shouldShowAwaitingAnteAnnouncement = currentHandNumber <= 1 && (
@@ -6668,7 +6687,7 @@ export const CribbageMobileGameTable = ({
                 No felt-level placeholder text — would split ownership. */}
 
             {/* GAMEPLAY MODE: full game content */}
-            {isGameplayMode && viewState && (
+            {isGameplayMode && gameplayRenderState && (
               <>
                 {/* Canonical deal substrate (Wave 1) — DealRuntime keyed by
                     handContextId so a new hand naturally resets phase +
@@ -6694,20 +6713,20 @@ export const CribbageMobileGameTable = ({
                     ellipse clip aligns with the true canonical geometry
                     (no legacy giant-circle backing artifact). */}
                 <CribbageTurnSpotlight
-                  currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+                  currentTurnPlayerId={gameplayRenderState.pegging.currentTurnPlayerId}
                   currentPlayerId={currentPlayerId || ''}
-                  isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                  isVisible={gameplayRenderState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
                   totalPlayers={activeSeatPlayers.length}
                   opponentIds={projectedSeatPlayers.map(o => o.id)}
                   currentTurnPosition={
-                    viewState.pegging.currentTurnPlayerId
-                      ? activeSeatPlayers.find(p => p.id === viewState.pegging.currentTurnPlayerId)?.position ?? null
+                    gameplayRenderState.pegging.currentTurnPlayerId
+                      ? activeSeatPlayers.find(p => p.id === gameplayRenderState.pegging.currentTurnPlayerId)?.position ?? null
                       : null
                   }
                   currentPlayerPosition={currentPlayer?.position ?? null}
                   currentTurnSlot={
-                    viewState.pegging.currentTurnPlayerId
-                      ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
+                    gameplayRenderState.pegging.currentTurnPlayerId
+                      ? playerSlotById.get(gameplayRenderState.pegging.currentTurnPlayerId) ?? null
                       : null
                   }
                   shellOwned={true}
@@ -6719,7 +6738,7 @@ export const CribbageMobileGameTable = ({
 
                 {/* Felt Content */}
                 <CribbageFeltContent
-                  cribbageState={viewState}
+                  cribbageState={gameplayRenderState}
                   players={players}
                   currentPlayerId={currentPlayerId}
                   sequenceStartIndex={sequenceStartIndex}
@@ -6782,13 +6801,13 @@ export const CribbageMobileGameTable = ({
               <CribbagePegBoard
                 players={players}
                 playerStates={
-                  isGameplayMode && viewState
-                    ? viewState.playerStates
+                  isGameplayMode && gameplayRenderState
+                    ? gameplayRenderState.playerStates
                     : latchedPegboardDataRef.current.playerStates
                 }
                 winningScore={
-                  isGameplayMode && viewState
-                    ? viewState.pointsToWin
+                  isGameplayMode && gameplayRenderState
+                    ? gameplayRenderState.pointsToWin
                     : latchedPegboardDataRef.current.winningScore
                 }
                 overrideScores={countingScoreOverrides ?? undefined}
@@ -6800,9 +6819,9 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
               Wave4CribCutGroupSlot. */}
-          {!isHighCardMode && viewState && (
+          {!isHighCardMode && gameplayRenderState && (
             <CribbageAnchoredCribCutMount
-              cribbageState={viewState}
+              cribbageState={gameplayRenderState}
               cardBackColors={cardBackColors}
               handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
               terminalPath={terminalPath}
@@ -6814,9 +6833,9 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
               Wave4CribCutGroupSlot. */}
-          {!isHighCardMode && viewState && (
+          {!isHighCardMode && gameplayRenderState && (
             <CribbageAnchoredPeggingRowMount
-              cribbageState={viewState}
+              cribbageState={gameplayRenderState}
               sequenceStartIndex={sequenceStartIndex}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
@@ -6845,7 +6864,7 @@ export const CribbageMobileGameTable = ({
                 chips: seatPlayer.chips,
               }))}
             presentation={{
-              dealerPip: (p) => isGameplayMode && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === p.id,
+              dealerPip: (p) => isGameplayMode && !!gameplayRenderState?.dealerPlayerId && gameplayRenderState.dealerPlayerId === p.id,
               statusRing: (p) => {
                 if (!isGameplayMode) {
                   const seatPlayer = projectedSeatPlayers.find(sp => sp.id === p.id);
@@ -6860,8 +6879,8 @@ export const CribbageMobileGameTable = ({
               // fly is in flight (see useChipTransportSuppressedSeats).
 
               cardBacks: (p) => {
-                if (!isGameplayMode || !viewState) return null;
-                const seatState = viewState.playerStates[p.id];
+                if (!isGameplayMode || !gameplayRenderState) return null;
+                const seatState = gameplayRenderState.playerStates[p.id];
                 if (!seatState || seatState.hand.length === 0) return null;
                 const showSeatCardBacks = isObserver || p.id !== currentPlayerId;
                 return {
@@ -6981,11 +7000,7 @@ export const CribbageMobileGameTable = ({
               const authState = cribbageState;
               const authHandLen = authState?.playerStates?.[currentPlayerId]?.hand?.length ?? 0;
               const authPhase = authState?.phase;
-              const authIsPostDeal =
-                authPhase === 'discarding' ||
-                authPhase === 'cutting' ||
-                authPhase === 'pegging' ||
-                authPhase === 'counting';
+              const authIsPostDeal = isCribbagePostDealPhase(authPhase);
               const selfHealMountOk = !!(
                 !primaryMountOk &&
                 activeTab === 'cards' &&
