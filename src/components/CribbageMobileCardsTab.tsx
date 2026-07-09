@@ -746,6 +746,58 @@ export const CribbageMobileCardsTab = ({
       layoutFirstCardRect: layoutTruth?.firstCardRect ?? null,
       layoutMeasuredStageWidth: layoutTruth?.measuredStageWidth ?? null,
       layoutMeasuredStageHeight: layoutTruth?.measuredStageHeight ?? null,
+      // ── new instrumentation ──
+      resolveActiveHandLayoutReturnReason: layoutTruth?.resolveActiveHandLayoutReturnReason ?? 'unmeasured',
+      stageRefAttached: !!handStageRef.current,
+      stageRefElementTag: handStageRef.current?.tagName?.toLowerCase() ?? null,
+      stageRefElementClass: (typeof handStageRef.current?.className === 'string' ? handStageRef.current?.className : null) ?? null,
+      stageRefElementDataAttrs: handStageRef.current
+        ? Array.from(handStageRef.current.attributes)
+            .filter((a) => a.name.startsWith('data-'))
+            .map((a) => `${a.name}=${a.value}`)
+            .join(' ')
+        : null,
+      stageRefAttachmentTimestamp: stageAttachmentTimestampRef.current,
+      lastMeasureTimestamp: lastMeasureTimestampRef.current,
+      measureSource: measureSourceRef.current,
+      resizeObserverAttached: resizeObserverAttachedRef.current,
+      resizeObserverFireCount: resizeObserverFireCountRef.current,
+      lastResizeObserverRect: lastResizeObserverRectRef.current,
+      lastGetBoundingClientRect: lastGBCRRef.current,
+      parentHandStageRect: domDiagnostics.containerRect,
+      cardsTabRect: (() => {
+        const p = handStageRef.current?.parentElement?.getBoundingClientRect();
+        return p ? { x: p.x, y: p.y, width: p.width, height: p.height } : null;
+      })(),
+      activeTabAtMeasure: 'cards',
+      phaseAtMeasure: cribbageState.phase ?? null,
+      dealPhaseAtMeasure: deal?.phase ?? null,
+      didRemeasureAfterCardsArrived: didRemeasureAfterCardsArrivedRef.current,
+      didRemeasureAfterDealReady: didRemeasureAfterDealReadyRef.current,
+      fallbackCardWidthInput: layoutTruth?.fallbackCardWidthInput ?? null,
+      fallbackCardHeightInput: layoutTruth?.fallbackCardHeightInput ?? null,
+      fallbackOverlapRatio: layoutTruth?.fallbackOverlapRatio ?? null,
+      fallbackAvailableStageWidth: layoutTruth?.fallbackAvailableStageWidth ?? null,
+      fallbackAvailableStageHeight: layoutTruth?.fallbackAvailableStageHeight ?? null,
+      fallbackWidthFromStage: layoutTruth?.fallbackWidthFromStage ?? null,
+      fallbackWidthFromHeight: layoutTruth?.fallbackWidthFromHeight ?? null,
+      fallbackHeightBoundApplied: layoutTruth?.fallbackHeightBoundApplied ?? false,
+      fallbackWidthBoundApplied: layoutTruth?.fallbackWidthBoundApplied ?? false,
+      fallbackClampApplied: layoutTruth?.fallbackClampApplied ?? false,
+      fallbackFinalCardWidth: layoutTruth?.fallbackFinalCardWidth ?? null,
+      fallbackFinalCardHeight: layoutTruth?.fallbackFinalCardHeight ?? null,
+      fallbackComputedRowWidth: layoutTruth?.fallbackComputedRowWidth ?? null,
+      fallbackCardXPositions: layoutTruth?.fallbackCardXPositions ?? null,
+      fallbackRowCenterX: layoutTruth?.fallbackRowCenterX ?? null,
+      fallbackRowCenterY: layoutTruth?.fallbackRowCenterY ?? null,
+      normalPolicyExpectedCardWidth: layoutTruth?.normalPolicyExpectedCardWidth ?? null,
+      normalPolicyExpectedOverlapPx: layoutTruth?.normalPolicyExpectedOverlapPx ?? null,
+      normalPolicyExpectedOverlapRatio: layoutTruth?.normalPolicyExpectedOverlapRatio ?? null,
+      renderCardCalledCountCurrentRender: renderCountersRef.current.called,
+      renderedCardComponentCountCurrentRender: renderCountersRef.current.rendered,
+      renderCardInvokedIdsCurrentRender: [...renderCountersRef.current.ids],
+      cumulativeRenderCardCalledCount: cumulativeCountersRef.current.called,
+      cumulativeRenderedCardComponentCount: cumulativeCountersRef.current.rendered,
     });
   }, [
     onTruthSnapshot,
@@ -769,7 +821,10 @@ export const CribbageMobileCardsTab = ({
     renderedCardIds,
     domDiagnostics,
     layoutTruth,
+    instrTick,
+    cribbageState.phase,
   ]);
+
 
   // Phase-capacity sizing contract:
   //   - Pre-discard: 6 cards in hand (max the phase will ever hold).
