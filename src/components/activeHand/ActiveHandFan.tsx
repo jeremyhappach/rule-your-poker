@@ -164,6 +164,7 @@ export function ActiveHandFan({
   dataAttribute,
   activeHandFanRenderKey,
   cardIds,
+  onLayoutTruth,
 }: ActiveHandFanProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const firstSettledRecordedRef = useRef<Set<string>>(new Set());
