@@ -113,6 +113,27 @@ export interface ActiveHandFanProps {
   activeHandFanRenderKey?: string | null;
   /** Trace-only card ids matching `cards` order after transport ownership claim. */
   cardIds?: string[];
+  /**
+   * Optional layout-truth reporter — receives one snapshot per render
+   * describing whether the null-layout fallback was used, the resolved
+   * card width, the container/first-card rects, and the source stage.
+   * Used by CribbageMobileGameTable's Render Truth Pill.
+   */
+  onLayoutTruth?: (info: ActiveHandFanLayoutTruth) => void;
+}
+
+export interface ActiveHandFanLayoutTruth {
+  wasFallback: boolean;
+  fallbackReason: string | null;
+  normalLayoutAvailable: boolean;
+  cardWidthPx: number;
+  cardHeightPx: number;
+  measuredStageWidth: number | null;
+  measuredStageHeight: number | null;
+  containerRect: { x: number; y: number; width: number; height: number } | null;
+  firstCardRect: { x: number; y: number; width: number; height: number } | null;
+  anchorX: number | null;
+  anchorY: number | null;
 }
 
 /**
