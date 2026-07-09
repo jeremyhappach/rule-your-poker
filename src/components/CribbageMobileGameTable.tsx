@@ -786,60 +786,7 @@ export const CribbageMobileGameTable = ({
     winningScore: number;
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cardsTabTruth, setCardsTabTruth] = useState<CribbageCardsTabTruthSnapshot | null>(null);
-  const [dealOrchestratorTruth, setDealOrchestratorTruth] = useState({
-    orchestratorMounted: false,
-    beginDealCalled: false,
-    dispatchManyCalled: false,
-  });
-  
-  // ── Phase 2: framework-owned authoritative identity ─────────────
-  // Subscribes to `rounds` filtered by `dealer_game_id`, so the client observes
-  // INSERT/UPDATE for NEW rounds without re-keying any round-id-scoped channel.
-  // This eliminates the stale-identity blind window: when a peer client advances
-  // the hand, we learn about the new round id synchronously rather than waiting
-  // for the parent prop to lag-catch up.
-  const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
 
-  // Local tracking of current round for proper hand transitions.
-  // Forward-only — never regress, even if a prop or identity feed momentarily lags.
-  const [currentRoundId, setCurrentRoundId] = useState(roundId);
-  const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
-  const roundBoundaryGuardKey = useMemo(
-    () => buildBoundaryGuardKey(dealerGameId, currentRoundId, currentHandNumber),
-    [dealerGameId, currentRoundId, currentHandNumber],
-  );
-
-  useEffect(() => {
-    setCardsTabTruth(null);
-    setDealOrchestratorTruth({
-      orchestratorMounted: false,
-      beginDealCalled: false,
-      dispatchManyCalled: false,
-    });
-  }, [currentRoundId, currentHandNumber]);
-
-  const handleCardsTabTruthSnapshot = useCallback((snapshot: CribbageCardsTabTruthSnapshot) => {
-    setCardsTabTruth((prev) => {
-      if (prev && JSON.stringify(prev) === JSON.stringify(snapshot)) return prev;
-      return snapshot;
-    });
-  }, []);
-
-  const handleDealOrchestratorLifecycle = useCallback((event: 'mounted' | 'unmounted' | 'beginDealCalled' | 'dispatchManyCalled') => {
-    setDealOrchestratorTruth((prev) => {
-      const next = {
-        orchestratorMounted: event === 'mounted' ? true : event === 'unmounted' ? false : prev.orchestratorMounted,
-        beginDealCalled: event === 'beginDealCalled' ? true : prev.beginDealCalled,
-        dispatchManyCalled: event === 'dispatchManyCalled' ? true : prev.dispatchManyCalled,
-      };
-      return next.orchestratorMounted === prev.orchestratorMounted &&
-        next.beginDealCalled === prev.beginDealCalled &&
-        next.dispatchManyCalled === prev.dispatchManyCalled
-        ? prev
-        : next;
-    });
-  }, []);
 
   // Forward-only merge of (a) parent props and (b) authoritative-identity feed.
   //
