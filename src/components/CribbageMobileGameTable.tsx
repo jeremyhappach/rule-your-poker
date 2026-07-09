@@ -504,7 +504,7 @@ function DealClippedOpponentSeatLayer(props: {
         // DEALING. If the transport runtime has no active intents left but
         // never promoted to READY/GAMEPLAY, do not let stale clipping hide all
         // opponent card backs indefinitely; authoritative hand count wins.
-        if (deal.expectedCount > 0 && deal.activeIntentsForHand === 0 && deal.settledCardIds.size > 0) {
+        if (deal.expectedCount > 0 && deal.activeIntentsForHand === 0) {
           return baseBacks;
         }
         const allowed = deal.getSettledCountForPlayer(p.id);
