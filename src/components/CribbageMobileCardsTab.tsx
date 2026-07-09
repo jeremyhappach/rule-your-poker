@@ -112,7 +112,54 @@ export interface CribbageCardsTabTruthSnapshot {
   layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
   layoutMeasuredStageWidth: number | null;
   layoutMeasuredStageHeight: number | null;
+  // ── layout availability instrumentation ──
+  resolveActiveHandLayoutReturnReason: string;
+  stageRefAttached: boolean;
+  stageRefElementTag: string | null;
+  stageRefElementClass: string | null;
+  stageRefElementDataAttrs: string | null;
+  stageRefAttachmentTimestamp: number | null;
+  lastMeasureTimestamp: number | null;
+  measureSource: string;
+  resizeObserverAttached: boolean;
+  resizeObserverFireCount: number;
+  lastResizeObserverRect: { width: number; height: number } | null;
+  lastGetBoundingClientRect: { width: number; height: number } | null;
+  parentHandStageRect: { x: number; y: number; width: number; height: number } | null;
+  cardsTabRect: { x: number; y: number; width: number; height: number } | null;
+  activeTabAtMeasure: string | null;
+  phaseAtMeasure: string | null;
+  dealPhaseAtMeasure: string | null;
+  didRemeasureAfterCardsArrived: boolean;
+  didRemeasureAfterDealReady: boolean;
+  // ── fallback geometry inputs ──
+  fallbackCardWidthInput: number | null;
+  fallbackCardHeightInput: number | null;
+  fallbackOverlapRatio: number | null;
+  fallbackAvailableStageWidth: number | null;
+  fallbackAvailableStageHeight: number | null;
+  fallbackWidthFromStage: number | null;
+  fallbackWidthFromHeight: number | null;
+  fallbackHeightBoundApplied: boolean;
+  fallbackWidthBoundApplied: boolean;
+  fallbackClampApplied: boolean;
+  fallbackFinalCardWidth: number | null;
+  fallbackFinalCardHeight: number | null;
+  fallbackComputedRowWidth: number | null;
+  fallbackCardXPositions: number[] | null;
+  fallbackRowCenterX: number | null;
+  fallbackRowCenterY: number | null;
+  normalPolicyExpectedCardWidth: number | null;
+  normalPolicyExpectedOverlapPx: number | null;
+  normalPolicyExpectedOverlapRatio: number | null;
+  // ── counter correctness (per-render vs. cumulative) ──
+  renderCardCalledCountCurrentRender: number;
+  renderedCardComponentCountCurrentRender: number;
+  renderCardInvokedIdsCurrentRender: string[];
+  cumulativeRenderCardCalledCount: number;
+  cumulativeRenderedCardComponentCount: number;
 }
+
 
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
