@@ -6044,15 +6044,12 @@ export const CribbageMobileGameTable = ({
     ? (primaryMountOk ? 'viewState' : 'authoritative')
     : 'not-mounted';
   const parentVisibleCardCount = cardsTabTruth?.visibleDomCardNodeCount ?? 0;
-  const showCribbageRenderTruthPanel = !!(
-    activeTab === 'cards' &&
-    parentVisibleCardCount === 0 &&
-    (
-      authoritativeLocalHandCount > 0 ||
-      isCribbagePostDealPhase(cribbageState?.phase) ||
-      isCribbagePostDealPhase(viewState?.phase)
-    )
-  );
+  // Panel is intentionally kept mounted whenever the cards tab is active,
+  // regardless of whether cards are currently visible. Jeremy owns
+  // acceptance; do not auto-hide the diagnostics on first successful
+  // render — the panel is our only channel for post-fix regressions
+  // (e.g. wrong-position fallback layout).
+  const showCribbageRenderTruthPanel = activeTab === 'cards';
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
