@@ -29,6 +29,28 @@ export function CribbageRenderTruthPill({ fields, alert }: Props) {
       })
       .join('\n');
 
+  const buildExportFilename = () => {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    return `cribbage-render-truth-${ts}.txt`;
+  };
+
+  const handleExportTxt = () => {
+    try {
+      const blob = new Blob([formatText()], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = buildExportFilename();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Truth panel exported');
+    } catch {
+      toast.error('Export failed');
+    }
+  };
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(formatText());
@@ -51,31 +73,61 @@ export function CribbageRenderTruthPill({ fields, alert }: Props) {
 
   if (!open) {
     return (
-      <button
-        type="button"
+      <div
         data-cribbage-render-truth-pill="collapsed"
-        onClick={() => setOpen(true)}
         style={{
           position: 'fixed',
           left: 6,
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)',
           zIndex: 2147483646,
           pointerEvents: 'auto',
-          padding: '4px 8px',
-          fontSize: 10,
-          lineHeight: 1.2,
-          borderRadius: 9999,
-          border: `1px solid ${alert ? 'hsl(var(--destructive))' : 'hsl(var(--border))'}`,
-          background: alert ? 'hsl(var(--destructive) / 0.9)' : 'hsl(var(--background) / 0.9)',
-          color: alert ? 'hsl(var(--destructive-foreground))' : 'hsl(var(--foreground))',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
           fontFamily: 'monospace',
-          fontWeight: alert ? 700 : 500,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(4px)',
         }}
       >
-        {alert ? '⚠ RENDER≠DOM' : 'Render truth'}
-      </button>
+        <button
+          type="button"
+          data-cribbage-render-truth-open=""
+          onClick={() => setOpen(true)}
+          style={{
+            padding: '4px 8px',
+            fontSize: 10,
+            lineHeight: 1.2,
+            borderRadius: 9999,
+            border: `1px solid ${alert ? 'hsl(var(--destructive))' : 'hsl(var(--border))'}`,
+            background: alert ? 'hsl(var(--destructive) / 0.9)' : 'hsl(var(--background) / 0.9)',
+            color: alert ? 'hsl(var(--destructive-foreground))' : 'hsl(var(--foreground))',
+            fontFamily: 'monospace',
+            fontWeight: alert ? 700 : 500,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {alert ? '⚠ RENDER≠DOM' : 'Render truth'}
+        </button>
+        <button
+          type="button"
+          data-cribbage-render-truth-export=""
+          onClick={handleExportTxt}
+          style={{
+            padding: '4px 8px',
+            fontSize: 10,
+            lineHeight: 1.2,
+            borderRadius: 9999,
+            border: '1px solid hsl(var(--border))',
+            background: 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
+            fontFamily: 'monospace',
+            fontWeight: 700,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          Export TXT
+        </button>
+      </div>
     );
   }
 
@@ -108,6 +160,22 @@ export function CribbageRenderTruthPill({ fields, alert }: Props) {
         <strong style={{ color: alert ? 'hsl(var(--destructive))' : undefined, flex: 1 }}>
           Cribbage render truth {alert && '⚠'}
         </strong>
+        <button
+          type="button"
+          onClick={handleExportTxt}
+          style={{
+            fontSize: 10,
+            padding: '2px 8px',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 4,
+            background: 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          Export TXT
+        </button>
         <button
           type="button"
           onClick={handleCopy}
