@@ -81,6 +81,22 @@ export interface CribbageCardsTabTruthSnapshot {
   runtimeKey: string | null;
   handContextId: string | null;
   graceExpired: boolean;
+  // ── P0 render-pipeline instrumentation (read-only) ──
+  cardsArrayPassedToFanCount: number;
+  activeHandFanReceivedCardsCount: number;
+  renderCardCalledCount: number;
+  renderedCardComponentCount: number;
+  sourceCardIds: string[];
+  renderedCardIds: string[];
+  domCardIds: string[];
+  activeHandFanMounted: boolean;
+  containerExists: boolean;
+  containerRect: { x: number; y: number; width: number; height: number } | null;
+  containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
+  firstCardRect: { x: number; y: number; width: number; height: number } | null;
+  firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
+  overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
+  finalRenderedCountButNoDom: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -415,6 +431,37 @@ export const CribbageMobileCardsTab = ({
   const handStageRef = useRef<HTMLDivElement | null>(null);
   const [visibleDomCardNodeCount, setVisibleDomCardNodeCount] = useState(0);
   const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
+  const [domDiagnostics, setDomDiagnostics] = useState<{
+    domCardIds: string[];
+    containerExists: boolean;
+    containerRect: { x: number; y: number; width: number; height: number } | null;
+    containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
+    firstCardRect: { x: number; y: number; width: number; height: number } | null;
+    firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
+    overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
+    activeHandFanMounted: boolean;
+  }>({
+    domCardIds: [],
+    containerExists: false,
+    containerRect: null,
+    containerComputed: null,
+    firstCardRect: null,
+    firstCardComputed: null,
+    overlayCovererAtCenter: null,
+    activeHandFanMounted: false,
+  });
+
+  // renderCard invocation counters — reset per render token
+  const renderTokenRef = useRef<string>('');
+  const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
+    called: 0, rendered: 0, ids: [],
+  });
+  const currentRenderToken = `${renderTrace?.currentHandKey ?? 'nokey'}|${renderedFingerprint}`;
+  if (renderTokenRef.current !== currentRenderToken) {
+    renderTokenRef.current = currentRenderToken;
+    renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
+  }
+
   useLayoutEffect(() => {
     const stage = handStageRef.current;
     if (!stage) return;
@@ -439,12 +486,81 @@ export const CribbageMobileCardsTab = ({
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
-    const count = stage?.querySelectorAll('[data-cribbage-visible-card-node="true"]').length ?? 0;
+    const nodes = stage
+      ? Array.from(stage.querySelectorAll<HTMLElement>('[data-cribbage-visible-card-node="true"]'))
+      : [];
+    const count = nodes.length;
     setVisibleDomCardNodeCount((prev) => (prev === count ? prev : count));
-  }, [renderedHand.length, visibleHandDecision.decision, activeHandBlocked, shouldSelfHeal]);
+
+    const domCardIds = nodes.map((n) => n.getAttribute('data-card-id') ?? '');
+    let containerRect: { x: number; y: number; width: number; height: number } | null = null;
+    let containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null = null;
+    let firstCardRect: { x: number; y: number; width: number; height: number } | null = null;
+    let firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null = null;
+    let overlayCovererAtCenter: { tag: string; className: string; id: string } | null = null;
+    let activeHandFanMounted = false;
+    if (stage) {
+      const r = stage.getBoundingClientRect();
+      containerRect = { x: r.x, y: r.y, width: r.width, height: r.height };
+      const cs = getComputedStyle(stage);
+      containerComputed = {
+        display: cs.display,
+        visibility: cs.visibility,
+        opacity: cs.opacity,
+        overflow: cs.overflow,
+        zIndex: cs.zIndex,
+      };
+      activeHandFanMounted = !!stage.querySelector('[data-active-hand-fan],[data-activehandfan],[data-hand-fan]')
+        || (stage.children.length > 0);
+      if (nodes[0]) {
+        const first = nodes[0];
+        const fr = first.getBoundingClientRect();
+        firstCardRect = { x: fr.x, y: fr.y, width: fr.width, height: fr.height };
+        const fcs = getComputedStyle(first);
+        firstCardComputed = {
+          display: fcs.display,
+          visibility: fcs.visibility,
+          opacity: fcs.opacity,
+          transform: fcs.transform,
+        };
+        const cx = fr.x + fr.width / 2;
+        const cy = fr.y + fr.height / 2;
+        const el = document.elementFromPoint(cx, cy) as HTMLElement | null;
+        if (el && !first.contains(el) && el !== first) {
+          overlayCovererAtCenter = {
+            tag: el.tagName.toLowerCase(),
+            className: typeof el.className === 'string' ? el.className : String(el.className ?? ''),
+            id: el.id ?? '',
+          };
+        }
+      } else if (containerRect) {
+        const cx = containerRect.x + containerRect.width / 2;
+        const cy = containerRect.y + containerRect.height / 2;
+        const el = document.elementFromPoint(cx, cy) as HTMLElement | null;
+        if (el && el !== stage) {
+          overlayCovererAtCenter = {
+            tag: el.tagName.toLowerCase(),
+            className: typeof el.className === 'string' ? el.className : String(el.className ?? ''),
+            id: el.id ?? '',
+          };
+        }
+      }
+    }
+    setDomDiagnostics({
+      domCardIds,
+      containerExists: !!stage,
+      containerRect,
+      containerComputed,
+      firstCardRect,
+      firstCardComputed,
+      overlayCovererAtCenter,
+      activeHandFanMounted,
+    });
+  }, [renderedHand.length, visibleHandDecision.decision, activeHandBlocked, shouldSelfHeal, renderedFingerprint]);
 
   useEffect(() => {
     if (!onTruthSnapshot) return;
+    const finalRenderedCountButNoDom = renderedCount > 0 && visibleDomCardNodeCount === 0;
     onTruthSnapshot({
       authoritativeHandCount: authCount,
       sourceHandCount: presentationCount,
@@ -462,6 +578,21 @@ export const CribbageMobileCardsTab = ({
       runtimeKey: deal?.handContextId ?? null,
       handContextId: deal?.handContextId ?? null,
       graceExpired,
+      cardsArrayPassedToFanCount: renderedHand.length,
+      activeHandFanReceivedCardsCount: renderedHand.length,
+      renderCardCalledCount: renderCountersRef.current.called,
+      renderedCardComponentCount: renderCountersRef.current.rendered,
+      sourceCardIds,
+      renderedCardIds,
+      domCardIds: domDiagnostics.domCardIds,
+      activeHandFanMounted: domDiagnostics.activeHandFanMounted,
+      containerExists: domDiagnostics.containerExists,
+      containerRect: domDiagnostics.containerRect,
+      containerComputed: domDiagnostics.containerComputed,
+      firstCardRect: domDiagnostics.firstCardRect,
+      firstCardComputed: domDiagnostics.firstCardComputed,
+      overlayCovererAtCenter: domDiagnostics.overlayCovererAtCenter,
+      finalRenderedCountButNoDom,
     });
   }, [
     onTruthSnapshot,
@@ -480,6 +611,10 @@ export const CribbageMobileCardsTab = ({
     deal?.handContextId,
     settledCount,
     graceExpired,
+    renderedHand.length,
+    sourceCardIds,
+    renderedCardIds,
+    domDiagnostics,
   ]);
 
   // Phase-capacity sizing contract:
@@ -591,7 +726,11 @@ export const CribbageMobileCardsTab = ({
           applyFan
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
+            renderCountersRef.current.called += 1;
             if (!card) return null;
+            const cid = cardId(card);
+            renderCountersRef.current.rendered += 1;
+            renderCountersRef.current.ids.push(cid);
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
@@ -599,6 +738,7 @@ export const CribbageMobileCardsTab = ({
             return (
               <button
                 data-cribbage-visible-card-node="true"
+                data-card-id={cid}
                 onClick={() => handleCardClick(index)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}

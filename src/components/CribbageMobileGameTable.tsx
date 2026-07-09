@@ -23,6 +23,7 @@ import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab, type CribbageCardsTabTruthSnapshot } from './CribbageMobileCardsTab';
+import { CribbageRenderTruthPill } from './CribbageRenderTruthPill';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
@@ -7126,57 +7127,87 @@ export const CribbageMobileGameTable = ({
             })()}
 
             {showCribbageRenderTruthPanel && (
-              <div
-                data-cribbage-render-truth-panel="true"
-                className="fixed left-1 bottom-16 z-[2147483646] max-h-[70vh] max-w-[calc(100vw-0.5rem)] overflow-auto rounded-md border border-destructive/60 bg-background/95 p-2 text-[9px] leading-tight text-foreground shadow-xl"
-              >
-                <div className="mb-1 font-bold text-destructive">Cribbage render truth</div>
-                <pre className="whitespace-pre-wrap font-mono">
-{[
-  `Parent`,
-  `gameId=${gameId}`,
-  `dealerGameId=${dealerGameId ?? 'null'}`,
-  `roundId=${currentRoundId ?? 'null'}`,
-  `handNumber=${currentHandNumber}`,
-  `cribbagePhase=${cribbageState?.phase ?? 'null'}`,
-  `round/sessionStatus=round:${currentRoundId ? 'loaded' : 'missing'} session:${isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other'}`,
-  `localPlayerId=${fallbackLocalPlayerId ?? 'null'}`,
-  `activeTab=${activeTab}`,
-  `isGameplayMode=${isGameplayMode}`,
-  `primaryMountOk=${primaryMountOk}`,
-  `selfHealMountOk=${selfHealMountOk}`,
-  `parentAuthoritativeGameplayFallback=${parentAuthoritativeGameplayFallback}`,
-  `highCard/bootstrap/initialLoadComplete=${isHighCardMode}/${isBootstrapMode}/${initialLoadComplete}`,
-  `viewStatePresent=${!!viewState}`,
-  `viewStatePhase=${viewState?.phase ?? 'null'}`,
-  `viewStateLocalHandCount=${viewStateLocalHandCount}`,
-  `authoritativeLocalHandCount=${authoritativeLocalHandCount}`,
-  `authoritativeOpponentHandCount=${authoritativeOpponentHandCount}`,
-  `cardsTabMounted=${cardsTabMounted}`,
-  `statePassedToCardsTab=${cardsTabStateSource}`,
-  `Child`,
-  `authoritativeHandCount=${cardsTabTruth?.authoritativeHandCount ?? 'unmounted'}`,
-  `sourcePresentationHandCount=${cardsTabTruth?.sourceHandCount ?? 'unmounted'}`,
-  `clippedHandCount=${cardsTabTruth?.clippedHandCount ?? 'unmounted'}`,
-  `finalRenderedHandCount=${cardsTabTruth?.finalRenderedHandCount ?? 'unmounted'}`,
-  `activeHandBlocked=${cardsTabTruth?.activeHandBlocked ?? 'unmounted'}`,
-  `shouldSelfHeal=${cardsTabTruth?.shouldSelfHeal ?? 'unmounted'}`,
-  `resolveReason=${cardsTabTruth?.resolveReason ?? 'unmounted'}`,
-  `resolveDecision=${cardsTabTruth?.resolveDecision ?? 'unmounted'}`,
-  `visibleDomCardNodeCount=${cardsTabTruth?.visibleDomCardNodeCount ?? 0}`,
-  `Transport`,
-  `deal.phase=${cardsTabTruth?.dealPhase ?? 'null'}`,
-  `deal.expectedCount=${cardsTabTruth?.dealExpectedCount ?? 0}`,
-  `activeIntentsForHand=${cardsTabTruth?.activeIntentsForHand ?? 0}`,
-  `settledCount=${cardsTabTruth?.settledCount ?? 0}`,
-  `runtimeKey=${cardsTabTruth?.runtimeKey ?? 'null'}`,
-  `handContextId=${cardsTabTruth?.handContextId ?? currentHandKey ?? 'null'}`,
-  `orchestratorMounted=${dealOrchestratorTruth.orchestratorMounted}`,
-  `beginDealCalled=${dealOrchestratorTruth.beginDealCalled}`,
-  `dispatchManyCalled=${dealOrchestratorTruth.dispatchManyCalled}`,
-].join('\n')}
-                </pre>
-              </div>
+              <CribbageRenderTruthPill
+                fields={{
+                  ts: new Date().toISOString(),
+                  Parent: '',
+                  gameId,
+                  dealerGameId: dealerGameId ?? 'null',
+                  roundId: currentRoundId ?? 'null',
+                  handNumber: currentHandNumber,
+                  cribbagePhase: cribbageState?.phase ?? 'null',
+                  sessionStatus: `round:${currentRoundId ? 'loaded' : 'missing'} session:${isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other'}`,
+                  localPlayerId: fallbackLocalPlayerId ?? 'null',
+                  currentPlayerId,
+                  activePlayerSource: primaryMountOk ? 'viewState' : (selfHealMountOk ? 'authoritative-fallback' : 'unknown'),
+                  activeTab,
+                  isGameplayMode,
+                  primaryMountOk,
+                  selfHealMountOk,
+                  parentAuthoritativeGameplayFallback,
+                  highCardMode: isHighCardMode,
+                  bootstrapMode: isBootstrapMode,
+                  initialLoadComplete,
+                  viewStatePresent: !!viewState,
+                  viewStatePhase: viewState?.phase ?? 'null',
+                  viewStateLocalHandCount,
+                  authoritativeLocalHandCount,
+                  authoritativeOpponentHandCount,
+                  cardsTabMounted,
+                  statePassedToCardsTab: cardsTabStateSource,
+                  renderHandKey,
+                  currentHandKey,
+                  Child: '',
+                  authoritativeHandCount: cardsTabTruth?.authoritativeHandCount ?? 'unmounted',
+                  sourcePresentationHandCount: cardsTabTruth?.sourceHandCount ?? 'unmounted',
+                  clippedHandCount: cardsTabTruth?.clippedHandCount ?? 'unmounted',
+                  finalRenderedHandCount: cardsTabTruth?.finalRenderedHandCount ?? 'unmounted',
+                  cardsArrayPassedToFanCount: cardsTabTruth?.cardsArrayPassedToFanCount ?? 'unmounted',
+                  activeHandFanReceivedCardsCount: cardsTabTruth?.activeHandFanReceivedCardsCount ?? 'unmounted',
+                  renderCardCalledCount: cardsTabTruth?.renderCardCalledCount ?? 'unmounted',
+                  renderedCardComponentCount: cardsTabTruth?.renderedCardComponentCount ?? 'unmounted',
+                  visibleDomCardNodeCount: cardsTabTruth?.visibleDomCardNodeCount ?? 0,
+                  activeHandBlocked: cardsTabTruth?.activeHandBlocked ?? 'unmounted',
+                  shouldSelfHeal: cardsTabTruth?.shouldSelfHeal ?? 'unmounted',
+                  resolveReason: cardsTabTruth?.resolveReason ?? 'unmounted',
+                  resolveDecision: cardsTabTruth?.resolveDecision ?? 'unmounted',
+                  sourceCardIds: (cardsTabTruth?.sourceCardIds ?? []).join(','),
+                  renderedCardIds: (cardsTabTruth?.renderedCardIds ?? []).join(','),
+                  domCardIds: (cardsTabTruth?.domCardIds ?? []).join(','),
+                  DOM: '',
+                  activeHandFanMounted: cardsTabTruth?.activeHandFanMounted ?? 'unmounted',
+                  containerExists: cardsTabTruth?.containerExists ?? 'unmounted',
+                  containerRect: cardsTabTruth?.containerRect
+                    ? `${Math.round(cardsTabTruth.containerRect.x)},${Math.round(cardsTabTruth.containerRect.y)} ${Math.round(cardsTabTruth.containerRect.width)}x${Math.round(cardsTabTruth.containerRect.height)}`
+                    : 'null',
+                  containerComputed: cardsTabTruth?.containerComputed
+                    ? `display=${cardsTabTruth.containerComputed.display} vis=${cardsTabTruth.containerComputed.visibility} op=${cardsTabTruth.containerComputed.opacity} ovf=${cardsTabTruth.containerComputed.overflow} z=${cardsTabTruth.containerComputed.zIndex}`
+                    : 'null',
+                  firstCardRect: cardsTabTruth?.firstCardRect
+                    ? `${Math.round(cardsTabTruth.firstCardRect.x)},${Math.round(cardsTabTruth.firstCardRect.y)} ${Math.round(cardsTabTruth.firstCardRect.width)}x${Math.round(cardsTabTruth.firstCardRect.height)}`
+                    : 'null',
+                  firstCardComputed: cardsTabTruth?.firstCardComputed
+                    ? `display=${cardsTabTruth.firstCardComputed.display} vis=${cardsTabTruth.firstCardComputed.visibility} op=${cardsTabTruth.firstCardComputed.opacity} tf=${cardsTabTruth.firstCardComputed.transform}`
+                    : 'null',
+                  overlayCovererAtCenter: cardsTabTruth?.overlayCovererAtCenter
+                    ? `${cardsTabTruth.overlayCovererAtCenter.tag}#${cardsTabTruth.overlayCovererAtCenter.id}.${cardsTabTruth.overlayCovererAtCenter.className}`
+                    : 'none',
+                  Transport: '',
+                  'deal.phase': cardsTabTruth?.dealPhase ?? 'null',
+                  'deal.expectedCount': cardsTabTruth?.dealExpectedCount ?? 0,
+                  activeIntentsForHand: cardsTabTruth?.activeIntentsForHand ?? 0,
+                  settledCount: cardsTabTruth?.settledCount ?? 0,
+                  transportLayerMounted: cardsTabTruth?.dealPhase != null,
+                  transportInFlightCount: cardsTabTruth?.activeIntentsForHand ?? 0,
+                  runtimeKey: cardsTabTruth?.runtimeKey ?? 'null',
+                  handContextId: cardsTabTruth?.handContextId ?? currentHandKey ?? 'null',
+                  orchestratorMounted: dealOrchestratorTruth.orchestratorMounted,
+                  beginDealCalled: dealOrchestratorTruth.beginDealCalled,
+                  dispatchManyCalled: dealOrchestratorTruth.dispatchManyCalled,
+                  finalRenderedCountButNoDom: cardsTabTruth?.finalRenderedCountButNoDom ?? false,
+                }}
+                alert={!!cardsTabTruth?.finalRenderedCountButNoDom}
+              />
             )}
 
             {/* Counting animation placeholder */}
