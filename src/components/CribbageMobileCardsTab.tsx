@@ -538,9 +538,8 @@ export const CribbageMobileCardsTab = ({
 
             return (
               <button
-                data-cribbage-visible-card-node="true"
-                data-card-id={cid}
                 onClick={() => handleCardClick(index)}
+
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
                 className={cn(
