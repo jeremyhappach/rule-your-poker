@@ -127,20 +127,70 @@ export const CribbageMobileCardsTab = ({
   // each transport arrives. PRE_DEAL → 0. READY/GAMEPLAY / no runtime
   // → full hand (legacy path).
   const deal = useDealRuntime();
-  const dealClippedSourceHand = (() => {
-    if (activeHandBlocked) return [];
+  const authoritativeHand = renderTrace?.authoritativeHand ?? null;
+  const isPostDealPhase =
+    cribbageState.phase === 'discarding' ||
+    cribbageState.phase === 'cutting' ||
+    cribbageState.phase === 'pegging' ||
+    cribbageState.phase === 'counting';
+  const clippedHand = (() => {
+    if (activeHandBlocked) return [] as CribbageCard[];
     if (!deal) return sourceHand;
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return sourceHand;
-    if (deal.phase === 'PRE_DEAL') return [];
+    if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
     const allowed = deal.getSettledCountForPlayer(currentPlayerId);
     return sourceHand.slice(0, allowed);
   })();
+  // P0 SELF-HEAL: If clipped presentation hand is empty but the authoritative
+  // hand exists and we are past the dealing phase, render authoritative. This
+  // guarantees the invariant "authoritative non-empty ⇒ visible cards" even
+  // when identity-mismatch, stuck deal-runtime PRE_DEAL, unsettled transports,
+  // or stale presentation would otherwise leave the player with zero cards.
+  const shouldSelfHeal =
+    clippedHand.length === 0 &&
+    !!authoritativeHand &&
+    authoritativeHand.length > 0 &&
+    isPostDealPhase;
+  const dealClippedSourceHand: CribbageCard[] = shouldSelfHeal
+    ? (authoritativeHand as CribbageCard[])
+    : clippedHand;
   const renderedHand = dealClippedSourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
   const sourceFingerprint = sourceCardIds.join(',');
   const renderedFingerprint = renderedCardIds.join(',');
-  const activeHandSourceName = 'cribbageState.playerStates[currentPlayerId].hand';
+  const activeHandSourceName = shouldSelfHeal
+    ? 'renderTrace.authoritativeHand (self-heal)'
+    : 'cribbageState.playerStates[currentPlayerId].hand';
+
+  // Record every render decision for P0 invariant ledger. Bounded, in-memory.
+  const authCount = authoritativeHand?.length ?? 0;
+  const presentationCount = sourceHand.length;
+  const renderedCount = renderedHand.length;
+  const decisionKind = (() => {
+    if (shouldSelfHeal) return 'self-heal-fallback-to-authoritative' as const;
+    if (activeHandBlocked) return 'render-empty-blocked' as const;
+    if (deal?.phase === 'PRE_DEAL') return 'render-empty-pre-deal' as const;
+    if (clippedHand.length > 0 && clippedHand.length < sourceHand.length) return 'render-clipped-partial' as const;
+    if (renderedCount > 0) return 'render-presentation' as const;
+    return 'render-empty-blocked' as const;
+  })();
+  recordCribbageHandRenderDecision({
+    clientId,
+    gameId,
+    handNumber: renderTrace?.handNumber ?? null,
+    phase: cribbageState.phase,
+    decision: decisionKind,
+    authoritativeHandCount: authCount,
+    presentationHandCount: presentationCount,
+    renderedHandCount: renderedCount,
+    activeHandBlocked,
+    dealPhase: deal?.phase ?? null,
+    identityMismatch: roundIdentityMismatch || handIdentityMismatch,
+    reason: shouldSelfHeal
+      ? 'authoritative non-empty; clipped empty; post-deal phase'
+      : decisionKind,
+  });
 
   const prevRenderSourceFingerprintRef = useRef<string>('');
   const prevBlockedFingerprintRef = useRef<string>('');
