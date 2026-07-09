@@ -113,54 +113,8 @@ export interface ActiveHandFanProps {
   activeHandFanRenderKey?: string | null;
   /** Trace-only card ids matching `cards` order after transport ownership claim. */
   cardIds?: string[];
-  /**
-   * Optional layout-truth reporter — receives one snapshot per render
-   * describing whether the null-layout fallback was used, the resolved
-   * card width, the container/first-card rects, and the source stage.
-   * Used by CribbageMobileGameTable's Render Truth Pill.
-   */
-  onLayoutTruth?: (info: ActiveHandFanLayoutTruth) => void;
 }
 
-export interface ActiveHandFanLayoutTruth {
-  wasFallback: boolean;
-  fallbackReason: string | null;
-  normalLayoutAvailable: boolean;
-  cardWidthPx: number;
-  cardHeightPx: number;
-  measuredStageWidth: number | null;
-  measuredStageHeight: number | null;
-  containerRect: { x: number; y: number; width: number; height: number } | null;
-  firstCardRect: { x: number; y: number; width: number; height: number } | null;
-  anchorX: number | null;
-  anchorY: number | null;
-  // ── resolver return reason (heuristic) ──
-  resolveActiveHandLayoutReturnReason: 'ok' | 'no-stage-rect' | 'zero-stage-rect' | 'resolver-null';
-  // ── fallback geometry inputs (populated only when wasFallback=true) ──
-  fallbackCardWidthInput: number | null;
-  fallbackCardHeightInput: number | null;
-  fallbackOverlapRatio: number | null;
-  fallbackAvailableStageWidth: number | null;
-  fallbackAvailableStageHeight: number | null;
-  fallbackWidthFromStage: number | null;
-  fallbackWidthFromHeight: number | null;
-  fallbackHeightBoundApplied: boolean;
-  fallbackWidthBoundApplied: boolean;
-  fallbackClampApplied: boolean;
-  fallbackFinalCardWidth: number | null;
-  fallbackFinalCardHeight: number | null;
-  fallbackComputedRowWidth: number | null;
-  fallbackCardXPositions: number[] | null;
-  fallbackRowCenterX: number | null;
-  fallbackRowCenterY: number | null;
-  // ── normal-path expected sizing (populated when wasFallback=false) ──
-  normalPolicyExpectedCardWidth: number | null;
-  normalPolicyExpectedOverlapPx: number | null;
-  normalPolicyExpectedOverlapRatio: number | null;
-  // ── measurement / cards state at report time ──
-  cardsLength: number;
-  reportTimestamp: number;
-}
 
 
 /**
