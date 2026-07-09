@@ -134,7 +134,34 @@ export interface ActiveHandFanLayoutTruth {
   firstCardRect: { x: number; y: number; width: number; height: number } | null;
   anchorX: number | null;
   anchorY: number | null;
+  // ── resolver return reason (heuristic) ──
+  resolveActiveHandLayoutReturnReason: 'ok' | 'no-stage-rect' | 'zero-stage-rect' | 'resolver-null';
+  // ── fallback geometry inputs (populated only when wasFallback=true) ──
+  fallbackCardWidthInput: number | null;
+  fallbackCardHeightInput: number | null;
+  fallbackOverlapRatio: number | null;
+  fallbackAvailableStageWidth: number | null;
+  fallbackAvailableStageHeight: number | null;
+  fallbackWidthFromStage: number | null;
+  fallbackWidthFromHeight: number | null;
+  fallbackHeightBoundApplied: boolean;
+  fallbackWidthBoundApplied: boolean;
+  fallbackClampApplied: boolean;
+  fallbackFinalCardWidth: number | null;
+  fallbackFinalCardHeight: number | null;
+  fallbackComputedRowWidth: number | null;
+  fallbackCardXPositions: number[] | null;
+  fallbackRowCenterX: number | null;
+  fallbackRowCenterY: number | null;
+  // ── normal-path expected sizing (populated when wasFallback=false) ──
+  normalPolicyExpectedCardWidth: number | null;
+  normalPolicyExpectedOverlapPx: number | null;
+  normalPolicyExpectedOverlapRatio: number | null;
+  // ── measurement / cards state at report time ──
+  cardsLength: number;
+  reportTimestamp: number;
 }
+
 
 /**
  * Resolve the face-density tier from the resolved card width. The
@@ -255,13 +282,60 @@ export function ActiveHandFan({
   // rects of the container and first card. Consumed by the Cribbage
   // Render Truth Pill (and safe for other games to ignore).
   const _isFallbackForReport = layout == null;
-  const _fallbackReasonForReport: string | null = !_isFallbackForReport
-    ? null
-    : !resolvedStageRect
-      ? 'no-stage-rect'
-      : (resolvedStageRect.width <= 0 || resolvedStageRect.height <= 0)
-        ? 'zero-stage-rect'
-        : 'resolver-null';
+  const _resolveReturnReason: 'ok' | 'no-stage-rect' | 'zero-stage-rect' | 'resolver-null' =
+    !_isFallbackForReport
+      ? 'ok'
+      : !resolvedStageRect
+        ? 'no-stage-rect'
+        : (resolvedStageRect.width <= 0 || resolvedStageRect.height <= 0)
+          ? 'zero-stage-rect'
+          : 'resolver-null';
+  const _fallbackReasonForReport: string | null = _isFallbackForReport ? _resolveReturnReason : null;
+
+  // Fallback geometry breakdown (mirrors the effectiveLayout fallback
+  // synthesis below, but computed as pure inputs for instrumentation).
+  const _fallbackBreakdown = (() => {
+    if (!_isFallbackForReport) return null;
+    const N0 = Math.max(1, cards.length);
+    const sw = resolvedStageRect?.width ?? 0;
+    const sh = resolvedStageRect?.height ?? 0;
+    const overlapRatio = N0 > 4 ? 0.4 : 0.15;
+    const denomN = N0 - (N0 - 1) * overlapRatio;
+    const widthFromStage = sw > 0 && denomN > 0 ? sw / denomN : 0;
+    const widthFromHeight = sh > 0 ? sh * aspect : 0;
+    let rawWidth = 44;
+    let widthBoundApplied = false;
+    let heightBoundApplied = false;
+    if (widthFromStage > 0 && widthFromHeight > 0) {
+      if (widthFromHeight < widthFromStage) { rawWidth = widthFromHeight; heightBoundApplied = true; }
+      else { rawWidth = widthFromStage; widthBoundApplied = true; }
+    } else if (widthFromStage > 0) { rawWidth = widthFromStage; widthBoundApplied = true; }
+    else if (widthFromHeight > 0) { rawWidth = widthFromHeight; heightBoundApplied = true; }
+    const clamped = Math.max(24, Math.min(72, Math.round(rawWidth)));
+    const clampApplied = clamped !== Math.round(rawWidth);
+    const finalW = clamped;
+    const finalH = Math.round(finalW / aspect);
+    const overlapPx = Math.round(finalW * overlapRatio);
+    const rowWidth = N0 * finalW - (N0 - 1) * overlapPx;
+    const xs: number[] = [];
+    for (let i = 0; i < N0; i++) xs.push(i * (finalW - overlapPx));
+    return {
+      widthInput: rawWidth,
+      overlapRatio,
+      availWidth: sw,
+      availHeight: sh,
+      widthFromStage,
+      widthFromHeight,
+      widthBoundApplied,
+      heightBoundApplied,
+      clampApplied,
+      finalW,
+      finalH,
+      rowWidth,
+      xs,
+    };
+  })();
+
   const _reportCardWidth = layout?.cardWidth ?? null;
   const _reportCardHeight = layout?.cardHeight ?? null;
   useLayoutEffect(() => {
@@ -282,6 +356,8 @@ export function ActiveHandFan({
         if (!effectiveCardH) effectiveCardH = cr.height;
       }
     }
+    const rowCenterX = containerRect ? containerRect.x + containerRect.width / 2 : null;
+    const rowCenterY = containerRect ? containerRect.y + containerRect.height / 2 : null;
     onLayoutTruth({
       wasFallback: _isFallbackForReport,
       fallbackReason: _fallbackReasonForReport,
@@ -294,8 +370,31 @@ export function ActiveHandFan({
       firstCardRect,
       anchorX: firstCardRect ? firstCardRect.x : (containerRect ? containerRect.x : null),
       anchorY: firstCardRect ? firstCardRect.y : (containerRect ? containerRect.y : null),
+      resolveActiveHandLayoutReturnReason: _resolveReturnReason,
+      fallbackCardWidthInput: _fallbackBreakdown?.widthInput ?? null,
+      fallbackCardHeightInput: _fallbackBreakdown ? _fallbackBreakdown.widthInput / aspect : null,
+      fallbackOverlapRatio: _fallbackBreakdown?.overlapRatio ?? null,
+      fallbackAvailableStageWidth: _fallbackBreakdown?.availWidth ?? null,
+      fallbackAvailableStageHeight: _fallbackBreakdown?.availHeight ?? null,
+      fallbackWidthFromStage: _fallbackBreakdown?.widthFromStage ?? null,
+      fallbackWidthFromHeight: _fallbackBreakdown?.widthFromHeight ?? null,
+      fallbackHeightBoundApplied: _fallbackBreakdown?.heightBoundApplied ?? false,
+      fallbackWidthBoundApplied: _fallbackBreakdown?.widthBoundApplied ?? false,
+      fallbackClampApplied: _fallbackBreakdown?.clampApplied ?? false,
+      fallbackFinalCardWidth: _fallbackBreakdown?.finalW ?? null,
+      fallbackFinalCardHeight: _fallbackBreakdown?.finalH ?? null,
+      fallbackComputedRowWidth: _fallbackBreakdown?.rowWidth ?? null,
+      fallbackCardXPositions: _fallbackBreakdown?.xs ?? null,
+      fallbackRowCenterX: rowCenterX,
+      fallbackRowCenterY: rowCenterY,
+      normalPolicyExpectedCardWidth: !_isFallbackForReport ? (layout?.cardWidth ?? null) : null,
+      normalPolicyExpectedOverlapPx: !_isFallbackForReport ? (layout?.overlapPx ?? null) : null,
+      normalPolicyExpectedOverlapRatio: !_isFallbackForReport ? (layout?.appliedOverlap ?? null) : null,
+      cardsLength: cards.length,
+      reportTimestamp: performance.now(),
     });
   });
+
 
   if (cards.length === 0) {
     return (

@@ -112,7 +112,54 @@ export interface CribbageCardsTabTruthSnapshot {
   layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
   layoutMeasuredStageWidth: number | null;
   layoutMeasuredStageHeight: number | null;
+  // ── layout availability instrumentation ──
+  resolveActiveHandLayoutReturnReason: string;
+  stageRefAttached: boolean;
+  stageRefElementTag: string | null;
+  stageRefElementClass: string | null;
+  stageRefElementDataAttrs: string | null;
+  stageRefAttachmentTimestamp: number | null;
+  lastMeasureTimestamp: number | null;
+  measureSource: string;
+  resizeObserverAttached: boolean;
+  resizeObserverFireCount: number;
+  lastResizeObserverRect: { width: number; height: number } | null;
+  lastGetBoundingClientRect: { width: number; height: number } | null;
+  parentHandStageRect: { x: number; y: number; width: number; height: number } | null;
+  cardsTabRect: { x: number; y: number; width: number; height: number } | null;
+  activeTabAtMeasure: string | null;
+  phaseAtMeasure: string | null;
+  dealPhaseAtMeasure: string | null;
+  didRemeasureAfterCardsArrived: boolean;
+  didRemeasureAfterDealReady: boolean;
+  // ── fallback geometry inputs ──
+  fallbackCardWidthInput: number | null;
+  fallbackCardHeightInput: number | null;
+  fallbackOverlapRatio: number | null;
+  fallbackAvailableStageWidth: number | null;
+  fallbackAvailableStageHeight: number | null;
+  fallbackWidthFromStage: number | null;
+  fallbackWidthFromHeight: number | null;
+  fallbackHeightBoundApplied: boolean;
+  fallbackWidthBoundApplied: boolean;
+  fallbackClampApplied: boolean;
+  fallbackFinalCardWidth: number | null;
+  fallbackFinalCardHeight: number | null;
+  fallbackComputedRowWidth: number | null;
+  fallbackCardXPositions: number[] | null;
+  fallbackRowCenterX: number | null;
+  fallbackRowCenterY: number | null;
+  normalPolicyExpectedCardWidth: number | null;
+  normalPolicyExpectedOverlapPx: number | null;
+  normalPolicyExpectedOverlapRatio: number | null;
+  // ── counter correctness (per-render vs. cumulative) ──
+  renderCardCalledCountCurrentRender: number;
+  renderedCardComponentCountCurrentRender: number;
+  renderCardInvokedIdsCurrentRender: string[];
+  cumulativeRenderCardCalledCount: number;
+  cumulativeRenderedCardComponentCount: number;
 }
+
 
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
@@ -468,24 +515,41 @@ export const CribbageMobileCardsTab = ({
 
   const [layoutTruth, setLayoutTruth] = useState<ActiveHandFanLayoutTruth | null>(null);
 
-  // renderCard invocation counters — reset per render token
-  const renderTokenRef = useRef<string>('');
+  // renderCard invocation counters — RESET EVERY RENDER (per-render truth).
+  // Cumulative counters are tracked separately.
   const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
     called: 0, rendered: 0, ids: [],
   });
-  const currentRenderToken = `${renderTrace?.currentHandKey ?? 'nokey'}|${renderedFingerprint}`;
-  if (renderTokenRef.current !== currentRenderToken) {
-    renderTokenRef.current = currentRenderToken;
-    renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
-  }
+  const cumulativeCountersRef = useRef<{ called: number; rendered: number }>({ called: 0, rendered: 0 });
+  // Reset per-render counters synchronously at the top of every render.
+  renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
+
+  // ── Stage measurement instrumentation ──────────────────────────
+  const stageAttachmentTimestampRef = useRef<number | null>(null);
+  const lastMeasureTimestampRef = useRef<number | null>(null);
+  const measureSourceRef = useRef<string>('none');
+  const resizeObserverAttachedRef = useRef<boolean>(false);
+  const resizeObserverFireCountRef = useRef<number>(0);
+  const lastResizeObserverRectRef = useRef<{ width: number; height: number } | null>(null);
+  const lastGBCRRef = useRef<{ width: number; height: number } | null>(null);
+  const didRemeasureAfterCardsArrivedRef = useRef<boolean>(false);
+  const didRemeasureAfterDealReadyRef = useRef<boolean>(false);
+  const [instrTick, setInstrTick] = useState(0);
+  const bumpInstr = () => setInstrTick((t) => (t + 1) & 0x7fffffff);
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
     if (!stage) return;
-    const measure = () => {
+    if (stageAttachmentTimestampRef.current == null) {
+      stageAttachmentTimestampRef.current = performance.now();
+    }
+    const measure = (source: string) => {
       const rect = stage.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
+      lastMeasureTimestampRef.current = performance.now();
+      measureSourceRef.current = source;
+      lastGBCRRef.current = { width: w, height: h };
       setHandStageRectPx(prev => (
         prev !== null &&
         Math.abs(prev.width - w) < 0.5 &&
@@ -494,12 +558,72 @@ export const CribbageMobileCardsTab = ({
           : { width: w, height: h }
       ));
     };
-    measure();
+    measure('layoutEffect-mount');
+    bumpInstr();
     if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measure);
+    resizeObserverAttachedRef.current = true;
+    const ro = new ResizeObserver((entries) => {
+      resizeObserverFireCountRef.current += 1;
+      const e = entries[0];
+      if (e) {
+        const cr = e.contentRect;
+        lastResizeObserverRectRef.current = { width: cr.width, height: cr.height };
+      }
+      measure('ResizeObserver');
+      bumpInstr();
+    });
     ro.observe(stage);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      resizeObserverAttachedRef.current = false;
+    };
   }, []);
+
+  // Track remeasure-after-cards-arrived / remeasure-after-deal-READY.
+  const prevCardsLenRef = useRef<number>(0);
+  useLayoutEffect(() => {
+    if (renderedHand.length > 0 && prevCardsLenRef.current === 0) {
+      // Force a remeasure now that cards exist.
+      const stage = handStageRef.current;
+      if (stage) {
+        const r = stage.getBoundingClientRect();
+        lastMeasureTimestampRef.current = performance.now();
+        measureSourceRef.current = 'cards-arrived';
+        lastGBCRRef.current = { width: r.width, height: r.height };
+        didRemeasureAfterCardsArrivedRef.current = true;
+        setHandStageRectPx(prev => (
+          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+            ? prev
+            : { width: r.width, height: r.height }
+        ));
+        bumpInstr();
+      }
+    }
+    prevCardsLenRef.current = renderedHand.length;
+  }, [renderedHand.length]);
+
+  const dealPhaseForInstr = deal?.phase ?? null;
+  const prevDealPhaseRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (dealPhaseForInstr === 'READY' && prevDealPhaseRef.current !== 'READY') {
+      const stage = handStageRef.current;
+      if (stage) {
+        const r = stage.getBoundingClientRect();
+        lastMeasureTimestampRef.current = performance.now();
+        measureSourceRef.current = 'deal-READY';
+        lastGBCRRef.current = { width: r.width, height: r.height };
+        didRemeasureAfterDealReadyRef.current = true;
+        setHandStageRectPx(prev => (
+          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+            ? prev
+            : { width: r.width, height: r.height }
+        ));
+        bumpInstr();
+      }
+    }
+    prevDealPhaseRef.current = dealPhaseForInstr;
+  }, [dealPhaseForInstr]);
+
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
@@ -622,6 +746,58 @@ export const CribbageMobileCardsTab = ({
       layoutFirstCardRect: layoutTruth?.firstCardRect ?? null,
       layoutMeasuredStageWidth: layoutTruth?.measuredStageWidth ?? null,
       layoutMeasuredStageHeight: layoutTruth?.measuredStageHeight ?? null,
+      // ── new instrumentation ──
+      resolveActiveHandLayoutReturnReason: layoutTruth?.resolveActiveHandLayoutReturnReason ?? 'unmeasured',
+      stageRefAttached: !!handStageRef.current,
+      stageRefElementTag: handStageRef.current?.tagName?.toLowerCase() ?? null,
+      stageRefElementClass: (typeof handStageRef.current?.className === 'string' ? handStageRef.current?.className : null) ?? null,
+      stageRefElementDataAttrs: handStageRef.current
+        ? Array.from(handStageRef.current.attributes)
+            .filter((a) => a.name.startsWith('data-'))
+            .map((a) => `${a.name}=${a.value}`)
+            .join(' ')
+        : null,
+      stageRefAttachmentTimestamp: stageAttachmentTimestampRef.current,
+      lastMeasureTimestamp: lastMeasureTimestampRef.current,
+      measureSource: measureSourceRef.current,
+      resizeObserverAttached: resizeObserverAttachedRef.current,
+      resizeObserverFireCount: resizeObserverFireCountRef.current,
+      lastResizeObserverRect: lastResizeObserverRectRef.current,
+      lastGetBoundingClientRect: lastGBCRRef.current,
+      parentHandStageRect: domDiagnostics.containerRect,
+      cardsTabRect: (() => {
+        const p = handStageRef.current?.parentElement?.getBoundingClientRect();
+        return p ? { x: p.x, y: p.y, width: p.width, height: p.height } : null;
+      })(),
+      activeTabAtMeasure: 'cards',
+      phaseAtMeasure: cribbageState.phase ?? null,
+      dealPhaseAtMeasure: deal?.phase ?? null,
+      didRemeasureAfterCardsArrived: didRemeasureAfterCardsArrivedRef.current,
+      didRemeasureAfterDealReady: didRemeasureAfterDealReadyRef.current,
+      fallbackCardWidthInput: layoutTruth?.fallbackCardWidthInput ?? null,
+      fallbackCardHeightInput: layoutTruth?.fallbackCardHeightInput ?? null,
+      fallbackOverlapRatio: layoutTruth?.fallbackOverlapRatio ?? null,
+      fallbackAvailableStageWidth: layoutTruth?.fallbackAvailableStageWidth ?? null,
+      fallbackAvailableStageHeight: layoutTruth?.fallbackAvailableStageHeight ?? null,
+      fallbackWidthFromStage: layoutTruth?.fallbackWidthFromStage ?? null,
+      fallbackWidthFromHeight: layoutTruth?.fallbackWidthFromHeight ?? null,
+      fallbackHeightBoundApplied: layoutTruth?.fallbackHeightBoundApplied ?? false,
+      fallbackWidthBoundApplied: layoutTruth?.fallbackWidthBoundApplied ?? false,
+      fallbackClampApplied: layoutTruth?.fallbackClampApplied ?? false,
+      fallbackFinalCardWidth: layoutTruth?.fallbackFinalCardWidth ?? null,
+      fallbackFinalCardHeight: layoutTruth?.fallbackFinalCardHeight ?? null,
+      fallbackComputedRowWidth: layoutTruth?.fallbackComputedRowWidth ?? null,
+      fallbackCardXPositions: layoutTruth?.fallbackCardXPositions ?? null,
+      fallbackRowCenterX: layoutTruth?.fallbackRowCenterX ?? null,
+      fallbackRowCenterY: layoutTruth?.fallbackRowCenterY ?? null,
+      normalPolicyExpectedCardWidth: layoutTruth?.normalPolicyExpectedCardWidth ?? null,
+      normalPolicyExpectedOverlapPx: layoutTruth?.normalPolicyExpectedOverlapPx ?? null,
+      normalPolicyExpectedOverlapRatio: layoutTruth?.normalPolicyExpectedOverlapRatio ?? null,
+      renderCardCalledCountCurrentRender: renderCountersRef.current.called,
+      renderedCardComponentCountCurrentRender: renderCountersRef.current.rendered,
+      renderCardInvokedIdsCurrentRender: [...renderCountersRef.current.ids],
+      cumulativeRenderCardCalledCount: cumulativeCountersRef.current.called,
+      cumulativeRenderedCardComponentCount: cumulativeCountersRef.current.rendered,
     });
   }, [
     onTruthSnapshot,
@@ -645,7 +821,10 @@ export const CribbageMobileCardsTab = ({
     renderedCardIds,
     domDiagnostics,
     layoutTruth,
+    instrTick,
+    cribbageState.phase,
   ]);
+
 
   // Phase-capacity sizing contract:
   //   - Pre-discard: 6 cards in hand (max the phase will ever hold).
@@ -773,10 +952,13 @@ export const CribbageMobileCardsTab = ({
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
             renderCountersRef.current.called += 1;
+            cumulativeCountersRef.current.called += 1;
             if (!card) return null;
             const cid = cardId(card);
             renderCountersRef.current.rendered += 1;
+            cumulativeCountersRef.current.rendered += 1;
             renderCountersRef.current.ids.push(cid);
+
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&

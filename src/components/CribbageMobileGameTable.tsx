@@ -7161,8 +7161,12 @@ export const CribbageMobileGameTable = ({
                   finalRenderedHandCount: cardsTabTruth?.finalRenderedHandCount ?? 'unmounted',
                   cardsArrayPassedToFanCount: cardsTabTruth?.cardsArrayPassedToFanCount ?? 'unmounted',
                   activeHandFanReceivedCardsCount: cardsTabTruth?.activeHandFanReceivedCardsCount ?? 'unmounted',
-                  renderCardCalledCount: cardsTabTruth?.renderCardCalledCount ?? 'unmounted',
-                  renderedCardComponentCount: cardsTabTruth?.renderedCardComponentCount ?? 'unmounted',
+                  renderCardCalledCount_LEGACY: cardsTabTruth?.renderCardCalledCount ?? 'unmounted',
+                  renderCardCalledCountCurrentRender: cardsTabTruth?.renderCardCalledCountCurrentRender ?? 'unmounted',
+                  renderedCardComponentCountCurrentRender: cardsTabTruth?.renderedCardComponentCountCurrentRender ?? 'unmounted',
+                  cumulativeRenderCardCalledCount: cardsTabTruth?.cumulativeRenderCardCalledCount ?? 'unmounted',
+                  cumulativeRenderedCardComponentCount: cardsTabTruth?.cumulativeRenderedCardComponentCount ?? 'unmounted',
+                  renderedCardComponentCount_LEGACY: cardsTabTruth?.renderedCardComponentCount ?? 'unmounted',
                   visibleDomCardNodeCount: cardsTabTruth?.visibleDomCardNodeCount ?? 0,
                   activeHandBlocked: cardsTabTruth?.activeHandBlocked ?? 'unmounted',
                   shouldSelfHeal: cardsTabTruth?.shouldSelfHeal ?? 'unmounted',
@@ -7170,7 +7174,9 @@ export const CribbageMobileGameTable = ({
                   resolveDecision: cardsTabTruth?.resolveDecision ?? 'unmounted',
                   sourceCardIds: (cardsTabTruth?.sourceCardIds ?? []).join(','),
                   renderedCardIds_source_mirror: (cardsTabTruth?.renderedCardIds ?? []).join(','),
-                  renderCardInvokedIds: (cardsTabTruth?.renderCardInvokedIds ?? []).join(','),
+                  renderCardInvokedIds_LEGACY: (cardsTabTruth?.renderCardInvokedIds ?? []).join(','),
+                  renderCardInvokedIdsCurrentRender: (cardsTabTruth?.renderCardInvokedIdsCurrentRender ?? []).join(','),
+
                   domCardIds: (cardsTabTruth?.domCardIds ?? []).join(','),
                   DOM: '',
                   activeHandFanMounted: cardsTabTruth?.activeHandFanMounted ?? 'unmounted',
@@ -7219,6 +7225,60 @@ export const CribbageMobileGameTable = ({
                   layoutFirstCardRect: cardsTabTruth?.layoutFirstCardRect
                     ? `${Math.round(cardsTabTruth.layoutFirstCardRect.x)},${Math.round(cardsTabTruth.layoutFirstCardRect.y)} ${Math.round(cardsTabTruth.layoutFirstCardRect.width)}x${Math.round(cardsTabTruth.layoutFirstCardRect.height)}`
                     : 'null',
+                  Availability: '',
+                  resolveActiveHandLayoutReturnReason: cardsTabTruth?.resolveActiveHandLayoutReturnReason ?? 'unmounted',
+                  stageRefAttached: cardsTabTruth?.stageRefAttached ?? 'unmounted',
+                  stageRefElementTag: cardsTabTruth?.stageRefElementTag ?? 'null',
+                  stageRefElementClass: cardsTabTruth?.stageRefElementClass ?? 'null',
+                  stageRefElementDataAttrs: cardsTabTruth?.stageRefElementDataAttrs ?? 'null',
+                  stageRefAttachmentTimestamp: cardsTabTruth?.stageRefAttachmentTimestamp != null
+                    ? Math.round(cardsTabTruth.stageRefAttachmentTimestamp) : 'null',
+                  lastMeasureTimestamp: cardsTabTruth?.lastMeasureTimestamp != null
+                    ? Math.round(cardsTabTruth.lastMeasureTimestamp) : 'null',
+                  measureSource: cardsTabTruth?.measureSource ?? 'none',
+                  resizeObserverAttached: cardsTabTruth?.resizeObserverAttached ?? 'unmounted',
+                  resizeObserverFireCount: cardsTabTruth?.resizeObserverFireCount ?? 0,
+                  lastResizeObserverRect: cardsTabTruth?.lastResizeObserverRect
+                    ? `${Math.round(cardsTabTruth.lastResizeObserverRect.width)}x${Math.round(cardsTabTruth.lastResizeObserverRect.height)}`
+                    : 'null',
+                  lastGetBoundingClientRect: cardsTabTruth?.lastGetBoundingClientRect
+                    ? `${Math.round(cardsTabTruth.lastGetBoundingClientRect.width)}x${Math.round(cardsTabTruth.lastGetBoundingClientRect.height)}`
+                    : 'null',
+                  parentHandStageRect: cardsTabTruth?.parentHandStageRect
+                    ? `${Math.round(cardsTabTruth.parentHandStageRect.x)},${Math.round(cardsTabTruth.parentHandStageRect.y)} ${Math.round(cardsTabTruth.parentHandStageRect.width)}x${Math.round(cardsTabTruth.parentHandStageRect.height)}`
+                    : 'null',
+                  cardsTabRect: cardsTabTruth?.cardsTabRect
+                    ? `${Math.round(cardsTabTruth.cardsTabRect.x)},${Math.round(cardsTabTruth.cardsTabRect.y)} ${Math.round(cardsTabTruth.cardsTabRect.width)}x${Math.round(cardsTabTruth.cardsTabRect.height)}`
+                    : 'null',
+                  activeTabAtMeasure: cardsTabTruth?.activeTabAtMeasure ?? 'null',
+                  phaseAtMeasure: cardsTabTruth?.phaseAtMeasure ?? 'null',
+                  dealPhaseAtMeasure: cardsTabTruth?.dealPhaseAtMeasure ?? 'null',
+                  didRemeasureAfterCardsArrived: cardsTabTruth?.didRemeasureAfterCardsArrived ?? false,
+                  didRemeasureAfterDealReady: cardsTabTruth?.didRemeasureAfterDealReady ?? false,
+                  Fallback: '',
+                  fallbackCardWidthInput: cardsTabTruth?.fallbackCardWidthInput ?? 'null',
+                  fallbackCardHeightInput: cardsTabTruth?.fallbackCardHeightInput ?? 'null',
+                  fallbackOverlapRatio: cardsTabTruth?.fallbackOverlapRatio ?? 'null',
+                  fallbackAvailableStageWidth: cardsTabTruth?.fallbackAvailableStageWidth ?? 'null',
+                  fallbackAvailableStageHeight: cardsTabTruth?.fallbackAvailableStageHeight ?? 'null',
+                  fallbackWidthFromStage: cardsTabTruth?.fallbackWidthFromStage != null
+                    ? Number(cardsTabTruth.fallbackWidthFromStage.toFixed(2)) : 'null',
+                  fallbackWidthFromHeight: cardsTabTruth?.fallbackWidthFromHeight != null
+                    ? Number(cardsTabTruth.fallbackWidthFromHeight.toFixed(2)) : 'null',
+                  fallbackHeightBoundApplied: cardsTabTruth?.fallbackHeightBoundApplied ?? false,
+                  fallbackWidthBoundApplied: cardsTabTruth?.fallbackWidthBoundApplied ?? false,
+                  fallbackClampApplied: cardsTabTruth?.fallbackClampApplied ?? false,
+                  fallbackFinalCardWidth: cardsTabTruth?.fallbackFinalCardWidth ?? 'null',
+                  fallbackFinalCardHeight: cardsTabTruth?.fallbackFinalCardHeight ?? 'null',
+                  fallbackComputedRowWidth: cardsTabTruth?.fallbackComputedRowWidth ?? 'null',
+                  fallbackCardXPositions: (cardsTabTruth?.fallbackCardXPositions ?? []).map((v) => Math.round(v)).join(','),
+                  fallbackRowCenterX: cardsTabTruth?.fallbackRowCenterX != null
+                    ? Math.round(cardsTabTruth.fallbackRowCenterX) : 'null',
+                  fallbackRowCenterY: cardsTabTruth?.fallbackRowCenterY != null
+                    ? Math.round(cardsTabTruth.fallbackRowCenterY) : 'null',
+                  normalPolicyExpectedCardWidth: cardsTabTruth?.normalPolicyExpectedCardWidth ?? 'null',
+                  normalPolicyExpectedOverlapPx: cardsTabTruth?.normalPolicyExpectedOverlapPx ?? 'null',
+                  normalPolicyExpectedOverlapRatio: cardsTabTruth?.normalPolicyExpectedOverlapRatio ?? 'null',
                 }}
                 alert={!!cardsTabTruth?.finalRenderedCountButNoDom}
               />
