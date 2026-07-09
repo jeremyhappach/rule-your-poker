@@ -754,6 +754,22 @@ export const CribbageMobileCardsTab = ({
           capacity={phaseCapacity}
           stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
           applyFan
+          onLayoutTruth={(info) => {
+            setLayoutTruth((prev) => {
+              if (
+                prev &&
+                prev.wasFallback === info.wasFallback &&
+                prev.fallbackReason === info.fallbackReason &&
+                prev.cardWidthPx === info.cardWidthPx &&
+                prev.cardHeightPx === info.cardHeightPx &&
+                prev.anchorX === info.anchorX &&
+                prev.anchorY === info.anchorY &&
+                prev.measuredStageWidth === info.measuredStageWidth &&
+                prev.measuredStageHeight === info.measuredStageHeight
+              ) return prev;
+              return info;
+            });
+          }}
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
             renderCountersRef.current.called += 1;
