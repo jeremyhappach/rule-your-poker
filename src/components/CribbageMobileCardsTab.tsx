@@ -466,6 +466,8 @@ export const CribbageMobileCardsTab = ({
     activeHandFanMounted: false,
   });
 
+  const [layoutTruth, setLayoutTruth] = useState<ActiveHandFanLayoutTruth | null>(null);
+
   // renderCard invocation counters — reset per render token
   const renderTokenRef = useRef<string>('');
   const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
