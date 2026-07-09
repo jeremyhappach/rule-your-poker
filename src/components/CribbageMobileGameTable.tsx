@@ -23,6 +23,7 @@ import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab, type CribbageCardsTabTruthSnapshot } from './CribbageMobileCardsTab';
+import { CribbageRenderTruthPill } from './CribbageRenderTruthPill';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
