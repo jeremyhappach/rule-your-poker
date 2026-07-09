@@ -41,10 +41,20 @@ function opponentDiceStage(): ArtifactDescriptor {
     anchorX: 0.5,
     anchorY: 0.42,
     anchorOrigin: "center",
+    // Yahtzee opponent dice sizing fix:
+    //   The inner DiceTableLayout has an intrinsic 200×120 px stage
+    //   (aspect ≈ 1.667). The previous descriptor aspect (0.75/0.22 ≈ 3.41)
+    //   produced an assigned rect that was wide but short, so the
+    //   AssignedRectFitter took the min of horizontal/vertical scale and
+    //   under-scaled the dice to ~half their intended size on every
+    //   observer client. Matching the descriptor aspect to the natural
+    //   200×120 stage lets the fitter reach scale ≥ 1, so opponent dice
+    //   render at their proper size across viewports.
     widthPct: 0.75,
-    aspectRatio: 0.75 / 0.22,
+    aspectRatio: 200 / 120,
   };
 }
+
 
 function scorecardStage(): ArtifactDescriptor {
   return {
