@@ -261,7 +261,7 @@ export function ActiveHandFan({
       totalWidth,
       appliedOverlap: fallbackOverlap / fallbackCardWidth,
       fanArchDeg: 0,
-      visualBounds: { width: totalWidth, height: fallbackCardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: fallbackCardHeight },
+      visualBounds: { width: totalWidth, height: fallbackCardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: fallbackCardHeight, shadowPadPx: 0 },
       rowOffsetX: 0,
       rowOffsetY: 0,
       stageRect: resolvedStageRect ?? { width: totalWidth, height: fallbackCardHeight },
