@@ -65,7 +65,6 @@ export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArg
   );
 
   const isGameplayMode = !!(
-    !args.isHighCardMode &&
     (
       (!isBootstrapMode && viewStateIsCurrentRound) ||
       parentAuthoritativeGameplayFallback
