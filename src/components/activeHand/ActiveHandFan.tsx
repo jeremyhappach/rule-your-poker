@@ -336,8 +336,12 @@ export function ActiveHandFan({
       {...{ [dataAttribute ?? `data-active-hand-fan`]: game }}
       className={className}
       style={{
-        width: resolvedStageRect?.width,
-        height: resolvedStageRect?.height,
+        // In fallback mode we intentionally do NOT force the outer div
+        // to the (possibly zero / missing) resolvedStageRect size — the
+        // parent hand-stage container is already flex-centered and will
+        // place the row correctly when we render it inline.
+        width: isFallback ? undefined : resolvedStageRect?.width,
+        height: isFallback ? undefined : resolvedStageRect?.height,
         // The resolver already validates the transformed fan bounds
         // (rotated cards + overlap + shell shadow allowance) against this
         // stage. Position the raw row from the resolver offsets instead
@@ -345,16 +349,24 @@ export function ActiveHandFan({
         // larger fan can clip despite the nominal row fitting.
         position: 'relative',
         overflow: 'visible',
+        display: isFallback ? 'flex' : undefined,
+        justifyContent: isFallback ? 'center' : undefined,
+        alignItems: isFallback ? 'center' : undefined,
         ...style,
       }}
     >
       <div
         style={{
           width: effectiveLayout.totalWidth,
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          transform: `translate(${effectiveLayout.rowOffsetX.toFixed(3)}px, ${effectiveLayout.rowOffsetY.toFixed(3)}px)`,
+          // Fallback: render the row in natural flow so parent flex
+          // centering positions it. Normal path: absolute-position the
+          // row at the resolver-computed offsets inside the sized stage.
+          position: isFallback ? 'relative' : 'absolute',
+          left: isFallback ? undefined : 0,
+          top: isFallback ? undefined : 0,
+          transform: isFallback
+            ? undefined
+            : `translate(${effectiveLayout.rowOffsetX.toFixed(3)}px, ${effectiveLayout.rowOffsetY.toFixed(3)}px)`,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'flex-end',
