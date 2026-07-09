@@ -7068,8 +7068,8 @@ export const CribbageMobileGameTable = ({
                   gameId={gameId}
                   isDealer={isCribDealer(currentPlayerId)}
                   roundId={roundId}
-                  onTruthSnapshot={handleCardsTabTruthSnapshot}
                   renderTrace={{
+
                     renderHandKey,
                     currentHandKey,
                     dealerGameId: dealerGameId ?? null,
