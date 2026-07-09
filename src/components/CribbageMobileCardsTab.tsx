@@ -98,8 +98,8 @@ export const CribbageMobileCardsTab = ({
   isDealer,
   roundId,
   renderTrace,
-  onTruthSnapshot,
 }: CribbageMobileCardsTabProps) => {
+
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
   // Reset selectedCards on hand boundary (roundId change) to prevent stale selections
