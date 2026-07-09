@@ -100,6 +100,18 @@ export interface CribbageCardsTabTruthSnapshot {
   firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
   overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
   finalRenderedCountButNoDom: boolean;
+  // ── ActiveHandFan layout-truth (fallback vs. measured) ──
+  layoutWasFallback: boolean;
+  layoutFallbackReason: string | null;
+  layoutNormalAvailable: boolean;
+  layoutCardWidth: number;
+  layoutCardHeight: number;
+  layoutAnchorX: number | null;
+  layoutAnchorY: number | null;
+  layoutContainerRect: { x: number; y: number; width: number; height: number } | null;
+  layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
+  layoutMeasuredStageWidth: number | null;
+  layoutMeasuredStageHeight: number | null;
 }
 
 interface CribbageMobileCardsTabProps {
