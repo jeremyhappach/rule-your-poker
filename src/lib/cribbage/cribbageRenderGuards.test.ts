@@ -216,6 +216,9 @@ describe('Cribbage render guards', () => {
     });
     expect(result.decision).toBe('render-presentation');
     expect(result.hand).toEqual(hand.slice(0, 2));
+  });
+
+
 
   it('hydration and live fallback converge without refresh', () => {
     const hydration = resolveCribbageVisibleHand({
