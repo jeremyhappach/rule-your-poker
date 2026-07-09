@@ -952,10 +952,13 @@ export const CribbageMobileCardsTab = ({
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
             renderCountersRef.current.called += 1;
+            cumulativeCountersRef.current.called += 1;
             if (!card) return null;
             const cid = cardId(card);
             renderCountersRef.current.rendered += 1;
+            cumulativeCountersRef.current.rendered += 1;
             renderCountersRef.current.ids.push(cid);
+
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
