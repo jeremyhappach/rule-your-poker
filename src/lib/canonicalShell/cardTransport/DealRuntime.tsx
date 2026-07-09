@@ -57,6 +57,7 @@ interface DealContextValue {
   phase: DealPhase;
   expectedCount: number;
   settledCardIds: ReadonlySet<string>;
+  activeIntentsForHand: number;
   dealSettled: boolean;
   readyReleased: boolean;
   releaseEligible: boolean;
@@ -521,6 +522,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       phase,
       expectedCount,
       settledCardIds,
+      activeIntentsForHand,
       dealSettled: dealSettledNow,
       readyReleased,
       releaseEligible,
