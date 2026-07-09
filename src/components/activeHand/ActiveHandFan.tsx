@@ -266,27 +266,60 @@ export function ActiveHandFan({
   // Fallback path: cards are present but the layout resolver returned
   // null (stage rect unmeasured or zero-sized). Instead of rendering an
   // empty container — which hides authoritative cards until the stage
-  // measures — synthesize a minimal fixed-size row so renderCard still
-  // fires once per card and the cards remain visible. When the stage
-  // measures, the resolver produces a proper `layout` and the normal
-  // path takes over on the next render.
+  // measures — synthesize a minimal row so renderCard still fires once
+  // per card and cards remain visible. When the stage measures, the
+  // resolver produces a proper `layout` and the normal path takes over.
+  //
+  // Positioning contract for the fallback frame:
+  //   - The container is rendered WITHOUT its own width/height and
+  //     WITHOUT absolute positioning of the row. This lets the parent
+  //     (e.g. Cribbage's `flex items-center justify-center` hand stage)
+  //     center the fallback row using its normal flex axes — no floating
+  //     to a wrong pane corner.
+  //   - Card width is derived from the known stage rect when available
+  //     so the fallback visually matches the eventual measured layout
+  //     as closely as possible.
+  const isFallback = layout == null;
+  const fallbackReason: string | null = !isFallback
+    ? null
+    : !resolvedStageRect
+      ? 'no-stage-rect'
+      : (resolvedStageRect.width <= 0 || resolvedStageRect.height <= 0)
+        ? 'zero-stage-rect'
+        : 'resolver-null';
   const effectiveLayout: ResolvedActiveHandRow = layout ?? (() => {
-    const fallbackCardWidth = 44;
-    const fallbackCardHeight = Math.round(fallbackCardWidth / aspect);
-    const N0 = cards.length;
-    const fallbackOverlap = N0 > 4 ? Math.round(fallbackCardWidth * 0.4) : Math.round(fallbackCardWidth * 0.15);
-    const totalWidth = N0 * fallbackCardWidth - (N0 - 1) * fallbackOverlap;
+    const N0 = Math.max(1, cards.length);
+    const sw = resolvedStageRect?.width ?? 0;
+    const sh = resolvedStageRect?.height ?? 0;
+    // Overlap ratio mirrors the resolver's high-density branch when
+    // cards outnumber the loose threshold; matches visual density.
+    const overlapRatio = N0 > 4 ? 0.4 : 0.15;
+    // Card width that fits horizontally given the overlap:
+    //   totalWidth = N*w - (N-1)*w*overlap = w * (N - (N-1)*overlap)
+    const denomN = N0 - (N0 - 1) * overlapRatio;
+    const widthFromStage = sw > 0 && denomN > 0 ? sw / denomN : 0;
+    const heightFromStage = sh > 0 ? sh : 0;
+    const widthFromHeight = heightFromStage > 0 ? heightFromStage * aspect : 0;
+    // Prefer smaller of width- and height-bounded widths so the row fits.
+    let cardWidth = 44;
+    if (widthFromStage > 0 && widthFromHeight > 0) cardWidth = Math.min(widthFromStage, widthFromHeight);
+    else if (widthFromStage > 0) cardWidth = widthFromStage;
+    else if (widthFromHeight > 0) cardWidth = widthFromHeight;
+    cardWidth = Math.max(24, Math.min(72, Math.round(cardWidth)));
+    const cardHeight = Math.round(cardWidth / aspect);
+    const overlapPx = Math.round(cardWidth * overlapRatio);
+    const totalWidth = N0 * cardWidth - (N0 - 1) * overlapPx;
     return {
-      cardWidth: fallbackCardWidth,
-      cardHeight: fallbackCardHeight,
-      overlapPx: fallbackOverlap,
+      cardWidth,
+      cardHeight,
+      overlapPx,
       totalWidth,
-      appliedOverlap: fallbackOverlap / fallbackCardWidth,
+      appliedOverlap: overlapPx / cardWidth,
       fanArchDeg: 0,
-      visualBounds: { width: totalWidth, height: fallbackCardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: fallbackCardHeight, shadowPadPx: 0 },
+      visualBounds: { width: totalWidth, height: cardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: cardHeight, shadowPadPx: 0 },
       rowOffsetX: 0,
       rowOffsetY: 0,
-      stageRect: resolvedStageRect ?? { width: totalWidth, height: fallbackCardHeight },
+      stageRect: resolvedStageRect ?? { width: totalWidth, height: cardHeight },
       stageTopInsetPx: 0,
       stageBottomInsetPx: 0,
     } as ResolvedActiveHandRow;
