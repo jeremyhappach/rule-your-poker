@@ -6776,8 +6776,8 @@ export const CribbageMobileGameTable = ({
                     dealerGameId={dealerGameId ?? undefined}
                     roundId={currentRoundId ?? undefined}
                     handNumber={currentHandNumber}
-                    onLifecycle={handleDealOrchestratorLifecycle}
                   />
+
                 ) : null}
 
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
