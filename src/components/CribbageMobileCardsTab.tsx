@@ -64,103 +64,6 @@ interface RenderTraceContext {
   interactionsAllowed?: boolean;
 }
 
-export interface CribbageCardsTabTruthSnapshot {
-  authoritativeHandCount: number;
-  sourceHandCount: number;
-  clippedHandCount: number;
-  finalRenderedHandCount: number;
-  activeHandBlocked: boolean;
-  shouldSelfHeal: boolean;
-  resolveReason: string;
-  resolveDecision: string;
-  visibleDomCardNodeCount: number;
-  dealPhase: string | null;
-  dealExpectedCount: number;
-  activeIntentsForHand: number;
-  settledCount: number;
-  runtimeKey: string | null;
-  handContextId: string | null;
-  graceExpired: boolean;
-  // ── P0 render-pipeline instrumentation (read-only) ──
-  cardsArrayPassedToFanCount: number;
-  activeHandFanReceivedCardsCount: number;
-  renderCardCalledCount: number;
-  renderedCardComponentCount: number;
-  sourceCardIds: string[];
-  /** @deprecated retained field name; mirrors sourceCardIds (pre-render). */
-  renderedCardIds: string[];
-  /** IDs captured inside the ActiveHandFan renderCard callback. */
-  renderCardInvokedIds: string[];
-  domCardIds: string[];
-  activeHandFanMounted: boolean;
-  containerExists: boolean;
-  containerRect: { x: number; y: number; width: number; height: number } | null;
-  containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
-  firstCardRect: { x: number; y: number; width: number; height: number } | null;
-  firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
-  overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
-  finalRenderedCountButNoDom: boolean;
-  // ── ActiveHandFan layout-truth (fallback vs. measured) ──
-  layoutWasFallback: boolean;
-  layoutFallbackReason: string | null;
-  layoutNormalAvailable: boolean;
-  layoutCardWidth: number;
-  layoutCardHeight: number;
-  layoutAnchorX: number | null;
-  layoutAnchorY: number | null;
-  layoutContainerRect: { x: number; y: number; width: number; height: number } | null;
-  layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
-  layoutMeasuredStageWidth: number | null;
-  layoutMeasuredStageHeight: number | null;
-  // ── layout availability instrumentation ──
-  resolveActiveHandLayoutReturnReason: string;
-  stageRefAttached: boolean;
-  stageRefElementTag: string | null;
-  stageRefElementClass: string | null;
-  stageRefElementDataAttrs: string | null;
-  stageRefAttachmentTimestamp: number | null;
-  lastMeasureTimestamp: number | null;
-  measureSource: string;
-  resizeObserverAttached: boolean;
-  resizeObserverFireCount: number;
-  lastResizeObserverRect: { width: number; height: number } | null;
-  lastGetBoundingClientRect: { width: number; height: number } | null;
-  parentHandStageRect: { x: number; y: number; width: number; height: number } | null;
-  cardsTabRect: { x: number; y: number; width: number; height: number } | null;
-  activeTabAtMeasure: string | null;
-  phaseAtMeasure: string | null;
-  dealPhaseAtMeasure: string | null;
-  didRemeasureAfterCardsArrived: boolean;
-  didRemeasureAfterDealReady: boolean;
-  // ── fallback geometry inputs ──
-  fallbackCardWidthInput: number | null;
-  fallbackCardHeightInput: number | null;
-  fallbackOverlapRatio: number | null;
-  fallbackAvailableStageWidth: number | null;
-  fallbackAvailableStageHeight: number | null;
-  fallbackWidthFromStage: number | null;
-  fallbackWidthFromHeight: number | null;
-  fallbackHeightBoundApplied: boolean;
-  fallbackWidthBoundApplied: boolean;
-  fallbackClampApplied: boolean;
-  fallbackFinalCardWidth: number | null;
-  fallbackFinalCardHeight: number | null;
-  fallbackComputedRowWidth: number | null;
-  fallbackCardXPositions: number[] | null;
-  fallbackRowCenterX: number | null;
-  fallbackRowCenterY: number | null;
-  normalPolicyExpectedCardWidth: number | null;
-  normalPolicyExpectedOverlapPx: number | null;
-  normalPolicyExpectedOverlapRatio: number | null;
-  // ── counter correctness (per-render vs. cumulative) ──
-  renderCardCalledCountCurrentRender: number;
-  renderedCardComponentCountCurrentRender: number;
-  renderCardInvokedIdsCurrentRender: string[];
-  cumulativeRenderCardCalledCount: number;
-  cumulativeRenderedCardComponentCount: number;
-}
-
-
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
   currentPlayerId: string;
@@ -175,9 +78,8 @@ interface CribbageMobileCardsTabProps {
   roundId?: string;
   /** Diagnostic context for render tracing — omit to disable */
   renderTrace?: RenderTraceContext;
-  /** Temporary visible P0 truth panel feed; in-memory/current-render only. */
-  onTruthSnapshot?: (snapshot: CribbageCardsTabTruthSnapshot) => void;
 }
+
 
 /** Card identity string for tracing */
 function cardId(c: CribbageCard): string {
