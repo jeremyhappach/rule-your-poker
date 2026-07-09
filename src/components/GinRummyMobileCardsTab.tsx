@@ -217,8 +217,44 @@ export const GinRummyMobileCardsTab = ({
   const dealTerminal =
     dealBoundToThisHand && (deal!.phase === 'READY' || deal!.phase === 'GAMEPLAY');
   const authHandLen = stableMyStateAuthoritative?.hand?.length ?? 0;
+
+  // ── P0 CROSS-GAME SELF-HEAL SAFETY ──────────────────────────────
+  // If the DealRuntime is bound to this hand but has been stuck in
+  // PRE_DEAL / DEALING beyond a bounded safety window while the
+  // authoritative local hand is at full capacity for a playable phase,
+  // treat the transport as stalled and promote to full-authoritative
+  // projection. This mirrors the Cribbage self-heal contract: an
+  // authoritative non-empty hand must never remain hidden behind a
+  // stuck transport gate — refresh already renders these cards, so
+  // convergence between hydration and live paths is preserved.
+  //
+  // The latch is bounded, in-memory only, and armed exactly once per
+  // hand identity. It automatically resets when identity changes.
+  const [dealStalledSelfHeal, setDealStalledSelfHeal] = useState(false);
+  const selfHealArmedIdentityRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (selfHealArmedIdentityRef.current !== localHandIdentityKey) {
+      selfHealArmedIdentityRef.current = localHandIdentityKey;
+      setDealStalledSelfHeal(false);
+    }
+  }, [localHandIdentityKey]);
+  const eligibleForStallHeal =
+    dealBoundToThisHand &&
+    !dealTerminal &&
+    authHandLen >= GIN_CARDS_PER_PLAYER &&
+    isCurrentHandLocalHandPhase(ginState.phase);
+  useEffect(() => {
+    if (!eligibleForStallHeal) return;
+    if (dealStalledSelfHeal) return;
+    const t = setTimeout(() => setDealStalledSelfHeal(true), 3000);
+    return () => clearTimeout(t);
+  }, [eligibleForStallHeal, dealStalledSelfHeal, localHandIdentityKey]);
+
   const forceFullProjection =
-    !dealBoundToThisHand || dealTerminal || authHandLen > GIN_CARDS_PER_PLAYER;
+    !dealBoundToThisHand ||
+    dealTerminal ||
+    authHandLen > GIN_CARDS_PER_PLAYER ||
+    dealStalledSelfHeal;
 
   const rawMyState = useMemo(() => {
     if (!stableMyStateAuthoritative) return stableMyStateAuthoritative;
