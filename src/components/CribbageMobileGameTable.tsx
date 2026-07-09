@@ -22,7 +22,7 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
-import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
+import { CribbageMobileCardsTab, type CribbageCardsTabTruthSnapshot } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
@@ -786,6 +786,12 @@ export const CribbageMobileGameTable = ({
     winningScore: number;
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cardsTabTruth, setCardsTabTruth] = useState<CribbageCardsTabTruthSnapshot | null>(null);
+  const [dealOrchestratorTruth, setDealOrchestratorTruth] = useState({
+    orchestratorMounted: false,
+    beginDealCalled: false,
+    dispatchManyCalled: false,
+  });
   
   // ── Phase 2: framework-owned authoritative identity ─────────────
   // Subscribes to `rounds` filtered by `dealer_game_id`, so the client observes
@@ -803,6 +809,37 @@ export const CribbageMobileGameTable = ({
     () => buildBoundaryGuardKey(dealerGameId, currentRoundId, currentHandNumber),
     [dealerGameId, currentRoundId, currentHandNumber],
   );
+
+  useEffect(() => {
+    setCardsTabTruth(null);
+    setDealOrchestratorTruth({
+      orchestratorMounted: false,
+      beginDealCalled: false,
+      dispatchManyCalled: false,
+    });
+  }, [currentRoundId, currentHandNumber]);
+
+  const handleCardsTabTruthSnapshot = useCallback((snapshot: CribbageCardsTabTruthSnapshot) => {
+    setCardsTabTruth((prev) => {
+      if (prev && JSON.stringify(prev) === JSON.stringify(snapshot)) return prev;
+      return snapshot;
+    });
+  }, []);
+
+  const handleDealOrchestratorLifecycle = useCallback((event: 'mounted' | 'unmounted' | 'beginDealCalled' | 'dispatchManyCalled') => {
+    setDealOrchestratorTruth((prev) => {
+      const next = {
+        orchestratorMounted: event === 'mounted' ? true : event === 'unmounted' ? false : prev.orchestratorMounted,
+        beginDealCalled: event === 'beginDealCalled' ? true : prev.beginDealCalled,
+        dispatchManyCalled: event === 'dispatchManyCalled' ? true : prev.dispatchManyCalled,
+      };
+      return next.orchestratorMounted === prev.orchestratorMounted &&
+        next.beginDealCalled === prev.beginDealCalled &&
+        next.dispatchManyCalled === prev.dispatchManyCalled
+        ? prev
+        : next;
+    });
+  }, []);
 
   // Forward-only merge of (a) parent props and (b) authoritative-identity feed.
   //
@@ -1931,9 +1968,27 @@ export const CribbageMobileGameTable = ({
     if (player.sitting_out || player.waiting) return false;
     return true;
   }, []);
-  const activeSeatPlayers = viewStateParticipantIds
-    ? players.filter(player => viewStateParticipantIds.has(player.id))
-    : players.filter(isSeatedGamePlayer);
+  const authoritativeParticipantIds = cribbageState
+    ? new Set(Object.keys(cribbageState.playerStates ?? {}))
+    : null;
+  const authoritativePostDealRosterReady = !!(
+    cribbageState &&
+    isCribbagePostDealPhase(cribbageState.phase) &&
+    authoritativeParticipantIds &&
+    authoritativeParticipantIds.size > 0 &&
+    hasAnyCribbageAuthoritativeHand(cribbageState)
+  );
+  const viewStateRosterIsCurrent = !!(
+    viewStateParticipantIds &&
+    renderHandKey &&
+    currentHandKey &&
+    renderHandKey === currentHandKey
+  );
+  const activeSeatPlayers = authoritativePostDealRosterReady && !viewStateRosterIsCurrent
+    ? players.filter(player => authoritativeParticipantIds!.has(player.id) && isSeatedGamePlayer(player))
+    : viewStateParticipantIds
+      ? players.filter(player => viewStateParticipantIds.has(player.id))
+      : players.filter(isSeatedGamePlayer);
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   // OBSERVER SUPPORT: viewers who are not seated in this dealer game have no
@@ -5953,6 +6008,50 @@ export const CribbageMobileGameTable = ({
   const isBootstrapMode = renderMode.isBootstrapMode;
   const isGameplayMode = renderMode.isGameplayMode;
   const isHighCardMode = rawHighCardMode && !authoritativePostDealCardsPresent && !parentAuthoritativeGameplayFallback;
+  const fallbackLocalPlayerId = currentPlayerId ?? players.find((player) => player.user_id === currentUserId && isSeatedGamePlayer(player))?.id;
+  const authoritativeLocalHandCount = fallbackLocalPlayerId
+    ? (cribbageState?.playerStates?.[fallbackLocalPlayerId]?.hand?.length ?? 0)
+    : 0;
+  const authoritativeOpponentHandCount = fallbackLocalPlayerId
+    ? Object.entries(cribbageState?.playerStates ?? {})
+        .filter(([playerId]) => playerId !== fallbackLocalPlayerId)
+        .reduce((sum, [, playerState]) => sum + (playerState.hand?.length ?? 0), 0)
+    : Object.values(cribbageState?.playerStates ?? {}).reduce((sum, playerState) => sum + (playerState.hand?.length ?? 0), 0);
+  const viewStateLocalHandCount = fallbackLocalPlayerId
+    ? (viewState?.playerStates?.[fallbackLocalPlayerId]?.hand?.length ?? 0)
+    : 0;
+  const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
+  const primaryMountOk = !!(
+    activeTab === 'cards' &&
+    isGameplayMode &&
+    currentPlayer &&
+    viewState &&
+    !cardsTabBlocked &&
+    interactionsAllowed
+  );
+  const selfHealMountOk = !!(
+    !primaryMountOk &&
+    activeTab === 'cards' &&
+    currentPlayer &&
+    cribbageState &&
+    isCribbagePostDealPhase(cribbageState.phase) &&
+    authoritativeLocalHandCount > 0 &&
+    !countingStateSnapshot
+  );
+  const cardsTabMounted = primaryMountOk || selfHealMountOk;
+  const cardsTabStateSource = cardsTabMounted
+    ? (primaryMountOk ? 'viewState' : 'authoritative')
+    : 'not-mounted';
+  const parentVisibleCardCount = cardsTabTruth?.visibleDomCardNodeCount ?? 0;
+  const showCribbageRenderTruthPanel = !!(
+    activeTab === 'cards' &&
+    parentVisibleCardCount === 0 &&
+    (
+      authoritativeLocalHandCount > 0 ||
+      isCribbagePostDealPhase(cribbageState?.phase) ||
+      isCribbagePostDealPhase(viewState?.phase)
+    )
+  );
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
@@ -6712,6 +6811,10 @@ export const CribbageMobileGameTable = ({
                       (CARDS_PER_PLAYER as Record<number, number>)[projectedSeatPlayers.length] ?? 6
                     }
                     selfHand={cribbageState?.playerStates[currentPlayerId]?.hand ?? []}
+                    dealerGameId={dealerGameId ?? undefined}
+                    roundId={currentRoundId ?? undefined}
+                    handNumber={currentHandNumber}
+                    onLifecycle={handleDealOrchestratorLifecycle}
                   />
                 ) : null}
 
@@ -6954,7 +7057,7 @@ export const CribbageMobileGameTable = ({
           ) : null
         }
         pane={
-          <div className="h-full overflow-hidden" data-cribbage-active-pane-content="">
+          <div className="relative h-full overflow-hidden" data-cribbage-active-pane-content="">
             {/* Cards tab during high-card or bootstrap modes intentionally
                 renders nothing. All passive lifecycle messaging
                 ("Drawing for dealer...", "Awaiting ante decisions...",
@@ -6967,7 +7070,6 @@ export const CribbageMobileGameTable = ({
 
             {/* Cards tab: gameplay mode with guards */}
             {(() => {
-              const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
               if (activeTab === 'cards' && isGameplayMode && currentPlayer && cardsTabBlocked) {
                 logDebugEvent({
                   gameId,
@@ -6988,35 +7090,7 @@ export const CribbageMobileGameTable = ({
               return null;
             })()}
             {(() => {
-              // Primary render gate — presentation-driven path.
-              const primaryMountOk = !!(
-                activeTab === 'cards' &&
-                isGameplayMode &&
-                currentPlayer &&
-                viewState &&
-                !isTransitioning &&
-                !countingStateSnapshot &&
-                !countingAnimationActiveRef.current &&
-                interactionsAllowed
-              );
-              // P0 SELF-HEAL: if the primary gate blocks but authoritative
-              // Cribbage state contains this player's post-deal hand, mount
-              // the tab against authoritative state. This satisfies the
-              // invariant: authoritative non-empty ⇒ visible cards, no
-              // refresh required.
               const authState = cribbageState;
-              const authHandLen = authState?.playerStates?.[currentPlayerId]?.hand?.length ?? 0;
-              const authPhase = authState?.phase;
-              const authIsPostDeal = isCribbagePostDealPhase(authPhase);
-              const selfHealMountOk = !!(
-                !primaryMountOk &&
-                activeTab === 'cards' &&
-                currentPlayer &&
-                authState &&
-                authIsPostDeal &&
-                authHandLen > 0 &&
-                !countingStateSnapshot
-              );
               if (!primaryMountOk && !selfHealMountOk) return null;
               const stateForRender = primaryMountOk ? viewState! : authState!;
               return (
@@ -7032,6 +7106,7 @@ export const CribbageMobileGameTable = ({
                   gameId={gameId}
                   isDealer={isCribDealer(currentPlayerId)}
                   roundId={roundId}
+                  onTruthSnapshot={handleCardsTabTruthSnapshot}
                   renderTrace={{
                     renderHandKey,
                     currentHandKey,
@@ -7049,6 +7124,60 @@ export const CribbageMobileGameTable = ({
                 />
               );
             })()}
+
+            {showCribbageRenderTruthPanel && (
+              <div
+                data-cribbage-render-truth-panel="true"
+                className="fixed left-1 bottom-16 z-[2147483646] max-h-[70vh] max-w-[calc(100vw-0.5rem)] overflow-auto rounded-md border border-destructive/60 bg-background/95 p-2 text-[9px] leading-tight text-foreground shadow-xl"
+              >
+                <div className="mb-1 font-bold text-destructive">Cribbage render truth</div>
+                <pre className="whitespace-pre-wrap font-mono">
+{[
+  `Parent`,
+  `gameId=${gameId}`,
+  `dealerGameId=${dealerGameId ?? 'null'}`,
+  `roundId=${currentRoundId ?? 'null'}`,
+  `handNumber=${currentHandNumber}`,
+  `cribbagePhase=${cribbageState?.phase ?? 'null'}`,
+  `round/sessionStatus=round:${currentRoundId ? 'loaded' : 'missing'} session:${isDealerSelection ? 'cribbage_dealer_selection' : 'in_progress_or_other'}`,
+  `localPlayerId=${fallbackLocalPlayerId ?? 'null'}`,
+  `activeTab=${activeTab}`,
+  `isGameplayMode=${isGameplayMode}`,
+  `primaryMountOk=${primaryMountOk}`,
+  `selfHealMountOk=${selfHealMountOk}`,
+  `parentAuthoritativeGameplayFallback=${parentAuthoritativeGameplayFallback}`,
+  `highCard/bootstrap/initialLoadComplete=${isHighCardMode}/${isBootstrapMode}/${initialLoadComplete}`,
+  `viewStatePresent=${!!viewState}`,
+  `viewStatePhase=${viewState?.phase ?? 'null'}`,
+  `viewStateLocalHandCount=${viewStateLocalHandCount}`,
+  `authoritativeLocalHandCount=${authoritativeLocalHandCount}`,
+  `authoritativeOpponentHandCount=${authoritativeOpponentHandCount}`,
+  `cardsTabMounted=${cardsTabMounted}`,
+  `statePassedToCardsTab=${cardsTabStateSource}`,
+  `Child`,
+  `authoritativeHandCount=${cardsTabTruth?.authoritativeHandCount ?? 'unmounted'}`,
+  `sourcePresentationHandCount=${cardsTabTruth?.sourceHandCount ?? 'unmounted'}`,
+  `clippedHandCount=${cardsTabTruth?.clippedHandCount ?? 'unmounted'}`,
+  `finalRenderedHandCount=${cardsTabTruth?.finalRenderedHandCount ?? 'unmounted'}`,
+  `activeHandBlocked=${cardsTabTruth?.activeHandBlocked ?? 'unmounted'}`,
+  `shouldSelfHeal=${cardsTabTruth?.shouldSelfHeal ?? 'unmounted'}`,
+  `resolveReason=${cardsTabTruth?.resolveReason ?? 'unmounted'}`,
+  `resolveDecision=${cardsTabTruth?.resolveDecision ?? 'unmounted'}`,
+  `visibleDomCardNodeCount=${cardsTabTruth?.visibleDomCardNodeCount ?? 0}`,
+  `Transport`,
+  `deal.phase=${cardsTabTruth?.dealPhase ?? 'null'}`,
+  `deal.expectedCount=${cardsTabTruth?.dealExpectedCount ?? 0}`,
+  `activeIntentsForHand=${cardsTabTruth?.activeIntentsForHand ?? 0}`,
+  `settledCount=${cardsTabTruth?.settledCount ?? 0}`,
+  `runtimeKey=${cardsTabTruth?.runtimeKey ?? 'null'}`,
+  `handContextId=${cardsTabTruth?.handContextId ?? currentHandKey ?? 'null'}`,
+  `orchestratorMounted=${dealOrchestratorTruth.orchestratorMounted}`,
+  `beginDealCalled=${dealOrchestratorTruth.beginDealCalled}`,
+  `dispatchManyCalled=${dealOrchestratorTruth.dispatchManyCalled}`,
+].join('\n')}
+                </pre>
+              </div>
+            )}
 
             {/* Counting animation placeholder */}
             {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
