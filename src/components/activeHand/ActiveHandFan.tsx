@@ -172,10 +172,10 @@ export function ActiveHandFan({
   // final size, with no post-settle snap.
   const publishRect = useMemo(
     () =>
-      layout && layout.cardWidth > 0 && layout.cardHeight > 0
+      layout && effectiveLayout.cardWidth > 0 && effectiveLayout.cardHeight > 0
         ? {
-            cardWidthPx: layout.cardWidth,
-            cardHeightPx: layout.cardHeight,
+            cardWidthPx: effectiveLayout.cardWidth,
+            cardHeightPx: effectiveLayout.cardHeight,
             publishedAt: performance.now(),
             activeHandFanRenderKey: activeHandFanRenderKey ?? null,
           }
@@ -227,7 +227,7 @@ export function ActiveHandFan({
     return () => observers.forEach((ro) => ro.disconnect());
   }, [game, cards.length, activeHandFanRenderKey, cardIds?.join('|')]);
 
-  if (!layout || cards.length === 0) {
+  if (cards.length === 0) {
     return (
       <div
         {...{ [dataAttribute ?? `data-active-hand-fan`]: game }}
@@ -241,9 +241,38 @@ export function ActiveHandFan({
     );
   }
 
-  const tier = tierFromCardWidth(layout.cardWidth);
+  // Fallback path: cards are present but the layout resolver returned
+  // null (stage rect unmeasured or zero-sized). Instead of rendering an
+  // empty container — which hides authoritative cards until the stage
+  // measures — synthesize a minimal fixed-size row so renderCard still
+  // fires once per card and the cards remain visible. When the stage
+  // measures, the resolver produces a proper `layout` and the normal
+  // path takes over on the next render.
+  const effectiveLayout: ResolvedActiveHandRow = layout ?? (() => {
+    const fallbackCardWidth = 44;
+    const fallbackCardHeight = Math.round(fallbackCardWidth / aspect);
+    const N0 = cards.length;
+    const fallbackOverlap = N0 > 4 ? Math.round(fallbackCardWidth * 0.4) : Math.round(fallbackCardWidth * 0.15);
+    const totalWidth = N0 * fallbackCardWidth - (N0 - 1) * fallbackOverlap;
+    return {
+      cardWidth: fallbackCardWidth,
+      cardHeight: fallbackCardHeight,
+      overlapPx: fallbackOverlap,
+      totalWidth,
+      appliedOverlap: fallbackOverlap / fallbackCardWidth,
+      fanArchDeg: 0,
+      visualBounds: { width: totalWidth, height: fallbackCardHeight, minX: 0, maxX: totalWidth, minY: 0, maxY: fallbackCardHeight, shadowPadPx: 0 },
+      rowOffsetX: 0,
+      rowOffsetY: 0,
+      stageRect: resolvedStageRect ?? { width: totalWidth, height: fallbackCardHeight },
+      stageTopInsetPx: 0,
+      stageBottomInsetPx: 0,
+    } as ResolvedActiveHandRow;
+  })();
+
+  const tier = tierFromCardWidth(effectiveLayout.cardWidth);
   const N = cards.length;
-  const archDeg = applyFan ? layout.fanArchDeg : 0;
+  const archDeg = applyFan ? effectiveLayout.fanArchDeg : 0;
   const perCardDeg = N > 1 ? archDeg / (N - 1) : 0;
 
   return (
@@ -266,11 +295,11 @@ export function ActiveHandFan({
     >
       <div
         style={{
-          width: layout.totalWidth,
+          width: effectiveLayout.totalWidth,
           position: 'absolute',
           left: 0,
           top: 0,
-          transform: `translate(${layout.rowOffsetX.toFixed(3)}px, ${layout.rowOffsetY.toFixed(3)}px)`,
+          transform: `translate(${effectiveLayout.rowOffsetX.toFixed(3)}px, ${effectiveLayout.rowOffsetY.toFixed(3)}px)`,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'flex-end',
@@ -280,7 +309,7 @@ export function ActiveHandFan({
           const rotationDeg = applyFan
             ? -archDeg / 2 + perCardDeg * index
             : 0;
-          const marginLeft = index === 0 ? 0 : -layout.overlapPx;
+          const marginLeft = index === 0 ? 0 : -effectiveLayout.overlapPx;
           // Rotation is applied to the wrapper so that any selection /
           // interaction outline rendered by `renderCard` (rings,
           // highlights, lifts) inherits the exact same transform frame
@@ -295,10 +324,10 @@ export function ActiveHandFan({
               card={card}
               tier={tier}
               activeHandShell
-              faceFillPx={layout.cardWidth}
+              faceFillPx={effectiveLayout.cardWidth}
               style={{
-                width: layout.cardWidth,
-                height: layout.cardHeight,
+                width: effectiveLayout.cardWidth,
+                height: effectiveLayout.cardHeight,
               }}
             />
           );
@@ -322,10 +351,10 @@ export function ActiveHandFan({
                 {renderCard({
                   card,
                   index,
-                  cardWidthPx: layout.cardWidth,
-                  cardHeightPx: layout.cardHeight,
+                  cardWidthPx: effectiveLayout.cardWidth,
+                  cardHeightPx: effectiveLayout.cardHeight,
                   rotationDeg,
-                  overlapPx: layout.overlapPx,
+                  overlapPx: effectiveLayout.overlapPx,
                   tier,
                   card_node: cardNode,
                 })}
