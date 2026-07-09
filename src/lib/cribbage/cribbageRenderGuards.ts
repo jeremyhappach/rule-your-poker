@@ -47,7 +47,6 @@ export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArg
   );
 
   const parentAuthoritativeGameplayFallback = !!(
-    !args.isHighCardMode &&
     !args.isDealerSelection &&
     // NB: intentionally does NOT require currentHandKey. When live/realtime
     // viewState is null or stale, currentHandKey is empty — but the parent
