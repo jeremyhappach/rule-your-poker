@@ -13,6 +13,7 @@ import {
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
   hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
