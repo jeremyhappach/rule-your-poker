@@ -93,6 +93,11 @@ import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
+import {
+  cribbageAuthoritativeHandCounts,
+  deriveCribbageParentRenderMode,
+  isCribbagePostDealPhase,
+} from '@/lib/cribbage/cribbageRenderGuards';
 
 
 import {
@@ -5917,18 +5922,23 @@ export const CribbageMobileGameTable = ({
     !isTransitioning
   );
   const isHighCardMode = effectiveShowHighCardSelection;
-  // OBSERVER FIX: observers have no currentPlayerId by definition. Gating
-  // bootstrap on `!currentPlayerId` kept observers permanently in the
-  // "Preparing next hand…" shell with no gameplay surface. Only require
-  // currentPlayerId for seated participants; observers bypass this gate
-  // and proceed to gameplay rendering (read-only view).
-  const isBootstrapMode = !isDealerSelection && (
-    !initialLoadComplete ||
-    !renderHandKey ||
-    (!currentPlayerId && !isObserver) ||
-    isStaleCompleteAwaitingNext
-  );
-  const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
+  // P0 Cribbage hand visibility invariant: if authoritative current-hand
+  // Cribbage state already has dealt cards, parent bootstrap/readiness gates
+  // must not swallow the table or Cards pane. Actions remain separately gated.
+  const renderMode = deriveCribbageParentRenderMode({
+    isDealerSelection,
+    isHighCardMode,
+    initialLoadComplete,
+    renderHandKey,
+    currentHandKey,
+    currentPlayerId,
+    isObserver,
+    isStaleCompleteAwaitingNext,
+    authoritativeState: cribbageState,
+  });
+  const parentAuthoritativeGameplayFallback = renderMode.parentAuthoritativeGameplayFallback;
+  const isBootstrapMode = renderMode.isBootstrapMode;
+  const isGameplayMode = renderMode.isGameplayMode;
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
   // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
@@ -5944,10 +5954,12 @@ export const CribbageMobileGameTable = ({
   // completion and the framework reset settling).
 
   // Latch pegboard data whenever we have valid gameplay state
-  if (isGameplayMode && viewState) {
+  const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
+
+  if (isGameplayMode && gameplayRenderState) {
     latchedPegboardDataRef.current = {
-      playerStates: viewState.playerStates,
-      winningScore: viewState.pointsToWin,
+      playerStates: gameplayRenderState.playerStates,
+      winningScore: gameplayRenderState.pointsToWin,
     };
   }
   const shouldShowAwaitingAnteAnnouncement = currentHandNumber <= 1 && (
