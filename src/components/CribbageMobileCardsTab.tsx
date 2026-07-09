@@ -611,6 +611,17 @@ export const CribbageMobileCardsTab = ({
       firstCardComputed: domDiagnostics.firstCardComputed,
       overlayCovererAtCenter: domDiagnostics.overlayCovererAtCenter,
       finalRenderedCountButNoDom,
+      layoutWasFallback: layoutTruth?.wasFallback ?? false,
+      layoutFallbackReason: layoutTruth?.fallbackReason ?? null,
+      layoutNormalAvailable: layoutTruth?.normalLayoutAvailable ?? false,
+      layoutCardWidth: layoutTruth?.cardWidthPx ?? 0,
+      layoutCardHeight: layoutTruth?.cardHeightPx ?? 0,
+      layoutAnchorX: layoutTruth?.anchorX ?? null,
+      layoutAnchorY: layoutTruth?.anchorY ?? null,
+      layoutContainerRect: layoutTruth?.containerRect ?? null,
+      layoutFirstCardRect: layoutTruth?.firstCardRect ?? null,
+      layoutMeasuredStageWidth: layoutTruth?.measuredStageWidth ?? null,
+      layoutMeasuredStageHeight: layoutTruth?.measuredStageHeight ?? null,
     });
   }, [
     onTruthSnapshot,
