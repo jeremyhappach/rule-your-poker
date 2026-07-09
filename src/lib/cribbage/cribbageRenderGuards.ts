@@ -179,6 +179,8 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
           ? 'transport terminalized (READY/GAMEPLAY); presentation stale'
           : !isOpeningPhase
             ? 'phase past opening-deal window; deal-window closed'
+            : transportInFlight
+              ? 'transport in-flight without visible progress; stall fuse tripped'
             : parentSuppressed
               ? 'parent suppressed; stall fuse tripped'
               : 'transport lifecycle absent; stall fuse tripped',

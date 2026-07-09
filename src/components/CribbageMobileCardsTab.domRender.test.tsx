@@ -492,6 +492,20 @@ describe('CribbageMobileCardsTab — opening-deal grace prevents pre-transport f
     expect(countCards()).toBe(2);
   });
 
+  it('transport stuck with active intents and zero visible cards self-heals after grace', () => {
+    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 4, settledCountForPlayer: 0 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    expect(countCards()).toBe(0);
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+    expect(countCards()).toBe(6);
+  });
+
   it('transport completes to GAMEPLAY: full 6 render even before grace expires (terminal state wins)', () => {
     fakeDeal = { phase: 'GAMEPLAY', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 6 };
     const state = makeState({ phase: 'discarding' });
@@ -525,6 +539,7 @@ function ParentSelfHealHarness({
   currentPlayerId = 'p1',
   interactionsAllowed = true,
   isTransitioning = false,
+  isHighCardMode = false,
 }: {
   authoritativeState: CribbageState | null;
   viewState: CribbageState | null;
@@ -532,11 +547,12 @@ function ParentSelfHealHarness({
   currentPlayerId?: string;
   interactionsAllowed?: boolean;
   isTransitioning?: boolean;
+  isHighCardMode?: boolean;
 }) {
   // Mirrors the parent's gameplay-mode derivation.
   const mode = deriveCribbageParentRenderMode({
     isDealerSelection: false,
-    isHighCardMode: false,
+    isHighCardMode,
     initialLoadComplete: false, // <-- deliberately false: stale bootstrap gate
     renderHandKey: '', // <-- deliberately empty: presentation not caught up
     currentHandKey: viewState ? 'live-key' : '',
@@ -638,6 +654,22 @@ describe('Parent authoritative-fallback mount (RTL mirror of CribbageMobileGameT
     act(() => {
       root!.render(<ParentSelfHealHarness authoritativeState={auth} viewState={null} />);
     });
+    expect(countCards()).toBe(6);
+  });
+
+  it('mounts Cards surface when stale high-card mode remains true after authoritative discarding state arrives', () => {
+    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
+    const auth = makeState({ phase: 'discarding' });
+    act(() => {
+      root!.render(
+        <ParentSelfHealHarness
+          authoritativeState={auth}
+          viewState={null}
+          isHighCardMode
+        />,
+      );
+    });
+    expect(container!.querySelector('[data-testid="parent-mounted"]')).not.toBeNull();
     expect(countCards()).toBe(6);
   });
 
