@@ -1,6 +1,6 @@
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
-import { resolveVisibleLocalHand } from '@/lib/cardGames/resolveVisibleLocalHand';
 import type { DealPhase } from '@/lib/canonicalShell/cardTransport/types';
+
 
 export function isCribbagePostDealPhase(phase: CribbageState['phase'] | undefined): boolean {
   return phase === 'discarding' || phase === 'cutting' || phase === 'pegging' || phase === 'counting';
