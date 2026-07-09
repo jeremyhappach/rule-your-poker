@@ -50,6 +50,8 @@ export interface CribbageDealOrchestratorProps {
   dealerGameId?: string;
   roundId?: string;
   handNumber?: number;
+  /** Temporary in-memory P0 truth-panel lifecycle feed. */
+  onLifecycle?: (event: 'mounted' | 'unmounted' | 'beginDealCalled' | 'dispatchManyCalled') => void;
 }
 
 export function CribbageDealOrchestrator({
@@ -62,6 +64,7 @@ export function CribbageDealOrchestrator({
   dealerGameId,
   roundId,
   handNumber,
+  onLifecycle,
 }: CribbageDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -69,6 +72,11 @@ export function CribbageDealOrchestrator({
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
+
+  useEffect(() => {
+    onLifecycle?.('mounted');
+    return () => onLifecycle?.('unmounted');
+  }, [onLifecycle]);
 
 
   useEffect(() => {
@@ -157,6 +165,7 @@ export function CribbageDealOrchestrator({
 
     dispatchedRef.current = true;
     deal.beginDeal(totalCount);
+    onLifecycle?.('beginDealCalled');
 
     // Record each intent in the deal-transport idempotency ledger.
     // Record-only: does not suppress or repair. Callers inspect the
@@ -187,7 +196,8 @@ export function CribbageDealOrchestrator({
     }
 
     ct.dispatchMany(intents);
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dealerGameId, roundId, handNumber]);
+    onLifecycle?.('dispatchManyCalled');
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dealerGameId, roundId, handNumber, onLifecycle]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
   // ([data-cribbage-active-pane-content]). Anchor is layout-inert

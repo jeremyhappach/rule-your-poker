@@ -64,6 +64,25 @@ interface RenderTraceContext {
   interactionsAllowed?: boolean;
 }
 
+export interface CribbageCardsTabTruthSnapshot {
+  authoritativeHandCount: number;
+  sourceHandCount: number;
+  clippedHandCount: number;
+  finalRenderedHandCount: number;
+  activeHandBlocked: boolean;
+  shouldSelfHeal: boolean;
+  resolveReason: string;
+  resolveDecision: string;
+  visibleDomCardNodeCount: number;
+  dealPhase: string | null;
+  dealExpectedCount: number;
+  activeIntentsForHand: number;
+  settledCount: number;
+  runtimeKey: string | null;
+  handContextId: string | null;
+  graceExpired: boolean;
+}
+
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
   currentPlayerId: string;
@@ -78,6 +97,8 @@ interface CribbageMobileCardsTabProps {
   roundId?: string;
   /** Diagnostic context for render tracing — omit to disable */
   renderTrace?: RenderTraceContext;
+  /** Temporary visible P0 truth panel feed; in-memory/current-render only. */
+  onTruthSnapshot?: (snapshot: CribbageCardsTabTruthSnapshot) => void;
 }
 
 /** Card identity string for tracing */
@@ -97,6 +118,7 @@ export const CribbageMobileCardsTab = ({
   isDealer,
   roundId,
   renderTrace,
+  onTruthSnapshot,
 }: CribbageMobileCardsTabProps) => {
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
@@ -187,6 +209,7 @@ export const CribbageMobileCardsTab = ({
   const authCount = authoritativeHand?.length ?? 0;
   const presentationCount = sourceHand.length;
   const renderedCount = renderedHand.length;
+  const settledCount = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
   const decisionKind: 'render-authoritative' | 'render-presentation' | 'render-clipped-partial' | 'render-empty-pre-deal' | 'render-empty-blocked' | 'self-heal-fallback-to-authoritative' = (() => {
     if (shouldSelfHeal) return 'self-heal-fallback-to-authoritative';
     if (activeHandBlocked) return 'render-empty-blocked';
@@ -390,6 +413,7 @@ export const CribbageMobileCardsTab = ({
   // cannot meet the minimum readable width.
   // ────────────────────────────────────────────────────────────────
   const handStageRef = useRef<HTMLDivElement | null>(null);
+  const [visibleDomCardNodeCount, setVisibleDomCardNodeCount] = useState(0);
   const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
   useLayoutEffect(() => {
     const stage = handStageRef.current;
@@ -412,6 +436,51 @@ export const CribbageMobileCardsTab = ({
     ro.observe(stage);
     return () => ro.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    const stage = handStageRef.current;
+    const count = stage?.querySelectorAll('[data-cribbage-visible-card-node="true"]').length ?? 0;
+    setVisibleDomCardNodeCount((prev) => (prev === count ? prev : count));
+  }, [renderedHand.length, visibleHandDecision.decision, activeHandBlocked, shouldSelfHeal]);
+
+  useEffect(() => {
+    if (!onTruthSnapshot) return;
+    onTruthSnapshot({
+      authoritativeHandCount: authCount,
+      sourceHandCount: presentationCount,
+      clippedHandCount: clippedHand.length,
+      finalRenderedHandCount: renderedCount,
+      activeHandBlocked,
+      shouldSelfHeal,
+      resolveReason: visibleHandDecision.reason,
+      resolveDecision: visibleHandDecision.decision,
+      visibleDomCardNodeCount,
+      dealPhase: deal?.phase ?? null,
+      dealExpectedCount: deal?.expectedCount ?? 0,
+      activeIntentsForHand: deal?.activeIntentsForHand ?? 0,
+      settledCount,
+      runtimeKey: deal?.handContextId ?? null,
+      handContextId: deal?.handContextId ?? null,
+      graceExpired,
+    });
+  }, [
+    onTruthSnapshot,
+    authCount,
+    presentationCount,
+    clippedHand.length,
+    renderedCount,
+    activeHandBlocked,
+    shouldSelfHeal,
+    visibleHandDecision.reason,
+    visibleHandDecision.decision,
+    visibleDomCardNodeCount,
+    deal?.phase,
+    deal?.expectedCount,
+    deal?.activeIntentsForHand,
+    deal?.handContextId,
+    settledCount,
+    graceExpired,
+  ]);
 
   // Phase-capacity sizing contract:
   //   - Pre-discard: 6 cards in hand (max the phase will ever hold).
@@ -529,6 +598,7 @@ export const CribbageMobileCardsTab = ({
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
             return (
               <button
+                data-cribbage-visible-card-node="true"
                 onClick={() => handleCardClick(index)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
