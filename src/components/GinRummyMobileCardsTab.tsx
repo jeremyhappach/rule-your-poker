@@ -2,7 +2,7 @@
 // My cards always live here — never on the felt.
 // During knocking/laying_off: show melds + deadwood organized, with lay-off UX.
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER, type GinRummyState, type GinRummyCard, type GinRummyPlayerState, type Meld } from '@/lib/ginRummyTypes';
