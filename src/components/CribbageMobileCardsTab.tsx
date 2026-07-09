@@ -515,24 +515,41 @@ export const CribbageMobileCardsTab = ({
 
   const [layoutTruth, setLayoutTruth] = useState<ActiveHandFanLayoutTruth | null>(null);
 
-  // renderCard invocation counters — reset per render token
-  const renderTokenRef = useRef<string>('');
+  // renderCard invocation counters — RESET EVERY RENDER (per-render truth).
+  // Cumulative counters are tracked separately.
   const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
     called: 0, rendered: 0, ids: [],
   });
-  const currentRenderToken = `${renderTrace?.currentHandKey ?? 'nokey'}|${renderedFingerprint}`;
-  if (renderTokenRef.current !== currentRenderToken) {
-    renderTokenRef.current = currentRenderToken;
-    renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
-  }
+  const cumulativeCountersRef = useRef<{ called: number; rendered: number }>({ called: 0, rendered: 0 });
+  // Reset per-render counters synchronously at the top of every render.
+  renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
+
+  // ── Stage measurement instrumentation ──────────────────────────
+  const stageAttachmentTimestampRef = useRef<number | null>(null);
+  const lastMeasureTimestampRef = useRef<number | null>(null);
+  const measureSourceRef = useRef<string>('none');
+  const resizeObserverAttachedRef = useRef<boolean>(false);
+  const resizeObserverFireCountRef = useRef<number>(0);
+  const lastResizeObserverRectRef = useRef<{ width: number; height: number } | null>(null);
+  const lastGBCRRef = useRef<{ width: number; height: number } | null>(null);
+  const didRemeasureAfterCardsArrivedRef = useRef<boolean>(false);
+  const didRemeasureAfterDealReadyRef = useRef<boolean>(false);
+  const [instrTick, setInstrTick] = useState(0);
+  const bumpInstr = () => setInstrTick((t) => (t + 1) & 0x7fffffff);
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
     if (!stage) return;
-    const measure = () => {
+    if (stageAttachmentTimestampRef.current == null) {
+      stageAttachmentTimestampRef.current = performance.now();
+    }
+    const measure = (source: string) => {
       const rect = stage.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
+      lastMeasureTimestampRef.current = performance.now();
+      measureSourceRef.current = source;
+      lastGBCRRef.current = { width: w, height: h };
       setHandStageRectPx(prev => (
         prev !== null &&
         Math.abs(prev.width - w) < 0.5 &&
@@ -541,12 +558,72 @@ export const CribbageMobileCardsTab = ({
           : { width: w, height: h }
       ));
     };
-    measure();
+    measure('layoutEffect-mount');
+    bumpInstr();
     if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measure);
+    resizeObserverAttachedRef.current = true;
+    const ro = new ResizeObserver((entries) => {
+      resizeObserverFireCountRef.current += 1;
+      const e = entries[0];
+      if (e) {
+        const cr = e.contentRect;
+        lastResizeObserverRectRef.current = { width: cr.width, height: cr.height };
+      }
+      measure('ResizeObserver');
+      bumpInstr();
+    });
     ro.observe(stage);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      resizeObserverAttachedRef.current = false;
+    };
   }, []);
+
+  // Track remeasure-after-cards-arrived / remeasure-after-deal-READY.
+  const prevCardsLenRef = useRef<number>(0);
+  useLayoutEffect(() => {
+    if (renderedHand.length > 0 && prevCardsLenRef.current === 0) {
+      // Force a remeasure now that cards exist.
+      const stage = handStageRef.current;
+      if (stage) {
+        const r = stage.getBoundingClientRect();
+        lastMeasureTimestampRef.current = performance.now();
+        measureSourceRef.current = 'cards-arrived';
+        lastGBCRRef.current = { width: r.width, height: r.height };
+        didRemeasureAfterCardsArrivedRef.current = true;
+        setHandStageRectPx(prev => (
+          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+            ? prev
+            : { width: r.width, height: r.height }
+        ));
+        bumpInstr();
+      }
+    }
+    prevCardsLenRef.current = renderedHand.length;
+  }, [renderedHand.length]);
+
+  const dealPhaseForInstr = deal?.phase ?? null;
+  const prevDealPhaseRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (dealPhaseForInstr === 'READY' && prevDealPhaseRef.current !== 'READY') {
+      const stage = handStageRef.current;
+      if (stage) {
+        const r = stage.getBoundingClientRect();
+        lastMeasureTimestampRef.current = performance.now();
+        measureSourceRef.current = 'deal-READY';
+        lastGBCRRef.current = { width: r.width, height: r.height };
+        didRemeasureAfterDealReadyRef.current = true;
+        setHandStageRectPx(prev => (
+          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+            ? prev
+            : { width: r.width, height: r.height }
+        ));
+        bumpInstr();
+      }
+    }
+    prevDealPhaseRef.current = dealPhaseForInstr;
+  }, [dealPhaseForInstr]);
+
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
