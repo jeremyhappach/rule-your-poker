@@ -11,7 +11,7 @@ import {
   useActiveHandLayoutPolicy,
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
-import { ActiveHandFan, type ActiveHandFanLayoutTruth } from './activeHand/ActiveHandFan';
+import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
@@ -64,103 +64,6 @@ interface RenderTraceContext {
   interactionsAllowed?: boolean;
 }
 
-export interface CribbageCardsTabTruthSnapshot {
-  authoritativeHandCount: number;
-  sourceHandCount: number;
-  clippedHandCount: number;
-  finalRenderedHandCount: number;
-  activeHandBlocked: boolean;
-  shouldSelfHeal: boolean;
-  resolveReason: string;
-  resolveDecision: string;
-  visibleDomCardNodeCount: number;
-  dealPhase: string | null;
-  dealExpectedCount: number;
-  activeIntentsForHand: number;
-  settledCount: number;
-  runtimeKey: string | null;
-  handContextId: string | null;
-  graceExpired: boolean;
-  // ── P0 render-pipeline instrumentation (read-only) ──
-  cardsArrayPassedToFanCount: number;
-  activeHandFanReceivedCardsCount: number;
-  renderCardCalledCount: number;
-  renderedCardComponentCount: number;
-  sourceCardIds: string[];
-  /** @deprecated retained field name; mirrors sourceCardIds (pre-render). */
-  renderedCardIds: string[];
-  /** IDs captured inside the ActiveHandFan renderCard callback. */
-  renderCardInvokedIds: string[];
-  domCardIds: string[];
-  activeHandFanMounted: boolean;
-  containerExists: boolean;
-  containerRect: { x: number; y: number; width: number; height: number } | null;
-  containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
-  firstCardRect: { x: number; y: number; width: number; height: number } | null;
-  firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
-  overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
-  finalRenderedCountButNoDom: boolean;
-  // ── ActiveHandFan layout-truth (fallback vs. measured) ──
-  layoutWasFallback: boolean;
-  layoutFallbackReason: string | null;
-  layoutNormalAvailable: boolean;
-  layoutCardWidth: number;
-  layoutCardHeight: number;
-  layoutAnchorX: number | null;
-  layoutAnchorY: number | null;
-  layoutContainerRect: { x: number; y: number; width: number; height: number } | null;
-  layoutFirstCardRect: { x: number; y: number; width: number; height: number } | null;
-  layoutMeasuredStageWidth: number | null;
-  layoutMeasuredStageHeight: number | null;
-  // ── layout availability instrumentation ──
-  resolveActiveHandLayoutReturnReason: string;
-  stageRefAttached: boolean;
-  stageRefElementTag: string | null;
-  stageRefElementClass: string | null;
-  stageRefElementDataAttrs: string | null;
-  stageRefAttachmentTimestamp: number | null;
-  lastMeasureTimestamp: number | null;
-  measureSource: string;
-  resizeObserverAttached: boolean;
-  resizeObserverFireCount: number;
-  lastResizeObserverRect: { width: number; height: number } | null;
-  lastGetBoundingClientRect: { width: number; height: number } | null;
-  parentHandStageRect: { x: number; y: number; width: number; height: number } | null;
-  cardsTabRect: { x: number; y: number; width: number; height: number } | null;
-  activeTabAtMeasure: string | null;
-  phaseAtMeasure: string | null;
-  dealPhaseAtMeasure: string | null;
-  didRemeasureAfterCardsArrived: boolean;
-  didRemeasureAfterDealReady: boolean;
-  // ── fallback geometry inputs ──
-  fallbackCardWidthInput: number | null;
-  fallbackCardHeightInput: number | null;
-  fallbackOverlapRatio: number | null;
-  fallbackAvailableStageWidth: number | null;
-  fallbackAvailableStageHeight: number | null;
-  fallbackWidthFromStage: number | null;
-  fallbackWidthFromHeight: number | null;
-  fallbackHeightBoundApplied: boolean;
-  fallbackWidthBoundApplied: boolean;
-  fallbackClampApplied: boolean;
-  fallbackFinalCardWidth: number | null;
-  fallbackFinalCardHeight: number | null;
-  fallbackComputedRowWidth: number | null;
-  fallbackCardXPositions: number[] | null;
-  fallbackRowCenterX: number | null;
-  fallbackRowCenterY: number | null;
-  normalPolicyExpectedCardWidth: number | null;
-  normalPolicyExpectedOverlapPx: number | null;
-  normalPolicyExpectedOverlapRatio: number | null;
-  // ── counter correctness (per-render vs. cumulative) ──
-  renderCardCalledCountCurrentRender: number;
-  renderedCardComponentCountCurrentRender: number;
-  renderCardInvokedIdsCurrentRender: string[];
-  cumulativeRenderCardCalledCount: number;
-  cumulativeRenderedCardComponentCount: number;
-}
-
-
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
   currentPlayerId: string;
@@ -175,9 +78,8 @@ interface CribbageMobileCardsTabProps {
   roundId?: string;
   /** Diagnostic context for render tracing — omit to disable */
   renderTrace?: RenderTraceContext;
-  /** Temporary visible P0 truth panel feed; in-memory/current-render only. */
-  onTruthSnapshot?: (snapshot: CribbageCardsTabTruthSnapshot) => void;
 }
+
 
 /** Card identity string for tracing */
 function cardId(c: CribbageCard): string {
@@ -196,8 +98,8 @@ export const CribbageMobileCardsTab = ({
   isDealer,
   roundId,
   renderTrace,
-  onTruthSnapshot,
 }: CribbageMobileCardsTabProps) => {
+
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
   // Reset selectedCards on hand boundary (roundId change) to prevent stale selections
@@ -491,65 +393,15 @@ export const CribbageMobileCardsTab = ({
   // cannot meet the minimum readable width.
   // ────────────────────────────────────────────────────────────────
   const handStageRef = useRef<HTMLDivElement | null>(null);
-  const [visibleDomCardNodeCount, setVisibleDomCardNodeCount] = useState(0);
   const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
-  const [domDiagnostics, setDomDiagnostics] = useState<{
-    domCardIds: string[];
-    containerExists: boolean;
-    containerRect: { x: number; y: number; width: number; height: number } | null;
-    containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null;
-    firstCardRect: { x: number; y: number; width: number; height: number } | null;
-    firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null;
-    overlayCovererAtCenter: { tag: string; className: string; id: string } | null;
-    activeHandFanMounted: boolean;
-  }>({
-    domCardIds: [],
-    containerExists: false,
-    containerRect: null,
-    containerComputed: null,
-    firstCardRect: null,
-    firstCardComputed: null,
-    overlayCovererAtCenter: null,
-    activeHandFanMounted: false,
-  });
-
-  const [layoutTruth, setLayoutTruth] = useState<ActiveHandFanLayoutTruth | null>(null);
-
-  // renderCard invocation counters — RESET EVERY RENDER (per-render truth).
-  // Cumulative counters are tracked separately.
-  const renderCountersRef = useRef<{ called: number; rendered: number; ids: string[] }>({
-    called: 0, rendered: 0, ids: [],
-  });
-  const cumulativeCountersRef = useRef<{ called: number; rendered: number }>({ called: 0, rendered: 0 });
-  // Reset per-render counters synchronously at the top of every render.
-  renderCountersRef.current = { called: 0, rendered: 0, ids: [] };
-
-  // ── Stage measurement instrumentation ──────────────────────────
-  const stageAttachmentTimestampRef = useRef<number | null>(null);
-  const lastMeasureTimestampRef = useRef<number | null>(null);
-  const measureSourceRef = useRef<string>('none');
-  const resizeObserverAttachedRef = useRef<boolean>(false);
-  const resizeObserverFireCountRef = useRef<number>(0);
-  const lastResizeObserverRectRef = useRef<{ width: number; height: number } | null>(null);
-  const lastGBCRRef = useRef<{ width: number; height: number } | null>(null);
-  const didRemeasureAfterCardsArrivedRef = useRef<boolean>(false);
-  const didRemeasureAfterDealReadyRef = useRef<boolean>(false);
-  const [instrTick, setInstrTick] = useState(0);
-  const bumpInstr = () => setInstrTick((t) => (t + 1) & 0x7fffffff);
 
   useLayoutEffect(() => {
     const stage = handStageRef.current;
     if (!stage) return;
-    if (stageAttachmentTimestampRef.current == null) {
-      stageAttachmentTimestampRef.current = performance.now();
-    }
-    const measure = (source: string) => {
+    const measure = () => {
       const rect = stage.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
-      lastMeasureTimestampRef.current = performance.now();
-      measureSourceRef.current = source;
-      lastGBCRRef.current = { width: w, height: h };
       setHandStageRectPx(prev => (
         prev !== null &&
         Math.abs(prev.width - w) < 0.5 &&
@@ -558,275 +410,14 @@ export const CribbageMobileCardsTab = ({
           : { width: w, height: h }
       ));
     };
-    measure('layoutEffect-mount');
-    bumpInstr();
+    measure();
     if (typeof ResizeObserver === 'undefined') return;
-    resizeObserverAttachedRef.current = true;
-    const ro = new ResizeObserver((entries) => {
-      resizeObserverFireCountRef.current += 1;
-      const e = entries[0];
-      if (e) {
-        const cr = e.contentRect;
-        lastResizeObserverRectRef.current = { width: cr.width, height: cr.height };
-      }
-      measure('ResizeObserver');
-      bumpInstr();
-    });
+    const ro = new ResizeObserver(measure);
     ro.observe(stage);
-    return () => {
-      ro.disconnect();
-      resizeObserverAttachedRef.current = false;
-    };
+    return () => ro.disconnect();
   }, []);
 
-  // Track remeasure-after-cards-arrived / remeasure-after-deal-READY.
-  const prevCardsLenRef = useRef<number>(0);
-  useLayoutEffect(() => {
-    if (renderedHand.length > 0 && prevCardsLenRef.current === 0) {
-      // Force a remeasure now that cards exist.
-      const stage = handStageRef.current;
-      if (stage) {
-        const r = stage.getBoundingClientRect();
-        lastMeasureTimestampRef.current = performance.now();
-        measureSourceRef.current = 'cards-arrived';
-        lastGBCRRef.current = { width: r.width, height: r.height };
-        didRemeasureAfterCardsArrivedRef.current = true;
-        setHandStageRectPx(prev => (
-          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
-            ? prev
-            : { width: r.width, height: r.height }
-        ));
-        bumpInstr();
-      }
-    }
-    prevCardsLenRef.current = renderedHand.length;
-  }, [renderedHand.length]);
 
-  const dealPhaseForInstr = deal?.phase ?? null;
-  const prevDealPhaseRef = useRef<string | null>(null);
-  useLayoutEffect(() => {
-    if (dealPhaseForInstr === 'READY' && prevDealPhaseRef.current !== 'READY') {
-      const stage = handStageRef.current;
-      if (stage) {
-        const r = stage.getBoundingClientRect();
-        lastMeasureTimestampRef.current = performance.now();
-        measureSourceRef.current = 'deal-READY';
-        lastGBCRRef.current = { width: r.width, height: r.height };
-        didRemeasureAfterDealReadyRef.current = true;
-        setHandStageRectPx(prev => (
-          prev !== null && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
-            ? prev
-            : { width: r.width, height: r.height }
-        ));
-        bumpInstr();
-      }
-    }
-    prevDealPhaseRef.current = dealPhaseForInstr;
-  }, [dealPhaseForInstr]);
-
-
-  useLayoutEffect(() => {
-    const stage = handStageRef.current;
-    const nodes = stage
-      ? Array.from(stage.querySelectorAll<HTMLElement>('[data-cribbage-visible-card-node="true"]'))
-      : [];
-    const count = nodes.length;
-    setVisibleDomCardNodeCount((prev) => (prev === count ? prev : count));
-
-    const domCardIds = nodes.map((n) => n.getAttribute('data-card-id') ?? '');
-    let containerRect: { x: number; y: number; width: number; height: number } | null = null;
-    let containerComputed: { display: string; visibility: string; opacity: string; overflow: string; zIndex: string } | null = null;
-    let firstCardRect: { x: number; y: number; width: number; height: number } | null = null;
-    let firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null = null;
-    let overlayCovererAtCenter: { tag: string; className: string; id: string } | null = null;
-    let activeHandFanMounted = false;
-    const elementFromPoint = typeof document.elementFromPoint === 'function'
-      ? document.elementFromPoint.bind(document)
-      : null;
-    if (stage) {
-      const r = stage.getBoundingClientRect();
-      containerRect = { x: r.x, y: r.y, width: r.width, height: r.height };
-      const cs = getComputedStyle(stage);
-      containerComputed = {
-        display: cs.display,
-        visibility: cs.visibility,
-        opacity: cs.opacity,
-        overflow: cs.overflow,
-        zIndex: cs.zIndex,
-      };
-      activeHandFanMounted = !!stage.querySelector('[data-active-hand-fan],[data-activehandfan],[data-hand-fan]')
-        || (stage.children.length > 0);
-      if (nodes[0]) {
-        const first = nodes[0];
-        const fr = first.getBoundingClientRect();
-        firstCardRect = { x: fr.x, y: fr.y, width: fr.width, height: fr.height };
-        const fcs = getComputedStyle(first);
-        firstCardComputed = {
-          display: fcs.display,
-          visibility: fcs.visibility,
-          opacity: fcs.opacity,
-          transform: fcs.transform,
-        };
-        const cx = fr.x + fr.width / 2;
-        const cy = fr.y + fr.height / 2;
-        const el = elementFromPoint ? elementFromPoint(cx, cy) as HTMLElement | null : null;
-        if (el && !first.contains(el) && el !== first) {
-          overlayCovererAtCenter = {
-            tag: el.tagName.toLowerCase(),
-            className: typeof el.className === 'string' ? el.className : String(el.className ?? ''),
-            id: el.id ?? '',
-          };
-        }
-      } else if (containerRect) {
-        const cx = containerRect.x + containerRect.width / 2;
-        const cy = containerRect.y + containerRect.height / 2;
-        const el = elementFromPoint ? elementFromPoint(cx, cy) as HTMLElement | null : null;
-        if (el && el !== stage) {
-          overlayCovererAtCenter = {
-            tag: el.tagName.toLowerCase(),
-            className: typeof el.className === 'string' ? el.className : String(el.className ?? ''),
-            id: el.id ?? '',
-          };
-        }
-      }
-    }
-    setDomDiagnostics({
-      domCardIds,
-      containerExists: !!stage,
-      containerRect,
-      containerComputed,
-      firstCardRect,
-      firstCardComputed,
-      overlayCovererAtCenter,
-      activeHandFanMounted,
-    });
-  }, [renderedHand.length, visibleHandDecision.decision, activeHandBlocked, shouldSelfHeal, renderedFingerprint]);
-
-  useEffect(() => {
-    if (!onTruthSnapshot) return;
-    const finalRenderedCountButNoDom = renderedCount > 0 && visibleDomCardNodeCount === 0;
-    onTruthSnapshot({
-      authoritativeHandCount: authCount,
-      sourceHandCount: presentationCount,
-      clippedHandCount: clippedHand.length,
-      finalRenderedHandCount: renderedCount,
-      activeHandBlocked,
-      shouldSelfHeal,
-      resolveReason: visibleHandDecision.reason,
-      resolveDecision: visibleHandDecision.decision,
-      visibleDomCardNodeCount,
-      dealPhase: deal?.phase ?? null,
-      dealExpectedCount: deal?.expectedCount ?? 0,
-      activeIntentsForHand: deal?.activeIntentsForHand ?? 0,
-      settledCount,
-      runtimeKey: deal?.handContextId ?? null,
-      handContextId: deal?.handContextId ?? null,
-      graceExpired,
-      cardsArrayPassedToFanCount: renderedHand.length,
-      activeHandFanReceivedCardsCount: renderedHand.length,
-      renderCardCalledCount: renderCountersRef.current.called,
-      renderedCardComponentCount: renderCountersRef.current.rendered,
-      sourceCardIds,
-      renderedCardIds,
-      renderCardInvokedIds: [...renderCountersRef.current.ids],
-      domCardIds: domDiagnostics.domCardIds,
-      activeHandFanMounted: domDiagnostics.activeHandFanMounted,
-      containerExists: domDiagnostics.containerExists,
-      containerRect: domDiagnostics.containerRect,
-      containerComputed: domDiagnostics.containerComputed,
-      firstCardRect: domDiagnostics.firstCardRect,
-      firstCardComputed: domDiagnostics.firstCardComputed,
-      overlayCovererAtCenter: domDiagnostics.overlayCovererAtCenter,
-      finalRenderedCountButNoDom,
-      layoutWasFallback: layoutTruth?.wasFallback ?? false,
-      layoutFallbackReason: layoutTruth?.fallbackReason ?? null,
-      layoutNormalAvailable: layoutTruth?.normalLayoutAvailable ?? false,
-      layoutCardWidth: layoutTruth?.cardWidthPx ?? 0,
-      layoutCardHeight: layoutTruth?.cardHeightPx ?? 0,
-      layoutAnchorX: layoutTruth?.anchorX ?? null,
-      layoutAnchorY: layoutTruth?.anchorY ?? null,
-      layoutContainerRect: layoutTruth?.containerRect ?? null,
-      layoutFirstCardRect: layoutTruth?.firstCardRect ?? null,
-      layoutMeasuredStageWidth: layoutTruth?.measuredStageWidth ?? null,
-      layoutMeasuredStageHeight: layoutTruth?.measuredStageHeight ?? null,
-      // ── new instrumentation ──
-      resolveActiveHandLayoutReturnReason: layoutTruth?.resolveActiveHandLayoutReturnReason ?? 'unmeasured',
-      stageRefAttached: !!handStageRef.current,
-      stageRefElementTag: handStageRef.current?.tagName?.toLowerCase() ?? null,
-      stageRefElementClass: (typeof handStageRef.current?.className === 'string' ? handStageRef.current?.className : null) ?? null,
-      stageRefElementDataAttrs: handStageRef.current
-        ? Array.from(handStageRef.current.attributes)
-            .filter((a) => a.name.startsWith('data-'))
-            .map((a) => `${a.name}=${a.value}`)
-            .join(' ')
-        : null,
-      stageRefAttachmentTimestamp: stageAttachmentTimestampRef.current,
-      lastMeasureTimestamp: lastMeasureTimestampRef.current,
-      measureSource: measureSourceRef.current,
-      resizeObserverAttached: resizeObserverAttachedRef.current,
-      resizeObserverFireCount: resizeObserverFireCountRef.current,
-      lastResizeObserverRect: lastResizeObserverRectRef.current,
-      lastGetBoundingClientRect: lastGBCRRef.current,
-      parentHandStageRect: domDiagnostics.containerRect,
-      cardsTabRect: (() => {
-        const p = handStageRef.current?.parentElement?.getBoundingClientRect();
-        return p ? { x: p.x, y: p.y, width: p.width, height: p.height } : null;
-      })(),
-      activeTabAtMeasure: 'cards',
-      phaseAtMeasure: cribbageState.phase ?? null,
-      dealPhaseAtMeasure: deal?.phase ?? null,
-      didRemeasureAfterCardsArrived: didRemeasureAfterCardsArrivedRef.current,
-      didRemeasureAfterDealReady: didRemeasureAfterDealReadyRef.current,
-      fallbackCardWidthInput: layoutTruth?.fallbackCardWidthInput ?? null,
-      fallbackCardHeightInput: layoutTruth?.fallbackCardHeightInput ?? null,
-      fallbackOverlapRatio: layoutTruth?.fallbackOverlapRatio ?? null,
-      fallbackAvailableStageWidth: layoutTruth?.fallbackAvailableStageWidth ?? null,
-      fallbackAvailableStageHeight: layoutTruth?.fallbackAvailableStageHeight ?? null,
-      fallbackWidthFromStage: layoutTruth?.fallbackWidthFromStage ?? null,
-      fallbackWidthFromHeight: layoutTruth?.fallbackWidthFromHeight ?? null,
-      fallbackHeightBoundApplied: layoutTruth?.fallbackHeightBoundApplied ?? false,
-      fallbackWidthBoundApplied: layoutTruth?.fallbackWidthBoundApplied ?? false,
-      fallbackClampApplied: layoutTruth?.fallbackClampApplied ?? false,
-      fallbackFinalCardWidth: layoutTruth?.fallbackFinalCardWidth ?? null,
-      fallbackFinalCardHeight: layoutTruth?.fallbackFinalCardHeight ?? null,
-      fallbackComputedRowWidth: layoutTruth?.fallbackComputedRowWidth ?? null,
-      fallbackCardXPositions: layoutTruth?.fallbackCardXPositions ?? null,
-      fallbackRowCenterX: layoutTruth?.fallbackRowCenterX ?? null,
-      fallbackRowCenterY: layoutTruth?.fallbackRowCenterY ?? null,
-      normalPolicyExpectedCardWidth: layoutTruth?.normalPolicyExpectedCardWidth ?? null,
-      normalPolicyExpectedOverlapPx: layoutTruth?.normalPolicyExpectedOverlapPx ?? null,
-      normalPolicyExpectedOverlapRatio: layoutTruth?.normalPolicyExpectedOverlapRatio ?? null,
-      renderCardCalledCountCurrentRender: renderCountersRef.current.called,
-      renderedCardComponentCountCurrentRender: renderCountersRef.current.rendered,
-      renderCardInvokedIdsCurrentRender: [...renderCountersRef.current.ids],
-      cumulativeRenderCardCalledCount: cumulativeCountersRef.current.called,
-      cumulativeRenderedCardComponentCount: cumulativeCountersRef.current.rendered,
-    });
-  }, [
-    onTruthSnapshot,
-    authCount,
-    presentationCount,
-    clippedHand.length,
-    renderedCount,
-    activeHandBlocked,
-    shouldSelfHeal,
-    visibleHandDecision.reason,
-    visibleHandDecision.decision,
-    visibleDomCardNodeCount,
-    deal?.phase,
-    deal?.expectedCount,
-    deal?.activeIntentsForHand,
-    deal?.handContextId,
-    settledCount,
-    graceExpired,
-    renderedHand.length,
-    sourceCardIds,
-    renderedCardIds,
-    domDiagnostics,
-    layoutTruth,
-    instrTick,
-    cribbageState.phase,
-  ]);
 
 
   // Phase-capacity sizing contract:
@@ -936,41 +527,19 @@ export const CribbageMobileCardsTab = ({
           capacity={phaseCapacity}
           stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
           applyFan
-          onLayoutTruth={(info) => {
-            setLayoutTruth((prev) => {
-              if (
-                prev &&
-                prev.wasFallback === info.wasFallback &&
-                prev.fallbackReason === info.fallbackReason &&
-                prev.cardWidthPx === info.cardWidthPx &&
-                prev.cardHeightPx === info.cardHeightPx &&
-                prev.anchorX === info.anchorX &&
-                prev.anchorY === info.anchorY &&
-                prev.measuredStageWidth === info.measuredStageWidth &&
-                prev.measuredStageHeight === info.measuredStageHeight
-              ) return prev;
-              return info;
-            });
-          }}
           renderCard={({ index, card_node }) => {
             const card = renderedHand[index];
-            renderCountersRef.current.called += 1;
-            cumulativeCountersRef.current.called += 1;
             if (!card) return null;
-            const cid = cardId(card);
-            renderCountersRef.current.rendered += 1;
-            cumulativeCountersRef.current.rendered += 1;
-            renderCountersRef.current.ids.push(cid);
 
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
+
             return (
               <button
-                data-cribbage-visible-card-node="true"
-                data-card-id={cid}
                 onClick={() => handleCardClick(index)}
+
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
                 className={cn(
