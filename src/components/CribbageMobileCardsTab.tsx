@@ -109,6 +109,22 @@ export const CribbageMobileCardsTab = ({
     }
   }, [roundId]);
 
+  // Bounded opening-deal grace window. Keyed on hand identity — resets on
+  // every hand boundary. While unexpired, presentation may legitimately
+  // render empty/subset during a fresh opening deal without self-heal
+  // firing prematurely. If the transport never progresses, the grace
+  // expires and the authoritative fallback takes over.
+  //
+  // In-memory only, bounded, no storage/logging.
+  const OPENING_DEAL_GRACE_MS = 2000;
+  const graceKey = `${roundId ?? renderTrace?.expectedRoundId ?? 'unknown-round'}:${renderTrace?.currentHandKey ?? ''}`;
+  const [graceExpired, setGraceExpired] = useState(false);
+  useEffect(() => {
+    setGraceExpired(false);
+    const t = setTimeout(() => setGraceExpired(true), OPENING_DEAL_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [graceKey]);
+
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const clientId = currentPlayer.user_id.slice(0, 8);
   const sourceHand = myPlayerState?.hand ?? [];
@@ -140,8 +156,9 @@ export const CribbageMobileCardsTab = ({
   })();
   // P0 SELF-HEAL: Run every rendered Cribbage self-hand through the shared
   // invariant helper. Presentation may animate card-by-card only while the
-  // transport is actively in flight; once authoritative post-deal cards exist
-  // and transport is empty/stale/blocked, authoritative cards win.
+  // transport is actively in flight or within the bounded opening-deal
+  // grace; once authoritative post-deal cards exist and transport is
+  // empty/stale/blocked past grace, authoritative cards win.
   const visibleHandDecision = resolveCribbageVisibleHand({
     authoritativeHand,
     presentationHand: clippedHand,
@@ -150,7 +167,9 @@ export const CribbageMobileCardsTab = ({
     dealPhase: deal?.phase ?? null,
     dealExpectedCount: deal?.expectedCount ?? 0,
     dealActiveIntentCount: deal?.activeIntentsForHand ?? 0,
+    graceExpired,
   });
+
   const shouldSelfHeal = visibleHandDecision.decision === 'render-authoritative-self-heal';
   const dealClippedSourceHand: CribbageCard[] = visibleHandDecision.hand as CribbageCard[];
   const renderedHand = dealClippedSourceHand;

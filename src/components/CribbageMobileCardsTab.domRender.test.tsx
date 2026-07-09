@@ -401,6 +401,110 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// OPENING-DEAL WINDOW — the exact regression: authoritative hand exists
+// on the DB before CardTransport.beginDeal has been called. The old
+// resolveVisibleLocalHand Rule 1 flashed the full hand instantly, then
+// the transport began and cards disappeared before re-animating.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('CribbageMobileCardsTab — opening-deal grace prevents pre-transport flash', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const openingDealProps = (auth: CribbageCard[]) => ({
+    cribbageState: makeState({ phase: 'discarding' }),
+    currentPlayerId: 'p1',
+    playerCount: 2,
+    isProcessing: false,
+    onDiscard: () => {},
+    onPlayCard: () => {},
+    currentPlayer,
+    gameId: 'game-1',
+    isDealer: true,
+    roundId: 'round-1',
+    renderTrace: {
+      renderHandKey: 'p1:A,2,3,4,5,6',
+      currentHandKey: 'p1:A,2,3,4,5,6',
+      dealerGameId: 'dg-1',
+      isFrozen: false,
+      authoritativeHand: auth,
+      renderSource: 'sync-presentation',
+      expectedRoundId: 'round-1',
+      sourceRoundId: 'round-1',
+      handNumber: 1,
+      isGameplayMode: true,
+      viewStateIsCurrentRound: true,
+      interactionsAllowed: true,
+    },
+  });
+
+  it('does NOT flash the full authoritative hand before transport begins (PRE_DEAL, expectedCount=0)', () => {
+    // Fresh hand identity: DB has flipped to phase=discarding + 6 cards,
+    // but the orchestrator has not yet called beginDeal(). expectedCount
+    // is still 0. Old bug: Rule 1 rendered 6 immediately.
+    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 0, activeIntentsForHand: 0, settledCountForPlayer: 0 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    // Presentation owns the deal window. Zero cards, no flash.
+    expect(countCards()).toBe(0);
+  });
+
+  it('does NOT flash when DEALING has just begun with zero settled and zero active (still within grace)', () => {
+    // The tick between beginDeal(12) and dispatchMany.
+    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    expect(countCards()).toBe(0);
+  });
+
+  it('after grace window expires with transport still stuck, authoritative self-heal renders 6', () => {
+    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 0, activeIntentsForHand: 0, settledCountForPlayer: 0 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    expect(countCards()).toBe(0);
+    // Advance past the bounded grace window (2000ms).
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+    expect(countCards()).toBe(6);
+  });
+
+  it('transport progressing during grace: presentation subset renders, no flash-to-6', () => {
+    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 4, settledCountForPlayer: 2 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    expect(countCards()).toBe(2);
+  });
+
+  it('transport completes to GAMEPLAY: full 6 render even before grace expires (terminal state wins)', () => {
+    fakeDeal = { phase: 'GAMEPLAY', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 6 };
+    const state = makeState({ phase: 'discarding' });
+    const auth = state.playerStates.p1.hand;
+    act(() => {
+      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
+    });
+    expect(countCards()).toBe(6);
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────
 // PARENT-LEVEL RTL — mirrors the exact mount gate in
 // CribbageMobileGameTable.tsx (`primaryMountOk || selfHealMountOk`) and
 // proves that when viewState is null/stale but authoritative Cribbage
