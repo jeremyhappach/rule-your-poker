@@ -640,6 +640,9 @@ export const CribbageMobileCardsTab = ({
     let firstCardComputed: { display: string; visibility: string; opacity: string; transform: string } | null = null;
     let overlayCovererAtCenter: { tag: string; className: string; id: string } | null = null;
     let activeHandFanMounted = false;
+    const elementFromPoint = typeof document.elementFromPoint === 'function'
+      ? document.elementFromPoint.bind(document)
+      : null;
     if (stage) {
       const r = stage.getBoundingClientRect();
       containerRect = { x: r.x, y: r.y, width: r.width, height: r.height };
@@ -666,7 +669,7 @@ export const CribbageMobileCardsTab = ({
         };
         const cx = fr.x + fr.width / 2;
         const cy = fr.y + fr.height / 2;
-        const el = document.elementFromPoint(cx, cy) as HTMLElement | null;
+        const el = elementFromPoint ? elementFromPoint(cx, cy) as HTMLElement | null : null;
         if (el && !first.contains(el) && el !== first) {
           overlayCovererAtCenter = {
             tag: el.tagName.toLowerCase(),
@@ -677,7 +680,7 @@ export const CribbageMobileCardsTab = ({
       } else if (containerRect) {
         const cx = containerRect.x + containerRect.width / 2;
         const cy = containerRect.y + containerRect.height / 2;
-        const el = document.elementFromPoint(cx, cy) as HTMLElement | null;
+        const el = elementFromPoint ? elementFromPoint(cx, cy) as HTMLElement | null : null;
         if (el && el !== stage) {
           overlayCovererAtCenter = {
             tag: el.tagName.toLowerCase(),
