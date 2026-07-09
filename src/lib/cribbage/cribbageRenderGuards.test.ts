@@ -189,6 +189,37 @@ describe('Cribbage render guards', () => {
     expect(result.hand).toEqual(hand);
   });
 
+  it('lifecycle D: transport terminal (READY) with 0 intents → immediate self-heal, grace not consulted', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'READY',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 0,
+      graceExpired: false, // must not matter
+    });
+    expect(result.decision).toBe('render-authoritative-self-heal');
+    expect(result.hand).toEqual(hand);
+    expect(result.reason).toContain('terminalized');
+  });
+
+  it('lifecycle: in-flight transport is never overridden by grace, even if graceExpired=true', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: hand.slice(0, 2),
+      phase: 'discarding',
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 4,
+      graceExpired: true, // must not force self-heal
+    });
+    expect(result.decision).toBe('render-presentation');
+    expect(result.hand).toEqual(hand.slice(0, 2));
+  });
+
+
+
   it('hydration and live fallback converge without refresh', () => {
     const hydration = resolveCribbageVisibleHand({
       authoritativeHand: hand,
