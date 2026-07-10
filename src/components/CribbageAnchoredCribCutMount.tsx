@@ -157,7 +157,16 @@ export function CribbageAnchoredCribCutMount({
   });
 
   if (!visible) {
-    return null;
+    // Task C1 — even when no crib pile / cut card is visible (e.g. during
+    // the `discarding` phase before any cards have been submitted), mount
+    // an empty slot so [data-card-anchor="crib"] resolves for the
+    // discard-to-crib transport animation. Rendering the slot with no
+    // children is visually a no-op — it is only a positioning anchor.
+    return (
+      <Wave4CribCutGroupSlot
+        styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
+      />
+    );
   }
 
   return (
