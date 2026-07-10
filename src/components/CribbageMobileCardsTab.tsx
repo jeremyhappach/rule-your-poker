@@ -79,6 +79,13 @@ interface CribbageMobileCardsTabProps {
   roundId?: string;
   /** Diagnostic context for render tracing — omit to disable */
   renderTrace?: RenderTraceContext;
+  /**
+   * Lifted discard selection — owned by the parent
+   * (`CribbageMobileGameTable`) so raised/selected cards persist across
+   * Cards ↔ Chat tab switches. Mirrors Gin Rummy's lifted selection.
+   */
+  selectedCards: number[];
+  onSelectedCardsChange: (next: number[]) => void;
 }
 
 
@@ -99,18 +106,13 @@ export const CribbageMobileCardsTab = ({
   isDealer,
   roundId,
   renderTrace,
+  selectedCards,
+  onSelectedCardsChange,
 }: CribbageMobileCardsTabProps) => {
 
-  const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  const setSelectedCards = onSelectedCardsChange;
 
-  // Reset selectedCards on hand boundary (roundId change) to prevent stale selections
-  const prevRoundIdRef = useRef<string | undefined>(roundId);
-  useEffect(() => {
-    if (roundId && roundId !== prevRoundIdRef.current) {
-      prevRoundIdRef.current = roundId;
-      setSelectedCards([]);
-    }
-  }, [roundId]);
+
 
   // Bounded opening-deal grace window. Keyed on hand identity — resets on
   // every hand boundary. While unexpired, presentation may legitimately

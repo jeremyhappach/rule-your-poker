@@ -10,8 +10,10 @@
  * Pure presentational: all behavior comes from `useWaitingRoomActions`.
  */
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot, Loader2, LogIn } from "lucide-react";
+
 
 export interface WaitingRoomCTAProps {
   isObserver: boolean;
@@ -46,6 +48,18 @@ export function WaitingRoomCTA({
   onStartGame,
   onRejoin,
 }: WaitingRoomCTAProps) {
+  const [isStarting, setIsStarting] = useState(false);
+  const handleStartClick = () => {
+    if (isStarting) return;
+    setIsStarting(true);
+    try {
+      onStartGame();
+    } finally {
+      // Safety reset if we don't unmount from the session transition.
+      setTimeout(() => setIsStarting(false), 8000);
+    }
+  };
+
   // Recovery-waiting affordance: seated viewer who is sat out needs an
   // explicit rejoin path before Start Game preconditions can include them.
   if (viewerNeedsRejoin && onRejoin) {
@@ -148,12 +162,19 @@ export function WaitingRoomCTA({
             {isHost && hasEnoughPlayers && (
               <Button
                 data-start-game-btn
-                onClick={onStartGame}
-                className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                onClick={handleStartClick}
+                disabled={isStarting}
+                aria-busy={isStarting}
+                className="bg-amber-600 hover:bg-amber-700 text-black font-bold disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                🃏 Start Game
+                {isStarting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</>
+                ) : (
+                  <>🃏 Start Game</>
+                )}
               </Button>
             )}
+
           </div>
         </>
       )}

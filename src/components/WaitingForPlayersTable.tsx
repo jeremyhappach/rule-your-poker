@@ -355,18 +355,27 @@ export const WaitingForPlayersTable = ({
   };
 
   // Handle host clicking Start Game button
+  const [isStartingGame, setIsStartingGame] = useState(false);
   const handleStartGame = () => {
     if (!hasEnoughPlayers || gameStartTriggeredRef.current) return;
-    
+
     gameStartTriggeredRef.current = true;
-    
+    setIsStartingGame(true);
+
     console.log('🃏 SHUFFLE UP AND DEAL! 🃏');
-    
+
     // Small delay to let players see the announcement
     setTimeout(() => {
       onGameStart();
     }, 500);
+
+    // Safety: clear busy state if session transition doesn't unmount us.
+    setTimeout(() => {
+      setIsStartingGame(false);
+      gameStartTriggeredRef.current = false;
+    }, 8000);
   };
+
 
   // Track player count and play doorbell when new human player joins
   useEffect(() => {
@@ -486,11 +495,21 @@ export const WaitingForPlayersTable = ({
               <Button
                 data-start-game-btn
                 onClick={handleStartGame}
-                className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40"
+                disabled={isStartingGame}
+                aria-busy={isStartingGame}
+                className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                🃏 Start Game
+                {isStartingGame ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Starting…
+                  </>
+                ) : (
+                  <>🃏 Start Game</>
+                )}
               </Button>
             )}
+
           </div>
         </div>
         

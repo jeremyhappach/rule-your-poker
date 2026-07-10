@@ -780,6 +780,22 @@ export const CribbageMobileGameTable = ({
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
   const cribbageStateRef = useRef<CribbageState | null>(null);
 
+  // Lifted Cribbage discard selection — mirrors Gin Rummy's lifted
+  // `selectedCardIndex`. Kept in the parent so raised/selected cards
+  // survive Cards ↔ Chat tab switches (the tab pane unmounts on switch).
+  // Reset only on hand identity change or invalidated card indices —
+  // handled inside the Cards tab via `onSelectedCardsChange`.
+  const [cribbageDiscardSelection, setCribbageDiscardSelection] = useState<number[]>([]);
+  const prevCribbageDiscardRoundIdRef = useRef<string | null | undefined>(null);
+  useEffect(() => {
+    if (roundId && prevCribbageDiscardRoundIdRef.current !== roundId) {
+      prevCribbageDiscardRoundIdRef.current = roundId;
+      setCribbageDiscardSelection([]);
+    }
+  }, [roundId]);
+
+
+
   // ── Latched pegboard data: persists across bootstrap mode to prevent pegboard unmount flicker ──
   const latchedPegboardDataRef = useRef<{
     playerStates: Record<string, import('@/lib/cribbageTypes').CribbagePlayerState>;
@@ -7063,6 +7079,8 @@ export const CribbageMobileGameTable = ({
                   gameId={gameId}
                   isDealer={isCribDealer(currentPlayerId)}
                   roundId={roundId}
+                  selectedCards={cribbageDiscardSelection}
+                  onSelectedCardsChange={setCribbageDiscardSelection}
                   renderTrace={{
 
                     renderHandKey,
@@ -7079,6 +7097,7 @@ export const CribbageMobileGameTable = ({
                     interactionsAllowed: primaryMountOk ? interactionsAllowed : false,
                   }}
                 />
+
               );
             })()}
 
