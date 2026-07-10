@@ -77,6 +77,14 @@ export interface CribbageAnchoredCribCutMountProps {
    * once the animation settles.
    */
   withheldCribIncomingCount?: number;
+  /**
+   * Follow-up polish — when true, the cut card artwork is hidden even
+   * if `cribbageState.cutCard` is present. Used by the game table to
+   * defer the flip animation until all in-flight crib discard transports
+   * have settled (see `discardsSettledInHand` gate). Purely presentation:
+   * authoritative `cribbageState.cutCard` is unchanged.
+   */
+  deferCutReveal?: boolean;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -86,6 +94,7 @@ export function CribbageAnchoredCribCutMount({
   terminalPath = null,
   countingOutroActive = false,
   withheldCribIncomingCount = 0,
+  deferCutReveal = false,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
