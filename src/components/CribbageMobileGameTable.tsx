@@ -5191,6 +5191,22 @@ export const CribbageMobileGameTable = ({
         }
       }
     }
+    // Inner cards container = second flex child of the row (badge is
+    // first). Its rect gives us the natural centering position for a
+    // card added to the fan (row is `justify-content:center`, so adding
+    // one card shifts the whole fan LEFT by ~step/2). We measure it so
+    // 0-card and 1-card placements land inside the fan, not at the row
+    // rect's absolute midpoint.
+    let cardsWrapRect: { x: number; y: number; width: number; height: number } | null = null;
+    if (row) {
+      const wrap = row.children[1] as HTMLElement | undefined;
+      if (wrap) {
+        const wr = wrap.getBoundingClientRect();
+        if (wr.width > 0 && wr.height > 0) {
+          cardsWrapRect = { x: wr.left, y: wr.top, width: wr.width, height: wr.height };
+        }
+      }
+    }
     if (!rowRect) {
       const cached = peggingRowGeoRef.current;
       rowRect = cached.rowRect;
@@ -5208,9 +5224,12 @@ export const CribbageMobileGameTable = ({
     const targetH = rightmost?.height ?? rowRect.height * 0.9;
     let cx: number;
     if (rightmost) {
-      // Step to the right by the ACTUAL visible pegging fan step, not
-      // a full card width. Prefer observed step when two cards are
-      // present, then attribute overlap, then a conservative default.
+      // The pegging row is centered (`justify-content:center`). When a
+      // new card is appended, the existing cards shift LEFT by ~step/2
+      // so the final fan re-centers. Landing at `lastCenter + step`
+      // therefore overshoots by ~step/2 (visible right-side gap →
+      // snap-back). Land at `lastCenter + step/2` — the exact position
+      // the rightmost card will occupy after re-centering.
       let stepX: number;
       if (secondRightmost) {
         const lastCenter = rightmost.x + rightmost.width / 2;
@@ -5219,14 +5238,27 @@ export const CribbageMobileGameTable = ({
       } else if (overlapPx != null) {
         stepX = Math.max(2, rightmost.width - overlapPx);
       } else {
+        // Conservative single-card fallback — assume ~60% overlap.
         stepX = Math.max(2, rightmost.width * 0.4);
       }
       const lastCenter = rightmost.x + rightmost.width / 2;
-      cx = lastCenter + stepX;
-      const rightLimit = rowRect.x + rowRect.width - targetW * 0.1;
-      if (cx > rightLimit) cx = rightLimit;
+      cx = lastCenter + stepX / 2;
+      // Clamp inside cards container (preferred) or row rect.
+      const clampRight =
+        (cardsWrapRect?.x ?? rowRect.x) +
+        (cardsWrapRect?.width ?? rowRect.width) -
+        targetW / 2;
+      if (cx > clampRight) cx = clampRight;
     } else {
-      cx = rowRect.x + rowRect.width * 0.5;
+      // Zero-card case: land at the natural first-card slot — the
+      // centre of the cards container (not the row's absolute midpoint,
+      // which sits between the Count badge and the fan and causes a
+      // visible right-shift snap when the first card renders).
+      if (cardsWrapRect) {
+        cx = cardsWrapRect.x + cardsWrapRect.width / 2;
+      } else {
+        cx = rowRect.x + rowRect.width * 0.5;
+      }
     }
     return {
       x: cx - targetW / 2,
