@@ -5147,6 +5147,11 @@ export const CribbageMobileGameTable = ({
     const played = cribbageState.pegging.playedCards ?? [];
     const count = played.length;
     const prev = opponentPlayedCountRef.current;
+    // While the previous row is being held for Go/31 presentation, do
+    // NOT advance the baseline or fire the transport. When the hold
+    // releases, this effect will re-run (thirtyOneDelayActive → false)
+    // and the deferred card will animate into the newly-cleared row.
+    if (thirtyOneDelayActive) return;
     if (count > prev) {
       // Advance the baseline regardless — only the newest played card
       // (last entry) is animated to avoid backlog storms.
@@ -5210,7 +5215,7 @@ export const CribbageMobileGameTable = ({
       // playedCards is monotonic in this state). Realign baseline.
       opponentPlayedCountRef.current = count;
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+  }, [cribbageState, currentPlayerId, currentRoundId, players, thirtyOneDelayActive]);
 
   // Task C2 — clear in-flight withhold/intent on unmount.
   useEffect(() => {
@@ -7550,6 +7555,13 @@ export const CribbageMobileGameTable = ({
             <CribbageAnchoredPeggingRowMount
               cribbageState={gameplayRenderState}
               sequenceStartIndex={sequenceStartIndex}
+              // While holding the previous row for Go/31 presentation,
+              // clamp the slice end to the authoritative
+              // `sequenceStartIndex` so any card played into the NEXT
+              // sequence does not render on top of the held row.
+              sequenceEndIndex={
+                thirtyOneDelayActive ? dbSequenceStartIndex : undefined
+              }
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
               terminalPath={terminalPath}
