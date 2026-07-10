@@ -5442,7 +5442,7 @@ export const CribbageMobileGameTable = ({
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
           const intentId = `crib-play-self-${tid}`;
-          const dest = computePlayCardDestRect();
+          const dest = computePlayCardDestRect('self');
           // Instrumentation — self play attempt.
           try {
             const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
