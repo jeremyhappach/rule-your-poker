@@ -77,6 +77,7 @@ export interface UseWaitingRoomActions {
   handleInvite: () => void;
   handleAddBot: () => void;
   handleStartGame: () => void;
+  isStartingGame: boolean;
   handleRejoin: () => void;
 }
 
