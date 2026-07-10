@@ -572,7 +572,7 @@ export const CribbageMobileCardsTab = ({
 
   const [visibleDomCardNodeCount, setVisibleDomCardNodeCount] = useState(0);
   useEffect(() => {
-    const stage = handStageRef.current;
+    const stage = handStageNodeRef.current;
     if (!stage) return;
     const count = stage.querySelectorAll('[data-playing-card-root]').length;
     setVisibleDomCardNodeCount(count);
@@ -583,7 +583,7 @@ export const CribbageMobileCardsTab = ({
     layoutFallbackReason,
     layoutNormalAvailable: !layoutWasFallback,
     resolveActiveHandLayoutReturnReason,
-    stageRefAttached: !!handStageRef.current,
+    stageRefAttached: stageRefAttachedState,
     lastGetBoundingClientRect,
     resolvedStageRect: handStageRectPx,
     stageRectWidth: handStageRectPx?.width ?? null,
