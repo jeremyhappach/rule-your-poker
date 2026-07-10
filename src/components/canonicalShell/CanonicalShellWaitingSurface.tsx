@@ -633,9 +633,15 @@ function WaitingSurfaceBody({
                         <Button
                           data-start-game-btn
                           onClick={actions.handleStartGame}
-                          className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40"
+                          disabled={actions.isStartingGame}
+                          aria-busy={actions.isStartingGame}
+                          className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          🃏 Start Game
+                          {actions.isStartingGame ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</>
+                          ) : (
+                            <>🃏 Start Game</>
+                          )}
                         </Button>
                       )}
                     </div>
