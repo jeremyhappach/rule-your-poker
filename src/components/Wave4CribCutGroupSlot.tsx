@@ -71,7 +71,7 @@ import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanon
 const CRIB_CUT_GROUP_ID = "cribbage.cribCutGroup";
 
 export interface Wave4CribCutGroupSlotProps {
-  children: ReactNode;
+  children?: ReactNode;
   /** Inline CSS-variable overrides applied to the slot root (e.g. `--cribcut-gap`). */
   styleVars?: React.CSSProperties;
 }
