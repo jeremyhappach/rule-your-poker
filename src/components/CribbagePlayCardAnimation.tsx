@@ -86,16 +86,20 @@ function resolveSelfHandStageRect(): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-export const CribbagePlayCardAnimation = ({ intent, onSettled }: Props) => {
+export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Props) => {
   const [flight, setFlight] = useState<Flight | null>(null);
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
 
   const onSettledRef = useRef(onSettled);
   useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
+  const onLifecycleRef = useRef(onLifecycle);
+  useEffect(() => { onLifecycleRef.current = onLifecycle; }, [onLifecycle]);
 
   useEffect(() => {
     if (!intent) return;
+
+    onLifecycleRef.current?.(intent.id, 'mounted');
 
     // Prefer pre-captured destination (survives pegging-row unmount on
     // final card / hand-end / 31 rollover). Fall back to live DOM lookup.
@@ -108,6 +112,7 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled }: Props) => {
     } else {
       const dst = resolvePegRowRect();
       if (!dst || dst.width <= 0 || dst.height <= 0) {
+        onLifecycleRef.current?.(intent.id, 'skipped');
         onSettledRef.current(intent.id);
         return;
       }
@@ -151,13 +156,17 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled }: Props) => {
     setVisible(true);
 
     const raf1 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setAnimating(true));
+      requestAnimationFrame(() => {
+        setAnimating(true);
+        onLifecycleRef.current?.(intent.id, 'started');
+      });
     });
 
     const settleTimer = window.setTimeout(() => {
       setVisible(false);
       setFlight(null);
       setAnimating(false);
+      onLifecycleRef.current?.(intent.id, 'settled');
       onSettledRef.current(intent.id);
     }, SETTLE_MS);
 
