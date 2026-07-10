@@ -30,6 +30,12 @@ export interface CribbageAnchoredPeggingRowMountProps {
   opponentSeatPositions: ReadonlyArray<number>;
   cutCardRevealed: boolean;
   cribVisible: boolean;
+  /**
+   * Task C2 — withhold a single played card from the rendered row while
+   * its transport overlay is in flight. Key format: `${playerId}|${rank}${suit}`.
+   * Cleared by the parent once the flight settles.
+   */
+  withheldPlayedCardKey?: string | null;
 }
 
 export function CribbageAnchoredPeggingRowMount({
