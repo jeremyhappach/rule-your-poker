@@ -5091,7 +5091,15 @@ export const CribbageMobileGameTable = ({
       }
       return;
     }
-    if (cribbageState.phase !== 'discarding') return;
+    // Do NOT gate on phase === 'discarding'. When the opponent is the
+    // last to discard, the authoritative state update that grows their
+    // `discardedToCrib` array can also flip `phase` to 'cutting' or
+    // 'pegging' in the same commit. Gating on 'discarding' here caused
+    // the opponent-discard-to-crib overlay to be skipped entirely on
+    // the final discard, which in turn kept the cut-reveal gate closed
+    // until the 4s safety fallback fired. The per-round baseline seed
+    // above (via opponentDiscardRoundKeyRef) prevents spurious flights
+    // on rejoin/mid-hand renders regardless of phase.
     for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
       const count = ps?.discardedToCrib?.length ?? 0;
       const prev = opponentDiscardCountsRef.current[pid] ?? 0;
