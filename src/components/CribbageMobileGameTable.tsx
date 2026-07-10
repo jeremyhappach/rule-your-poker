@@ -7063,6 +7063,8 @@ export const CribbageMobileGameTable = ({
                   gameId={gameId}
                   isDealer={isCribDealer(currentPlayerId)}
                   roundId={roundId}
+                  selectedCards={cribbageDiscardSelection}
+                  onSelectedCardsChange={setCribbageDiscardSelection}
                   renderTrace={{
 
                     renderHandKey,
@@ -7079,6 +7081,7 @@ export const CribbageMobileGameTable = ({
                     interactionsAllowed: primaryMountOk ? interactionsAllowed : false,
                   }}
                 />
+
               );
             })()}
 
