@@ -70,13 +70,15 @@ export interface CribbageAnchoredCribCutMountProps {
     | null;
   countingOutroActive?: boolean;
   /**
-   * Task C1 polish — number of incoming crib cards currently in flight
-   * from a discard-to-crib transport animation. The crib pile renders
-   * `max(0, crib.length - withheldCribIncomingCount)` cardbacks so the
-   * pile does not visually grow before the flight lands. Cleared to 0
-   * once the animation settles.
+   * Presentation-owned crib card count. The parent tracks how many
+   * crib discard-to-crib transports have visually settled and passes
+   * that count here. This artifact renders EXACTLY this many cardbacks
+   * regardless of authoritative `crib.length`, so incoming cardbacks
+   * never appear before their transport lands.
+   *
+   * If undefined, falls back to authoritative `crib.length` (legacy).
    */
-  withheldCribIncomingCount?: number;
+  visibleCribCount?: number;
   /**
    * Follow-up polish — when true, the cut card artwork is hidden even
    * if `cribbageState.cutCard` is present. Used by the game table to
