@@ -48,6 +48,7 @@ export function CribbageAnchoredPeggingRowMount({
   opponentSeatPositions,
   cutCardRevealed,
   cribVisible,
+  withheldPlayedCardKey = null,
 }: CribbageAnchoredPeggingRowMountProps) {
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
   const displayCount = thirtyOneDelayActive
