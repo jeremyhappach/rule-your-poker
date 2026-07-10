@@ -1908,6 +1908,15 @@ export const CribbageMobileGameTable = ({
   const opponentPlayedCountRef = useRef<number>(0);
   const playCardRoundKeyRef = useRef<string | null>(null);
   const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Follow-up polish — cut-card reveal gate.
+  // Tracks how many crib discard-to-crib transports have visually
+  // settled in the current hand. Cut-card reveal is deferred until this
+  // count ≥ crib.length (i.e., all in-flight discard flights have
+  // landed) so the flip doesn't play while bot crib cards are still
+  // travelling. Reset at every hand boundary.
+  const [discardsSettledInHand, setDiscardsSettledInHand] = useState(0);
+  const cutRevealSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCutRevealHandKeyRef = useRef<string | null>(null);
   // Cached last-known pegging row geometry — sampled on every render
   // while the anchored row is mounted. Used as the destination fallback
   // for animations that fire after the row unmounts (final card of a
