@@ -77,6 +77,7 @@ export interface UseWaitingRoomActions {
   handleInvite: () => void;
   handleAddBot: () => void;
   handleStartGame: () => void;
+  isStartingGame: boolean;
   handleRejoin: () => void;
 }
 
@@ -327,6 +328,7 @@ export function useWaitingRoomActions({
     void processAddBotQueue();
   }, [isAddingBot, isSeated, isHost, realMoney, processAddBotQueue]);
 
+  const [isStartingGame, setIsStartingGame] = useState(false);
   const handleStartGame = useCallback(() => {
     recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:click', {
       hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
@@ -338,11 +340,17 @@ export function useWaitingRoomActions({
       return;
     }
     gameStartTriggeredRef.current = true;
+    setIsStartingGame(true);
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
     setTimeout(() => {
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:fire');
       onGameStart();
     }, 500);
+    // Safety: clear busy state if the surface does not unmount (start failed).
+    setTimeout(() => {
+      setIsStartingGame(false);
+      gameStartTriggeredRef.current = false;
+    }, 8000);
   }, [hasEnoughPlayers, onGameStart]);
 
   const handleInvite = useCallback(() => {
@@ -383,6 +391,7 @@ export function useWaitingRoomActions({
     handleInvite,
     handleAddBot,
     handleStartGame,
+    isStartingGame,
     handleRejoin,
   };
 }

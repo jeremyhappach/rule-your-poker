@@ -702,10 +702,10 @@ export const GinRummyMobileCardsTab = ({
         {/* First Draw phase — tap discard on felt to take, Pass button to pass */}
         {ginState.phase === 'first_draw' && isMyTurn && (
           <>
-            <Button onClick={onTakeFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4 disabled:opacity-50" size="sm">
+            <Button onClick={onTakeFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-green-200 text-green-900 font-bold hover:bg-green-300 border border-green-400 px-4 disabled:opacity-50" size="sm">
               Take
             </Button>
-            <Button onClick={onPassFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4 disabled:opacity-50" size="sm">
+            <Button onClick={onPassFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-red-200 text-red-900 font-bold hover:bg-red-300 border border-red-400 px-4 disabled:opacity-50" size="sm">
               Pass
             </Button>
 
