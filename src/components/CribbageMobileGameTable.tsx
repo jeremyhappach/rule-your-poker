@@ -1890,6 +1890,10 @@ export const CribbageMobileGameTable = ({
   // Source-level guard for chip animation trigger to prevent double-firing
   const chipAnimationFiredRef = useRef<string | null>(null);
 
+  // Task C1 — discard-to-crib transport (visual overlay only).
+  const [discardIntent, setDiscardIntent] = useState<import('./CribbageDiscardToCribAnimation').CribbageDiscardIntent | null>(null);
+  const opponentDiscardCountsRef = useRef<Record<string, number>>({});
+
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
 
