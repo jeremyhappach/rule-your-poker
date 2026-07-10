@@ -620,7 +620,23 @@ export const CribbageMobileCardsTab = ({
       if (isMyTurn) {
         const card = renderedHand[index];
         if (card && getCardPointValue(card) + cribbageState.pegging.currentCount <= 31) {
-          onPlayCard(index);
+          // Task C2 — synchronously capture selected hand card rect BEFORE
+          // authoritative play mutates state. Overlay animation will fly
+          // from this rect to the pegging row center.
+          let sourceRect: { x: number; y: number; width: number; height: number } | null = null;
+          try {
+            const key = `${card.rank}${card.suit[0]}-${index}`;
+            const el = document.querySelector(
+              `[data-cribbage-hand-card-key="${key}"]`,
+            ) as HTMLElement | null;
+            if (el) {
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) {
+                sourceRect = { x: r.left, y: r.top, width: r.width, height: r.height };
+              }
+            }
+          } catch { /* best-effort */ }
+          onPlayCard(index, sourceRect);
         } else {
           toast.error('Card would exceed 31');
         }
