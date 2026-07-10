@@ -3095,16 +3095,21 @@ export const GinRummyGameTable = ({
                 opponentPosition={discardIntent.opponentPosition}
                 card={discardIntent.card}
                 onSettled={() => {
+                  const settledActionKey = discardIntent.actionKey;
                   setDiscardIntent(prev =>
                     prev && prev.triggerId === discardIntent.triggerId ? null : prev,
                   );
-                  setWithheldDiscardTop(prev =>
-                    prev &&
-                    prev.rank === discardIntent.card.rank &&
-                    prev.suit === discardIntent.card.suit
-                      ? null
-                      : prev,
-                  );
+                  setReleasedDiscardActionKeys(prev => {
+                    if (prev.has(settledActionKey)) return prev;
+                    const next = new Set(prev);
+                    next.add(settledActionKey);
+                    // Bound the set — retain only the most recent 32 keys.
+                    if (next.size > 32) {
+                      const arr = Array.from(next);
+                      return new Set(arr.slice(arr.length - 32));
+                    }
+                    return next;
+                  });
                 }}
               />
             )}
