@@ -195,8 +195,15 @@ export const GinRummyFeltContent = ({
   isProcessing,
   isPlayable,
   handContextId,
+  withheldDiscardTop,
 }: GinRummyFeltContentProps) => {
-  const discardTopCard = getDiscardTop(ginState);
+  const discardTopCardRaw = getDiscardTop(ginState);
+  const discardTopWithheld =
+    !!withheldDiscardTop &&
+    !!discardTopCardRaw &&
+    discardTopCardRaw.rank === withheldDiscardTop.rank &&
+    discardTopCardRaw.suit === withheldDiscardTop.suit;
+  const discardTopCard = discardTopWithheld ? null : discardTopCardRaw;
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
