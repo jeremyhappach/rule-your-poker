@@ -5071,7 +5071,12 @@ export const CribbageMobileGameTable = ({
   // Guarded by phase === 'discarding' so post-discard state echoes and
   // rejoin/mid-hand renders never retrigger flights.
   const opponentDiscardRoundKeyRef = useRef<string | null>(null);
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the withhold intent is set in the
+  // same commit as the crib.length growth. Without this, there is a
+  // paint frame where crib.length jumped but discardIntent is still
+  // null → the mount briefly renders the incoming cardbacks before the
+  // withhold applies (visible flash for opponent discards).
+  useLayoutEffect(() => {
     if (!cribbageState || !cribbageState.playerStates) return;
     // Reset the growth baseline at every new round so hand-N discards
     // don't inherit prev counts from hand-(N-1).
