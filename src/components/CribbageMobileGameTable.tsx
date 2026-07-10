@@ -5129,54 +5129,89 @@ export const CribbageMobileGameTable = ({
 
   /**
    * Compute a viewport-space destination rect for the next pegging-row
-   * card slot. Prefer a target just to the RIGHT of the rightmost pegged
-   * card (approximates the natural next slot); otherwise center-right of
-   * the row; otherwise null (animation is skipped).
+   * card slot. Estimates the next card's final resting position by
+   * stepping to the RIGHT of the current rightmost card by the
+   * effective visible step (cardWidth - overlap), NOT by a full card
+   * width. Never returns null — we always produce SOMETHING so the
+   * flight fires even when the row has already unmounted (final card
+   * of the pegging sequence → phase→counting). Fallback chain:
+   *   1. Live pegging row DOM + observed step (two cards) or overlap.
+   *   2. Cached geometry from useLayoutEffect.
+   *   3. Viewport centre.
    */
-  const computePlayCardDestRect = useCallback(():
-    | { x: number; y: number; width: number; height: number }
-    | null => {
-    // Live DOM first.
+  const computePlayCardDestRect = useCallback((): {
+    x: number; y: number; width: number; height: number;
+  } => {
     const row = document.querySelector(
       '[data-wave4-pegging-row-slot="resolved"]',
     ) as HTMLElement | null;
     let rowRect: { x: number; y: number; width: number; height: number } | null = null;
-    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    let cards: HTMLElement[] = [];
+    let overlapPx: number | null = null;
     if (row) {
       const rr = row.getBoundingClientRect();
       if (rr.width > 0 && rr.height > 0) {
         rowRect = { x: rr.left, y: rr.top, width: rr.width, height: rr.height };
-        const cards = row.querySelectorAll('[data-cribbage-pegging-card]');
-        if (cards.length > 0) {
-          const cr = (cards[cards.length - 1] as HTMLElement).getBoundingClientRect();
-          if (cr.width > 0 && cr.height > 0) {
-            rightmost = { x: cr.left, y: cr.top, width: cr.width, height: cr.height };
-          }
+        cards = Array.from(
+          row.querySelectorAll('[data-cribbage-pegging-card]'),
+        ) as HTMLElement[];
+        const attr = row.getAttribute('data-crib-peg-fan-overlap-px');
+        if (attr) {
+          const parsed = parseFloat(attr);
+          if (Number.isFinite(parsed)) overlapPx = parsed;
+        }
+      }
+    }
+    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    let secondRightmost: { x: number; y: number; width: number; height: number } | null = null;
+    if (cards.length > 0) {
+      const last = cards[cards.length - 1].getBoundingClientRect();
+      if (last.width > 0 && last.height > 0) {
+        rightmost = { x: last.left, y: last.top, width: last.width, height: last.height };
+      }
+      if (cards.length > 1) {
+        const prev = cards[cards.length - 2].getBoundingClientRect();
+        if (prev.width > 0 && prev.height > 0) {
+          secondRightmost = { x: prev.left, y: prev.top, width: prev.width, height: prev.height };
         }
       }
     }
     if (!rowRect) {
-      // Fallback to last-known cached geometry.
       const cached = peggingRowGeoRef.current;
       rowRect = cached.rowRect;
       rightmost = cached.rightmostCardRect;
     }
-    if (!rowRect) return null;
+    if (!rowRect) {
+      const vw = window.innerWidth || 320;
+      const vh = window.innerHeight || 480;
+      const w = 40;
+      const h = 60;
+      return { x: vw / 2 - w / 2, y: vh / 2 - h / 2, width: w, height: h };
+    }
     const centerY = rowRect.y + rowRect.height / 2;
     const targetW = rightmost?.width ?? rowRect.height * 0.6;
     const targetH = rightmost?.height ?? rowRect.height * 0.9;
     let cx: number;
     if (rightmost) {
-      // Sit just to the right of the current rightmost card, with a
-      // small gap. Clamp to the row's right edge minus a margin.
-      const gap = targetW * 0.15;
-      cx = rightmost.x + rightmost.width + gap + targetW / 2;
+      // Step to the right by the ACTUAL visible pegging fan step, not
+      // a full card width. Prefer observed step when two cards are
+      // present, then attribute overlap, then a conservative default.
+      let stepX: number;
+      if (secondRightmost) {
+        const lastCenter = rightmost.x + rightmost.width / 2;
+        const prevCenter = secondRightmost.x + secondRightmost.width / 2;
+        stepX = Math.max(2, lastCenter - prevCenter);
+      } else if (overlapPx != null) {
+        stepX = Math.max(2, rightmost.width - overlapPx);
+      } else {
+        stepX = Math.max(2, rightmost.width * 0.4);
+      }
+      const lastCenter = rightmost.x + rightmost.width / 2;
+      cx = lastCenter + stepX;
       const rightLimit = rowRect.x + rowRect.width - targetW * 0.1;
       if (cx > rightLimit) cx = rightLimit;
     } else {
-      // No existing pegged cards → normal first-card area, biased right
-      // of row center so the flight has directional intent.
-      cx = rowRect.x + rowRect.width * 0.6;
+      cx = rowRect.x + rowRect.width * 0.5;
     }
     return {
       x: cx - targetW / 2,
@@ -7196,6 +7231,7 @@ export const CribbageMobileGameTable = ({
               handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              withheldCribIncomingCount={discardIntent?.cardCount ?? 0}
             />
           )}
 

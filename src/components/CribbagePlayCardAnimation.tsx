@@ -122,8 +122,12 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled }: Props) => {
     }
 
     if (!src) {
-      onSettledRef.current(intent.id);
-      return;
+      // Ultimate fallback: bottom-center of the viewport so the final
+      // pegging card of a hand still animates even after the hand tab
+      // and self-hand stage have unmounted (phase → counting).
+      const vw = window.innerWidth || 320;
+      const vh = window.innerHeight || 480;
+      src = { left: vw / 2 - 20, top: vh - 80, width: 40, height: 60 };
     }
 
     const built: Flight = {

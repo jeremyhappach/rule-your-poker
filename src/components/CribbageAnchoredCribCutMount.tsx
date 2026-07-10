@@ -69,6 +69,14 @@ export interface CribbageAnchoredCribCutMountProps {
     | 'fallback'
     | null;
   countingOutroActive?: boolean;
+  /**
+   * Task C1 polish — number of incoming crib cards currently in flight
+   * from a discard-to-crib transport animation. The crib pile renders
+   * `max(0, crib.length - withheldCribIncomingCount)` cardbacks so the
+   * pile does not visually grow before the flight lands. Cleared to 0
+   * once the animation settles.
+   */
+  withheldCribIncomingCount?: number;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -77,6 +85,7 @@ export function CribbageAnchoredCribCutMount({
   handBoundaryKey,
   terminalPath = null,
   countingOutroActive = false,
+  withheldCribIncomingCount = 0,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
@@ -174,35 +183,47 @@ export function CribbageAnchoredCribCutMount({
       styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
     >
 
-      {/* Crib pile — sized from stage height. */}
-      {showCribOnFelt && cribbageState.crib.length > 0 && (
-        <div ref={cribRef} className="flex flex-col items-center">
-          <span
-            className="text-white/60 leading-none"
-            style={{
-              fontSize: `${Math.max(7, Math.round(cribCardWidthPx * 0.4))}px`,
-              marginBottom: '2px',
-            }}
-          >
-            Crib
-          </span>
-          <div
-            className="flex"
-            style={{ marginRight: `${cribCardOverlapPx}px` }}
-          >
-            {cribbageState.crib.map((_, i) => (
-              <CanonicalCardBack
-                key={i}
-                widthPx={cribCardWidthPx}
-                heightPx={cribCardHeightPx}
-                variant="flat"
-                radiusPx={2}
-                style={{ marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px` }}
-              />
-            ))}
+      {/* Crib pile — sized from stage height. Withhold incoming crib
+          cards while their discard-to-crib transport is in flight so
+          the pile does not visually grow before flights land. */}
+      {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
+        const visibleCribCount = Math.max(
+          0,
+          cribbageState.crib.length - Math.max(0, withheldCribIncomingCount),
+        );
+        return (
+          <div ref={cribRef} className="flex flex-col items-center">
+            <span
+              className="text-white/60 leading-none"
+              style={{
+                fontSize: `${Math.max(7, Math.round(cribCardWidthPx * 0.4))}px`,
+                marginBottom: '2px',
+              }}
+            >
+              Crib
+            </span>
+            <div
+              className="flex"
+              style={{
+                marginRight: `${cribCardOverlapPx}px`,
+                minWidth: `${cribCardWidthPx}px`,
+                minHeight: `${cribCardHeightPx}px`,
+              }}
+            >
+              {Array.from({ length: visibleCribCount }).map((_, i) => (
+                <CanonicalCardBack
+                  key={i}
+                  widthPx={cribCardWidthPx}
+                  heightPx={cribCardHeightPx}
+                  variant="flat"
+                  radiusPx={2}
+                  style={{ marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px` }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Cut card — artwork only, sized from stage height. */}
       <div ref={cutRef}>
