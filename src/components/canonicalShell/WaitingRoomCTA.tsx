@@ -10,8 +10,10 @@
  * Pure presentational: all behavior comes from `useWaitingRoomActions`.
  */
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot, Loader2, LogIn } from "lucide-react";
+
 
 export interface WaitingRoomCTAProps {
   isObserver: boolean;
