@@ -3061,6 +3061,32 @@ export const GinRummyGameTable = ({
               />
             ))}
 
+            {/* Discard Animation — visual overlay for self and opponent
+                discards. Releases the withheld discard-top on settle. */}
+            {discardIntent && (
+              <GinRummyDiscardAnimation
+                key={discardIntent.triggerId}
+                triggerId={discardIntent.triggerId}
+                sourceMode={discardIntent.sourceMode}
+                opponentPosition={discardIntent.opponentPosition}
+                card={discardIntent.card}
+                onSettled={() => {
+                  setDiscardIntent(prev =>
+                    prev && prev.triggerId === discardIntent.triggerId ? null : prev,
+                  );
+                  setWithheldDiscardTop(prev =>
+                    prev &&
+                    prev.rank === discardIntent.card.rank &&
+                    prev.suit === discardIntent.card.suit
+                      ? null
+                      : prev,
+                  );
+                }}
+              />
+            )}
+
+
+
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards
                 on the felt. Mounted as a direct child of the geometry
