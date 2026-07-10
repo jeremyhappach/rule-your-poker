@@ -5266,6 +5266,7 @@ export const CribbageMobileGameTable = ({
             mode: 'self',
             card: cardPlayed,
             sourceRect: sourceRect ?? null,
+            destRect: computePlayCardDestRect(),
           });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
