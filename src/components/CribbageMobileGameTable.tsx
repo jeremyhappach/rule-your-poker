@@ -7600,12 +7600,20 @@ export const CribbageMobileGameTable = ({
             <CribbageAnchoredPeggingRowMount
               cribbageState={gameplayRenderState}
               sequenceStartIndex={sequenceStartIndex}
-              // While holding the previous row for Go/31 presentation,
-              // clamp the slice end to the authoritative
-              // `sequenceStartIndex` so any card played into the NEXT
-              // sequence does not render on top of the held row.
+              // Unified presentation gate: while holding the previous
+              // row, clamp the slice end to the snapshot's captured
+              // heldEndIndex so any next-sequence card that reaches
+              // authoritative state does not spill into the held row.
               sequenceEndIndex={
-                thirtyOneDelayActive ? dbSequenceStartIndex : undefined
+                thirtyOneDelayActive && heldSequenceSnapshot
+                  ? heldSequenceSnapshot.heldEndIndex
+                  : undefined
+              }
+              // Held count derives from the SAME slice as the row.
+              displayCountOverride={
+                thirtyOneDelayActive && heldSequenceSnapshot
+                  ? heldSequenceSnapshot.heldDisplayCount
+                  : null
               }
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
