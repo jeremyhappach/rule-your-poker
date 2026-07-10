@@ -221,14 +221,8 @@ export function CribbageAnchoredCribCutMount({
           flash of existing crib cardbacks disappearing. The floor is
           reset per hand via `handBoundaryKey` so a fresh hand starts
           from 0 correctly. */}
-      {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
-        const withheld = Math.max(0, withheldCribIncomingCount);
-        const raw = Math.max(0, cribbageState.crib.length - withheld);
-        // Floor is maintained by cribSettledFloorRef at the top of
-        // the component (safe hook usage), so the visible pile never
-        // drops below the last settled count while a flight is in
-        // progress.
-        const visibleCribCount = Math.max(raw, cribSettledFloorRef.current);
+      {showCribOnFelt && resolvedVisibleCribCount > 0 && (() => {
+        const visibleCount = resolvedVisibleCribCount;
         return (
           <div ref={cribRef} className="flex flex-col items-center">
             <span
