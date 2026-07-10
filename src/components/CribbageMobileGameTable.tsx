@@ -5233,12 +5233,17 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (lastCutRevealHandKeyRef.current === cutRevealHandKey) return;
     lastCutRevealHandKeyRef.current = cutRevealHandKey;
-    setDiscardsSettledInHand(0);
+    // Seed settled count from authoritative crib length at every hand
+    // boundary. Fresh hands seed 0 (crib empty); mid-hand rejoin seeds
+    // to the current crib.length so existing cardbacks stay visible
+    // (no transport will ever fire for them).
+    const authCrib = cribbageState?.crib?.length ?? 0;
+    setDiscardsSettledInHand(authCrib);
     if (cutRevealSafetyTimerRef.current) {
       clearTimeout(cutRevealSafetyTimerRef.current);
       cutRevealSafetyTimerRef.current = null;
     }
-  }, [cutRevealHandKey]);
+  }, [cutRevealHandKey, cribbageState?.crib?.length]);
 
   // Arm safety release once the cut card actually appears — after 4s
   // force the gate open regardless of animation-settle bookkeeping.
