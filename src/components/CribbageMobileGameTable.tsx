@@ -5086,6 +5086,31 @@ export const CribbageMobileGameTable = ({
       traceGoRace(humanTraceCtx, 'human:playCard:computed', {
         wroteSnapshot: peggingSnapshot(newState),
       });
+
+      // Task C2 — fire self hand → pegging-row transport overlay BEFORE
+      // authoritative state flushes. Withhold the newly-played card in
+      // the row until the flight settles. Pre-advance opponent-growth
+      // baseline so echo doesn't retrigger as an opponent flight.
+      try {
+        if (cardPlayed) {
+          const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
+          opponentPlayedCountRef.current = newState.pegging.playedCards.length;
+          setWithheldPlayedCardKey(key);
+          setPlayCardIntent({
+            id: `crib-play-self-${tid}`,
+            mode: 'self',
+            card: cardPlayed,
+            sourceRect: sourceRect ?? null,
+          });
+          // Safety timeout — never leave a card permanently hidden.
+          if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
+          playCardSafetyTimerRef.current = setTimeout(() => {
+            setWithheldPlayedCardKey(null);
+            setPlayCardIntent(null);
+          }, 1500);
+        }
+      } catch { /* animation is best-effort */ }
+
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
         logPeggingPlay(eventCtx, freshState, newState, currentPlayerId, cardPlayed);
