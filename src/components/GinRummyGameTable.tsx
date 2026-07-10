@@ -1423,6 +1423,7 @@ export const GinRummyGameTable = ({
               drawnCardId: drawnIdForIntent,
               handContextId: handContextId ?? null,
               actionKey,
+              targetRect: null,
             },
           };
         });
