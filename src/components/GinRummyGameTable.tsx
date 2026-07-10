@@ -981,8 +981,17 @@ export const GinRummyGameTable = ({
     sourceMode: GinRummyDiscardSourceMode;
     opponentPosition: number | null;
     card: GinRummyCard;
+    sourceRect: { x: number; y: number; width: number; height: number } | null;
   }
   const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
+  // Pending source rect captured synchronously by the local
+  // handleDiscard call BEFORE authoritative state mutates. The
+  // viewState.lastAction watcher consumes this ref when it builds the
+  // self-discard intent so the overlay starts from the actual raised
+  // card position instead of the hand centroid.
+  const pendingSelfDiscardSourceRectRef = useRef<{
+    x: number; y: number; width: number; height: number;
+  } | null>(null);
   // Released set of discard action keys. Withhold is derived
   // synchronously during render (see below) from the current
   // viewState.lastAction — this prevents the one-frame flash of the
