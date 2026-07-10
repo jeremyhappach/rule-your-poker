@@ -48,6 +48,7 @@ beforeEach(() => {
   MockResizeObserver.instances = [];
   MockResizeObserver.activeCount = 0;
   (globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver;
+});
 
 /**
  * Minimal harness that mirrors the exact ref-callback lifecycle shape
