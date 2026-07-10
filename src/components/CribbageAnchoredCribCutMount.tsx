@@ -36,7 +36,7 @@
  * pixels.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
