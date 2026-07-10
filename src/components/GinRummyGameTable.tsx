@@ -2629,7 +2629,10 @@ export const GinRummyGameTable = ({
     }
   };
 
-  const handleDiscard = async (index: number) => {
+  const handleDiscard = async (
+    index: number,
+    sourceRect?: { x: number; y: number; width: number; height: number } | null,
+  ) => {
     const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2639,6 +2642,10 @@ export const GinRummyGameTable = ({
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
+    // Stash the captured card rect so the viewState.lastAction watcher
+    // can attach it to the self-discard intent when it fires. Cleared
+    // after the intent consumes it.
+    pendingSelfDiscardSourceRectRef.current = sourceRect ?? null;
     try {
       const newState = discardCard(ginState, currentPlayerId, card);
       await updateState(newState, tid);
