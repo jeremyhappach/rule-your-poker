@@ -1068,6 +1068,13 @@ export const GinRummyGameTable = ({
     drawnCardId: string | null;
     handContextId: string | null;
     actionKey: string;
+    /**
+     * Optional estimated landing rect (viewport-space) for the drawn
+     * card's projected sorted position in the local fan. Captured
+     * synchronously at intent creation while the pre-draw hand is
+     * still rendered. Null → animation falls back to pane centroid.
+     */
+    targetRect: { x: number; y: number; width: number; height: number } | null;
   }
   const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
   // Discard transport overlay (visual-only). Mirrors the draw animation
