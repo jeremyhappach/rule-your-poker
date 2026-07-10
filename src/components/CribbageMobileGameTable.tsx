@@ -5426,22 +5426,68 @@ export const CribbageMobileGameTable = ({
         if (cardPlayed) {
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
+          const intentId = `crib-play-self-${tid}`;
+          const dest = computePlayCardDestRect();
+          // Instrumentation — self play attempt.
+          try {
+            const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+            const handBefore = freshPlayerState.hand.length;
+            const handAfter =
+              newState.playerStates?.[currentPlayerId]?.hand?.length ?? handBefore - 1;
+            recordPegTransportAttempt({
+              attemptId: intentId,
+              handContextId: (freshState as unknown as { handContextId?: string })?.handContextId ?? null,
+              roundId: currentRoundId,
+              handNumber: currentHandNumber ?? null,
+              mode: 'self',
+              playedCardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+              playedCardIndex: cardIndex,
+              phaseBefore: freshState.phase ?? null,
+              cardsRemainingBefore: handBefore,
+              isFinalCardOfPegging: handAfter === 0,
+              sourceRectStatus:
+                sourceRect && sourceRect.width > 0 && sourceRect.height > 0
+                  ? 'measured'
+                  : 'missing',
+              sourceRect: sourceRect ?? null,
+              destRectStatus: dest ? 'measured' : 'missing',
+              destRect: dest ?? null,
+              intentCreated: true,
+              skipReason: null,
+              boundaryKeyBefore: boundaryKey,
+              activeInFlightIds: getPegTransportEntries()
+                .filter((e) => !e.animationSettled && e.cleanupReason == null)
+                .map((e) => e.attemptId),
+            });
+            // Fill phase-after / cards-after fields we already know.
+            updatePegTransportEntry(intentId, {
+              phaseAfter: newState.phase ?? null,
+              cardsRemainingAfter: handAfter,
+            });
+          } catch { /* instrumentation is best-effort */ }
           setWithheldPlayedCardKey(key);
           setPlayCardIntent({
-            id: `crib-play-self-${tid}`,
+            id: intentId,
             mode: 'self',
             card: cardPlayed,
             sourceRect: sourceRect ?? null,
-            destRect: computePlayCardDestRect(),
+            destRect: dest,
           });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
           playCardSafetyTimerRef.current = setTimeout(() => {
             setWithheldPlayedCardKey(null);
-            setPlayCardIntent(null);
+            setPlayCardIntent((prev) => {
+              if (prev && prev.id === intentId) {
+                updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
+                return null;
+              }
+              return prev;
+            });
           }, 1500);
         }
       } catch { /* animation is best-effort */ }
+
 
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
