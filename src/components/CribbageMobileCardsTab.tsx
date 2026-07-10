@@ -396,6 +396,13 @@ export const CribbageMobileCardsTab = ({
   const handStageRef = useRef<HTMLDivElement | null>(null);
   const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
 
+  // Minimal diagnostic state for the layout-status pill.
+  const resizeObserverFireCountRef = useRef(0);
+  const [resizeObserverFireCount, setResizeObserverFireCount] = useState(0);
+  const [resizeObserverAttached, setResizeObserverAttached] = useState(false);
+  const [lastGetBoundingClientRect, setLastGetBoundingClientRect] =
+    useState<{ width: number; height: number } | null>(null);
+
   useLayoutEffect(() => {
     const stage = handStageRef.current;
     if (!stage) return;
@@ -403,6 +410,9 @@ export const CribbageMobileCardsTab = ({
       const rect = stage.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
+      setLastGetBoundingClientRect({ width: w, height: h });
+      resizeObserverFireCountRef.current += 1;
+      setResizeObserverFireCount(resizeObserverFireCountRef.current);
       setHandStageRectPx(prev => (
         prev !== null &&
         Math.abs(prev.width - w) < 0.5 &&
@@ -415,8 +425,13 @@ export const CribbageMobileCardsTab = ({
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(measure);
     ro.observe(stage);
-    return () => ro.disconnect();
+    setResizeObserverAttached(true);
+    return () => {
+      ro.disconnect();
+      setResizeObserverAttached(false);
+    };
   }, []);
+
 
 
 
