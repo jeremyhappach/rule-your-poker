@@ -7099,6 +7099,21 @@ export const CribbageMobileGameTable = ({
             }}
           />
 
+          {/* Task C2 — hand → pegging-row transport overlay (visual only).
+              Portals into document.body; consumes playCardIntent seeded by
+              handlePlayCard (self) or opponent playedCards-growth detector. */}
+          <CribbagePlayCardAnimation
+            intent={playCardIntent}
+            onSettled={(id) => {
+              setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
+              setWithheldPlayedCardKey(null);
+              if (playCardSafetyTimerRef.current) {
+                clearTimeout(playCardSafetyTimerRef.current);
+                playCardSafetyTimerRef.current = null;
+              }
+            }}
+          />
+
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
@@ -7116,6 +7131,7 @@ export const CribbageMobileGameTable = ({
               )}
               cutCardRevealed={true}
               cribVisible={true}
+              withheldPlayedCardKey={withheldPlayedCardKey}
             />
           )}
 
