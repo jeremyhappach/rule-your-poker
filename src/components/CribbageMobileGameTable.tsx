@@ -4965,8 +4965,25 @@ export const CribbageMobileGameTable = ({
   // Task C1 — detect opponent discardedToCrib growth and fire an
   // opponent-mode overlay flight from their seat stack → crib center.
   // Strictly visual: reads only cribbageState + players, never writes.
+  // Guarded by phase === 'discarding' so post-discard state echoes and
+  // rejoin/mid-hand renders never retrigger flights.
+  const opponentDiscardRoundKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!cribbageState || !cribbageState.playerStates) return;
+    // Reset the growth baseline at every new round so hand-N discards
+    // don't inherit prev counts from hand-(N-1).
+    const roundKey = currentRoundId ?? null;
+    if (opponentDiscardRoundKeyRef.current !== roundKey) {
+      opponentDiscardRoundKeyRef.current = roundKey;
+      opponentDiscardCountsRef.current = {};
+      // Seed with the current counts so the very first observation
+      // after the boundary doesn't fire spurious flights.
+      for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
+        opponentDiscardCountsRef.current[pid] = ps?.discardedToCrib?.length ?? 0;
+      }
+      return;
+    }
+    if (cribbageState.phase !== 'discarding') return;
     for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
       const count = ps?.discardedToCrib?.length ?? 0;
       const prev = opponentDiscardCountsRef.current[pid] ?? 0;
@@ -4984,7 +5001,8 @@ export const CribbageMobileGameTable = ({
         });
       }
     }
-  }, [cribbageState, currentPlayerId, players]);
+  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
