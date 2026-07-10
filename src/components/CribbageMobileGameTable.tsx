@@ -4850,7 +4850,10 @@ export const CribbageMobileGameTable = ({
     }
   };
 
-  const handleDiscard = useCallback(async (cardIndices: number[]) => {
+  const handleDiscard = useCallback(async (
+    cardIndices: number[],
+    sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
+  ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     // ── Centralized stale-action containment (Phase 2) ──
