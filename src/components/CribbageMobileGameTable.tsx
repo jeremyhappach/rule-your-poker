@@ -7315,6 +7315,11 @@ export const CribbageMobileGameTable = ({
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               withheldCribIncomingCount={discardIntent?.cardCount ?? 0}
+              deferCutReveal={
+                !!gameplayRenderState.cutCard &&
+                (discardIntent != null ||
+                  discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0))
+              }
             />
           )}
 
@@ -7324,7 +7329,14 @@ export const CribbageMobileGameTable = ({
           <CribbageDiscardToCribAnimation
             intent={discardIntent}
             onSettled={(id) => {
-              setDiscardIntent((prev) => (prev && prev.id === id ? null : prev));
+              setDiscardIntent((prev) => {
+                if (prev && prev.id === id) {
+                  // Advance cut-reveal gate by the intent's cardCount.
+                  setDiscardsSettledInHand((n) => n + (prev.cardCount ?? 0));
+                  return null;
+                }
+                return prev;
+              });
             }}
           />
 
@@ -7333,15 +7345,30 @@ export const CribbageMobileGameTable = ({
               handlePlayCard (self) or opponent playedCards-growth detector. */}
           <CribbagePlayCardAnimation
             intent={playCardIntent}
+            onLifecycle={(id, event) => {
+              const patch: Record<string, unknown> = {};
+              if (event === 'mounted') patch.intentMounted = true;
+              if (event === 'started') patch.animationStarted = true;
+              if (event === 'settled') patch.animationSettled = true;
+              if (event === 'skipped') {
+                patch.skipReason = 'animation-skipped-missing-rect';
+              }
+              updatePegTransportEntry(id, patch);
+            }}
             onSettled={(id) => {
               setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
               setWithheldPlayedCardKey(null);
+              updatePegTransportEntry(id, { cleanupReason: 'settled' });
               if (playCardSafetyTimerRef.current) {
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
             }}
           />
+
+          {/* Instrumentation pill — collapsed by default, top-left. */}
+          <CribbagePegTransportPill />
+
 
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
