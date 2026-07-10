@@ -70,7 +70,10 @@ interface CribbageMobileCardsTabProps {
   currentPlayerId: string;
   playerCount: number;
   isProcessing: boolean;
-  onDiscard: (cardIndices: number[]) => void;
+  onDiscard: (
+    cardIndices: number[],
+    sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
+  ) => void;
   onPlayCard: (cardIndex: number) => void;
   currentPlayer: Player;
   gameId: string;
