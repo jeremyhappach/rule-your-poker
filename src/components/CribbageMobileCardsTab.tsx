@@ -467,6 +467,100 @@ export const CribbageMobileCardsTab = ({
   const resolvedCardWidthPx = activeHandLayout ? activeHandLayout.cardWidth : 40;
   const overlapPx = activeHandLayout ? activeHandLayout.overlapPx : 0;
 
+  // ── Layout status diagnostics (minimal pill) ─────────────────────
+  const didRemeasureAfterCardsArrivedRef = useRef(false);
+  const [didRemeasureAfterCardsArrived, setDidRemeasureAfterCardsArrived] = useState(false);
+  const didRemeasureAfterDealReadyRef = useRef(false);
+  const [didRemeasureAfterDealReady, setDidRemeasureAfterDealReady] = useState(false);
+  const prevCardCountRef = useRef(0);
+  const prevDealPhaseRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (cardCount > 0 && prevCardCountRef.current === 0) {
+      // First frame with cards present — expect a follow-up measure.
+      didRemeasureAfterCardsArrivedRef.current = false;
+      setDidRemeasureAfterCardsArrived(false);
+    } else if (cardCount > 0 && !didRemeasureAfterCardsArrivedRef.current && resizeObserverFireCount > 0) {
+      didRemeasureAfterCardsArrivedRef.current = true;
+      setDidRemeasureAfterCardsArrived(true);
+    }
+    prevCardCountRef.current = cardCount;
+  }, [cardCount, resizeObserverFireCount]);
+  useEffect(() => {
+    const phase = deal?.phase ?? null;
+    if (phase === 'READY' && prevDealPhaseRef.current !== 'READY') {
+      didRemeasureAfterDealReadyRef.current = false;
+      setDidRemeasureAfterDealReady(false);
+    } else if (phase === 'READY' && !didRemeasureAfterDealReadyRef.current && resizeObserverFireCount > 0) {
+      didRemeasureAfterDealReadyRef.current = true;
+      setDidRemeasureAfterDealReady(true);
+    }
+    prevDealPhaseRef.current = phase;
+  }, [deal?.phase, resizeObserverFireCount]);
+
+  const layoutWasFallback = handLayout == null;
+  const layoutFallbackReason: string | null = !layoutWasFallback
+    ? null
+    : !handStageRectPx
+      ? 'no-stage-rect'
+      : (handStageRectPx.width <= 0 || handStageRectPx.height <= 0)
+        ? 'zero-stage-rect'
+        : 'resolver-null';
+  const resolveActiveHandLayoutReturnReason =
+    handLayout != null ? 'ok' : (layoutFallbackReason ?? 'unknown');
+
+  // Replicate ActiveHandFan hotfix fallback synthesis for reporting only.
+  const fallbackSynth = useMemo(() => {
+    if (!layoutWasFallback) return { w: null as number | null, h: null as number | null, ratio: null as number | null };
+    const N0 = Math.max(1, cardCount);
+    const sw = handStageRectPx?.width ?? 0;
+    const sh = handStageRectPx?.height ?? 0;
+    const TARGET = 76;
+    const MIN = 56;
+    const ratio = N0 > 4 ? 0.3 : 0.15;
+    const denomN = N0 - (N0 - 1) * ratio;
+    let cw = TARGET;
+    if (sw > 0 && denomN > 0) {
+      const fromStage = sw / denomN;
+      if (fromStage < TARGET) cw = Math.max(MIN, fromStage);
+    }
+    if (sh > 0) {
+      const fromH = sh * CRIB_ACTIVE_HAND_ASPECT;
+      if (fromH > 0 && fromH < cw) cw = Math.max(MIN, fromH);
+    }
+    cw = Math.max(MIN, Math.min(96, Math.round(cw)));
+    const ch = Math.round(cw / CRIB_ACTIVE_HAND_ASPECT);
+    return { w: cw, h: ch, ratio };
+  }, [layoutWasFallback, cardCount, handStageRectPx?.width, handStageRectPx?.height]);
+
+  const [visibleDomCardNodeCount, setVisibleDomCardNodeCount] = useState(0);
+  useEffect(() => {
+    const stage = handStageRef.current;
+    if (!stage) return;
+    const count = stage.querySelectorAll('[data-playing-card-root]').length;
+    setVisibleDomCardNodeCount(count);
+  }, [cardCount, resizeObserverFireCount, layoutWasFallback]);
+
+  const statusFields: CribbageLayoutStatusFields = {
+    layoutWasFallback,
+    layoutFallbackReason,
+    layoutNormalAvailable: !layoutWasFallback,
+    resolveActiveHandLayoutReturnReason,
+    stageRefAttached: !!handStageRef.current,
+    lastGetBoundingClientRect,
+    resolvedStageRect: handStageRectPx,
+    stageRectWidth: handStageRectPx?.width ?? null,
+    stageRectHeight: handStageRectPx?.height ?? null,
+    resizeObserverAttached,
+    resizeObserverFireCount,
+    didRemeasureAfterCardsArrived,
+    didRemeasureAfterDealReady,
+    fallbackFinalCardWidth: fallbackSynth.w,
+    fallbackFinalCardHeight: fallbackSynth.h,
+    fallbackOverlapRatio: fallbackSynth.ratio,
+    visibleDomCardNodeCount,
+  };
+
+
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
 
