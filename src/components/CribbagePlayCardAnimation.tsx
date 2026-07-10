@@ -35,6 +35,10 @@ export interface CribbagePlayCardIntent {
   opponentPosition?: number | null;
   /** Optional viewport-space source rect (self flight). */
   sourceRect?: { x: number; y: number; width: number; height: number } | null;
+  /** Optional pre-captured viewport-space destination rect. When provided
+   *  the flight lands at its center regardless of whether the pegging
+   *  row is still mounted (needed for final-card / hand-end plays). */
+  destRect?: { x: number; y: number; width: number; height: number } | null;
 }
 
 interface Props {
