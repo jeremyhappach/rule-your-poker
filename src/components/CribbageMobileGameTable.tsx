@@ -5147,6 +5147,11 @@ export const CribbageMobileGameTable = ({
     const played = cribbageState.pegging.playedCards ?? [];
     const count = played.length;
     const prev = opponentPlayedCountRef.current;
+    // While the previous row is being held for Go/31 presentation, do
+    // NOT advance the baseline or fire the transport. When the hold
+    // releases, this effect will re-run (thirtyOneDelayActive → false)
+    // and the deferred card will animate into the newly-cleared row.
+    if (thirtyOneDelayActive) return;
     if (count > prev) {
       // Advance the baseline regardless — only the newest played card
       // (last entry) is animated to avoid backlog storms.
