@@ -1316,11 +1316,11 @@ export const GinRummyGameTable = ({
         // Self discard: local active pane → discard pile.
         setDiscardIntent({
           triggerId: `self-discard-${actionKey}`,
+          actionKey,
           sourceMode: 'self',
           opponentPosition: null,
           card: action.card,
         });
-        setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
       }
       return;
     }
@@ -1340,11 +1340,11 @@ export const GinRummyGameTable = ({
       const oppPosition = players.find(p => p.id === action.playerId)?.position ?? null;
       setDiscardIntent({
         triggerId: `opp-discard-${actionKey}`,
+        actionKey,
         sourceMode: 'opponent',
         opponentPosition: oppPosition,
         card: action.card,
       });
-      setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
     }
   }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
 
