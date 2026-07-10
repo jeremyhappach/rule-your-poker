@@ -391,6 +391,7 @@ export function useWaitingRoomActions({
     handleInvite,
     handleAddBot,
     handleStartGame,
+    isStartingGame,
     handleRejoin,
   };
 }
