@@ -2119,18 +2119,35 @@ export const CribbageMobileGameTable = ({
   const thirtyOneDelayRef = useRef<string | null>(null);
   // Track the sequence start index BEFORE a 31 reset happens
   const prevSequenceStartIndexRef = useRef<number>(0);
-  
+
+  // ── Unified pegging-sequence presentation gate ──
+  // When a Go/31 arms the hold, we snapshot everything the presentation
+  // needs about the ENDING sequence: its slice bounds and the count
+  // that belongs to those cards. Row and count both read from this
+  // snapshot during hold, so they can never disagree. Release is tied
+  // to THIS event's own lifecycle (below); next-sequence events do
+  // not touch it.
+  type HeldSequenceSnapshot = {
+    armedEventId: string;
+    armedEventType: 'pegging_points' | 'go_point';
+    heldStartIndex: number;
+    heldEndIndex: number;
+    heldDisplayCount: number;
+  };
+  const [heldSequenceSnapshot, setHeldSequenceSnapshot] =
+    useState<HeldSequenceSnapshot | null>(null);
+  const heldAnnouncementSettledRef = useRef<string | null>(null); // armedEventId once its own 3s elapses
+  const [heldAnnouncementSettledTick, setHeldAnnouncementSettledTick] = useState(0);
+
   // Pegging announcement auto-clear: hide scoring announcements after 3 seconds
   // (only for pegging phase, not discarding/cutting/counting announcements)
   const [peggingAnnouncementHidden, setPeggingAnnouncementHidden] = useState(false);
   const peggingAnnouncementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPeggingEventIdRef = useRef<string | null>(null);
-  
+
   // Keep tracking the sequence start index - update ONLY when not in delay mode
-  // AND when the current lastEvent is not a fresh 31 (whose delay effect
-  // will fire in the same commit). Without this second guard the ref
-  // races ahead and the 31 delay freezes on the post-reset value, which
-  // clears the previous pegging row before the transport can land.
+  // AND when the current lastEvent is not a fresh sequence-end (whose delay
+  // effect will fire in the same commit).
   useEffect(() => {
     if (thirtyOneDelayActive) return;
     const le = cribbageState?.lastEvent;
@@ -2149,27 +2166,17 @@ export const CribbageMobileGameTable = ({
     cribbageState?.lastEvent?.id,
     cribbageState?.lastEvent?.type,
   ]);
-  
-  // Detect 31 and trigger delay. The delay is NOT a blind timer — it
-  // stays active until the 31 presentation is fully complete:
-  //   (a) the 31-making card transport has settled (playCardIntent is
-  //       null; the overlay portal has cleared), AND
-  //   (b) the pegging scoring announcement for this 31 has been
-  //       acknowledged (peggingAnnouncementHidden === true, which flips
-  //       ~3s after the announcement is first shown).
-  // A max safety fallback of 6s prevents a stuck presentation from
-  // permanently blocking the row clear. Authoritative state is
-  // untouched — this only holds the presentation of the completed row
-  // until its 31 announcement + flight finish.
+
+  // Arm the hold on 31 / Go / last. Snapshot the ending sequence's
+  // slice bounds and count from the SAME source (playedCards), so the
+  // row and the count that render during the hold agree by construction.
+  // Also start an announcement-settled timer keyed to this event's id
+  // (not to `peggingAnnouncementHidden`, which is re-armed by any
+  // subsequent pegging event and would keep the hold from releasing).
   useEffect(() => {
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
     if (!lastEvent) return;
-    // Sequence-end events that must hold the previous row visible until
-    // the last-card transport lands AND the announcement is dismissed:
-    //   - pegging_points with count === 31 (thirty-one)
-    //   - go_point (Go / last-card 1pt) — fires when the sequence ends
-    //     because no other player has cards remaining.
     const is31 =
       lastEvent.type === 'pegging_points' &&
       (lastEvent as { count?: number }).count === 31;
@@ -2178,43 +2185,81 @@ export const CribbageMobileGameTable = ({
     const eventKey = lastEvent.id;
     if (thirtyOneDelayRef.current === eventKey) return;
     thirtyOneDelayRef.current = eventKey;
+
+    // Compute the held slice + count from the SAME source.
+    const played = cribbageState.pegging.playedCards ?? [];
+    const heldStart = prevSequenceStartIndexRef.current;
+    const heldEnd = played.length; // includes the sequence-ending card
+    const heldSlice = played.slice(heldStart, heldEnd);
+    const heldDisplayCount = is31
+      ? 31
+      : heldSlice.reduce((sum, pc) => sum + getCardPointValue(pc.card), 0);
+
+    setHeldSequenceSnapshot({
+      armedEventId: eventKey,
+      armedEventType: is31 ? 'pegging_points' : 'go_point',
+      heldStartIndex: heldStart,
+      heldEndIndex: heldEnd,
+      heldDisplayCount,
+    });
     setThirtyOneDelayActive(true);
-    // Safety cap only — the completion effect below is the primary
-    // release path.
+
+    // Announcement-settled timer tied to THIS event id only. When it
+    // fires, the release effect below can drop the hold (once transport
+    // has also settled). It is NOT affected by later pegging events.
+    heldAnnouncementSettledRef.current = null;
+    const announceTimer = setTimeout(() => {
+      heldAnnouncementSettledRef.current = eventKey;
+      setHeldAnnouncementSettledTick((n) => n + 1);
+    }, 3000);
+
+    // Deadman safety only.
     const safety = setTimeout(() => {
       setThirtyOneDelayActive(false);
+      setHeldSequenceSnapshot(null);
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
-    return () => clearTimeout(safety);
+    return () => {
+      clearTimeout(announceTimer);
+      clearTimeout(safety);
+    };
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, cribbageState?.lastEvent?.count]);
 
-  // Presentation-driven release: once the 31-making transport has
-  // settled AND the announcement has been dismissed, drop the delay.
+  // Primary release: the armed event's own announcement window has
+  // elapsed AND its last-card transport has settled.
   useEffect(() => {
     if (!thirtyOneDelayActive) return;
+    if (!heldSequenceSnapshot) return;
     if (playCardIntent !== null) return;
-    if (!peggingAnnouncementHidden) return;
+    if (heldAnnouncementSettledRef.current !== heldSequenceSnapshot.armedEventId) return;
     setThirtyOneDelayActive(false);
+    setHeldSequenceSnapshot(null);
     prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+    // Deliberately do NOT touch opponentPlayedCountRef here; the
+    // opponent-play effect re-runs on `thirtyOneDelayActive` and
+    // animates any card that landed in the new sequence during hold.
   }, [
     thirtyOneDelayActive,
+    heldSequenceSnapshot,
     playCardIntent,
-    peggingAnnouncementHidden,
+    heldAnnouncementSettledTick,
     dbSequenceStartIndex,
   ]);
 
-  // Clear 31 delay when phase moves away from pegging (e.g. hand ends or new hand starts)
+  // Clear hold when phase moves away from pegging.
   useEffect(() => {
     if (!cribbageState) return;
     if (cribbageState.phase !== 'pegging') {
       setThirtyOneDelayActive(false);
+      setHeldSequenceSnapshot(null);
       thirtyOneDelayRef.current = null;
+      heldAnnouncementSettledRef.current = null;
     }
   }, [cribbageState?.phase]);
-  
-  // Use the previous (pre-reset) index during 31 delay, otherwise use the DB index
-  const sequenceStartIndex = thirtyOneDelayActive 
-    ? prevSequenceStartIndexRef.current 
+
+  // Use the previous (pre-reset) index during hold, otherwise use the DB index
+  const sequenceStartIndex = thirtyOneDelayActive && heldSequenceSnapshot
+    ? heldSequenceSnapshot.heldStartIndex
     : dbSequenceStartIndex;
 
   // Auto-clear pegging announcements after 3 seconds OR when a new announcement arrives
