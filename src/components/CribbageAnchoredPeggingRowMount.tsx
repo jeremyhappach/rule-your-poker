@@ -44,6 +44,14 @@ export interface CribbageAnchoredPeggingRowMountProps {
    * Cleared by the parent once the flight settles.
    */
   withheldPlayedCardKey?: string | null;
+  /**
+   * Unified presentation-gate override. When the parent is holding the
+   * previous sequence visible (Go / 31), it passes the snapshot count
+   * that belongs to the held sequence so the visible count and the
+   * visible row cards derive from the SAME sequence. When null/undefined,
+   * the mount falls back to authoritative `pegging.currentCount`.
+   */
+  displayCountOverride?: number | null;
 }
 
 export function CribbageAnchoredPeggingRowMount({
@@ -58,25 +66,18 @@ export function CribbageAnchoredPeggingRowMount({
   cutCardRevealed,
   cribVisible,
   withheldPlayedCardKey = null,
+  displayCountOverride = null,
 }: CribbageAnchoredPeggingRowMountProps) {
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
-  // Only force the display count to 31 when the sequence-end trigger is
-  // an actual pegging_points count===31. `thirtyOneDelayActive` is also
-  // raised for `go_point` events (to hold the row visible while the
-  // last card's transport lands), but those award +1 at the current
-  // running count — never 31 — so the visible counter must remain at
-  // `pegging.currentCount` for the Go/last case.
-  const lastEvent = cribbageState.lastEvent as
-    | { type?: string; count?: number }
-    | null
-    | undefined;
-  const isActual31Hold =
-    thirtyOneDelayActive &&
-    lastEvent?.type === 'pegging_points' &&
-    lastEvent?.count === 31;
-  const displayCount = isActual31Hold
-    ? 31
-    : cribbageState.pegging.currentCount;
+  // Unified count source: when the parent is holding the previous
+  // sequence visible, it supplies `displayCountOverride` derived from
+  // the same held slice as the row. This is the ONLY way the count
+  // reads during a hold — never from live `pegging.currentCount`,
+  // which has already moved on to the next sequence.
+  const displayCount =
+    displayCountOverride != null
+      ? displayCountOverride
+      : cribbageState.pegging.currentCount;
 
   const isCountingTerminalPath =
     terminalPath === 'counting' ||
