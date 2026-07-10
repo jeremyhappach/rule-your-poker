@@ -977,14 +977,18 @@ export const GinRummyGameTable = ({
   // opponent card-back stack; destination = [data-card-anchor="discard"].
   interface DiscardIntent {
     triggerId: string;
+    actionKey: string;
     sourceMode: GinRummyDiscardSourceMode;
     opponentPosition: number | null;
     card: GinRummyCard;
   }
   const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
-  // Withhold the just-arrived top of the discard pile during flight to
-  // avoid a duplicate-card flash. Cleared on discard animation settle.
-  const [withheldDiscardTop, setWithheldDiscardTop] = useState<{ rank: string; suit: string } | null>(null);
+  // Released set of discard action keys. Withhold is derived
+  // synchronously during render (see below) from the current
+  // viewState.lastAction — this prevents the one-frame flash of the
+  // incoming card on top of the discard pile between viewState
+  // commit and useEffect-based withhold setState.
+  const [releasedDiscardActionKeys, setReleasedDiscardActionKeys] = useState<Set<string>>(() => new Set());
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
