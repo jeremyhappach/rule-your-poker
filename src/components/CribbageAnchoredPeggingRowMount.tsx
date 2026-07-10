@@ -49,6 +49,7 @@ export interface CribbageAnchoredPeggingRowMountProps {
 export function CribbageAnchoredPeggingRowMount({
   cribbageState,
   sequenceStartIndex,
+  sequenceEndIndex,
   countingOutroActive = false,
   thirtyOneDelayActive = false,
   terminalPath = null,
