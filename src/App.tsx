@@ -219,12 +219,12 @@ const App = () => {
               <IncidentExportPill />
               <ChatFlightPill />
 
-              {/* P0: always-mounted session lifecycle recovery pill.
-                  Persists across every route (including /auth and any
-                  legacy Join fallback) so the operator can always reach
-                  /diagnostics and copy the ledger, even when the game
-                  UI is gone. Pure link + copy; no auth/session mutation. */}
-              <SessionLifecycleRecoveryPill />
+              {/* SessionLifecycleRecoveryPill (DIAG + COPY) intentionally
+                  suppressed from published UI per operator request. The
+                  only visible in-game diagnostic surface is the Cribbage
+                  layout trace pill. /diagnostics route remains reachable
+                  directly. */}
+              {/* <SessionLifecycleRecoveryPill /> */}
 
 
 
