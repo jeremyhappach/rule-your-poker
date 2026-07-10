@@ -30,6 +30,12 @@ export interface CribbageAnchoredPeggingRowMountProps {
   opponentSeatPositions: ReadonlyArray<number>;
   cutCardRevealed: boolean;
   cribVisible: boolean;
+  /**
+   * Task C2 — withhold a single played card from the rendered row while
+   * its transport overlay is in flight. Key format: `${playerId}|${rank}${suit}`.
+   * Cleared by the parent once the flight settles.
+   */
+  withheldPlayedCardKey?: string | null;
 }
 
 export function CribbageAnchoredPeggingRowMount({
@@ -42,6 +48,7 @@ export function CribbageAnchoredPeggingRowMount({
   opponentSeatPositions,
   cutCardRevealed,
   cribVisible,
+  withheldPlayedCardKey = null,
 }: CribbageAnchoredPeggingRowMountProps) {
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
   const displayCount = thirtyOneDelayActive
@@ -78,6 +85,11 @@ export function CribbageAnchoredPeggingRowMount({
       count={displayCount}
       playedCards={cribbageState.pegging.playedCards
         .slice(sequenceStartIndex)
+        .filter((pc) => {
+          if (!withheldPlayedCardKey) return true;
+          const key = `${pc.playerId}|${pc.card.rank}${pc.card.suit[0]}`;
+          return key !== withheldPlayedCardKey;
+        })
         .map((pc) => ({ card: pc.card, playerId: pc.playerId }))}
       showEmptyPlaceholder={!isPeggingWin}
       activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}

@@ -21,6 +21,7 @@ import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
+import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
@@ -1894,6 +1895,13 @@ export const CribbageMobileGameTable = ({
   // Task C1 — discard-to-crib transport (visual overlay only).
   const [discardIntent, setDiscardIntent] = useState<CribbageDiscardIntent | null>(null);
   const opponentDiscardCountsRef = useRef<Record<string, number>>({});
+
+  // Task C2 — hand → pegging-row transport (visual overlay only).
+  const [playCardIntent, setPlayCardIntent] = useState<CribbagePlayCardIntent | null>(null);
+  const [withheldPlayedCardKey, setWithheldPlayedCardKey] = useState<string | null>(null);
+  const opponentPlayedCountRef = useRef<number>(0);
+  const playCardRoundKeyRef = useRef<string | null>(null);
+  const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
@@ -5004,8 +5012,80 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId, currentRoundId, players]);
 
+  // Task C2 — detect opponent pegging plays and fire a face-up transport
+  // flight from their seat cardback stack → pegging-row center. Visual-
+  // only; reads authoritative state, never writes. Reset baseline at
+  // every round boundary and any phase != 'pegging'.
+  useEffect(() => {
+    if (!cribbageState || !cribbageState.pegging) return;
+    const roundKey = currentRoundId ?? null;
+    if (playCardRoundKeyRef.current !== roundKey) {
+      playCardRoundKeyRef.current = roundKey;
+      opponentPlayedCountRef.current =
+        cribbageState.pegging.playedCards?.length ?? 0;
+      // Clear any stuck withhold across round boundaries.
+      setWithheldPlayedCardKey(null);
+      setPlayCardIntent(null);
+      if (playCardSafetyTimerRef.current) {
+        clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = null;
+      }
+      return;
+    }
+    if (cribbageState.phase !== 'pegging') {
+      opponentPlayedCountRef.current =
+        cribbageState.pegging.playedCards?.length ?? 0;
+      return;
+    }
+    const played = cribbageState.pegging.playedCards ?? [];
+    const count = played.length;
+    const prev = opponentPlayedCountRef.current;
+    if (count > prev) {
+      // Advance the baseline regardless — only the newest played card
+      // (last entry) is animated to avoid backlog storms.
+      opponentPlayedCountRef.current = count;
+      const last = played[count - 1];
+      if (last && last.playerId && last.playerId !== currentPlayerId) {
+        const opp = players.find((p) => p.id === last.playerId);
+        const pos = opp?.position ?? null;
+        const key = `${last.playerId}|${last.card.rank}${last.card.suit[0]}`;
+        setWithheldPlayedCardKey(key);
+        setPlayCardIntent({
+          id: `crib-play-opp-${last.playerId}-${count}`,
+          mode: 'opponent',
+          card: last.card,
+          opponentPosition: pos,
+        });
+        if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = setTimeout(() => {
+          setWithheldPlayedCardKey(null);
+          setPlayCardIntent(null);
+        }, 1500);
+      }
+    } else if (count < prev) {
+      // Row was reset (31 / go rollover clears sequenceStartIndex, but
+      // playedCards is monotonic in this state). Realign baseline.
+      opponentPlayedCountRef.current = count;
+    }
+  }, [cribbageState, currentPlayerId, currentRoundId, players]);
 
-  const handlePlayCard = useCallback(async (cardIndex: number) => {
+  // Task C2 — clear in-flight withhold/intent on unmount.
+  useEffect(() => {
+    return () => {
+      if (playCardSafetyTimerRef.current) {
+        clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = null;
+      }
+    };
+  }, []);
+
+
+
+
+  const handlePlayCard = useCallback(async (
+    cardIndex: number,
+    sourceRect?: { x: number; y: number; width: number; height: number } | null,
+  ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     {
@@ -5075,6 +5155,31 @@ export const CribbageMobileGameTable = ({
       traceGoRace(humanTraceCtx, 'human:playCard:computed', {
         wroteSnapshot: peggingSnapshot(newState),
       });
+
+      // Task C2 — fire self hand → pegging-row transport overlay BEFORE
+      // authoritative state flushes. Withhold the newly-played card in
+      // the row until the flight settles. Pre-advance opponent-growth
+      // baseline so echo doesn't retrigger as an opponent flight.
+      try {
+        if (cardPlayed) {
+          const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
+          opponentPlayedCountRef.current = newState.pegging.playedCards.length;
+          setWithheldPlayedCardKey(key);
+          setPlayCardIntent({
+            id: `crib-play-self-${tid}`,
+            mode: 'self',
+            card: cardPlayed,
+            sourceRect: sourceRect ?? null,
+          });
+          // Safety timeout — never leave a card permanently hidden.
+          if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
+          playCardSafetyTimerRef.current = setTimeout(() => {
+            setWithheldPlayedCardKey(null);
+            setPlayCardIntent(null);
+          }, 1500);
+        }
+      } catch { /* animation is best-effort */ }
+
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
         logPeggingPlay(eventCtx, freshState, newState, currentPlayerId, cardPlayed);
@@ -6994,6 +7099,21 @@ export const CribbageMobileGameTable = ({
             }}
           />
 
+          {/* Task C2 — hand → pegging-row transport overlay (visual only).
+              Portals into document.body; consumes playCardIntent seeded by
+              handlePlayCard (self) or opponent playedCards-growth detector. */}
+          <CribbagePlayCardAnimation
+            intent={playCardIntent}
+            onSettled={(id) => {
+              setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
+              setWithheldPlayedCardKey(null);
+              if (playCardSafetyTimerRef.current) {
+                clearTimeout(playCardSafetyTimerRef.current);
+                playCardSafetyTimerRef.current = null;
+              }
+            }}
+          />
+
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
@@ -7011,6 +7131,7 @@ export const CribbageMobileGameTable = ({
               )}
               cutCardRevealed={true}
               cribVisible={true}
+              withheldPlayedCardKey={withheldPlayedCardKey}
             />
           )}
 
