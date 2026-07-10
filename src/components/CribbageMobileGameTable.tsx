@@ -1895,6 +1895,13 @@ export const CribbageMobileGameTable = ({
   const [discardIntent, setDiscardIntent] = useState<CribbageDiscardIntent | null>(null);
   const opponentDiscardCountsRef = useRef<Record<string, number>>({});
 
+  // Task C2 — hand → pegging-row transport (visual overlay only).
+  const [playCardIntent, setPlayCardIntent] = useState<CribbagePlayCardIntent | null>(null);
+  const [withheldPlayedCardKey, setWithheldPlayedCardKey] = useState<string | null>(null);
+  const opponentPlayedCountRef = useRef<number>(0);
+  const playCardRoundKeyRef = useRef<string | null>(null);
+  const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
 
