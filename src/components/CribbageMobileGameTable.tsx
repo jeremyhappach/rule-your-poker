@@ -15,7 +15,7 @@ import { endCribbageGame, startNextCribbageHand } from '@/lib/cribbageRoundLogic
 import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
 import { fetchSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHost';
 import { archiveCribbageHand } from '@/lib/cribbageHandArchive';
-import { hasPlayableCard } from '@/lib/cribbageScoring';
+import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
