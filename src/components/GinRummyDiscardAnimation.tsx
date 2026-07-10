@@ -130,7 +130,7 @@ export const GinRummyDiscardAnimation = ({
       cancelAnimationFrame(raf1);
       clearTimeout(settleTimer);
     };
-  }, [triggerId, sourceMode, opponentPosition, card]);
+  }, [triggerId, sourceMode, opponentPosition, card, sourceRect]);
 
   if (!visible || !snapshot || !card) return null;
 
