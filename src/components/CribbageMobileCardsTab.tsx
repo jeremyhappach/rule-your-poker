@@ -630,7 +630,22 @@ export const CribbageMobileCardsTab = ({
       toast.error(`Select ${expectedDiscard} card(s) to discard`);
       return;
     }
-    onDiscard(selectedCards);
+    // Task C1 — synchronously capture per-card source rects BEFORE the
+    // authoritative discard state mutates. Uses the stable
+    // `data-cribbage-hand-card-key` marker attached to each hand button.
+    const sourceRects = selectedCards.map((idx) => {
+      const card = renderedHand[idx];
+      if (!card) return null;
+      const key = `${card.rank}${card.suit[0]}-${idx}`;
+      const el = document.querySelector(
+        `[data-cribbage-hand-card-key="${key}"]`,
+      ) as HTMLElement | null;
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return null;
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    });
+    onDiscard(selectedCards, sourceRects);
     setSelectedCards([]);
   };
 
