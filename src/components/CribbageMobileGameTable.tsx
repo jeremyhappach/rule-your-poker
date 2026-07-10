@@ -5215,7 +5215,7 @@ export const CribbageMobileGameTable = ({
       // playedCards is monotonic in this state). Realign baseline.
       opponentPlayedCountRef.current = count;
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+  }, [cribbageState, currentPlayerId, currentRoundId, players, thirtyOneDelayActive]);
 
   // Task C2 — clear in-flight withhold/intent on unmount.
   useEffect(() => {
