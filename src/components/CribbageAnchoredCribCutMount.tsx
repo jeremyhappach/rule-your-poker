@@ -224,25 +224,13 @@ export function CribbageAnchoredCribCutMount({
           reset per hand via `handBoundaryKey` so a fresh hand starts
           from 0 correctly. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const settledFloorRef = useRef(0);
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const lastBoundaryRef = useRef<string | undefined>(handBoundaryKey);
-        if (lastBoundaryRef.current !== handBoundaryKey) {
-          settledFloorRef.current = 0;
-          lastBoundaryRef.current = handBoundaryKey;
-        }
         const withheld = Math.max(0, withheldCribIncomingCount);
         const raw = Math.max(0, cribbageState.crib.length - withheld);
-        // Track the highest count seen while NOT withholding — this is
-        // the last authoritative "settled" crib count and must never
-        // be blanked while a flight is in progress.
-        if (withheld === 0) {
-          if (cribbageState.crib.length > settledFloorRef.current) {
-            settledFloorRef.current = cribbageState.crib.length;
-          }
-        }
-        const visibleCribCount = Math.max(raw, settledFloorRef.current);
+        // Floor is maintained by cribSettledFloorRef at the top of
+        // the component (safe hook usage), so the visible pile never
+        // drops below the last settled count while a flight is in
+        // progress.
+        const visibleCribCount = Math.max(raw, cribSettledFloorRef.current);
         return (
           <div ref={cribRef} className="flex flex-col items-center">
             <span
