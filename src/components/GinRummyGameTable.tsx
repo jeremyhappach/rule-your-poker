@@ -3114,6 +3114,7 @@ export const GinRummyGameTable = ({
                 sourceMode={discardIntent.sourceMode}
                 opponentPosition={discardIntent.opponentPosition}
                 card={discardIntent.card}
+                sourceRect={discardIntent.sourceRect}
                 onSettled={() => {
                   const settledActionKey = discardIntent.actionKey;
                   setDiscardIntent(prev =>
