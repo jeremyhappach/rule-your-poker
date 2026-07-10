@@ -93,14 +93,19 @@ export const CribbageLayoutStatusPill = ({ fields }: Props) => {
     }
   };
 
+  // Position:fixed to the viewport so ancestor `overflow:hidden` (tab
+  // rails, felt clip, action strip) cannot clip the header/controls.
+  // Collapsed pill is a tiny chip pinned to top-right; expanded panel
+  // opens downward from the same anchor with a sticky header so
+  // Copy / Export TXT / collapse are always reachable.
   return (
     <div
       ref={anchorRef}
       style={{
-        position: 'absolute',
-        bottom: 4,
-        right: 4,
-        zIndex: 60,
+        position: 'fixed',
+        top: 6,
+        right: 6,
+        zIndex: 2147483000,
         pointerEvents: 'auto',
         fontSize: 10,
         lineHeight: 1.2,
@@ -112,9 +117,9 @@ export const CribbageLayoutStatusPill = ({ fields }: Props) => {
           style={{
             padding: '2px 6px',
             borderRadius: 8,
-            background: 'rgba(0,0,0,0.55)',
+            background: 'rgba(0,0,0,0.65)',
             color: fields.layoutWasFallback ? '#fbbf24' : '#a3e635',
-            border: '1px solid rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.2)',
           }}
         >
           {fields.layoutWasFallback ? `FB:${fields.layoutFallbackReason ?? '?'}` : 'layout OK'}
@@ -122,37 +127,55 @@ export const CribbageLayoutStatusPill = ({ fields }: Props) => {
       ) : (
         <div
           style={{
-            maxWidth: 260,
-            maxHeight: 260,
-            overflow: 'auto',
-            padding: 6,
+            width: 280,
+            maxHeight: '70vh',
+            display: 'flex',
+            flexDirection: 'column',
             borderRadius: 8,
-            background: 'rgba(0,0,0,0.85)',
+            background: 'rgba(0,0,0,0.9)',
             color: '#e5e7eb',
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
           }}
         >
-          <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-            <button
-              onClick={() => setOpen(false)}
-              style={{ padding: '1px 5px', borderRadius: 4, background: '#374151', color: '#fff' }}
-            >
-              −
-            </button>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: 6,
+              borderBottom: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(0,0,0,0.95)',
+              borderTopLeftRadius: 8,
+              borderTopRightRadius: 8,
+            }}
+          >
+            <span style={{ flex: 1, fontWeight: 600, color: fields.layoutWasFallback ? '#fbbf24' : '#a3e635' }}>
+              Cribbage Layout {fields.layoutWasFallback ? `FB:${fields.layoutFallbackReason ?? '?'}` : 'OK'}
+            </span>
             <button
               onClick={handleCopy}
-              style={{ padding: '1px 5px', borderRadius: 4, background: '#1f2937', color: '#fff' }}
+              style={{ padding: '2px 6px', borderRadius: 4, background: '#1f2937', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
             >
-              {copied ? 'copied' : 'copy'}
+              {copied ? 'copied' : 'Copy'}
             </button>
             <button
               onClick={handleExport}
-              style={{ padding: '1px 5px', borderRadius: 4, background: '#065f46', color: '#fff' }}
+              style={{ padding: '2px 6px', borderRadius: 4, background: '#065f46', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
             >
               Export TXT
             </button>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="collapse"
+              style={{ padding: '2px 6px', borderRadius: 4, background: '#374151', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              −
+            </button>
           </div>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{text}</pre>
+          <div style={{ padding: 6, overflow: 'auto' }}>
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{text}</pre>
+          </div>
         </div>
       )}
     </div>
