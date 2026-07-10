@@ -2079,13 +2079,26 @@ export const CribbageMobileGameTable = ({
   const lastPeggingEventIdRef = useRef<string | null>(null);
   
   // Keep tracking the sequence start index - update ONLY when not in delay mode
-  // This way we capture the "old" index before the 31 reset, and hold it during the delay
+  // AND when the current lastEvent is not a fresh 31 (whose delay effect
+  // will fire in the same commit). Without this second guard the ref
+  // races ahead and the 31 delay freezes on the post-reset value, which
+  // clears the previous pegging row before the transport can land.
   useEffect(() => {
-    if (!thirtyOneDelayActive && dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
-      // Only update if delay is not active - this captures the index BEFORE a reset
+    if (thirtyOneDelayActive) return;
+    const le = cribbageState?.lastEvent;
+    const is31 =
+      !!le && le.type === 'pegging_points' && (le as { count?: number }).count === 31;
+    const alreadyHandled = is31 && thirtyOneDelayRef.current === le?.id;
+    if (is31 && !alreadyHandled) return;
+    if (dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }
-  }, [dbSequenceStartIndex, thirtyOneDelayActive]);
+  }, [
+    dbSequenceStartIndex,
+    thirtyOneDelayActive,
+    cribbageState?.lastEvent?.id,
+    cribbageState?.lastEvent?.type,
+  ]);
   
   // Detect 31 and trigger delay
   useEffect(() => {
