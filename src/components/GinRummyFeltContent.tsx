@@ -43,6 +43,10 @@ interface GinRummyFeltContentProps {
   /** Canonical hand identity — used to gate the discard upcard reveal
    *  on the deal-runtime settle event (`${handContextId}#discard`). */
   handContextId?: string | null;
+  /** When set, the discard-pile top matching this rank/suit is hidden
+   *  during the discard transport flight to avoid a duplicate-card
+   *  flash. Cleared by the parent when the overlay settles. */
+  withheldDiscardTop?: { rank: string; suit: string } | null;
 }
 
 // Single authoritative resolved rect for Gin pile artifacts.
