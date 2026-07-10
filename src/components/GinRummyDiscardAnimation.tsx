@@ -30,6 +30,13 @@ interface Props {
   /** Required when sourceMode === 'opponent'. Seat position (1..7). */
   opponentPosition?: number | null;
   card: GinRummyCard | null;
+  /**
+   * Optional viewport-space rect of the actual card being discarded,
+   * captured synchronously by the caller BEFORE authoritative state
+   * mutates. When present, the overlay starts from this rect's center
+   * instead of the mode-derived centroid fallback.
+   */
+  sourceRect?: { x: number; y: number; width: number; height: number } | null;
   /** Called once the animation has settled (matches 700ms lifecycle),
    *  OR immediately if the animation was skipped (missing rects). */
   onSettled?: () => void;
