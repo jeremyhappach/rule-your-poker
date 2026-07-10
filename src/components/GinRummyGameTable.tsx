@@ -1356,6 +1356,7 @@ export const GinRummyGameTable = ({
         sourceMode: 'opponent',
         opponentPosition: oppPosition,
         card: action.card,
+        sourceRect: null,
       });
     }
   }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
