@@ -393,20 +393,33 @@ export const CribbageMobileCardsTab = ({
   // but only as a last resort when a straight zero-overlap capacity row
   // cannot meet the minimum readable width.
   // ────────────────────────────────────────────────────────────────
-  const handStageRef = useRef<HTMLDivElement | null>(null);
+  // Ref-callback based measurement. Fixes the P0 root cause where the
+  // ref-bearing hand-stage <div> mounts AFTER the initial render (because
+  // the `activeHandBlocked && !shouldSelfHeal` early-return branch is
+  // rendered first), so a `useLayoutEffect(..., [])` bound to the ref
+  // would fire before the ref was attached and never re-run.
+  //
+  // The callback runs every time React attaches (node) or detaches
+  // (null) the ref-bearing node, guaranteeing exactly one active
+  // ResizeObserver per mounted stage node.
+  const handStageNodeRef = useRef<HTMLDivElement | null>(null);
+  const handStageResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const handStageMeasureRef = useRef<() => void>(() => {});
   const [handStageRectPx, setHandStageRectPx] = useState<CribActiveHandStageRect | null>(null);
 
   // Minimal diagnostic state for the layout-status pill.
   const resizeObserverFireCountRef = useRef(0);
   const [resizeObserverFireCount, setResizeObserverFireCount] = useState(0);
   const [resizeObserverAttached, setResizeObserverAttached] = useState(false);
+  const [stageRefAttachedState, setStageRefAttachedState] = useState(false);
   const [lastGetBoundingClientRect, setLastGetBoundingClientRect] =
     useState<{ width: number; height: number } | null>(null);
 
-  useLayoutEffect(() => {
-    const stage = handStageRef.current;
-    if (!stage) return;
-    const measure = () => {
+  // Stable measure function reads the current node from the mutable ref.
+  const measureHandStage = useMemo(() => {
+    const fn = () => {
+      const stage = handStageNodeRef.current;
+      if (!stage) return;
       const rect = stage.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
@@ -421,16 +434,41 @@ export const CribbageMobileCardsTab = ({
           : { width: w, height: h }
       ));
     };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(stage);
-    setResizeObserverAttached(true);
-    return () => {
-      ro.disconnect();
-      setResizeObserverAttached(false);
-    };
+    return fn;
   }, []);
+  handStageMeasureRef.current = measureHandStage;
+
+  const handStageRefCallback = useMemo(() => (node: HTMLDivElement | null) => {
+    // Detach any previous observer cleanly.
+    if (handStageResizeObserverRef.current) {
+      handStageResizeObserverRef.current.disconnect();
+      handStageResizeObserverRef.current = null;
+    }
+    handStageNodeRef.current = node;
+    if (!node) {
+      setStageRefAttachedState(false);
+      setResizeObserverAttached(false);
+      return;
+    }
+    setStageRefAttachedState(true);
+    // Measure synchronously on attach.
+    measureHandStage();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => measureHandStage());
+      ro.observe(node);
+      handStageResizeObserverRef.current = ro;
+      setResizeObserverAttached(true);
+    }
+  }, [measureHandStage]);
+
+  // Reactive remeasure triggers: fires when cards arrive, when the deal
+  // phase transitions, and when the local cribbage phase transitions.
+  // The ref-callback already handles mount/unmount; this covers content
+  // changes that may reflow the stage without resizing its own box (e.g.
+  // sibling action-strip content growing/shrinking).
+  useLayoutEffect(() => {
+    if (handStageNodeRef.current) handStageMeasureRef.current();
+  }, [cardCount, deal?.phase, cribbageState.phase]);
 
 
 
