@@ -1308,6 +1308,15 @@ export const GinRummyGameTable = ({
             },
           };
         });
+      } else if (action.type === 'discard' && action.card) {
+        // Self discard: local active pane → discard pile.
+        setDiscardIntent({
+          triggerId: `self-discard-${actionKey}`,
+          sourceMode: 'self',
+          opponentPosition: null,
+          card: action.card,
+        });
+        setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
       }
       return;
     }
@@ -1322,8 +1331,18 @@ export const GinRummyGameTable = ({
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+    } else if (action.type === 'discard' && action.card) {
+      // Opponent discard: opponent card-back stack → discard pile.
+      const oppPosition = players.find(p => p.id === action.playerId)?.position ?? null;
+      setDiscardIntent({
+        triggerId: `opp-discard-${actionKey}`,
+        sourceMode: 'opponent',
+        opponentPosition: oppPosition,
+        card: action.card,
+      });
+      setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
     }
-  }, [viewState?.lastAction, currentPlayerId, playerSlotById]);
+  }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
 
   // Load state from DB
   useEffect(() => {
