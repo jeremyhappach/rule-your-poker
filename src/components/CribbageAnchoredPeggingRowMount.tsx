@@ -85,6 +85,11 @@ export function CribbageAnchoredPeggingRowMount({
       count={displayCount}
       playedCards={cribbageState.pegging.playedCards
         .slice(sequenceStartIndex)
+        .filter((pc) => {
+          if (!withheldPlayedCardKey) return true;
+          const key = `${pc.playerId}|${pc.card.rank}${pc.card.suit[0]}`;
+          return key !== withheldPlayedCardKey;
+        })
         .map((pc) => ({ card: pc.card, playerId: pc.playerId }))}
       showEmptyPlaceholder={!isPeggingWin}
       activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}
