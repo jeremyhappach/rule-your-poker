@@ -3003,6 +3003,7 @@ export const GinRummyGameTable = ({
                 isProcessing={isProcessing}
                 isPlayable={isPlayable}
                 handContextId={handContextId}
+                withheldDiscardTop={withheldDiscardTop}
               />
             )}
 
