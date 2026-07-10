@@ -197,21 +197,31 @@ export function ActiveHandFan({
     const N0 = Math.max(1, cards.length);
     const sw = resolvedStageRect?.width ?? 0;
     const sh = resolvedStageRect?.height ?? 0;
-    // Overlap ratio mirrors the resolver's high-density branch when
-    // cards outnumber the loose threshold; matches visual density.
-    const overlapRatio = N0 > 4 ? 0.4 : 0.15;
-    // Card width that fits horizontally given the overlap:
-    //   totalWidth = N*w - (N-1)*w*overlap = w * (N - (N-1)*overlap)
+    // EMERGENCY HOTFIX (P0 Cribbage): playable-size fallback.
+    // Target a normal readable Cribbage card size (~76px wide) with
+    // moderate overlap (~0.3), only shrinking if the stage genuinely
+    // can't fit the row. Prior math derived tiny widths from a small
+    // (or momentarily zero) stage and applied aggressive 0.4 overlap,
+    // producing the tiny/tightly-fanned artifact.
+    const TARGET_CARD_WIDTH = 76;
+    const MIN_CARD_WIDTH = 56;
+    const overlapRatio = N0 > 4 ? 0.3 : 0.15;
     const denomN = N0 - (N0 - 1) * overlapRatio;
-    const widthFromStage = sw > 0 && denomN > 0 ? sw / denomN : 0;
-    const heightFromStage = sh > 0 ? sh : 0;
-    const widthFromHeight = heightFromStage > 0 ? heightFromStage * aspect : 0;
-    // Prefer smaller of width- and height-bounded widths so the row fits.
-    let cardWidth = 44;
-    if (widthFromStage > 0 && widthFromHeight > 0) cardWidth = Math.min(widthFromStage, widthFromHeight);
-    else if (widthFromStage > 0) cardWidth = widthFromStage;
-    else if (widthFromHeight > 0) cardWidth = widthFromHeight;
-    cardWidth = Math.max(24, Math.min(72, Math.round(cardWidth)));
+    // Only shrink below target if the stage is measured and truly narrower.
+    let cardWidth = TARGET_CARD_WIDTH;
+    if (sw > 0 && denomN > 0) {
+      const widthFromStage = sw / denomN;
+      if (widthFromStage < TARGET_CARD_WIDTH) {
+        cardWidth = Math.max(MIN_CARD_WIDTH, widthFromStage);
+      }
+    }
+    if (sh > 0) {
+      const widthFromHeight = sh * aspect;
+      if (widthFromHeight > 0 && widthFromHeight < cardWidth) {
+        cardWidth = Math.max(MIN_CARD_WIDTH, widthFromHeight);
+      }
+    }
+    cardWidth = Math.max(MIN_CARD_WIDTH, Math.min(96, Math.round(cardWidth)));
     const cardHeight = Math.round(cardWidth / aspect);
     const overlapPx = Math.round(cardWidth * overlapRatio);
     const totalWidth = N0 * cardWidth - (N0 - 1) * overlapPx;
