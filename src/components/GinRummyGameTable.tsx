@@ -68,6 +68,7 @@ import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 import { GinRummySelfDrawAnimation } from './GinRummySelfDrawAnimation';
+import { GinRummyDiscardAnimation, type GinRummyDiscardSourceMode } from './GinRummyDiscardAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
