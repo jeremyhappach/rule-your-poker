@@ -21,6 +21,7 @@ import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
+import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
