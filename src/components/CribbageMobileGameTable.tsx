@@ -5063,6 +5063,7 @@ export const CribbageMobileGameTable = ({
           mode: 'opponent',
           card: last.card,
           opponentPosition: pos,
+          destRect: computePlayCardDestRect(),
         });
         if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = setTimeout(() => {
