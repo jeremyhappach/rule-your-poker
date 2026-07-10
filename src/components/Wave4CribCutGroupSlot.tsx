@@ -216,6 +216,7 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
       ref={ref}
       data-wave4-cribcut-slot="resolved"
       data-artifact-id="cribbage.cribCutGroup"
+      data-card-anchor="crib"
       data-placement-mode="anchored"
       data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
