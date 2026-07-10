@@ -234,10 +234,12 @@ export function CribbageAnchoredCribCutMount({
         );
       })()}
 
-      {/* Cut card — artwork only, sized from stage height. */}
+      {/* Cut card — artwork only, sized from stage height.
+          `deferCutReveal` gates the flip animation until all crib
+          discard transports have settled. */}
       <div ref={cutRef}>
         <CribbageCutCardReveal
-          card={cribbageState.cutCard}
+          card={deferCutReveal ? null : cribbageState.cutCard}
           cardBackColors={cardBackColors}
           handBoundaryKey={handBoundaryKey}
           widthPx={cutCardWidthPx}
