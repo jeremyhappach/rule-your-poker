@@ -2164,9 +2164,17 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
-    if (!lastEvent || lastEvent.type !== 'pegging_points') return;
-    const is31 = (lastEvent as { count?: number }).count === 31;
-    if (!is31) return;
+    if (!lastEvent) return;
+    // Sequence-end events that must hold the previous row visible until
+    // the last-card transport lands AND the announcement is dismissed:
+    //   - pegging_points with count === 31 (thirty-one)
+    //   - go_point (Go / last-card 1pt) — fires when the sequence ends
+    //     because no other player has cards remaining.
+    const is31 =
+      lastEvent.type === 'pegging_points' &&
+      (lastEvent as { count?: number }).count === 31;
+    const isGoOrLast = lastEvent.type === 'go_point';
+    if (!is31 && !isGoOrLast) return;
     const eventKey = lastEvent.id;
     if (thirtyOneDelayRef.current === eventKey) return;
     thirtyOneDelayRef.current = eventKey;
@@ -2178,7 +2186,7 @@ export const CribbageMobileGameTable = ({
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
     return () => clearTimeout(safety);
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, cribbageState?.lastEvent?.count]);
 
   // Presentation-driven release: once the 31-making transport has
   // settled AND the announcement has been dismissed, drop the delay.
