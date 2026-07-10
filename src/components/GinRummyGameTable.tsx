@@ -977,14 +977,18 @@ export const GinRummyGameTable = ({
   // opponent card-back stack; destination = [data-card-anchor="discard"].
   interface DiscardIntent {
     triggerId: string;
+    actionKey: string;
     sourceMode: GinRummyDiscardSourceMode;
     opponentPosition: number | null;
     card: GinRummyCard;
   }
   const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
-  // Withhold the just-arrived top of the discard pile during flight to
-  // avoid a duplicate-card flash. Cleared on discard animation settle.
-  const [withheldDiscardTop, setWithheldDiscardTop] = useState<{ rank: string; suit: string } | null>(null);
+  // Released set of discard action keys. Withhold is derived
+  // synchronously during render (see below) from the current
+  // viewState.lastAction — this prevents the one-frame flash of the
+  // incoming card on top of the discard pile between viewState
+  // commit and useEffect-based withhold setState.
+  const [releasedDiscardActionKeys, setReleasedDiscardActionKeys] = useState<Set<string>>(() => new Set());
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
@@ -1312,11 +1316,11 @@ export const GinRummyGameTable = ({
         // Self discard: local active pane → discard pile.
         setDiscardIntent({
           triggerId: `self-discard-${actionKey}`,
+          actionKey,
           sourceMode: 'self',
           opponentPosition: null,
           card: action.card,
         });
-        setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
       }
       return;
     }
@@ -1336,11 +1340,11 @@ export const GinRummyGameTable = ({
       const oppPosition = players.find(p => p.id === action.playerId)?.position ?? null;
       setDiscardIntent({
         triggerId: `opp-discard-${actionKey}`,
+        actionKey,
         sourceMode: 'opponent',
         opponentPosition: oppPosition,
         card: action.card,
       });
-      setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
     }
   }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
 
@@ -2985,7 +2989,26 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Felt Content — requires hydrated viewState */}
-            {visiblePlayable && viewState && (
+            {visiblePlayable && viewState && (() => {
+              // Synchronous withhold derivation. If the current
+              // authoritative viewState.lastAction is a discard whose
+              // overlay has NOT yet settled (its actionKey is not in
+              // releasedDiscardActionKeys), hide the incoming card on
+              // top of the pile and instead reveal the previous top.
+              // This runs during render so no one-frame flash of the
+              // incoming card is possible.
+              const la = viewState.lastAction;
+              const discardActionKey =
+                la && la.type === 'discard' && la.card
+                  ? `${la.type}-${la.playerId}-${la.timestamp}`
+                  : null;
+              const withheldDiscardTop =
+                discardActionKey &&
+                la?.card &&
+                !releasedDiscardActionKeys.has(discardActionKey)
+                  ? { rank: la.card.rank, suit: la.card.suit }
+                  : null;
+              return (
               <GinRummyFeltContent
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
@@ -3005,7 +3028,8 @@ export const GinRummyGameTable = ({
                 handContextId={handContextId}
                 withheldDiscardTop={withheldDiscardTop}
               />
-            )}
+              );
+            })()}
 
             {/* Wave 2 canonical deal orchestrator — emits the 22 Gin
                 intents (20 alternating hidden, +stock, +discard upcard)
@@ -3071,16 +3095,21 @@ export const GinRummyGameTable = ({
                 opponentPosition={discardIntent.opponentPosition}
                 card={discardIntent.card}
                 onSettled={() => {
+                  const settledActionKey = discardIntent.actionKey;
                   setDiscardIntent(prev =>
                     prev && prev.triggerId === discardIntent.triggerId ? null : prev,
                   );
-                  setWithheldDiscardTop(prev =>
-                    prev &&
-                    prev.rank === discardIntent.card.rank &&
-                    prev.suit === discardIntent.card.suit
-                      ? null
-                      : prev,
-                  );
+                  setReleasedDiscardActionKeys(prev => {
+                    if (prev.has(settledActionKey)) return prev;
+                    const next = new Set(prev);
+                    next.add(settledActionKey);
+                    // Bound the set — retain only the most recent 32 keys.
+                    if (next.size > 32) {
+                      const arr = Array.from(next);
+                      return new Set(arr.slice(arr.length - 32));
+                    }
+                    return next;
+                  });
                 }}
               />
             )}

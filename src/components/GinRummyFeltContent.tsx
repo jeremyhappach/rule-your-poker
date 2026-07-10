@@ -203,7 +203,14 @@ export const GinRummyFeltContent = ({
     !!discardTopCardRaw &&
     discardTopCardRaw.rank === withheldDiscardTop.rank &&
     discardTopCardRaw.suit === withheldDiscardTop.suit;
-  const discardTopCard = discardTopWithheld ? null : discardTopCardRaw;
+  // When the incoming discard is withheld during flight, fall back
+  // to the previous top of the pile (index length-2) so the discard
+  // pile continues to show the prior card rather than going blank.
+  const previousDiscardTop =
+    ginState.discardPile.length >= 2
+      ? ginState.discardPile[ginState.discardPile.length - 2]
+      : null;
+  const discardTopCard = discardTopWithheld ? previousDiscardTop : discardTopCardRaw;
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
