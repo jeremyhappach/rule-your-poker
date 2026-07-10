@@ -194,12 +194,37 @@ export function CribbageAnchoredCribCutMount({
 
       {/* Crib pile — sized from stage height. Withhold incoming crib
           cards while their discard-to-crib transport is in flight so
-          the pile does not visually grow before flights land. */}
+          the pile does not visually grow before flights land.
+
+          Follow-up fix — preserve the previously-settled crib count
+          as a floor while withholding is active. Without this floor,
+          the visible count briefly drops to
+          `previousLength - incoming` (e.g. 2 − 2 = 0) between the
+          moment we seed the discard intent and the moment the RPC
+          echo grows crib.length by `incoming` — producing a visible
+          flash of existing crib cardbacks disappearing. The floor is
+          reset per hand via `handBoundaryKey` so a fresh hand starts
+          from 0 correctly. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
-        const visibleCribCount = Math.max(
-          0,
-          cribbageState.crib.length - Math.max(0, withheldCribIncomingCount),
-        );
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const settledFloorRef = useRef(0);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const lastBoundaryRef = useRef<string | undefined>(handBoundaryKey);
+        if (lastBoundaryRef.current !== handBoundaryKey) {
+          settledFloorRef.current = 0;
+          lastBoundaryRef.current = handBoundaryKey;
+        }
+        const withheld = Math.max(0, withheldCribIncomingCount);
+        const raw = Math.max(0, cribbageState.crib.length - withheld);
+        // Track the highest count seen while NOT withholding — this is
+        // the last authoritative "settled" crib count and must never
+        // be blanked while a flight is in progress.
+        if (withheld === 0) {
+          if (cribbageState.crib.length > settledFloorRef.current) {
+            settledFloorRef.current = cribbageState.crib.length;
+          }
+        }
+        const visibleCribCount = Math.max(raw, settledFloorRef.current);
         return (
           <div ref={cribRef} className="flex flex-col items-center">
             <span
