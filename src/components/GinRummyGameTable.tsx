@@ -981,8 +981,17 @@ export const GinRummyGameTable = ({
     sourceMode: GinRummyDiscardSourceMode;
     opponentPosition: number | null;
     card: GinRummyCard;
+    sourceRect: { x: number; y: number; width: number; height: number } | null;
   }
   const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
+  // Pending source rect captured synchronously by the local
+  // handleDiscard call BEFORE authoritative state mutates. The
+  // viewState.lastAction watcher consumes this ref when it builds the
+  // self-discard intent so the overlay starts from the actual raised
+  // card position instead of the hand centroid.
+  const pendingSelfDiscardSourceRectRef = useRef<{
+    x: number; y: number; width: number; height: number;
+  } | null>(null);
   // Released set of discard action keys. Withhold is derived
   // synchronously during render (see below) from the current
   // viewState.lastAction — this prevents the one-frame flash of the
@@ -1314,12 +1323,15 @@ export const GinRummyGameTable = ({
         });
       } else if (action.type === 'discard' && action.card) {
         // Self discard: local active pane → discard pile.
+        const pendingRect = pendingSelfDiscardSourceRectRef.current;
+        pendingSelfDiscardSourceRectRef.current = null;
         setDiscardIntent({
           triggerId: `self-discard-${actionKey}`,
           actionKey,
           sourceMode: 'self',
           opponentPosition: null,
           card: action.card,
+          sourceRect: pendingRect,
         });
       }
       return;
@@ -1344,6 +1356,7 @@ export const GinRummyGameTable = ({
         sourceMode: 'opponent',
         opponentPosition: oppPosition,
         card: action.card,
+        sourceRect: null,
       });
     }
   }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
@@ -2616,7 +2629,10 @@ export const GinRummyGameTable = ({
     }
   };
 
-  const handleDiscard = async (index: number) => {
+  const handleDiscard = async (
+    index: number,
+    sourceRect?: { x: number; y: number; width: number; height: number } | null,
+  ) => {
     const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2626,6 +2642,10 @@ export const GinRummyGameTable = ({
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
+    // Stash the captured card rect so the viewState.lastAction watcher
+    // can attach it to the self-discard intent when it fires. Cleared
+    // after the intent consumes it.
+    pendingSelfDiscardSourceRectRef.current = sourceRect ?? null;
     try {
       const newState = discardCard(ginState, currentPlayerId, card);
       await updateState(newState, tid);
@@ -3094,6 +3114,7 @@ export const GinRummyGameTable = ({
                 sourceMode={discardIntent.sourceMode}
                 opponentPosition={discardIntent.opponentPosition}
                 card={discardIntent.card}
+                sourceRect={discardIntent.sourceRect}
                 onSettled={() => {
                   const settledActionKey = discardIntent.actionKey;
                   setDiscardIntent(prev =>

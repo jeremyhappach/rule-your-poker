@@ -31,7 +31,7 @@ interface GinRummyMobileCardsTabProps {
   isProcessing: boolean;
   onDrawStock: () => void;
   onDrawDiscard: () => void;
-  onDiscard: (index: number) => void;
+  onDiscard: (index: number, sourceRect?: { x: number; y: number; width: number; height: number } | null) => void;
   onKnock: (index: number) => void;
   onTakeFirstDraw: () => void;
   onPassFirstDraw: () => void;
@@ -476,7 +476,20 @@ export const GinRummyMobileCardsTab = ({
 
   const handleDiscard = () => {
     if (selectedCardIndex === null) return;
-    onDiscard(selectedCardIndex);
+    // Capture the selected card's rendered rect synchronously BEFORE
+    // authoritative state mutates, so the discard transport overlay
+    // can start from the actual raised card position.
+    let sourceRect: { x: number; y: number; width: number; height: number } | null = null;
+    try {
+      const el = document.querySelector(
+        `[data-gin-hand-card-key="idx-${selectedCardIndex}"]`,
+      ) as HTMLElement | null;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        sourceRect = { x: r.left, y: r.top, width: r.width, height: r.height };
+      }
+    } catch { /* ignore — fallback to centroid */ }
+    onDiscard(selectedCardIndex, sourceRect);
     setSelectedCardIndex(null);
   };
 
@@ -659,6 +672,7 @@ export const GinRummyMobileCardsTab = ({
               void meldGroup;
               return (
                 <button
+                  data-gin-hand-card-key={`idx-${originalIndex}`}
                   onClick={() => handleCardClick(originalIndex)}
                   onPointerUp={(e) => e.currentTarget.blur()}
                   disabled={isProcessing || !canSelect}
