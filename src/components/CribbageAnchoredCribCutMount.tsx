@@ -242,7 +242,7 @@ export function CribbageAnchoredCribCutMount({
                 minHeight: `${cribCardHeightPx}px`,
               }}
             >
-              {Array.from({ length: visibleCribCount }).map((_, i) => (
+              {Array.from({ length: visibleCount }).map((_, i) => (
                 <CanonicalCardBack
                   key={i}
                   widthPx={cribCardWidthPx}
