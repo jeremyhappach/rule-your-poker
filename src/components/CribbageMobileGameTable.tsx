@@ -5093,7 +5093,7 @@ export const CribbageMobileGameTable = ({
           const handSize = cribbageState.playerStates?.[last.playerId]?.hand?.length ?? 0;
           recordPegTransportAttempt({
             attemptId: intentId,
-            handContextId: cribbageState.handContextId ?? null,
+            handContextId: (cribbageState as unknown as { handContextId?: string })?.handContextId ?? null,
             roundId: currentRoundId,
             handNumber: currentHandNumber ?? null,
             mode: 'opponent',
