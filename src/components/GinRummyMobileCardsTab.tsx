@@ -31,7 +31,7 @@ interface GinRummyMobileCardsTabProps {
   isProcessing: boolean;
   onDrawStock: () => void;
   onDrawDiscard: () => void;
-  onDiscard: (index: number) => void;
+  onDiscard: (index: number, sourceRect?: { x: number; y: number; width: number; height: number } | null) => void;
   onKnock: (index: number) => void;
   onTakeFirstDraw: () => void;
   onPassFirstDraw: () => void;
