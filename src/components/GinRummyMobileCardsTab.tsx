@@ -705,9 +705,10 @@ export const GinRummyMobileCardsTab = ({
             <Button onClick={onTakeFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4 disabled:opacity-50" size="sm">
               Take
             </Button>
-            <Button onClick={onPassFirstDraw} disabled={isProcessing || !discardRevealed} variant="outline" className="border-white/40 text-foreground px-4 disabled:opacity-50" size="sm">
+            <Button onClick={onPassFirstDraw} disabled={isProcessing || !discardRevealed} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4 disabled:opacity-50" size="sm">
               Pass
             </Button>
+
           </>
         )}
 
