@@ -68,6 +68,7 @@ import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 import { GinRummySelfDrawAnimation } from './GinRummySelfDrawAnimation';
+import { GinRummyDiscardAnimation, type GinRummyDiscardSourceMode } from './GinRummyDiscardAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
@@ -971,6 +972,19 @@ export const GinRummyGameTable = ({
     actionKey: string;
   }
   const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
+  // Discard transport overlay (visual-only). Mirrors the draw animation
+  // pattern but reverses direction: source = local active pane or
+  // opponent card-back stack; destination = [data-card-anchor="discard"].
+  interface DiscardIntent {
+    triggerId: string;
+    sourceMode: GinRummyDiscardSourceMode;
+    opponentPosition: number | null;
+    card: GinRummyCard;
+  }
+  const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
+  // Withhold the just-arrived top of the discard pile during flight to
+  // avoid a duplicate-card flash. Cleared on discard animation settle.
+  const [withheldDiscardTop, setWithheldDiscardTop] = useState<{ rank: string; suit: string } | null>(null);
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
@@ -1294,6 +1308,15 @@ export const GinRummyGameTable = ({
             },
           };
         });
+      } else if (action.type === 'discard' && action.card) {
+        // Self discard: local active pane → discard pile.
+        setDiscardIntent({
+          triggerId: `self-discard-${actionKey}`,
+          sourceMode: 'self',
+          opponentPosition: null,
+          card: action.card,
+        });
+        setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
       }
       return;
     }
@@ -1308,8 +1331,18 @@ export const GinRummyGameTable = ({
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+    } else if (action.type === 'discard' && action.card) {
+      // Opponent discard: opponent card-back stack → discard pile.
+      const oppPosition = players.find(p => p.id === action.playerId)?.position ?? null;
+      setDiscardIntent({
+        triggerId: `opp-discard-${actionKey}`,
+        sourceMode: 'opponent',
+        opponentPosition: oppPosition,
+        card: action.card,
+      });
+      setWithheldDiscardTop({ rank: action.card.rank, suit: action.card.suit });
     }
-  }, [viewState?.lastAction, currentPlayerId, playerSlotById]);
+  }, [viewState?.lastAction, currentPlayerId, playerSlotById, players, handContextId]);
 
   // Load state from DB
   useEffect(() => {
@@ -2970,6 +3003,7 @@ export const GinRummyGameTable = ({
                 isProcessing={isProcessing}
                 isPlayable={isPlayable}
                 handContextId={handContextId}
+                withheldDiscardTop={withheldDiscardTop}
               />
             )}
 
@@ -3026,6 +3060,32 @@ export const GinRummyGameTable = ({
                 }}
               />
             ))}
+
+            {/* Discard Animation — visual overlay for self and opponent
+                discards. Releases the withheld discard-top on settle. */}
+            {discardIntent && (
+              <GinRummyDiscardAnimation
+                key={discardIntent.triggerId}
+                triggerId={discardIntent.triggerId}
+                sourceMode={discardIntent.sourceMode}
+                opponentPosition={discardIntent.opponentPosition}
+                card={discardIntent.card}
+                onSettled={() => {
+                  setDiscardIntent(prev =>
+                    prev && prev.triggerId === discardIntent.triggerId ? null : prev,
+                  );
+                  setWithheldDiscardTop(prev =>
+                    prev &&
+                    prev.rank === discardIntent.card.rank &&
+                    prev.suit === discardIntent.card.suit
+                      ? null
+                      : prev,
+                  );
+                }}
+              />
+            )}
+
+
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards
