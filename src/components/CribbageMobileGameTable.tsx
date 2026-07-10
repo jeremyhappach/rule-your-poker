@@ -7550,6 +7550,13 @@ export const CribbageMobileGameTable = ({
             <CribbageAnchoredPeggingRowMount
               cribbageState={gameplayRenderState}
               sequenceStartIndex={sequenceStartIndex}
+              // While holding the previous row for Go/31 presentation,
+              // clamp the slice end to the authoritative
+              // `sequenceStartIndex` so any card played into the NEXT
+              // sequence does not render on top of the held row.
+              sequenceEndIndex={
+                thirtyOneDelayActive ? dbSequenceStartIndex : undefined
+              }
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
               terminalPath={terminalPath}
