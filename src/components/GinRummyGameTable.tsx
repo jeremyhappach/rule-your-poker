@@ -117,6 +117,104 @@ const cardIds = (
   hand: Array<{ rank: string; suit: string }> | null | undefined,
 ): string[] => (hand ?? []).map(c => `${c.rank}${c.suit}`);
 
+// ── Self-draw landing estimator ─────────────────────────────────
+// Projects where a drawn card will sort into the local hand after the
+// withhold releases, and returns a viewport-space rect approximating
+// that landing position. Uses the same (rank, suit) comparator that
+// GinRummyMobileCardsTab applies to its final flat fan order — no
+// second sort authority is introduced. When neighbors can't be
+// measured (missing DOM, empty hand, unknown rank), returns null and
+// the animation falls back to the current pane-centroid target.
+const GIN_LANDING_RANK_ORDER: Record<string, number> = {
+  'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+  '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
+};
+const GIN_LANDING_SUIT_ORDER: Record<string, number> = {
+  '♠': 0, '♥': 1, '♣': 2, '♦': 3,
+};
+function ginCardSortKey(c: { rank: string; suit: string }): number {
+  const r = GIN_LANDING_RANK_ORDER[c.rank] ?? 0;
+  const s = GIN_LANDING_SUIT_ORDER[c.suit] ?? 0;
+  return r * 10 + s;
+}
+function measureHandCardCenter(
+  originalIndex: number,
+): { x: number; y: number; width: number; height: number } | null {
+  const el = document.querySelector(
+    `[data-gin-hand-card-key="idx-${originalIndex}"]`,
+  ) as HTMLElement | null;
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) return null;
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height };
+}
+function estimateSelfDrawLandingRect(
+  preHand: Array<{ rank: string; suit: string }>,
+  drawnCard: { rank: string; suit: string } | null,
+): { x: number; y: number; width: number; height: number } | null {
+  if (!drawnCard) return null;
+  if (!Array.isArray(preHand) || preHand.length === 0) return null;
+  // Build indexed pre-hand entries keyed by their originalIndex in
+  // preHand, then sort by the shared (rank, suit) comparator.
+  const indexed = preHand.map((c, originalIndex) => ({ card: c, originalIndex }));
+  indexed.sort((a, b) => ginCardSortKey(a.card) - ginCardSortKey(b.card));
+  const drawnKey = ginCardSortKey(drawnCard);
+  // Insertion index in the projected N+1 order.
+  let insertIndex = indexed.findIndex(e => ginCardSortKey(e.card) > drawnKey);
+  if (insertIndex === -1) insertIndex = indexed.length;
+  // Left / right neighbors in the CURRENT (withheld, N-card) fan.
+  //   left  = indexed[insertIndex - 1]
+  //   right = indexed[insertIndex]
+  const leftNeighbor = insertIndex > 0 ? indexed[insertIndex - 1] : null;
+  const rightNeighbor = insertIndex < indexed.length ? indexed[insertIndex] : null;
+  const leftRect = leftNeighbor ? measureHandCardCenter(leftNeighbor.originalIndex) : null;
+  const rightRect = rightNeighbor ? measureHandCardCenter(rightNeighbor.originalIndex) : null;
+  // Middle insertion: average left+right centers.
+  if (leftRect && rightRect) {
+    return {
+      x: (leftRect.x + rightRect.x) / 2,
+      y: (leftRect.y + rightRect.y) / 2,
+      width: (leftRect.width + rightRect.width) / 2,
+      height: (leftRect.height + rightRect.height) / 2,
+    };
+  }
+  // Start insertion: extrapolate left of first card using first/second spacing.
+  if (!leftRect && rightRect) {
+    const firstIdx = rightNeighbor!.originalIndex;
+    const second = indexed[1];
+    const secondRect = second ? measureHandCardCenter(second.originalIndex) : null;
+    if (secondRect) {
+      const dx = rightRect.x - secondRect.x;
+      const dy = rightRect.y - secondRect.y;
+      return {
+        x: rightRect.x + dx,
+        y: rightRect.y + dy,
+        width: rightRect.width,
+        height: rightRect.height,
+      };
+    }
+    void firstIdx;
+    return rightRect;
+  }
+  // End insertion: extrapolate right of last card using last/prev spacing.
+  if (leftRect && !rightRect) {
+    const prev = indexed[indexed.length - 2];
+    const prevRect = prev ? measureHandCardCenter(prev.originalIndex) : null;
+    if (prevRect) {
+      const dx = leftRect.x - prevRect.x;
+      const dy = leftRect.y - prevRect.y;
+      return {
+        x: leftRect.x + dx,
+        y: leftRect.y + dy,
+        width: leftRect.width,
+        height: leftRect.height,
+      };
+    }
+    return leftRect;
+  }
+  return null;
+}
+
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
