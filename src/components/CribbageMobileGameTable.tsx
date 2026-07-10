@@ -1902,6 +1902,14 @@ export const CribbageMobileGameTable = ({
   const opponentPlayedCountRef = useRef<number>(0);
   const playCardRoundKeyRef = useRef<string | null>(null);
   const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cached last-known pegging row geometry — sampled on every render
+  // while the anchored row is mounted. Used as the destination fallback
+  // for animations that fire after the row unmounts (final card of a
+  // hand → phase→counting; also survives 31 delay transitions).
+  const peggingRowGeoRef = useRef<{
+    rowRect: { x: number; y: number; width: number; height: number } | null;
+    rightmostCardRect: { x: number; y: number; width: number; height: number } | null;
+  }>({ rowRect: null, rightmostCardRect: null });
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
