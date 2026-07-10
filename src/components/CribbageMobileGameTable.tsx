@@ -6984,6 +6984,16 @@ export const CribbageMobileGameTable = ({
             />
           )}
 
+          {/* Task C1 — discard-to-crib transport overlay (visual only).
+              Portals into document.body; consumes discardIntent state
+              seeded by handleDiscard (self) or opponent growth detector. */}
+          <CribbageDiscardToCribAnimation
+            intent={discardIntent}
+            onSettled={(id) => {
+              setDiscardIntent((prev) => (prev && prev.id === id ? null : prev));
+            }}
+          />
+
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
