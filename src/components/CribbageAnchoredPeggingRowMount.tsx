@@ -107,7 +107,7 @@ export function CribbageAnchoredPeggingRowMount({
       cribVisible={cribVisible}
       count={displayCount}
       playedCards={cribbageState.pegging.playedCards
-        .slice(sequenceStartIndex)
+        .slice(sequenceStartIndex, sequenceEndIndex ?? cribbageState.pegging.playedCards.length)
         .filter((pc) => {
           if (!withheldPlayedCardKey) return true;
           const key = `${pc.playerId}|${pc.card.rank}${pc.card.suit[0]}`;
