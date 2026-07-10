@@ -2148,35 +2148,50 @@ export const CribbageMobileGameTable = ({
     cribbageState?.lastEvent?.type,
   ]);
   
-  // Detect 31 and trigger delay
+  // Detect 31 and trigger delay. The delay is NOT a blind timer — it
+  // stays active until the 31 presentation is fully complete:
+  //   (a) the 31-making card transport has settled (playCardIntent is
+  //       null; the overlay portal has cleared), AND
+  //   (b) the pegging scoring announcement for this 31 has been
+  //       acknowledged (peggingAnnouncementHidden === true, which flips
+  //       ~3s after the announcement is first shown).
+  // A max safety fallback of 6s prevents a stuck presentation from
+  // permanently blocking the row clear. Authoritative state is
+  // untouched — this only holds the presentation of the completed row
+  // until its 31 announcement + flight finish.
   useEffect(() => {
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
     if (!lastEvent || lastEvent.type !== 'pegging_points') return;
-    
-    // Check if this is a 31 event by checking the count field
-    const is31 = lastEvent.count === 31;
+    const is31 = (lastEvent as { count?: number }).count === 31;
     if (!is31) return;
-    
-    // Create a unique key for this specific 31 event
     const eventKey = lastEvent.id;
     if (thirtyOneDelayRef.current === eventKey) return;
     thirtyOneDelayRef.current = eventKey;
-    
-    // The sequence that just completed (0 to dbSequenceStartIndex-1) is what we want to show.
-    // The prevSequenceStartIndexRef should still hold the OLD value if we haven't updated it yet.
-    // Force keep the old index during delay by not updating prevSequenceStartIndexRef
-    
     setThirtyOneDelayActive(true);
-    
-    const timer = setTimeout(() => {
+    // Safety cap only — the completion effect below is the primary
+    // release path.
+    const safety = setTimeout(() => {
       setThirtyOneDelayActive(false);
-      // After delay, update the ref to match current DB state
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
-    }, 2000);
-    
-    return () => clearTimeout(timer);
+    }, 6000);
+    return () => clearTimeout(safety);
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+
+  // Presentation-driven release: once the 31-making transport has
+  // settled AND the announcement has been dismissed, drop the delay.
+  useEffect(() => {
+    if (!thirtyOneDelayActive) return;
+    if (playCardIntent !== null) return;
+    if (!peggingAnnouncementHidden) return;
+    setThirtyOneDelayActive(false);
+    prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+  }, [
+    thirtyOneDelayActive,
+    playCardIntent,
+    peggingAnnouncementHidden,
+    dbSequenceStartIndex,
+  ]);
 
   // Clear 31 delay when phase moves away from pegging (e.g. hand ends or new hand starts)
   useEffect(() => {
@@ -5339,38 +5354,36 @@ export const CribbageMobileGameTable = ({
         stepX = Math.max(2, rightmost.width * 0.4);
       }
       const lastCenter = rightmost.x + rightmost.width / 2;
-      // Self vs opponent differ because the pegging row is
-      // `justify-content:center` and re-centers as cards are added:
+      // Post-play fan re-centers on `justify-content:center`. Pre-play
+      // rightmost visible center = wrapCenter + (n-1)*step/2; post-play
+      // new rightmost center = wrapCenter + n*step/2 — a delta of
+      // step/2 to the right of the currently-visible rightmost. Both
+      // paths therefore target `lastCenter + step/2`:
       //
-      //   - OPPONENT path: `computePlayCardDestRect()` runs AFTER
-      //     authoritative state has echoed the played card into
-      //     `cribbageState.pegging.playedCards`. There is no withhold
-      //     for opponent plays, so the DOM row already includes the
-      //     just-played card as `rightmost`. Landing at
-      //     `lastCenter + step/2` targets the point ~half a step
-      //     past the just-played card (roughly where the next card
-      //     WOULD go), and clamp keeps it inside the fan. This
-      //     matches the previously-verified "almost perfect"
-      //     opponent behavior — do not change it.
+      //   - OPPONENT: state already echoed, DOM includes new card as
+      //     `rightmost`. `+ step/2` clamps back onto that new rightmost
+      //     (the empty half-step past it is clipped by the wrap edge).
+      //     This has been verified "almost perfect" — do not change.
       //
-      //   - SELF path: `computePlayCardDestRect('self')` runs BEFORE
-      //     the withhold + state update, so the DOM row still shows
-      //     ONLY the pre-play cards. The played card is the NEW
-      //     rightmost of the post-play fan. The pre-play rightmost
-      //     is at `wrapCenter + (n-1)*step/2`; the post-play new
-      //     rightmost lands at `wrapCenter + n*step/2` — visually a
-      //     FULL step to the right of the pre-play last card's
-      //     current on-screen position. Targeting `+ step/2` here
-      //     was over-correcting for re-centering that has not yet
-      //     happened, so the flight was landing on top of the
-      //     visible rightmost card. Use `+ step`.
-      const offset = mode === 'self' ? stepX : stepX / 2;
+      //   - SELF: withhold + state update happen AFTER dest is measured,
+      //     so `rightmost` is the PRE-play last card. `+ step/2` lands
+      //     visibly half a step past it — right at the "next overlap
+      //     position" where the new card will appear once the fan
+      //     re-centers. The default clampRight (based on the current
+      //     pre-play wrap width) is set to the pre-play rightmost
+      //     center and would snap this back onto that card, so we
+      //     widen the clamp by one full step for the self path.
+      const offset = stepX / 2;
       cx = lastCenter + offset;
-      // Clamp inside cards container (preferred) or row rect.
+      // Clamp inside cards container (preferred) or row rect. For self
+      // mode we allow one extra step of headroom because the pre-play
+      // wrap does not yet include the incoming card.
+      const clampExtra = mode === 'self' ? stepX : 0;
       const clampRight =
         (cardsWrapRect?.x ?? rowRect.x) +
         (cardsWrapRect?.width ?? rowRect.width) -
-        targetW / 2;
+        targetW / 2 +
+        clampExtra;
       if (cx > clampRight) cx = clampRight;
     } else {
       if (cardsWrapRect) {
