@@ -5113,8 +5113,44 @@ export const CribbageMobileGameTable = ({
         clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = null;
       }
+      if (cutRevealSafetyTimerRef.current) {
+        clearTimeout(cutRevealSafetyTimerRef.current);
+        cutRevealSafetyTimerRef.current = null;
+      }
     };
   }, []);
+
+  // Cut-card reveal gate — reset per hand boundary. Also arms a safety
+  // timeout so the cut card can never remain hidden forever if a
+  // discard flight fails to emit `onSettled`.
+  const cutRevealHandKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+  useEffect(() => {
+    if (lastCutRevealHandKeyRef.current === cutRevealHandKey) return;
+    lastCutRevealHandKeyRef.current = cutRevealHandKey;
+    setDiscardsSettledInHand(0);
+    if (cutRevealSafetyTimerRef.current) {
+      clearTimeout(cutRevealSafetyTimerRef.current);
+      cutRevealSafetyTimerRef.current = null;
+    }
+  }, [cutRevealHandKey]);
+
+  // Arm safety release once the cut card actually appears — after 4s
+  // force the gate open regardless of animation-settle bookkeeping.
+  useEffect(() => {
+    if (!cribbageState?.cutCard) return;
+    if (cutRevealSafetyTimerRef.current) return;
+    cutRevealSafetyTimerRef.current = setTimeout(() => {
+      // Force gate release by advancing the settled count past any
+      // possible crib.length.
+      setDiscardsSettledInHand((n) => Math.max(n, 99));
+      cutRevealSafetyTimerRef.current = null;
+    }, 4000);
+    return () => {
+      // Do not clear here — the timer should survive re-renders and
+      // is reset by the hand-boundary effect above.
+    };
+  }, [cribbageState?.cutCard]);
+
 
   // Task C2 — sample pegging-row geometry every render while it is
   // mounted. Cached rects are the destination fallback when the row has
