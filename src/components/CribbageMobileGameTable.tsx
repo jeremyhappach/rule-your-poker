@@ -5085,18 +5085,53 @@ export const CribbageMobileGameTable = ({
         const opp = players.find((p) => p.id === last.playerId);
         const pos = opp?.position ?? null;
         const key = `${last.playerId}|${last.card.rank}${last.card.suit[0]}`;
+        const intentId = `crib-play-opp-${last.playerId}-${count}`;
+        const dest = computePlayCardDestRect();
+        // Instrumentation — opponent play attempt.
+        try {
+          const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+          const handSize = cribbageState.playerStates?.[last.playerId]?.hand?.length ?? 0;
+          recordPegTransportAttempt({
+            attemptId: intentId,
+            handContextId: cribbageState.handContextId ?? null,
+            roundId: currentRoundId,
+            handNumber: currentHandNumber ?? null,
+            mode: 'opponent',
+            playedCardId: `${last.card.rank}${last.card.suit[0]}`,
+            playedCardIndex: null,
+            phaseBefore: cribbageState.phase ?? null,
+            cardsRemainingBefore: handSize,
+            isFinalCardOfPegging: handSize === 0,
+            sourceRectStatus: 'fallback',
+            sourceRect: null,
+            destRectStatus: dest ? 'measured' : 'missing',
+            destRect: dest ?? null,
+            intentCreated: true,
+            skipReason: null,
+            boundaryKeyBefore: boundaryKey,
+            activeInFlightIds: getPegTransportEntries()
+              .filter((e) => !e.animationSettled && e.cleanupReason == null)
+              .map((e) => e.attemptId),
+          });
+        } catch { /* instrumentation is best-effort */ }
         setWithheldPlayedCardKey(key);
         setPlayCardIntent({
-          id: `crib-play-opp-${last.playerId}-${count}`,
+          id: intentId,
           mode: 'opponent',
           card: last.card,
           opponentPosition: pos,
-          destRect: computePlayCardDestRect(),
+          destRect: dest,
         });
         if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = setTimeout(() => {
           setWithheldPlayedCardKey(null);
-          setPlayCardIntent(null);
+          setPlayCardIntent((prev) => {
+            if (prev && prev.id === intentId) {
+              updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
+              return null;
+            }
+            return prev;
+          });
         }, 1500);
       }
     } else if (count < prev) {
