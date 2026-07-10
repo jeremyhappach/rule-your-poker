@@ -74,7 +74,10 @@ interface CribbageMobileCardsTabProps {
     cardIndices: number[],
     sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
   ) => void;
-  onPlayCard: (cardIndex: number) => void;
+  onPlayCard: (
+    cardIndex: number,
+    sourceRect?: { x: number; y: number; width: number; height: number } | null,
+  ) => void;
   currentPlayer: Player;
   gameId: string;
   isDealer: boolean;
