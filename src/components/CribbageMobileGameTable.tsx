@@ -5013,7 +5013,10 @@ export const CribbageMobileGameTable = ({
   }, [cribbageState, currentPlayerId, currentRoundId, players]);
 
 
-  const handlePlayCard = useCallback(async (cardIndex: number) => {
+  const handlePlayCard = useCallback(async (
+    cardIndex: number,
+    sourceRect?: { x: number; y: number; width: number; height: number } | null,
+  ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     {
