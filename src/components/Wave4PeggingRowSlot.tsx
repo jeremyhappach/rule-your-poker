@@ -307,6 +307,8 @@ export function Wave4PeggingRowSlot({
                 key={i}
                 className={inactive ? 'crib-inactive-pegged-card' : undefined}
                 data-crib-pegged-inactive={inactive ? 'true' : 'false'}
+                data-cribbage-pegging-card=""
+                data-cribbage-pegging-card-index={i}
               >
                 <CribbagePlayingCard card={pc.card} size="md" />
               </div>
