@@ -4877,6 +4877,28 @@ export const CribbageMobileGameTable = ({
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
 
+    // Task C1 — fire self discard-to-crib transport overlay BEFORE the
+    // authoritative RPC. Visual-only; skipped by the animation component
+    // if either source or destination rects cannot be resolved.
+    try {
+      // Prevent this same discard from re-triggering as an "opponent"
+      // flight when the merged state echoes back with our discardedToCrib
+      // grown. Pre-seed our own count so the growth detector treats us
+      // as already-animated.
+      if (currentPlayerId) {
+        const prev = opponentDiscardCountsRef.current[currentPlayerId] ?? 0;
+        opponentDiscardCountsRef.current[currentPlayerId] = prev + cardIndices.length;
+      }
+      setDiscardIntent({
+        id: `crib-discard-self-${tid}`,
+        mode: 'self',
+        cardCount: cardIndices.length,
+        sourceRects: sourceRects ?? undefined,
+      });
+    } catch {
+      /* animation is best-effort; never block gameplay */
+    }
+
     setIsProcessing(true);
     try {
       // Atomic server-side merge: prevents lost-update races between two players
