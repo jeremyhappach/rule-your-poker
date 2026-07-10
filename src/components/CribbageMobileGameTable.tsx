@@ -2134,10 +2134,12 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (thirtyOneDelayActive) return;
     const le = cribbageState?.lastEvent;
-    const is31 =
-      !!le && le.type === 'pegging_points' && (le as { count?: number }).count === 31;
-    const alreadyHandled = is31 && thirtyOneDelayRef.current === le?.id;
-    if (is31 && !alreadyHandled) return;
+    const isSequenceEnd =
+      !!le &&
+      ((le.type === 'pegging_points' && (le as { count?: number }).count === 31) ||
+        le.type === 'go_point');
+    const alreadyHandled = isSequenceEnd && thirtyOneDelayRef.current === le?.id;
+    if (isSequenceEnd && !alreadyHandled) return;
     if (dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }
@@ -2162,9 +2164,17 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
-    if (!lastEvent || lastEvent.type !== 'pegging_points') return;
-    const is31 = (lastEvent as { count?: number }).count === 31;
-    if (!is31) return;
+    if (!lastEvent) return;
+    // Sequence-end events that must hold the previous row visible until
+    // the last-card transport lands AND the announcement is dismissed:
+    //   - pegging_points with count === 31 (thirty-one)
+    //   - go_point (Go / last-card 1pt) — fires when the sequence ends
+    //     because no other player has cards remaining.
+    const is31 =
+      lastEvent.type === 'pegging_points' &&
+      (lastEvent as { count?: number }).count === 31;
+    const isGoOrLast = lastEvent.type === 'go_point';
+    if (!is31 && !isGoOrLast) return;
     const eventKey = lastEvent.id;
     if (thirtyOneDelayRef.current === eventKey) return;
     thirtyOneDelayRef.current = eventKey;
@@ -2176,7 +2186,7 @@ export const CribbageMobileGameTable = ({
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
     return () => clearTimeout(safety);
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, cribbageState?.lastEvent?.count]);
 
   // Presentation-driven release: once the 31-making transport has
   // settled AND the announcement has been dismissed, drop the delay.
@@ -5061,7 +5071,12 @@ export const CribbageMobileGameTable = ({
   // Guarded by phase === 'discarding' so post-discard state echoes and
   // rejoin/mid-hand renders never retrigger flights.
   const opponentDiscardRoundKeyRef = useRef<string | null>(null);
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the withhold intent is set in the
+  // same commit as the crib.length growth. Without this, there is a
+  // paint frame where crib.length jumped but discardIntent is still
+  // null → the mount briefly renders the incoming cardbacks before the
+  // withhold applies (visible flash for opponent discards).
+  useLayoutEffect(() => {
     if (!cribbageState || !cribbageState.playerStates) return;
     // Reset the growth baseline at every new round so hand-N discards
     // don't inherit prev counts from hand-(N-1).
