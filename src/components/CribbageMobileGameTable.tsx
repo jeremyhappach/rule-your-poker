@@ -4962,6 +4962,30 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId, currentRoundId, debugCtx, evaluateWriterIdentity]);
 
+  // Task C1 — detect opponent discardedToCrib growth and fire an
+  // opponent-mode overlay flight from their seat stack → crib center.
+  // Strictly visual: reads only cribbageState + players, never writes.
+  useEffect(() => {
+    if (!cribbageState || !cribbageState.playerStates) return;
+    for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
+      const count = ps?.discardedToCrib?.length ?? 0;
+      const prev = opponentDiscardCountsRef.current[pid] ?? 0;
+      if (count > prev) {
+        const delta = count - prev;
+        opponentDiscardCountsRef.current[pid] = count;
+        if (pid === currentPlayerId) continue; // self overlay already fired inline
+        const opp = players.find((p) => p.id === pid);
+        const pos = opp?.position ?? null;
+        setDiscardIntent({
+          id: `crib-discard-opp-${pid}-${count}`,
+          mode: 'opponent',
+          opponentPosition: pos,
+          cardCount: delta,
+        });
+      }
+    }
+  }, [cribbageState, currentPlayerId, players]);
+
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
