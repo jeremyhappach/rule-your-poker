@@ -28,6 +28,13 @@ interface Props {
   drawSource: 'stock' | 'discard';
   card: GinRummyCard | null;
   cardBackColors: { color: string; darkColor: string };
+  /**
+   * Optional estimated viewport-space landing rect for the drawn
+   * card's projected sorted position in the local fan. When provided
+   * and valid, the overlay lands at this rect's center instead of the
+   * active-pane centroid. Missing / invalid → centroid fallback.
+   */
+  targetRect?: { x: number; y: number; width: number; height: number } | null;
   /** Called once the animation has settled (matches 700ms lifecycle). */
   onSettled?: () => void;
 }
