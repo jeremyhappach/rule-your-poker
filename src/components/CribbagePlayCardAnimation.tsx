@@ -35,6 +35,10 @@ export interface CribbagePlayCardIntent {
   opponentPosition?: number | null;
   /** Optional viewport-space source rect (self flight). */
   sourceRect?: { x: number; y: number; width: number; height: number } | null;
+  /** Optional pre-captured viewport-space destination rect. When provided
+   *  the flight lands at its center regardless of whether the pegging
+   *  row is still mounted (needed for final-card / hand-end plays). */
+  destRect?: { x: number; y: number; width: number; height: number } | null;
 }
 
 interface Props {
@@ -85,13 +89,23 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled }: Props) => {
   useEffect(() => {
     if (!intent) return;
 
-    const dst = resolvePegRowRect();
-    if (!dst || dst.width <= 0 || dst.height <= 0) {
-      onSettledRef.current(intent.id);
-      return;
+    // Prefer pre-captured destination (survives pegging-row unmount on
+    // final card / hand-end / 31 rollover). Fall back to live DOM lookup.
+    let endX: number;
+    let endY: number;
+    const pre = intent.destRect;
+    if (pre && pre.width >= 0 && pre.height >= 0) {
+      endX = pre.x + pre.width / 2;
+      endY = pre.y + pre.height / 2;
+    } else {
+      const dst = resolvePegRowRect();
+      if (!dst || dst.width <= 0 || dst.height <= 0) {
+        onSettledRef.current(intent.id);
+        return;
+      }
+      endX = dst.left + dst.width / 2;
+      endY = dst.top + dst.height / 2;
     }
-    const endX = dst.left + dst.width / 2;
-    const endY = dst.top + dst.height / 2;
 
     let src: { left: number; top: number; width: number; height: number } | null = null;
     const perCard = intent.sourceRect;

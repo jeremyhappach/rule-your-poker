@@ -1902,6 +1902,14 @@ export const CribbageMobileGameTable = ({
   const opponentPlayedCountRef = useRef<number>(0);
   const playCardRoundKeyRef = useRef<string | null>(null);
   const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cached last-known pegging row geometry — sampled on every render
+  // while the anchored row is mounted. Used as the destination fallback
+  // for animations that fire after the row unmounts (final card of a
+  // hand → phase→counting; also survives 31 delay transitions).
+  const peggingRowGeoRef = useRef<{
+    rowRect: { x: number; y: number; width: number; height: number } | null;
+    rightmostCardRect: { x: number; y: number; width: number; height: number } | null;
+  }>({ rowRect: null, rightmostCardRect: null });
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
@@ -2071,13 +2079,26 @@ export const CribbageMobileGameTable = ({
   const lastPeggingEventIdRef = useRef<string | null>(null);
   
   // Keep tracking the sequence start index - update ONLY when not in delay mode
-  // This way we capture the "old" index before the 31 reset, and hold it during the delay
+  // AND when the current lastEvent is not a fresh 31 (whose delay effect
+  // will fire in the same commit). Without this second guard the ref
+  // races ahead and the 31 delay freezes on the post-reset value, which
+  // clears the previous pegging row before the transport can land.
   useEffect(() => {
-    if (!thirtyOneDelayActive && dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
-      // Only update if delay is not active - this captures the index BEFORE a reset
+    if (thirtyOneDelayActive) return;
+    const le = cribbageState?.lastEvent;
+    const is31 =
+      !!le && le.type === 'pegging_points' && (le as { count?: number }).count === 31;
+    const alreadyHandled = is31 && thirtyOneDelayRef.current === le?.id;
+    if (is31 && !alreadyHandled) return;
+    if (dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }
-  }, [dbSequenceStartIndex, thirtyOneDelayActive]);
+  }, [
+    dbSequenceStartIndex,
+    thirtyOneDelayActive,
+    cribbageState?.lastEvent?.id,
+    cribbageState?.lastEvent?.type,
+  ]);
   
   // Detect 31 and trigger delay
   useEffect(() => {
@@ -5055,6 +5076,7 @@ export const CribbageMobileGameTable = ({
           mode: 'opponent',
           card: last.card,
           opponentPosition: pos,
+          destRect: computePlayCardDestRect(),
         });
         if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = setTimeout(() => {
@@ -5078,6 +5100,93 @@ export const CribbageMobileGameTable = ({
       }
     };
   }, []);
+
+  // Task C2 — sample pegging-row geometry every render while it is
+  // mounted. Cached rects are the destination fallback when the row has
+  // already unmounted by the time the animation fires (final card of the
+  // hand → phase→counting; also across the 31 rollover window).
+  useLayoutEffect(() => {
+    const row = document.querySelector(
+      '[data-wave4-pegging-row-slot="resolved"]',
+    ) as HTMLElement | null;
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    const cards = row.querySelectorAll('[data-cribbage-pegging-card]');
+    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    if (cards.length > 0) {
+      const el = cards[cards.length - 1] as HTMLElement;
+      const cr = el.getBoundingClientRect();
+      if (cr.width > 0 && cr.height > 0) {
+        rightmost = { x: cr.left, y: cr.top, width: cr.width, height: cr.height };
+      }
+    }
+    peggingRowGeoRef.current = {
+      rowRect: { x: r.left, y: r.top, width: r.width, height: r.height },
+      rightmostCardRect: rightmost,
+    };
+  });
+
+  /**
+   * Compute a viewport-space destination rect for the next pegging-row
+   * card slot. Prefer a target just to the RIGHT of the rightmost pegged
+   * card (approximates the natural next slot); otherwise center-right of
+   * the row; otherwise null (animation is skipped).
+   */
+  const computePlayCardDestRect = useCallback(():
+    | { x: number; y: number; width: number; height: number }
+    | null => {
+    // Live DOM first.
+    const row = document.querySelector(
+      '[data-wave4-pegging-row-slot="resolved"]',
+    ) as HTMLElement | null;
+    let rowRect: { x: number; y: number; width: number; height: number } | null = null;
+    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    if (row) {
+      const rr = row.getBoundingClientRect();
+      if (rr.width > 0 && rr.height > 0) {
+        rowRect = { x: rr.left, y: rr.top, width: rr.width, height: rr.height };
+        const cards = row.querySelectorAll('[data-cribbage-pegging-card]');
+        if (cards.length > 0) {
+          const cr = (cards[cards.length - 1] as HTMLElement).getBoundingClientRect();
+          if (cr.width > 0 && cr.height > 0) {
+            rightmost = { x: cr.left, y: cr.top, width: cr.width, height: cr.height };
+          }
+        }
+      }
+    }
+    if (!rowRect) {
+      // Fallback to last-known cached geometry.
+      const cached = peggingRowGeoRef.current;
+      rowRect = cached.rowRect;
+      rightmost = cached.rightmostCardRect;
+    }
+    if (!rowRect) return null;
+    const centerY = rowRect.y + rowRect.height / 2;
+    const targetW = rightmost?.width ?? rowRect.height * 0.6;
+    const targetH = rightmost?.height ?? rowRect.height * 0.9;
+    let cx: number;
+    if (rightmost) {
+      // Sit just to the right of the current rightmost card, with a
+      // small gap. Clamp to the row's right edge minus a margin.
+      const gap = targetW * 0.15;
+      cx = rightmost.x + rightmost.width + gap + targetW / 2;
+      const rightLimit = rowRect.x + rowRect.width - targetW * 0.1;
+      if (cx > rightLimit) cx = rightLimit;
+    } else {
+      // No existing pegged cards → normal first-card area, biased right
+      // of row center so the flight has directional intent.
+      cx = rowRect.x + rowRect.width * 0.6;
+    }
+    return {
+      x: cx - targetW / 2,
+      y: centerY - targetH / 2,
+      width: targetW,
+      height: targetH,
+    };
+  }, []);
+
+
 
 
 
@@ -5170,6 +5279,7 @@ export const CribbageMobileGameTable = ({
             mode: 'self',
             card: cardPlayed,
             sourceRect: sourceRect ?? null,
+            destRect: computePlayCardDestRect(),
           });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
