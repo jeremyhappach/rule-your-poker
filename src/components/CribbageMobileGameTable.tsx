@@ -22,6 +22,12 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
+import { CribbagePegTransportPill } from './CribbagePegTransportPill';
+import {
+  recordPegTransportAttempt,
+  updatePegTransportEntry,
+  getPegTransportEntries,
+} from '@/lib/cribbageTransportInstrumentation';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
@@ -1902,6 +1908,15 @@ export const CribbageMobileGameTable = ({
   const opponentPlayedCountRef = useRef<number>(0);
   const playCardRoundKeyRef = useRef<string | null>(null);
   const playCardSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Follow-up polish — cut-card reveal gate.
+  // Tracks how many crib discard-to-crib transports have visually
+  // settled in the current hand. Cut-card reveal is deferred until this
+  // count ≥ crib.length (i.e., all in-flight discard flights have
+  // landed) so the flip doesn't play while bot crib cards are still
+  // travelling. Reset at every hand boundary.
+  const [discardsSettledInHand, setDiscardsSettledInHand] = useState(0);
+  const cutRevealSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCutRevealHandKeyRef = useRef<string | null>(null);
   // Cached last-known pegging row geometry — sampled on every render
   // while the anchored row is mounted. Used as the destination fallback
   // for animations that fire after the row unmounts (final card of a
@@ -5070,18 +5085,53 @@ export const CribbageMobileGameTable = ({
         const opp = players.find((p) => p.id === last.playerId);
         const pos = opp?.position ?? null;
         const key = `${last.playerId}|${last.card.rank}${last.card.suit[0]}`;
+        const intentId = `crib-play-opp-${last.playerId}-${count}`;
+        const dest = computePlayCardDestRect();
+        // Instrumentation — opponent play attempt.
+        try {
+          const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+          const handSize = cribbageState.playerStates?.[last.playerId]?.hand?.length ?? 0;
+          recordPegTransportAttempt({
+            attemptId: intentId,
+            handContextId: (cribbageState as unknown as { handContextId?: string })?.handContextId ?? null,
+            roundId: currentRoundId,
+            handNumber: currentHandNumber ?? null,
+            mode: 'opponent',
+            playedCardId: `${last.card.rank}${last.card.suit[0]}`,
+            playedCardIndex: null,
+            phaseBefore: cribbageState.phase ?? null,
+            cardsRemainingBefore: handSize,
+            isFinalCardOfPegging: handSize === 0,
+            sourceRectStatus: 'fallback',
+            sourceRect: null,
+            destRectStatus: dest ? 'measured' : 'missing',
+            destRect: dest ?? null,
+            intentCreated: true,
+            skipReason: null,
+            boundaryKeyBefore: boundaryKey,
+            activeInFlightIds: getPegTransportEntries()
+              .filter((e) => !e.animationSettled && e.cleanupReason == null)
+              .map((e) => e.attemptId),
+          });
+        } catch { /* instrumentation is best-effort */ }
         setWithheldPlayedCardKey(key);
         setPlayCardIntent({
-          id: `crib-play-opp-${last.playerId}-${count}`,
+          id: intentId,
           mode: 'opponent',
           card: last.card,
           opponentPosition: pos,
-          destRect: computePlayCardDestRect(),
+          destRect: dest,
         });
         if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = setTimeout(() => {
           setWithheldPlayedCardKey(null);
-          setPlayCardIntent(null);
+          setPlayCardIntent((prev) => {
+            if (prev && prev.id === intentId) {
+              updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
+              return null;
+            }
+            return prev;
+          });
         }, 1500);
       }
     } else if (count < prev) {
@@ -5098,8 +5148,44 @@ export const CribbageMobileGameTable = ({
         clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = null;
       }
+      if (cutRevealSafetyTimerRef.current) {
+        clearTimeout(cutRevealSafetyTimerRef.current);
+        cutRevealSafetyTimerRef.current = null;
+      }
     };
   }, []);
+
+  // Cut-card reveal gate — reset per hand boundary. Also arms a safety
+  // timeout so the cut card can never remain hidden forever if a
+  // discard flight fails to emit `onSettled`.
+  const cutRevealHandKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+  useEffect(() => {
+    if (lastCutRevealHandKeyRef.current === cutRevealHandKey) return;
+    lastCutRevealHandKeyRef.current = cutRevealHandKey;
+    setDiscardsSettledInHand(0);
+    if (cutRevealSafetyTimerRef.current) {
+      clearTimeout(cutRevealSafetyTimerRef.current);
+      cutRevealSafetyTimerRef.current = null;
+    }
+  }, [cutRevealHandKey]);
+
+  // Arm safety release once the cut card actually appears — after 4s
+  // force the gate open regardless of animation-settle bookkeeping.
+  useEffect(() => {
+    if (!cribbageState?.cutCard) return;
+    if (cutRevealSafetyTimerRef.current) return;
+    cutRevealSafetyTimerRef.current = setTimeout(() => {
+      // Force gate release by advancing the settled count past any
+      // possible crib.length.
+      setDiscardsSettledInHand((n) => Math.max(n, 99));
+      cutRevealSafetyTimerRef.current = null;
+    }, 4000);
+    return () => {
+      // Do not clear here — the timer should survive re-renders and
+      // is reset by the hand-boundary effect above.
+    };
+  }, [cribbageState?.cutCard]);
+
 
   // Task C2 — sample pegging-row geometry every render while it is
   // mounted. Cached rects are the destination fallback when the row has
@@ -5176,6 +5262,22 @@ export const CribbageMobileGameTable = ({
         }
       }
     }
+    // Inner cards container = second flex child of the row (badge is
+    // first). Its rect gives us the natural centering position for a
+    // card added to the fan (row is `justify-content:center`, so adding
+    // one card shifts the whole fan LEFT by ~step/2). We measure it so
+    // 0-card and 1-card placements land inside the fan, not at the row
+    // rect's absolute midpoint.
+    let cardsWrapRect: { x: number; y: number; width: number; height: number } | null = null;
+    if (row) {
+      const wrap = row.children[1] as HTMLElement | undefined;
+      if (wrap) {
+        const wr = wrap.getBoundingClientRect();
+        if (wr.width > 0 && wr.height > 0) {
+          cardsWrapRect = { x: wr.left, y: wr.top, width: wr.width, height: wr.height };
+        }
+      }
+    }
     if (!rowRect) {
       const cached = peggingRowGeoRef.current;
       rowRect = cached.rowRect;
@@ -5193,9 +5295,12 @@ export const CribbageMobileGameTable = ({
     const targetH = rightmost?.height ?? rowRect.height * 0.9;
     let cx: number;
     if (rightmost) {
-      // Step to the right by the ACTUAL visible pegging fan step, not
-      // a full card width. Prefer observed step when two cards are
-      // present, then attribute overlap, then a conservative default.
+      // The pegging row is centered (`justify-content:center`). When a
+      // new card is appended, the existing cards shift LEFT by ~step/2
+      // so the final fan re-centers. Landing at `lastCenter + step`
+      // therefore overshoots by ~step/2 (visible right-side gap →
+      // snap-back). Land at `lastCenter + step/2` — the exact position
+      // the rightmost card will occupy after re-centering.
       let stepX: number;
       if (secondRightmost) {
         const lastCenter = rightmost.x + rightmost.width / 2;
@@ -5204,14 +5309,27 @@ export const CribbageMobileGameTable = ({
       } else if (overlapPx != null) {
         stepX = Math.max(2, rightmost.width - overlapPx);
       } else {
+        // Conservative single-card fallback — assume ~60% overlap.
         stepX = Math.max(2, rightmost.width * 0.4);
       }
       const lastCenter = rightmost.x + rightmost.width / 2;
-      cx = lastCenter + stepX;
-      const rightLimit = rowRect.x + rowRect.width - targetW * 0.1;
-      if (cx > rightLimit) cx = rightLimit;
+      cx = lastCenter + stepX / 2;
+      // Clamp inside cards container (preferred) or row rect.
+      const clampRight =
+        (cardsWrapRect?.x ?? rowRect.x) +
+        (cardsWrapRect?.width ?? rowRect.width) -
+        targetW / 2;
+      if (cx > clampRight) cx = clampRight;
     } else {
-      cx = rowRect.x + rowRect.width * 0.5;
+      // Zero-card case: land at the natural first-card slot — the
+      // centre of the cards container (not the row's absolute midpoint,
+      // which sits between the Count badge and the fan and causes a
+      // visible right-shift snap when the first card renders).
+      if (cardsWrapRect) {
+        cx = cardsWrapRect.x + cardsWrapRect.width / 2;
+      } else {
+        cx = rowRect.x + rowRect.width * 0.5;
+      }
     }
     return {
       x: cx - targetW / 2,
@@ -5308,22 +5426,68 @@ export const CribbageMobileGameTable = ({
         if (cardPlayed) {
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
+          const intentId = `crib-play-self-${tid}`;
+          const dest = computePlayCardDestRect();
+          // Instrumentation — self play attempt.
+          try {
+            const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+            const handBefore = freshPlayerState.hand.length;
+            const handAfter =
+              newState.playerStates?.[currentPlayerId]?.hand?.length ?? handBefore - 1;
+            recordPegTransportAttempt({
+              attemptId: intentId,
+              handContextId: (freshState as unknown as { handContextId?: string })?.handContextId ?? null,
+              roundId: currentRoundId,
+              handNumber: currentHandNumber ?? null,
+              mode: 'self',
+              playedCardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+              playedCardIndex: cardIndex,
+              phaseBefore: freshState.phase ?? null,
+              cardsRemainingBefore: handBefore,
+              isFinalCardOfPegging: handAfter === 0,
+              sourceRectStatus:
+                sourceRect && sourceRect.width > 0 && sourceRect.height > 0
+                  ? 'measured'
+                  : 'missing',
+              sourceRect: sourceRect ?? null,
+              destRectStatus: dest ? 'measured' : 'missing',
+              destRect: dest ?? null,
+              intentCreated: true,
+              skipReason: null,
+              boundaryKeyBefore: boundaryKey,
+              activeInFlightIds: getPegTransportEntries()
+                .filter((e) => !e.animationSettled && e.cleanupReason == null)
+                .map((e) => e.attemptId),
+            });
+            // Fill phase-after / cards-after fields we already know.
+            updatePegTransportEntry(intentId, {
+              phaseAfter: newState.phase ?? null,
+              cardsRemainingAfter: handAfter,
+            });
+          } catch { /* instrumentation is best-effort */ }
           setWithheldPlayedCardKey(key);
           setPlayCardIntent({
-            id: `crib-play-self-${tid}`,
+            id: intentId,
             mode: 'self',
             card: cardPlayed,
             sourceRect: sourceRect ?? null,
-            destRect: computePlayCardDestRect(),
+            destRect: dest,
           });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
           playCardSafetyTimerRef.current = setTimeout(() => {
             setWithheldPlayedCardKey(null);
-            setPlayCardIntent(null);
+            setPlayCardIntent((prev) => {
+              if (prev && prev.id === intentId) {
+                updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
+                return null;
+              }
+              return prev;
+            });
           }, 1500);
         }
       } catch { /* animation is best-effort */ }
+
 
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
@@ -7232,6 +7396,11 @@ export const CribbageMobileGameTable = ({
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               withheldCribIncomingCount={discardIntent?.cardCount ?? 0}
+              deferCutReveal={
+                !!gameplayRenderState.cutCard &&
+                (discardIntent != null ||
+                  discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0))
+              }
             />
           )}
 
@@ -7241,7 +7410,14 @@ export const CribbageMobileGameTable = ({
           <CribbageDiscardToCribAnimation
             intent={discardIntent}
             onSettled={(id) => {
-              setDiscardIntent((prev) => (prev && prev.id === id ? null : prev));
+              setDiscardIntent((prev) => {
+                if (prev && prev.id === id) {
+                  // Advance cut-reveal gate by the intent's cardCount.
+                  setDiscardsSettledInHand((n) => n + (prev.cardCount ?? 0));
+                  return null;
+                }
+                return prev;
+              });
             }}
           />
 
@@ -7250,15 +7426,30 @@ export const CribbageMobileGameTable = ({
               handlePlayCard (self) or opponent playedCards-growth detector. */}
           <CribbagePlayCardAnimation
             intent={playCardIntent}
+            onLifecycle={(id, event) => {
+              const patch: Record<string, unknown> = {};
+              if (event === 'mounted') patch.intentMounted = true;
+              if (event === 'started') patch.animationStarted = true;
+              if (event === 'settled') patch.animationSettled = true;
+              if (event === 'skipped') {
+                patch.skipReason = 'animation-skipped-missing-rect';
+              }
+              updatePegTransportEntry(id, patch);
+            }}
             onSettled={(id) => {
               setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
               setWithheldPlayedCardKey(null);
+              updatePegTransportEntry(id, { cleanupReason: 'settled' });
               if (playCardSafetyTimerRef.current) {
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
             }}
           />
+
+          {/* Instrumentation pill — collapsed by default, top-left. */}
+          <CribbagePegTransportPill />
+
 
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
