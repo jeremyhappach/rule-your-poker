@@ -74,6 +74,7 @@ export const GinRummyDiscardAnimation = ({
   sourceMode,
   opponentPosition,
   card,
+  sourceRect,
   onSettled,
 }: Props) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -87,7 +88,14 @@ export const GinRummyDiscardAnimation = ({
   useEffect(() => {
     if (!triggerId || !card) return;
 
-    const src = resolveSourceRect(sourceMode, opponentPosition ?? null);
+    // Prefer an explicit sourceRect captured by the caller BEFORE
+    // authoritative state mutated (e.g. the actual selected card
+    // button's rect). Fall back to the mode-derived centroid resolver
+    // when unavailable.
+    const src: { left: number; top: number; width: number; height: number } | null =
+      sourceRect && sourceRect.width > 0 && sourceRect.height > 0
+        ? { left: sourceRect.x, top: sourceRect.y, width: sourceRect.width, height: sourceRect.height }
+        : resolveSourceRect(sourceMode, opponentPosition ?? null);
     const dst = resolveDiscardRect();
 
     // Skip animation if either endpoint is missing. Authoritative
