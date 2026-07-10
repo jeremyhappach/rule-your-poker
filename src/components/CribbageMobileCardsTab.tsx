@@ -666,7 +666,7 @@ export const CribbageMobileCardsTab = ({
           Card size = stage-contained straight-row-first resolver.
           Overlap = inline marginLeft on cards after the first. */}
       <div
-        ref={handStageRef}
+        ref={handStageRefCallback}
         data-crib-active-hand-stage=""
         className="flex items-center justify-center overflow-hidden"
       >
