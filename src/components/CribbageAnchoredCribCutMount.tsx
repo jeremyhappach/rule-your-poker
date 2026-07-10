@@ -165,23 +165,19 @@ export function CribbageAnchoredCribCutMount({
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
 
-  // Crib "settled floor" — highest crib count observed while NOT
-  // withholding an incoming discard flight. Prevents the visible crib
-  // pile from briefly collapsing to `previousLength - incoming` in
-  // the window between seeding the discard intent and the RPC echo
-  // growing crib.length. Reset per hand via handBoundaryKey.
-  const cribSettledFloorRef = useRef(0);
-  const cribBoundaryRef = useRef<string | undefined>(handBoundaryKey);
-  if (cribBoundaryRef.current !== handBoundaryKey) {
-    cribSettledFloorRef.current = 0;
-    cribBoundaryRef.current = handBoundaryKey;
-  }
-  {
-    const withheldNow = Math.max(0, withheldCribIncomingCount);
-    if (withheldNow === 0 && cribbageState.crib.length > cribSettledFloorRef.current) {
-      cribSettledFloorRef.current = cribbageState.crib.length;
-    }
-  }
+  // Presentation-owned visible count. If the parent supplies
+  // `visibleCribCount`, we render exactly that many cardbacks and
+  // ignore authoritative `crib.length` — this is the settled-count
+  // contract that prevents incoming cardbacks from appearing before
+  // their transport lands. If the prop is undefined, fall back to
+  // authoritative `crib.length` (legacy call sites).
+  const resolvedVisibleCribCount = Math.max(
+    0,
+    Math.min(
+      cribbageState.crib.length,
+      visibleCribCount ?? cribbageState.crib.length,
+    ),
+  );
 
   useChildrenBoundsContract({
     artifactId: CRIB_CUT_GROUP_ID,
