@@ -2134,10 +2134,12 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (thirtyOneDelayActive) return;
     const le = cribbageState?.lastEvent;
-    const is31 =
-      !!le && le.type === 'pegging_points' && (le as { count?: number }).count === 31;
-    const alreadyHandled = is31 && thirtyOneDelayRef.current === le?.id;
-    if (is31 && !alreadyHandled) return;
+    const isSequenceEnd =
+      !!le &&
+      ((le.type === 'pegging_points' && (le as { count?: number }).count === 31) ||
+        le.type === 'go_point');
+    const alreadyHandled = isSequenceEnd && thirtyOneDelayRef.current === le?.id;
+    if (isSequenceEnd && !alreadyHandled) return;
     if (dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }
