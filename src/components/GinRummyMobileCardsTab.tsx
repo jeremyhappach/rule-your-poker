@@ -672,6 +672,7 @@ export const GinRummyMobileCardsTab = ({
               void meldGroup;
               return (
                 <button
+                  data-gin-hand-card-key={`idx-${originalIndex}`}
                   onClick={() => handleCardClick(originalIndex)}
                   onPointerUp={(e) => e.currentTarget.blur()}
                   disabled={isProcessing || !canSelect}
