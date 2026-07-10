@@ -41,9 +41,17 @@ export interface CribbagePlayCardIntent {
   destRect?: { x: number; y: number; width: number; height: number } | null;
 }
 
+export type CribbagePlayCardLifecycleEvent =
+  | 'mounted'
+  | 'started'
+  | 'settled'
+  | 'skipped';
+
 interface Props {
   intent: CribbagePlayCardIntent | null;
   onSettled: (id: string) => void;
+  /** Optional lifecycle probe for instrumentation. */
+  onLifecycle?: (id: string, event: CribbagePlayCardLifecycleEvent) => void;
 }
 
 interface Flight {
