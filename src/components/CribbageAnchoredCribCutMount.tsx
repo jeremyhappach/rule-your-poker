@@ -95,7 +95,7 @@ export function CribbageAnchoredCribCutMount({
   handBoundaryKey,
   terminalPath = null,
   countingOutroActive = false,
-  withheldCribIncomingCount = 0,
+  visibleCribCount,
   deferCutReveal = false,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
