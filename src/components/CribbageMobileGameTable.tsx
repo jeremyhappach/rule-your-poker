@@ -7231,6 +7231,7 @@ export const CribbageMobileGameTable = ({
               handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              withheldCribIncomingCount={discardIntent?.cardCount ?? 0}
             />
           )}
 
