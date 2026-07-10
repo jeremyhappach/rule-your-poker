@@ -17,6 +17,14 @@ import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
 export interface CribbageAnchoredPeggingRowMountProps {
   cribbageState: CribbageState;
   sequenceStartIndex: number;
+  /**
+   * Exclusive end index of the pegging-row slice. When the parent is
+   * holding the previous row visible after a Go / 31, this is set to
+   * the authoritative `pegging.sequenceStartIndex` so any cards played
+   * into the *next* sequence do not render on top of the held row.
+   * When omitted, defaults to `playedCards.length`.
+   */
+  sequenceEndIndex?: number;
   countingOutroActive?: boolean;
   thirtyOneDelayActive?: boolean;
   terminalPath?:
