@@ -71,7 +71,7 @@ import { useCanonicalFeltCoordFrameElement } from "@/lib/canonicalShell/useCanon
 const CRIB_CUT_GROUP_ID = "cribbage.cribCutGroup";
 
 export interface Wave4CribCutGroupSlotProps {
-  children: ReactNode;
+  children?: ReactNode;
   /** Inline CSS-variable overrides applied to the slot root (e.g. `--cribcut-gap`). */
   styleVars?: React.CSSProperties;
 }
@@ -196,6 +196,7 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
       <div
         ref={ref}
         data-wave4-cribcut-slot="fallback"
+        data-card-anchor="crib"
         className="absolute top-[17%] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-4"
       >
         {children}
@@ -215,6 +216,7 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
       ref={ref}
       data-wave4-cribcut-slot="resolved"
       data-artifact-id="cribbage.cribCutGroup"
+      data-card-anchor="crib"
       data-placement-mode="anchored"
       data-placement-frame="felt-coord-frame"
       data-placement-source={current && current.visible ? "current" : "lastValid"}

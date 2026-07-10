@@ -20,6 +20,7 @@ import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringD
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
+import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
@@ -1889,6 +1890,10 @@ export const CribbageMobileGameTable = ({
   const skunkOverlayFiredRef = useRef<string | null>(null);
   // Source-level guard for chip animation trigger to prevent double-firing
   const chipAnimationFiredRef = useRef<string | null>(null);
+
+  // Task C1 — discard-to-crib transport (visual overlay only).
+  const [discardIntent, setDiscardIntent] = useState<CribbageDiscardIntent | null>(null);
+  const opponentDiscardCountsRef = useRef<Record<string, number>>({});
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
@@ -4846,7 +4851,10 @@ export const CribbageMobileGameTable = ({
     }
   };
 
-  const handleDiscard = useCallback(async (cardIndices: number[]) => {
+  const handleDiscard = useCallback(async (
+    cardIndices: number[],
+    sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
+  ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     // ── Centralized stale-action containment (Phase 2) ──
@@ -4869,6 +4877,28 @@ export const CribbageMobileGameTable = ({
 
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
+
+    // Task C1 — fire self discard-to-crib transport overlay BEFORE the
+    // authoritative RPC. Visual-only; skipped by the animation component
+    // if either source or destination rects cannot be resolved.
+    try {
+      // Prevent this same discard from re-triggering as an "opponent"
+      // flight when the merged state echoes back with our discardedToCrib
+      // grown. Pre-seed our own count so the growth detector treats us
+      // as already-animated.
+      if (currentPlayerId) {
+        const prev = opponentDiscardCountsRef.current[currentPlayerId] ?? 0;
+        opponentDiscardCountsRef.current[currentPlayerId] = prev + cardIndices.length;
+      }
+      setDiscardIntent({
+        id: `crib-discard-self-${tid}`,
+        mode: 'self',
+        cardCount: cardIndices.length,
+        sourceRects: sourceRects ?? undefined,
+      });
+    } catch {
+      /* animation is best-effort; never block gameplay */
+    }
 
     setIsProcessing(true);
     try {
@@ -4932,6 +4962,48 @@ export const CribbageMobileGameTable = ({
       setIsProcessing(false);
     }
   }, [cribbageState, currentPlayerId, currentRoundId, debugCtx, evaluateWriterIdentity]);
+
+  // Task C1 — detect opponent discardedToCrib growth and fire an
+  // opponent-mode overlay flight from their seat stack → crib center.
+  // Strictly visual: reads only cribbageState + players, never writes.
+  // Guarded by phase === 'discarding' so post-discard state echoes and
+  // rejoin/mid-hand renders never retrigger flights.
+  const opponentDiscardRoundKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cribbageState || !cribbageState.playerStates) return;
+    // Reset the growth baseline at every new round so hand-N discards
+    // don't inherit prev counts from hand-(N-1).
+    const roundKey = currentRoundId ?? null;
+    if (opponentDiscardRoundKeyRef.current !== roundKey) {
+      opponentDiscardRoundKeyRef.current = roundKey;
+      opponentDiscardCountsRef.current = {};
+      // Seed with the current counts so the very first observation
+      // after the boundary doesn't fire spurious flights.
+      for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
+        opponentDiscardCountsRef.current[pid] = ps?.discardedToCrib?.length ?? 0;
+      }
+      return;
+    }
+    if (cribbageState.phase !== 'discarding') return;
+    for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
+      const count = ps?.discardedToCrib?.length ?? 0;
+      const prev = opponentDiscardCountsRef.current[pid] ?? 0;
+      if (count > prev) {
+        const delta = count - prev;
+        opponentDiscardCountsRef.current[pid] = count;
+        if (pid === currentPlayerId) continue; // self overlay already fired inline
+        const opp = players.find((p) => p.id === pid);
+        const pos = opp?.position ?? null;
+        setDiscardIntent({
+          id: `crib-discard-opp-${pid}-${count}`,
+          mode: 'opponent',
+          opponentPosition: pos,
+          cardCount: delta,
+        });
+      }
+    }
+  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
@@ -6911,6 +6983,16 @@ export const CribbageMobileGameTable = ({
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
             />
           )}
+
+          {/* Task C1 — discard-to-crib transport overlay (visual only).
+              Portals into document.body; consumes discardIntent state
+              seeded by handleDiscard (self) or opponent growth detector. */}
+          <CribbageDiscardToCribAnimation
+            intent={discardIntent}
+            onSettled={(id) => {
+              setDiscardIntent((prev) => (prev && prev.id === id ? null : prev));
+            }}
+          />
 
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
               translateY(6%) felt-content wrapper so the rendered DOM rect
