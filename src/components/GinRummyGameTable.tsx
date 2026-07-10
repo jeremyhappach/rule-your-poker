@@ -3211,6 +3211,7 @@ export const GinRummyGameTable = ({
                 drawSource={intent.source}
                 card={intent.card}
                 cardBackColors={cardBackColors}
+                targetRect={intent.targetRect}
                 onSettled={() => {
                   setSelfDrawIntents(prev => {
                     if (!prev[intent.intentId]) return prev;
