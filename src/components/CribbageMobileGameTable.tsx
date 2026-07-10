@@ -1435,7 +1435,40 @@ export const CribbageMobileGameTable = ({
       localInteractionsAllowed: interactionsAllowedRef.current,
     };
 
-    if (!interactionsAllowedRef.current) {
+    const renderAndMirrorAligned = !!(
+      renderHandKey &&
+      currentHandKey &&
+      renderHandKey === currentHandKey &&
+      currentRoundId
+    );
+    const writerMatchesAuth = !!(
+      !auth ||
+      (
+        (!auth.roundId || auth.roundId === currentRoundId) &&
+        (typeof auth.handNumber !== 'number' || auth.handNumber === currentHandNumber)
+      )
+    );
+    const presentationMatchesAuth = !!(
+      !pres ||
+      !auth ||
+      !pres.roundId ||
+      !auth.roundId ||
+      pres.roundId === auth.roundId
+    );
+    // P0 discard unblock: parent props can lag one hand behind while the
+    // actionable sources (auth/current/presentation/render) are already aligned.
+    // In that case the UI is safe to submit the discard; the backend RPC still
+    // validates phase, player ownership, and selected indices atomically.
+    const discardBlockedOnlyByStaleParentProps = !!(
+      action === 'discard' &&
+      !interactionsAllowedRef.current &&
+      renderAndMirrorAligned &&
+      writerMatchesAuth &&
+      presentationMatchesAuth &&
+      frameworkInteractionsAllowedRef.current
+    );
+
+    if (!interactionsAllowedRef.current && !discardBlockedOnlyByStaleParentProps) {
       return { ok: false, reason: 'local-identity-misaligned', divergence };
     }
     if (!frameworkInteractionsAllowedRef.current) {
