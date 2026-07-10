@@ -47,9 +47,7 @@ class MockResizeObserver {
 beforeEach(() => {
   MockResizeObserver.instances = [];
   MockResizeObserver.activeCount = 0;
-  // @ts-expect-error jsdom
-  globalThis.ResizeObserver = MockResizeObserver;
-});
+  (globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver;
 
 /**
  * Minimal harness that mirrors the exact ref-callback lifecycle shape
