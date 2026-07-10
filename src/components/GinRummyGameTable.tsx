@@ -2989,7 +2989,26 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Felt Content — requires hydrated viewState */}
-            {visiblePlayable && viewState && (
+            {visiblePlayable && viewState && (() => {
+              // Synchronous withhold derivation. If the current
+              // authoritative viewState.lastAction is a discard whose
+              // overlay has NOT yet settled (its actionKey is not in
+              // releasedDiscardActionKeys), hide the incoming card on
+              // top of the pile and instead reveal the previous top.
+              // This runs during render so no one-frame flash of the
+              // incoming card is possible.
+              const la = viewState.lastAction;
+              const discardActionKey =
+                la && la.type === 'discard' && la.card
+                  ? `${la.type}-${la.playerId}-${la.timestamp}`
+                  : null;
+              const withheldDiscardTop =
+                discardActionKey &&
+                la?.card &&
+                !releasedDiscardActionKeys.has(discardActionKey)
+                  ? { rank: la.card.rank, suit: la.card.suit }
+                  : null;
+              return (
               <GinRummyFeltContent
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
