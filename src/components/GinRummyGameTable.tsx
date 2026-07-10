@@ -3028,7 +3028,8 @@ export const GinRummyGameTable = ({
                 handContextId={handContextId}
                 withheldDiscardTop={withheldDiscardTop}
               />
-            )}
+              );
+            })()}
 
             {/* Wave 2 canonical deal orchestrator — emits the 22 Gin
                 intents (20 alternating hidden, +stock, +discard upcard)
