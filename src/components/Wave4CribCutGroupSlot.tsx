@@ -196,6 +196,7 @@ export function Wave4CribCutGroupSlot({ children, styleVars }: Wave4CribCutGroup
       <div
         ref={ref}
         data-wave4-cribcut-slot="fallback"
+        data-card-anchor="crib"
         className="absolute top-[17%] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-4"
       >
         {children}
