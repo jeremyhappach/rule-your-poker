@@ -972,6 +972,19 @@ export const GinRummyGameTable = ({
     actionKey: string;
   }
   const [selfDrawIntents, setSelfDrawIntents] = useState<Record<string, SelfDrawIntent>>({});
+  // Discard transport overlay (visual-only). Mirrors the draw animation
+  // pattern but reverses direction: source = local active pane or
+  // opponent card-back stack; destination = [data-card-anchor="discard"].
+  interface DiscardIntent {
+    triggerId: string;
+    sourceMode: GinRummyDiscardSourceMode;
+    opponentPosition: number | null;
+    card: GinRummyCard;
+  }
+  const [discardIntent, setDiscardIntent] = useState<DiscardIntent | null>(null);
+  // Withhold the just-arrived top of the discard pile during flight to
+  // avoid a duplicate-card flash. Cleared on discard animation settle.
+  const [withheldDiscardTop, setWithheldDiscardTop] = useState<{ rank: string; suit: string } | null>(null);
   const prevLastActionRef = useRef<string | null>(null);
 
   const isSeatedGamePlayer = useCallback((player: Player) => {
