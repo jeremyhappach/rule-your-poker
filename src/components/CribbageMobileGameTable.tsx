@@ -2148,35 +2148,50 @@ export const CribbageMobileGameTable = ({
     cribbageState?.lastEvent?.type,
   ]);
   
-  // Detect 31 and trigger delay
+  // Detect 31 and trigger delay. The delay is NOT a blind timer — it
+  // stays active until the 31 presentation is fully complete:
+  //   (a) the 31-making card transport has settled (playCardIntent is
+  //       null; the overlay portal has cleared), AND
+  //   (b) the pegging scoring announcement for this 31 has been
+  //       acknowledged (peggingAnnouncementHidden === true, which flips
+  //       ~3s after the announcement is first shown).
+  // A max safety fallback of 6s prevents a stuck presentation from
+  // permanently blocking the row clear. Authoritative state is
+  // untouched — this only holds the presentation of the completed row
+  // until its 31 announcement + flight finish.
   useEffect(() => {
     if (!cribbageState) return;
     const lastEvent = cribbageState.lastEvent;
     if (!lastEvent || lastEvent.type !== 'pegging_points') return;
-    
-    // Check if this is a 31 event by checking the count field
-    const is31 = lastEvent.count === 31;
+    const is31 = (lastEvent as { count?: number }).count === 31;
     if (!is31) return;
-    
-    // Create a unique key for this specific 31 event
     const eventKey = lastEvent.id;
     if (thirtyOneDelayRef.current === eventKey) return;
     thirtyOneDelayRef.current = eventKey;
-    
-    // The sequence that just completed (0 to dbSequenceStartIndex-1) is what we want to show.
-    // The prevSequenceStartIndexRef should still hold the OLD value if we haven't updated it yet.
-    // Force keep the old index during delay by not updating prevSequenceStartIndexRef
-    
     setThirtyOneDelayActive(true);
-    
-    const timer = setTimeout(() => {
+    // Safety cap only — the completion effect below is the primary
+    // release path.
+    const safety = setTimeout(() => {
       setThirtyOneDelayActive(false);
-      // After delay, update the ref to match current DB state
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
-    }, 2000);
-    
-    return () => clearTimeout(timer);
+    }, 6000);
+    return () => clearTimeout(safety);
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+
+  // Presentation-driven release: once the 31-making transport has
+  // settled AND the announcement has been dismissed, drop the delay.
+  useEffect(() => {
+    if (!thirtyOneDelayActive) return;
+    if (playCardIntent !== null) return;
+    if (!peggingAnnouncementHidden) return;
+    setThirtyOneDelayActive(false);
+    prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+  }, [
+    thirtyOneDelayActive,
+    playCardIntent,
+    peggingAnnouncementHidden,
+    dbSequenceStartIndex,
+  ]);
 
   // Clear 31 delay when phase moves away from pegging (e.g. hand ends or new hand starts)
   useEffect(() => {
