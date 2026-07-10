@@ -51,7 +51,21 @@ export function CribbageAnchoredPeggingRowMount({
   withheldPlayedCardKey = null,
 }: CribbageAnchoredPeggingRowMountProps) {
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
-  const displayCount = thirtyOneDelayActive
+  // Only force the display count to 31 when the sequence-end trigger is
+  // an actual pegging_points count===31. `thirtyOneDelayActive` is also
+  // raised for `go_point` events (to hold the row visible while the
+  // last card's transport lands), but those award +1 at the current
+  // running count — never 31 — so the visible counter must remain at
+  // `pegging.currentCount` for the Go/last case.
+  const lastEvent = cribbageState.lastEvent as
+    | { type?: string; count?: number }
+    | null
+    | undefined;
+  const isActual31Hold =
+    thirtyOneDelayActive &&
+    lastEvent?.type === 'pegging_points' &&
+    lastEvent?.count === 31;
+  const displayCount = isActual31Hold
     ? 31
     : cribbageState.pegging.currentCount;
 

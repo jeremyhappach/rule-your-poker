@@ -124,8 +124,19 @@ export const CribbageFeltContent = ({
   // During the 2s outro OR 31 delay, keep the pegging layout visible even though DB phase/count may be updated.
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
   
-  // During 31 delay, show 31 as the count instead of the reset 0
-  const displayCount = thirtyOneDelayActive ? 31 : cribbageState.pegging.currentCount;
+  // Only force display=31 when the sequence-end is an actual 31.
+  // `thirtyOneDelayActive` is also raised for `go_point` events to
+  // hold the row visible; Go awards +1 at the current running count,
+  // never 31, so the visible counter must remain at the real value.
+  const _lastEvent = cribbageState.lastEvent as
+    | { type?: string; count?: number }
+    | null
+    | undefined;
+  const _isActual31Hold =
+    thirtyOneDelayActive &&
+    _lastEvent?.type === 'pegging_points' &&
+    _lastEvent?.count === 31;
+  const displayCount = _isActual31Hold ? 31 : cribbageState.pegging.currentCount;
   // Terminal-path classification (set by parent at win-trigger time).
   // Authoritative when present; legacy `!lastHandCount` heuristic is used only
   // as a fallback when no path tag is available (e.g. for non-terminal renders
