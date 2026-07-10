@@ -1323,12 +1323,15 @@ export const GinRummyGameTable = ({
         });
       } else if (action.type === 'discard' && action.card) {
         // Self discard: local active pane → discard pile.
+        const pendingRect = pendingSelfDiscardSourceRectRef.current;
+        pendingSelfDiscardSourceRectRef.current = null;
         setDiscardIntent({
           triggerId: `self-discard-${actionKey}`,
           actionKey,
           sourceMode: 'self',
           opponentPosition: null,
           card: action.card,
+          sourceRect: pendingRect,
         });
       }
       return;
