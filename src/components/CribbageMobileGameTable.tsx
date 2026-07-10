@@ -5225,7 +5225,9 @@ export const CribbageMobileGameTable = ({
    *   2. Cached geometry from useLayoutEffect.
    *   3. Viewport centre.
    */
-  const computePlayCardDestRect = useCallback((): {
+  const computePlayCardDestRect = useCallback((
+    mode: 'self' | 'opponent' = 'opponent',
+  ): {
     x: number; y: number; width: number; height: number;
   } => {
     const row = document.querySelector(
@@ -5262,12 +5264,6 @@ export const CribbageMobileGameTable = ({
         }
       }
     }
-    // Inner cards container = second flex child of the row (badge is
-    // first). Its rect gives us the natural centering position for a
-    // card added to the fan (row is `justify-content:center`, so adding
-    // one card shifts the whole fan LEFT by ~step/2). We measure it so
-    // 0-card and 1-card placements land inside the fan, not at the row
-    // rect's absolute midpoint.
     let cardsWrapRect: { x: number; y: number; width: number; height: number } | null = null;
     if (row) {
       const wrap = row.children[1] as HTMLElement | undefined;
@@ -5295,12 +5291,10 @@ export const CribbageMobileGameTable = ({
     const targetH = rightmost?.height ?? rowRect.height * 0.9;
     let cx: number;
     if (rightmost) {
-      // The pegging row is centered (`justify-content:center`). When a
-      // new card is appended, the existing cards shift LEFT by ~step/2
-      // so the final fan re-centers. Landing at `lastCenter + step`
-      // therefore overshoots by ~step/2 (visible right-side gap →
-      // snap-back). Land at `lastCenter + step/2` — the exact position
-      // the rightmost card will occupy after re-centering.
+      // Compute the fan's per-card step (distance between adjacent
+      // card centers). Prefer observed step from two visible cards,
+      // then the resolved-fan `data-crib-peg-fan-overlap-px`, then a
+      // conservative fallback.
       let stepX: number;
       if (secondRightmost) {
         const lastCenter = rightmost.x + rightmost.width / 2;
@@ -5309,11 +5303,36 @@ export const CribbageMobileGameTable = ({
       } else if (overlapPx != null) {
         stepX = Math.max(2, rightmost.width - overlapPx);
       } else {
-        // Conservative single-card fallback — assume ~60% overlap.
         stepX = Math.max(2, rightmost.width * 0.4);
       }
       const lastCenter = rightmost.x + rightmost.width / 2;
-      cx = lastCenter + stepX / 2;
+      // Self vs opponent differ because the pegging row is
+      // `justify-content:center` and re-centers as cards are added:
+      //
+      //   - OPPONENT path: `computePlayCardDestRect()` runs AFTER
+      //     authoritative state has echoed the played card into
+      //     `cribbageState.pegging.playedCards`. There is no withhold
+      //     for opponent plays, so the DOM row already includes the
+      //     just-played card as `rightmost`. Landing at
+      //     `lastCenter + step/2` targets the point ~half a step
+      //     past the just-played card (roughly where the next card
+      //     WOULD go), and clamp keeps it inside the fan. This
+      //     matches the previously-verified "almost perfect"
+      //     opponent behavior — do not change it.
+      //
+      //   - SELF path: `computePlayCardDestRect('self')` runs BEFORE
+      //     the withhold + state update, so the DOM row still shows
+      //     ONLY the pre-play cards. The played card is the NEW
+      //     rightmost of the post-play fan. The pre-play rightmost
+      //     is at `wrapCenter + (n-1)*step/2`; the post-play new
+      //     rightmost lands at `wrapCenter + n*step/2` — visually a
+      //     FULL step to the right of the pre-play last card's
+      //     current on-screen position. Targeting `+ step/2` here
+      //     was over-correcting for re-centering that has not yet
+      //     happened, so the flight was landing on top of the
+      //     visible rightmost card. Use `+ step`.
+      const offset = mode === 'self' ? stepX : stepX / 2;
+      cx = lastCenter + offset;
       // Clamp inside cards container (preferred) or row rect.
       const clampRight =
         (cardsWrapRect?.x ?? rowRect.x) +
@@ -5321,10 +5340,6 @@ export const CribbageMobileGameTable = ({
         targetW / 2;
       if (cx > clampRight) cx = clampRight;
     } else {
-      // Zero-card case: land at the natural first-card slot — the
-      // centre of the cards container (not the row's absolute midpoint,
-      // which sits between the Count badge and the fan and causes a
-      // visible right-shift snap when the first card renders).
       if (cardsWrapRect) {
         cx = cardsWrapRect.x + cardsWrapRect.width / 2;
       } else {
@@ -5427,7 +5442,7 @@ export const CribbageMobileGameTable = ({
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
           const intentId = `crib-play-self-${tid}`;
-          const dest = computePlayCardDestRect();
+          const dest = computePlayCardDestRect('self');
           // Instrumentation — self play attempt.
           try {
             const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;

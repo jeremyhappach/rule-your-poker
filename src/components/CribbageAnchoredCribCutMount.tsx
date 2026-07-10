@@ -163,6 +163,24 @@ export function CribbageAnchoredCribCutMount({
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
 
+  // Crib "settled floor" — highest crib count observed while NOT
+  // withholding an incoming discard flight. Prevents the visible crib
+  // pile from briefly collapsing to `previousLength - incoming` in
+  // the window between seeding the discard intent and the RPC echo
+  // growing crib.length. Reset per hand via handBoundaryKey.
+  const cribSettledFloorRef = useRef(0);
+  const cribBoundaryRef = useRef<string | undefined>(handBoundaryKey);
+  if (cribBoundaryRef.current !== handBoundaryKey) {
+    cribSettledFloorRef.current = 0;
+    cribBoundaryRef.current = handBoundaryKey;
+  }
+  {
+    const withheldNow = Math.max(0, withheldCribIncomingCount);
+    if (withheldNow === 0 && cribbageState.crib.length > cribSettledFloorRef.current) {
+      cribSettledFloorRef.current = cribbageState.crib.length;
+    }
+  }
+
   useChildrenBoundsContract({
     artifactId: CRIB_CUT_GROUP_ID,
     assignedRect,
@@ -194,12 +212,25 @@ export function CribbageAnchoredCribCutMount({
 
       {/* Crib pile — sized from stage height. Withhold incoming crib
           cards while their discard-to-crib transport is in flight so
-          the pile does not visually grow before flights land. */}
+          the pile does not visually grow before flights land.
+
+          Follow-up fix — preserve the previously-settled crib count
+          as a floor while withholding is active. Without this floor,
+          the visible count briefly drops to
+          `previousLength - incoming` (e.g. 2 − 2 = 0) between the
+          moment we seed the discard intent and the moment the RPC
+          echo grows crib.length by `incoming` — producing a visible
+          flash of existing crib cardbacks disappearing. The floor is
+          reset per hand via `handBoundaryKey` so a fresh hand starts
+          from 0 correctly. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
-        const visibleCribCount = Math.max(
-          0,
-          cribbageState.crib.length - Math.max(0, withheldCribIncomingCount),
-        );
+        const withheld = Math.max(0, withheldCribIncomingCount);
+        const raw = Math.max(0, cribbageState.crib.length - withheld);
+        // Floor is maintained by cribSettledFloorRef at the top of
+        // the component (safe hook usage), so the visible pile never
+        // drops below the last settled count while a flight is in
+        // progress.
+        const visibleCribCount = Math.max(raw, cribSettledFloorRef.current);
         return (
           <div ref={cribRef} className="flex flex-col items-center">
             <span
