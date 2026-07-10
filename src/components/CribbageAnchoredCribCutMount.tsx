@@ -69,6 +69,14 @@ export interface CribbageAnchoredCribCutMountProps {
     | 'fallback'
     | null;
   countingOutroActive?: boolean;
+  /**
+   * Task C1 polish — number of incoming crib cards currently in flight
+   * from a discard-to-crib transport animation. The crib pile renders
+   * `max(0, crib.length - withheldCribIncomingCount)` cardbacks so the
+   * pile does not visually grow before the flight lands. Cleared to 0
+   * once the animation settles.
+   */
+  withheldCribIncomingCount?: number;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -77,6 +85,7 @@ export function CribbageAnchoredCribCutMount({
   handBoundaryKey,
   terminalPath = null,
   countingOutroActive = false,
+  withheldCribIncomingCount = 0,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
