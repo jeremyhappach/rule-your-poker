@@ -70,13 +70,15 @@ export interface CribbageAnchoredCribCutMountProps {
     | null;
   countingOutroActive?: boolean;
   /**
-   * Task C1 polish — number of incoming crib cards currently in flight
-   * from a discard-to-crib transport animation. The crib pile renders
-   * `max(0, crib.length - withheldCribIncomingCount)` cardbacks so the
-   * pile does not visually grow before the flight lands. Cleared to 0
-   * once the animation settles.
+   * Presentation-owned crib card count. The parent tracks how many
+   * crib discard-to-crib transports have visually settled and passes
+   * that count here. This artifact renders EXACTLY this many cardbacks
+   * regardless of authoritative `crib.length`, so incoming cardbacks
+   * never appear before their transport lands.
+   *
+   * If undefined, falls back to authoritative `crib.length` (legacy).
    */
-  withheldCribIncomingCount?: number;
+  visibleCribCount?: number;
   /**
    * Follow-up polish — when true, the cut card artwork is hidden even
    * if `cribbageState.cutCard` is present. Used by the game table to
@@ -93,7 +95,7 @@ export function CribbageAnchoredCribCutMount({
   handBoundaryKey,
   terminalPath = null,
   countingOutroActive = false,
-  withheldCribIncomingCount = 0,
+  visibleCribCount,
   deferCutReveal = false,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
@@ -163,23 +165,19 @@ export function CribbageAnchoredCribCutMount({
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
 
-  // Crib "settled floor" — highest crib count observed while NOT
-  // withholding an incoming discard flight. Prevents the visible crib
-  // pile from briefly collapsing to `previousLength - incoming` in
-  // the window between seeding the discard intent and the RPC echo
-  // growing crib.length. Reset per hand via handBoundaryKey.
-  const cribSettledFloorRef = useRef(0);
-  const cribBoundaryRef = useRef<string | undefined>(handBoundaryKey);
-  if (cribBoundaryRef.current !== handBoundaryKey) {
-    cribSettledFloorRef.current = 0;
-    cribBoundaryRef.current = handBoundaryKey;
-  }
-  {
-    const withheldNow = Math.max(0, withheldCribIncomingCount);
-    if (withheldNow === 0 && cribbageState.crib.length > cribSettledFloorRef.current) {
-      cribSettledFloorRef.current = cribbageState.crib.length;
-    }
-  }
+  // Presentation-owned visible count. If the parent supplies
+  // `visibleCribCount`, we render exactly that many cardbacks and
+  // ignore authoritative `crib.length` — this is the settled-count
+  // contract that prevents incoming cardbacks from appearing before
+  // their transport lands. If the prop is undefined, fall back to
+  // authoritative `crib.length` (legacy call sites).
+  const resolvedVisibleCribCount = Math.max(
+    0,
+    Math.min(
+      cribbageState.crib.length,
+      visibleCribCount ?? cribbageState.crib.length,
+    ),
+  );
 
   useChildrenBoundsContract({
     artifactId: CRIB_CUT_GROUP_ID,
@@ -223,14 +221,8 @@ export function CribbageAnchoredCribCutMount({
           flash of existing crib cardbacks disappearing. The floor is
           reset per hand via `handBoundaryKey` so a fresh hand starts
           from 0 correctly. */}
-      {showCribOnFelt && cribbageState.crib.length > 0 && (() => {
-        const withheld = Math.max(0, withheldCribIncomingCount);
-        const raw = Math.max(0, cribbageState.crib.length - withheld);
-        // Floor is maintained by cribSettledFloorRef at the top of
-        // the component (safe hook usage), so the visible pile never
-        // drops below the last settled count while a flight is in
-        // progress.
-        const visibleCribCount = Math.max(raw, cribSettledFloorRef.current);
+      {showCribOnFelt && resolvedVisibleCribCount > 0 && (() => {
+        const visibleCount = resolvedVisibleCribCount;
         return (
           <div ref={cribRef} className="flex flex-col items-center">
             <span
@@ -250,7 +242,7 @@ export function CribbageAnchoredCribCutMount({
                 minHeight: `${cribCardHeightPx}px`,
               }}
             >
-              {Array.from({ length: visibleCribCount }).map((_, i) => (
+              {Array.from({ length: visibleCount }).map((_, i) => (
                 <CanonicalCardBack
                   key={i}
                   widthPx={cribCardWidthPx}
