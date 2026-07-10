@@ -28,6 +28,13 @@ interface Props {
   drawSource: 'stock' | 'discard';
   card: GinRummyCard | null;
   cardBackColors: { color: string; darkColor: string };
+  /**
+   * Optional estimated viewport-space landing rect for the drawn
+   * card's projected sorted position in the local fan. When provided
+   * and valid, the overlay lands at this rect's center instead of the
+   * active-pane centroid. Missing / invalid → centroid fallback.
+   */
+  targetRect?: { x: number; y: number; width: number; height: number } | null;
   /** Called once the animation has settled (matches 700ms lifecycle). */
   onSettled?: () => void;
 }
@@ -57,6 +64,7 @@ export const GinRummySelfDrawAnimation = ({
   drawSource,
   card,
   cardBackColors,
+  targetRect,
   onSettled,
 }: Props) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -75,13 +83,21 @@ export const GinRummySelfDrawAnimation = ({
 
     const tryResolve = (): Snapshot | null => {
       const pile = resolvePileRect(drawSource);
-      const pane = resolveActivePaneRect();
-      if (!pile || !pane) return null;
+      // Prefer the caller-supplied estimated landing rect when it is
+      // valid — that's the drawn card's projected sorted position in
+      // the local fan. Fall back to the active-pane centroid.
+      const hasTargetRect =
+        !!targetRect && targetRect.width > 0 && targetRect.height > 0;
+      const pane = hasTargetRect ? null : resolveActivePaneRect();
+      if (!pile) return null;
+      if (!hasTargetRect && !pane) return null;
+      const endX = hasTargetRect ? targetRect!.x : pane!.left + pane!.width / 2;
+      const endY = hasTargetRect ? targetRect!.y : pane!.top + pane!.height * 0.5;
       return {
         startX: pile.left + pile.width / 2,
         startY: pile.top + pile.height / 2,
-        endX: pane.left + pane.width / 2,
-        endY: pane.top + pane.height * 0.5,
+        endX,
+        endY,
       };
     };
 
@@ -124,7 +140,7 @@ export const GinRummySelfDrawAnimation = ({
       observer?.disconnect();
       clearTimeout(settleTimer);
     };
-  }, [triggerId, drawSource]);
+  }, [triggerId, drawSource, targetRect]);
 
   if (!visible || !snapshot) return null;
 
