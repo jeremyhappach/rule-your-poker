@@ -5012,6 +5012,75 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId, currentRoundId, players]);
 
+  // Task C2 — detect opponent pegging plays and fire a face-up transport
+  // flight from their seat cardback stack → pegging-row center. Visual-
+  // only; reads authoritative state, never writes. Reset baseline at
+  // every round boundary and any phase != 'pegging'.
+  useEffect(() => {
+    if (!cribbageState || !cribbageState.pegging) return;
+    const roundKey = currentRoundId ?? null;
+    if (playCardRoundKeyRef.current !== roundKey) {
+      playCardRoundKeyRef.current = roundKey;
+      opponentPlayedCountRef.current =
+        cribbageState.pegging.playedCards?.length ?? 0;
+      // Clear any stuck withhold across round boundaries.
+      setWithheldPlayedCardKey(null);
+      setPlayCardIntent(null);
+      if (playCardSafetyTimerRef.current) {
+        clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = null;
+      }
+      return;
+    }
+    if (cribbageState.phase !== 'pegging') {
+      opponentPlayedCountRef.current =
+        cribbageState.pegging.playedCards?.length ?? 0;
+      return;
+    }
+    const played = cribbageState.pegging.playedCards ?? [];
+    const count = played.length;
+    const prev = opponentPlayedCountRef.current;
+    if (count > prev) {
+      // Advance the baseline regardless — only the newest played card
+      // (last entry) is animated to avoid backlog storms.
+      opponentPlayedCountRef.current = count;
+      const last = played[count - 1];
+      if (last && last.playerId && last.playerId !== currentPlayerId) {
+        const opp = players.find((p) => p.id === last.playerId);
+        const pos = opp?.position ?? null;
+        const key = `${last.playerId}|${last.card.rank}${last.card.suit[0]}`;
+        setWithheldPlayedCardKey(key);
+        setPlayCardIntent({
+          id: `crib-play-opp-${last.playerId}-${count}`,
+          mode: 'opponent',
+          card: last.card,
+          opponentPosition: pos,
+        });
+        if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = setTimeout(() => {
+          setWithheldPlayedCardKey(null);
+          setPlayCardIntent(null);
+        }, 1500);
+      }
+    } else if (count < prev) {
+      // Row was reset (31 / go rollover clears sequenceStartIndex, but
+      // playedCards is monotonic in this state). Realign baseline.
+      opponentPlayedCountRef.current = count;
+    }
+  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+
+  // Task C2 — clear in-flight withhold/intent on unmount.
+  useEffect(() => {
+    return () => {
+      if (playCardSafetyTimerRef.current) {
+        clearTimeout(playCardSafetyTimerRef.current);
+        playCardSafetyTimerRef.current = null;
+      }
+    };
+  }, []);
+
+
+
 
   const handlePlayCard = useCallback(async (
     cardIndex: number,
