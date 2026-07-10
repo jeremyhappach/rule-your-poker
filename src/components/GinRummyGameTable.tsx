@@ -2653,12 +2653,22 @@ export const GinRummyGameTable = ({
     preState: GinRummyState;
     newState: GinRummyState;
   }): void => {
-    const { source, newState } = args;
+    const { source, preState, newState } = args;
     const drawnCard = newState.lastAction?.card ?? null;
     const drawnId = cardId(drawnCard);
     const _action = newState.lastAction!;
     const _actionKey = `${_action.type}-${_action.playerId}-${_action.timestamp}`;
     const _intentId = `self-draw-${_actionKey}`;
+    // Estimate the drawn card's projected sorted landing rect using
+    // the pre-draw hand still rendered in the DOM. Fallback (null)
+    // keeps the current pane-centroid animation target intact.
+    let targetRect: { x: number; y: number; width: number; height: number } | null = null;
+    try {
+      const preHand = currentPlayerId
+        ? preState.playerStates[currentPlayerId]?.hand ?? []
+        : [];
+      targetRect = estimateSelfDrawLandingRect(preHand, drawnCard);
+    } catch { targetRect = null; }
     setSelfDrawIntents(prev => prev[_intentId] ? prev : {
       ...prev,
       [_intentId]: {
@@ -2668,6 +2678,7 @@ export const GinRummyGameTable = ({
         drawnCardId: drawnId,
         handContextId: handContextId ?? null,
         actionKey: _actionKey,
+        targetRect,
       },
     });
   };
