@@ -5087,6 +5087,93 @@ export const CribbageMobileGameTable = ({
     };
   }, []);
 
+  // Task C2 — sample pegging-row geometry every render while it is
+  // mounted. Cached rects are the destination fallback when the row has
+  // already unmounted by the time the animation fires (final card of the
+  // hand → phase→counting; also across the 31 rollover window).
+  useLayoutEffect(() => {
+    const row = document.querySelector(
+      '[data-wave4-pegging-row-slot="resolved"]',
+    ) as HTMLElement | null;
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    const cards = row.querySelectorAll('[data-cribbage-pegging-card]');
+    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    if (cards.length > 0) {
+      const el = cards[cards.length - 1] as HTMLElement;
+      const cr = el.getBoundingClientRect();
+      if (cr.width > 0 && cr.height > 0) {
+        rightmost = { x: cr.left, y: cr.top, width: cr.width, height: cr.height };
+      }
+    }
+    peggingRowGeoRef.current = {
+      rowRect: { x: r.left, y: r.top, width: r.width, height: r.height },
+      rightmostCardRect: rightmost,
+    };
+  });
+
+  /**
+   * Compute a viewport-space destination rect for the next pegging-row
+   * card slot. Prefer a target just to the RIGHT of the rightmost pegged
+   * card (approximates the natural next slot); otherwise center-right of
+   * the row; otherwise null (animation is skipped).
+   */
+  const computePlayCardDestRect = useCallback(():
+    | { x: number; y: number; width: number; height: number }
+    | null => {
+    // Live DOM first.
+    const row = document.querySelector(
+      '[data-wave4-pegging-row-slot="resolved"]',
+    ) as HTMLElement | null;
+    let rowRect: { x: number; y: number; width: number; height: number } | null = null;
+    let rightmost: { x: number; y: number; width: number; height: number } | null = null;
+    if (row) {
+      const rr = row.getBoundingClientRect();
+      if (rr.width > 0 && rr.height > 0) {
+        rowRect = { x: rr.left, y: rr.top, width: rr.width, height: rr.height };
+        const cards = row.querySelectorAll('[data-cribbage-pegging-card]');
+        if (cards.length > 0) {
+          const cr = (cards[cards.length - 1] as HTMLElement).getBoundingClientRect();
+          if (cr.width > 0 && cr.height > 0) {
+            rightmost = { x: cr.left, y: cr.top, width: cr.width, height: cr.height };
+          }
+        }
+      }
+    }
+    if (!rowRect) {
+      // Fallback to last-known cached geometry.
+      const cached = peggingRowGeoRef.current;
+      rowRect = cached.rowRect;
+      rightmost = cached.rightmostCardRect;
+    }
+    if (!rowRect) return null;
+    const centerY = rowRect.y + rowRect.height / 2;
+    const targetW = rightmost?.width ?? rowRect.height * 0.6;
+    const targetH = rightmost?.height ?? rowRect.height * 0.9;
+    let cx: number;
+    if (rightmost) {
+      // Sit just to the right of the current rightmost card, with a
+      // small gap. Clamp to the row's right edge minus a margin.
+      const gap = targetW * 0.15;
+      cx = rightmost.x + rightmost.width + gap + targetW / 2;
+      const rightLimit = rowRect.x + rowRect.width - targetW * 0.1;
+      if (cx > rightLimit) cx = rightLimit;
+    } else {
+      // No existing pegged cards → normal first-card area, biased right
+      // of row center so the flight has directional intent.
+      cx = rowRect.x + rowRect.width * 0.6;
+    }
+    return {
+      x: cx - targetW / 2,
+      y: centerY - targetH / 2,
+      width: targetW,
+      height: targetH,
+    };
+  }, []);
+
+
+
 
 
 
