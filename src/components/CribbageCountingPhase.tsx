@@ -816,10 +816,28 @@ export const CribbageCountingPhase = ({
     if (!currentTarget) return;
     // Don't exit if win is frozen
     if (winFrozen) return;
-    
+
+    // LIFECYCLE CONTRACT (announcement):
+    // The total (or trailing zero) announcement belongs to the target that
+    // just finished counting. Clear it BEFORE the exit animation begins so
+    // it cannot outlive the current owner's scoring beat or bleed into the
+    // next owner's entering/scoring phase.
+    announcementHiddenAtRef.current = Date.now();
+    setAnnouncementData(null);
+    onAnnouncementChange?.(null, null, undefined);
+    recordTruth('exit_start', {
+      announcementText: null,
+      announcementVisible: false,
+      announcementMounted: false,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementClearReason: 'cleared-at-exit-start',
+      contradictions: makeEmptyContradictions(),
+    });
+
     // Save current cards for exit animation
     setExitingCards([...currentTarget.hand]);
     setTransitionPhase('exiting');
+    
     
     // After exit animation, move to next target
     if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
