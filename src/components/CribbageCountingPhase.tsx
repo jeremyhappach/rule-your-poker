@@ -6,7 +6,9 @@ import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
 import { countingTruthLedger, makeEmptyContradictions, type CountingTruthEntry } from '@/lib/cribbage/countingTruthLedger';
-import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+// CribbageCountingTruthPill is mounted at CribbageMobileGameTable so it
+// escapes any transformed felt ancestor and remains visible.
+
 
 
 interface Player {
