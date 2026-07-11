@@ -169,6 +169,10 @@ export const CribbageCountingPhase = ({
   // Keep identity refs in sync every render.
   currentTargetIndexRef.current = currentTargetIndex;
   currentComboIndexRef.current = currentComboIndex;
+  // Mirror announcementData in a ref so armLowerGate can read the current
+  // announcement synchronously without pulling it into its dep array.
+  const currentAnnouncementRef = useRef(announcementData);
+  currentAnnouncementRef.current = announcementData;
 
 
 
