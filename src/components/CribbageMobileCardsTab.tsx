@@ -148,12 +148,28 @@ export const CribbageMobileCardsTab = ({
   const authoritativeHand = renderTrace?.authoritativeHand ?? null;
   const isPostDealPhase = isCribbagePostDealPhase(cribbageState.phase);
   const clippedHand = (() => {
-    if (activeHandBlocked) return [] as CribbageCard[];
-    if (!deal) return sourceHand;
-    if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return sourceHand;
+    // DEALING branch: canonical transport ownership. DealRuntime is
+    // host-keyed by handContextId (mounted above the orchestrator with
+    // key={handContextId}), so getSettledCountForPlayer inherently
+    // counts current-hand settles only. The parent's `interactionsAllowed`
+    // gate is action-legality (may the user click?), NOT render-legality
+    // — during opening deal it can transiently be false while presentation
+    // catches up to authoritative identity, causing every settled card
+    // to be masked and then batch-revealed. We therefore ignore
+    // `activeHandBlocked` inside DEALING and clip from authoritativeHand
+    // (which is drawn from the same authoritative state that produced
+    // the current handContextId), falling back to sourceHand when no
+    // authoritative snapshot is threaded through.
+    if (!deal) return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
+    if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') {
+      return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
+    }
     if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
     const allowed = deal.getSettledCountForPlayer(currentPlayerId);
-    return sourceHand.slice(0, allowed);
+    const clipSource: CribbageCard[] = (authoritativeHand && authoritativeHand.length > 0)
+      ? (authoritativeHand as CribbageCard[])
+      : sourceHand;
+    return clipSource.slice(0, allowed);
   })();
   // P0 SELF-HEAL: Run every rendered Cribbage self-hand through the shared
   // invariant helper. Presentation may animate card-by-card only while the
