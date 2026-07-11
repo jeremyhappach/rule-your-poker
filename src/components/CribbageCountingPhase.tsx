@@ -285,6 +285,19 @@ export const CribbageCountingPhase = ({
       clearTimeout(completeTimerRef.current);
       completeTimerRef.current = null;
     }
+    if (finalLowerTimersRef.current.deadman) {
+      clearTimeout(finalLowerTimersRef.current.deadman);
+      finalLowerTimersRef.current.deadman = null;
+    }
+    if (finalLowerTimersRef.current.raf != null) {
+      cancelAnimationFrame(finalLowerTimersRef.current.raf);
+      finalLowerTimersRef.current.raf = null;
+    }
+    if (finalLowerCleanupRef.current) {
+      finalLowerCleanupRef.current();
+      finalLowerCleanupRef.current = null;
+    }
+    finalLowerPendingRef.current = null;
 
     announcementHiddenAtRef.current = Date.now();
     setAnnouncementData(null);
