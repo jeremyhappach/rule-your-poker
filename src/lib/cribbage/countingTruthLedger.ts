@@ -254,5 +254,16 @@ export function makeEmptyContradictions(): CountingTruthEntry['contradictions'] 
     domCardOwnerMismatch: false,
     duplicateScoringCardDomNodes: false,
     noRaisedCardsForActiveCombo: false,
+    comboClearedButComboAnnouncementStillVisible: false,
+    comboAnnouncementVisibleDuringLower: false,
+    comboAnnouncementVisibleAfterLowerComplete: false,
+    totalPublishedBeforeComboAnnouncementCleared: false,
+    lowerResolverFiredWhileTransformsNonIdentity: false,
+    lowerResolverFiredByDeadman: false,
+    lowerPendingCardIdsMissingFromDom: false,
+    currentComboIndexPastEndButComboAnnouncementVisible: false,
+    totalSummaryVisibleBeforeAnnouncementClear: false,
+    visualLowerCompleteButNoTotal: false,
+    totalPublishedWithoutLowerComplete: false,
   };
 }
