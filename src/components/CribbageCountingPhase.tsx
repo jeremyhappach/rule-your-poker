@@ -939,20 +939,48 @@ export const CribbageCountingPhase = ({
               style={{ transformOrigin: 'center center' }}
             >
               <div className="flex items-end">
-                {cardsToShow.map((card, i) => (
-                  <div 
-                    key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
-                    ref={i === 0 ? firstCardRef : undefined}
-                    className={`transition-all duration-300 ${
-                      isCardHighlighted(card) && transitionPhase === 'scoring'
-                        ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
-                        : ''
-                    }`}
-                    style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
-                  >
-                    <CribbagePlayingCard card={card} size="md" />
-                  </div>
-                ))}
+                {cardsToShow.map((card, i) => {
+                  const highlighted = isCardHighlighted(card) && transitionPhase === 'scoring';
+                  const comboIds = new Set(
+                    (currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+                      ? currentCombos[currentComboIndex].cards
+                      : []
+                    ).map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`),
+                  );
+                  const cardId = `${card.rank}${card.suit?.[0] ?? '?'}`;
+                  const ownerId = currentTarget?.playerId ?? '';
+                  const role: 'crib' | 'dealer' | 'opponent' =
+                    currentTarget?.type === 'crib'
+                      ? 'crib'
+                      : ownerId === cribbageState.dealerPlayerId
+                        ? 'dealer'
+                        : 'opponent';
+                  return (
+                    <div
+                      key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
+                      ref={i === 0 ? firstCardRef : undefined}
+                      data-cribbage-scoring-card="true"
+                      data-card-id={cardId}
+                      data-card-rank={card.rank}
+                      data-card-suit={card.suit}
+                      data-card-owner={ownerId}
+                      data-card-role={role}
+                      data-card-highlighted={highlighted ? 'true' : 'false'}
+                      data-card-dimmed="false"
+                      data-scoring-owner-match="true"
+                      data-combo-member={comboIds.has(cardId) ? 'true' : 'false'}
+                      className={`transition-all duration-300 ${
+                        highlighted
+                          ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                          : ''
+                      }`}
+                      style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
+                    >
+                      <CribbagePlayingCard card={card} size="md" />
+                    </div>
+                  );
+                })}
+
               </div>
             </div>
             
