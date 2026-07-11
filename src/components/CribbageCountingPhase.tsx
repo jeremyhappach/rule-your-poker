@@ -1024,7 +1024,7 @@ export const CribbageCountingPhase = ({
           </div>
         </div>
       </div>
-      <CribbageCountingTruthPill />
+      {/* CribbageCountingTruthPill mounted at CribbageMobileGameTable */}
     </>
 
   );
