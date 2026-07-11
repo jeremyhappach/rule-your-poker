@@ -5390,6 +5390,10 @@ export const CribbageMobileGameTable = ({
       // Clear any stuck withhold across round boundaries.
       setWithheldPlayedCardKey(null);
       setPlayCardIntent(null);
+      // Turn 2 — hand-identity reset: clear boundary release identity and
+      // any stuck writer lock so a new hand starts from a clean baseline.
+      setLastReleasedBoundaryEventId(null);
+      releasePlayWriterLock(null, 'hand-identity-reset');
       if (playCardSafetyTimerRef.current) {
         clearTimeout(playCardSafetyTimerRef.current);
         playCardSafetyTimerRef.current = null;
