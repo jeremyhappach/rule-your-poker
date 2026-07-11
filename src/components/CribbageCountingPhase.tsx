@@ -80,7 +80,17 @@ export const CribbageCountingPhase = ({
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
   // Store announcement WITH its target label to prevent label mismatch during transitions
-  const [announcementData, setAnnouncementData] = useState<{ text: string; targetLabel: string; key: number } | null>(null);
+  // Announcement carries owner-identity (targetIndex + comboIndex) so the
+  // render layer can identity-suppress stale prior-owner announcements
+  // and hard-guarantee the render never bleeds into the next owner.
+  const [announcementData, setAnnouncementData] = useState<{
+    text: string;
+    targetLabel: string;
+    key: number;
+    targetIndex: number;
+    comboIndex: number;
+    category: CountingTruthEntry['announcementCategory'];
+  } | null>(null);
   const [animatedScores, setAnimatedScores] = useState<Record<string, number>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
