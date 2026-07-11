@@ -162,23 +162,32 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
     };
   }
 
-  // Parent suppression during a non-terminal deal lifecycle: honor it.
-  if (parentSuppressed) {
-    return {
-      hand: [],
-      decision: 'render-empty-blocked-current-hand',
-      reason: 'parent suppressed within non-terminal deal lifecycle',
-    };
-  }
-
-  // In-flight deal: show whatever transport has revealed so far.
+  // In-flight deal with visible progress: canonical transport ownership
+  // is the authoritative source during the deal window. The parent's
+  // `parentSuppressed` gate is action-legality (interactionsAllowed),
+  // not render-legality — during opening deal it can transiently be
+  // false while presentation identity catches up, and honoring it here
+  // would mask each settled card and then batch-reveal them all at
+  // once when identity converges. When transport has produced a
+  // non-empty settled prefix, presentation wins.
   if (transportInFlight && presCount > 0) {
     return {
       hand: presentation,
       decision: 'render-presentation',
-      reason: 'in-flight deal; rendering settled prefix',
+      reason: 'in-flight deal; rendering settled prefix (parent action-gate ignored)',
     };
   }
+
+  // Parent suppression during a non-terminal deal lifecycle with no
+  // settled prefix yet: nothing to show anyway; honor it.
+  if (parentSuppressed) {
+    return {
+      hand: [],
+      decision: 'render-empty-blocked-current-hand',
+      reason: 'parent suppressed within non-terminal deal lifecycle (no settled prefix)',
+    };
+  }
+
 
   if (presCount > 0) {
     return {

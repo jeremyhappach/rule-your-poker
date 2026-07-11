@@ -142,6 +142,30 @@ export function CribbageDealOrchestrator({
       return;
     }
 
+    // Durable canonical gate — hand identity outlives orchestrator mount.
+    // DealRuntime is mounted above this component with key={handContextId}
+    // (see DealRuntimeMaybe in CribbageMobileGameTable), so its phase
+    // state survives every orchestrator unmount/remount within the same
+    // hand. If the runtime has already left PRE_DEAL for this
+    // handContextId, dispatch has already been accepted — a remount
+    // (caused by any of the conditional-mount inputs briefly flapping)
+    // must NOT redispatch, because beginDeal() would wipe already-
+    // accumulated settledCardIds and force a fresh DEALING lifecycle.
+    if (deal.phase !== 'PRE_DEAL') {
+      dispatchedRef.current = true;
+      recordCribbageWartime('deal', 'duplicate_dispatch_suppressed_by_runtime', {
+        handContextId,
+        runtimePhase: deal.phase,
+        reason: 'DealRuntime already past PRE_DEAL for this handContextId (durable canonical gate)',
+      }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'dispatchEffect.runtimeGate',
+        dedupeKey: `dupRuntime:${handContextId}:${deal.phase}`,
+      });
+      return;
+    }
+
+
     if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
