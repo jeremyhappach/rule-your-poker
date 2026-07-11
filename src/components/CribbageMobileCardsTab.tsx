@@ -167,7 +167,7 @@ export const CribbageMobileCardsTab = ({
     dealPhase: deal?.phase ?? null,
     dealExpectedCount: deal?.expectedCount ?? 0,
     dealActiveIntentCount: deal?.activeIntentsForHand ?? 0,
-    graceExpired,
+    
   });
 
   const shouldSelfHeal = visibleHandDecision.decision === 'render-authoritative-self-heal';
