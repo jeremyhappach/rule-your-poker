@@ -904,18 +904,36 @@ export const CribbageCountingPhase = ({
     }, EXIT_ANIMATION_MS);
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
-  // Propagate announcements to parent for dealer announcement area
-  // Uses announcementData which atomically stores text + targetLabel to prevent mismatch during transitions
+  // Propagate announcements to parent for dealer announcement area.
+  //
+  // LIFECYCLE CONTRACT: The announcement is IDENTITY-KEYED to the scoring
+  // owner (targetIndex) it was emitted for. If the current scoring target
+  // has advanced past the announcement's target, or if we are no longer in
+  // the 'scoring' phase for a combo announcement, we render `null` to the
+  // parent — the stale announcement can never appear against a new owner.
   useEffect(() => {
     if (winFrozen) return;
-    if (onAnnouncementChange) {
-      onAnnouncementChange(
-        announcementData?.text ?? null, 
-        announcementData?.targetLabel ?? null, 
-        announcementData?.key
-      );
+    if (!onAnnouncementChange) return;
+    const stale =
+      announcementData != null &&
+      announcementData.targetIndex !== currentTargetIndex;
+    // Combo announcements only belong to the 'scoring' phase — during
+    // 'exiting'/'entering' they are treated as stale so they cannot bleed
+    // across the target boundary.
+    const phaseStale =
+      announcementData != null &&
+      announcementData.category === 'combo' &&
+      transitionPhase !== 'scoring';
+    if (announcementData == null || stale || phaseStale) {
+      onAnnouncementChange(null, null, undefined);
+      return;
     }
-  }, [announcementData, onAnnouncementChange, winFrozen]);
+    onAnnouncementChange(
+      announcementData.text,
+      announcementData.targetLabel,
+      announcementData.key,
+    );
+  }, [announcementData, onAnnouncementChange, winFrozen, currentTargetIndex, transitionPhase]);
 
   // Cleanup on unmount
   useEffect(() => {
