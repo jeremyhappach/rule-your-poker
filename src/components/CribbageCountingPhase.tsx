@@ -6,6 +6,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
 import { countingTruthLedger, makeEmptyContradictions, type CountingTruthEntry } from '@/lib/cribbage/countingTruthLedger';
+import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
 // CribbageCountingTruthPill is mounted at CribbageMobileGameTable so it
 // escapes any transformed felt ancestor and remains visible.
 
@@ -122,6 +123,17 @@ export const CribbageCountingPhase = ({
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
       onAnnouncementChange?.(text, targetLabel, key);
+      // Direct wartime emission — announcement publish (combo|total|zero).
+      recordCribbageWartime(
+        'counting',
+        category === 'total' ? 'total_announcement_publish' : 'combo_announcement_publish',
+        { text, targetLabel, targetIndex, comboIndex, category, key, publishedAt: now },
+        {
+          producerComponent: 'CribbageCountingPhase',
+          producerFunction: 'publishAnnouncement',
+          dedupeKey: `pub:${category}:${targetIndex}:${comboIndex}:${key}`,
+        },
+      );
       countingTruthLedger.record({
         source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
         ...truthSnapshotRef.current,
@@ -173,6 +185,31 @@ export const CribbageCountingPhase = ({
   // announcement synchronously without pulling it into its dep array.
   const currentAnnouncementRef = useRef(announcementData);
   currentAnnouncementRef.current = announcementData;
+
+  // Direct wartime — scoring target enter / advance.
+  const lastTargetRef = useRef<number>(-1);
+  useEffect(() => {
+    if (lastTargetRef.current === currentTargetIndex) return;
+    const prev = lastTargetRef.current;
+    lastTargetRef.current = currentTargetIndex;
+    recordCribbageWartime('counting', prev < 0 ? 'scoring_target_enter' : 'scoring_target_advance', {
+      prev, next: currentTargetIndex,
+    }, {
+      producerComponent: 'CribbageCountingPhase',
+      producerFunction: 'targetIndexEffect',
+      dedupeKey: `target:${currentTargetIndex}`,
+    });
+    if (prev >= 0) {
+      recordCribbageWartime('counting', 'next_scoring_target_enter', {
+        prev, next: currentTargetIndex,
+      }, {
+        producerComponent: 'CribbageCountingPhase',
+        producerFunction: 'targetIndexEffect',
+        dedupeKey: `nextTarget:${currentTargetIndex}`,
+      });
+    }
+  }, [currentTargetIndex]);
+
 
 
 

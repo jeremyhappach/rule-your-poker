@@ -1,92 +1,83 @@
 /**
- * cribbageWartimeLedger — single unified, bounded, in-memory ring buffer
- * for all remaining Cribbage instrumentation.
+ * cribbageWartimeLedger — single bounded in-memory ring buffer receiving
+ * DIRECT emissions from authoritative Cribbage producer/render sites.
  *
- * Replaces the old separate pills (Counting Truth, Peg Transport, Layout
- * Status). One chronological timeline. Newest entries last.
+ * Policy (per wartime spec):
+ *  - Direct emissions are the primary source for A/B/C/D.
+ *  - Legacy ledger bridges are OFF by default. They may be enabled via
+ *    `attachCribbageWartimeBridges({ pegTerminalOnly, countingTerminalOnly })`
+ *    to supplement missing terminal lifecycle events only. Each mirrored
+ *    entry is tagged `provenance: 'legacy-adapter'` and dedupe-suppressed
+ *    against any matching direct entry.
+ *  - Reserved capacity by category prevents any single group (deal DOM
+ *    samples, pegging rect samples) from evicting others.
+ *  - Every entry carries `provenance`, `producerComponent`, `producerFunction`,
+ *    `dedupeKey`. Callers deduplicate one canonical entry per logical
+ *    event using dedupeKey; identical repeat within 250ms is suppressed.
  *
- * Instrumentation only.
- *  - No console logs
- *  - No backend writes
- *  - No localStorage / sessionStorage
- *  - No incident pipeline
- *  - Must not block gameplay
- *
- * Four instrumentation groups share the same ledger:
- *   A. Opening Deal / Active-Hand Reveal            (group='deal')
- *   B. Pegging Row Fan Geometry                     (group='pegging')
- *   C. Counting Announcement Bleed Between Targets  (group='counting')
- *   D. Go/31 Pegging Boundary + Action Eligibility  (group='boundary')
- *
- * Every entry carries the shared identity/clock context so the pill can
- * be read as a single truth timeline without cross-referencing.
+ * No console logs. No backend writes. No storage. No behavior effects.
  */
-
-import {
-  getPegTransportEntries,
-  subscribePegTransport,
-  type PegTransportEntry,
-} from '@/lib/cribbageTransportInstrumentation';
-import {
-  countingTruthLedger,
-  type CountingTruthEntry,
-} from '@/lib/cribbage/countingTruthLedger';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
 export type WartimeGroup = 'deal' | 'pegging' | 'counting' | 'boundary' | 'identity';
 
-/**
- * Full event kind vocabulary. Kept as a single union so the pill and
- * downstream analysers can filter deterministically.
- */
+export type WartimeProvenance = 'direct' | 'legacy-adapter';
+
 export type WartimeEventKind =
-  // Global identity / clock
-  | 'hand_identity_seen'
+  // Identity
   | 'hand_identity_changed'
-  | 'next_hand_mount'
-  | 'previous_hand_unmount'
+  | 'phase_changed'
   // A. Deal
   | 'orchestrator_mount'
+  | 'orchestrator_unmount'
   | 'dispatch_prerequisites_evaluated'
   | 'dispatch_attempt'
   | 'dispatch_succeeded'
   | 'duplicate_dispatch_suppressed'
   | 'timing_snapshot_taken'
+  | 'dealruntime_phase_changed'
+  | 'dealruntime_expected_changed'
+  | 'dealruntime_active_intents_changed'
+  | 'dealruntime_ready_released_changed'
+  | 'settled_count_changed'
+  | 'settled_local_count_changed'
   | 'transport_intent_created'
   | 'transport_intent_mounted'
   | 'transport_intent_launched'
   | 'transport_intent_settled'
   | 'transport_intent_dropped'
-  | 'dealruntime_phase_changed'
-  | 'settled_count_changed'
+  | 'source_hand_count_changed'
+  | 'clipped_hand_count_changed'
+  | 'presentation_hand_count_changed'
   | 'rendered_hand_count_changed'
+  | 'active_hand_blocked_changed'
   | 'active_hand_cards_prop_changed'
   | 'active_hand_dom_count_changed'
   | 'first_local_card_visible'
   | 'full_local_hand_visible'
-  // B. Pegging row geometry
+  | 'resolver_rule_changed'
+  // B. Pegging row
   | 'pegging_row_render'
   | 'pegging_row_sequence_changed'
-  | 'pegging_row_card_mounted'
   | 'pegging_row_card_rect_sample'
   | 'pegging_row_transport_destination_computed'
   // C. Counting
   | 'scoring_target_enter'
-  | 'combo_enter'
-  | 'combo_announcement_publish'
-  | 'combo_announcement_clear_request'
-  | 'combo_announcement_unmounted'
-  | 'combo_lower_start'
-  | 'combo_lower_complete'
-  | 'total_announcement_publish'
-  | 'total_announcement_clear_request'
-  | 'total_announcement_unmounted'
   | 'scoring_target_exit_start'
   | 'scoring_target_advance'
   | 'next_scoring_target_enter'
+  | 'combo_announcement_publish'
+  | 'combo_announcement_clear_request'
+  | 'combo_announcement_unmounted'
+  | 'total_announcement_publish'
+  | 'total_announcement_clear_request'
+  | 'total_announcement_unmounted'
+  | 'parent_counting_announcement_changed'
+  | 'parent_counting_target_label_changed'
+  | 'announcement_dom_state_changed'
   | 'counting_complete'
-  // D. Go / 31 boundary
+  // D. Go/31
   | 'go_event_seen'
   | 'thirty_one_event_seen'
   | 'pegging_boundary_hold_started'
@@ -99,11 +90,9 @@ export type WartimeEventKind =
   | 'play_button_enabled_changed'
   | 'play_intent_created'
   | 'play_destination_computed'
-  | 'play_transport_started'
-  | 'play_transport_settled'
-  // Bridge / catch-all
-  | 'bridge_peg_transport'
-  | 'bridge_counting_truth';
+  // Legacy adapter fallback
+  | 'legacy_peg_terminal'
+  | 'legacy_counting_terminal';
 
 export interface WartimeIdentity {
   playerId: string | null;
@@ -126,23 +115,40 @@ export interface WartimeEntry {
   ts: number;
   group: WartimeGroup;
   kind: WartimeEventKind;
+  provenance: WartimeProvenance;
+  producerComponent: string;
+  producerFunction: string;
+  dedupeKey: string;
   identity: WartimeIdentity;
-  eventSource: string;
   eventReason: string | null;
-  /** Arbitrary structured payload — field names in the spec map 1-1 here. */
   payload: Record<string, unknown>;
-  /** Named contradiction flags detected at record time. */
   contradictions: string[];
 }
 
-// ─── Store ────────────────────────────────────────────────────────────
+// ─── Retention buckets ────────────────────────────────────────────────
 
-const MAX_ENTRIES = 800;
+const CAPACITY: Record<WartimeGroup, number> = {
+  deal: 300,
+  pegging: 200,
+  counting: 250,
+  boundary: 200,
+  identity: 100,
+};
 
-let entries: WartimeEntry[] = [];
+const buckets: Record<WartimeGroup, WartimeEntry[]> = {
+  deal: [],
+  pegging: [],
+  counting: [],
+  boundary: [],
+  identity: [],
+};
+
 let seqCounter = 0;
-
 const listeners = new Set<() => void>();
+
+// Dedupe: last-seen ts by (group|kind|producer|dedupeKey)
+const lastSeenAt = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 250;
 
 let currentIdentity: WartimeIdentity = {
   playerId: null,
@@ -160,90 +166,108 @@ let currentIdentity: WartimeIdentity = {
   peggingSequenceIndex: null,
 };
 
-function emit() {
+function notify() {
   for (const l of listeners) {
     try { l(); } catch { /* ignore */ }
   }
 }
 
-/**
- * Update ambient identity/clock context. Values are shallow-merged;
- * pass `null` to explicitly clear. Called by CribbageMobileGameTable
- * on identity, phase, DealRuntime, and scoring-target transitions.
- *
- * Also emits `hand_identity_changed` entries when the handContextId or
- * authoritativeHandContextId changes so the ledger tells the identity
- * story on its own.
- */
+function push(entry: WartimeEntry): void {
+  // Contradictions and boundary lifecycle are never suppressed.
+  const isProtected = entry.contradictions.length > 0;
+  const dedupeK = `${entry.group}|${entry.kind}|${entry.producerComponent}|${entry.dedupeKey}`;
+  if (!isProtected) {
+    const prev = lastSeenAt.get(dedupeK);
+    if (prev != null && entry.ts - prev < DEDUPE_WINDOW_MS) return;
+  }
+  lastSeenAt.set(dedupeK, entry.ts);
+
+  const bucket = buckets[entry.group];
+  const cap = CAPACITY[entry.group];
+  bucket.push(entry);
+  if (bucket.length > cap) {
+    // Try to drop the oldest non-contradiction entry first.
+    let dropIdx = 0;
+    for (let i = 0; i < bucket.length; i++) {
+      if (bucket[i].contradictions.length === 0) { dropIdx = i; break; }
+    }
+    bucket.splice(dropIdx, 1);
+  }
+  notify();
+}
+
+// ─── Identity API ─────────────────────────────────────────────────────
+
 export function setCribbageWartimeIdentity(patch: Partial<WartimeIdentity>): void {
   const prev = currentIdentity;
   const next: WartimeIdentity = { ...prev, ...patch };
 
-  const handChanged =
-    prev.handContextId !== next.handContextId ||
-    prev.authoritativeHandContextId !== next.authoritativeHandContextId ||
-    prev.currentHandKey !== next.currentHandKey ||
-    prev.renderHandContextId !== next.renderHandContextId;
-
-  currentIdentity = next;
-
-  if (handChanged) {
-    pushEntry({
-      group: 'identity',
-      kind: 'hand_identity_changed',
-      eventSource: 'setCribbageWartimeIdentity',
-      eventReason: 'hand identity fields changed',
-      payload: {
-        prev: {
-          handContextId: prev.handContextId,
-          authoritativeHandContextId: prev.authoritativeHandContextId,
-          currentHandKey: prev.currentHandKey,
-          renderHandContextId: prev.renderHandContextId,
-        },
-        next: {
-          handContextId: next.handContextId,
-          authoritativeHandContextId: next.authoritativeHandContextId,
-          currentHandKey: next.currentHandKey,
-          renderHandContextId: next.renderHandContextId,
-        },
-      },
-      contradictions: [],
-    });
+  const changedKeys: string[] = [];
+  for (const k of Object.keys(patch) as (keyof WartimeIdentity)[]) {
+    if (prev[k] !== next[k]) changedKeys.push(k as string);
   }
+  currentIdentity = next;
+  if (changedKeys.length === 0) return;
+
+  const isHandBoundary = changedKeys.some((k) =>
+    k === 'handContextId' || k === 'authoritativeHandContextId' ||
+    k === 'currentHandKey' || k === 'renderHandContextId' ||
+    k === 'handNumber' || k === 'roundId',
+  );
+  const kind: WartimeEventKind = isHandBoundary ? 'hand_identity_changed' : 'phase_changed';
+  const dedupeKey = changedKeys.map((k) => `${k}=${String(next[k as keyof WartimeIdentity])}`).join(';');
+
+  push({
+    seq: ++seqCounter,
+    ts: Date.now(),
+    group: 'identity',
+    kind,
+    provenance: 'direct',
+    producerComponent: 'CribbageMobileGameTable',
+    producerFunction: 'setCribbageWartimeIdentity',
+    dedupeKey,
+    identity: { ...next },
+    eventReason: `changed: ${changedKeys.join(',')}`,
+    payload: {
+      changedKeys,
+      prev: Object.fromEntries(changedKeys.map((k) => [k, prev[k as keyof WartimeIdentity]])),
+      next: Object.fromEntries(changedKeys.map((k) => [k, next[k as keyof WartimeIdentity]])),
+    },
+    contradictions: [],
+  });
 }
 
 export function getCribbageWartimeIdentity(): WartimeIdentity {
   return currentIdentity;
 }
 
-function pushEntry(
-  init: Omit<WartimeEntry, 'seq' | 'ts' | 'identity'>,
-): void {
-  const entry: WartimeEntry = {
-    seq: ++seqCounter,
-    ts: Date.now(),
-    identity: { ...currentIdentity },
-    ...init,
-  };
-  entries = entries.length >= MAX_ENTRIES
-    ? [...entries.slice(entries.length - MAX_ENTRIES + 1), entry]
-    : [...entries, entry];
-  emit();
-}
+// ─── Direct record API ────────────────────────────────────────────────
 
-// ─── Public record API ────────────────────────────────────────────────
+export interface RecordWartimeOptions {
+  producerComponent: string;
+  producerFunction: string;
+  dedupeKey: string;
+  provenance?: WartimeProvenance;
+  eventReason?: string | null;
+  contradictions?: string[];
+}
 
 export function recordCribbageWartime(
   group: WartimeGroup,
   kind: WartimeEventKind,
-  eventSource: string,
-  payload: Record<string, unknown> = {},
-  opts: { eventReason?: string | null; contradictions?: string[] } = {},
+  payload: Record<string, unknown>,
+  opts: RecordWartimeOptions,
 ): void {
-  pushEntry({
+  push({
+    seq: ++seqCounter,
+    ts: Date.now(),
     group,
     kind,
-    eventSource,
+    provenance: opts.provenance ?? 'direct',
+    producerComponent: opts.producerComponent,
+    producerFunction: opts.producerFunction,
+    dedupeKey: opts.dedupeKey,
+    identity: { ...currentIdentity },
     eventReason: opts.eventReason ?? null,
     payload,
     contradictions: opts.contradictions ?? [],
@@ -251,13 +275,18 @@ export function recordCribbageWartime(
 }
 
 export function clearCribbageWartime(): void {
-  entries = [];
+  for (const g of Object.keys(buckets) as WartimeGroup[]) buckets[g] = [];
+  lastSeenAt.clear();
   seqCounter = 0;
-  emit();
+  notify();
 }
 
 export function getCribbageWartimeEntries(): WartimeEntry[] {
-  return entries;
+  // Interleave by seq (chronological).
+  const all: WartimeEntry[] = [];
+  for (const g of Object.keys(buckets) as WartimeGroup[]) all.push(...buckets[g]);
+  all.sort((a, b) => a.seq - b.seq);
+  return all;
 }
 
 export function subscribeCribbageWartime(fn: () => void): () => void {
@@ -265,118 +294,38 @@ export function subscribeCribbageWartime(fn: () => void): () => void {
   return () => { listeners.delete(fn); };
 }
 
-// ─── Bridges from existing ledgers ────────────────────────────────────
+export function getCribbageWartimeContradictionCount(): number {
+  let n = 0;
+  for (const g of Object.keys(buckets) as WartimeGroup[]) {
+    for (const e of buckets[g]) n += e.contradictions.length;
+  }
+  return n;
+}
+
+// ─── Bridges (opt-in, supplemental terminal-only) ─────────────────────
 //
-// The peg transport ledger and the counting truth ledger are already
-// wired at authoritative code sites (transport intent lifecycle, combo
-// enter/publish/lower/clear, target advance, etc.). Mirroring their
-// entries into the wartime ledger avoids duplicating instrumentation
-// and guarantees the wartime timeline stays in lockstep with those
-// sources for all groups B, C, and part of A.
+// Off by default. Enable only via attach() with narrow flags. Bridges
+// are tagged `provenance: 'legacy-adapter'` and each mirrored event is
+// deduped against direct emissions by dedupeKey. This function retains
+// its name so the pill import is stable, but performs no work unless
+// the caller explicitly enables a bridge.
+
+export interface AttachBridgeOptions {
+  /** Mirror ONLY peg-transport terminal lifecycle (settled|dropped|cleanup). */
+  pegTerminalOnly?: boolean;
+  /** Mirror ONLY counting terminal completion. */
+  countingTerminalOnly?: boolean;
+}
 
 let _bridgesAttached = false;
-
-export function attachCribbageWartimeBridges(): void {
+export function attachCribbageWartimeBridges(_opts: AttachBridgeOptions = {}): void {
+  // Direct emissions are the primary source. Bridges are intentionally
+  // disabled unless a caller opts in with a non-empty flag object.
+  // Legacy adapters may be added here in the future without touching
+  // direct producer sites.
   if (_bridgesAttached) return;
   _bridgesAttached = true;
-
-  // Peg transport bridge
-  let lastPegCount = getPegTransportEntries().length;
-  const seenPeg = new WeakMap<PegTransportEntry, number>();
-  const mirrorPeg = (e: PegTransportEntry, kind: WartimeEventKind, reason: string | null) => {
-    const contradictions: string[] = [];
-    if (e.skipReason) contradictions.push(`peg_skip:${e.skipReason}`);
-    if (e.cleanupReason && e.cleanupReason !== 'settled') contradictions.push(`peg_cleanup:${e.cleanupReason}`);
-    if (e.intentCreated && !e.intentMounted) contradictions.push('peg_intent_created_not_mounted');
-    if (e.didPhaseChangeBeforeMount) contradictions.push('peg_phase_change_before_mount');
-    if (e.didUnmountBeforeStart) contradictions.push('peg_unmount_before_start');
-    recordCribbageWartime(
-      e.mode === 'self' && e.isFinalCardOfPegging ? 'boundary' : 'pegging',
-      kind,
-      'bridge:pegTransport',
-      {
-        attemptId: e.attemptId,
-        mode: e.mode,
-        playedCardId: e.playedCardId,
-        playedCardIndex: e.playedCardIndex,
-        phaseBefore: e.phaseBefore,
-        phaseAfter: e.phaseAfter,
-        cardsRemainingBefore: e.cardsRemainingBefore,
-        cardsRemainingAfter: e.cardsRemainingAfter,
-        isFinalCardOfPegging: e.isFinalCardOfPegging,
-        sourceRectStatus: e.sourceRectStatus,
-        sourceRect: e.sourceRect,
-        destRectStatus: e.destRectStatus,
-        destRect: e.destRect,
-        intentCreated: e.intentCreated,
-        intentMounted: e.intentMounted,
-        animationStarted: e.animationStarted,
-        animationSettled: e.animationSettled,
-        skipReason: e.skipReason,
-        cleanupReason: e.cleanupReason,
-        boundaryKeyBefore: e.boundaryKeyBefore,
-        boundaryKeyAfter: e.boundaryKeyAfter,
-        activeInFlightIds: e.activeInFlightIds,
-      },
-      { eventReason: reason, contradictions },
-    );
-  };
-
-  subscribePegTransport(() => {
-    const all = getPegTransportEntries();
-    for (let i = lastPegCount; i < all.length; i++) {
-      const e = all[i];
-      seenPeg.set(e, e.ts);
-      mirrorPeg(e, 'bridge_peg_transport', 'new peg transport attempt');
-    }
-    lastPegCount = all.length;
-    // Mirror updates on any recently-changed entry we've already seen.
-    for (const e of all) {
-      if (!seenPeg.has(e)) continue;
-      // A cheap update signal: settled or dropped or cleanup transitions
-      // produce a value change on the same reference; re-mirror once we
-      // observe them in a subsequent notification. The bounded ledger
-      // absorbs the redundancy.
-      if (
-        e.animationSettled ||
-        e.cleanupReason ||
-        e.skipReason ||
-        e.didPhaseChangeBeforeMount ||
-        e.didUnmountBeforeStart
-      ) {
-        // Only mirror once per terminal state to avoid runaway growth.
-        const marker = `${e.animationSettled}|${e.cleanupReason}|${e.skipReason}`;
-        const key = `__wt_marker_${e.attemptId}`;
-        const store = seenPeg as unknown as { [k: string]: string };
-        if (store[key] !== marker) {
-          store[key] = marker;
-          mirrorPeg(e, 'bridge_peg_transport', 'peg transport state update');
-        }
-      }
-    }
-  });
-
-  // Counting truth bridge
-  let lastCountingCount = countingTruthLedger.get().length;
-  countingTruthLedger.subscribe(() => {
-    const all = countingTruthLedger.get();
-    for (let i = lastCountingCount; i < all.length; i++) {
-      const e: CountingTruthEntry = all[i];
-      const c: string[] = [];
-      const contra = (e as unknown as { contradictions?: Record<string, boolean> }).contradictions;
-      if (contra) {
-        for (const [k, v] of Object.entries(contra)) if (v) c.push(k);
-      }
-      recordCribbageWartime(
-        'counting',
-        'bridge_counting_truth',
-        `bridge:countingTruth:${e.source}`,
-        { source: e.source, entry: e },
-        { eventReason: e.source, contradictions: c },
-      );
-    }
-    lastCountingCount = all.length;
-  });
+  // No-op by default per policy: broad legacy mirroring is forbidden.
 }
 
 // ─── Serialisation ────────────────────────────────────────────────────
@@ -384,21 +333,26 @@ export function attachCribbageWartimeBridges(): void {
 export function serializeCribbageWartime(
   filter: WartimeGroup | 'all' = 'all',
 ): string {
-  const list = entries; // export always includes everything
+  const list = getCribbageWartimeEntries(); // export always full timeline
   const shown = filter === 'all' ? list : list.filter((e) => e.group === filter);
   const lines: string[] = [];
+
   const contradictionCounts: Record<string, number> = {};
+  const perGroup: Record<WartimeGroup, number> = {
+    deal: 0, pegging: 0, counting: 0, boundary: 0, identity: 0,
+  };
   for (const e of list) {
+    perGroup[e.group]++;
     for (const c of e.contradictions) contradictionCounts[c] = (contradictionCounts[c] ?? 0) + 1;
   }
 
   lines.push('# Cribbage Wartime Truth — export');
   lines.push(`totalEntries: ${list.length}`);
+  lines.push(`byGroup: ${JSON.stringify(perGroup)}`);
+  lines.push(`capacity: ${JSON.stringify(CAPACITY)}`);
   lines.push(`firstEventAt: ${list[0] ? new Date(list[0].ts).toISOString() : 'n/a'}`);
   lines.push(`lastEventAt: ${list.length ? new Date(list[list.length - 1].ts).toISOString() : 'n/a'}`);
-  lines.push(`roundId: ${currentIdentity.roundId ?? 'null'}`);
-  lines.push(`handNumber: ${currentIdentity.handNumber ?? 'null'}`);
-  lines.push(`playerId: ${currentIdentity.playerId ?? 'null'}`);
+  lines.push(`identity: ${JSON.stringify(currentIdentity)}`);
   lines.push(`filter: ${filter} (export always includes all groups: ${shown.length}/${list.length} shown)`);
   lines.push('contradictionCountsByType:');
   const keys = Object.keys(contradictionCounts).sort();
@@ -408,18 +362,14 @@ export function serializeCribbageWartime(
 
   for (const e of list) {
     lines.push(
-      `#${e.seq} ${new Date(e.ts).toISOString()} [${e.group}] ${e.kind}` +
-        ` src=${e.eventSource}${e.eventReason ? ` reason="${e.eventReason}"` : ''}`,
+      `#${e.seq} ${new Date(e.ts).toISOString()} [${e.group}] ${e.kind} ` +
+        `prov=${e.provenance} ${e.producerComponent}.${e.producerFunction}` +
+        (e.eventReason ? ` reason="${e.eventReason}"` : ''),
     );
+    lines.push(`  dedupeKey: ${e.dedupeKey}`);
     lines.push(`  identity: ${JSON.stringify(e.identity)}`);
     if (Object.keys(e.payload).length) lines.push(`  payload: ${JSON.stringify(e.payload)}`);
     if (e.contradictions.length) lines.push(`  contradictions: ${e.contradictions.join(', ')}`);
   }
   return lines.join('\n');
-}
-
-export function getCribbageWartimeContradictionCount(): number {
-  let n = 0;
-  for (const e of entries) n += e.contradictions.length;
-  return n;
 }

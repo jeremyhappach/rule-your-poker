@@ -23,6 +23,11 @@ import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 import { CribbageWartimeTruthPill } from './CribbageWartimeTruthPill';
+import { CribbageWartimeDealRuntimeBridge } from './CribbageWartimeDealRuntimeBridge';
+import {
+  recordCribbageWartime,
+  setCribbageWartimeIdentity,
+} from '@/lib/cribbage/cribbageWartimeLedger';
 
 import {
   recordPegTransportAttempt,
@@ -1363,6 +1368,9 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
+
+
+
   // ── Action identity guard ──
   // A user-driven mutation (discard / play / Go) may only fire when the rendered
   // hand identity matches the authoritative actionable hand identity end-to-end:
@@ -2047,6 +2055,26 @@ export const CribbageMobileGameTable = ({
   // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
+
+  // Wartime identity — direct emission of ambient identity for every
+  // wartime ledger entry. Instrumentation only.
+  useEffect(() => {
+    setCribbageWartimeIdentity({
+      playerId: currentPlayerId ?? null,
+      roundId: currentRoundId ?? null,
+      handNumber: currentHandNumber ?? null,
+      handContextId: currentHandKey ?? null,
+      currentHandKey: currentHandKey ?? null,
+      renderHandContextId: renderHandKey ?? null,
+      authoritativeHandContextId: currentHandKey ?? null,
+      phase: cribbageState?.phase ?? null,
+      peggingSequenceIndex: cribbageState?.pegging?.sequenceStartIndex ?? null,
+    });
+  }, [
+    currentPlayerId, currentRoundId, currentHandNumber,
+    currentHandKey, renderHandKey,
+    cribbageState?.phase, cribbageState?.pegging?.sequenceStartIndex,
+  ]);
 
   // Canonical cards-tab attention: local player has a real actionable
   // cribbage decision (discard-to-crib or pegging turn). Red wins over
@@ -7444,6 +7472,14 @@ export const CribbageMobileGameTable = ({
                   />
 
                 ) : null}
+
+                {currentHandKey && currentPlayerId ? (
+                  <CribbageWartimeDealRuntimeBridge
+                    handContextId={currentHandKey}
+                    selfPlayerId={currentPlayerId}
+                  />
+                ) : null}
+
 
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
                     portals itself into the canonical felt frame so the

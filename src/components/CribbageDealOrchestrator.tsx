@@ -30,6 +30,8 @@ import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
+import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+
 
 
 interface SeatEntry {
@@ -77,22 +79,84 @@ export function CribbageDealOrchestrator({
 
   useEffect(() => {
     onLifecycle?.('mounted');
-    return () => onLifecycle?.('unmounted');
-  }, [onLifecycle]);
+    recordCribbageWartime('deal', 'orchestrator_mount', {
+      handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer,
+      seatCount: seats.length, dealerGameId, roundId, handNumber,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'mount',
+      dedupeKey: `mount:${handContextId}`,
+    });
+    return () => {
+      onLifecycle?.('unmounted');
+      recordCribbageWartime('deal', 'orchestrator_unmount', { handContextId }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'unmount',
+        dedupeKey: `unmount:${handContextId}`,
+      });
+    };
+  }, [onLifecycle, handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer, seats.length, dealerGameId, roundId, handNumber]);
+
+
+
+  // (dispatch effect follows)
 
 
   useEffect(() => {
-    if (!deal || dispatchedRef.current) return;
-    
+    // Prerequisites evaluation — always emitted (coalesced by dedupeKey).
+    const dealerSeatEarly = seats.find(s => s.playerId === dealerPlayerId);
+    const prereqPayload = {
+      hasDeal: !!deal,
+      alreadyDispatched: dispatchedRef.current,
+      seatCount: seats.length,
+      cardsPerPlayer,
+      hasDealerSeat: !!dealerSeatEarly,
+      selfHandLength: selfHand?.length ?? 0,
+      selfHandSufficient: !!selfHand && selfHand.length >= cardsPerPlayer,
+      handContextId,
+    };
+    const allOk = prereqPayload.hasDeal && !prereqPayload.alreadyDispatched &&
+      prereqPayload.seatCount > 0 && prereqPayload.cardsPerPlayer > 0 &&
+      prereqPayload.hasDealerSeat && prereqPayload.selfHandSufficient;
+    recordCribbageWartime('deal', 'dispatch_prerequisites_evaluated', {
+      ...prereqPayload, allOk,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.prereq',
+      dedupeKey: `prereq:${handContextId}:${allOk}:${prereqPayload.selfHandLength}`,
+      eventReason: allOk ? 'all prerequisites satisfied' : 'prerequisites not yet satisfied',
+    });
+
+    if (!deal || dispatchedRef.current) {
+      if (dispatchedRef.current) {
+        recordCribbageWartime('deal', 'duplicate_dispatch_suppressed', {
+          handContextId, reason: 'dispatchedRef.current=true',
+        }, {
+          producerComponent: 'CribbageDealOrchestrator',
+          producerFunction: 'dispatchEffect.guard',
+          dedupeKey: `dup:${handContextId}`,
+        });
+      }
+      return;
+    }
+
     if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
-    // Wait for authoritative self hand so visible faces are real cards.
     if (!selfHand || selfHand.length < cardsPerPlayer) return;
 
     const sorted = [...seats].sort((a, b) => a.position - b.position);
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
     if (dealerIdx < 0) return;
+
+    recordCribbageWartime('deal', 'dispatch_attempt', {
+      handContextId, dealerIdx, seatOrder: sorted.map(s => s.playerId),
+      cardsPerPlayer, expectedIntentCount: cardsPerPlayer * sorted.length,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.begin',
+      dedupeKey: `attempt:${handContextId}`,
+    });
 
     const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
@@ -104,8 +168,22 @@ export function CribbageDealOrchestrator({
       ? 'idx * inspectionMode.launchSpacingMs(800)'
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
 
+    recordCribbageWartime('deal', 'timing_snapshot_taken', {
+      handContextId, inspect, staggerMs, durationMs,
+      timingSource: intentTimingSource,
+      hydrated: timing.hydrated, storeSource: timing.source, storeVersion: timing.storeVersion,
+      launchSpacingMs: timing.launchSpacingMs, durationMsRaw: timing.durationMs,
+      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      updatedAt: timing.updatedAt, dbUpdatedAt: timing.dbUpdatedAt,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.timing',
+      dedupeKey: `timing:${handContextId}`,
+    });
+
     const totalCount = cardsPerPlayer * sorted.length;
     const dealerIsSelf = dealerPlayerId === selfPlayerId;
+
     // When the local viewer is the dealer, EVERY flight (self + opponent)
     // originates from the canonical bottom-center felt deal origin
     // ([data-card-anchor="felt-deal-origin"]). Recipient determines
@@ -199,6 +277,22 @@ export function CribbageDealOrchestrator({
 
     ct.dispatchMany(intents);
     onLifecycle?.('dispatchManyCalled');
+
+    const dispatchId = `${handContextId}#dispatch-${Date.now()}`;
+    recordCribbageWartime('deal', 'dispatch_succeeded', {
+      handContextId, dispatchId, totalCount,
+      intentCount: intents.length,
+      dispatchTimestamp: Date.now(),
+      emitPerfTime: emitTime,
+      dispatchedRef: dispatchedRef.current,
+      firstIntentId: intents[0]?.id, lastIntentId: intents[intents.length - 1]?.id,
+      recipientOrder: intents.map((i) => i.recipientPlayerId),
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.dispatch',
+      dedupeKey: `dispatched:${handContextId}`,
+    });
+
   }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealerGameId, roundId, handNumber, onLifecycle]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
