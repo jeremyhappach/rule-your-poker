@@ -5906,7 +5906,7 @@ export const CribbageMobileGameTable = ({
         if (cardPlayed) {
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
-          const intentId = `crib-play-self-${tid}`;
+          // intentId hoisted above lockClaim; reused here.
           const dest = computePlayCardDestRect('self');
           recordCribbageWartime('boundary', 'play_destination_computed', {
             intentId,
