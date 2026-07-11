@@ -222,6 +222,23 @@ export const CribbageCountingPhase = ({
   const exitTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const enterTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Visual-lower gate: pending state for the final-combo → total handoff.
+  // While non-null, the effect defers publishing the Total announcement
+  // until the scoring-card DOM lower transition is visually complete
+  // (transitionend on transform for the tracked card IDs) or a deadman
+  // fallback fires. See lifecycle contract in the scoring effect.
+  const finalLowerPendingRef = useRef<null | {
+    cardIds: string[];
+    targetIndex: number;
+    targetLabel: string;
+    total: number;
+    startedAt: number;
+  }>(null);
+  const finalLowerTimersRef = useRef<{
+    deadman: ReturnType<typeof setTimeout> | null;
+    raf: number | null;
+  }>({ deadman: null, raf: null });
+  const finalLowerCleanupRef = useRef<null | (() => void)>(null);
   // Capture the initial baseline once per mount so it can't fluctuate with state churn.
   const initialScoresRef = useRef<Record<string, number> | null>(null);
   // Avoid stale closures inside timeouts when parent freezes the win.
@@ -268,6 +285,19 @@ export const CribbageCountingPhase = ({
       clearTimeout(completeTimerRef.current);
       completeTimerRef.current = null;
     }
+    if (finalLowerTimersRef.current.deadman) {
+      clearTimeout(finalLowerTimersRef.current.deadman);
+      finalLowerTimersRef.current.deadman = null;
+    }
+    if (finalLowerTimersRef.current.raf != null) {
+      cancelAnimationFrame(finalLowerTimersRef.current.raf);
+      finalLowerTimersRef.current.raf = null;
+    }
+    if (finalLowerCleanupRef.current) {
+      finalLowerCleanupRef.current();
+      finalLowerCleanupRef.current = null;
+    }
+    finalLowerPendingRef.current = null;
 
     announcementHiddenAtRef.current = Date.now();
     setAnnouncementData(null);
@@ -387,7 +417,14 @@ export const CribbageCountingPhase = ({
       currentComboPoints: combo?.points ?? null,
       currentComboCardIds: combo ? combo.cards.map(cardId) : [],
       comboHighlightActive: highlightedCards.length > 0,
-      comboRaiseActive: highlightedCards.length > 0 && transitionPhase === 'scoring',
+      // Instrumentation truthfulness: raiseActive requires an actual combo
+      // set to be logically active. Cannot report raiseActive=true when
+      // there is no current combo label/card set.
+      comboRaiseActive:
+        highlightedCards.length > 0 &&
+        transitionPhase === 'scoring' &&
+        combo != null &&
+        combo.cards.length > 0,
       previousComboIndex: currentComboIndex - 1,
       nextComboIndex: currentComboIndex + 1,
     };
@@ -791,15 +828,123 @@ export const CribbageCountingPhase = ({
         return;
       }
 
+      // ── Final combo → Total: visual-lower gate ─────────────────
+      // Contract:
+      //   1. logical resolution: clear highlightedCards NOW (this triggers
+      //      the CSS lower transition on the final-combo scoring-card
+      //      wrappers via `transition-all duration-300`).
+      //   2. arm a pending-lower state keyed to the final combo card IDs.
+      //   3. wait until every tracked scoring-card DOM node reports
+      //      `transitionend` for `transform` (visual lower complete),
+      //      OR the deadman fallback fires (safety only).
+      //   4. THEN publishAnnouncement('Total: N points', ...) and start
+      //      the existing 1500ms read window → startExitTransition.
+      // This prevents the total summary from mounting while the final
+      // combo cards are still visually raised/lowering.
+      const finalCombo = currentCombos[currentCombos.length - 1];
+      const finalComboIds = finalCombo
+        ? finalCombo.cards.map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`)
+        : [];
       setHighlightedCards([]);
-      recordTruth('highlight_cleared', { comboHighlightEndedAt: Date.now(), comboTransitionReason: 'before-total' });
-      const total = getTotalFromCombos(currentCombos);
-      publishAnnouncement(`Total: ${total} points`, currentTarget.label, 'total');
+      recordTruth('highlight_cleared', {
+        comboHighlightEndedAt: Date.now(),
+        comboTransitionReason: 'final-combo-lower-armed',
+      });
+      const totalPoints = getTotalFromCombos(currentCombos);
+      const targetLabel = currentTarget.label;
+      const armedTargetIndex = currentTargetIndex;
 
+      // Reset any prior pending gate.
+      if (finalLowerCleanupRef.current) {
+        finalLowerCleanupRef.current();
+        finalLowerCleanupRef.current = null;
+      }
+      finalLowerPendingRef.current = {
+        cardIds: finalComboIds,
+        targetIndex: armedTargetIndex,
+        targetLabel,
+        total: totalPoints,
+        startedAt: Date.now(),
+      };
 
-      innerTimer = setTimeout(() => {
-        if (!winFrozenRef.current) startExitTransition();
-      }, 1500);
+      const finalizeTotal = (reason: 'transitionend' | 'deadman' | 'no-cards') => {
+        if (winFrozenRef.current) return;
+        const pending = finalLowerPendingRef.current;
+        if (!pending || pending.targetIndex !== armedTargetIndex) return;
+        finalLowerPendingRef.current = null;
+        if (finalLowerCleanupRef.current) {
+          finalLowerCleanupRef.current();
+          finalLowerCleanupRef.current = null;
+        }
+        recordTruth('highlight_cleared', {
+          comboHighlightEndedAt: Date.now(),
+          comboTransitionReason: `final-combo-lower-complete:${reason}`,
+        });
+        publishAnnouncement(`Total: ${pending.total} points`, pending.targetLabel, 'total');
+        innerTimer = setTimeout(() => {
+          if (!winFrozenRef.current) startExitTransition();
+        }, 1500);
+      };
+
+      // Guard: no DOM available (SSR/unit) or no tracked cards → skip gate.
+      if (typeof document === 'undefined' || finalComboIds.length === 0) {
+        finalizeTotal('no-cards');
+      } else {
+        // Wait one rAF so React commits the highlightedCards=[] removal,
+        // then attach transitionend listeners on the tracked wrappers.
+        const raf = requestAnimationFrame(() => {
+          finalLowerTimersRef.current.raf = null;
+          const remaining = new Set(finalComboIds);
+          const nodes: Array<{ el: HTMLElement; handler: (e: TransitionEvent) => void }> = [];
+          for (const id of finalComboIds) {
+            const el = document.querySelector(
+              `[data-cribbage-scoring-card="true"][data-card-id="${id}"]`,
+            ) as HTMLElement | null;
+            if (!el) {
+              remaining.delete(id);
+              continue;
+            }
+            // If already at identity (highlighted class already gone AND
+            // transform is identity), resolve immediately for this node.
+            const cs = window.getComputedStyle(el);
+            const t = cs.transform;
+            const isIdentity =
+              t === 'none' ||
+              t === 'matrix(1, 0, 0, 1, 0, 0)' ||
+              t === 'matrix(1,0,0,1,0,0)';
+            if (isIdentity && el.dataset.cardHighlighted === 'false') {
+              remaining.delete(id);
+              continue;
+            }
+            const handler = (e: TransitionEvent) => {
+              if (e.propertyName !== 'transform') return;
+              remaining.delete(id);
+              el.removeEventListener('transitionend', handler);
+              if (remaining.size === 0) finalizeTotal('transitionend');
+            };
+            el.addEventListener('transitionend', handler);
+            nodes.push({ el, handler });
+          }
+          finalLowerCleanupRef.current = () => {
+            for (const { el, handler } of nodes) el.removeEventListener('transitionend', handler);
+            if (finalLowerTimersRef.current.deadman) {
+              clearTimeout(finalLowerTimersRef.current.deadman);
+              finalLowerTimersRef.current.deadman = null;
+            }
+          };
+          if (remaining.size === 0) {
+            finalizeTotal('transitionend');
+            return;
+          }
+          // Deadman fallback: card CSS transition is 300ms; give it 500ms.
+          finalLowerTimersRef.current.deadman = setTimeout(() => {
+            finalLowerTimersRef.current.deadman = null;
+            finalizeTotal('deadman');
+          }, 500);
+        });
+        finalLowerTimersRef.current.raf = raf;
+      }
+
     }, currentComboIndex === -1 ? 500 : 0);
 
     return () => {
@@ -942,6 +1087,9 @@ export const CribbageCountingPhase = ({
       if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
       if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
       if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+      if (finalLowerTimersRef.current.deadman) clearTimeout(finalLowerTimersRef.current.deadman);
+      if (finalLowerTimersRef.current.raf != null) cancelAnimationFrame(finalLowerTimersRef.current.raf);
+      if (finalLowerCleanupRef.current) finalLowerCleanupRef.current();
     };
   }, []);
 
