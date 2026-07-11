@@ -465,6 +465,50 @@ export const CribbageMobileCardsTab = ({
   const canPlayAnyCard = myPlayerState && hasPlayableCard(renderedHand, cribbageState.pegging.currentCount);
   const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
   const expectedDiscard = playerCount === 2 ? 2 : 1;
+
+  // D-group instrumentation — emit whenever the play-button-eligible
+  // conditions transition. Coalesces on the full signature so identity
+  // reallocation does not create noise.
+  const playButtonEnabled = Boolean(
+    cribbageState.phase === 'pegging' && isMyTurn && canPlayAnyCard,
+  );
+  const playButtonSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sig = [
+      cribbageState.phase,
+      isMyTurn ? '1' : '0',
+      canPlayAnyCard ? '1' : '0',
+      renderedHand.length,
+      cribbageState.pegging.currentCount,
+    ].join('|');
+    if (playButtonSigRef.current === sig) return;
+    const prev = playButtonSigRef.current;
+    playButtonSigRef.current = sig;
+    recordCribbageWartime('boundary', 'play_button_enabled_changed', {
+      enabled: playButtonEnabled,
+      phase: cribbageState.phase,
+      isMyTurn,
+      canPlayAnyCard: Boolean(canPlayAnyCard),
+      currentCount: cribbageState.pegging.currentCount,
+      renderedHandLength: renderedHand.length,
+      currentTurnPlayerId: cribbageState.pegging.currentTurnPlayerId ?? null,
+      selfPlayerId: currentPlayerId,
+    }, {
+      producerComponent: 'CribbageMobileCardsTab',
+      producerFunction: 'playButtonEligibilityEffect',
+      dedupeKey: `play_btn:${sig}`,
+      eventReason: prev == null ? 'first eligibility observed' : 'eligibility inputs changed',
+    });
+  }, [
+    playButtonEnabled,
+    cribbageState.phase,
+    isMyTurn,
+    canPlayAnyCard,
+    renderedHand.length,
+    cribbageState.pegging.currentCount,
+    cribbageState.pegging.currentTurnPlayerId,
+    currentPlayerId,
+  ]);
   
   // Pre-discard: show 6 cards compactly; post-discard: show 4 cards relaxed
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
