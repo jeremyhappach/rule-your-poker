@@ -307,6 +307,10 @@ All colors MUST be HSL.
  * to keep every card fully legible. Does NOT affect position,
  * opacity transitions, transport, reveal, scoring, or hit targets. */
 .crib-inactive-pegged-card {
-  opacity: 0.82;
-  filter: brightness(0.9) saturate(0.95);
+  /* Do NOT use `opacity` — pegging-row cards overlap with negative margin,
+   * and opacity < 1 makes the card body translucent, letting the card
+   * underneath (and the felt) bleed through the overlapping face. The
+   * dim effect is delivered entirely through `filter`, which preserves
+   * an opaque card surface. */
+  filter: brightness(0.82) saturate(0.9);
 }
