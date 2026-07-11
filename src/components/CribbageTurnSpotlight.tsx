@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
