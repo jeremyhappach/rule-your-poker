@@ -908,7 +908,7 @@ export const CribbageMobileCardsTab = ({
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
-            disabled={isProcessing || selectedCards.length !== expectedDiscard}
+            disabled={isProcessing || selectedCards.length !== expectedDiscard || renderTrace?.interactionsAllowed === false}
             className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-6"
           >
             Send to Crib ({selectedCards.length}/{expectedDiscard})
