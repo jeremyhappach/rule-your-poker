@@ -827,7 +827,15 @@ export const CribbageMobileCardsTab = ({
   // When self-heal is active, authoritative cards must render even though
   // interactions remain disabled — buttons are guarded by `isProcessing`
   // and phase gates below.
-  if (activeHandBlocked && !shouldSelfHeal) {
+  // DEALING partial-reveal exception: during the opening-deal window the
+  // resolver returns `render-presentation` (not self-heal), so a purely
+  // gate-based early-return would unmount ActiveHandFan and mask every
+  // settled transport until identity converges, then batch-reveal them
+  // together. Mirror Turn 1's clip/resolver exceptions at the subtree-
+  // mount boundary. Action-legality remains gated separately below.
+  const dealingPartialReveal =
+    deal?.phase === 'DEALING' && renderedHand.length > 0;
+  if (activeHandBlocked && !shouldSelfHeal && !dealingPartialReveal) {
     return (
       <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
         <div data-crib-active-hand-stage="" className="overflow-hidden" />
@@ -835,6 +843,7 @@ export const CribbageMobileCardsTab = ({
       </div>
     );
   }
+
 
   return (
     <div className="relative h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
