@@ -141,25 +141,29 @@ export const CribbageCountingPhase = ({
         contradictions: makeEmptyContradictions(),
       });
       // Also emit distinct producer event flavor for combo/total publish
-      if (category === 'combo') {
-        recordEvent('combo_announce_publish', {
+      const producerSource: CountingTruthEntry['source'] | null =
+        category === 'combo' ? 'combo_announce_publish'
+        : category === 'total' ? 'total_announce_publish'
+        : null;
+      if (producerSource) {
+        countingTruthLedger.record({
+          source: producerSource,
+          ...truthSnapshotRef.current,
           eventSource: 'publishAnnouncement',
-          eventReason: 'combo-publish',
+          eventReason: `${category}-publish`,
+          currentTargetIndex: targetIndex,
+          currentComboIndex: comboIndex,
           announcementDataText: text,
-          announcementDataCategory: 'combo',
+          announcementDataCategory: category,
           announcementDataKey: key,
-        });
-      } else if (category === 'total') {
-        recordEvent('total_announce_publish', {
-          eventSource: 'publishAnnouncement',
-          eventReason: 'total-publish',
-          announcementDataText: text,
-          announcementDataCategory: 'total',
-          announcementDataKey: key,
+          announcementDataTargetIndex: targetIndex,
+          announcementDataComboIndex: comboIndex,
+          announcementPublishedAt: now,
+          contradictions: makeEmptyContradictions(),
         });
       }
     },
-    [onAnnouncementChange, recordEvent],
+    [onAnnouncementChange],
   );
 
   // Keep identity refs in sync every render.
