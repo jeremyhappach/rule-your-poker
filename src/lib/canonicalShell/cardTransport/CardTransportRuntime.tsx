@@ -179,6 +179,11 @@ export function CardTransportRuntime({
       if (resolvedRef.current.has(intent.id)) continue;
 
       const attemptCount = (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1;
+      if (attemptCount === 1) {
+        recordCribbageTransportIntentLifecycle('transport_intent_created', intent, {
+          reason: 'first-seen',
+        });
+      }
       resolveAttemptCountRef.current.set(intent.id, attemptCount);
       const from = resolveCardEndpoint(intent.from, container);
       const to = resolveCardEndpoint(intent.to, container);
