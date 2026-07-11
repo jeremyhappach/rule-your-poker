@@ -31,6 +31,7 @@ import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/typ
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
 import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+import { registerCribbageHandContext } from '@/lib/cribbage/cribbageIntentScope';
 
 
 
@@ -78,6 +79,7 @@ export function CribbageDealOrchestrator({
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
+    registerCribbageHandContext(handContextId);
     onLifecycle?.('mounted');
     recordCribbageWartime('deal', 'orchestrator_mount', {
       handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer,

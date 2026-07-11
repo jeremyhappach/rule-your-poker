@@ -2232,6 +2232,23 @@ export const CribbageMobileGameTable = ({
       heldDisplayCount,
     });
     setThirtyOneDelayActive(true);
+    recordCribbageWartime('boundary', 'pegging_boundary_hold_started', {
+      armedEventId: eventKey,
+      armedEventType: is31 ? 'pegging_points' : 'go_point',
+      heldStartIndex: heldStart,
+      heldEndIndex: heldEnd,
+      heldDisplayCount,
+      lastEventCount: (lastEvent as { count?: number }).count ?? null,
+      playedCardsLength: played.length,
+      currentTurnPlayerId: cribbageState.pegging.currentTurnPlayerId ?? null,
+      sequenceIndexBefore: prevSequenceStartIndexRef.current,
+      sequenceIndexDb: dbSequenceStartIndex,
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'boundaryHoldArmEffect',
+      dedupeKey: `hold_start:${eventKey}`,
+      eventReason: is31 ? 'reached 31' : 'go/last',
+    });
 
     // Announcement-settled timer tied to THIS event id only. When it
     // fires, the release effect below can drop the hold (once transport
@@ -2261,9 +2278,24 @@ export const CribbageMobileGameTable = ({
     if (!heldSequenceSnapshot) return;
     if (playCardIntent !== null) return;
     if (heldAnnouncementSettledRef.current !== heldSequenceSnapshot.armedEventId) return;
+    const releasedSnapshot = heldSequenceSnapshot;
     setThirtyOneDelayActive(false);
     setHeldSequenceSnapshot(null);
     prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+    recordCribbageWartime('boundary', 'boundary_hold_released', {
+      armedEventId: releasedSnapshot.armedEventId,
+      armedEventType: releasedSnapshot.armedEventType,
+      heldStartIndex: releasedSnapshot.heldStartIndex,
+      heldEndIndex: releasedSnapshot.heldEndIndex,
+      heldDisplayCount: releasedSnapshot.heldDisplayCount,
+      dbSequenceStartIndexAtRelease: dbSequenceStartIndex,
+      releaseReason: 'primary-announcement-settled-and-transport-clear',
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'boundaryHoldReleaseEffect',
+      dedupeKey: `hold_release:${releasedSnapshot.armedEventId}`,
+      eventReason: 'primary release',
+    });
     // Deliberately do NOT touch opponentPlayedCountRef here; the
     // opponent-play effect re-runs on `thirtyOneDelayActive` and
     // animates any card that landed in the new sequence during hold.
@@ -2279,10 +2311,28 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!cribbageState) return;
     if (cribbageState.phase !== 'pegging') {
+      const wasActive = thirtyOneDelayActive;
+      const snap = heldSequenceSnapshot;
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
       thirtyOneDelayRef.current = null;
       heldAnnouncementSettledRef.current = null;
+      if (wasActive && snap) {
+        recordCribbageWartime('boundary', 'boundary_hold_released', {
+          armedEventId: snap.armedEventId,
+          armedEventType: snap.armedEventType,
+          heldStartIndex: snap.heldStartIndex,
+          heldEndIndex: snap.heldEndIndex,
+          heldDisplayCount: snap.heldDisplayCount,
+          releaseReason: 'phase-left-pegging',
+          phase: cribbageState.phase,
+        }, {
+          producerComponent: 'CribbageMobileGameTable',
+          producerFunction: 'boundaryHoldPhaseExitEffect',
+          dedupeKey: `hold_release_phase:${snap.armedEventId}`,
+          eventReason: 'phase left pegging',
+        });
+      }
     }
   }, [cribbageState?.phase]);
 
@@ -5624,6 +5674,25 @@ export const CribbageMobileGameTable = ({
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
           const intentId = `crib-play-self-${tid}`;
           const dest = computePlayCardDestRect('self');
+          recordCribbageWartime('boundary', 'play_destination_computed', {
+            intentId,
+            mode: 'self',
+            cardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+            playedCardIndex: cardIndex,
+            sourceRectStatus:
+              sourceRect && sourceRect.width > 0 && sourceRect.height > 0 ? 'measured' : 'missing',
+            sourceRect: sourceRect ?? null,
+            destRectStatus: dest ? 'measured' : 'missing',
+            destRect: dest ?? null,
+            playedCardsLenBefore: freshState.pegging?.playedCards?.length ?? null,
+            currentCountBefore: freshState.pegging?.currentCount ?? null,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handlePlayCard.computeDest',
+            dedupeKey: `play_dest:${intentId}`,
+            eventReason: dest ? 'destination measured' : 'destination missing',
+            contradictions: dest ? [] : ['playDestinationMissing'],
+          });
           // Instrumentation — self play attempt.
           try {
             const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
@@ -5668,6 +5737,24 @@ export const CribbageMobileGameTable = ({
             card: cardPlayed,
             sourceRect: sourceRect ?? null,
             destRect: dest,
+          });
+          recordCribbageWartime('boundary', 'play_intent_created', {
+            intentId,
+            mode: 'self',
+            cardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+            playedCardIndex: cardIndex,
+            sourceRectStatus:
+              sourceRect && sourceRect.width > 0 && sourceRect.height > 0 ? 'measured' : 'missing',
+            destRectStatus: dest ? 'measured' : 'missing',
+            withheldPlayedCardKey: key,
+            actorPlayerId: currentPlayerId,
+            handNumber: currentHandNumber ?? null,
+            roundId: currentRoundId,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handlePlayCard.setPlayCardIntent',
+            dedupeKey: `play_intent:${intentId}`,
+            eventReason: 'self play intent created',
           });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);

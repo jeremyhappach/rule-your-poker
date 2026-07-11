@@ -39,6 +39,7 @@ import { createPortal } from 'react-dom';
 import { useCardTransportInternal, type ActiveCardIntent } from './CardTransportProvider';
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
 import { auditHolmEndpointResolution } from './holmEndpointAudit';
+import { recordCribbageTransportIntentLifecycle } from '@/lib/cribbage/cribbageWartimeLedger';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
@@ -162,6 +163,9 @@ export function CardTransportRuntime({
           transportMounted: false,
           lifecycleState: 'dropped',
         });
+        recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
+          reason: 'no-runtime-container',
+        });
         ctx.__markDropped(intent, 'no-runtime-container');
       }
       return;
@@ -175,6 +179,11 @@ export function CardTransportRuntime({
       if (resolvedRef.current.has(intent.id)) continue;
 
       const attemptCount = (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1;
+      if (attemptCount === 1) {
+        recordCribbageTransportIntentLifecycle('transport_intent_created', intent, {
+          reason: 'first-seen',
+        });
+      }
       resolveAttemptCountRef.current.set(intent.id, attemptCount);
       const from = resolveCardEndpoint(intent.from, container);
       const to = resolveCardEndpoint(intent.to, container);
@@ -255,6 +264,10 @@ export function CardTransportRuntime({
             droppedAt: performance.now(),
             lifecycleState: 'dropped',
           });
+          recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
+            reason: 'missing-endpoint-after-retry',
+            timing: { waitedMs: waited, maxPendingMs: MAX_PENDING_MS },
+          });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
         }
         continue;
@@ -321,6 +334,10 @@ export function CardTransportRuntime({
             launchedAt: performance.now(),
             lifecycleState: 'launched',
           });
+          recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+            reason: 'delayed-launch-timer-fired',
+            timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+          });
           launchTimersRef.current.delete(intent.id);
           rerender();
         }, delayMs);
@@ -347,6 +364,10 @@ export function CardTransportRuntime({
           flyingCardMountedAt: performance.now(),
           lifecycleState: 'flying_mounted',
         });
+        recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+          reason: 'immediate-launch',
+          timing: { delayMs: 0, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+        });
       }
 
       // Schedule settle relative to launch time (flight has no extra CSS delay).
@@ -366,6 +387,10 @@ export function CardTransportRuntime({
         });
         record357CardOwnership(intent.cardId, { ownershipClaimed: true });
         settleTimersRef.current.delete(intent.id);
+        recordCribbageTransportIntentLifecycle('transport_intent_settled', intent, {
+          reason: 'timer_fallback',
+          timing: { settledAt: tnow, totalMs: delayMs + flightMs + ownershipClaimDelayMs },
+        });
         ctx.__markSettled(intent.id, intent.cardId, 'timer_fallback');
       }, delayMs + flightMs + ownershipClaimDelayMs);
       settleTimersRef.current.set(intent.id, tSettle);

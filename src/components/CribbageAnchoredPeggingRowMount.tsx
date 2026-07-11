@@ -158,11 +158,33 @@ function PeggingRowRenderProbe({
 }) {
   const sig = cards.map((c) => `${c.playerId}:${c.card.rank}${c.card.suit[0]}`).join(',');
   const lastSigRef = useRef<string | null>(null);
+  const lastLogicalCountRef = useRef<number>(0);
+  const lastDomCountRef = useRef<number>(0);
 
   useEffect(() => {
     if (lastSigRef.current === sig) return;
     const prevSig = lastSigRef.current;
+    const prevLogicalCount = lastLogicalCountRef.current;
     lastSigRef.current = sig;
+    lastLogicalCountRef.current = cards.length;
+
+    // Row-clear logical trigger: transition from N>0 → 0 cards.
+    const isRowClearRequested = prevLogicalCount > 0 && cards.length === 0;
+    if (isRowClearRequested) {
+      recordCribbageWartime('boundary', 'row_clear_requested', {
+        prevLogicalCount,
+        newLogicalCount: 0,
+        sequenceStartIndex,
+        sequenceEndIndex,
+        activePlayerId,
+        withheldPlayedCardKey,
+      }, {
+        producerComponent: 'CribbageAnchoredPeggingRowMount',
+        producerFunction: 'PeggingRowRenderProbe.rowClearRequested',
+        dedupeKey: `row_clear_req:${sequenceStartIndex}`,
+        eventReason: 'logical row emptied',
+      });
+    }
 
     recordCribbageWartime('pegging', 'pegging_row_render', {
       sequenceStartIndex,
@@ -175,6 +197,7 @@ function PeggingRowRenderProbe({
       displayCount,
       activePlayerId,
       withheldPlayedCardKey,
+      prevLogicalCount,
     }, {
       producerComponent: 'CribbageAnchoredPeggingRowMount',
       producerFunction: 'PeggingRowRenderProbe.render',
@@ -220,6 +243,37 @@ function PeggingRowRenderProbe({
           dedupeKey: `rowRect:${sequenceStartIndex}:${sig}`,
           contradictions,
         });
+
+        // D-group: DOM row-clear boundary detection.
+        const prevDom = lastDomCountRef.current;
+        lastDomCountRef.current = rects.length;
+        if (prevDom > 0 && rects.length < prevDom) {
+          recordCribbageWartime('boundary', 'row_clear_dom_started', {
+            prevDomCount: prevDom,
+            newDomCount: rects.length,
+            logicalCount: cards.length,
+            sequenceStartIndex,
+            sequenceEndIndex,
+          }, {
+            producerComponent: 'CribbageAnchoredPeggingRowMount',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomStarted',
+            dedupeKey: `row_clear_dom_start:${sequenceStartIndex}:${prevDom}->${rects.length}`,
+            eventReason: 'DOM row count decreased after logical clear',
+          });
+        }
+        if (prevDom > 0 && rects.length === 0) {
+          recordCribbageWartime('boundary', 'row_clear_dom_complete', {
+            prevDomCount: prevDom,
+            logicalCount: cards.length,
+            sequenceStartIndex,
+            sequenceEndIndex,
+          }, {
+            producerComponent: 'CribbageAnchoredPeggingRowMount',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomComplete',
+            dedupeKey: `row_clear_dom_complete:${sequenceStartIndex}`,
+            eventReason: 'DOM row fully cleared',
+          });
+        }
       } catch { /* ignore */ }
     });
     return () => cancelAnimationFrame(raf);
