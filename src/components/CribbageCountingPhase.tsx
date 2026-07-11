@@ -991,10 +991,27 @@ export const CribbageCountingPhase = ({
                 style={{ marginLeft: `${scoringHandToCutGapPx}px` }}
               >
                 <span className="text-[8px] text-white/60 mb-0.5">Cut</span>
-                <div 
+                <div
+                  data-cribbage-scoring-card="true"
+                  data-card-id={`${cribbageState.cutCard.rank}${cribbageState.cutCard.suit?.[0] ?? '?'}`}
+                  data-card-rank={cribbageState.cutCard.rank}
+                  data-card-suit={cribbageState.cutCard.suit}
+                  data-card-owner=""
+                  data-card-role="cut"
+                  data-card-highlighted={isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring' ? 'true' : 'false'}
+                  data-card-dimmed="false"
+                  data-scoring-owner-match="true"
+                  data-combo-member={
+                    currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+                      && currentCombos[currentComboIndex].cards.some(
+                        (c) => c.rank === cribbageState.cutCard?.rank && c.suit === cribbageState.cutCard?.suit,
+                      )
+                      ? 'true'
+                      : 'false'
+                  }
                   className={`transition-all duration-300 ${
                     isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring'
-                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
+                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
                       : ''
                   }`}
                 >
@@ -1005,6 +1022,8 @@ export const CribbageCountingPhase = ({
           </div>
         </div>
       </div>
+      <CribbageCountingTruthPill />
     </>
+
   );
 };
