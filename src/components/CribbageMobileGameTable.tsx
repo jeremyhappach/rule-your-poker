@@ -2168,6 +2168,47 @@ export const CribbageMobileGameTable = ({
   const heldAnnouncementSettledRef = useRef<string | null>(null); // armedEventId once its own 3s elapses
   const [heldAnnouncementSettledTick, setHeldAnnouncementSettledTick] = useState(0);
 
+  // Turn 2 — canonical Go/31 boundary release identity. Written in the
+  // SAME update cycle that clears `thirtyOneDelayActive` / `heldSequenceSnapshot`
+  // at every release site (primary, phase-exit, deadman safety). Reset to
+  // null only at the hand-identity reset.
+  const [lastReleasedBoundaryEventId, setLastReleasedBoundaryEventId] =
+    useState<string | null>(null);
+
+  // Turn 2 — synchronous writer idempotency lock. Claimed once per
+  // handlePlayCard invocation, immediately before the first await, and
+  // released only along the paths enumerated in the Turn 2 contract.
+  const playWriterLockRef = useRef<{
+    cardId: string;
+    handKey: string;
+    playedCount: number;
+  } | null>(null);
+  const releasePlayWriterLock = useCallback((
+    expected: { cardId: string; handKey: string; playedCount: number } | null,
+    reason: string,
+  ) => {
+    const current = playWriterLockRef.current;
+    if (!current) return;
+    if (expected && (
+      current.cardId !== expected.cardId ||
+      current.handKey !== expected.handKey ||
+      current.playedCount !== expected.playedCount
+    )) return;
+    playWriterLockRef.current = null;
+    recordCribbageWartime('boundary', 'play_writer_lock_released', {
+      cardId: current.cardId,
+      handKey: current.handKey,
+      playedCount: current.playedCount,
+      releaseReason: reason,
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'releasePlayWriterLock',
+      dedupeKey: `play_writer_lock_released:${current.cardId}:${current.handKey}:${current.playedCount}:${reason}`,
+      eventReason: reason,
+    });
+  }, []);
+
+
   // Pegging announcement auto-clear: hide scoring announcements after 3 seconds
   // (only for pegging phase, not discarding/cutting/counting announcements)
   const [peggingAnnouncementHidden, setPeggingAnnouncementHidden] = useState(false);
