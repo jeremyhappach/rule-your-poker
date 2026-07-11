@@ -2323,6 +2323,7 @@ export const CribbageMobileGameTable = ({
     const releasedSnapshot = heldSequenceSnapshot;
     setThirtyOneDelayActive(false);
     setHeldSequenceSnapshot(null);
+    setLastReleasedBoundaryEventId(releasedSnapshot.armedEventId);
     prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     recordCribbageWartime('boundary', 'boundary_hold_released', {
       armedEventId: releasedSnapshot.armedEventId,
