@@ -5735,6 +5735,58 @@ export const CribbageMobileGameTable = ({
   ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    // ── Turn 2 gates ────────────────────────────────────────────────
+    // Reject BEFORE any synchronous validation so that a stuck lock
+    // never bypasses the boundary/self-intent gates below.
+    if (playWriterLockRef.current !== null) {
+      recordCribbageWartime('boundary', 'play_rejected_writer_lock', {
+        cardIndex,
+        currentLock: playWriterLockRef.current,
+        boundaryEventId,
+        lastReleasedBoundaryEventId,
+        thirtyOneDelayActive,
+        heldSequenceActive: heldSequenceSnapshot !== null,
+        playCardIntent: playCardIntent?.id ?? null,
+      }, {
+        producerComponent: 'CribbageMobileGameTable',
+        producerFunction: 'handlePlayCard',
+        dedupeKey: `play_reject_lock:${playWriterLockRef.current.cardId}:${playWriterLockRef.current.handKey}:${playWriterLockRef.current.playedCount}:${cardIndex}`,
+        eventReason: 'writer lock held',
+      });
+      return;
+    }
+    if (peggingBoundaryBlocked) {
+      recordCribbageWartime('boundary', 'play_rejected_boundary_blocked', {
+        cardIndex,
+        boundaryEventId,
+        lastReleasedBoundaryEventId,
+        thirtyOneDelayActive,
+        heldSequenceActive: heldSequenceSnapshot !== null,
+        phase: cribbageState.phase,
+      }, {
+        producerComponent: 'CribbageMobileGameTable',
+        producerFunction: 'handlePlayCard',
+        dedupeKey: `play_reject_boundary:${boundaryEventId ?? 'null'}:${cardIndex}`,
+        eventReason: 'pegging boundary blocked',
+      });
+      return;
+    }
+    if (playCardIntent !== null) {
+      recordCribbageWartime('boundary', 'play_rejected_self_intent_unresolved', {
+        cardIndex,
+        pendingIntentId: playCardIntent.id,
+        pendingIntentMode: playCardIntent.mode,
+        boundaryEventId,
+        lastReleasedBoundaryEventId,
+      }, {
+        producerComponent: 'CribbageMobileGameTable',
+        producerFunction: 'handlePlayCard',
+        dedupeKey: `play_reject_intent:${playCardIntent.id}:${cardIndex}`,
+        eventReason: 'self play intent unresolved',
+      });
+      return;
+    }
+
     {
       const verdict = evaluateWriterIdentity('play_card');
       if (!verdict.ok) {
@@ -5755,6 +5807,37 @@ export const CribbageMobileGameTable = ({
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:play_card', { cardIndex, phase: cribbageState.phase, turn: cribbageState.pegging.currentTurnPlayerId?.slice(0, 8) }, tid);
 
+    // ── Turn 2 — claim the writer lock exactly once, synchronously,
+    // immediately before the first await. Identity is derived from the
+    // subscription-state hand + hand-key + playedCards length; that is
+    // sufficient to detect same-tick double invocation because the
+    // first call claims the ref before yielding to the microtask queue.
+    const preFetchHand = cribbageState.playerStates?.[currentPlayerId]?.hand ?? [];
+    const preFetchCard = preFetchHand[cardIndex] ?? null;
+    const lockCardId = preFetchCard
+      ? `${preFetchCard.rank}${preFetchCard.suit[0]}`
+      : `idx-${cardIndex}`;
+    const lockHandKey =
+      renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+    const lockPlayedCount = cribbageState.pegging?.playedCards?.length ?? 0;
+    const lockClaim = {
+      cardId: lockCardId,
+      handKey: lockHandKey,
+      playedCount: lockPlayedCount,
+    };
+    playWriterLockRef.current = lockClaim;
+    recordCribbageWartime('boundary', 'play_writer_lock_claimed', {
+      ...lockClaim,
+      cardIndex,
+      boundaryEventId,
+      lastReleasedBoundaryEventId,
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'handlePlayCard',
+      dedupeKey: `play_writer_lock_claimed:${lockClaim.cardId}:${lockClaim.handKey}:${lockClaim.playedCount}`,
+      eventReason: 'writer lock claimed',
+    });
+
     try {
       // CRITICAL: Fetch the latest state from DB to prevent stale state issues
       // This guards against race conditions where bot's move hasn't propagated yet
@@ -5767,8 +5850,10 @@ export const CribbageMobileGameTable = ({
       if (fetchError || !freshRound?.cribbage_state) {
         console.error('[CRIBBAGE] Failed to fetch fresh state before play:', fetchError);
         toast.error('Failed to sync game state. Try again.');
+        releasePlayWriterLock(lockClaim, 'fetch-failed');
         return;
       }
+
       
       const freshState = freshRound.cribbage_state as unknown as CribbageState;
       
