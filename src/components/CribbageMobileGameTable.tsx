@@ -2278,9 +2278,24 @@ export const CribbageMobileGameTable = ({
     if (!heldSequenceSnapshot) return;
     if (playCardIntent !== null) return;
     if (heldAnnouncementSettledRef.current !== heldSequenceSnapshot.armedEventId) return;
+    const releasedSnapshot = heldSequenceSnapshot;
     setThirtyOneDelayActive(false);
     setHeldSequenceSnapshot(null);
     prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+    recordCribbageWartime('boundary', 'boundary_hold_released', {
+      armedEventId: releasedSnapshot.armedEventId,
+      armedEventType: releasedSnapshot.armedEventType,
+      heldStartIndex: releasedSnapshot.heldStartIndex,
+      heldEndIndex: releasedSnapshot.heldEndIndex,
+      heldDisplayCount: releasedSnapshot.heldDisplayCount,
+      dbSequenceStartIndexAtRelease: dbSequenceStartIndex,
+      releaseReason: 'primary-announcement-settled-and-transport-clear',
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'boundaryHoldReleaseEffect',
+      dedupeKey: `hold_release:${releasedSnapshot.armedEventId}`,
+      eventReason: 'primary release',
+    });
     // Deliberately do NOT touch opponentPlayedCountRef here; the
     // opponent-play effect re-runs on `thirtyOneDelayActive` and
     // animates any card that landed in the new sequence during hold.
