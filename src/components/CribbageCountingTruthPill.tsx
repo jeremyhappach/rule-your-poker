@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+
 import {
   countingTruthLedger,
   type CountingTruthEntry,
@@ -230,8 +232,10 @@ export const CribbageCountingTruthPill = () => {
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div
+
       style={{
         position: 'fixed',
         bottom: 6,
@@ -318,6 +322,8 @@ export const CribbageCountingTruthPill = () => {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 };
+

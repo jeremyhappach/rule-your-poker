@@ -23,6 +23,8 @@ import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 import { CribbagePegTransportPill } from './CribbagePegTransportPill';
+import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+
 import {
   recordPegTransportAttempt,
   updatePegTransportEntry,
@@ -7624,6 +7626,8 @@ export const CribbageMobileGameTable = ({
 
           {/* Instrumentation pill — collapsed by default, top-left. */}
           <CribbagePegTransportPill />
+          <CribbageCountingTruthPill />
+
 
 
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
