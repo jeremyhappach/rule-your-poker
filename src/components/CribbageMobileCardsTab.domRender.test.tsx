@@ -202,7 +202,12 @@ function countCards(): number {
 // stuck in PRE_DEAL / DEALING and no active intents remain.
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('CribbageMobileCardsTab — child DOM render under stale presentation', () => {
+// Obsolete: the "self-heal during PRE_DEAL / DEALING-idle" contract this
+// suite asserted was deliberately removed together with the fixed opening-
+// deal grace. Under the current lifecycle-only visibility contract
+// (see cribbageRenderGuards), PRE_DEAL and DEALING-idle render empty and
+// only READY / gameplay renders the authoritative hand.
+describe.skip('CribbageMobileCardsTab — child DOM render under stale presentation', () => {
   it('renders 6 visible cards when DealRuntime is stuck PRE_DEAL, activeIntents=0, phase=discarding', () => {
     fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
     const state = makeState({ phase: 'discarding' });
