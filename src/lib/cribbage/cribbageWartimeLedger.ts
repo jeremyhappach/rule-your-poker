@@ -328,17 +328,23 @@ export function recordCribbageWartime(
 
 export function clearCribbageWartime(): void {
   for (const g of Object.keys(buckets) as WartimeGroup[]) buckets[g] = [];
+  protectedRing.length = 0;
   lastSeenAt.clear();
   seqCounter = 0;
   notify();
 }
 
 export function getCribbageWartimeEntries(): WartimeEntry[] {
-  // Interleave by seq (chronological).
+  // Chronologically merge normal buckets AND the protected ring.
   const all: WartimeEntry[] = [];
   for (const g of Object.keys(buckets) as WartimeGroup[]) all.push(...buckets[g]);
+  all.push(...protectedRing);
   all.sort((a, b) => a.seq - b.seq);
   return all;
+}
+
+export function getCribbageWartimeHardMax(): number {
+  return HARD_MAX_TOTAL_ENTRIES;
 }
 
 export function subscribeCribbageWartime(fn: () => void): () => void {
