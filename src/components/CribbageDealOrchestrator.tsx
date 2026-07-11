@@ -69,7 +69,9 @@ export function CribbageDealOrchestrator({
   const ct = useCardTransport();
   const deal = useDealRuntime();
   const dispatchedRef = useRef(false);
-  const dealTimingHydrated = useDealTimingHydrated();
+  // Hydration is intentionally NOT a dispatch gate. getDealTimingSnapshot()
+  // returns defaults synchronously when hydration hasn't landed; late
+  // hydration must not restart or mutate the active deal.
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
