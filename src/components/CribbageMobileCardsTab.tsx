@@ -748,6 +748,8 @@ export const CribbageMobileCardsTab = ({
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
+    if (renderTrace?.interactionsAllowed === false) return;
+
 
     if (cribbageState.phase === 'discarding') {
       if (selectedCards.includes(index)) {
