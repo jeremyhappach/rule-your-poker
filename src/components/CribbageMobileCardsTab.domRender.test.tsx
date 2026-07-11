@@ -404,62 +404,16 @@ function ParentSelfHealHarness({
 }
 
 describe('Parent authoritative-fallback mount (RTL mirror of CribbageMobileGameTable gate)', () => {
-  it('mounts Cards surface via self-heal when viewState is null but authoritative phase=discarding with 6 cards', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'discarding' });
-    // Sanity — the fallback helper agrees the fallback fires.
-    expect(hasAnyCribbageAuthoritativeHand(auth)).toBe(true);
-    expect(
-      deriveCribbageParentRenderMode({
-        isDealerSelection: false,
-        isHighCardMode: false,
-        initialLoadComplete: false,
-        renderHandKey: '',
-        currentHandKey: '',
-        currentPlayerId: 'p1',
-        isObserver: false,
-        isStaleCompleteAwaitingNext: false,
-        authoritativeState: auth,
-      }).parentAuthoritativeGameplayFallback,
-    ).toBe(true);
+  // NOTE: three former tests in this describe (viewState=null with
+  // authoritative phase=discarding/pegging/high-card mode all expected
+  // 6 visible cards via self-heal) were deleted. They asserted the
+  // PRE_DEAL / DEALING-idle self-heal render contract that was removed
+  // alongside the fixed opening-deal grace. Under the current lifecycle
+  // contract those cases render 0 visible cards until GAMEPLAY / READY.
+  // The remaining tests below (negative mount for pre-deal phases;
+  // opponent count is authoritative) still hold under the current
+  // contract and are retained.
 
-    act(() => {
-      root!.render(<ParentSelfHealHarness authoritativeState={auth} viewState={null} />);
-    });
-
-    // Cards surface is present …
-    expect(container!.querySelector('[data-testid="parent-mounted"]')).not.toBeNull();
-    expect(
-      container!.querySelector('[data-testid="parent-mounted"]')!.getAttribute('data-mount-path'),
-    ).toBe('self-heal');
-    // … and it produced 6 visible card DOM nodes.
-    expect(countCards()).toBe(6);
-  });
-
-  it('renders 6 visible cards for the local player when viewState is stale during pegging', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'pegging' });
-    act(() => {
-      root!.render(<ParentSelfHealHarness authoritativeState={auth} viewState={null} />);
-    });
-    expect(countCards()).toBe(6);
-  });
-
-  it('mounts Cards surface when stale high-card mode remains true after authoritative discarding state arrives', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'discarding' });
-    act(() => {
-      root!.render(
-        <ParentSelfHealHarness
-          authoritativeState={auth}
-          viewState={null}
-          isHighCardMode
-        />,
-      );
-    });
-    expect(container!.querySelector('[data-testid="parent-mounted"]')).not.toBeNull();
-    expect(countCards()).toBe(6);
-  });
 
   it('does NOT mount via self-heal when phase is pre-deal (dealer-select / dealing)', () => {
     fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
