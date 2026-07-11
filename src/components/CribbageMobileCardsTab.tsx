@@ -786,10 +786,12 @@ export const CribbageMobileCardsTab = ({
   };
 
   const handleDiscard = () => {
+    if (renderTrace?.interactionsAllowed === false) return;
     if (selectedCards.length !== expectedDiscard) {
       toast.error(`Select ${expectedDiscard} card(s) to discard`);
       return;
     }
+
     // Task C1 — synchronously capture per-card source rects BEFORE the
     // authoritative discard state mutates. Uses the stable
     // `data-cribbage-hand-card-key` marker attached to each hand button.
