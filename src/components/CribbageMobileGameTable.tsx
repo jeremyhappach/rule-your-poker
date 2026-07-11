@@ -2232,6 +2232,23 @@ export const CribbageMobileGameTable = ({
       heldDisplayCount,
     });
     setThirtyOneDelayActive(true);
+    recordCribbageWartime('boundary', 'pegging_boundary_hold_started', {
+      armedEventId: eventKey,
+      armedEventType: is31 ? 'pegging_points' : 'go_point',
+      heldStartIndex: heldStart,
+      heldEndIndex: heldEnd,
+      heldDisplayCount,
+      lastEventCount: (lastEvent as { count?: number }).count ?? null,
+      playedCardsLength: played.length,
+      currentTurnPlayerId: cribbageState.pegging.currentTurnPlayerId ?? null,
+      sequenceIndexBefore: prevSequenceStartIndexRef.current,
+      sequenceIndexDb: dbSequenceStartIndex,
+    }, {
+      producerComponent: 'CribbageMobileGameTable',
+      producerFunction: 'boundaryHoldArmEffect',
+      dedupeKey: `hold_start:${eventKey}`,
+      eventReason: is31 ? 'reached 31' : 'go/last',
+    });
 
     // Announcement-settled timer tied to THIS event id only. When it
     // fires, the release effect below can drop the hold (once transport
