@@ -42,7 +42,12 @@ export type WartimeEventKind =
   | 'dealruntime_ready_released_changed'
   | 'settled_count_changed'
   | 'settled_local_count_changed'
-  | 'transport_intent_created'
+  // NOTE: `transport_intent_first_seen` is emitted by CardTransportRuntime
+  // on its first resolution pass over an active intent. It is NOT the
+  // upstream game-side dispatch/enqueue moment (that fact is owned by the
+  // producer that called ctx.dispatch). The runtime's first canonical
+  // acceptance into its resolution queue is what this event records.
+  | 'transport_intent_first_seen'
   | 'transport_intent_mounted'
   | 'transport_intent_launched'
   | 'transport_intent_settled'
@@ -81,9 +86,18 @@ export type WartimeEventKind =
   | 'go_event_seen'
   | 'thirty_one_event_seen'
   | 'pegging_boundary_hold_started'
+  // Direct producer at the state owner (CribbageMobileGameTable):
+  //   emitted when the pegging-row's owning presentation state advances
+  //   sequenceStartIndex forward, i.e. the boundary that logically
+  //   removes/releases the pegging-row cards.
   | 'row_clear_requested'
-  | 'row_clear_dom_started'
-  | 'row_clear_dom_complete'
+  // Observer-level events emitted from the row render probe. These
+  // describe DOM/logical transitions *observed* by the render probe —
+  // they do NOT imply the state owner initiated the clear. Distinct
+  // from `row_clear_requested` on purpose.
+  | 'row_clear_logical_observed'
+  | 'row_clear_dom_started_observed'
+  | 'row_clear_dom_empty_observed'
   | 'boundary_hold_released'
   | 'authoritative_turn_changed'
   | 'local_action_eligibility_changed'
@@ -158,15 +172,16 @@ const LIFECYCLE_KINDS = new Set<WartimeEventKind>([
   'orchestrator_unmount',
   'dispatch_succeeded',
   'dealruntime_phase_changed',
-  'transport_intent_created',
+  'transport_intent_first_seen',
   'transport_intent_launched',
   'transport_intent_settled',
   'transport_intent_dropped',
   'pegging_boundary_hold_started',
   'boundary_hold_released',
   'row_clear_requested',
-  'row_clear_dom_started',
-  'row_clear_dom_complete',
+  'row_clear_logical_observed',
+  'row_clear_dom_started_observed',
+  'row_clear_dom_empty_observed',
   'play_button_enabled_changed',
   'play_intent_created',
   'play_destination_computed',
@@ -445,7 +460,7 @@ export function serializeCribbageWartime(
 import { isCribbageIntentLike } from './cribbageIntentScope';
 
 export type IntentLifecycleKind =
-  | 'transport_intent_created'
+  | 'transport_intent_first_seen'
   | 'transport_intent_launched'
   | 'transport_intent_settled'
   | 'transport_intent_dropped';
@@ -467,9 +482,13 @@ export function recordCribbageTransportIntentLifecycle(
     dispatchId?: string | null;
     reason?: string | null;
     timing?: Record<string, unknown>;
+    // Explicit immutable game provenance from the transport context
+    // (`ctx.gameType`). When provided, it takes precedence over any
+    // shape/id heuristic in `isCribbageIntentLike`.
+    gameType?: string | null;
   } = {},
 ): void {
-  if (!isCribbageIntentLike(intent)) return;
+  if (!isCribbageIntentLike(intent, { gameType: extras.gameType ?? null })) return;
   const intentId = intent.id ?? '';
   recordCribbageWartime('deal', kind, {
     intentId,

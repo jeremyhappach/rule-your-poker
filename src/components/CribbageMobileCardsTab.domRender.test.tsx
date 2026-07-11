@@ -198,131 +198,17 @@ function countCards(): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// CHILD-LEVEL RTL — the tab renders visible cards when DealRuntime is
-// stuck in PRE_DEAL / DEALING and no active intents remain.
+// The former "child DOM render under stale presentation" describe was
+// deleted together with the fixed opening-deal grace and PRE_DEAL/
+// DEALING-idle self-heal contract. Under the current lifecycle-only
+// visibility contract (see cribbageRenderGuards + CardTransportRuntime
+// dropped-intent recovery) PRE_DEAL and DEALING-idle render empty; only
+// GAMEPLAY / READY render the authoritative full hand. The tests that
+// asserted otherwise were obsolete and are removed here rather than
+// left as `describe.skip` (which hides coverage).
 // ─────────────────────────────────────────────────────────────────────────
 
-// Obsolete: the "self-heal during PRE_DEAL / DEALING-idle" contract this
-// suite asserted was deliberately removed together with the fixed opening-
-// deal grace. Under the current lifecycle-only visibility contract
-// (see cribbageRenderGuards), PRE_DEAL and DEALING-idle render empty and
-// only READY / gameplay renders the authoritative hand.
-describe.skip('CribbageMobileCardsTab — child DOM render under stale presentation', () => {
-  it('renders 6 visible cards when DealRuntime is stuck PRE_DEAL, activeIntents=0, phase=discarding', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(
-        <CribbageMobileCardsTab
-          cribbageState={state}
-          currentPlayerId="p1"
-          playerCount={2}
-          isProcessing={false}
-          onDiscard={() => {}}
-          onPlayCard={() => {}}
-          currentPlayer={currentPlayer}
-          gameId="game-1"
-          isDealer
-          roundId="round-1"
-          renderTrace={{
-            renderHandKey: 'p1:A,2,3,4,5,6',
-            currentHandKey: 'p1:A,2,3,4,5,6',
-            dealerGameId: 'dg-1',
-            isFrozen: false,
-            authoritativeHand: auth,
-            renderSource: 'self-heal-authoritative',
-            expectedRoundId: 'round-1',
-            sourceRoundId: 'round-1',
-            handNumber: 1,
-            isGameplayMode: true,
-            viewStateIsCurrentRound: true,
-            interactionsAllowed: false,
-          }}
-        />,
-      );
-    });
-    expect(countCards()).toBe(6);
-    expect(countCards()).not.toBe(0);
-    expect(countCards()).not.toBe(1);
-  });
 
-  it('renders 6 visible cards when DealRuntime is stuck DEALING with zero settled and zero active intents (pegging phase)', () => {
-    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'pegging' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(
-        <CribbageMobileCardsTab
-          cribbageState={state}
-          currentPlayerId="p1"
-          playerCount={2}
-          isProcessing={false}
-          onDiscard={() => {}}
-          onPlayCard={() => {}}
-          currentPlayer={currentPlayer}
-          gameId="game-1"
-          isDealer
-          roundId="round-1"
-          renderTrace={{
-            renderHandKey: 'p1:A,2,3,4,5,6',
-            currentHandKey: 'p1:A,2,3,4,5,6',
-            dealerGameId: 'dg-1',
-            isFrozen: false,
-            authoritativeHand: auth,
-            renderSource: 'self-heal-authoritative',
-            expectedRoundId: 'round-1',
-            sourceRoundId: 'round-1',
-            handNumber: 1,
-            isGameplayMode: true,
-            viewStateIsCurrentRound: true,
-            interactionsAllowed: true,
-          }}
-        />,
-      );
-    });
-    expect(countCards()).toBe(6);
-  });
-
-  it('renders 6 visible cards when parentSuppressed (activeHandBlocked) but authoritative hand is complete post-deal', () => {
-    // Identity-mismatch style parent suppression: renderHandKey !== currentHandKey.
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(
-        <CribbageMobileCardsTab
-          cribbageState={state}
-          currentPlayerId="p1"
-          playerCount={2}
-          isProcessing={false}
-          onDiscard={() => {}}
-          onPlayCard={() => {}}
-          currentPlayer={currentPlayer}
-          gameId="game-1"
-          isDealer
-          roundId="round-1"
-          renderTrace={{
-            renderHandKey: 'stale:key',
-            currentHandKey: 'p1:A,2,3,4,5,6',
-            dealerGameId: 'dg-1',
-            isFrozen: false,
-            authoritativeHand: auth,
-            renderSource: 'sync-presentation',
-            expectedRoundId: 'round-1',
-            sourceRoundId: 'round-1',
-            handNumber: 1,
-            isGameplayMode: true,
-            viewStateIsCurrentRound: false,
-            interactionsAllowed: false, // triggers parentSuppressed
-          }}
-        />,
-      );
-    });
-    // Self-heal must promote to authoritative and produce visible cards.
-    expect(countCards()).toBe(6);
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────
 // REGRESSION — the tab preserves in-flight deal animation subset when
@@ -347,6 +233,7 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
           gameId="game-1"
           isDealer
           roundId="round-1"
+          selectedCards={[]}
           renderTrace={{
             renderHandKey: 'p1:A,2,3,4,5,6',
             currentHandKey: 'p1:A,2,3,4,5,6',
@@ -384,6 +271,7 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
           gameId="game-1"
           isDealer
           roundId="round-1"
+          selectedCards={[]}
           renderTrace={{
             renderHandKey: 'p1:A,2,3,4,5,6',
             currentHandKey: 'p1:A,2,3,4,5,6',
@@ -406,124 +294,16 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// OPENING-DEAL WINDOW — the exact regression: authoritative hand exists
-// on the DB before CardTransport.beginDeal has been called. The old
-// resolveVisibleLocalHand Rule 1 flashed the full hand instantly, then
-// the transport began and cards disappeared before re-animating.
+// The former "opening-deal grace prevents pre-transport flash" describe
+// (six tests) was deleted. It exclusively asserted the fixed 2000ms
+// opening-deal grace, which was deliberately removed. Visibility is
+// now strictly lifecycle-driven: PRE_DEAL / DEALING renders empty and
+// GAMEPLAY renders the authoritative hand; transport-dropped intents
+// recover via CardTransportRuntime's canonical MAX_PENDING_MS path.
+// Retained lifecycle assertions live in the "healthy in-flight deal"
+// describe above.
 // ─────────────────────────────────────────────────────────────────────────
 
-// Obsolete: the fixed 2000ms opening-deal grace this suite asserted was
-// deliberately removed. Visibility is now strictly lifecycle-driven and
-// transport-dropped intents recover via CardTransportRuntime → READY.
-describe.skip('CribbageMobileCardsTab — opening-deal grace prevents pre-transport flash', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  const openingDealProps = (auth: CribbageCard[]) => ({
-    cribbageState: makeState({ phase: 'discarding' }),
-    currentPlayerId: 'p1',
-    playerCount: 2,
-    isProcessing: false,
-    onDiscard: () => {},
-    onPlayCard: () => {},
-    currentPlayer,
-    gameId: 'game-1',
-    isDealer: true,
-    roundId: 'round-1',
-    renderTrace: {
-      renderHandKey: 'p1:A,2,3,4,5,6',
-      currentHandKey: 'p1:A,2,3,4,5,6',
-      dealerGameId: 'dg-1',
-      isFrozen: false,
-      authoritativeHand: auth,
-      renderSource: 'sync-presentation',
-      expectedRoundId: 'round-1',
-      sourceRoundId: 'round-1',
-      handNumber: 1,
-      isGameplayMode: true,
-      viewStateIsCurrentRound: true,
-      interactionsAllowed: true,
-    },
-  });
-
-  it('does NOT flash the full authoritative hand before transport begins (PRE_DEAL, expectedCount=0)', () => {
-    // Fresh hand identity: DB has flipped to phase=discarding + 6 cards,
-    // but the orchestrator has not yet called beginDeal(). expectedCount
-    // is still 0. Old bug: Rule 1 rendered 6 immediately.
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 0, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    // Presentation owns the deal window. Zero cards, no flash.
-    expect(countCards()).toBe(0);
-  });
-
-  it('does NOT flash when DEALING has just begun with zero settled and zero active (still within grace)', () => {
-    // The tick between beginDeal(12) and dispatchMany.
-    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    expect(countCards()).toBe(0);
-  });
-
-  it('after grace window expires with transport still stuck, authoritative self-heal renders 6', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 0, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    expect(countCards()).toBe(0);
-    // Advance past the bounded grace window (2000ms).
-    act(() => {
-      vi.advanceTimersByTime(2100);
-    });
-    expect(countCards()).toBe(6);
-  });
-
-  it('transport progressing during grace: presentation subset renders, no flash-to-6', () => {
-    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 4, settledCountForPlayer: 2 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    expect(countCards()).toBe(2);
-  });
-
-  it('transport stuck with active intents and zero visible cards self-heals after grace', () => {
-    fakeDeal = { phase: 'DEALING', expectedCount: 12, activeIntentsForHand: 4, settledCountForPlayer: 0 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    expect(countCards()).toBe(0);
-    act(() => {
-      vi.advanceTimersByTime(2100);
-    });
-    expect(countCards()).toBe(6);
-  });
-
-  it('transport completes to GAMEPLAY: full 6 render even before grace expires (terminal state wins)', () => {
-    fakeDeal = { phase: 'GAMEPLAY', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 6 };
-    const state = makeState({ phase: 'discarding' });
-    const auth = state.playerStates.p1.hand;
-    act(() => {
-      root!.render(<CribbageMobileCardsTab {...openingDealProps(auth)} />);
-    });
-    expect(countCards()).toBe(6);
-  });
-});
 
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -624,62 +404,16 @@ function ParentSelfHealHarness({
 }
 
 describe('Parent authoritative-fallback mount (RTL mirror of CribbageMobileGameTable gate)', () => {
-  it('mounts Cards surface via self-heal when viewState is null but authoritative phase=discarding with 6 cards', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'discarding' });
-    // Sanity — the fallback helper agrees the fallback fires.
-    expect(hasAnyCribbageAuthoritativeHand(auth)).toBe(true);
-    expect(
-      deriveCribbageParentRenderMode({
-        isDealerSelection: false,
-        isHighCardMode: false,
-        initialLoadComplete: false,
-        renderHandKey: '',
-        currentHandKey: '',
-        currentPlayerId: 'p1',
-        isObserver: false,
-        isStaleCompleteAwaitingNext: false,
-        authoritativeState: auth,
-      }).parentAuthoritativeGameplayFallback,
-    ).toBe(true);
+  // NOTE: three former tests in this describe (viewState=null with
+  // authoritative phase=discarding/pegging/high-card mode all expected
+  // 6 visible cards via self-heal) were deleted. They asserted the
+  // PRE_DEAL / DEALING-idle self-heal render contract that was removed
+  // alongside the fixed opening-deal grace. Under the current lifecycle
+  // contract those cases render 0 visible cards until GAMEPLAY / READY.
+  // The remaining tests below (negative mount for pre-deal phases;
+  // opponent count is authoritative) still hold under the current
+  // contract and are retained.
 
-    act(() => {
-      root!.render(<ParentSelfHealHarness authoritativeState={auth} viewState={null} />);
-    });
-
-    // Cards surface is present …
-    expect(container!.querySelector('[data-testid="parent-mounted"]')).not.toBeNull();
-    expect(
-      container!.querySelector('[data-testid="parent-mounted"]')!.getAttribute('data-mount-path'),
-    ).toBe('self-heal');
-    // … and it produced 6 visible card DOM nodes.
-    expect(countCards()).toBe(6);
-  });
-
-  it('renders 6 visible cards for the local player when viewState is stale during pegging', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'pegging' });
-    act(() => {
-      root!.render(<ParentSelfHealHarness authoritativeState={auth} viewState={null} />);
-    });
-    expect(countCards()).toBe(6);
-  });
-
-  it('mounts Cards surface when stale high-card mode remains true after authoritative discarding state arrives', () => {
-    fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };
-    const auth = makeState({ phase: 'discarding' });
-    act(() => {
-      root!.render(
-        <ParentSelfHealHarness
-          authoritativeState={auth}
-          viewState={null}
-          isHighCardMode
-        />,
-      );
-    });
-    expect(container!.querySelector('[data-testid="parent-mounted"]')).not.toBeNull();
-    expect(countCards()).toBe(6);
-  });
 
   it('does NOT mount via self-heal when phase is pre-deal (dealer-select / dealing)', () => {
     fakeDeal = { phase: 'PRE_DEAL', expectedCount: 12, activeIntentsForHand: 0, settledCountForPlayer: 0 };

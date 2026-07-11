@@ -168,10 +168,14 @@ function PeggingRowRenderProbe({
     lastSigRef.current = sig;
     lastLogicalCountRef.current = cards.length;
 
-    // Row-clear logical trigger: transition from N>0 → 0 cards.
-    const isRowClearRequested = prevLogicalCount > 0 && cards.length === 0;
-    if (isRowClearRequested) {
-      recordCribbageWartime('boundary', 'row_clear_requested', {
+    // OBSERVER-LEVEL logical row clear: transition from N>0 → 0 cards.
+    // This is what the render probe SEES; it does not imply the owning
+    // state initiated the clear. The direct producer that owns the
+    // clear (advancing sequenceStartIndex) emits `row_clear_requested`
+    // from CribbageMobileGameTable.
+    const isRowClearObserved = prevLogicalCount > 0 && cards.length === 0;
+    if (isRowClearObserved) {
+      recordCribbageWartime('boundary', 'row_clear_logical_observed', {
         prevLogicalCount,
         newLogicalCount: 0,
         sequenceStartIndex,
@@ -180,9 +184,9 @@ function PeggingRowRenderProbe({
         withheldPlayedCardKey,
       }, {
         producerComponent: 'CribbageAnchoredPeggingRowMount',
-        producerFunction: 'PeggingRowRenderProbe.rowClearRequested',
-        dedupeKey: `row_clear_req:${sequenceStartIndex}`,
-        eventReason: 'logical row emptied',
+        producerFunction: 'PeggingRowRenderProbe.rowClearLogicalObserved',
+        dedupeKey: `row_clear_logical_obs:${sequenceStartIndex}`,
+        eventReason: 'logical row emptied (observed by render probe)',
       });
     }
 
@@ -244,11 +248,14 @@ function PeggingRowRenderProbe({
           contradictions,
         });
 
-        // D-group: DOM row-clear boundary detection.
+        // D-group: OBSERVER-LEVEL DOM row-clear boundary detection.
+        // These record what the probe sees in the DOM; they do NOT
+        // imply state-owner intent. See `row_clear_requested` at the
+        // state owner for the actual triggering boundary event.
         const prevDom = lastDomCountRef.current;
         lastDomCountRef.current = rects.length;
         if (prevDom > 0 && rects.length < prevDom) {
-          recordCribbageWartime('boundary', 'row_clear_dom_started', {
+          recordCribbageWartime('boundary', 'row_clear_dom_started_observed', {
             prevDomCount: prevDom,
             newDomCount: rects.length,
             logicalCount: cards.length,
@@ -256,22 +263,22 @@ function PeggingRowRenderProbe({
             sequenceEndIndex,
           }, {
             producerComponent: 'CribbageAnchoredPeggingRowMount',
-            producerFunction: 'PeggingRowRenderProbe.rowClearDomStarted',
-            dedupeKey: `row_clear_dom_start:${sequenceStartIndex}:${prevDom}->${rects.length}`,
-            eventReason: 'DOM row count decreased after logical clear',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomStartedObserved',
+            dedupeKey: `row_clear_dom_start_obs:${sequenceStartIndex}:${prevDom}->${rects.length}`,
+            eventReason: 'DOM row count decreased (observed by render probe)',
           });
         }
         if (prevDom > 0 && rects.length === 0) {
-          recordCribbageWartime('boundary', 'row_clear_dom_complete', {
+          recordCribbageWartime('boundary', 'row_clear_dom_empty_observed', {
             prevDomCount: prevDom,
             logicalCount: cards.length,
             sequenceStartIndex,
             sequenceEndIndex,
           }, {
             producerComponent: 'CribbageAnchoredPeggingRowMount',
-            producerFunction: 'PeggingRowRenderProbe.rowClearDomComplete',
-            dedupeKey: `row_clear_dom_complete:${sequenceStartIndex}`,
-            eventReason: 'DOM row fully cleared',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomEmptyObserved',
+            dedupeKey: `row_clear_dom_empty_obs:${sequenceStartIndex}`,
+            eventReason: 'DOM row fully empty (observed by render probe)',
           });
         }
       } catch { /* ignore */ }

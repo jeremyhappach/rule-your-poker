@@ -165,6 +165,7 @@ export function CardTransportRuntime({
         });
         recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
           reason: 'no-runtime-container',
+          gameType: ctx.gameType ?? null,
         });
         ctx.__markDropped(intent, 'no-runtime-container');
       }
@@ -180,8 +181,9 @@ export function CardTransportRuntime({
 
       const attemptCount = (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1;
       if (attemptCount === 1) {
-        recordCribbageTransportIntentLifecycle('transport_intent_created', intent, {
+        recordCribbageTransportIntentLifecycle('transport_intent_first_seen', intent, {
           reason: 'first-seen',
+          gameType: ctx.gameType ?? null,
         });
       }
       resolveAttemptCountRef.current.set(intent.id, attemptCount);
@@ -267,6 +269,7 @@ export function CardTransportRuntime({
           recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
             reason: 'missing-endpoint-after-retry',
             timing: { waitedMs: waited, maxPendingMs: MAX_PENDING_MS },
+            gameType: ctx.gameType ?? null,
           });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
         }
@@ -337,6 +340,7 @@ export function CardTransportRuntime({
           recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
             reason: 'delayed-launch-timer-fired',
             timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+            gameType: ctx.gameType ?? null,
           });
           launchTimersRef.current.delete(intent.id);
           rerender();
@@ -367,6 +371,7 @@ export function CardTransportRuntime({
         recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
           reason: 'immediate-launch',
           timing: { delayMs: 0, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+          gameType: ctx.gameType ?? null,
         });
       }
 
@@ -390,6 +395,7 @@ export function CardTransportRuntime({
         recordCribbageTransportIntentLifecycle('transport_intent_settled', intent, {
           reason: 'timer_fallback',
           timing: { settledAt: tnow, totalMs: delayMs + flightMs + ownershipClaimDelayMs },
+          gameType: ctx.gameType ?? null,
         });
         ctx.__markSettled(intent.id, intent.cardId, 'timer_fallback');
       }, delayMs + flightMs + ownershipClaimDelayMs);
