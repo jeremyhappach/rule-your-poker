@@ -2179,23 +2179,26 @@ export const CribbageMobileGameTable = ({
   // handlePlayCard invocation, immediately before the first await, and
   // released only along the paths enumerated in the Turn 2 contract.
   const playWriterLockRef = useRef<{
+    intentId: string;
     cardId: string;
     handKey: string;
     playedCount: number;
   } | null>(null);
   const releasePlayWriterLock = useCallback((
-    expected: { cardId: string; handKey: string; playedCount: number } | null,
+    expected: { intentId: string; cardId: string; handKey: string; playedCount: number } | null,
     reason: string,
   ) => {
     const current = playWriterLockRef.current;
     if (!current) return;
     if (expected && (
+      current.intentId !== expected.intentId ||
       current.cardId !== expected.cardId ||
       current.handKey !== expected.handKey ||
       current.playedCount !== expected.playedCount
     )) return;
     playWriterLockRef.current = null;
     recordCribbageWartime('boundary', 'play_writer_lock_released', {
+      intentId: current.intentId,
       cardId: current.cardId,
       handKey: current.handKey,
       playedCount: current.playedCount,
@@ -2203,7 +2206,7 @@ export const CribbageMobileGameTable = ({
     }, {
       producerComponent: 'CribbageMobileGameTable',
       producerFunction: 'releasePlayWriterLock',
-      dedupeKey: `play_writer_lock_released:${current.cardId}:${current.handKey}:${current.playedCount}:${reason}`,
+      dedupeKey: `play_writer_lock_released:${current.intentId}:${current.cardId}:${current.handKey}:${current.playedCount}:${reason}`,
       eventReason: reason,
     });
   }, []);
