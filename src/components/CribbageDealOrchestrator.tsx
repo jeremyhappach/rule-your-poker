@@ -99,18 +99,8 @@ export function CribbageDealOrchestrator({
 
 
 
-  useEffect(() => {
-    if (!deal || dispatchedRef.current) return;
-    
-    if (!seats.length || cardsPerPlayer <= 0) return;
-    const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
-    if (!dealerSeat) return;
-    // Wait for authoritative self hand so visible faces are real cards.
-    if (!selfHand || selfHand.length < cardsPerPlayer) return;
+  // (dispatch effect follows)
 
-    const sorted = [...seats].sort((a, b) => a.position - b.position);
-    const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
-    if (dealerIdx < 0) return;
 
   useEffect(() => {
     // Prerequisites evaluation — always emitted (coalesced by dedupeKey).
