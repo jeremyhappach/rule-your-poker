@@ -163,6 +163,9 @@ export function CardTransportRuntime({
           transportMounted: false,
           lifecycleState: 'dropped',
         });
+        recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
+          reason: 'no-runtime-container',
+        });
         ctx.__markDropped(intent, 'no-runtime-container');
       }
       return;
