@@ -1123,218 +1123,49 @@ export const CribbageCountingPhase = ({
         });
 
         innerTimer = setTimeout(() => {
-          if (!winFrozenRef.current) {
-            const nextCombo = currentComboIndex + 1;
+          if (winFrozenRef.current) return;
+          const nextCombo = currentComboIndex + 1;
+          const armedTargetIndex = currentTargetIndex;
+          // Patch A: every combo N → N+1 boundary must lower/wait before
+          // the next combo becomes active. Advance only after the visual
+          // lower gate for combo N resolves.
+          armLowerGate(comboIds, armedTargetIndex, 'inter-combo', () => {
+            if (winFrozenRef.current) return;
             setCurrentComboIndex(nextCombo);
-            onProgressUpdate?.(currentTargetIndex, nextCombo);
-          }
+            onProgressUpdate?.(armedTargetIndex, nextCombo);
+          });
         }, COMBO_DELAY_MS);
         return;
       }
 
       // ── Final combo → Total: visual-lower gate ─────────────────
+      // Patch A: uses the same unified `armLowerGate` machinery as the
+      // ordinary combo boundaries above. Only the resolver differs — it
+      // publishes the Total announcement and schedules the exit.
       const finalCombo = currentCombos[currentCombos.length - 1];
       const finalComboIds = finalCombo
         ? finalCombo.cards.map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`)
         : [];
-      recordEvent('combo_lower_start', {
-        eventSource: 'scoringEffect',
-        eventReason: 'past-last-combo',
-        finalComboLowerPendingCardIds: finalComboIds,
-        highlightedCardIds: [],
-        previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
-        effectThatRan: 'scoringEffect',
-      });
-      setHighlightedCards([]);
-      recordTruth('highlight_cleared', {
-        comboHighlightEndedAt: Date.now(),
-        comboTransitionReason: 'final-combo-lower-armed',
-      });
       const totalPoints = getTotalFromCombos(currentCombos);
       const targetLabel = currentTarget.label;
       const armedTargetIndex = currentTargetIndex;
-
-      if (finalLowerCleanupRef.current) {
-        finalLowerCleanupRef.current();
-        finalLowerCleanupRef.current = null;
-      }
-      const startedAt = Date.now();
-      finalLowerPendingRef.current = {
-        cardIds: finalComboIds,
-        targetIndex: armedTargetIndex,
-        targetLabel,
-        total: totalPoints,
-        startedAt,
-      };
-      finalLowerWatchedIdsRef.current = finalComboIds;
-      finalLowerMissingIdsRef.current = [];
-      transitionEndReceivedRef.current = { cardIds: [], props: [], elapsed: [] };
-      recordEvent('combo_lower_pending', {
-        eventSource: 'scoringEffect',
-        eventReason: 'gate-armed',
-        finalComboLowerPending: true,
-        finalComboLowerPendingCardIds: finalComboIds,
-        finalComboLowerPendingStartedAt: startedAt,
-        watchedCardIds: finalComboIds,
-      });
-
-      const finalizeTotal = (
-        reason: 'transitionend' | 'deadman' | 'no-cards' | 'raf-dom-identity' | 'node-missing-skip',
-      ) => {
-        if (winFrozenRef.current) return;
-        const pending = finalLowerPendingRef.current;
-        if (!pending || pending.targetIndex !== armedTargetIndex) return;
-        finalLowerPendingRef.current = null;
-        if (finalLowerCleanupRef.current) {
-          finalLowerCleanupRef.current();
-          finalLowerCleanupRef.current = null;
-        }
-        const resolvedAt = Date.now();
-        const resolveReason: CountingTruthEntry['finalComboLowerResolveReason'] =
-          reason === 'transitionend' ? 'transitionend-all'
-          : reason === 'deadman' ? 'deadman'
-          : reason === 'no-cards' ? 'no-cards'
-          : reason === 'raf-dom-identity' ? 'raf-dom-identity'
-          : 'node-missing-skip';
-        recordEvent('combo_lower_complete', {
-          eventSource: 'gate.finalizeTotal',
-          eventReason: `resolve:${reason}`,
-          finalComboLowerResolvedAt: resolvedAt,
-          finalComboLowerResolveReason: resolveReason,
-          transitionEndReceivedCardIds: [...transitionEndReceivedRef.current.cardIds],
-          transitionEndPropertyNames: [...transitionEndReceivedRef.current.props],
-          transitionEndElapsedTimes: [...transitionEndReceivedRef.current.elapsed],
-          missingWatchedCardIds: [...finalLowerMissingIdsRef.current],
-          watchedCardIds: [...finalLowerWatchedIdsRef.current],
-          contradictions: {
-            ...makeEmptyContradictions(),
-            lowerResolverFiredByDeadman: reason === 'deadman',
-          },
-        });
-        recordTruth('highlight_cleared', {
-          comboHighlightEndedAt: resolvedAt,
-          comboTransitionReason: `final-combo-lower-complete:${reason}`,
-        });
-        recordEvent('total_eligible', {
-          eventSource: 'gate.finalizeTotal',
-          eventReason: 'about-to-publish-total',
-          finalComboLowerResolvedAt: resolvedAt,
-          finalComboLowerResolveReason: resolveReason,
-        });
-        publishAnnouncement(`Total: ${pending.total} points`, pending.targetLabel, 'total');
-        innerTimer = setTimeout(() => {
-          if (!winFrozenRef.current) startExitTransition();
-        }, 1500);
-      };
-
-      if (typeof document === 'undefined' || finalComboIds.length === 0) {
-        finalizeTotal('no-cards');
-      } else {
-        const raf = requestAnimationFrame(() => {
-          finalLowerTimersRef.current.raf = null;
-          rafSampleCountRef.current += 1;
-          const remaining = new Set(finalComboIds);
-          const nodes: Array<{ el: HTMLElement; handler: (e: TransitionEvent) => void }> = [];
-          const watchedTransforms: Record<string, string> = {};
-          const watchedHighlightedAttr: Record<string, string> = {};
-          const missing: string[] = [];
-          for (const id of finalComboIds) {
-            const el = document.querySelector(
-              `[data-cribbage-scoring-card="true"][data-card-id="${id}"]`,
-            ) as HTMLElement | null;
-            if (!el) {
-              remaining.delete(id);
-              missing.push(id);
-              recordEvent('node_missing', {
-                eventSource: 'gate.rafAttach',
-                eventReason: 'watched-card-not-in-dom',
-                missingWatchedCardIds: [id],
-                watchedCardIds: finalComboIds,
-              });
-              continue;
-            }
-            const cs = window.getComputedStyle(el);
-            const t = cs.transform;
-            watchedTransforms[id] = t;
-            watchedHighlightedAttr[id] = el.dataset.cardHighlighted ?? '';
-            const isIdentity =
-              t === 'none' ||
-              t === 'matrix(1, 0, 0, 1, 0, 0)' ||
-              t === 'matrix(1,0,0,1,0,0)';
-            if (isIdentity && el.dataset.cardHighlighted === 'false') {
-              remaining.delete(id);
-              continue;
-            }
-            const handler = (e: TransitionEvent) => {
-              if (e.propertyName !== 'transform') return;
-              transitionEndReceivedRef.current.cardIds.push(id);
-              transitionEndReceivedRef.current.props.push(e.propertyName);
-              transitionEndReceivedRef.current.elapsed.push(e.elapsedTime ?? 0);
-              recordEvent('transitionend', {
-                eventSource: 'gate.transitionend',
-                eventReason: `end:${id}`,
-                watchedCardIds: finalComboIds,
-                watchedDomNodeCount: nodes.length,
-                transitionEndReceivedCardIds: [id],
-                transitionEndPropertyNames: [e.propertyName],
-                transitionEndElapsedTimes: [e.elapsedTime ?? 0],
-              });
-              remaining.delete(id);
-              el.removeEventListener('transitionend', handler);
-              if (remaining.size === 0) finalizeTotal('transitionend');
-            };
-            el.addEventListener('transitionend', handler);
-            nodes.push({ el, handler });
-          }
-          finalLowerWatchedNodeCountRef.current = nodes.length;
-          finalLowerMissingIdsRef.current = missing;
-          const allIdentity = Object.values(watchedTransforms).every(
-            (t) => t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)' || t === 'matrix(1,0,0,1,0,0)',
-          );
-          const allHighlightedFalse = Object.values(watchedHighlightedAttr).every((v) => v === 'false');
-          recordEvent('raf_sample', {
-            eventSource: 'gate.rafAttach',
-            eventReason: 'post-attach',
-            rafSampleCount: rafSampleCountRef.current,
-            rafSampleAt: Date.now(),
-            rafWatchedTransforms: watchedTransforms,
-            rafWatchedHighlightedAttr: watchedHighlightedAttr,
-            rafAllTransformsIdentity: allIdentity,
-            rafAllHighlightedFalse: allHighlightedFalse,
-            rafResolverFired: remaining.size === 0,
-            rafResolverReason: remaining.size === 0 ? 'all-identity-or-missing' : null,
-            watchedCardIds: finalComboIds,
-            watchedDomNodeCount: nodes.length,
-            missingWatchedCardIds: missing,
+      armLowerGate(
+        finalComboIds,
+        armedTargetIndex,
+        'final',
+        (reason) => {
+          if (winFrozenRef.current) return;
+          recordEvent('total_eligible', {
+            eventSource: 'gate.finalizeLower',
+            eventReason: `about-to-publish-total:${reason}`,
           });
-          finalLowerCleanupRef.current = () => {
-            for (const { el, handler } of nodes) el.removeEventListener('transitionend', handler);
-            if (finalLowerTimersRef.current.deadman) {
-              clearTimeout(finalLowerTimersRef.current.deadman);
-              finalLowerTimersRef.current.deadman = null;
-            }
-          };
-          if (remaining.size === 0) {
-            finalizeTotal(missing.length === finalComboIds.length ? 'node-missing-skip' : 'raf-dom-identity');
-            return;
-          }
-          const deadmanStartedAt = Date.now();
-          finalLowerTimersRef.current.deadman = setTimeout(() => {
-            finalLowerTimersRef.current.deadman = null;
-            recordEvent('deadman_fired', {
-              eventSource: 'gate.deadman',
-              eventReason: 'deadman-500ms',
-              deadmanActive: false,
-              deadmanStartedAt,
-              deadmanFiredAt: Date.now(),
-              watchedCardIds: finalComboIds,
-              transitionEndReceivedCardIds: [...transitionEndReceivedRef.current.cardIds],
-            });
-            finalizeTotal('deadman');
-          }, 500);
-        });
-        finalLowerTimersRef.current.raf = raf;
-      }
+          publishAnnouncement(`Total: ${totalPoints} points`, targetLabel, 'total');
+          innerTimer = setTimeout(() => {
+            if (!winFrozenRef.current) startExitTransition();
+          }, 1500);
+        },
+        { targetLabel, total: totalPoints },
+      );
 
     }, currentComboIndex === -1 ? 500 : 0);
 
