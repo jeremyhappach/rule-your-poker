@@ -5,6 +5,9 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+import { countingTruthLedger, makeEmptyContradictions, type CountingTruthEntry } from '@/lib/cribbage/countingTruthLedger';
+import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+
 
 interface Player {
   id: string;
