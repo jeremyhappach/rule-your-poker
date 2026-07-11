@@ -575,25 +575,22 @@ export const CribbageMobileCardsTab = ({
     setVisibleDomCardNodeCount(count);
   }, [cardCount, resizeObserverFireCount, layoutWasFallback]);
 
-  const statusFields: CribbageLayoutStatusFields = {
-    layoutWasFallback,
-    layoutFallbackReason,
-    layoutNormalAvailable: !layoutWasFallback,
-    resolveActiveHandLayoutReturnReason,
-    stageRefAttached: stageRefAttachedState,
-    lastGetBoundingClientRect,
-    resolvedStageRect: handStageRectPx,
-    stageRectWidth: handStageRectPx?.width ?? null,
-    stageRectHeight: handStageRectPx?.height ?? null,
-    resizeObserverAttached,
-    resizeObserverFireCount,
-    didRemeasureAfterCardsArrived,
-    didRemeasureAfterDealReady,
-    fallbackFinalCardWidth: fallbackSynth.w,
-    fallbackFinalCardHeight: fallbackSynth.h,
-    fallbackOverlapRatio: fallbackSynth.ratio,
-    visibleDomCardNodeCount,
-  };
+  // Layout status fields previously fed the removed CribbageLayoutStatusPill.
+  // Left as no-op references to preserve the surrounding hook order; the
+  // wartime pill consumes the same underlying state via its own bridges.
+  void layoutWasFallback;
+  void layoutFallbackReason;
+  void resolveActiveHandLayoutReturnReason;
+  void stageRefAttachedState;
+  void lastGetBoundingClientRect;
+  void handStageRectPx;
+  void resizeObserverAttached;
+  void resizeObserverFireCount;
+  void didRemeasureAfterCardsArrived;
+  void didRemeasureAfterDealReady;
+  void fallbackSynth;
+  void visibleDomCardNodeCount;
+
 
 
   const handleCardClick = (index: number) => {
