@@ -2377,8 +2377,10 @@ export const CribbageMobileGameTable = ({
           eventReason: 'phase left pegging',
         });
       }
+      // Turn 2 — phase-exit release of any stuck writer lock.
+      releasePlayWriterLock(null, 'phase-exit');
     }
-  }, [cribbageState?.phase]);
+  }, [cribbageState?.phase, releasePlayWriterLock]);
 
   // Use the previous (pre-reset) index during hold, otherwise use the DB index
   const sequenceStartIndex = thirtyOneDelayActive && heldSequenceSnapshot
