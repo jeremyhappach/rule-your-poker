@@ -404,7 +404,14 @@ export const CribbageCountingPhase = ({
       currentComboPoints: combo?.points ?? null,
       currentComboCardIds: combo ? combo.cards.map(cardId) : [],
       comboHighlightActive: highlightedCards.length > 0,
-      comboRaiseActive: highlightedCards.length > 0 && transitionPhase === 'scoring',
+      // Instrumentation truthfulness: raiseActive requires an actual combo
+      // set to be logically active. Cannot report raiseActive=true when
+      // there is no current combo label/card set.
+      comboRaiseActive:
+        highlightedCards.length > 0 &&
+        transitionPhase === 'scoring' &&
+        combo != null &&
+        combo.cards.length > 0,
       previousComboIndex: currentComboIndex - 1,
       nextComboIndex: currentComboIndex + 1,
     };
