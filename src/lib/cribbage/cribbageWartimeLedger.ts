@@ -83,6 +83,8 @@ export type WartimeEventKind =
   | 'parent_counting_target_label_changed'
   | 'announcement_dom_state_changed'
   | 'counting_complete'
+  | 'counting_rail_scope_retire_requested'
+  | 'counting_rail_scope_retired'
   // D. Go/31
   | 'go_event_seen'
   | 'thirty_one_event_seen'
