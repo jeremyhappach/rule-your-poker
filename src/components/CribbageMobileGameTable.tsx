@@ -8216,6 +8216,8 @@ export const CribbageMobileGameTable = ({
                     isGameplayMode,
                     viewStateIsCurrentRound,
                     interactionsAllowed: primaryMountOk ? interactionsAllowed : false,
+                    peggingBoundaryBlocked,
+                    selfPlayUnresolved,
                   }}
                 />
 
