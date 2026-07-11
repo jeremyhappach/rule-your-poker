@@ -30,6 +30,8 @@ import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
+import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+
 
 
 interface SeatEntry {
