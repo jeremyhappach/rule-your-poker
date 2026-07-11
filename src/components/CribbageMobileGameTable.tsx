@@ -2657,8 +2657,14 @@ export const CribbageMobileGameTable = ({
   // Callback for counting phase announcements - also injects into chat
   // Track announcement sequence to detect duplicate combo announcements (e.g., multiple 15s)
   const lastAnnouncementRef = useRef<{ text: string; target: string; key: number } | null>(null);
-  
-  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null, announcementKey?: number) => {
+  // Tracks the last counting scoring-target index whose rail transient
+  // was emitted. Used to synchronously retire the previous target's
+  // transient scope (live + queued) before publishing the next
+  // target's first rail event, preventing prior-target bleed while
+  // preserving within-target FIFO/TTL ordering.
+  const lastCountingTargetIndexRef = useRef<number | null>(null);
+
+  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null, announcementKey?: number, targetIndex?: number) => {
     setCountingAnnouncement(announcement);
     // Keep helper text ("Scoring <target>...") stable across combo
     // lower/wait/exit gaps. The child publishes null announcements at
@@ -2693,12 +2699,57 @@ export const CribbageMobileGameTable = ({
         // Phase 3: emit each scoring event into the canonical rail as a
         // `peg_notice` transient. The ambient "Scoring {target}..." helper
         // remains in the content pane; the rail shows the discrete scores.
+
+        // Counting-target retirement boundary. Producer-owned identity —
+        // targetIndex is the canonical target ownership. When it
+        // advances, retire the previous target's transient scope
+        // (live + all queued) synchronously before emitting the first
+        // rail event for the next target. See CanonicalAnnouncementProvider
+        // `retireTransientScope`.
+        const effectiveTargetIndex = typeof targetIndex === 'number' ? targetIndex : null;
+        const scopeFor = (idx: number) =>
+          `cribbage-count:${gameId}:${currentRoundId ?? 'no-round'}:${idx}`;
+        if (
+          effectiveTargetIndex !== null &&
+          lastCountingTargetIndexRef.current !== null &&
+          lastCountingTargetIndexRef.current !== effectiveTargetIndex
+        ) {
+          const prevIndex = lastCountingTargetIndexRef.current;
+          const prevScope = scopeFor(prevIndex);
+          recordCribbageWartime('counting', 'counting_rail_scope_retire_requested', {
+            scope: prevScope,
+            prevTargetIndex: prevIndex,
+            nextTargetIndex: effectiveTargetIndex,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handleCountingAnnouncementChange',
+            dedupeKey: `retire-req:${prevScope}->${effectiveTargetIndex}`,
+          });
+          announcements.retireTransientScope(prevScope);
+          recordCribbageWartime('counting', 'counting_rail_scope_retired', {
+            scope: prevScope,
+            prevTargetIndex: prevIndex,
+            nextTargetIndex: effectiveTargetIndex,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handleCountingAnnouncementChange',
+            dedupeKey: `retire-done:${prevScope}->${effectiveTargetIndex}`,
+          });
+        }
+        if (effectiveTargetIndex !== null) {
+          lastCountingTargetIndexRef.current = effectiveTargetIndex;
+        }
+
+        const transientScope =
+          effectiveTargetIndex !== null ? scopeFor(effectiveTargetIndex) : undefined;
+
         announcements.emit({
           id: `${gameId}:count:${currentRoundId ?? 'no-round'}:${targetLabel}:${announcementKey ?? 0}:${announcement}`,
           type: 'peg_notice',
           scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
           payload: { title: `${targetLabel}: ${announcement}` },
           ttlMs: 2500,
+          transientScope,
         });
       }
     }
