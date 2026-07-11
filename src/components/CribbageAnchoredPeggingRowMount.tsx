@@ -247,7 +247,7 @@ function PeggingRowRenderProbe({
         // D-group: DOM row-clear boundary detection.
         const prevDom = lastDomCountRef.current;
         lastDomCountRef.current = rects.length;
-        if (prevDom > 0 && rects.length < prevDom && cards.length < prevLogicalCount) {
+        if (prevDom > 0 && rects.length < prevDom) {
           recordCribbageWartime('boundary', 'row_clear_dom_started', {
             prevDomCount: prevDom,
             newDomCount: rects.length,
