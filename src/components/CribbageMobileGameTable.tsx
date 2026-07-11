@@ -2358,6 +2358,7 @@ export const CribbageMobileGameTable = ({
       const snap = heldSequenceSnapshot;
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
+      if (snap) setLastReleasedBoundaryEventId(snap.armedEventId);
       thirtyOneDelayRef.current = null;
       heldAnnouncementSettledRef.current = null;
       if (wasActive && snap) {
