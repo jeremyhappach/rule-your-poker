@@ -122,7 +122,7 @@ export const CribbageCountingPhase = ({
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      onAnnouncementChange?.(text, targetLabel, key);
+      onAnnouncementChange?.(text, targetLabel, key, targetIndex);
       // Direct wartime emission — announcement publish (combo|total|zero).
       recordCribbageWartime(
         'counting',
