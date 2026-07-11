@@ -64,6 +64,10 @@ interface RenderTraceContext {
   viewStateIsCurrentRound: boolean;
   /** Authoritative gate from parent: when false, the rendered hand is NOT the actionable hand. */
   interactionsAllowed?: boolean;
+  /** Turn 2 — canonical Go/31 boundary block computed by the parent. */
+  peggingBoundaryBlocked?: boolean;
+  /** Turn 2 — self-play lifecycle unresolved (playCardIntent !== null). */
+  selfPlayUnresolved?: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
