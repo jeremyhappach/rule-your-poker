@@ -113,17 +113,15 @@ export const CribbageCountingPhase = ({
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
-      announcementStartedAtRef.current = Date.now();
+      const now = Date.now();
+      announcementStartedAtRef.current = now;
       announcementHiddenAtRef.current = null;
+      announcementPublishedAtRef.current = now;
       lastAnnouncementCategoryRef.current = category;
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      // Bind announcement dispatch to the same frame that turns the
-      // scored pair into its highlighted state (no delay constant, no
-      // wait for peg-animation completion).
       onAnnouncementChange?.(text, targetLabel, key);
-      // Instrumentation: record producer event on announcement publish.
       countingTruthLedger.record({
         source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
         ...truthSnapshotRef.current,
@@ -138,11 +136,30 @@ export const CribbageCountingPhase = ({
         totalSummaryVisible: category === 'total',
         totalSummaryText: category === 'total' ? text : truthSnapshotRef.current.totalSummaryText,
         totalSummaryOwnerPlayerId: category === 'total' ? truthSnapshotRef.current.scoringOwnerPlayerId : truthSnapshotRef.current.totalSummaryOwnerPlayerId,
-        totalSummaryMountedAt: category === 'total' ? Date.now() : truthSnapshotRef.current.totalSummaryMountedAt,
+        totalSummaryMountedAt: category === 'total' ? now : truthSnapshotRef.current.totalSummaryMountedAt,
+        announcementPublishedAt: now,
         contradictions: makeEmptyContradictions(),
       });
+      // Also emit distinct producer event flavor for combo/total publish
+      if (category === 'combo') {
+        recordEvent('combo_announce_publish', {
+          eventSource: 'publishAnnouncement',
+          eventReason: 'combo-publish',
+          announcementDataText: text,
+          announcementDataCategory: 'combo',
+          announcementDataKey: key,
+        });
+      } else if (category === 'total') {
+        recordEvent('total_announce_publish', {
+          eventSource: 'publishAnnouncement',
+          eventReason: 'total-publish',
+          announcementDataText: text,
+          announcementDataCategory: 'total',
+          announcementDataKey: key,
+        });
+      }
     },
-    [onAnnouncementChange],
+    [onAnnouncementChange, recordEvent],
   );
 
   // Keep identity refs in sync every render.
