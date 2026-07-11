@@ -78,6 +78,16 @@ export interface AnnouncementEvent {
    * 'replace' = legacy alias for 'ambient'.
    */
   behavior?: AnnouncementBehavior;
+  /**
+   * Optional producer-owned retirement group identity for transient
+   * events. When present, the provider's `retireTransientScope(scope)`
+   * removes all live and queued transients whose `transientScope`
+   * matches — used to synchronously retire a previous ownership
+   * group's rail events at a producer-defined boundary (e.g. Cribbage
+   * counting scoring-target advance). Producers own the scope format
+   * and when to retire; the provider is generic.
+   */
+  transientScope?: string;
 }
 
 export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {

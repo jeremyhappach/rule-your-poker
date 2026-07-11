@@ -34,7 +34,7 @@ interface CribbageCountingPhaseProps {
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
   cardBackColors: { color: string; darkColor: string };
-  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number) => void;
+  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number, targetIndex?: number) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
   /** Optional baseline scores to start the counting animation from (typically pegging-phase scores). */
   initialScores?: Record<string, number>;
@@ -122,7 +122,7 @@ export const CribbageCountingPhase = ({
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      onAnnouncementChange?.(text, targetLabel, key);
+      onAnnouncementChange?.(text, targetLabel, key, targetIndex);
       // Direct wartime emission — announcement publish (combo|total|zero).
       recordCribbageWartime(
         'counting',
