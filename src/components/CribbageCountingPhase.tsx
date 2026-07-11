@@ -34,7 +34,7 @@ interface CribbageCountingPhaseProps {
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
   cardBackColors: { color: string; darkColor: string };
-  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number) => void;
+  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number, targetIndex?: number) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
   /** Optional baseline scores to start the counting animation from (typically pegging-phase scores). */
   initialScores?: Record<string, number>;
