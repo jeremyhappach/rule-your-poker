@@ -246,8 +246,19 @@ export const CribbageCountingPhase = ({
       completeTimerRef.current = null;
     }
 
+    announcementHiddenAtRef.current = Date.now();
     setAnnouncementData(null);
     onAnnouncementChange?.(null, null);
+    countingTruthLedger.record({
+      source: 'win_frozen',
+      ...truthSnapshotRef.current,
+      announcementVisible: false,
+      announcementMounted: false,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementClearReason: 'win-frozen',
+      contradictions: makeEmptyContradictions(),
+    });
+
   }, [winFrozen, onAnnouncementChange]);
 
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
