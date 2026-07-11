@@ -387,6 +387,10 @@ export function CardTransportRuntime({
         });
         record357CardOwnership(intent.cardId, { ownershipClaimed: true });
         settleTimersRef.current.delete(intent.id);
+        recordCribbageTransportIntentLifecycle('transport_intent_settled', intent, {
+          reason: 'timer_fallback',
+          timing: { settledAt: tnow, totalMs: delayMs + flightMs + ownershipClaimDelayMs },
+        });
         ctx.__markSettled(intent.id, intent.cardId, 'timer_fallback');
       }, delayMs + flightMs + ownershipClaimDelayMs);
       settleTimersRef.current.set(intent.id, tSettle);
