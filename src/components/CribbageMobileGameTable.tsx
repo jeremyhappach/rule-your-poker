@@ -5519,6 +5519,10 @@ export const CribbageMobileGameTable = ({
         clearTimeout(cutRevealSafetyTimerRef.current);
         cutRevealSafetyTimerRef.current = null;
       }
+      // Turn 2 — component unmount releases any held writer lock.
+      if (playWriterLockRef.current !== null) {
+        playWriterLockRef.current = null;
+      }
     };
   }, []);
 
