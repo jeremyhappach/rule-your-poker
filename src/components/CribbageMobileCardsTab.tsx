@@ -308,7 +308,7 @@ export const CribbageMobileCardsTab = ({
     const mo = new MutationObserver(() => measure());
     mo.observe(stage, { childList: true, subtree: true });
     return () => mo.disconnect();
-  }, [renderedCount, deal?.phase, currentHandKeyLike]);
+  }, [renderedCount, deal?.phase]);
 
 
 
