@@ -616,6 +616,55 @@ export function CanonicalAnnouncementProvider({
     [promoteNextTransient, scopeKey, drainDismiss],
   );
 
+  const retireTransientScope = useCallback(
+    (scope: string) => {
+      if (!scope) return;
+      const queueBefore = queueRef.current;
+      const kept: ResolvedAnnouncement[] = [];
+      const matchedQueuedIds: string[] = [];
+      for (const q of queueBefore) {
+        if (q.transientScope === scope) {
+          matchedQueuedIds.push(q.id);
+          drainDismiss(q.id);
+        } else {
+          kept.push(q);
+        }
+      }
+      queueRef.current = kept;
+
+      const live = transientRef.current;
+      const liveMatchId = live && live.transientScope === scope ? live.id : null;
+
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `retire-transient-scope scope=${scope} liveMatch=${liveMatchId?.slice(0,8) ?? 'null'} queuedRetired=${matchedQueuedIds.length}`,
+        {
+          stage: 'retire-transient-scope',
+          scope,
+          liveMatchId,
+          queuedRetiredIds: matchedQueuedIds,
+          queueLenBefore: queueBefore.length,
+          queueLenAfter: kept.length,
+        },
+      );
+
+      if (liveMatchId) {
+        setTransient((cur) => {
+          if (cur && cur.transientScope === scope) {
+            clearTtl();
+            transientIdRef.current = null;
+            transientRef.current = null;
+            drainDismiss(cur.id);
+            queueMicrotask(promoteNextTransient);
+            return null;
+          }
+          return cur;
+        });
+      }
+    },
+    [clearTtl, drainDismiss, promoteNextTransient],
+  );
+
 
   // Boundary teardown.
   const prevScopeRef = useRef<AnnouncementScope>(currentScope);
