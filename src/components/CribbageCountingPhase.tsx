@@ -1142,6 +1142,14 @@ export const CribbageCountingPhase = ({
     // it cannot outlive the current owner's scoring beat or bleed into the
     // next owner's entering/scoring phase.
     announcementHiddenAtRef.current = Date.now();
+    announcementClearRequestedAtRef.current = announcementHiddenAtRef.current;
+    announcementClearSourceRef.current = 'startExitTransition';
+    recordEvent('combo_announce_clear', {
+      eventSource: 'startExitTransition',
+      eventReason: 'cleared-at-exit-start',
+      announcementClearRequestedAt: announcementHiddenAtRef.current,
+      announcementClearSource: 'startExitTransition',
+    });
     setAnnouncementData(null);
     onAnnouncementChange?.(null, null, undefined);
     recordTruth('exit_start', {
