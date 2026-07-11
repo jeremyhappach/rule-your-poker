@@ -6013,8 +6013,9 @@ export const CribbageMobileGameTable = ({
       });
     } catch (err) {
       toast.error((err as Error).message);
+      releasePlayWriterLock(lockClaim, 'exception-thrown');
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity, peggingBoundaryBlocked, playCardIntent, boundaryEventId, lastReleasedBoundaryEventId, thirtyOneDelayActive, heldSequenceSnapshot, renderHandKey, currentHandNumber, releasePlayWriterLock]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
