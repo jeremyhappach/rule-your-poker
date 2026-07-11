@@ -122,6 +122,17 @@ export const CribbageCountingPhase = ({
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
       onAnnouncementChange?.(text, targetLabel, key);
+      // Direct wartime emission — announcement publish (combo|total|zero).
+      recordCribbageWartime(
+        'counting',
+        category === 'total' ? 'total_announcement_publish' : 'combo_announcement_publish',
+        { text, targetLabel, targetIndex, comboIndex, category, key, publishedAt: now },
+        {
+          producerComponent: 'CribbageCountingPhase',
+          producerFunction: 'publishAnnouncement',
+          dedupeKey: `pub:${category}:${targetIndex}:${comboIndex}:${key}`,
+        },
+      );
       countingTruthLedger.record({
         source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
         ...truthSnapshotRef.current,
