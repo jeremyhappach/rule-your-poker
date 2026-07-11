@@ -35,6 +35,7 @@ export type WartimeEventKind =
   | 'dispatch_attempt'
   | 'dispatch_succeeded'
   | 'duplicate_dispatch_suppressed'
+  | 'duplicate_dispatch_suppressed_by_runtime'
   | 'timing_snapshot_taken'
   | 'dealruntime_phase_changed'
   | 'dealruntime_expected_changed'
