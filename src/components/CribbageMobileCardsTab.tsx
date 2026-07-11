@@ -219,6 +219,38 @@ export const CribbageMobileCardsTab = ({
     });
   }, [invariantDecisionFingerprint, clientId, gameId, renderTrace?.handNumber, cribbageState.phase, decisionKind, authCount, presentationCount, renderedCount, activeHandBlocked, deal?.phase, roundIdentityMismatch, handIdentityMismatch, shouldSelfHeal, visibleHandDecision.reason]);
 
+  // Wartime direct emission — coalesced by value change, one entry per
+  // decision transition. Emits sourceHandCount, clippedHandCount,
+  // presentationHandCount, renderedHandCount, activeHandBlocked,
+  // resolver rule, DealRuntime phase, settled local count.
+  useEffect(() => {
+    recordCribbageWartime('deal', 'resolver_rule_changed', {
+      decisionKind,
+      sourceHandCount: sourceHand.length,
+      clippedHandCount: clippedHand.length,
+      presentationHandCount: presentationCount,
+      renderedHandCount: renderedCount,
+      authoritativeHandCount: authCount,
+      activeHandBlocked,
+      blockedSubreasons: {
+        roundIdentityMismatch,
+        handIdentityMismatch,
+        parentSuppressed: activeHandBlocked,
+      },
+      dealPhase: deal?.phase ?? null,
+      cribbagePhase: cribbageState.phase,
+      shouldSelfHeal,
+      resolveReason: visibleHandDecision.reason,
+    }, {
+      producerComponent: 'CribbageMobileCardsTab',
+      producerFunction: 'resolverFingerprintEffect',
+      dedupeKey: `resolver:${invariantDecisionFingerprint}`,
+      contradictions: (renderedCount === 0 && authCount > 0 && !activeHandBlocked)
+        ? ['renderedZeroWithAuthoritativePresent'] : [],
+    });
+  }, [invariantDecisionFingerprint, decisionKind, sourceHand.length, clippedHand.length, presentationCount, renderedCount, authCount, activeHandBlocked, roundIdentityMismatch, handIdentityMismatch, deal?.phase, cribbageState.phase, shouldSelfHeal, visibleHandDecision.reason]);
+
+
   const prevRenderSourceFingerprintRef = useRef<string>('');
   const prevBlockedFingerprintRef = useRef<string>('');
   const prevHydratedFingerprintRef = useRef<string>('');
