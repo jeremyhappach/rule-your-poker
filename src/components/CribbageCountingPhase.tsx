@@ -711,7 +711,7 @@ export const CribbageCountingPhase = ({
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
           setHighlightedCards([]);
-          publishAnnouncement('0 points', currentTarget.label);
+          publishAnnouncement('0 points', currentTarget.label, 'zero');
 
           innerTimer = setTimeout(() => {
             if (!winFrozenRef.current) startExitTransition();
