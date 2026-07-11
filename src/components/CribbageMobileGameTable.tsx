@@ -22,8 +22,7 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
-import { CribbagePegTransportPill } from './CribbagePegTransportPill';
-import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+import { CribbageWartimeTruthPill } from './CribbageWartimeTruthPill';
 
 import {
   recordPegTransportAttempt,
@@ -7652,9 +7651,10 @@ export const CribbageMobileGameTable = ({
             }}
           />
 
-          {/* Instrumentation pill — collapsed by default, top-left. */}
-          <CribbagePegTransportPill />
-          <CribbageCountingTruthPill />
+          {/* Single wartime instrumentation pill — replaces the old
+              Counting Truth / Peg Transport / Layout Status pills. */}
+          <CribbageWartimeTruthPill />
+
 
 
 

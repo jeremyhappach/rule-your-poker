@@ -12,7 +12,7 @@ import {
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
-import { CribbageLayoutStatusPill, type CribbageLayoutStatusFields } from './CribbageLayoutStatusPill';
+// (CribbageLayoutStatusPill removed — replaced by CribbageWartimeTruthPill mounted in CribbageMobileGameTable.)
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
@@ -575,25 +575,22 @@ export const CribbageMobileCardsTab = ({
     setVisibleDomCardNodeCount(count);
   }, [cardCount, resizeObserverFireCount, layoutWasFallback]);
 
-  const statusFields: CribbageLayoutStatusFields = {
-    layoutWasFallback,
-    layoutFallbackReason,
-    layoutNormalAvailable: !layoutWasFallback,
-    resolveActiveHandLayoutReturnReason,
-    stageRefAttached: stageRefAttachedState,
-    lastGetBoundingClientRect,
-    resolvedStageRect: handStageRectPx,
-    stageRectWidth: handStageRectPx?.width ?? null,
-    stageRectHeight: handStageRectPx?.height ?? null,
-    resizeObserverAttached,
-    resizeObserverFireCount,
-    didRemeasureAfterCardsArrived,
-    didRemeasureAfterDealReady,
-    fallbackFinalCardWidth: fallbackSynth.w,
-    fallbackFinalCardHeight: fallbackSynth.h,
-    fallbackOverlapRatio: fallbackSynth.ratio,
-    visibleDomCardNodeCount,
-  };
+  // Layout status fields previously fed the removed CribbageLayoutStatusPill.
+  // Left as no-op references to preserve the surrounding hook order; the
+  // wartime pill consumes the same underlying state via its own bridges.
+  void layoutWasFallback;
+  void layoutFallbackReason;
+  void resolveActiveHandLayoutReturnReason;
+  void stageRefAttachedState;
+  void lastGetBoundingClientRect;
+  void handStageRectPx;
+  void resizeObserverAttached;
+  void resizeObserverFireCount;
+  void didRemeasureAfterCardsArrived;
+  void didRemeasureAfterDealReady;
+  void fallbackSynth;
+  void visibleDomCardNodeCount;
+
 
 
   const handleCardClick = (index: number) => {
@@ -688,7 +685,7 @@ export const CribbageMobileCardsTab = ({
 
   return (
     <div className="relative h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
-      <CribbageLayoutStatusPill fields={statusFields} />
+      {/* CribbageLayoutStatusPill removed — see CribbageWartimeTruthPill. */}
       {/* Cards display — Wave 2C geometry consumer.
           Width/height budget = hand stage ([data-crib-active-hand-stage]).
           Card size = stage-contained straight-row-first resolver.
