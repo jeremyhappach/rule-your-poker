@@ -101,27 +101,133 @@ export function CribbageAnchoredPeggingRowMount({
   if (isCountingPhase) return null;
   if (!(phaseForLayout === 'pegging' || isPeggingWin)) return null;
 
+  const endIdx = sequenceEndIndex ?? cribbageState.pegging.playedCards.length;
+  const rowCards = cribbageState.pegging.playedCards
+    .slice(sequenceStartIndex, endIdx)
+    .filter((pc) => {
+      if (!withheldPlayedCardKey) return true;
+      const key = `${pc.playerId}|${pc.card.rank}${pc.card.suit[0]}`;
+      return key !== withheldPlayedCardKey;
+    })
+    .map((pc, i) => ({ card: pc.card, playerId: pc.playerId, logicalIndex: i }));
+
   return (
-    <Wave4PeggingRowSlot
-      phase="pegging"
-      viewerSeatPosition={viewerSeatPosition}
-      opponentSeatPositions={opponentSeatPositions}
-      cutCardRevealed={cutCardRevealed}
-      cribVisible={cribVisible}
-      count={displayCount}
-      playedCards={cribbageState.pegging.playedCards
-        .slice(sequenceStartIndex, sequenceEndIndex ?? cribbageState.pegging.playedCards.length)
-        .filter((pc) => {
-          if (!withheldPlayedCardKey) return true;
-          const key = `${pc.playerId}|${pc.card.rank}${pc.card.suit[0]}`;
-          return key !== withheldPlayedCardKey;
-        })
-        .map((pc) => ({ card: pc.card, playerId: pc.playerId }))}
-      showEmptyPlaceholder={!isPeggingWin}
-      activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}
-    />
+    <>
+      <PeggingRowRenderProbe
+        sequenceStartIndex={sequenceStartIndex}
+        sequenceEndIndex={endIdx}
+        cards={rowCards}
+        displayCount={displayCount}
+        activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}
+        withheldPlayedCardKey={withheldPlayedCardKey}
+      />
+      <Wave4PeggingRowSlot
+        phase="pegging"
+        viewerSeatPosition={viewerSeatPosition}
+        opponentSeatPositions={opponentSeatPositions}
+        cutCardRevealed={cutCardRevealed}
+        cribVisible={cribVisible}
+        count={displayCount}
+        playedCards={rowCards.map((c) => ({ card: c.card, playerId: c.playerId }))}
+        showEmptyPlaceholder={!isPeggingWin}
+        activePlayerId={cribbageState.pegging.currentTurnPlayerId ?? null}
+      />
+    </>
   );
 }
+
+/**
+ * Instrumentation-only probe. Emits pegging_row_render on every logical
+ * change (dedupeKey over the card set) plus a coalesced rect sample once
+ * DOM has mounted. Does NOT block gameplay or affect layout.
+ */
+function PeggingRowRenderProbe({
+  sequenceStartIndex,
+  sequenceEndIndex,
+  cards,
+  displayCount,
+  activePlayerId,
+  withheldPlayedCardKey,
+}: {
+  sequenceStartIndex: number;
+  sequenceEndIndex: number;
+  cards: ReadonlyArray<{ card: { rank: string; suit: string }; playerId: string; logicalIndex: number }>;
+  displayCount: number;
+  activePlayerId: string | null;
+  withheldPlayedCardKey: string | null;
+}) {
+  const sig = cards.map((c) => `${c.playerId}:${c.card.rank}${c.card.suit[0]}`).join(',');
+  const lastSigRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastSigRef.current === sig) return;
+    const prevSig = lastSigRef.current;
+    lastSigRef.current = sig;
+
+    recordCribbageWartime('pegging', 'pegging_row_render', {
+      sequenceStartIndex,
+      sequenceEndIndex,
+      logicalOrder: cards.map((c) => ({
+        logicalIndex: c.logicalIndex,
+        cardId: `${c.card.rank}${c.card.suit[0]}`,
+        owner: c.playerId,
+      })),
+      displayCount,
+      activePlayerId,
+      withheldPlayedCardKey,
+    }, {
+      producerComponent: 'CribbageAnchoredPeggingRowMount',
+      producerFunction: 'PeggingRowRenderProbe.render',
+      dedupeKey: `row:${sequenceStartIndex}:${sig}`,
+      eventReason: prevSig == null ? 'first render' : 'row card set changed',
+    });
+
+    // Rect sample after paint. Coalesced: one sample per render change.
+    const raf = requestAnimationFrame(() => {
+      try {
+        const domCards = Array.from(document.querySelectorAll('[data-pegging-row-card]')) as HTMLElement[];
+        const rects = domCards.map((el, domIdx) => {
+          const r = el.getBoundingClientRect();
+          const cs = window.getComputedStyle(el);
+          return {
+            domIdx,
+            cardId: el.getAttribute('data-card-id'),
+            owner: el.getAttribute('data-player-id'),
+            rect: { left: r.left, right: r.right, width: r.width },
+            style: {
+              left: cs.left, marginLeft: cs.marginLeft,
+              transform: cs.transform, zIndex: cs.zIndex, position: cs.position,
+            },
+          };
+        });
+        const steps: number[] = [];
+        for (let i = 1; i < rects.length; i++) {
+          steps.push(rects[i].rect.left - rects[i - 1].rect.left);
+        }
+        const nonUniform = steps.length > 1 && steps.some((s) => Math.abs(s - steps[0]) > 1);
+        const contradictions: string[] = [];
+        if (nonUniform) contradictions.push('nonUniformPeggingStep');
+        if (rects.length !== cards.length) contradictions.push('DOM_logical_count_mismatch');
+        recordCribbageWartime('pegging', 'pegging_row_card_rect_sample', {
+          domCount: rects.length,
+          logicalCount: cards.length,
+          rects,
+          steps,
+          expectedConstantStep: steps[0] ?? null,
+        }, {
+          producerComponent: 'CribbageAnchoredPeggingRowMount',
+          producerFunction: 'PeggingRowRenderProbe.rectSample',
+          dedupeKey: `rowRect:${sequenceStartIndex}:${sig}`,
+          contradictions,
+        });
+      } catch { /* ignore */ }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [sig, sequenceStartIndex, sequenceEndIndex, displayCount, activePlayerId, withheldPlayedCardKey, cards]);
+
+  return null;
+}
+
 
 
 export default CribbageAnchoredPeggingRowMount;
