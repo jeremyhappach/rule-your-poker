@@ -86,9 +86,18 @@ export type WartimeEventKind =
   | 'go_event_seen'
   | 'thirty_one_event_seen'
   | 'pegging_boundary_hold_started'
+  // Direct producer at the state owner (CribbageMobileGameTable):
+  //   emitted when the pegging-row's owning presentation state advances
+  //   sequenceStartIndex forward, i.e. the boundary that logically
+  //   removes/releases the pegging-row cards.
   | 'row_clear_requested'
-  | 'row_clear_dom_started'
-  | 'row_clear_dom_complete'
+  // Observer-level events emitted from the row render probe. These
+  // describe DOM/logical transitions *observed* by the render probe —
+  // they do NOT imply the state owner initiated the clear. Distinct
+  // from `row_clear_requested` on purpose.
+  | 'row_clear_logical_observed'
+  | 'row_clear_dom_started_observed'
+  | 'row_clear_dom_empty_observed'
   | 'boundary_hold_released'
   | 'authoritative_turn_changed'
   | 'local_action_eligibility_changed'
