@@ -364,6 +364,10 @@ export function CardTransportRuntime({
           flyingCardMountedAt: performance.now(),
           lifecycleState: 'flying_mounted',
         });
+        recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+          reason: 'immediate-launch',
+          timing: { delayMs: 0, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+        });
       }
 
       // Schedule settle relative to launch time (flight has no extra CSS delay).
