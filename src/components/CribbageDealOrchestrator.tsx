@@ -79,8 +79,24 @@ export function CribbageDealOrchestrator({
 
   useEffect(() => {
     onLifecycle?.('mounted');
-    return () => onLifecycle?.('unmounted');
-  }, [onLifecycle]);
+    recordCribbageWartime('deal', 'orchestrator_mount', {
+      handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer,
+      seatCount: seats.length, dealerGameId, roundId, handNumber,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'mount',
+      dedupeKey: `mount:${handContextId}`,
+    });
+    return () => {
+      onLifecycle?.('unmounted');
+      recordCribbageWartime('deal', 'orchestrator_unmount', { handContextId }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'unmount',
+        dedupeKey: `unmount:${handContextId}`,
+      });
+    };
+  }, [onLifecycle, handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer, seats.length, dealerGameId, roundId, handNumber]);
+
 
 
   useEffect(() => {
