@@ -232,8 +232,10 @@ export const CribbageCountingTruthPill = () => {
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div
+
       style={{
         position: 'fixed',
         bottom: 6,
