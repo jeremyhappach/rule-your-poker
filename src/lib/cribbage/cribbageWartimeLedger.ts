@@ -409,6 +409,8 @@ export function serializeCribbageWartime(
   lines.push(`totalEntries: ${list.length}`);
   lines.push(`byGroup: ${JSON.stringify(perGroup)}`);
   lines.push(`capacity: ${JSON.stringify(CAPACITY)}`);
+  lines.push(`protectedCapacity: ${PROTECTED_CAPACITY} (in use: ${protectedRing.length})`);
+  lines.push(`hardMaxTotalEntries: ${HARD_MAX_TOTAL_ENTRIES}`);
   lines.push(`firstEventAt: ${list[0] ? new Date(list[0].ts).toISOString() : 'n/a'}`);
   lines.push(`lastEventAt: ${list.length ? new Date(list[list.length - 1].ts).toISOString() : 'n/a'}`);
   lines.push(`identity: ${JSON.stringify(currentIdentity)}`);
