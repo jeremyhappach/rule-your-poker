@@ -2387,6 +2387,34 @@ export const CribbageMobileGameTable = ({
     ? heldSequenceSnapshot.heldStartIndex
     : dbSequenceStartIndex;
 
+  // Turn 2 — canonical Go/31 boundary block. Purely a synchronous
+  // projection over authoritative state + the two hold latches
+  // (`thirtyOneDelayActive`, `heldSequenceSnapshot`) + the release
+  // identity (`lastReleasedBoundaryEventId`). No timers, no DOM reads.
+  const boundaryEventId =
+    cribbageState?.lastEvent &&
+    (
+      cribbageState.lastEvent.type === 'go_point' ||
+      (
+        cribbageState.lastEvent.type === 'pegging_points' &&
+        (cribbageState.lastEvent as { count?: number }).count === 31
+      )
+    )
+      ? cribbageState.lastEvent.id
+      : null;
+  const boundaryEventReleased =
+    boundaryEventId !== null &&
+    lastReleasedBoundaryEventId === boundaryEventId;
+  const peggingBoundaryBlocked =
+    cribbageState?.phase === 'pegging' &&
+    (
+      (boundaryEventId !== null && !boundaryEventReleased) ||
+      thirtyOneDelayActive ||
+      heldSequenceSnapshot !== null
+    );
+  const selfPlayUnresolved = playCardIntent !== null;
+
+
   // ── Direct-producer wartime event: row_clear_requested ──────────────
   // Emitted by the STATE OWNER (this component) whenever the effective
   // presentation-facing `sequenceStartIndex` advances forward — i.e. the
