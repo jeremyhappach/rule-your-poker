@@ -866,6 +866,7 @@ export function useAnnouncements() {
       emit: () => {},
       dismiss: () => {},
       clearScope: () => {},
+      retireTransientScope: () => {},
       clearAmbient: () => {},
       waitForDismiss: () => Promise.resolve(),
     };
@@ -874,6 +875,7 @@ export function useAnnouncements() {
     emit: ctx.emit,
     dismiss: ctx.dismiss,
     clearScope: ctx.clearScope,
+    retireTransientScope: ctx.retireTransientScope,
     clearAmbient: ctx.clearAmbient,
     waitForDismiss: ctx.waitForDismiss,
   };
