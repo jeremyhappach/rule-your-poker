@@ -685,7 +685,7 @@ export const CribbageMobileCardsTab = ({
 
   return (
     <div className="relative h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
-      <CribbageLayoutStatusPill fields={statusFields} />
+      {/* CribbageLayoutStatusPill removed — see CribbageWartimeTruthPill. */}
       {/* Cards display — Wave 2C geometry consumer.
           Width/height budget = hand stage ([data-crib-active-hand-stage]).
           Card size = stage-contained straight-row-first resolver.
