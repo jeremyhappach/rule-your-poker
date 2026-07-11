@@ -120,21 +120,10 @@ export const CribbageMobileCardsTab = ({
 
 
 
-  // Bounded opening-deal grace window. Keyed on hand identity — resets on
-  // every hand boundary. While unexpired, presentation may legitimately
-  // render empty/subset during a fresh opening deal without self-heal
-  // firing prematurely. If the transport never progresses, the grace
-  // expires and the authoritative fallback takes over.
-  //
-  // In-memory only, bounded, no storage/logging.
-  const OPENING_DEAL_GRACE_MS = 2000;
-  const graceKey = `${roundId ?? renderTrace?.expectedRoundId ?? 'unknown-round'}:${renderTrace?.currentHandKey ?? ''}`;
-  const [graceExpired, setGraceExpired] = useState(false);
-  useEffect(() => {
-    setGraceExpired(false);
-    const t = setTimeout(() => setGraceExpired(true), OPENING_DEAL_GRACE_MS);
-    return () => clearTimeout(t);
-  }, [graceKey]);
+  // Opening-deal visibility follows DealRuntime lifecycle exclusively.
+  // No wall-clock grace / stall fuse here — canonical transport recovery
+  // (endpoint retry → __markDropped → settled → READY) is the only path.
+
 
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const clientId = currentPlayer.user_id.slice(0, 8);
