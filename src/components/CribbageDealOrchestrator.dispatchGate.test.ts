@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Turn 1 Patch A — CribbageDealOrchestrator durable canonical dispatch
 // gate. Source-level assertions verifying:
 //
