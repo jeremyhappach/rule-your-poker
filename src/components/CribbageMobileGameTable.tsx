@@ -22,8 +22,7 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
-import { CribbagePegTransportPill } from './CribbagePegTransportPill';
-import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+import { CribbageWartimeTruthPill } from './CribbageWartimeTruthPill';
 
 import {
   recordPegTransportAttempt,
