@@ -836,8 +836,16 @@ export const CribbageCountingPhase = ({
           completedRef.current = true;
           setIsComplete(true);
           // Clear announcement - no "Counting complete!" message needed
+          announcementHiddenAtRef.current = Date.now();
           setAnnouncementData(null);
           setExitingCards([]);
+          recordTruth('completion', {
+            announcementVisible: false,
+            announcementMounted: false,
+            announcementHiddenAt: announcementHiddenAtRef.current,
+            announcementClearReason: 'counting-complete',
+          });
+
           
           if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
           completeTimerRef.current = setTimeout(() => {
