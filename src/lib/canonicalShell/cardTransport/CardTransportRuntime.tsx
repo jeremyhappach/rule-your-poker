@@ -340,6 +340,7 @@ export function CardTransportRuntime({
           recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
             reason: 'delayed-launch-timer-fired',
             timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+            gameType: ctx.gameType ?? null,
           });
           launchTimersRef.current.delete(intent.id);
           rerender();
@@ -370,6 +371,7 @@ export function CardTransportRuntime({
         recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
           reason: 'immediate-launch',
           timing: { delayMs: 0, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+          gameType: ctx.gameType ?? null,
         });
       }
 
@@ -393,6 +395,7 @@ export function CardTransportRuntime({
         recordCribbageTransportIntentLifecycle('transport_intent_settled', intent, {
           reason: 'timer_fallback',
           timing: { settledAt: tnow, totalMs: delayMs + flightMs + ownershipClaimDelayMs },
+          gameType: ctx.gameType ?? null,
         });
         ctx.__markSettled(intent.id, intent.cardId, 'timer_fallback');
       }, delayMs + flightMs + ownershipClaimDelayMs);
