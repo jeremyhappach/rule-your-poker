@@ -7998,6 +7998,8 @@ export const CribbageMobileGameTable = ({
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
+              // Turn 2 — accepted play lifecycle complete: release writer lock.
+              releasePlayWriterLock(null, 'intent-settled');
             }}
           />
 
