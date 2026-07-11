@@ -1368,6 +1368,27 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
+
+  // Wartime identity — direct emission of ambient identity for every
+  // wartime ledger entry. Instrumentation only.
+  useEffect(() => {
+    setCribbageWartimeIdentity({
+      playerId: currentPlayerId ?? null,
+      roundId: currentRoundId ?? null,
+      handNumber: currentHandNumber ?? null,
+      handContextId: currentHandKey ?? null,
+      currentHandKey: currentHandKey ?? null,
+      renderHandContextId: renderHandKey ?? null,
+      authoritativeHandContextId: currentHandKey ?? null,
+      phase: cribbageState?.phase ?? null,
+      peggingSequenceIndex: cribbageState?.pegging?.sequenceStartIndex ?? null,
+    });
+  }, [
+    currentPlayerId, currentRoundId, currentHandNumber,
+    currentHandKey, renderHandKey,
+    cribbageState?.phase, cribbageState?.pegging?.sequenceStartIndex,
+  ]);
+
   // ── Action identity guard ──
   // A user-driven mutation (discard / play / Go) may only fire when the rendered
   // hand identity matches the authoritative actionable hand identity end-to-end:
