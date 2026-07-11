@@ -64,6 +64,10 @@ interface RenderTraceContext {
   viewStateIsCurrentRound: boolean;
   /** Authoritative gate from parent: when false, the rendered hand is NOT the actionable hand. */
   interactionsAllowed?: boolean;
+  /** Turn 2 — canonical Go/31 boundary block computed by the parent. */
+  peggingBoundaryBlocked?: boolean;
+  /** Turn 2 — self-play lifecycle unresolved (playCardIntent !== null). */
+  selfPlayUnresolved?: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -485,8 +489,11 @@ export const CribbageMobileCardsTab = ({
   // D-group instrumentation — emit whenever the play-button-eligible
   // conditions transition. Coalesces on the full signature so identity
   // reallocation does not create noise.
+  const peggingBoundaryBlocked = renderTrace?.peggingBoundaryBlocked === true;
+  const selfPlayUnresolved = renderTrace?.selfPlayUnresolved === true;
   const playButtonEnabled = Boolean(
-    cribbageState.phase === 'pegging' && isMyTurn && canPlayAnyCard,
+    cribbageState.phase === 'pegging' && isMyTurn && canPlayAnyCard &&
+      !peggingBoundaryBlocked && !selfPlayUnresolved,
   );
   const playButtonSigRef = useRef<string | null>(null);
   useEffect(() => {
@@ -749,6 +756,9 @@ export const CribbageMobileCardsTab = ({
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
     if (renderTrace?.interactionsAllowed === false) return;
+    if (peggingBoundaryBlocked) return;
+    if (selfPlayUnresolved) return;
+
 
 
     if (cribbageState.phase === 'discarding') {
@@ -882,7 +892,7 @@ export const CribbageMobileCardsTab = ({
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${index}`}
 
                 onPointerUp={(e) => e.currentTarget.blur()}
-                disabled={isProcessing || renderTrace?.interactionsAllowed === false}
+                disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(
                   "transition-all duration-200 rounded relative",
                   isSelected

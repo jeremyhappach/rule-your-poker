@@ -105,6 +105,12 @@ export type WartimeEventKind =
   | 'play_button_enabled_changed'
   | 'play_intent_created'
   | 'play_destination_computed'
+  // Turn 2 — Go/31 boundary eligibility gates
+  | 'play_rejected_boundary_blocked'
+  | 'play_rejected_self_intent_unresolved'
+  | 'play_rejected_writer_lock'
+  | 'play_writer_lock_claimed'
+  | 'play_writer_lock_released'
   // Legacy adapter fallback
   | 'legacy_peg_terminal'
   | 'legacy_counting_terminal';
