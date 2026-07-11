@@ -2341,6 +2341,67 @@ export const CribbageMobileGameTable = ({
     ? heldSequenceSnapshot.heldStartIndex
     : dbSequenceStartIndex;
 
+  // ── Direct-producer wartime event: row_clear_requested ──────────────
+  // Emitted by the STATE OWNER (this component) whenever the effective
+  // presentation-facing `sequenceStartIndex` advances forward — i.e. the
+  // owning state actually removed/released the pegging-row cards. This
+  // is the authoritative trigger; the render probe's *_observed events
+  // in CribbageAnchoredPeggingRowMount only report what the DOM/logical
+  // subtree sees afterwards.
+  const rowClearPrevIndexRef = useRef<number | null>(null);
+  const rowClearPrevPlayedCountRef = useRef<number>(0);
+  useEffect(() => {
+    if (!cribbageState) {
+      rowClearPrevIndexRef.current = null;
+      return;
+    }
+    const prevIdx = rowClearPrevIndexRef.current;
+    const nextIdx = sequenceStartIndex;
+    const prevCountBeforeClear = rowClearPrevPlayedCountRef.current;
+    const currentPlayedCount = cribbageState.pegging.playedCards.length;
+    if (prevIdx != null && nextIdx > prevIdx) {
+      // Boundary reason inference (state-owner authoritative):
+      //   - if hold just released with a held snapshot, use its armed
+      //     event as the trigger identity;
+      //   - otherwise use the last authoritative pegging event id.
+      const heldSnap = heldSequenceSnapshot;
+      const lastEvent = cribbageState.lastEvent ?? null;
+      const boundaryReason =
+        lastEvent?.type === 'go_point' ? 'go'
+        : lastEvent?.type === 'pegging_points' && (lastEvent as any)?.points === 2 ? 'thirty-one'
+        : heldSnap ? `hold-release:${heldSnap.armedEventType}`
+        : 'sequenceStartIndex-advanced';
+      recordCribbageWartime('boundary', 'row_clear_requested', {
+        prevSequenceStartIndex: prevIdx,
+        nextSequenceStartIndex: nextIdx,
+        countBeforeClear: prevCountBeforeClear,
+        currentPlayedCount,
+        authoritativePhase: cribbageState.phase,
+        presentationPhase: thirtyOneDelayActive ? 'holding-previous-row' : cribbageState.phase,
+        thirtyOneDelayActive,
+        holdEventId: heldSnap?.armedEventId ?? null,
+        holdEventType: heldSnap?.armedEventType ?? null,
+        lastEventId: lastEvent?.id ?? null,
+        lastEventType: lastEvent?.type ?? null,
+      }, {
+        producerComponent: 'CribbageMobileGameTable',
+        producerFunction: 'rowClearRequestedEffect',
+        dedupeKey: `row_clear_req:${prevIdx}->${nextIdx}`,
+        eventReason: boundaryReason,
+      });
+    }
+    rowClearPrevIndexRef.current = nextIdx;
+    rowClearPrevPlayedCountRef.current = currentPlayedCount;
+  }, [
+    sequenceStartIndex,
+    cribbageState?.phase,
+    cribbageState?.pegging.playedCards.length,
+    cribbageState?.lastEvent?.id,
+    thirtyOneDelayActive,
+    heldSequenceSnapshot,
+  ]);
+
+
   // Auto-clear pegging announcements after 3 seconds OR when a new announcement arrives
   // Only applies to pegging phase scoring events, not discarding/cutting/counting
   useEffect(() => {
