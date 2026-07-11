@@ -168,10 +168,14 @@ function PeggingRowRenderProbe({
     lastSigRef.current = sig;
     lastLogicalCountRef.current = cards.length;
 
-    // Row-clear logical trigger: transition from N>0 → 0 cards.
-    const isRowClearRequested = prevLogicalCount > 0 && cards.length === 0;
-    if (isRowClearRequested) {
-      recordCribbageWartime('boundary', 'row_clear_requested', {
+    // OBSERVER-LEVEL logical row clear: transition from N>0 → 0 cards.
+    // This is what the render probe SEES; it does not imply the owning
+    // state initiated the clear. The direct producer that owns the
+    // clear (advancing sequenceStartIndex) emits `row_clear_requested`
+    // from CribbageMobileGameTable.
+    const isRowClearObserved = prevLogicalCount > 0 && cards.length === 0;
+    if (isRowClearObserved) {
+      recordCribbageWartime('boundary', 'row_clear_logical_observed', {
         prevLogicalCount,
         newLogicalCount: 0,
         sequenceStartIndex,
@@ -180,9 +184,9 @@ function PeggingRowRenderProbe({
         withheldPlayedCardKey,
       }, {
         producerComponent: 'CribbageAnchoredPeggingRowMount',
-        producerFunction: 'PeggingRowRenderProbe.rowClearRequested',
-        dedupeKey: `row_clear_req:${sequenceStartIndex}`,
-        eventReason: 'logical row emptied',
+        producerFunction: 'PeggingRowRenderProbe.rowClearLogicalObserved',
+        dedupeKey: `row_clear_logical_obs:${sequenceStartIndex}`,
+        eventReason: 'logical row emptied (observed by render probe)',
       });
     }
 
