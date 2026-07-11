@@ -32,13 +32,72 @@ function fmtTs(ts: number): string {
 function serializeEntry(e: CountingTruthEntry): string {
   const lines: string[] = [];
   lines.push(`── ${fmtTs(e.ts)}  [${e.source}]`);
+  if (e.eventSource || e.eventReason) {
+    lines.push(`event: source=${e.eventSource ?? '—'} reason=${e.eventReason ?? '—'}`);
+  }
   lines.push(`identity: round=${e.roundId ?? '—'} hand=${e.handNumber ?? '—'} handCtx=${e.handContextId ?? '—'}`);
   lines.push(`scoring: owner=${e.scoringOwnerPlayerId ?? '—'}/${e.scoringOwnerRole ?? '—'} phase=${e.scoringPhase ?? '—'}/${e.scoringSubphase ?? '—'} handKey=${e.scoringHandKey ?? '—'}`);
   lines.push(`step: ${e.scoringStepIndex ?? '—'} totalCombosForOwner=${e.totalCombosForOwner ?? '—'} isFinal=${e.isFinalComboForOwner ?? '—'} nextOwner=${e.nextOwnerPlayerId ?? '—'}`);
+  if (e.currentTargetIndex != null || e.currentComboIndex != null || e.totalCombos != null) {
+    lines.push(`ev.indices: target=${e.currentTargetIndex ?? '—'} combo=${e.currentComboIndex ?? '—'} totalCombos=${e.totalCombos ?? '—'} phase=${e.transitionPhase ?? '—'}`);
+  }
   lines.push(`announcement: text=${JSON.stringify(e.announcementText)} cat=${e.announcementCategory ?? '—'} owner=${e.announcementOwnerPlayerId ?? '—'} key=${e.announcementComboKey ?? '—'} vis=${e.announcementVisible} mounted=${e.announcementMounted}`);
   lines.push(`announcement.times: started=${e.announcementStartedAt ?? '—'} hidden=${e.announcementHiddenAt ?? '—'} clearReason=${e.announcementClearReason ?? '—'} staleOwnerMismatch=${e.staleAnnouncementOwnerMismatch} staleComboMismatch=${e.staleAnnouncementComboMismatch}`);
+  if (
+    e.announcementPublishedAt != null ||
+    e.announcementClearRequestedAt != null ||
+    e.announcementClearSource != null ||
+    e.announcementActuallyUnmountedAt != null
+  ) {
+    lines.push(
+      `announcement.lifecycle: publishedAt=${e.announcementPublishedAt ?? '—'} clearReqAt=${e.announcementClearRequestedAt ?? '—'} clearSrc=${e.announcementClearSource ?? '—'} unmountedAt=${e.announcementActuallyUnmountedAt ?? '—'} visAfterClear=${e.announcementVisibleAfterClearRequest ?? '—'}`,
+    );
+  }
+  if (e.announcementDataText != null || e.announcementDataCategory != null) {
+    lines.push(
+      `ev.announcementData: text=${JSON.stringify(e.announcementDataText)} cat=${e.announcementDataCategory ?? '—'} key=${e.announcementDataKey ?? '—'} targetIdx=${e.announcementDataTargetIndex ?? '—'} comboIdx=${e.announcementDataComboIndex ?? '—'}`,
+    );
+  }
   lines.push(`combo: label=${e.currentComboLabel ?? '—'} pts=${e.currentComboPoints ?? '—'} cards=[${e.currentComboCardIds.join(',')}] hiActive=${e.comboHighlightActive} raiseActive=${e.comboRaiseActive}`);
   lines.push(`combo.times: hiStart=${e.comboHighlightStartedAt ?? '—'} hiEnd=${e.comboHighlightEndedAt ?? '—'} reason=${e.comboTransitionReason ?? '—'} prev=${e.previousComboIndex ?? '—'} next=${e.nextComboIndex ?? '—'}`);
+  if (e.highlightedCardIds || e.previousHighlightedCardIds) {
+    lines.push(
+      `ev.highlight: current=[${(e.highlightedCardIds ?? []).join(',')}] prev=[${(e.previousHighlightedCardIds ?? []).join(',')}] comboLabel=${e.currentComboLabelSnapshot ?? '—'} comboCards=[${(e.currentComboCardIdsSnapshot ?? []).join(',')}]`,
+    );
+  }
+  if (
+    e.finalComboLowerPending != null ||
+    e.finalComboLowerPendingCardIds ||
+    e.finalComboLowerResolvedAt != null ||
+    e.deadmanActive != null
+  ) {
+    lines.push(
+      `gate: pending=${e.finalComboLowerPending ?? '—'} cardIds=[${(e.finalComboLowerPendingCardIds ?? []).join(',')}] startedAt=${e.finalComboLowerPendingStartedAt ?? '—'} resolvedAt=${e.finalComboLowerResolvedAt ?? '—'} resolveReason=${e.finalComboLowerResolveReason ?? '—'} deadmanActive=${e.deadmanActive ?? '—'} deadmanStartedAt=${e.deadmanStartedAt ?? '—'} deadmanFiredAt=${e.deadmanFiredAt ?? '—'}`,
+    );
+  }
+  if (e.watchedCardIds || e.transitionEndReceivedCardIds) {
+    lines.push(
+      `gate.transitionend: watched=[${(e.watchedCardIds ?? []).join(',')}] nodeCount=${e.watchedDomNodeCount ?? '—'} received=[${(e.transitionEndReceivedCardIds ?? []).join(',')}] props=[${(e.transitionEndPropertyNames ?? []).join(',')}] elapsed=[${(e.transitionEndElapsedTimes ?? []).join(',')}] missing=[${(e.missingWatchedCardIds ?? []).join(',')}] unmountedBefore=${e.nodesUnmountedBeforeTransitionEnd ?? '—'}`,
+    );
+  }
+  if (e.rafSampleCount != null || e.rafWatchedTransforms) {
+    lines.push(
+      `gate.raf: count=${e.rafSampleCount ?? '—'} at=${e.rafSampleAt ?? '—'} allIdentity=${e.rafAllTransformsIdentity ?? '—'} allHighlightedFalse=${e.rafAllHighlightedFalse ?? '—'} fired=${e.rafResolverFired ?? '—'} reason=${e.rafResolverReason ?? '—'}`,
+    );
+    if (e.rafWatchedTransforms) {
+      for (const [id, t] of Object.entries(e.rafWatchedTransforms)) {
+        lines.push(`  raf.card ${id}: transform=${t} highlightedAttr=${e.rafWatchedHighlightedAttr?.[id] ?? '—'}`);
+      }
+    }
+  }
+  if (e.activeTimerNames || e.timerThatAdvancedCombo || e.timerThatPublishedTotal || e.effectThatRan) {
+    lines.push(
+      `timers: active=[${(e.activeTimerNames ?? []).join(',')}] comboTimer=${e.timerThatAdvancedCombo ?? '—'} totalTimer=${e.timerThatPublishedTotal ?? '—'} effect=${e.effectThatRan ?? '—'}`,
+    );
+  }
+  if (e.dependenciesSnapshot) {
+    lines.push(`deps: ${JSON.stringify(e.dependenciesSnapshot)}`);
+  }
   lines.push(`totalSummary: visible=${e.totalSummaryVisible} owner=${e.totalSummaryOwnerPlayerId ?? '—'} text=${JSON.stringify(e.totalSummaryText)} pts=${e.totalSummaryPoints ?? '—'} mountedAt=${e.totalSummaryMountedAt ?? '—'}`);
   lines.push(`  finalComboVisWhenSummaryMounts=${e.finalComboAnnouncementVisibleWhenSummaryMounts} finalComboVisWhenNextOwnerStarts=${e.finalComboAnnouncementVisibleWhenNextOwnerStarts}`);
   lines.push(`contradictions:`);

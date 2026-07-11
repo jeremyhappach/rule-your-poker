@@ -113,17 +113,15 @@ export const CribbageCountingPhase = ({
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
-      announcementStartedAtRef.current = Date.now();
+      const now = Date.now();
+      announcementStartedAtRef.current = now;
       announcementHiddenAtRef.current = null;
+      announcementPublishedAtRef.current = now;
       lastAnnouncementCategoryRef.current = category;
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      // Bind announcement dispatch to the same frame that turns the
-      // scored pair into its highlighted state (no delay constant, no
-      // wait for peg-animation completion).
       onAnnouncementChange?.(text, targetLabel, key);
-      // Instrumentation: record producer event on announcement publish.
       countingTruthLedger.record({
         source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
         ...truthSnapshotRef.current,
@@ -138,9 +136,32 @@ export const CribbageCountingPhase = ({
         totalSummaryVisible: category === 'total',
         totalSummaryText: category === 'total' ? text : truthSnapshotRef.current.totalSummaryText,
         totalSummaryOwnerPlayerId: category === 'total' ? truthSnapshotRef.current.scoringOwnerPlayerId : truthSnapshotRef.current.totalSummaryOwnerPlayerId,
-        totalSummaryMountedAt: category === 'total' ? Date.now() : truthSnapshotRef.current.totalSummaryMountedAt,
+        totalSummaryMountedAt: category === 'total' ? now : truthSnapshotRef.current.totalSummaryMountedAt,
+        announcementPublishedAt: now,
         contradictions: makeEmptyContradictions(),
       });
+      // Also emit distinct producer event flavor for combo/total publish
+      const producerSource: CountingTruthEntry['source'] | null =
+        category === 'combo' ? 'combo_announce_publish'
+        : category === 'total' ? 'total_announce_publish'
+        : null;
+      if (producerSource) {
+        countingTruthLedger.record({
+          source: producerSource,
+          ...truthSnapshotRef.current,
+          eventSource: 'publishAnnouncement',
+          eventReason: `${category}-publish`,
+          currentTargetIndex: targetIndex,
+          currentComboIndex: comboIndex,
+          announcementDataText: text,
+          announcementDataCategory: category,
+          announcementDataKey: key,
+          announcementDataTargetIndex: targetIndex,
+          announcementDataComboIndex: comboIndex,
+          announcementPublishedAt: now,
+          contradictions: makeEmptyContradictions(),
+        });
+      }
     },
     [onAnnouncementChange],
   );
@@ -190,6 +211,56 @@ export const CribbageCountingPhase = ({
       });
     },
     [],
+  );
+
+  // ── Producer-lifecycle instrumentation refs (no behavior) ───
+  const announcementPublishedAtRef = useRef<number | null>(null);
+  const announcementClearRequestedAtRef = useRef<number | null>(null);
+  const announcementClearSourceRef = useRef<string | null>(null);
+  const prevHighlightedCardIdsRef = useRef<string[]>([]);
+  const rafSampleCountRef = useRef(0);
+  const transitionEndReceivedRef = useRef<{ cardIds: string[]; props: string[]; elapsed: number[] }>({
+    cardIds: [], props: [], elapsed: [],
+  });
+  const finalLowerWatchedIdsRef = useRef<string[]>([]);
+  const finalLowerWatchedNodeCountRef = useRef<number>(0);
+  const finalLowerMissingIdsRef = useRef<string[]>([]);
+
+  const buildEventMeta = useCallback((extra: Partial<CountingTruthEntry> = {}): Partial<CountingTruthEntry> => {
+    const snap = truthSnapshotRef.current;
+    const pending = finalLowerPendingRef.current;
+    return {
+      eventSource: extra.eventSource ?? null,
+      eventReason: extra.eventReason ?? null,
+      currentTargetIndex: currentTargetIndexRef.current,
+      currentComboIndex: currentComboIndexRef.current,
+      totalCombos: snap.totalCombosForOwner ?? null,
+      transitionPhase: snap.scoringSubphase ?? null,
+      announcementDataText: snap.announcementText ?? null,
+      announcementDataCategory: snap.announcementCategory ?? null,
+      announcementDataKey: snap.announcementComboKey ?? null,
+      announcementDataTargetIndex: currentTargetIndexRef.current,
+      announcementDataComboIndex: currentComboIndexRef.current,
+      highlightedCardIds: snap.comboHighlightActive ? snap.currentComboCardIds : [],
+      previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
+      currentComboLabelSnapshot: snap.currentComboLabel ?? null,
+      currentComboCardIdsSnapshot: snap.currentComboCardIds ?? [],
+      finalComboLowerPending: pending != null,
+      finalComboLowerPendingCardIds: pending?.cardIds ?? [],
+      finalComboLowerPendingStartedAt: pending?.startedAt ?? null,
+      deadmanActive: finalLowerTimersRef.current.deadman != null,
+      announcementPublishedAt: announcementPublishedAtRef.current,
+      announcementClearRequestedAt: announcementClearRequestedAtRef.current,
+      announcementClearSource: announcementClearSourceRef.current,
+      ...extra,
+    };
+  }, []);
+
+  const recordEvent = useCallback(
+    (source: CountingTruthEntry['source'], extra: Partial<CountingTruthEntry> = {}) => {
+      recordTruth(source, buildEventMeta(extra));
+    },
+    [recordTruth, buildEventMeta],
   );
 
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
@@ -781,6 +852,13 @@ export const CribbageCountingPhase = ({
     const timer = setTimeout(() => {
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
+          recordEvent('combo_enter', {
+            eventSource: 'scoringEffect',
+            eventReason: 'enter-zero',
+            timerThatAdvancedCombo: 'timer.enter->zero(500ms)',
+            effectThatRan: 'scoringEffect',
+            dependenciesSnapshot: { currentTargetIndex, currentComboIndex, transitionPhase, isComplete, winFrozen },
+          });
           setHighlightedCards([]);
           publishAnnouncement('0 points', currentTarget.label, 'zero');
 
@@ -788,8 +866,14 @@ export const CribbageCountingPhase = ({
             if (!winFrozenRef.current) startExitTransition();
           }, 1000);
         } else {
+          recordEvent('combo_enter', {
+            eventSource: 'scoringEffect',
+            eventReason: 'enter-first-combo',
+            timerThatAdvancedCombo: 'timer.enter->combo0(500ms)',
+            effectThatRan: 'scoringEffect',
+            dependenciesSnapshot: { currentTargetIndex, currentComboIndex, transitionPhase, isComplete, winFrozen },
+          });
           setCurrentComboIndex(0);
-          // Persist progress: entering first combo of current target
           onProgressUpdate?.(currentTargetIndex, 0);
         }
         return;
@@ -797,31 +881,33 @@ export const CribbageCountingPhase = ({
 
       if (currentComboIndex < currentCombos.length) {
         const combo = currentCombos[currentComboIndex];
-        // Bind announcement to the same presentation beat that flips
-        // the scored pair into its highlighted state. Emit BEFORE
-        // score/peg propagation so ordering is:
-        //   highlight + announcement → peg animation → next combo.
+        const comboIds = combo.cards.map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`);
+        recordEvent('combo_raise_start', {
+          eventSource: 'scoringEffect',
+          eventReason: 'raise-combo',
+          highlightedCardIds: comboIds,
+          previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
+          currentComboLabelSnapshot: combo.label,
+          currentComboCardIdsSnapshot: comboIds,
+          effectThatRan: 'scoringEffect',
+          dependenciesSnapshot: { currentTargetIndex, currentComboIndex, transitionPhase, isComplete, winFrozen },
+        });
         setHighlightedCards(combo.cards);
         publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
 
-        // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
           const next = {
             ...prev,
             [currentTarget.playerId]: (prev[currentTarget.playerId] || 0) + combo.points,
           };
-
-          // Propagate animated scores to parent for peg board sync AND reactive win detection
           if (onScoreUpdate) onScoreUpdate(next);
           return next;
         });
 
-        // Advance to the next combo after a delay
         innerTimer = setTimeout(() => {
           if (!winFrozenRef.current) {
             const nextCombo = currentComboIndex + 1;
             setCurrentComboIndex(nextCombo);
-            // Persist progress: advanced to next combo within target
             onProgressUpdate?.(currentTargetIndex, nextCombo);
           }
         }, COMBO_DELAY_MS);
@@ -829,22 +915,18 @@ export const CribbageCountingPhase = ({
       }
 
       // ── Final combo → Total: visual-lower gate ─────────────────
-      // Contract:
-      //   1. logical resolution: clear highlightedCards NOW (this triggers
-      //      the CSS lower transition on the final-combo scoring-card
-      //      wrappers via `transition-all duration-300`).
-      //   2. arm a pending-lower state keyed to the final combo card IDs.
-      //   3. wait until every tracked scoring-card DOM node reports
-      //      `transitionend` for `transform` (visual lower complete),
-      //      OR the deadman fallback fires (safety only).
-      //   4. THEN publishAnnouncement('Total: N points', ...) and start
-      //      the existing 1500ms read window → startExitTransition.
-      // This prevents the total summary from mounting while the final
-      // combo cards are still visually raised/lowering.
       const finalCombo = currentCombos[currentCombos.length - 1];
       const finalComboIds = finalCombo
         ? finalCombo.cards.map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`)
         : [];
+      recordEvent('combo_lower_start', {
+        eventSource: 'scoringEffect',
+        eventReason: 'past-last-combo',
+        finalComboLowerPendingCardIds: finalComboIds,
+        highlightedCardIds: [],
+        previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
+        effectThatRan: 'scoringEffect',
+      });
       setHighlightedCards([]);
       recordTruth('highlight_cleared', {
         comboHighlightEndedAt: Date.now(),
@@ -854,20 +936,33 @@ export const CribbageCountingPhase = ({
       const targetLabel = currentTarget.label;
       const armedTargetIndex = currentTargetIndex;
 
-      // Reset any prior pending gate.
       if (finalLowerCleanupRef.current) {
         finalLowerCleanupRef.current();
         finalLowerCleanupRef.current = null;
       }
+      const startedAt = Date.now();
       finalLowerPendingRef.current = {
         cardIds: finalComboIds,
         targetIndex: armedTargetIndex,
         targetLabel,
         total: totalPoints,
-        startedAt: Date.now(),
+        startedAt,
       };
+      finalLowerWatchedIdsRef.current = finalComboIds;
+      finalLowerMissingIdsRef.current = [];
+      transitionEndReceivedRef.current = { cardIds: [], props: [], elapsed: [] };
+      recordEvent('combo_lower_pending', {
+        eventSource: 'scoringEffect',
+        eventReason: 'gate-armed',
+        finalComboLowerPending: true,
+        finalComboLowerPendingCardIds: finalComboIds,
+        finalComboLowerPendingStartedAt: startedAt,
+        watchedCardIds: finalComboIds,
+      });
 
-      const finalizeTotal = (reason: 'transitionend' | 'deadman' | 'no-cards') => {
+      const finalizeTotal = (
+        reason: 'transitionend' | 'deadman' | 'no-cards' | 'raf-dom-identity' | 'node-missing-skip',
+      ) => {
         if (winFrozenRef.current) return;
         const pending = finalLowerPendingRef.current;
         if (!pending || pending.targetIndex !== armedTargetIndex) return;
@@ -876,9 +971,37 @@ export const CribbageCountingPhase = ({
           finalLowerCleanupRef.current();
           finalLowerCleanupRef.current = null;
         }
+        const resolvedAt = Date.now();
+        const resolveReason: CountingTruthEntry['finalComboLowerResolveReason'] =
+          reason === 'transitionend' ? 'transitionend-all'
+          : reason === 'deadman' ? 'deadman'
+          : reason === 'no-cards' ? 'no-cards'
+          : reason === 'raf-dom-identity' ? 'raf-dom-identity'
+          : 'node-missing-skip';
+        recordEvent('combo_lower_complete', {
+          eventSource: 'gate.finalizeTotal',
+          eventReason: `resolve:${reason}`,
+          finalComboLowerResolvedAt: resolvedAt,
+          finalComboLowerResolveReason: resolveReason,
+          transitionEndReceivedCardIds: [...transitionEndReceivedRef.current.cardIds],
+          transitionEndPropertyNames: [...transitionEndReceivedRef.current.props],
+          transitionEndElapsedTimes: [...transitionEndReceivedRef.current.elapsed],
+          missingWatchedCardIds: [...finalLowerMissingIdsRef.current],
+          watchedCardIds: [...finalLowerWatchedIdsRef.current],
+          contradictions: {
+            ...makeEmptyContradictions(),
+            lowerResolverFiredByDeadman: reason === 'deadman',
+          },
+        });
         recordTruth('highlight_cleared', {
-          comboHighlightEndedAt: Date.now(),
+          comboHighlightEndedAt: resolvedAt,
           comboTransitionReason: `final-combo-lower-complete:${reason}`,
+        });
+        recordEvent('total_eligible', {
+          eventSource: 'gate.finalizeTotal',
+          eventReason: 'about-to-publish-total',
+          finalComboLowerResolvedAt: resolvedAt,
+          finalComboLowerResolveReason: resolveReason,
         });
         publishAnnouncement(`Total: ${pending.total} points`, pending.targetLabel, 'total');
         innerTimer = setTimeout(() => {
@@ -886,28 +1009,36 @@ export const CribbageCountingPhase = ({
         }, 1500);
       };
 
-      // Guard: no DOM available (SSR/unit) or no tracked cards → skip gate.
       if (typeof document === 'undefined' || finalComboIds.length === 0) {
         finalizeTotal('no-cards');
       } else {
-        // Wait one rAF so React commits the highlightedCards=[] removal,
-        // then attach transitionend listeners on the tracked wrappers.
         const raf = requestAnimationFrame(() => {
           finalLowerTimersRef.current.raf = null;
+          rafSampleCountRef.current += 1;
           const remaining = new Set(finalComboIds);
           const nodes: Array<{ el: HTMLElement; handler: (e: TransitionEvent) => void }> = [];
+          const watchedTransforms: Record<string, string> = {};
+          const watchedHighlightedAttr: Record<string, string> = {};
+          const missing: string[] = [];
           for (const id of finalComboIds) {
             const el = document.querySelector(
               `[data-cribbage-scoring-card="true"][data-card-id="${id}"]`,
             ) as HTMLElement | null;
             if (!el) {
               remaining.delete(id);
+              missing.push(id);
+              recordEvent('node_missing', {
+                eventSource: 'gate.rafAttach',
+                eventReason: 'watched-card-not-in-dom',
+                missingWatchedCardIds: [id],
+                watchedCardIds: finalComboIds,
+              });
               continue;
             }
-            // If already at identity (highlighted class already gone AND
-            // transform is identity), resolve immediately for this node.
             const cs = window.getComputedStyle(el);
             const t = cs.transform;
+            watchedTransforms[id] = t;
+            watchedHighlightedAttr[id] = el.dataset.cardHighlighted ?? '';
             const isIdentity =
               t === 'none' ||
               t === 'matrix(1, 0, 0, 1, 0, 0)' ||
@@ -918,6 +1049,18 @@ export const CribbageCountingPhase = ({
             }
             const handler = (e: TransitionEvent) => {
               if (e.propertyName !== 'transform') return;
+              transitionEndReceivedRef.current.cardIds.push(id);
+              transitionEndReceivedRef.current.props.push(e.propertyName);
+              transitionEndReceivedRef.current.elapsed.push(e.elapsedTime ?? 0);
+              recordEvent('transitionend', {
+                eventSource: 'gate.transitionend',
+                eventReason: `end:${id}`,
+                watchedCardIds: finalComboIds,
+                watchedDomNodeCount: nodes.length,
+                transitionEndReceivedCardIds: [id],
+                transitionEndPropertyNames: [e.propertyName],
+                transitionEndElapsedTimes: [e.elapsedTime ?? 0],
+              });
               remaining.delete(id);
               el.removeEventListener('transitionend', handler);
               if (remaining.size === 0) finalizeTotal('transitionend');
@@ -925,6 +1068,27 @@ export const CribbageCountingPhase = ({
             el.addEventListener('transitionend', handler);
             nodes.push({ el, handler });
           }
+          finalLowerWatchedNodeCountRef.current = nodes.length;
+          finalLowerMissingIdsRef.current = missing;
+          const allIdentity = Object.values(watchedTransforms).every(
+            (t) => t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)' || t === 'matrix(1,0,0,1,0,0)',
+          );
+          const allHighlightedFalse = Object.values(watchedHighlightedAttr).every((v) => v === 'false');
+          recordEvent('raf_sample', {
+            eventSource: 'gate.rafAttach',
+            eventReason: 'post-attach',
+            rafSampleCount: rafSampleCountRef.current,
+            rafSampleAt: Date.now(),
+            rafWatchedTransforms: watchedTransforms,
+            rafWatchedHighlightedAttr: watchedHighlightedAttr,
+            rafAllTransformsIdentity: allIdentity,
+            rafAllHighlightedFalse: allHighlightedFalse,
+            rafResolverFired: remaining.size === 0,
+            rafResolverReason: remaining.size === 0 ? 'all-identity-or-missing' : null,
+            watchedCardIds: finalComboIds,
+            watchedDomNodeCount: nodes.length,
+            missingWatchedCardIds: missing,
+          });
           finalLowerCleanupRef.current = () => {
             for (const { el, handler } of nodes) el.removeEventListener('transitionend', handler);
             if (finalLowerTimersRef.current.deadman) {
@@ -933,12 +1097,21 @@ export const CribbageCountingPhase = ({
             }
           };
           if (remaining.size === 0) {
-            finalizeTotal('transitionend');
+            finalizeTotal(missing.length === finalComboIds.length ? 'node-missing-skip' : 'raf-dom-identity');
             return;
           }
-          // Deadman fallback: card CSS transition is 300ms; give it 500ms.
+          const deadmanStartedAt = Date.now();
           finalLowerTimersRef.current.deadman = setTimeout(() => {
             finalLowerTimersRef.current.deadman = null;
+            recordEvent('deadman_fired', {
+              eventSource: 'gate.deadman',
+              eventReason: 'deadman-500ms',
+              deadmanActive: false,
+              deadmanStartedAt,
+              deadmanFiredAt: Date.now(),
+              watchedCardIds: finalComboIds,
+              transitionEndReceivedCardIds: [...transitionEndReceivedRef.current.cardIds],
+            });
             finalizeTotal('deadman');
           }, 500);
         });
@@ -946,6 +1119,7 @@ export const CribbageCountingPhase = ({
       }
 
     }, currentComboIndex === -1 ? 500 : 0);
+
 
     return () => {
       clearTimeout(timer);
@@ -968,6 +1142,14 @@ export const CribbageCountingPhase = ({
     // it cannot outlive the current owner's scoring beat or bleed into the
     // next owner's entering/scoring phase.
     announcementHiddenAtRef.current = Date.now();
+    announcementClearRequestedAtRef.current = announcementHiddenAtRef.current;
+    announcementClearSourceRef.current = 'startExitTransition';
+    recordEvent('combo_announce_clear', {
+      eventSource: 'startExitTransition',
+      eventReason: 'cleared-at-exit-start',
+      announcementClearRequestedAt: announcementHiddenAtRef.current,
+      announcementClearSource: 'startExitTransition',
+    });
     setAnnouncementData(null);
     onAnnouncementChange?.(null, null, undefined);
     recordTruth('exit_start', {
@@ -996,6 +1178,14 @@ export const CribbageCountingPhase = ({
         // the previous owner's total (or lingering combo) announcement from
         // bleeding into the next owner's scoring beat.
         announcementHiddenAtRef.current = Date.now();
+        announcementClearRequestedAtRef.current = announcementHiddenAtRef.current;
+        announcementClearSourceRef.current = 'target_advance_timer';
+        recordEvent('combo_announce_clear', {
+          eventSource: 'target_advance_timer',
+          eventReason: 'cleared-before-advance',
+          announcementClearRequestedAt: announcementHiddenAtRef.current,
+          announcementClearSource: 'target_advance_timer',
+        });
         setAnnouncementData(null);
         onAnnouncementChange?.(null, null, undefined);
         recordTruth('target_advance', {
@@ -1079,6 +1269,28 @@ export const CribbageCountingPhase = ({
       announcementData.key,
     );
   }, [announcementData, onAnnouncementChange, winFrozen, currentTargetIndex, transitionPhase]);
+
+  // ── Instrumentation: track prev highlightedCards ids ────────
+  useEffect(() => {
+    prevHighlightedCardIdsRef.current = highlightedCards.map(
+      (c) => `${c.rank}${c.suit?.[0] ?? '?'}`,
+    );
+  }, [highlightedCards]);
+
+  // ── Instrumentation: log announcement actual unmount timestamp ──
+  const prevAnnouncementRef = useRef<typeof announcementData>(null);
+  useEffect(() => {
+    const prev = prevAnnouncementRef.current;
+    if (prev != null && announcementData == null) {
+      recordEvent('combo_announce_clear', {
+        eventSource: 'announcementData-effect',
+        eventReason: 'actually-unmounted',
+        announcementActuallyUnmountedAt: Date.now(),
+        announcementVisibleAfterClearRequest: false,
+      });
+    }
+    prevAnnouncementRef.current = announcementData;
+  }, [announcementData, recordEvent]);
 
   // Cleanup on unmount
   useEffect(() => {
