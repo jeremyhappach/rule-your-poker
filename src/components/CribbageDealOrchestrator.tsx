@@ -79,6 +79,7 @@ export function CribbageDealOrchestrator({
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
+    registerCribbageHandContext(handContextId);
     onLifecycle?.('mounted');
     recordCribbageWartime('deal', 'orchestrator_mount', {
       handContextId, dealerPlayerId, selfPlayerId, cardsPerPlayer,
