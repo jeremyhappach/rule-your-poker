@@ -357,6 +357,7 @@ export function getCribbageWartimeContradictionCount(): number {
   for (const g of Object.keys(buckets) as WartimeGroup[]) {
     for (const e of buckets[g]) n += e.contradictions.length;
   }
+  for (const e of protectedRing) n += e.contradictions.length;
   return n;
 }
 
