@@ -794,6 +794,16 @@ export const CribbageCountingPhase = ({
 
       if (currentTargetIndex < countingTargets.length - 1) {
         const nextTarget = currentTargetIndex + 1;
+        const priorAnnouncementStillVisible = !!announcementData;
+        recordTruth('target_advance', {
+          comboTransitionReason: `advance:${currentTargetIndex}->${nextTarget}`,
+          announcementClearReason: priorAnnouncementStillVisible ? 'still-visible-at-advance' : 'cleared-before-advance',
+          contradictions: {
+            ...makeEmptyContradictions(),
+            nextOwnerStartedBeforePriorAnnouncementCleared: priorAnnouncementStillVisible,
+            announcementVisibleDuringNextOwner: priorAnnouncementStillVisible,
+          },
+        });
         setCurrentTargetIndex(nextTarget);
         setCurrentComboIndex(-1);
         // Persist progress: advanced to next target
@@ -801,6 +811,7 @@ export const CribbageCountingPhase = ({
         setHighlightedCards([]);
         setExitingCards([]);
         setTransitionPhase('entering');
+
         
         // After enter animation, start scoring
         if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
