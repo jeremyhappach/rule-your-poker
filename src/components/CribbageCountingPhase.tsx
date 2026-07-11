@@ -807,15 +807,21 @@ export const CribbageCountingPhase = ({
 
       if (currentTargetIndex < countingTargets.length - 1) {
         const nextTarget = currentTargetIndex + 1;
-        const priorAnnouncementStillVisible = !!announcementData;
+        // LIFECYCLE CONTRACT: clear any prior-owner announcement BEFORE the
+        // next scoring target/owner becomes visually active. This prevents
+        // the previous owner's total (or lingering combo) announcement from
+        // bleeding into the next owner's scoring beat.
+        announcementHiddenAtRef.current = Date.now();
+        setAnnouncementData(null);
+        onAnnouncementChange?.(null, null, undefined);
         recordTruth('target_advance', {
           comboTransitionReason: `advance:${currentTargetIndex}->${nextTarget}`,
-          announcementClearReason: priorAnnouncementStillVisible ? 'still-visible-at-advance' : 'cleared-before-advance',
-          contradictions: {
-            ...makeEmptyContradictions(),
-            nextOwnerStartedBeforePriorAnnouncementCleared: priorAnnouncementStillVisible,
-            announcementVisibleDuringNextOwner: priorAnnouncementStillVisible,
-          },
+          announcementText: null,
+          announcementVisible: false,
+          announcementMounted: false,
+          announcementHiddenAt: announcementHiddenAtRef.current,
+          announcementClearReason: 'cleared-before-advance',
+          contradictions: makeEmptyContradictions(),
         });
         setCurrentTargetIndex(nextTarget);
         setCurrentComboIndex(-1);
