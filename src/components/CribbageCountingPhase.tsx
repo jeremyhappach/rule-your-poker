@@ -192,6 +192,56 @@ export const CribbageCountingPhase = ({
     [],
   );
 
+  // ── Producer-lifecycle instrumentation refs (no behavior) ───
+  const announcementPublishedAtRef = useRef<number | null>(null);
+  const announcementClearRequestedAtRef = useRef<number | null>(null);
+  const announcementClearSourceRef = useRef<string | null>(null);
+  const prevHighlightedCardIdsRef = useRef<string[]>([]);
+  const rafSampleCountRef = useRef(0);
+  const transitionEndReceivedRef = useRef<{ cardIds: string[]; props: string[]; elapsed: number[] }>({
+    cardIds: [], props: [], elapsed: [],
+  });
+  const finalLowerWatchedIdsRef = useRef<string[]>([]);
+  const finalLowerWatchedNodeCountRef = useRef<number>(0);
+  const finalLowerMissingIdsRef = useRef<string[]>([]);
+
+  const buildEventMeta = useCallback((extra: Partial<CountingTruthEntry> = {}): Partial<CountingTruthEntry> => {
+    const snap = truthSnapshotRef.current;
+    const pending = finalLowerPendingRef.current;
+    return {
+      eventSource: extra.eventSource ?? null,
+      eventReason: extra.eventReason ?? null,
+      currentTargetIndex: currentTargetIndexRef.current,
+      currentComboIndex: currentComboIndexRef.current,
+      totalCombos: snap.totalCombosForOwner ?? null,
+      transitionPhase: snap.scoringSubphase ?? null,
+      announcementDataText: snap.announcementText ?? null,
+      announcementDataCategory: snap.announcementCategory ?? null,
+      announcementDataKey: snap.announcementComboKey ?? null,
+      announcementDataTargetIndex: currentTargetIndexRef.current,
+      announcementDataComboIndex: currentComboIndexRef.current,
+      highlightedCardIds: snap.comboHighlightActive ? snap.currentComboCardIds : [],
+      previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
+      currentComboLabelSnapshot: snap.currentComboLabel ?? null,
+      currentComboCardIdsSnapshot: snap.currentComboCardIds ?? [],
+      finalComboLowerPending: pending != null,
+      finalComboLowerPendingCardIds: pending?.cardIds ?? [],
+      finalComboLowerPendingStartedAt: pending?.startedAt ?? null,
+      deadmanActive: finalLowerTimersRef.current.deadman != null,
+      announcementPublishedAt: announcementPublishedAtRef.current,
+      announcementClearRequestedAt: announcementClearRequestedAtRef.current,
+      announcementClearSource: announcementClearSourceRef.current,
+      ...extra,
+    };
+  }, []);
+
+  const recordEvent = useCallback(
+    (source: CountingTruthEntry['source'], extra: Partial<CountingTruthEntry> = {}) => {
+      recordTruth(source, buildEventMeta(extra));
+    },
+    [recordTruth, buildEventMeta],
+  );
+
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
 
