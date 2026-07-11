@@ -130,23 +130,12 @@ export const CribbageTurnSpotlight = ({
   // but no longer needed for legacy fallback math.
   void currentPlayerPosition;
 
-  // Brief brighter pulse on turn ownership arrival, then settle to the
-  // stronger steady state. Footprint/geometry unchanged.
-  const [pulse, setPulse] = useState(0);
-  const lastTurnRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isVisible || !currentTurnPlayerId) {
-      lastTurnRef.current = null;
-      setPulse(0);
-      return;
-    }
-    if (lastTurnRef.current === currentTurnPlayerId) return;
-    lastTurnRef.current = currentTurnPlayerId;
-    setPulse(1);
-    const t = window.setTimeout(() => setPulse(0), 520);
-    return () => window.clearTimeout(t);
-  }, [isVisible, currentTurnPlayerId]);
-
+  // Single canonical settled brightness for the entire active
+  // duration. The previous implementation opened with a brighter
+  // "pulse" state (coreAlpha 0.60 for ~520ms) and then dimmed to
+  // steady-state (coreAlpha 0.32) — that transition was the visible
+  // bright-then-dim flash. Position/movement animation is unaffected;
+  // only the brightness interpolation source is removed.
   if (!isVisible || !currentTurnPlayerId) {
     return null;
   }
