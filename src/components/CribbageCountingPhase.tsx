@@ -304,6 +304,15 @@ export const CribbageCountingPhase = ({
     targetLabel: string;
     total: number;
     startedAt: number;
+    // Patch A: the same visual-lower gate now serves ordinary combo N → N+1
+    // boundaries as well as the final combo → total boundary. `kind` tags
+    // which lifecycle a given arming instance represents; `onResolved` is
+    // invoked once the DOM lower transition is visually complete (or a
+    // deadman fires) and is the only place that advances state.
+    kind: 'inter-combo' | 'final';
+    onResolved: (
+      reason: 'transitionend' | 'deadman' | 'no-cards' | 'raf-dom-identity' | 'node-missing-skip',
+    ) => void;
   }>(null);
   const finalLowerTimersRef = useRef<{
     deadman: ReturnType<typeof setTimeout> | null;
