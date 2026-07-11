@@ -42,7 +42,12 @@ export type WartimeEventKind =
   | 'dealruntime_ready_released_changed'
   | 'settled_count_changed'
   | 'settled_local_count_changed'
-  | 'transport_intent_created'
+  // NOTE: `transport_intent_first_seen` is emitted by CardTransportRuntime
+  // on its first resolution pass over an active intent. It is NOT the
+  // upstream game-side dispatch/enqueue moment (that fact is owned by the
+  // producer that called ctx.dispatch). The runtime's first canonical
+  // acceptance into its resolution queue is what this event records.
+  | 'transport_intent_first_seen'
   | 'transport_intent_mounted'
   | 'transport_intent_launched'
   | 'transport_intent_settled'
