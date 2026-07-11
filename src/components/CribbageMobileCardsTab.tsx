@@ -251,6 +251,66 @@ export const CribbageMobileCardsTab = ({
     });
   }, [invariantDecisionFingerprint, decisionKind, sourceHand.length, clippedHand.length, presentationCount, renderedCount, authCount, activeHandBlocked, roundIdentityMismatch, handIdentityMismatch, deal?.phase, cribbageState.phase, shouldSelfHeal, visibleHandDecision.reason]);
 
+  // Wartime — value-change emissions for individual counts and props.
+  const lastRenderedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastRenderedRef.current !== renderedCount) {
+      const prev = lastRenderedRef.current;
+      lastRenderedRef.current = renderedCount;
+      recordCribbageWartime('deal', 'rendered_hand_count_changed', {
+        prev, renderedCount, presentationCount, authCount, activeHandBlocked,
+        dealPhase: deal?.phase ?? null,
+      }, {
+        producerComponent: 'CribbageMobileCardsTab',
+        producerFunction: 'renderedCountEffect',
+        dedupeKey: `rendered:${renderedCount}`,
+      });
+      if (prev === 0 && renderedCount >= 1) {
+        recordCribbageWartime('deal', 'first_local_card_visible', {
+          renderedCount, dealPhase: deal?.phase ?? null,
+        }, {
+          producerComponent: 'CribbageMobileCardsTab',
+          producerFunction: 'firstCardVisible',
+          dedupeKey: `firstCard:${renderedCount}`,
+        });
+      }
+      if (renderedCount >= 6 && (prev ?? 0) < 6) {
+        recordCribbageWartime('deal', 'full_local_hand_visible', {
+          renderedCount, dealPhase: deal?.phase ?? null,
+        }, {
+          producerComponent: 'CribbageMobileCardsTab',
+          producerFunction: 'fullHandVisible',
+          dedupeKey: `fullHand:${renderedCount}`,
+        });
+      }
+    }
+  }, [renderedCount, presentationCount, authCount, activeHandBlocked, deal?.phase]);
+
+  // ActiveHandFan DOM card-node count observer (coalesced).
+  useEffect(() => {
+    const stage = document.querySelector('[data-crib-active-hand-stage]') as HTMLElement | null;
+    if (!stage) return;
+    let lastDomCount = -1;
+    const measure = () => {
+      const count = stage.querySelectorAll('[data-cribbage-hand-card-key]').length;
+      if (count === lastDomCount) return;
+      const prev = lastDomCount;
+      lastDomCount = count;
+      recordCribbageWartime('deal', 'active_hand_dom_count_changed', {
+        prev, count, renderedProp: renderedCount, dealPhase: deal?.phase ?? null,
+      }, {
+        producerComponent: 'CribbageMobileCardsTab',
+        producerFunction: 'domObserver',
+        dedupeKey: `dom:${count}`,
+      });
+    };
+    measure();
+    const mo = new MutationObserver(() => measure());
+    mo.observe(stage, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [renderedCount, deal?.phase, currentHandKeyLike]);
+
+
 
   const prevRenderSourceFingerprintRef = useRef<string>('');
   const prevBlockedFingerprintRef = useRef<string>('');
