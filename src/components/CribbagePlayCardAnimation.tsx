@@ -52,6 +52,11 @@ interface Props {
   onSettled: (id: string) => void;
   /** Optional lifecycle probe for instrumentation. */
   onLifecycle?: (id: string, event: CribbagePlayCardLifecycleEvent) => void;
+  /** Fired iff the effect instance unmounts before natural settle/skip.
+   *  Identity-carrying: the receiver must identity-check `id` before
+   *  releasing any lock. Stale cancels from superseded intents must be
+   *  no-ops on the receiver side. */
+  onCancelled?: (id: string) => void;
 }
 
 interface Flight {
