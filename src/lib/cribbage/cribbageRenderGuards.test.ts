@@ -105,7 +105,7 @@ describe('Cribbage render guards', () => {
     expect(mode.isBootstrapMode).toBe(false);
   });
 
-  it('parent suppressed during non-terminal deal lifecycle → empty', () => {
+  it('parent suppressed during non-terminal deal lifecycle WITH NO SETTLED PREFIX → empty', () => {
     const result = resolveCribbageVisibleHand({
       authoritativeHand: hand,
       presentationHand: [],
@@ -113,6 +113,61 @@ describe('Cribbage render guards', () => {
       parentSuppressed: true,
       dealPhase: 'PRE_DEAL',
       dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+    });
+    expect(result.decision).toBe('render-empty-blocked-current-hand');
+    expect(result.hand).toEqual([]);
+  });
+
+  it('Turn 1 Patch A — parent suppressed during in-flight DEAL WITH settled prefix → render presentation (action-gate ignored during deal)', () => {
+    // Reproduces the batch-reveal defect: during opening deal,
+    // presentation identity briefly lags authoritative so the parent
+    // sets interactionsAllowed=false (parentSuppressed=true). Without
+    // the fix, every settled card is masked and then batch-revealed
+    // (0 → 4/5/6). With the fix, each settled prefix is visible.
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: hand.slice(0, 3),
+      phase: 'discarding',
+      parentSuppressed: true,
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 5,
+    });
+    expect(result.decision).toBe('render-presentation');
+    expect(result.hand).toEqual(hand.slice(0, 3));
+    expect(result.reason).toContain('action-gate ignored');
+  });
+
+  it('Turn 1 Patch A — incremental reveal as successive settles arrive under parentSuppressed', () => {
+    // Same parentSuppressed condition, but presentation grows 1..2..3
+    // in successive resolver calls. Each returns exactly the current
+    // settled prefix — never zero, never a batch.
+    for (const size of [1, 2, 3, 4, 5, 6] as const) {
+      const result = resolveCribbageVisibleHand({
+        authoritativeHand: hand,
+        presentationHand: hand.slice(0, size),
+        phase: 'discarding',
+        parentSuppressed: true,
+        dealPhase: 'DEALING',
+        dealExpectedCount: 12,
+        dealActiveIntentCount: 12 - size,
+      });
+      expect(result.decision).toBe('render-presentation');
+      expect(result.hand.length).toBe(size);
+    }
+  });
+
+  it('Turn 1 Patch A — DEALING idle with parentSuppressed and no settled prefix → still empty', () => {
+    // Preserves the pre-deal / idle-DEALING no-flash contract when
+    // there is genuinely nothing settled yet.
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      parentSuppressed: true,
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
       dealActiveIntentCount: 0,
     });
     expect(result.decision).toBe('render-empty-blocked-current-hand');
