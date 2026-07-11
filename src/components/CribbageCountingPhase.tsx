@@ -296,6 +296,50 @@ export const CribbageCountingPhase = ({
 
   const currentCombos = targetSummaries[currentTargetIndex]?.combos ?? [];
 
+  // ── Keep truth-ledger snapshot fresh every render (instrumentation only) ──
+  {
+    const t = countingTargets[currentTargetIndex];
+    const next = countingTargets[currentTargetIndex + 1];
+    const combo = currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+      ? currentCombos[currentComboIndex]
+      : null;
+    const cardId = (c: CribbageCard) => `${c.rank}${c.suit?.[0] ?? '?'}`;
+    truthSnapshotRef.current = {
+      ...truthSnapshotRef.current,
+      roundId: debugContext?.roundId ?? null,
+      handNumber: debugContext?.handNumber ?? null,
+      handContextId: null,
+      scoringOwnerPlayerId: t?.playerId ?? null,
+      scoringOwnerRole: t
+        ? (t.type === 'crib' ? 'crib' : (t.playerId === cribbageState.dealerPlayerId ? 'dealer' : 'opponent'))
+        : null,
+      scoringPhase: cribbageState.phase,
+      scoringSubphase: transitionPhase,
+      scoringHandKey: persistedHandKey ?? null,
+      scoringStepIndex: currentComboIndex,
+      totalCombosForOwner: currentCombos.length,
+      isFinalComboForOwner: currentCombos.length > 0 && currentComboIndex === currentCombos.length - 1,
+      nextOwnerPlayerId: next?.playerId ?? null,
+      announcementText: announcementData?.text ?? null,
+      announcementOwnerPlayerId: t?.playerId ?? null,
+      announcementComboKey: announcementData?.key ?? null,
+      announcementVisible: !!announcementData,
+      announcementMounted: !!announcementData,
+      announcementStartedAt: announcementStartedAtRef.current,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementCategory: lastAnnouncementCategoryRef.current,
+      currentComboLabel: combo?.label ?? null,
+      currentComboPoints: combo?.points ?? null,
+      currentComboCardIds: combo ? combo.cards.map(cardId) : [],
+      comboHighlightActive: highlightedCards.length > 0,
+      comboRaiseActive: highlightedCards.length > 0 && transitionPhase === 'scoring',
+      previousComboIndex: currentComboIndex - 1,
+      nextComboIndex: currentComboIndex + 1,
+    };
+  }
+
+
+
   // CRITICAL: Always use initialScores prop as the authoritative baseline.
   // The parent (CribbageMobileGameTable) captures the correct pegging-phase scores BEFORE
   // phase transition and passes them here. Recalculating from cribbageState is unreliable
