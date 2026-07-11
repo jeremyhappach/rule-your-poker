@@ -148,8 +148,9 @@ export const CribbageCountingPhase = ({
     [],
   );
 
-
+  // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
+
   // card horizontal gap. Cut card is NOT part of the hand fan.
   // Both controls resolve from the ACTUAL responsive card width via
   // ResizeObserver; no fixed-px width or breakpoint map.
