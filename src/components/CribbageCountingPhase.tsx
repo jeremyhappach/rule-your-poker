@@ -1270,6 +1270,28 @@ export const CribbageCountingPhase = ({
     );
   }, [announcementData, onAnnouncementChange, winFrozen, currentTargetIndex, transitionPhase]);
 
+  // ── Instrumentation: track prev highlightedCards ids ────────
+  useEffect(() => {
+    prevHighlightedCardIdsRef.current = highlightedCards.map(
+      (c) => `${c.rank}${c.suit?.[0] ?? '?'}`,
+    );
+  }, [highlightedCards]);
+
+  // ── Instrumentation: log announcement actual unmount timestamp ──
+  const prevAnnouncementRef = useRef<typeof announcementData>(null);
+  useEffect(() => {
+    const prev = prevAnnouncementRef.current;
+    if (prev != null && announcementData == null) {
+      recordEvent('combo_announce_clear', {
+        eventSource: 'announcementData-effect',
+        eventReason: 'actually-unmounted',
+        announcementActuallyUnmountedAt: Date.now(),
+        announcementVisibleAfterClearRequest: false,
+      });
+    }
+    prevAnnouncementRef.current = announcementData;
+  }, [announcementData, recordEvent]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
