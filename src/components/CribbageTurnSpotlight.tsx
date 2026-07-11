@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
@@ -130,23 +130,12 @@ export const CribbageTurnSpotlight = ({
   // but no longer needed for legacy fallback math.
   void currentPlayerPosition;
 
-  // Brief brighter pulse on turn ownership arrival, then settle to the
-  // stronger steady state. Footprint/geometry unchanged.
-  const [pulse, setPulse] = useState(0);
-  const lastTurnRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isVisible || !currentTurnPlayerId) {
-      lastTurnRef.current = null;
-      setPulse(0);
-      return;
-    }
-    if (lastTurnRef.current === currentTurnPlayerId) return;
-    lastTurnRef.current = currentTurnPlayerId;
-    setPulse(1);
-    const t = window.setTimeout(() => setPulse(0), 520);
-    return () => window.clearTimeout(t);
-  }, [isVisible, currentTurnPlayerId]);
-
+  // Single canonical settled brightness for the entire active
+  // duration. The previous implementation opened with a brighter
+  // "pulse" state (coreAlpha 0.60 for ~520ms) and then dimmed to
+  // steady-state (coreAlpha 0.32) — that transition was the visible
+  // bright-then-dim flash. Position/movement animation is unaffected;
+  // only the brightness interpolation source is removed.
   if (!isVisible || !currentTurnPlayerId) {
     return null;
   }
@@ -156,11 +145,11 @@ export const CribbageTurnSpotlight = ({
   const coneMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`;
   const invConeMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`;
 
-  // Steady-state luminance ~2× prior (0.15 → 0.32) with a tighter,
-  // sharper inner-edge halo via a radial falloff inside the cone.
-  const coreAlpha = 0.32 + pulse * 0.28;
-  const glowAlpha = 0.18 + pulse * 0.12; // outer glow ~1.5× prior baseline
-  const pulseTransition = pulse ? 'background 180ms ease-out' : 'background 420ms ease-in';
+  // Single canonical settled luminance — no pulse interpolation. See
+  // the note above about the removed bright-then-dim flash source.
+  const coreAlpha = 0.32;
+  const glowAlpha = 0.18;
+  const pulseTransition = 'background 420ms ease-in';
 
   const overlay = (
     <>
