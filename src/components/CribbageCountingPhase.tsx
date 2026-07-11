@@ -80,7 +80,17 @@ export const CribbageCountingPhase = ({
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
   // Store announcement WITH its target label to prevent label mismatch during transitions
-  const [announcementData, setAnnouncementData] = useState<{ text: string; targetLabel: string; key: number } | null>(null);
+  // Announcement carries owner-identity (targetIndex + comboIndex) so the
+  // render layer can identity-suppress stale prior-owner announcements
+  // and hard-guarantee the render never bleeds into the next owner.
+  const [announcementData, setAnnouncementData] = useState<{
+    text: string;
+    targetLabel: string;
+    key: number;
+    targetIndex: number;
+    comboIndex: number;
+    category: CountingTruthEntry['announcementCategory'];
+  } | null>(null);
   const [animatedScores, setAnimatedScores] = useState<Record<string, number>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
@@ -95,13 +105,20 @@ export const CribbageCountingPhase = ({
   const announcementStartedAtRef = useRef<number | null>(null);
   const announcementHiddenAtRef = useRef<number | null>(null);
   const lastAnnouncementCategoryRef = useRef<CountingTruthEntry['announcementCategory']>(null);
+  // Refs mirror the freshest scoring-owner identity so publishAnnouncement
+  // stamps the emit with the target/combo it belongs to, even when called
+  // inside a scheduled timer.
+  const currentTargetIndexRef = useRef(0);
+  const currentComboIndexRef = useRef(-1);
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
       announcementStartedAtRef.current = Date.now();
       announcementHiddenAtRef.current = null;
       lastAnnouncementCategoryRef.current = category;
-      setAnnouncementData({ text, targetLabel, key });
+      const targetIndex = currentTargetIndexRef.current;
+      const comboIndex = currentComboIndexRef.current;
+      setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
       // Bind announcement dispatch to the same frame that turns the
       // scored pair into its highlighted state (no delay constant, no
       // wait for peg-animation completion).
@@ -127,6 +144,10 @@ export const CribbageCountingPhase = ({
     },
     [onAnnouncementChange],
   );
+
+  // Keep identity refs in sync every render.
+  currentTargetIndexRef.current = currentTargetIndex;
+  currentComboIndexRef.current = currentComboIndex;
 
 
 
@@ -795,10 +816,28 @@ export const CribbageCountingPhase = ({
     if (!currentTarget) return;
     // Don't exit if win is frozen
     if (winFrozen) return;
-    
+
+    // LIFECYCLE CONTRACT (announcement):
+    // The total (or trailing zero) announcement belongs to the target that
+    // just finished counting. Clear it BEFORE the exit animation begins so
+    // it cannot outlive the current owner's scoring beat or bleed into the
+    // next owner's entering/scoring phase.
+    announcementHiddenAtRef.current = Date.now();
+    setAnnouncementData(null);
+    onAnnouncementChange?.(null, null, undefined);
+    recordTruth('exit_start', {
+      announcementText: null,
+      announcementVisible: false,
+      announcementMounted: false,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementClearReason: 'cleared-at-exit-start',
+      contradictions: makeEmptyContradictions(),
+    });
+
     // Save current cards for exit animation
     setExitingCards([...currentTarget.hand]);
     setTransitionPhase('exiting');
+    
     
     // After exit animation, move to next target
     if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
@@ -865,18 +904,36 @@ export const CribbageCountingPhase = ({
     }, EXIT_ANIMATION_MS);
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
-  // Propagate announcements to parent for dealer announcement area
-  // Uses announcementData which atomically stores text + targetLabel to prevent mismatch during transitions
+  // Propagate announcements to parent for dealer announcement area.
+  //
+  // LIFECYCLE CONTRACT: The announcement is IDENTITY-KEYED to the scoring
+  // owner (targetIndex) it was emitted for. If the current scoring target
+  // has advanced past the announcement's target, or if we are no longer in
+  // the 'scoring' phase for a combo announcement, we render `null` to the
+  // parent — the stale announcement can never appear against a new owner.
   useEffect(() => {
     if (winFrozen) return;
-    if (onAnnouncementChange) {
-      onAnnouncementChange(
-        announcementData?.text ?? null, 
-        announcementData?.targetLabel ?? null, 
-        announcementData?.key
-      );
+    if (!onAnnouncementChange) return;
+    const stale =
+      announcementData != null &&
+      announcementData.targetIndex !== currentTargetIndex;
+    // Combo announcements only belong to the 'scoring' phase — during
+    // 'exiting'/'entering' they are treated as stale so they cannot bleed
+    // across the target boundary.
+    const phaseStale =
+      announcementData != null &&
+      announcementData.category === 'combo' &&
+      transitionPhase !== 'scoring';
+    if (announcementData == null || stale || phaseStale) {
+      onAnnouncementChange(null, null, undefined);
+      return;
     }
-  }, [announcementData, onAnnouncementChange, winFrozen]);
+    onAnnouncementChange(
+      announcementData.text,
+      announcementData.targetLabel,
+      announcementData.key,
+    );
+  }, [announcementData, onAnnouncementChange, winFrozen, currentTargetIndex, transitionPhase]);
 
   // Cleanup on unmount
   useEffect(() => {
