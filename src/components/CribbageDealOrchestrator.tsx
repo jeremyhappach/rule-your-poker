@@ -83,7 +83,7 @@ export function CribbageDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
-    if (!dealTimingHydrated) return;
+    
     if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
