@@ -5826,7 +5826,9 @@ export const CribbageMobileGameTable = ({
     const lockHandKey =
       renderHandKey || `${currentRoundId}-${currentHandNumber}`;
     const lockPlayedCount = cribbageState.pegging?.playedCards?.length ?? 0;
+    const intentId = `crib-play-self-${tid}`;
     const lockClaim = {
+      intentId,
       cardId: lockCardId,
       handKey: lockHandKey,
       playedCount: lockPlayedCount,
@@ -5840,7 +5842,7 @@ export const CribbageMobileGameTable = ({
     }, {
       producerComponent: 'CribbageMobileGameTable',
       producerFunction: 'handlePlayCard',
-      dedupeKey: `play_writer_lock_claimed:${lockClaim.cardId}:${lockClaim.handKey}:${lockClaim.playedCount}`,
+      dedupeKey: `play_writer_lock_claimed:${lockClaim.intentId}:${lockClaim.cardId}:${lockClaim.handKey}:${lockClaim.playedCount}`,
       eventReason: 'writer lock claimed',
     });
 
