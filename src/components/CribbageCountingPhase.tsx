@@ -94,18 +94,39 @@ export const CribbageCountingPhase = ({
   const announcementHiddenAtRef = useRef<number | null>(null);
   const lastAnnouncementCategoryRef = useRef<CountingTruthEntry['announcementCategory']>(null);
   const publishAnnouncement = useCallback(
-    (text: string, targetLabel: string) => {
+    (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
       announcementStartedAtRef.current = Date.now();
       announcementHiddenAtRef.current = null;
+      lastAnnouncementCategoryRef.current = category;
       setAnnouncementData({ text, targetLabel, key });
       // Bind announcement dispatch to the same frame that turns the
       // scored pair into its highlighted state (no delay constant, no
       // wait for peg-animation completion).
       onAnnouncementChange?.(text, targetLabel, key);
+      // Instrumentation: record producer event on announcement publish.
+      countingTruthLedger.record({
+        source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
+        ...truthSnapshotRef.current,
+        announcementText: text,
+        announcementCategory: category,
+        announcementComboKey: key,
+        announcementVisible: true,
+        announcementMounted: true,
+        announcementStartedAt: announcementStartedAtRef.current,
+        announcementHiddenAt: null,
+        announcementClearReason: null,
+        totalSummaryVisible: category === 'total',
+        totalSummaryText: category === 'total' ? text : truthSnapshotRef.current.totalSummaryText,
+        totalSummaryOwnerPlayerId: category === 'total' ? truthSnapshotRef.current.scoringOwnerPlayerId : truthSnapshotRef.current.totalSummaryOwnerPlayerId,
+        totalSummaryMountedAt: category === 'total' ? Date.now() : truthSnapshotRef.current.totalSummaryMountedAt,
+        contradictions: makeEmptyContradictions(),
+      });
     },
     [onAnnouncementChange],
   );
+
+
 
 
   // ── Truth-ledger snapshot ref (instrumentation only) ─────────
