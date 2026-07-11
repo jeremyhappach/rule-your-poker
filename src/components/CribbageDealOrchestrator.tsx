@@ -199,7 +199,7 @@ export function CribbageDealOrchestrator({
 
     ct.dispatchMany(intents);
     onLifecycle?.('dispatchManyCalled');
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dealerGameId, roundId, handNumber, onLifecycle]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealerGameId, roundId, handNumber, onLifecycle]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
   // ([data-cribbage-active-pane-content]). Anchor is layout-inert
