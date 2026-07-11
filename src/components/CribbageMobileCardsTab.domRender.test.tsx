@@ -233,6 +233,7 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
           gameId="game-1"
           isDealer
           roundId="round-1"
+          selectedCards={[]}
           renderTrace={{
             renderHandKey: 'p1:A,2,3,4,5,6',
             currentHandKey: 'p1:A,2,3,4,5,6',
@@ -270,6 +271,7 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
           gameId="game-1"
           isDealer
           roundId="round-1"
+          selectedCards={[]}
           renderTrace={{
             renderHandKey: 'p1:A,2,3,4,5,6',
             currentHandKey: 'p1:A,2,3,4,5,6',
