@@ -2307,7 +2307,6 @@ export const CribbageMobileGameTable = ({
     const safety = setTimeout(() => {
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
-      setLastReleasedBoundaryEventId(eventKey);
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
     return () => {
