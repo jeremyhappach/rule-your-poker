@@ -434,3 +434,60 @@ export function serializeCribbageWartime(
   }
   return lines.join('\n');
 }
+
+// ─── Cribbage-scoped transport intent lifecycle helper ────────────────
+//
+// Called by the canonical CardTransportRuntime. The runtime hands over
+// the raw intent object plus the lifecycle kind and any timing/reason
+// extras it already owns. Non-Cribbage intents are ignored via the
+// cribbageIntentScope predicate. No behavior side effects.
+
+import { isCribbageIntentLike } from './cribbageIntentScope';
+
+export type IntentLifecycleKind =
+  | 'transport_intent_created'
+  | 'transport_intent_launched'
+  | 'transport_intent_settled'
+  | 'transport_intent_dropped';
+
+export function recordCribbageTransportIntentLifecycle(
+  kind: IntentLifecycleKind,
+  intent: {
+    id?: string | null;
+    cardId?: string | null;
+    handContextId?: string | null;
+    recipientPlayerId?: string | null;
+    from?: unknown;
+    to?: unknown;
+    launchDelayMs?: number | null;
+    durationMs?: number | null;
+    ownershipClaimDelayMs?: number | null;
+  },
+  extras: {
+    dispatchId?: string | null;
+    reason?: string | null;
+    timing?: Record<string, unknown>;
+  } = {},
+): void {
+  if (!isCribbageIntentLike(intent)) return;
+  const intentId = intent.id ?? '';
+  recordCribbageWartime('deal', kind, {
+    intentId,
+    cardId: intent.cardId ?? null,
+    handContextId: intent.handContextId ?? null,
+    recipientPlayerId: intent.recipientPlayerId ?? null,
+    from: intent.from ?? null,
+    to: intent.to ?? null,
+    launchDelayMs: intent.launchDelayMs ?? null,
+    durationMs: intent.durationMs ?? null,
+    ownershipClaimDelayMs: intent.ownershipClaimDelayMs ?? null,
+    dispatchId: extras.dispatchId ?? null,
+    reason: extras.reason ?? null,
+    timing: extras.timing ?? null,
+  }, {
+    producerComponent: 'CardTransportRuntime',
+    producerFunction: kind,
+    dedupeKey: `${kind}:${intentId}`,
+    eventReason: extras.reason ?? null,
+  });
+}
