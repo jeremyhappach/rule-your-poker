@@ -2490,6 +2490,24 @@ export const CribbageMobileGameTable = ({
     }
   }, [injectDealerMessage, announcements, gameId, currentRoundId]);
 
+  // Clear the sticky counting helper target label when the counting
+  // presentation actually leaves: no snapshot in flight, no
+  // announcement, and no post-counting transition latched. This is the
+  // one and only place `countingTargetLabel` is cleared, so it cannot
+  // flicker during combo lower/wait boundaries or between combos of
+  // the same scoring owner.
+  useEffect(() => {
+    if (
+      !countingStateSnapshot &&
+      !countingAnnouncement &&
+      !postCountingTransitionActive &&
+      countingTargetLabel !== null
+    ) {
+      setCountingTargetLabel(null);
+    }
+  }, [countingStateSnapshot, countingAnnouncement, postCountingTransitionActive, countingTargetLabel]);
+
+
   // ── Phase 3: emit pegging scoring events into the canonical rail as
   // `peg_notice` transients. Replaces the local gold-plate fallback for
   // pegging_points / go_point / his_heels. Dedup is per event.id.
