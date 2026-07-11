@@ -759,7 +759,7 @@ export const CribbageCountingPhase = ({
 
       setHighlightedCards([]);
       const total = getTotalFromCombos(currentCombos);
-      publishAnnouncement(`Total: ${total} points`, currentTarget.label);
+      publishAnnouncement(`Total: ${total} points`, currentTarget.label, 'total');
 
       innerTimer = setTimeout(() => {
         if (!winFrozenRef.current) startExitTransition();
