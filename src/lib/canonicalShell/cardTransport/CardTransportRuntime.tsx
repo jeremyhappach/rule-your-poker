@@ -334,6 +334,10 @@ export function CardTransportRuntime({
             launchedAt: performance.now(),
             lifecycleState: 'launched',
           });
+          recordCribbageTransportIntentLifecycle('transport_intent_launched', intent, {
+            reason: 'delayed-launch-timer-fired',
+            timing: { delayMs, durationMs: flightMs, ownershipClaimDelayMs, launchedAt: performance.now() },
+          });
           launchTimersRef.current.delete(intent.id);
           rerender();
         }, delayMs);
