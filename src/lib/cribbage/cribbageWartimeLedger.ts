@@ -239,13 +239,24 @@ function push(entry: WartimeEntry): void {
 
 // ─── Identity API ─────────────────────────────────────────────────────
 
+function normalizeIdentityValue(v: unknown): string | number | null {
+  if (v == null) return null; // treat undefined and null identically
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') return v; // strings compare by value already
+  return String(v);
+}
+
 export function setCribbageWartimeIdentity(patch: Partial<WartimeIdentity>): void {
   const prev = currentIdentity;
   const next: WartimeIdentity = { ...prev, ...patch };
 
+  // Normalize field values before diffing so newly allocated but
+  // semantically identical inputs do not emit noise.
   const changedKeys: string[] = [];
   for (const k of Object.keys(patch) as (keyof WartimeIdentity)[]) {
-    if (prev[k] !== next[k]) changedKeys.push(k as string);
+    const a = normalizeIdentityValue(prev[k]);
+    const b = normalizeIdentityValue(next[k]);
+    if (a !== b) changedKeys.push(k as string);
   }
   currentIdentity = next;
   if (changedKeys.length === 0) return;
