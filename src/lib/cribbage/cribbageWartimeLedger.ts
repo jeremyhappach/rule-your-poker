@@ -460,7 +460,7 @@ export function serializeCribbageWartime(
 import { isCribbageIntentLike } from './cribbageIntentScope';
 
 export type IntentLifecycleKind =
-  | 'transport_intent_created'
+  | 'transport_intent_first_seen'
   | 'transport_intent_launched'
   | 'transport_intent_settled'
   | 'transport_intent_dropped';
@@ -482,9 +482,13 @@ export function recordCribbageTransportIntentLifecycle(
     dispatchId?: string | null;
     reason?: string | null;
     timing?: Record<string, unknown>;
+    // Explicit immutable game provenance from the transport context
+    // (`ctx.gameType`). When provided, it takes precedence over any
+    // shape/id heuristic in `isCribbageIntentLike`.
+    gameType?: string | null;
   } = {},
 ): void {
-  if (!isCribbageIntentLike(intent)) return;
+  if (!isCribbageIntentLike(intent, { gameType: extras.gameType ?? null })) return;
   const intentId = intent.id ?? '';
   recordCribbageWartime('deal', kind, {
     intentId,
