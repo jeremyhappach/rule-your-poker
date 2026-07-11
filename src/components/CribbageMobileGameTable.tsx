@@ -2446,7 +2446,17 @@ export const CribbageMobileGameTable = ({
   
   const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null, announcementKey?: number) => {
     setCountingAnnouncement(announcement);
-    setCountingTargetLabel(targetLabel);
+    // Keep helper text ("Scoring <target>...") stable across combo
+    // lower/wait/exit gaps. The child publishes null announcements at
+    // combo_lower_start (to clear the combo pill) and also passes a
+    // null targetLabel through those clears, which used to make the
+    // helper flip to the generic "Scoring hands..." between combos of
+    // the SAME scoring owner. The target only changes when the parent
+    // scoring owner (player hand → next player hand → crib) advances,
+    // so we treat null targetLabel as "no change" and let the sticky
+    // label persist until a real new target arrives. A dedicated
+    // effect below clears the label when the counting phase exits.
+    if (targetLabel) setCountingTargetLabel(targetLabel);
     
     // Inject scoring announcements into chat as dealer messages
     // Skip "0 points" announcements - those are just placeholders
