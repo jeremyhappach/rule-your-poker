@@ -5989,6 +5989,9 @@ export const CribbageMobileGameTable = ({
             setPlayCardIntent((prev) => {
               if (prev && prev.id === intentId) {
                 updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
+                // Turn 2 — safety deadman for the accepted-play lifecycle:
+                // release writer lock so subsequent plays are not wedged.
+                releasePlayWriterLock(null, 'intent-safety-timeout');
                 return null;
               }
               return prev;
