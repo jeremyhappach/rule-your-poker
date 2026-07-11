@@ -89,9 +89,15 @@ export const CribbageCountingPhase = ({
   // SAME tick as the highlight state update (bound to the presentation
   // beat, not to the useEffect that runs after paint).
   const announcementKeyRef = useRef(0);
+  // Track announcement visibility timing for the truth ledger.
+  const announcementStartedAtRef = useRef<number | null>(null);
+  const announcementHiddenAtRef = useRef<number | null>(null);
+  const lastAnnouncementCategoryRef = useRef<CountingTruthEntry['announcementCategory']>(null);
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string) => {
       const key = ++announcementKeyRef.current;
+      announcementStartedAtRef.current = Date.now();
+      announcementHiddenAtRef.current = null;
       setAnnouncementData({ text, targetLabel, key });
       // Bind announcement dispatch to the same frame that turns the
       // scored pair into its highlighted state (no delay constant, no
@@ -100,6 +106,8 @@ export const CribbageCountingPhase = ({
     },
     [onAnnouncementChange],
   );
+
+
 
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
