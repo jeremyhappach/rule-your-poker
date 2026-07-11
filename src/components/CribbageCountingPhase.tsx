@@ -1084,7 +1084,7 @@ export const CribbageCountingPhase = ({
       }, 500);
     });
     finalLowerTimersRef.current.raf = raf;
-  }, [finalizeLower, recordEvent, recordTruth]);
+  }, [finalizeLower, recordEvent, recordTruth, onAnnouncementChange]);
 
 
   // Animation loop - only runs during 'scoring' phase
