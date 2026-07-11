@@ -126,6 +126,16 @@ export interface WartimeEntry {
 }
 
 // ─── Retention buckets ────────────────────────────────────────────────
+//
+// Two rings by design:
+//   • normal per-group rings — capped per category
+//   • one protected ring — receives every contradiction entry AND every
+//     lifecycle-critical event; capped at PROTECTED_CAPACITY total.
+//
+// Contradictions & lifecycle bypass dedupe but do NOT bypass eviction:
+// once the protected ring is full, the oldest protected entry is dropped
+// (FIFO). This guarantees a hard total-entry bound regardless of session
+// length. Export merges both rings by seq for chronological order.
 
 const CAPACITY: Record<WartimeGroup, number> = {
   deal: 300,
@@ -135,6 +145,34 @@ const CAPACITY: Record<WartimeGroup, number> = {
   identity: 100,
 };
 
+const PROTECTED_CAPACITY = 150;
+
+const HARD_MAX_TOTAL_ENTRIES =
+  CAPACITY.deal + CAPACITY.pegging + CAPACITY.counting +
+  CAPACITY.boundary + CAPACITY.identity + PROTECTED_CAPACITY;
+
+const LIFECYCLE_KINDS = new Set<WartimeEventKind>([
+  'hand_identity_changed',
+  'phase_changed',
+  'orchestrator_mount',
+  'orchestrator_unmount',
+  'dispatch_succeeded',
+  'dealruntime_phase_changed',
+  'transport_intent_created',
+  'transport_intent_launched',
+  'transport_intent_settled',
+  'transport_intent_dropped',
+  'pegging_boundary_hold_started',
+  'boundary_hold_released',
+  'row_clear_requested',
+  'row_clear_dom_started',
+  'row_clear_dom_complete',
+  'play_button_enabled_changed',
+  'play_intent_created',
+  'play_destination_computed',
+  'counting_complete',
+]);
+
 const buckets: Record<WartimeGroup, WartimeEntry[]> = {
   deal: [],
   pegging: [],
@@ -142,6 +180,8 @@ const buckets: Record<WartimeGroup, WartimeEntry[]> = {
   boundary: [],
   identity: [],
 };
+
+const protectedRing: WartimeEntry[] = [];
 
 let seqCounter = 0;
 const listeners = new Set<() => void>();
@@ -172,26 +212,27 @@ function notify() {
   }
 }
 
+function isProtectedEntry(entry: WartimeEntry): boolean {
+  return entry.contradictions.length > 0 || LIFECYCLE_KINDS.has(entry.kind);
+}
+
 function push(entry: WartimeEntry): void {
-  // Contradictions and boundary lifecycle are never suppressed.
-  const isProtected = entry.contradictions.length > 0;
+  const protectedEntry = isProtectedEntry(entry);
   const dedupeK = `${entry.group}|${entry.kind}|${entry.producerComponent}|${entry.dedupeKey}`;
-  if (!isProtected) {
+  if (!protectedEntry) {
     const prev = lastSeenAt.get(dedupeK);
     if (prev != null && entry.ts - prev < DEDUPE_WINDOW_MS) return;
   }
   lastSeenAt.set(dedupeK, entry.ts);
 
-  const bucket = buckets[entry.group];
-  const cap = CAPACITY[entry.group];
-  bucket.push(entry);
-  if (bucket.length > cap) {
-    // Try to drop the oldest non-contradiction entry first.
-    let dropIdx = 0;
-    for (let i = 0; i < bucket.length; i++) {
-      if (bucket[i].contradictions.length === 0) { dropIdx = i; break; }
-    }
-    bucket.splice(dropIdx, 1);
+  if (protectedEntry) {
+    protectedRing.push(entry);
+    if (protectedRing.length > PROTECTED_CAPACITY) protectedRing.shift();
+  } else {
+    const bucket = buckets[entry.group];
+    const cap = CAPACITY[entry.group];
+    bucket.push(entry);
+    if (bucket.length > cap) bucket.shift();
   }
   notify();
 }
