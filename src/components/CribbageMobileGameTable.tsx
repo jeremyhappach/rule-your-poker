@@ -23,6 +23,11 @@ import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 import { CribbageWartimeTruthPill } from './CribbageWartimeTruthPill';
+import { CribbageWartimeDealRuntimeBridge } from './CribbageWartimeDealRuntimeBridge';
+import {
+  recordCribbageWartime,
+  setCribbageWartimeIdentity,
+} from '@/lib/cribbage/cribbageWartimeLedger';
 
 import {
   recordPegTransportAttempt,
