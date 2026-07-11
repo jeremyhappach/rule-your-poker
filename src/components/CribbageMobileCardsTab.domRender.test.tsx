@@ -412,7 +412,10 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
 // the transport began and cards disappeared before re-animating.
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('CribbageMobileCardsTab — opening-deal grace prevents pre-transport flash', () => {
+// Obsolete: the fixed 2000ms opening-deal grace this suite asserted was
+// deliberately removed. Visibility is now strictly lifecycle-driven and
+// transport-dropped intents recover via CardTransportRuntime → READY.
+describe.skip('CribbageMobileCardsTab — opening-deal grace prevents pre-transport flash', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
