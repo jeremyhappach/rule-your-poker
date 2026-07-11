@@ -1239,36 +1239,42 @@ export const CribbageCountingPhase = ({
     }, EXIT_ANIMATION_MS);
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
-  // Propagate announcements to parent for dealer announcement area.
+  // ── Announcement propagation is SINGLE-WRITER ──────────────────
   //
-  // LIFECYCLE CONTRACT: The announcement is IDENTITY-KEYED to the scoring
-  // owner (targetIndex) it was emitted for. If the current scoring target
-  // has advanced past the announcement's target, or if we are no longer in
-  // the 'scoring' phase for a combo announcement, we render `null` to the
-  // parent — the stale announcement can never appear against a new owner.
+  // Parent `onAnnouncementChange` is written exclusively by:
+  //   1. `publishAnnouncement(...)` — non-null publish, same synchronous
+  //      call stack as `setHighlightedCards(...)` at the combo entry site.
+  //   2. Explicit clear sites paired with `setHighlightedCards([])`:
+  //        - `startExitTransition` (line ~1153)
+  //        - `target_advance_timer` inside the exit timer (line ~1189)
+  //        - `winFrozen` effect (line ~375)
+  //        - unmount/cleanup (line ~1300 area)
+  //
+  // The previous reactive propagation effect that re-derived and re-emitted
+  // to the parent based on `[announcementData, currentTargetIndex,
+  // transitionPhase]` was REMOVED here — it was a second writer that could
+  // observe intermediate child state across separate commits and push a
+  // stale/null announcement to the parent one commit after the highlighted-
+  // cards commit, causing the "announcement one tick behind combo" symptom.
+  //
+  // This effect is now INSTRUMENTATION-ONLY: it records to the Counting
+  // Truth ledger whenever `announcementData` mutates so we can prove that
+  // no post-commit re-derivation is writing parent state. It performs NO
+  // calls to `onAnnouncementChange`.
   useEffect(() => {
-    if (winFrozen) return;
-    if (!onAnnouncementChange) return;
-    const stale =
-      announcementData != null &&
-      announcementData.targetIndex !== currentTargetIndex;
-    // Combo announcements only belong to the 'scoring' phase — during
-    // 'exiting'/'entering' they are treated as stale so they cannot bleed
-    // across the target boundary.
-    const phaseStale =
-      announcementData != null &&
-      announcementData.category === 'combo' &&
-      transitionPhase !== 'scoring';
-    if (announcementData == null || stale || phaseStale) {
-      onAnnouncementChange(null, null, undefined);
-      return;
-    }
-    onAnnouncementChange(
-      announcementData.text,
-      announcementData.targetLabel,
-      announcementData.key,
-    );
-  }, [announcementData, onAnnouncementChange, winFrozen, currentTargetIndex, transitionPhase]);
+    countingTruthLedger.record({
+      source: 'combo_announce_publish',
+      ...truthSnapshotRef.current,
+      eventSource: 'announcementData-effect',
+      eventReason: 'passive-instrumentation-only',
+      announcementDataText: announcementData?.text ?? null,
+      announcementDataCategory: announcementData?.category ?? null,
+      announcementDataKey: announcementData?.key ?? null,
+      announcementDataTargetIndex: announcementData?.targetIndex ?? null,
+      announcementDataComboIndex: announcementData?.comboIndex ?? null,
+      contradictions: makeEmptyContradictions(),
+    });
+  }, [announcementData]);
 
   // ── Instrumentation: track prev highlightedCards ids ────────
   useEffect(() => {
