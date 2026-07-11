@@ -1087,6 +1087,9 @@ export const CribbageCountingPhase = ({
       if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
       if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
       if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+      if (finalLowerTimersRef.current.deadman) clearTimeout(finalLowerTimersRef.current.deadman);
+      if (finalLowerTimersRef.current.raf != null) cancelAnimationFrame(finalLowerTimersRef.current.raf);
+      if (finalLowerCleanupRef.current) finalLowerCleanupRef.current();
     };
   }, []);
 
