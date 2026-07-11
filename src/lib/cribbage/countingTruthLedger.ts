@@ -194,6 +194,18 @@ export interface CountingTruthEntry {
     domCardOwnerMismatch: boolean;
     duplicateScoringCardDomNodes: boolean;
     noRaisedCardsForActiveCombo: boolean;
+    // New producer-lifecycle contradictions
+    comboClearedButComboAnnouncementStillVisible: boolean;
+    comboAnnouncementVisibleDuringLower: boolean;
+    comboAnnouncementVisibleAfterLowerComplete: boolean;
+    totalPublishedBeforeComboAnnouncementCleared: boolean;
+    lowerResolverFiredWhileTransformsNonIdentity: boolean;
+    lowerResolverFiredByDeadman: boolean;
+    lowerPendingCardIdsMissingFromDom: boolean;
+    currentComboIndexPastEndButComboAnnouncementVisible: boolean;
+    totalSummaryVisibleBeforeAnnouncementClear: boolean;
+    visualLowerCompleteButNoTotal: boolean;
+    totalPublishedWithoutLowerComplete: boolean;
   };
 }
 
