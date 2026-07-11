@@ -186,6 +186,31 @@ export const CribbageCountingPhase = ({
   const currentAnnouncementRef = useRef(announcementData);
   currentAnnouncementRef.current = announcementData;
 
+  // Direct wartime — scoring target enter / advance.
+  const lastTargetRef = useRef<number>(-1);
+  useEffect(() => {
+    if (lastTargetRef.current === currentTargetIndex) return;
+    const prev = lastTargetRef.current;
+    lastTargetRef.current = currentTargetIndex;
+    recordCribbageWartime('counting', prev < 0 ? 'scoring_target_enter' : 'scoring_target_advance', {
+      prev, next: currentTargetIndex,
+    }, {
+      producerComponent: 'CribbageCountingPhase',
+      producerFunction: 'targetIndexEffect',
+      dedupeKey: `target:${currentTargetIndex}`,
+    });
+    if (prev >= 0) {
+      recordCribbageWartime('counting', 'next_scoring_target_enter', {
+        prev, next: currentTargetIndex,
+      }, {
+        producerComponent: 'CribbageCountingPhase',
+        producerFunction: 'targetIndexEffect',
+        dedupeKey: `nextTarget:${currentTargetIndex}`,
+      });
+    }
+  }, [currentTargetIndex]);
+
+
 
 
 
