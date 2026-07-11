@@ -243,6 +243,37 @@ function PeggingRowRenderProbe({
           dedupeKey: `rowRect:${sequenceStartIndex}:${sig}`,
           contradictions,
         });
+
+        // D-group: DOM row-clear boundary detection.
+        const prevDom = lastDomCountRef.current;
+        lastDomCountRef.current = rects.length;
+        if (prevDom > 0 && rects.length < prevDom && cards.length < prevLogicalCount) {
+          recordCribbageWartime('boundary', 'row_clear_dom_started', {
+            prevDomCount: prevDom,
+            newDomCount: rects.length,
+            logicalCount: cards.length,
+            sequenceStartIndex,
+            sequenceEndIndex,
+          }, {
+            producerComponent: 'CribbageAnchoredPeggingRowMount',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomStarted',
+            dedupeKey: `row_clear_dom_start:${sequenceStartIndex}:${prevDom}->${rects.length}`,
+            eventReason: 'DOM row count decreased after logical clear',
+          });
+        }
+        if (prevDom > 0 && rects.length === 0) {
+          recordCribbageWartime('boundary', 'row_clear_dom_complete', {
+            prevDomCount: prevDom,
+            logicalCount: cards.length,
+            sequenceStartIndex,
+            sequenceEndIndex,
+          }, {
+            producerComponent: 'CribbageAnchoredPeggingRowMount',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomComplete',
+            dedupeKey: `row_clear_dom_complete:${sequenceStartIndex}`,
+            eventReason: 'DOM row fully cleared',
+          });
+        }
       } catch { /* ignore */ }
     });
     return () => cancelAnimationFrame(raf);
