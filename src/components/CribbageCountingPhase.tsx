@@ -731,7 +731,7 @@ export const CribbageCountingPhase = ({
         // score/peg propagation so ordering is:
         //   highlight + announcement → peg animation → next combo.
         setHighlightedCards(combo.cards);
-        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label);
+        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
 
         // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
