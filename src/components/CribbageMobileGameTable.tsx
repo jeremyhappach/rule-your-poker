@@ -7624,6 +7624,8 @@ export const CribbageMobileGameTable = ({
 
           {/* Instrumentation pill — collapsed by default, top-left. */}
           <CribbagePegTransportPill />
+          <CribbageCountingTruthPill />
+
 
 
           {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
