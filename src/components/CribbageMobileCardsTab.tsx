@@ -748,6 +748,8 @@ export const CribbageMobileCardsTab = ({
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
+    if (renderTrace?.interactionsAllowed === false) return;
+
 
     if (cribbageState.phase === 'discarding') {
       if (selectedCards.includes(index)) {
@@ -784,10 +786,12 @@ export const CribbageMobileCardsTab = ({
   };
 
   const handleDiscard = () => {
+    if (renderTrace?.interactionsAllowed === false) return;
     if (selectedCards.length !== expectedDiscard) {
       toast.error(`Select ${expectedDiscard} card(s) to discard`);
       return;
     }
+
     // Task C1 — synchronously capture per-card source rects BEFORE the
     // authoritative discard state mutates. Uses the stable
     // `data-cribbage-hand-card-key` marker attached to each hand button.
@@ -878,7 +882,7 @@ export const CribbageMobileCardsTab = ({
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${index}`}
 
                 onPointerUp={(e) => e.currentTarget.blur()}
-                disabled={isProcessing}
+                disabled={isProcessing || renderTrace?.interactionsAllowed === false}
                 className={cn(
                   "transition-all duration-200 rounded relative",
                   isSelected
@@ -904,7 +908,7 @@ export const CribbageMobileCardsTab = ({
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
-            disabled={isProcessing || selectedCards.length !== expectedDiscard}
+            disabled={isProcessing || selectedCards.length !== expectedDiscard || renderTrace?.interactionsAllowed === false}
             className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-6"
           >
             Send to Crib ({selectedCards.length}/{expectedDiscard})
