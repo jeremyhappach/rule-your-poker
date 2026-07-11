@@ -26,7 +26,7 @@ import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTranspo
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
-import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
+import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
@@ -69,7 +69,9 @@ export function CribbageDealOrchestrator({
   const ct = useCardTransport();
   const deal = useDealRuntime();
   const dispatchedRef = useRef(false);
-  const dealTimingHydrated = useDealTimingHydrated();
+  // Hydration is intentionally NOT a dispatch gate. getDealTimingSnapshot()
+  // returns defaults synchronously when hydration hasn't landed; late
+  // hydration must not restart or mutate the active deal.
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
@@ -81,7 +83,7 @@ export function CribbageDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
-    if (!dealTimingHydrated) return;
+    
     if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
@@ -197,7 +199,7 @@ export function CribbageDealOrchestrator({
 
     ct.dispatchMany(intents);
     onLifecycle?.('dispatchManyCalled');
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dealerGameId, roundId, handNumber, onLifecycle]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealerGameId, roundId, handNumber, onLifecycle]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
   // ([data-cribbage-active-pane-content]). Anchor is layout-inert

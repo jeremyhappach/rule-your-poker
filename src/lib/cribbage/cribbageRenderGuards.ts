@@ -87,15 +87,6 @@ export interface ResolveCribbageVisibleHandArgs {
   dealPhase?: DealPhase | null;
   dealExpectedCount?: number;
   dealActiveIntentCount?: number;
-  /**
-   * Named last-resort stall fuse. Owned by the consumer, in-memory,
-   * bounded, reset on hand-identity boundary. This flag ONLY influences
-   * the decision when the deal-transport lifecycle has not produced any
-   * observable progress for the current hand (pre-start or dealing-idle).
-   * It is NEVER the discriminator for terminal transport, in-flight
-   * transport, or phases past the opening-deal window.
-   */
-  graceExpired?: boolean;
 }
 
 export type CribbageVisibleHandDecision =
@@ -106,91 +97,86 @@ export type CribbageVisibleHandDecision =
   | 'render-empty-no-authoritative';
 
 /**
- * Opening-deal contract.
+ * Opening-deal contract — DealRuntime lifecycle is the sole discriminator.
  *
- * The prior "always self-heal post-deal when auth>0 && pres===0" rule
- * regressed the opening-deal window: the DB flips to `discarding` with
- * 6 cards BEFORE the orchestrator calls `beginDeal`, so the resolver
- * flashed the full hand ahead of the animation.
+ *   Lifecycle                              Visible hand
+ *   -------------------------------------  ------------------------------
+ *   phase past opening (pegging/counting)  self-heal to authoritative
+ *   transport terminal (READY/GAMEPLAY)    self-heal to authoritative
+ *   transport DEALING with progress        presentation subset
+ *   transport DEALING idle / PRE_DEAL      empty (awaiting transport)
  *
- * The primary discriminator here is the deal-transport LIFECYCLE for
- * the current hand, not a timer:
- *
- *   Lifecycle                          Visible hand
- *   ---------------------------------  ------------------------------
- *   transportInFlight                  presentation subset
- *   transportTerminal (READY/GAMEPLAY) self-heal to authoritative if
- *                                        presentation stale
- *   phase past `discarding`            self-heal immediately
- *   transportPreStart or               presentation (empty OK). Fallback
- *     transportDealingIdle               ONLY: if graceExpired AND
- *                                        auth cards exist, self-heal —
- *                                        the "no transport lifecycle
- *                                        ever arrived" stall fuse.
+ * There is no wall-clock grace / stall fuse here. Canonical transport
+ * owns recovery for missing endpoints via endpoint retry → __markDropped
+ * → settled → READY, which naturally lifts visibility through the
+ * terminal branch above.
  */
 export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs): {
   hand: readonly CribbageCard[];
   decision: CribbageVisibleHandDecision;
   reason: string;
 } {
-  const isPost = isCribbagePostDealPhase(args.phase);
-  const authCount = args.authoritativeHand?.length ?? 0;
+  const authoritative = args.authoritativeHand ?? null;
+  const authCount = authoritative?.length ?? 0;
   const presentation = args.presentationHand;
   const presCount = presentation.length;
   const dealPhase = args.dealPhase ?? null;
   const activeIntents = args.dealActiveIntentCount ?? 0;
-  const expectedCount = args.dealExpectedCount ?? 0;
-  const graceExpired = !!args.graceExpired;
   const parentSuppressed = !!args.parentSuppressed;
 
-  // Opening-deal window only exists in `discarding` (or the transient
-  // `dealing` phase). Once phase advances the window is closed.
   const isOpeningPhase = args.phase === 'discarding' || args.phase === 'dealing';
+  const isPost = isCribbagePostDealPhase(args.phase);
 
-  // Primary lifecycle discriminators.
   const transportTerminal = dealPhase === 'READY' || dealPhase === 'GAMEPLAY';
   const transportInFlight = dealPhase === 'DEALING' && activeIntents > 0;
-  const transportDealingIdle = dealPhase === 'DEALING' && activeIntents === 0;
-  const transportPreStart =
-    (dealPhase === null || dealPhase === 'PRE_DEAL') && expectedCount === 0;
 
-  // Grace ONLY relaxes pre-start / dealing-idle — never in-flight,
-  // terminal, or post-opening-phase.
-  const dealWindowActive =
-    isOpeningPhase &&
-    !transportTerminal &&
-    (
-      // In-flight transport owns the window while it is making visible
-      // progress (or while the bounded stall fuse has not expired). Under
-      // chaos, an active intent can remain stuck before any local card is
-      // visible; after the fuse expires, authoritative cards must recover
-      // the no-card UI instead of waiting forever on that intent.
-      (transportInFlight && (!graceExpired || presCount > 0)) ||
-      ((transportDealingIdle || transportPreStart) && !graceExpired)
-    );
-
-  if (isPost && authCount > 0 && presCount < authCount && !dealWindowActive) {
+  // Phase past opening-deal window: opening is complete by contract.
+  if (isPost && !isOpeningPhase) {
+    if (authCount > 0 && presCount < authCount) {
+      return {
+        hand: authoritative as readonly CribbageCard[],
+        decision: 'render-authoritative-self-heal',
+        reason: 'phase past opening-deal window; presentation stale',
+      };
+    }
     return {
-      hand: args.authoritativeHand as readonly CribbageCard[],
-      decision: 'render-authoritative-self-heal',
-      reason:
-        transportTerminal
-          ? 'transport terminalized (READY/GAMEPLAY); presentation stale'
-          : !isOpeningPhase
-            ? 'phase past opening-deal window; deal-window closed'
-            : transportInFlight
-              ? 'transport in-flight without visible progress; stall fuse tripped'
-            : parentSuppressed
-              ? 'parent suppressed; stall fuse tripped'
-              : 'transport lifecycle absent; stall fuse tripped',
+      hand: presentation,
+      decision: 'render-presentation',
+      reason: 'phase past opening-deal window; presentation matches',
     };
   }
 
+  // Transport terminalized — authoritative is the source of truth.
+  if (transportTerminal) {
+    if (authCount > 0 && presCount < authCount) {
+      return {
+        hand: authoritative as readonly CribbageCard[],
+        decision: 'render-authoritative-self-heal',
+        reason: 'transport terminalized (READY/GAMEPLAY); presentation stale',
+      };
+    }
+    return {
+      hand: presentation,
+      decision: 'render-presentation',
+      reason: 'transport terminalized; presentation caught up',
+    };
+  }
+
+  // Parent suppression during a non-terminal deal lifecycle: honor it.
   if (parentSuppressed) {
     return {
       hand: [],
       decision: 'render-empty-blocked-current-hand',
-      reason: 'parent suppressed within deal window',
+      reason: 'parent suppressed within non-terminal deal lifecycle',
+    };
+  }
+
+  // In-flight deal: show whatever transport has revealed so far.
+  if (transportInFlight && presCount > 0) {
+    return {
+      hand: presentation,
+      decision: 'render-presentation',
+      reason: 'in-flight deal; rendering settled prefix',
     };
   }
 
@@ -198,15 +184,7 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
     return {
       hand: presentation,
       decision: 'render-presentation',
-      reason: 'presentation subset within valid deal window',
-    };
-  }
-
-  if (dealWindowActive) {
-    return {
-      hand: [],
-      decision: 'render-empty-pre-deal',
-      reason: 'opening-deal window active; awaiting transport reveal',
+      reason: 'presentation available during deal lifecycle',
     };
   }
 
@@ -220,8 +198,9 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
 
   return {
     hand: [],
-    decision: 'render-empty-blocked-current-hand',
-    reason: 'authoritative present but phase is not post-deal',
+    decision: 'render-empty-pre-deal',
+    reason: 'awaiting DealRuntime lifecycle progress',
   };
 }
+
 
