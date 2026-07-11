@@ -7419,26 +7419,60 @@ export const CribbageMobileGameTable = ({
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
                     portals itself into the canonical felt frame so the
                     ellipse clip aligns with the true canonical geometry
-                    (no legacy giant-circle backing artifact). */}
-                <CribbageTurnSpotlight
-                  currentTurnPlayerId={gameplayRenderState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId || ''}
-                  isVisible={gameplayRenderState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={activeSeatPlayers.length}
-                  opponentIds={projectedSeatPlayers.map(o => o.id)}
-                  currentTurnPosition={
-                    gameplayRenderState.pegging.currentTurnPlayerId
-                      ? activeSeatPlayers.find(p => p.id === gameplayRenderState.pegging.currentTurnPlayerId)?.position ?? null
-                      : null
+                    (no legacy giant-circle backing artifact).
+
+                    Unified pegging-presentation gate for the spotlight:
+                    while a play-card transport is in flight, or while
+                    the Go/31 sequence-end hold is active, the spotlight
+                    stays on the player whose card is currently being
+                    presented — not on the authoritative next turn.
+                    This mirrors the row/count/transport hold so the
+                    visible row, count, and spotlight all describe the
+                    same pegging sequence. */}
+                {(() => {
+                  const authoritativeTurnPlayerId = gameplayRenderState.pegging.currentTurnPlayerId;
+                  let spotlightPlayerId: string | null = authoritativeTurnPlayerId;
+
+                  if (playCardIntent) {
+                    if (playCardIntent.mode === 'self') {
+                      spotlightPlayerId = currentPlayerId || authoritativeTurnPlayerId;
+                    } else {
+                      const pos = playCardIntent.opponentPosition ?? null;
+                      const found = pos != null
+                        ? activeSeatPlayers.find(p => p.position === pos)?.id ?? null
+                        : null;
+                      spotlightPlayerId = found ?? authoritativeTurnPlayerId;
+                    }
+                  } else if (thirtyOneDelayActive && heldSequenceSnapshot) {
+                    const played = gameplayRenderState.pegging.playedCards;
+                    const lastIdx = heldSequenceSnapshot.heldEndIndex - 1;
+                    if (lastIdx >= 0 && lastIdx < played.length) {
+                      spotlightPlayerId = played[lastIdx].playerId;
+                    }
                   }
-                  currentPlayerPosition={currentPlayer?.position ?? null}
-                  currentTurnSlot={
-                    gameplayRenderState.pegging.currentTurnPlayerId
-                      ? playerSlotById.get(gameplayRenderState.pegging.currentTurnPlayerId) ?? null
-                      : null
-                  }
-                  shellOwned={true}
-                />
+
+                  const spotlightPosition = spotlightPlayerId
+                    ? activeSeatPlayers.find(p => p.id === spotlightPlayerId)?.position ?? null
+                    : null;
+                  const spotlightSlot = spotlightPlayerId
+                    ? playerSlotById.get(spotlightPlayerId) ?? null
+                    : null;
+
+                  return (
+                    <CribbageTurnSpotlight
+                      currentTurnPlayerId={spotlightPlayerId}
+                      currentPlayerId={currentPlayerId || ''}
+                      isVisible={gameplayRenderState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                      totalPlayers={activeSeatPlayers.length}
+                      opponentIds={projectedSeatPlayers.map(o => o.id)}
+                      currentTurnPosition={spotlightPosition}
+                      currentPlayerPosition={currentPlayer?.position ?? null}
+                      currentTurnSlot={spotlightSlot}
+                      shellOwned={true}
+                    />
+                  );
+                })()}
+
 
 
 
