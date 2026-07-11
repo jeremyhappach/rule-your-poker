@@ -1178,6 +1178,14 @@ export const CribbageCountingPhase = ({
         // the previous owner's total (or lingering combo) announcement from
         // bleeding into the next owner's scoring beat.
         announcementHiddenAtRef.current = Date.now();
+        announcementClearRequestedAtRef.current = announcementHiddenAtRef.current;
+        announcementClearSourceRef.current = 'target_advance_timer';
+        recordEvent('combo_announce_clear', {
+          eventSource: 'target_advance_timer',
+          eventReason: 'cleared-before-advance',
+          announcementClearRequestedAt: announcementHiddenAtRef.current,
+          announcementClearSource: 'target_advance_timer',
+        });
         setAnnouncementData(null);
         onAnnouncementChange?.(null, null, undefined);
         recordTruth('target_advance', {
