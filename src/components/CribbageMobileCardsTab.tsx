@@ -12,7 +12,7 @@ import {
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
-import { CribbageLayoutStatusPill, type CribbageLayoutStatusFields } from './CribbageLayoutStatusPill';
+// (CribbageLayoutStatusPill removed — replaced by CribbageWartimeTruthPill mounted in CribbageMobileGameTable.)
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
