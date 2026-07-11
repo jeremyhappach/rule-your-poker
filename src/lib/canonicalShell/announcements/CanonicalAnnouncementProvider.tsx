@@ -90,6 +90,14 @@ interface AnnouncementContextValue {
   emit: (event: AnnouncementEvent) => void;
   dismiss: (id: string) => void;
   clearScope: (scope: AnnouncementScope) => void;
+  /**
+   * Retire every live and queued TRANSIENT whose `transientScope`
+   * matches. Generic, producer-owned retirement group boundary — used
+   * to synchronously drop a previous ownership group's rail events
+   * before the next group emits (e.g. Cribbage counting target
+   * advance). Leaves ambient state and unrelated transients alone.
+   */
+  retireTransientScope: (scope: string) => void;
   /** Explicitly clear ambient (e.g. game leaves a passive phase). */
   clearAmbient: (type?: AnnouncementType) => void;
   /**
