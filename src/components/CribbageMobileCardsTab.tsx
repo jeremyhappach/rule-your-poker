@@ -489,8 +489,11 @@ export const CribbageMobileCardsTab = ({
   // D-group instrumentation — emit whenever the play-button-eligible
   // conditions transition. Coalesces on the full signature so identity
   // reallocation does not create noise.
+  const peggingBoundaryBlocked = renderTrace?.peggingBoundaryBlocked === true;
+  const selfPlayUnresolved = renderTrace?.selfPlayUnresolved === true;
   const playButtonEnabled = Boolean(
-    cribbageState.phase === 'pegging' && isMyTurn && canPlayAnyCard,
+    cribbageState.phase === 'pegging' && isMyTurn && canPlayAnyCard &&
+      !peggingBoundaryBlocked && !selfPlayUnresolved,
   );
   const playButtonSigRef = useRef<string | null>(null);
   useEffect(() => {
