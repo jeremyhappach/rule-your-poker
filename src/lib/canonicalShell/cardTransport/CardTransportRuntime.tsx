@@ -269,6 +269,7 @@ export function CardTransportRuntime({
           recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
             reason: 'missing-endpoint-after-retry',
             timing: { waitedMs: waited, maxPendingMs: MAX_PENDING_MS },
+            gameType: ctx.gameType ?? null,
           });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
         }
