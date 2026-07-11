@@ -5863,6 +5863,7 @@ export const CribbageMobileGameTable = ({
         syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Wait for your turn');
+        releasePlayWriterLock(lockClaim, 'stale-turn-after-fetch');
         return;
       }
       
@@ -5873,6 +5874,7 @@ export const CribbageMobileGameTable = ({
         syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Card no longer available');
+        releasePlayWriterLock(lockClaim, 'card-index-invalid-after-fetch');
         return;
       }
       
