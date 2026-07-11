@@ -172,6 +172,7 @@ const LIFECYCLE_KINDS = new Set<WartimeEventKind>([
   'orchestrator_mount',
   'orchestrator_unmount',
   'dispatch_succeeded',
+  'duplicate_dispatch_suppressed_by_runtime',
   'dealruntime_phase_changed',
   'transport_intent_first_seen',
   'transport_intent_launched',
