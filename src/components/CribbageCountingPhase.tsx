@@ -222,6 +222,23 @@ export const CribbageCountingPhase = ({
   const exitTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const enterTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Visual-lower gate: pending state for the final-combo → total handoff.
+  // While non-null, the effect defers publishing the Total announcement
+  // until the scoring-card DOM lower transition is visually complete
+  // (transitionend on transform for the tracked card IDs) or a deadman
+  // fallback fires. See lifecycle contract in the scoring effect.
+  const finalLowerPendingRef = useRef<null | {
+    cardIds: string[];
+    targetIndex: number;
+    targetLabel: string;
+    total: number;
+    startedAt: number;
+  }>(null);
+  const finalLowerTimersRef = useRef<{
+    deadman: ReturnType<typeof setTimeout> | null;
+    raf: number | null;
+  }>({ deadman: null, raf: null });
+  const finalLowerCleanupRef = useRef<null | (() => void)>(null);
   // Capture the initial baseline once per mount so it can't fluctuate with state churn.
   const initialScoresRef = useRef<Record<string, number> | null>(null);
   // Avoid stale closures inside timeouts when parent freezes the win.
