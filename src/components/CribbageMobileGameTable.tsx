@@ -5674,6 +5674,25 @@ export const CribbageMobileGameTable = ({
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
           const intentId = `crib-play-self-${tid}`;
           const dest = computePlayCardDestRect('self');
+          recordCribbageWartime('boundary', 'play_destination_computed', {
+            intentId,
+            mode: 'self',
+            cardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+            playedCardIndex: cardIndex,
+            sourceRectStatus:
+              sourceRect && sourceRect.width > 0 && sourceRect.height > 0 ? 'measured' : 'missing',
+            sourceRect: sourceRect ?? null,
+            destRectStatus: dest ? 'measured' : 'missing',
+            destRect: dest ?? null,
+            playedCardsLenBefore: freshState.pegging?.playedCards?.length ?? null,
+            currentCountBefore: freshState.pegging?.currentCount ?? null,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handlePlayCard.computeDest',
+            dedupeKey: `play_dest:${intentId}`,
+            eventReason: dest ? 'destination measured' : 'destination missing',
+            contradictions: dest ? [] : ['playDestinationMissing'],
+          });
           // Instrumentation — self play attempt.
           try {
             const boundaryKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
