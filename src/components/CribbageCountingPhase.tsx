@@ -758,8 +758,10 @@ export const CribbageCountingPhase = ({
       }
 
       setHighlightedCards([]);
+      recordTruth('highlight_cleared', { comboHighlightEndedAt: Date.now(), comboTransitionReason: 'before-total' });
       const total = getTotalFromCombos(currentCombos);
       publishAnnouncement(`Total: ${total} points`, currentTarget.label, 'total');
+
 
       innerTimer = setTimeout(() => {
         if (!winFrozenRef.current) startExitTransition();
