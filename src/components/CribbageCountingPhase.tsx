@@ -5,6 +5,9 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+import { countingTruthLedger, makeEmptyContradictions, type CountingTruthEntry } from '@/lib/cribbage/countingTruthLedger';
+import { CribbageCountingTruthPill } from './CribbageCountingTruthPill';
+
 
 interface Player {
   id: string;
@@ -86,20 +89,89 @@ export const CribbageCountingPhase = ({
   // SAME tick as the highlight state update (bound to the presentation
   // beat, not to the useEffect that runs after paint).
   const announcementKeyRef = useRef(0);
+  // Track announcement visibility timing for the truth ledger.
+  const announcementStartedAtRef = useRef<number | null>(null);
+  const announcementHiddenAtRef = useRef<number | null>(null);
+  const lastAnnouncementCategoryRef = useRef<CountingTruthEntry['announcementCategory']>(null);
   const publishAnnouncement = useCallback(
-    (text: string, targetLabel: string) => {
+    (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
+      announcementStartedAtRef.current = Date.now();
+      announcementHiddenAtRef.current = null;
+      lastAnnouncementCategoryRef.current = category;
       setAnnouncementData({ text, targetLabel, key });
       // Bind announcement dispatch to the same frame that turns the
       // scored pair into its highlighted state (no delay constant, no
       // wait for peg-animation completion).
       onAnnouncementChange?.(text, targetLabel, key);
+      // Instrumentation: record producer event on announcement publish.
+      countingTruthLedger.record({
+        source: category === 'zero' ? 'zero_announce' : category === 'total' ? 'total_announce' : 'combo_announce',
+        ...truthSnapshotRef.current,
+        announcementText: text,
+        announcementCategory: category,
+        announcementComboKey: key,
+        announcementVisible: true,
+        announcementMounted: true,
+        announcementStartedAt: announcementStartedAtRef.current,
+        announcementHiddenAt: null,
+        announcementClearReason: null,
+        totalSummaryVisible: category === 'total',
+        totalSummaryText: category === 'total' ? text : truthSnapshotRef.current.totalSummaryText,
+        totalSummaryOwnerPlayerId: category === 'total' ? truthSnapshotRef.current.scoringOwnerPlayerId : truthSnapshotRef.current.totalSummaryOwnerPlayerId,
+        totalSummaryMountedAt: category === 'total' ? Date.now() : truthSnapshotRef.current.totalSummaryMountedAt,
+        contradictions: makeEmptyContradictions(),
+      });
     },
     [onAnnouncementChange],
   );
 
+
+
+
+  // ── Truth-ledger snapshot ref (instrumentation only) ─────────
+  // Updated every render below with the freshest identity/state so
+  // effects/timeouts always publish accurate entries without prop drilling.
+  const truthSnapshotRef = useRef<Omit<CountingTruthEntry, 'ts' | 'source' | 'contradictions'>>({
+    roundId: null, handNumber: null, handContextId: null,
+    scoringOwnerPlayerId: null, scoringOwnerRole: null,
+    scoringPhase: null, scoringSubphase: null, scoringHandKey: null,
+    scoringStepIndex: null, totalCombosForOwner: null,
+    isFinalComboForOwner: null, nextOwnerPlayerId: null,
+    announcementText: null, announcementCategory: null,
+    announcementOwnerPlayerId: null, announcementComboKey: null,
+    announcementVisible: false, announcementMounted: false,
+    announcementStartedAt: null, announcementHiddenAt: null,
+    announcementClearReason: null,
+    staleAnnouncementOwnerMismatch: false, staleAnnouncementComboMismatch: false,
+    currentComboLabel: null, currentComboPoints: null, currentComboCardIds: [],
+    comboHighlightActive: false, comboRaiseActive: false,
+    comboHighlightStartedAt: null, comboHighlightEndedAt: null,
+    comboTransitionReason: null, previousComboIndex: null, nextComboIndex: null,
+    domCards: [],
+    totalSummaryVisible: false, totalSummaryOwnerPlayerId: null,
+    totalSummaryText: null, totalSummaryPoints: null, totalSummaryMountedAt: null,
+    finalComboAnnouncementVisibleWhenSummaryMounts: false,
+    finalComboAnnouncementVisibleWhenNextOwnerStarts: false,
+  });
+  const recordTruth = useCallback(
+    (
+      source: CountingTruthEntry['source'],
+      patch: Partial<Omit<CountingTruthEntry, 'ts' | 'source'>> = {},
+    ) => {
+      countingTruthLedger.record({
+        source,
+        ...truthSnapshotRef.current,
+        ...patch,
+        contradictions: { ...makeEmptyContradictions(), ...(patch.contradictions ?? {}) },
+      });
+    },
+    [],
+  );
+
   // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
+
   // card horizontal gap. Cut card is NOT part of the hand fan.
   // Both controls resolve from the ACTUAL responsive card width via
   // ResizeObserver; no fixed-px width or breakpoint map.
@@ -174,8 +246,19 @@ export const CribbageCountingPhase = ({
       completeTimerRef.current = null;
     }
 
+    announcementHiddenAtRef.current = Date.now();
     setAnnouncementData(null);
     onAnnouncementChange?.(null, null);
+    countingTruthLedger.record({
+      source: 'win_frozen',
+      ...truthSnapshotRef.current,
+      announcementVisible: false,
+      announcementMounted: false,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementClearReason: 'win-frozen',
+      contradictions: makeEmptyContradictions(),
+    });
+
   }, [winFrozen, onAnnouncementChange]);
 
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
@@ -244,6 +327,50 @@ export const CribbageCountingPhase = ({
   }, [countingTargets, cribbageState.cutCard]);
 
   const currentCombos = targetSummaries[currentTargetIndex]?.combos ?? [];
+
+  // ── Keep truth-ledger snapshot fresh every render (instrumentation only) ──
+  {
+    const t = countingTargets[currentTargetIndex];
+    const next = countingTargets[currentTargetIndex + 1];
+    const combo = currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+      ? currentCombos[currentComboIndex]
+      : null;
+    const cardId = (c: CribbageCard) => `${c.rank}${c.suit?.[0] ?? '?'}`;
+    truthSnapshotRef.current = {
+      ...truthSnapshotRef.current,
+      roundId: debugContext?.roundId ?? null,
+      handNumber: debugContext?.handNumber ?? null,
+      handContextId: null,
+      scoringOwnerPlayerId: t?.playerId ?? null,
+      scoringOwnerRole: t
+        ? (t.type === 'crib' ? 'crib' : (t.playerId === cribbageState.dealerPlayerId ? 'dealer' : 'opponent'))
+        : null,
+      scoringPhase: cribbageState.phase,
+      scoringSubphase: transitionPhase,
+      scoringHandKey: persistedHandKey ?? null,
+      scoringStepIndex: currentComboIndex,
+      totalCombosForOwner: currentCombos.length,
+      isFinalComboForOwner: currentCombos.length > 0 && currentComboIndex === currentCombos.length - 1,
+      nextOwnerPlayerId: next?.playerId ?? null,
+      announcementText: announcementData?.text ?? null,
+      announcementOwnerPlayerId: t?.playerId ?? null,
+      announcementComboKey: announcementData?.key ?? null,
+      announcementVisible: !!announcementData,
+      announcementMounted: !!announcementData,
+      announcementStartedAt: announcementStartedAtRef.current,
+      announcementHiddenAt: announcementHiddenAtRef.current,
+      announcementCategory: lastAnnouncementCategoryRef.current,
+      currentComboLabel: combo?.label ?? null,
+      currentComboPoints: combo?.points ?? null,
+      currentComboCardIds: combo ? combo.cards.map(cardId) : [],
+      comboHighlightActive: highlightedCards.length > 0,
+      comboRaiseActive: highlightedCards.length > 0 && transitionPhase === 'scoring',
+      previousComboIndex: currentComboIndex - 1,
+      nextComboIndex: currentComboIndex + 1,
+    };
+  }
+
+
 
   // CRITICAL: Always use initialScores prop as the authoritative baseline.
   // The parent (CribbageMobileGameTable) captures the correct pegging-phase scores BEFORE
@@ -595,7 +722,7 @@ export const CribbageCountingPhase = ({
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
           setHighlightedCards([]);
-          publishAnnouncement('0 points', currentTarget.label);
+          publishAnnouncement('0 points', currentTarget.label, 'zero');
 
           innerTimer = setTimeout(() => {
             if (!winFrozenRef.current) startExitTransition();
@@ -615,7 +742,7 @@ export const CribbageCountingPhase = ({
         // score/peg propagation so ordering is:
         //   highlight + announcement → peg animation → next combo.
         setHighlightedCards(combo.cards);
-        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label);
+        publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
 
         // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
@@ -642,8 +769,10 @@ export const CribbageCountingPhase = ({
       }
 
       setHighlightedCards([]);
+      recordTruth('highlight_cleared', { comboHighlightEndedAt: Date.now(), comboTransitionReason: 'before-total' });
       const total = getTotalFromCombos(currentCombos);
-      publishAnnouncement(`Total: ${total} points`, currentTarget.label);
+      publishAnnouncement(`Total: ${total} points`, currentTarget.label, 'total');
+
 
       innerTimer = setTimeout(() => {
         if (!winFrozenRef.current) startExitTransition();
@@ -676,6 +805,16 @@ export const CribbageCountingPhase = ({
 
       if (currentTargetIndex < countingTargets.length - 1) {
         const nextTarget = currentTargetIndex + 1;
+        const priorAnnouncementStillVisible = !!announcementData;
+        recordTruth('target_advance', {
+          comboTransitionReason: `advance:${currentTargetIndex}->${nextTarget}`,
+          announcementClearReason: priorAnnouncementStillVisible ? 'still-visible-at-advance' : 'cleared-before-advance',
+          contradictions: {
+            ...makeEmptyContradictions(),
+            nextOwnerStartedBeforePriorAnnouncementCleared: priorAnnouncementStillVisible,
+            announcementVisibleDuringNextOwner: priorAnnouncementStillVisible,
+          },
+        });
         setCurrentTargetIndex(nextTarget);
         setCurrentComboIndex(-1);
         // Persist progress: advanced to next target
@@ -683,6 +822,7 @@ export const CribbageCountingPhase = ({
         setHighlightedCards([]);
         setExitingCards([]);
         setTransitionPhase('entering');
+
         
         // After enter animation, start scoring
         if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
@@ -696,8 +836,16 @@ export const CribbageCountingPhase = ({
           completedRef.current = true;
           setIsComplete(true);
           // Clear announcement - no "Counting complete!" message needed
+          announcementHiddenAtRef.current = Date.now();
           setAnnouncementData(null);
           setExitingCards([]);
+          recordTruth('completion', {
+            announcementVisible: false,
+            announcementMounted: false,
+            announcementHiddenAt: announcementHiddenAtRef.current,
+            announcementClearReason: 'counting-complete',
+          });
+
           
           if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
           completeTimerRef.current = setTimeout(() => {
@@ -791,20 +939,48 @@ export const CribbageCountingPhase = ({
               style={{ transformOrigin: 'center center' }}
             >
               <div className="flex items-end">
-                {cardsToShow.map((card, i) => (
-                  <div 
-                    key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
-                    ref={i === 0 ? firstCardRef : undefined}
-                    className={`transition-all duration-300 ${
-                      isCardHighlighted(card) && transitionPhase === 'scoring'
-                        ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
-                        : ''
-                    }`}
-                    style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
-                  >
-                    <CribbagePlayingCard card={card} size="md" />
-                  </div>
-                ))}
+                {cardsToShow.map((card, i) => {
+                  const highlighted = isCardHighlighted(card) && transitionPhase === 'scoring';
+                  const comboIds = new Set(
+                    (currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+                      ? currentCombos[currentComboIndex].cards
+                      : []
+                    ).map((c) => `${c.rank}${c.suit?.[0] ?? '?'}`),
+                  );
+                  const cardId = `${card.rank}${card.suit?.[0] ?? '?'}`;
+                  const ownerId = currentTarget?.playerId ?? '';
+                  const role: 'crib' | 'dealer' | 'opponent' =
+                    currentTarget?.type === 'crib'
+                      ? 'crib'
+                      : ownerId === cribbageState.dealerPlayerId
+                        ? 'dealer'
+                        : 'opponent';
+                  return (
+                    <div
+                      key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
+                      ref={i === 0 ? firstCardRef : undefined}
+                      data-cribbage-scoring-card="true"
+                      data-card-id={cardId}
+                      data-card-rank={card.rank}
+                      data-card-suit={card.suit}
+                      data-card-owner={ownerId}
+                      data-card-role={role}
+                      data-card-highlighted={highlighted ? 'true' : 'false'}
+                      data-card-dimmed="false"
+                      data-scoring-owner-match="true"
+                      data-combo-member={comboIds.has(cardId) ? 'true' : 'false'}
+                      className={`transition-all duration-300 ${
+                        highlighted
+                          ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                          : ''
+                      }`}
+                      style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
+                    >
+                      <CribbagePlayingCard card={card} size="md" />
+                    </div>
+                  );
+                })}
+
               </div>
             </div>
             
@@ -815,10 +991,27 @@ export const CribbageCountingPhase = ({
                 style={{ marginLeft: `${scoringHandToCutGapPx}px` }}
               >
                 <span className="text-[8px] text-white/60 mb-0.5">Cut</span>
-                <div 
+                <div
+                  data-cribbage-scoring-card="true"
+                  data-card-id={`${cribbageState.cutCard.rank}${cribbageState.cutCard.suit?.[0] ?? '?'}`}
+                  data-card-rank={cribbageState.cutCard.rank}
+                  data-card-suit={cribbageState.cutCard.suit}
+                  data-card-owner=""
+                  data-card-role="cut"
+                  data-card-highlighted={isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring' ? 'true' : 'false'}
+                  data-card-dimmed="false"
+                  data-scoring-owner-match="true"
+                  data-combo-member={
+                    currentComboIndex >= 0 && currentComboIndex < currentCombos.length
+                      && currentCombos[currentComboIndex].cards.some(
+                        (c) => c.rank === cribbageState.cutCard?.rank && c.suit === cribbageState.cutCard?.suit,
+                      )
+                      ? 'true'
+                      : 'false'
+                  }
                   className={`transition-all duration-300 ${
                     isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring'
-                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
+                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
                       : ''
                   }`}
                 >
@@ -829,6 +1022,8 @@ export const CribbageCountingPhase = ({
           </div>
         </div>
       </div>
+      <CribbageCountingTruthPill />
     </>
+
   );
 };
