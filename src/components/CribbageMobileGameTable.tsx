@@ -2179,23 +2179,26 @@ export const CribbageMobileGameTable = ({
   // handlePlayCard invocation, immediately before the first await, and
   // released only along the paths enumerated in the Turn 2 contract.
   const playWriterLockRef = useRef<{
+    intentId: string;
     cardId: string;
     handKey: string;
     playedCount: number;
   } | null>(null);
   const releasePlayWriterLock = useCallback((
-    expected: { cardId: string; handKey: string; playedCount: number } | null,
+    expected: { intentId: string; cardId: string; handKey: string; playedCount: number } | null,
     reason: string,
   ) => {
     const current = playWriterLockRef.current;
     if (!current) return;
     if (expected && (
+      current.intentId !== expected.intentId ||
       current.cardId !== expected.cardId ||
       current.handKey !== expected.handKey ||
       current.playedCount !== expected.playedCount
     )) return;
     playWriterLockRef.current = null;
     recordCribbageWartime('boundary', 'play_writer_lock_released', {
+      intentId: current.intentId,
       cardId: current.cardId,
       handKey: current.handKey,
       playedCount: current.playedCount,
@@ -2203,7 +2206,7 @@ export const CribbageMobileGameTable = ({
     }, {
       producerComponent: 'CribbageMobileGameTable',
       producerFunction: 'releasePlayWriterLock',
-      dedupeKey: `play_writer_lock_released:${current.cardId}:${current.handKey}:${current.playedCount}:${reason}`,
+      dedupeKey: `play_writer_lock_released:${current.intentId}:${current.cardId}:${current.handKey}:${current.playedCount}:${reason}`,
       eventReason: reason,
     });
   }, []);
@@ -2304,7 +2307,6 @@ export const CribbageMobileGameTable = ({
     const safety = setTimeout(() => {
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
-      setLastReleasedBoundaryEventId(eventKey);
       prevSequenceStartIndexRef.current = dbSequenceStartIndex;
     }, 6000);
     return () => {
@@ -5824,7 +5826,9 @@ export const CribbageMobileGameTable = ({
     const lockHandKey =
       renderHandKey || `${currentRoundId}-${currentHandNumber}`;
     const lockPlayedCount = cribbageState.pegging?.playedCards?.length ?? 0;
+    const intentId = `crib-play-self-${tid}`;
     const lockClaim = {
+      intentId,
       cardId: lockCardId,
       handKey: lockHandKey,
       playedCount: lockPlayedCount,
@@ -5838,7 +5842,7 @@ export const CribbageMobileGameTable = ({
     }, {
       producerComponent: 'CribbageMobileGameTable',
       producerFunction: 'handlePlayCard',
-      dedupeKey: `play_writer_lock_claimed:${lockClaim.cardId}:${lockClaim.handKey}:${lockClaim.playedCount}`,
+      dedupeKey: `play_writer_lock_claimed:${lockClaim.intentId}:${lockClaim.cardId}:${lockClaim.handKey}:${lockClaim.playedCount}`,
       eventReason: 'writer lock claimed',
     });
 
@@ -5902,7 +5906,7 @@ export const CribbageMobileGameTable = ({
         if (cardPlayed) {
           const key = `${currentPlayerId}|${cardPlayed.rank}${cardPlayed.suit[0]}`;
           opponentPlayedCountRef.current = newState.pegging.playedCards.length;
-          const intentId = `crib-play-self-${tid}`;
+          // intentId hoisted above lockClaim; reused here.
           const dest = computePlayCardDestRect('self');
           recordCribbageWartime('boundary', 'play_destination_computed', {
             intentId,
@@ -5993,9 +5997,9 @@ export const CribbageMobileGameTable = ({
             setPlayCardIntent((prev) => {
               if (prev && prev.id === intentId) {
                 updatePegTransportEntry(intentId, { cleanupReason: 'safety-timeout' });
-                // Turn 2 — safety deadman for the accepted-play lifecycle:
-                // release writer lock so subsequent plays are not wedged.
-                releasePlayWriterLock(null, 'intent-safety-timeout');
+                // Turn 2 — safety timeout clears intent; unmounting the
+                // animation fires onCancelled(id), which releases the
+                // matching writer lock via identity check.
                 return null;
               }
               return prev;
@@ -8005,8 +8009,21 @@ export const CribbageMobileGameTable = ({
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
-              // Turn 2 — accepted play lifecycle complete: release writer lock.
-              releasePlayWriterLock(null, 'intent-settled');
+              // Turn 2 — release only when the current lock's intentId matches.
+              const currentLock = playWriterLockRef.current;
+              if (currentLock?.intentId === id) {
+                releasePlayWriterLock(currentLock, 'intent-settled');
+              }
+            }}
+            onCancelled={(id) => {
+              // Turn 2 — animation effect unmounted before natural settle
+              // (e.g. safety-timeout cleared playCardIntent). Release the
+              // writer lock iff its intentId matches; stale cancels from
+              // superseded effects are no-ops.
+              const currentLock = playWriterLockRef.current;
+              if (currentLock?.intentId === id) {
+                releasePlayWriterLock(currentLock, 'intent-cancelled');
+              }
             }}
           />
 

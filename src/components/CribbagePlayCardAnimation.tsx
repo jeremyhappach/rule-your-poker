@@ -52,6 +52,11 @@ interface Props {
   onSettled: (id: string) => void;
   /** Optional lifecycle probe for instrumentation. */
   onLifecycle?: (id: string, event: CribbagePlayCardLifecycleEvent) => void;
+  /** Fired iff the effect instance unmounts before natural settle/skip.
+   *  Identity-carrying: the receiver must identity-check `id` before
+   *  releasing any lock. Stale cancels from superseded intents must be
+   *  no-ops on the receiver side. */
+  onCancelled?: (id: string) => void;
 }
 
 interface Flight {
@@ -86,7 +91,7 @@ function resolveSelfHandStageRect(): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Props) => {
+export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle, onCancelled }: Props) => {
   const [flight, setFlight] = useState<Flight | null>(null);
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -95,14 +100,19 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Pr
   useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
   const onLifecycleRef = useRef(onLifecycle);
   useEffect(() => { onLifecycleRef.current = onLifecycle; }, [onLifecycle]);
+  const onCancelledRef = useRef(onCancelled);
+  useEffect(() => { onCancelledRef.current = onCancelled; }, [onCancelled]);
 
   useEffect(() => {
     if (!intent) return;
 
-    onLifecycleRef.current?.(intent.id, 'mounted');
+    // Terminal-flag: set true immediately before onSettled(id) at natural
+    // or skipped completion. Cleanup fires onCancelled(id) iff still false.
+    const settledRef = { current: false };
+    const intentId = intent.id;
 
-    // Prefer pre-captured destination (survives pegging-row unmount on
-    // final card / hand-end / 31 rollover). Fall back to live DOM lookup.
+    onLifecycleRef.current?.(intentId, 'mounted');
+
     let endX: number;
     let endY: number;
     const pre = intent.destRect;
@@ -112,8 +122,9 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Pr
     } else {
       const dst = resolvePegRowRect();
       if (!dst || dst.width <= 0 || dst.height <= 0) {
-        onLifecycleRef.current?.(intent.id, 'skipped');
-        onSettledRef.current(intent.id);
+        onLifecycleRef.current?.(intentId, 'skipped');
+        settledRef.current = true;
+        onSettledRef.current(intentId);
         return;
       }
       endX = dst.left + dst.width / 2;
@@ -135,16 +146,13 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Pr
     }
 
     if (!src) {
-      // Ultimate fallback: bottom-center of the viewport so the final
-      // pegging card of a hand still animates even after the hand tab
-      // and self-hand stage have unmounted (phase → counting).
       const vw = window.innerWidth || 320;
       const vh = window.innerHeight || 480;
       src = { left: vw / 2 - 20, top: vh - 80, width: 40, height: 60 };
     }
 
     const built: Flight = {
-      key: intent.id,
+      key: intentId,
       startX: src.left + src.width / 2,
       startY: src.top + src.height / 2,
       endX,
@@ -158,7 +166,7 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Pr
     const raf1 = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setAnimating(true);
-        onLifecycleRef.current?.(intent.id, 'started');
+        onLifecycleRef.current?.(intentId, 'started');
       });
     });
 
@@ -166,13 +174,17 @@ export const CribbagePlayCardAnimation = ({ intent, onSettled, onLifecycle }: Pr
       setVisible(false);
       setFlight(null);
       setAnimating(false);
-      onLifecycleRef.current?.(intent.id, 'settled');
-      onSettledRef.current(intent.id);
+      onLifecycleRef.current?.(intentId, 'settled');
+      settledRef.current = true;
+      onSettledRef.current(intentId);
     }, SETTLE_MS);
 
     return () => {
       cancelAnimationFrame(raf1);
       window.clearTimeout(settleTimer);
+      if (!settledRef.current) {
+        onCancelledRef.current?.(intentId);
+      }
     };
   }, [intent]);
 
