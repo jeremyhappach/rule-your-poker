@@ -5738,6 +5738,24 @@ export const CribbageMobileGameTable = ({
             sourceRect: sourceRect ?? null,
             destRect: dest,
           });
+          recordCribbageWartime('boundary', 'play_intent_created', {
+            intentId,
+            mode: 'self',
+            cardId: `${cardPlayed.rank}${cardPlayed.suit[0]}`,
+            playedCardIndex: cardIndex,
+            sourceRectStatus:
+              sourceRect && sourceRect.width > 0 && sourceRect.height > 0 ? 'measured' : 'missing',
+            destRectStatus: dest ? 'measured' : 'missing',
+            withheldPlayedCardKey: key,
+            actorPlayerId: currentPlayerId,
+            handNumber: currentHandNumber ?? null,
+            roundId: currentRoundId,
+          }, {
+            producerComponent: 'CribbageMobileGameTable',
+            producerFunction: 'handlePlayCard.setPlayCardIntent',
+            dedupeKey: `play_intent:${intentId}`,
+            eventReason: 'self play intent created',
+          });
           // Safety timeout — never leave a card permanently hidden.
           if (playCardSafetyTimerRef.current) clearTimeout(playCardSafetyTimerRef.current);
           playCardSafetyTimerRef.current = setTimeout(() => {
