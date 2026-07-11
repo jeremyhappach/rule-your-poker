@@ -169,6 +169,10 @@ export const CribbageCountingPhase = ({
   // Keep identity refs in sync every render.
   currentTargetIndexRef.current = currentTargetIndex;
   currentComboIndexRef.current = currentComboIndex;
+  // Mirror announcementData in a ref so armLowerGate can read the current
+  // announcement synchronously without pulling it into its dep array.
+  const currentAnnouncementRef = useRef(announcementData);
+  currentAnnouncementRef.current = announcementData;
 
 
 
@@ -916,6 +920,31 @@ export const CribbageCountingPhase = ({
       previousHighlightedCardIds: prevHighlightedCardIdsRef.current,
       effectThatRan: 'scoringEffect',
     });
+    // Clear the current combo announcement in the SAME call site as the
+    // highlight clear. This closes the visible-announcement window at the
+    // moment cards begin lowering, preventing the combo announcement from
+    // persisting across the lower_pending phase. Total announcements are
+    // NOT cleared here — only combo announcements tied to the combo being
+    // lowered. Next combo / total announcement publication is still gated
+    // by combo_lower_complete via `onResolved`.
+    const currentAnn = currentAnnouncementRef.current;
+    if (currentAnn && currentAnn.category === 'combo') {
+      const clearedAt = Date.now();
+      recordEvent('combo_announce_clear', {
+        eventSource: 'gate.armLowerGate',
+        eventReason: 'cleared-at-combo-lower-start',
+        announcementClearRequestedAt: clearedAt,
+        announcementClearSource: 'combo-lower-start',
+        announcementDataText: currentAnn.text,
+        announcementDataCategory: currentAnn.category,
+        announcementDataKey: currentAnn.key,
+        announcementDataTargetIndex: currentAnn.targetIndex,
+        announcementDataComboIndex: currentAnn.comboIndex,
+      });
+      onAnnouncementChange?.(null, null, undefined);
+      setAnnouncementData(null);
+      announcementHiddenAtRef.current = clearedAt;
+    }
     setHighlightedCards([]);
     recordTruth('highlight_cleared', {
       comboHighlightEndedAt: Date.now(),
@@ -1055,7 +1084,7 @@ export const CribbageCountingPhase = ({
       }, 500);
     });
     finalLowerTimersRef.current.raf = raf;
-  }, [finalizeLower, recordEvent, recordTruth]);
+  }, [finalizeLower, recordEvent, recordTruth, onAnnouncementChange]);
 
 
   // Animation loop - only runs during 'scoring' phase
