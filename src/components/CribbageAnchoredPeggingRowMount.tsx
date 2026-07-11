@@ -248,11 +248,14 @@ function PeggingRowRenderProbe({
           contradictions,
         });
 
-        // D-group: DOM row-clear boundary detection.
+        // D-group: OBSERVER-LEVEL DOM row-clear boundary detection.
+        // These record what the probe sees in the DOM; they do NOT
+        // imply state-owner intent. See `row_clear_requested` at the
+        // state owner for the actual triggering boundary event.
         const prevDom = lastDomCountRef.current;
         lastDomCountRef.current = rects.length;
         if (prevDom > 0 && rects.length < prevDom) {
-          recordCribbageWartime('boundary', 'row_clear_dom_started', {
+          recordCribbageWartime('boundary', 'row_clear_dom_started_observed', {
             prevDomCount: prevDom,
             newDomCount: rects.length,
             logicalCount: cards.length,
@@ -260,22 +263,22 @@ function PeggingRowRenderProbe({
             sequenceEndIndex,
           }, {
             producerComponent: 'CribbageAnchoredPeggingRowMount',
-            producerFunction: 'PeggingRowRenderProbe.rowClearDomStarted',
-            dedupeKey: `row_clear_dom_start:${sequenceStartIndex}:${prevDom}->${rects.length}`,
-            eventReason: 'DOM row count decreased after logical clear',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomStartedObserved',
+            dedupeKey: `row_clear_dom_start_obs:${sequenceStartIndex}:${prevDom}->${rects.length}`,
+            eventReason: 'DOM row count decreased (observed by render probe)',
           });
         }
         if (prevDom > 0 && rects.length === 0) {
-          recordCribbageWartime('boundary', 'row_clear_dom_complete', {
+          recordCribbageWartime('boundary', 'row_clear_dom_empty_observed', {
             prevDomCount: prevDom,
             logicalCount: cards.length,
             sequenceStartIndex,
             sequenceEndIndex,
           }, {
             producerComponent: 'CribbageAnchoredPeggingRowMount',
-            producerFunction: 'PeggingRowRenderProbe.rowClearDomComplete',
-            dedupeKey: `row_clear_dom_complete:${sequenceStartIndex}`,
-            eventReason: 'DOM row fully cleared',
+            producerFunction: 'PeggingRowRenderProbe.rowClearDomEmptyObserved',
+            dedupeKey: `row_clear_dom_empty_obs:${sequenceStartIndex}`,
+            eventReason: 'DOM row fully empty (observed by render probe)',
           });
         }
       } catch { /* ignore */ }
