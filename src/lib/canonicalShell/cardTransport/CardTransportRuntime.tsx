@@ -264,6 +264,10 @@ export function CardTransportRuntime({
             droppedAt: performance.now(),
             lifecycleState: 'dropped',
           });
+          recordCribbageTransportIntentLifecycle('transport_intent_dropped', intent, {
+            reason: 'missing-endpoint-after-retry',
+            timing: { waitedMs: waited, maxPendingMs: MAX_PENDING_MS },
+          });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
         }
         continue;
