@@ -7651,9 +7651,10 @@ export const CribbageMobileGameTable = ({
             }}
           />
 
-          {/* Instrumentation pill — collapsed by default, top-left. */}
-          <CribbagePegTransportPill />
-          <CribbageCountingTruthPill />
+          {/* Single wartime instrumentation pill — replaces the old
+              Counting Truth / Peg Transport / Layout Status pills. */}
+          <CribbageWartimeTruthPill />
+
 
 
 
