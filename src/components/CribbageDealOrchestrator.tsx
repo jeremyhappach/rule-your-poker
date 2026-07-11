@@ -277,6 +277,22 @@ export function CribbageDealOrchestrator({
 
     ct.dispatchMany(intents);
     onLifecycle?.('dispatchManyCalled');
+
+    const dispatchId = `${handContextId}#dispatch-${Date.now()}`;
+    recordCribbageWartime('deal', 'dispatch_succeeded', {
+      handContextId, dispatchId, totalCount,
+      intentCount: intents.length,
+      dispatchTimestamp: Date.now(),
+      emitPerfTime: emitTime,
+      dispatchedRef: dispatchedRef.current,
+      firstIntentId: intents[0]?.id, lastIntentId: intents[intents.length - 1]?.id,
+      recipientOrder: intents.map((i) => i.recipientPlayerId),
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.dispatch',
+      dedupeKey: `dispatched:${handContextId}`,
+    });
+
   }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealerGameId, roundId, handNumber, onLifecycle]);
 
   // Portal canonical hand anchor into the Cribbage-owned active pane
