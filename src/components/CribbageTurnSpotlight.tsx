@@ -145,11 +145,11 @@ export const CribbageTurnSpotlight = ({
   const coneMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`;
   const invConeMask = `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`;
 
-  // Steady-state luminance ~2× prior (0.15 → 0.32) with a tighter,
-  // sharper inner-edge halo via a radial falloff inside the cone.
-  const coreAlpha = 0.32 + pulse * 0.28;
-  const glowAlpha = 0.18 + pulse * 0.12; // outer glow ~1.5× prior baseline
-  const pulseTransition = pulse ? 'background 180ms ease-out' : 'background 420ms ease-in';
+  // Single canonical settled luminance — no pulse interpolation. See
+  // the note above about the removed bright-then-dim flash source.
+  const coreAlpha = 0.32;
+  const glowAlpha = 0.18;
+  const pulseTransition = 'background 420ms ease-in';
 
   const overlay = (
     <>
