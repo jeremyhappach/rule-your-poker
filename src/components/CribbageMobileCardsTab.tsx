@@ -892,7 +892,7 @@ export const CribbageMobileCardsTab = ({
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${index}`}
 
                 onPointerUp={(e) => e.currentTarget.blur()}
-                disabled={isProcessing || renderTrace?.interactionsAllowed === false}
+                disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(
                   "transition-all duration-200 rounded relative",
                   isSelected
