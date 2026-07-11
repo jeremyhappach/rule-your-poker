@@ -322,6 +322,8 @@ export const CribbageCountingTruthPill = () => {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 };
+
