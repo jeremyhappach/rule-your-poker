@@ -8009,8 +8009,21 @@ export const CribbageMobileGameTable = ({
                 clearTimeout(playCardSafetyTimerRef.current);
                 playCardSafetyTimerRef.current = null;
               }
-              // Turn 2 — accepted play lifecycle complete: release writer lock.
-              releasePlayWriterLock(null, 'intent-settled');
+              // Turn 2 — release only when the current lock's intentId matches.
+              const currentLock = playWriterLockRef.current;
+              if (currentLock?.intentId === id) {
+                releasePlayWriterLock(currentLock, 'intent-settled');
+              }
+            }}
+            onCancelled={(id) => {
+              // Turn 2 — animation effect unmounted before natural settle
+              // (e.g. safety-timeout cleared playCardIntent). Release the
+              // writer lock iff its intentId matches; stale cancels from
+              // superseded effects are no-ops.
+              const currentLock = playWriterLockRef.current;
+              if (currentLock?.intentId === id) {
+                releasePlayWriterLock(currentLock, 'intent-cancelled');
+              }
             }}
           />
 
