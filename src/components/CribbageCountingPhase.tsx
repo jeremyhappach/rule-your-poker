@@ -108,8 +108,47 @@ export const CribbageCountingPhase = ({
   );
 
 
+  // ── Truth-ledger snapshot ref (instrumentation only) ─────────
+  // Updated every render below with the freshest identity/state so
+  // effects/timeouts always publish accurate entries without prop drilling.
+  const truthSnapshotRef = useRef<Omit<CountingTruthEntry, 'ts' | 'source' | 'contradictions'>>({
+    roundId: null, handNumber: null, handContextId: null,
+    scoringOwnerPlayerId: null, scoringOwnerRole: null,
+    scoringPhase: null, scoringSubphase: null, scoringHandKey: null,
+    scoringStepIndex: null, totalCombosForOwner: null,
+    isFinalComboForOwner: null, nextOwnerPlayerId: null,
+    announcementText: null, announcementCategory: null,
+    announcementOwnerPlayerId: null, announcementComboKey: null,
+    announcementVisible: false, announcementMounted: false,
+    announcementStartedAt: null, announcementHiddenAt: null,
+    announcementClearReason: null,
+    staleAnnouncementOwnerMismatch: false, staleAnnouncementComboMismatch: false,
+    currentComboLabel: null, currentComboPoints: null, currentComboCardIds: [],
+    comboHighlightActive: false, comboRaiseActive: false,
+    comboHighlightStartedAt: null, comboHighlightEndedAt: null,
+    comboTransitionReason: null, previousComboIndex: null, nextComboIndex: null,
+    domCards: [],
+    totalSummaryVisible: false, totalSummaryOwnerPlayerId: null,
+    totalSummaryText: null, totalSummaryPoints: null, totalSummaryMountedAt: null,
+    finalComboAnnouncementVisibleWhenSummaryMounts: false,
+    finalComboAnnouncementVisibleWhenNextOwnerStarts: false,
+  });
+  const recordTruth = useCallback(
+    (
+      source: CountingTruthEntry['source'],
+      patch: Partial<Omit<CountingTruthEntry, 'ts' | 'source'>> = {},
+    ) => {
+      countingTruthLedger.record({
+        source,
+        ...truthSnapshotRef.current,
+        ...patch,
+        contradictions: { ...makeEmptyContradictions(), ...(patch.contradictions ?? {}) },
+      });
+    },
+    [],
+  );
 
-  // Universal fan-overlap (Geometry Lab). Cribbage scoring uses TWO
+
   // independent controls: cluster card-to-card overlap + cluster ↔ cut
   // card horizontal gap. Cut card is NOT part of the hand fan.
   // Both controls resolve from the ACTUAL responsive card width via
