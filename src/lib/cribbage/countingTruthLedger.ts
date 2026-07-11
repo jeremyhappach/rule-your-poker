@@ -40,7 +40,93 @@ export interface CountingTruthEntry {
     | 'exit_start'
     | 'completion'
     | 'win_frozen'
-    | 'dom_sample';
+    | 'dom_sample'
+    // New producer lifecycle event sources (instrumentation-only)
+    | 'combo_enter'
+    | 'combo_announce_publish'
+    | 'combo_raise_start'
+    | 'combo_raise_complete'
+    | 'combo_lower_start'
+    | 'combo_lower_pending'
+    | 'combo_lower_complete'
+    | 'combo_announce_clear'
+    | 'total_eligible'
+    | 'total_announce_publish'
+    | 'transitionend'
+    | 'raf_sample'
+    | 'deadman_fired'
+    | 'node_missing';
+
+  // ── Producer event metadata (optional; present on new-source events) ──
+  eventSource?: string | null;
+  eventReason?: string | null;
+  currentTargetIndex?: number | null;
+  currentComboIndex?: number | null;
+  totalCombos?: number | null;
+  transitionPhase?: string | null;
+  announcementDataText?: string | null;
+  announcementDataCategory?: string | null;
+  announcementDataKey?: number | null;
+  announcementDataTargetIndex?: number | null;
+  announcementDataComboIndex?: number | null;
+  highlightedCardIds?: string[];
+  previousHighlightedCardIds?: string[];
+  currentComboLabelSnapshot?: string | null;
+  currentComboCardIdsSnapshot?: string[];
+
+  // Final-lower gate state
+  finalComboLowerPending?: boolean;
+  finalComboLowerPendingCardIds?: string[];
+  finalComboLowerPendingStartedAt?: number | null;
+  finalComboLowerResolvedAt?: number | null;
+  finalComboLowerResolveReason?:
+    | 'transitionend-all'
+    | 'raf-dom-identity'
+    | 'node-missing-skip'
+    | 'deadman'
+    | 'no-cards'
+    | 'manual'
+    | null;
+  deadmanActive?: boolean;
+  deadmanStartedAt?: number | null;
+  deadmanFiredAt?: number | null;
+
+  // Transitionend telemetry
+  watchedCardIds?: string[];
+  watchedDomNodeCount?: number;
+  transitionEndReceivedCardIds?: string[];
+  transitionEndPropertyNames?: string[];
+  transitionEndElapsedTimes?: number[];
+  missingWatchedCardIds?: string[];
+  nodesUnmountedBeforeTransitionEnd?: boolean;
+
+  // rAF sampler telemetry
+  rafSampleCount?: number;
+  rafSampleAt?: number;
+  rafWatchedTransforms?: Record<string, string>;
+  rafWatchedHighlightedAttr?: Record<string, string>;
+  rafAllTransformsIdentity?: boolean;
+  rafAllHighlightedFalse?: boolean;
+  rafResolverFired?: boolean;
+  rafResolverReason?: string | null;
+
+  // Announcement lifecycle telemetry
+  announcementPublishedAt?: number | null;
+  announcementClearRequestedAt?: number | null;
+  announcementClearSource?: string | null;
+  announcementActuallyUnmountedAt?: number | null;
+  announcementVisibleAfterClearRequest?: boolean;
+  comboAnnouncementVisibleDuringLower?: boolean;
+  comboAnnouncementVisibleAfterLowerComplete?: boolean;
+  totalPublishedBeforeComboAnnouncementCleared?: boolean;
+
+  // Timer/effect instrumentation
+  activeTimerNames?: string[];
+  activeTimerDueTimes?: Record<string, number>;
+  timerThatAdvancedCombo?: string | null;
+  timerThatPublishedTotal?: string | null;
+  effectThatRan?: string | null;
+  dependenciesSnapshot?: Record<string, unknown>;
 
   // Identity
   roundId: string | null;
