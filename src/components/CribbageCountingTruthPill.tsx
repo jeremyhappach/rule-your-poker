@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+
 import {
   countingTruthLedger,
   type CountingTruthEntry,
