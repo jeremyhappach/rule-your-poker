@@ -2311,10 +2311,28 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!cribbageState) return;
     if (cribbageState.phase !== 'pegging') {
+      const wasActive = thirtyOneDelayActive;
+      const snap = heldSequenceSnapshot;
       setThirtyOneDelayActive(false);
       setHeldSequenceSnapshot(null);
       thirtyOneDelayRef.current = null;
       heldAnnouncementSettledRef.current = null;
+      if (wasActive && snap) {
+        recordCribbageWartime('boundary', 'boundary_hold_released', {
+          armedEventId: snap.armedEventId,
+          armedEventType: snap.armedEventType,
+          heldStartIndex: snap.heldStartIndex,
+          heldEndIndex: snap.heldEndIndex,
+          heldDisplayCount: snap.heldDisplayCount,
+          releaseReason: 'phase-left-pegging',
+          phase: cribbageState.phase,
+        }, {
+          producerComponent: 'CribbageMobileGameTable',
+          producerFunction: 'boundaryHoldPhaseExitEffect',
+          dedupeKey: `hold_release_phase:${snap.armedEventId}`,
+          eventReason: 'phase left pegging',
+        });
+      }
     }
   }, [cribbageState?.phase]);
 
