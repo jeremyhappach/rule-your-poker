@@ -105,13 +105,20 @@ export const CribbageCountingPhase = ({
   const announcementStartedAtRef = useRef<number | null>(null);
   const announcementHiddenAtRef = useRef<number | null>(null);
   const lastAnnouncementCategoryRef = useRef<CountingTruthEntry['announcementCategory']>(null);
+  // Refs mirror the freshest scoring-owner identity so publishAnnouncement
+  // stamps the emit with the target/combo it belongs to, even when called
+  // inside a scheduled timer.
+  const currentTargetIndexRef = useRef(0);
+  const currentComboIndexRef = useRef(-1);
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
       announcementStartedAtRef.current = Date.now();
       announcementHiddenAtRef.current = null;
       lastAnnouncementCategoryRef.current = category;
-      setAnnouncementData({ text, targetLabel, key });
+      const targetIndex = currentTargetIndexRef.current;
+      const comboIndex = currentComboIndexRef.current;
+      setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
       // Bind announcement dispatch to the same frame that turns the
       // scored pair into its highlighted state (no delay constant, no
       // wait for peg-animation completion).
@@ -137,6 +144,10 @@ export const CribbageCountingPhase = ({
     },
     [onAnnouncementChange],
   );
+
+  // Keep identity refs in sync every render.
+  currentTargetIndexRef.current = currentTargetIndex;
+  currentComboIndexRef.current = currentComboIndex;
 
 
 
