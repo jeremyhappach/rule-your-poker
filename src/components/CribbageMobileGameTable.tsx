@@ -2056,6 +2056,26 @@ export const CribbageMobileGameTable = ({
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
 
+  // Wartime identity — direct emission of ambient identity for every
+  // wartime ledger entry. Instrumentation only.
+  useEffect(() => {
+    setCribbageWartimeIdentity({
+      playerId: currentPlayerId ?? null,
+      roundId: currentRoundId ?? null,
+      handNumber: currentHandNumber ?? null,
+      handContextId: currentHandKey ?? null,
+      currentHandKey: currentHandKey ?? null,
+      renderHandContextId: renderHandKey ?? null,
+      authoritativeHandContextId: currentHandKey ?? null,
+      phase: cribbageState?.phase ?? null,
+      peggingSequenceIndex: cribbageState?.pegging?.sequenceStartIndex ?? null,
+    });
+  }, [
+    currentPlayerId, currentRoundId, currentHandNumber,
+    currentHandKey, renderHandKey,
+    cribbageState?.phase, cribbageState?.pegging?.sequenceStartIndex,
+  ]);
+
   // Canonical cards-tab attention: local player has a real actionable
   // cribbage decision (discard-to-crib or pegging turn). Red wins over
   // any legacy/deal green pulses. Uses authoritative cribbageState +
