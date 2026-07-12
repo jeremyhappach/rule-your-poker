@@ -8201,6 +8201,13 @@ export const CribbageMobileGameTable = ({
         </CribbageGameplayGeometryProvider>
       </div>
 
+      {/* Phase 1 parity: canonical bottom safe-area spacer. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
+      />
+
       {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.1) ═══════
           The HUD region is partitioned by ShellHudGrid into 5 proportional rows:
             row 1 announcement (shell), row 2 timer (empty for Cribbage — no
