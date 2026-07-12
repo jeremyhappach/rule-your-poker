@@ -81,8 +81,10 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
     hasIdentitySlot: identity != null,
   });
   const hasTimer = timer != null;
+  const gridRef = useRef<HTMLDivElement>(null);
   return (
     <div
+      ref={gridRef}
       data-canonical-shell-hud-grid=""
       data-hud-timer-present={hasTimer ? '1' : '0'}
       style={{
