@@ -559,7 +559,7 @@ export function CanonicalAnnouncementProvider({
         },
       );
     },
-    [currentScope, transient, ambient, clearTtl, armTtl, scopeKey, drainDismiss],
+    [currentScope, transient, ambient, clearTtl, armTtl, scopeKey, drainDismiss, retireEvent],
   );
 
   const dismiss = useCallback(
@@ -589,21 +589,27 @@ export function CanonicalAnnouncementProvider({
         if (matches) {
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(id);
+          retireEvent(cur, 'dismiss');
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => (cur && cur.id === id ? null : cur));
+      setAmbient((cur) => {
+        if (cur && cur.id === id) {
+          retireEvent(cur, 'dismiss');
+          return null;
+        }
+        return cur;
+      });
       const filtered: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
-        if (q.id === id) drainDismiss(q.id);
+        if (q.id === id) retireEvent(q, 'dismiss');
         else filtered.push(q);
       }
       queueRef.current = filtered;
     },
-    [promoteNextTransient, drainDismiss],
+    [promoteNextTransient, retireEvent],
   );
 
 
