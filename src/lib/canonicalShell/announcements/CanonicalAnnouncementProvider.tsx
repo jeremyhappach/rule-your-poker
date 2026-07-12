@@ -631,7 +631,7 @@ export function CanonicalAnnouncementProvider({
       );
       const kept: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
-        if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
+        if (scopeMatches(q.scope, scope)) retireEvent(q, 'boundary');
         else kept.push(q);
       }
       queueRef.current = kept;
@@ -640,15 +640,21 @@ export function CanonicalAnnouncementProvider({
         if (cur && scopeMatches(cur.scope, scope)) {
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(cur.id);
+          retireEvent(cur, 'boundary');
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => (cur && scopeMatches(cur.scope, scope) ? null : cur));
+      setAmbient((cur) => {
+        if (cur && scopeMatches(cur.scope, scope)) {
+          retireEvent(cur, 'boundary');
+          return null;
+        }
+        return cur;
+      });
     },
-    [promoteNextTransient, scopeKey, drainDismiss],
+    [promoteNextTransient, scopeKey, retireEvent],
   );
 
   const retireTransientScope = useCallback(
@@ -660,7 +666,7 @@ export function CanonicalAnnouncementProvider({
       for (const q of queueBefore) {
         if (q.transientScope === scope) {
           matchedQueuedIds.push(q.id);
-          drainDismiss(q.id);
+          retireEvent(q, 'scope-retire');
         } else {
           kept.push(q);
         }
@@ -689,7 +695,7 @@ export function CanonicalAnnouncementProvider({
             clearTtl();
             transientIdRef.current = null;
             transientRef.current = null;
-            drainDismiss(cur.id);
+            retireEvent(cur, 'scope-retire');
             queueMicrotask(promoteNextTransient);
             return null;
           }
@@ -697,7 +703,7 @@ export function CanonicalAnnouncementProvider({
         });
       }
     },
-    [clearTtl, drainDismiss, promoteNextTransient],
+    [clearTtl, retireEvent, promoteNextTransient],
   );
 
 
