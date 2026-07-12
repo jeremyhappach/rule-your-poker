@@ -46,6 +46,7 @@ import {
   isAmbientBehavior,
   type AnnouncementBehavior,
   type AnnouncementEvent,
+  type AnnouncementRetireReason,
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
