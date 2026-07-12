@@ -2177,6 +2177,12 @@ export function YahtzeeGameTable({
           slot. Row 5 is now authoritatively shell-owned across phases
           (cards / chat / lobby / history). Row 4 (pane) is reserved for
           tab content only and MUST NOT spill into row 5. */}
+      {/* Phase 1 parity: canonical bottom safe-area spacer. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
+      />
       <ShellHudGrid
         timer={
           <div
