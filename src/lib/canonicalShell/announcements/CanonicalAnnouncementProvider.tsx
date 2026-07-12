@@ -262,7 +262,7 @@ export function CanonicalAnnouncementProvider({
           );
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(id);
+          retireEvent(cur, 'ttl');
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -270,7 +270,7 @@ export function CanonicalAnnouncementProvider({
       });
     }, next.ttlMs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drainDismiss]);
+  }, [retireEvent]);
 
   const promoteNextTransient = useCallback(() => {
     const queue = queueRef.current;
@@ -288,14 +288,14 @@ export function CanonicalAnnouncementProvider({
     clearTtl();
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
-      drainDismiss(dropped.id);
+      retireEvent(dropped, 'boundary');
     }
     const next = queue.shift() ?? null;
     transientIdRef.current = next?.id ?? null;
     transientRef.current = next;
     setTransient(() => next);
     if (next) armTtl(next);
-  }, [clearTtl, currentScope, armTtl, drainDismiss]);
+  }, [clearTtl, currentScope, armTtl, retireEvent]);
 
 
   const emit = useCallback(
