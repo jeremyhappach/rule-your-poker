@@ -727,7 +727,7 @@ export function CanonicalAnnouncementProvider({
     let droppedQueueCount = 0;
     for (const q of queueRef.current) {
       if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
-      else { drainDismiss(q.id); droppedQueueCount++; }
+      else { retireEvent(q, 'boundary'); droppedQueueCount++; }
     }
     queueRef.current = keptQueue;
     setTransient((cur) => {
@@ -736,7 +736,7 @@ export function CanonicalAnnouncementProvider({
         clearTtl();
         transientIdRef.current = null;
         transientRef.current = null;
-        drainDismiss(cur.id);
+        retireEvent(cur, 'boundary');
         queueMicrotask(promoteNextTransient);
         return null;
       }
@@ -745,6 +745,7 @@ export function CanonicalAnnouncementProvider({
     setAmbient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
         recordAnnouncementDebugEvent('scope-teardown', `ambient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
+        retireEvent(cur, 'boundary');
         return null;
       }
       return cur;
@@ -759,7 +760,7 @@ export function CanonicalAnnouncementProvider({
     }
 
     prevScopeRef.current = currentScope;
-  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, drainDismiss]);
+  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, retireEvent]);
 
   useEffect(() => () => clearTtl(), [clearTtl]);
 
