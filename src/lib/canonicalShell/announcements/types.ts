@@ -88,7 +88,30 @@ export interface AnnouncementEvent {
    * and when to retire; the provider is generic.
    */
   transientScope?: string;
+  /**
+   * Terminal retirement acknowledgment. When supplied, the provider
+   * MUST invoke this callback exactly once for the event, at whichever
+   * terminal transition first removes it from the transient track:
+   *   'ttl'          — normal TTL expiration
+   *   'preempt'      — higher-priority transient displaced it
+   *   'dismiss'      — direct dismiss(id) call
+   *   'scope-retire' — retireTransientScope() matched it (active OR queued)
+   *   'boundary'     — provider scope teardown, clearScope, or a queued
+   *                    event dropped by promoteNextTransient's scope
+   *                    filter
+   * Queued events removed before ever becoming visible also receive
+   * exactly one callback. Never invoked for ordinary queue promotion
+   * or visibility changes.
+   */
+  onRetired?: (id: string, reason: AnnouncementRetireReason) => void;
 }
+
+export type AnnouncementRetireReason =
+  | 'ttl'
+  | 'preempt'
+  | 'dismiss'
+  | 'scope-retire'
+  | 'boundary';
 
 export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   match_win: 100,
