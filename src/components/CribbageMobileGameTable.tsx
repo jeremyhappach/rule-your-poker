@@ -2664,7 +2664,14 @@ export const CribbageMobileGameTable = ({
   // preserving within-target FIFO/TTL ordering.
   const lastCountingTargetIndexRef = useRef<number | null>(null);
 
-  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null, announcementKey?: number, targetIndex?: number) => {
+  const handleCountingAnnouncementChange = useCallback((
+    announcement: string | null,
+    targetLabel: string | null,
+    announcementKey?: number,
+    targetIndex?: number,
+    _category?: string,
+    onRetired?: (reason: string) => void,
+  ) => {
     setCountingAnnouncement(announcement);
     // Keep helper text ("Scoring <target>...") stable across combo
     // lower/wait/exit gaps. The child publishes null announcements at
@@ -2750,6 +2757,13 @@ export const CribbageMobileGameTable = ({
           payload: { title: `${targetLabel}: ${announcement}` },
           ttlMs: 2500,
           transientScope,
+          // For the final Total publish (category='total'), the
+          // producer supplies a terminal callback. The canonical rail
+          // owns the hold duration (2500ms TTL) and invokes this
+          // exactly once at whichever terminal transition removes the
+          // event. CribbageCountingPhase then applies its identity
+          // and lifecycle checks before advancing the target.
+          ...(onRetired ? { onRetired: (_id: string, reason: string) => onRetired(reason) } : {}),
         });
       }
     }

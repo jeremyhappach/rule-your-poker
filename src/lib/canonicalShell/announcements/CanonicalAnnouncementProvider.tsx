@@ -46,6 +46,7 @@ import {
   isAmbientBehavior,
   type AnnouncementBehavior,
   type AnnouncementEvent,
+  type AnnouncementRetireReason,
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
@@ -204,6 +205,34 @@ export function CanonicalAnnouncementProvider({
     for (const resolve of list) resolve();
   }, []);
 
+  // Exactly-once terminal retirement guard. Every ResolvedAnnouncement
+  // whose original event supplied `onRetired` receives ONE callback at
+  // whichever terminal path first removes it — TTL, preempt, dismiss,
+  // scope-retire (active or queued), or boundary teardown (active,
+  // ambient replacement, or queued drop). Competing paths that touch
+  // the same id are no-ops after the first invocation.
+  const retiredIdsRef = useRef<Set<string>>(new Set());
+  const retireEvent = useCallback(
+    (evt: ResolvedAnnouncement | AnnouncementEvent | null | undefined, reason: AnnouncementRetireReason) => {
+      if (!evt) return;
+      if (retiredIdsRef.current.has(evt.id)) return;
+      retiredIdsRef.current.add(evt.id);
+      drainDismiss(evt.id);
+      const cb = evt.onRetired;
+      if (cb) {
+        try {
+          cb(evt.id, reason);
+        } catch (err) {
+          if (import.meta.env?.DEV) {
+            // eslint-disable-next-line no-console
+            console.error('[canonical-rail] onRetired threw', err);
+          }
+        }
+      }
+    },
+    [drainDismiss],
+  );
+
 
   const scopeKey = useCallback(
     (s: AnnouncementScope) => `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`,
@@ -233,7 +262,7 @@ export function CanonicalAnnouncementProvider({
           );
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(id);
+          retireEvent(cur, 'ttl');
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -241,7 +270,7 @@ export function CanonicalAnnouncementProvider({
       });
     }, next.ttlMs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drainDismiss]);
+  }, [retireEvent]);
 
   const promoteNextTransient = useCallback(() => {
     const queue = queueRef.current;
@@ -259,14 +288,14 @@ export function CanonicalAnnouncementProvider({
     clearTtl();
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
-      drainDismiss(dropped.id);
+      retireEvent(dropped, 'boundary');
     }
     const next = queue.shift() ?? null;
     transientIdRef.current = next?.id ?? null;
     transientRef.current = next;
     setTransient(() => next);
     if (next) armTtl(next);
-  }, [clearTtl, currentScope, armTtl, drainDismiss]);
+  }, [clearTtl, currentScope, armTtl, retireEvent]);
 
 
   const emit = useCallback(
@@ -463,7 +492,7 @@ export function CanonicalAnnouncementProvider({
             next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
           },
         );
-        drainDismiss(liveTransient.id);
+        retireEvent(liveTransient, 'preempt');
         transientIdRef.current = resolved.id;
         transientRef.current = resolved;
         setTransient(() => resolved);
@@ -530,7 +559,7 @@ export function CanonicalAnnouncementProvider({
         },
       );
     },
-    [currentScope, transient, ambient, clearTtl, armTtl, scopeKey, drainDismiss],
+    [currentScope, transient, ambient, clearTtl, armTtl, scopeKey, drainDismiss, retireEvent],
   );
 
   const dismiss = useCallback(
@@ -560,21 +589,27 @@ export function CanonicalAnnouncementProvider({
         if (matches) {
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(id);
+          retireEvent(cur, 'dismiss');
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => (cur && cur.id === id ? null : cur));
+      setAmbient((cur) => {
+        if (cur && cur.id === id) {
+          retireEvent(cur, 'dismiss');
+          return null;
+        }
+        return cur;
+      });
       const filtered: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
-        if (q.id === id) drainDismiss(q.id);
+        if (q.id === id) retireEvent(q, 'dismiss');
         else filtered.push(q);
       }
       queueRef.current = filtered;
     },
-    [promoteNextTransient, drainDismiss],
+    [promoteNextTransient, retireEvent],
   );
 
 
@@ -596,7 +631,7 @@ export function CanonicalAnnouncementProvider({
       );
       const kept: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
-        if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
+        if (scopeMatches(q.scope, scope)) retireEvent(q, 'boundary');
         else kept.push(q);
       }
       queueRef.current = kept;
@@ -605,15 +640,21 @@ export function CanonicalAnnouncementProvider({
         if (cur && scopeMatches(cur.scope, scope)) {
           transientIdRef.current = null;
           transientRef.current = null;
-          drainDismiss(cur.id);
+          retireEvent(cur, 'boundary');
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => (cur && scopeMatches(cur.scope, scope) ? null : cur));
+      setAmbient((cur) => {
+        if (cur && scopeMatches(cur.scope, scope)) {
+          retireEvent(cur, 'boundary');
+          return null;
+        }
+        return cur;
+      });
     },
-    [promoteNextTransient, scopeKey, drainDismiss],
+    [promoteNextTransient, scopeKey, retireEvent],
   );
 
   const retireTransientScope = useCallback(
@@ -625,7 +666,7 @@ export function CanonicalAnnouncementProvider({
       for (const q of queueBefore) {
         if (q.transientScope === scope) {
           matchedQueuedIds.push(q.id);
-          drainDismiss(q.id);
+          retireEvent(q, 'scope-retire');
         } else {
           kept.push(q);
         }
@@ -654,7 +695,7 @@ export function CanonicalAnnouncementProvider({
             clearTtl();
             transientIdRef.current = null;
             transientRef.current = null;
-            drainDismiss(cur.id);
+            retireEvent(cur, 'scope-retire');
             queueMicrotask(promoteNextTransient);
             return null;
           }
@@ -662,7 +703,7 @@ export function CanonicalAnnouncementProvider({
         });
       }
     },
-    [clearTtl, drainDismiss, promoteNextTransient],
+    [clearTtl, retireEvent, promoteNextTransient],
   );
 
 
@@ -686,7 +727,7 @@ export function CanonicalAnnouncementProvider({
     let droppedQueueCount = 0;
     for (const q of queueRef.current) {
       if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
-      else { drainDismiss(q.id); droppedQueueCount++; }
+      else { retireEvent(q, 'boundary'); droppedQueueCount++; }
     }
     queueRef.current = keptQueue;
     setTransient((cur) => {
@@ -695,7 +736,7 @@ export function CanonicalAnnouncementProvider({
         clearTtl();
         transientIdRef.current = null;
         transientRef.current = null;
-        drainDismiss(cur.id);
+        retireEvent(cur, 'boundary');
         queueMicrotask(promoteNextTransient);
         return null;
       }
@@ -704,6 +745,7 @@ export function CanonicalAnnouncementProvider({
     setAmbient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
         recordAnnouncementDebugEvent('scope-teardown', `ambient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
+        retireEvent(cur, 'boundary');
         return null;
       }
       return cur;
@@ -718,7 +760,7 @@ export function CanonicalAnnouncementProvider({
     }
 
     prevScopeRef.current = currentScope;
-  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, drainDismiss]);
+  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, retireEvent]);
 
   useEffect(() => () => clearTtl(), [clearTtl]);
 

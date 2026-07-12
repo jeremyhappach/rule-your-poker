@@ -34,7 +34,14 @@ interface CribbageCountingPhaseProps {
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
   cardBackColors: { color: string; darkColor: string };
-  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number, targetIndex?: number) => void;
+  onAnnouncementChange?: (
+    announcement: string | null,
+    targetLabel: string | null,
+    announcementKey?: number,
+    targetIndex?: number,
+    category?: CountingTruthEntry['announcementCategory'],
+    onRetired?: (reason: string) => void,
+  ) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
   /** Optional baseline scores to start the counting animation from (typically pegging-phase scores). */
   initialScores?: Record<string, number>;
@@ -111,6 +118,57 @@ export const CribbageCountingPhase = ({
   // inside a scheduled timer.
   const currentTargetIndexRef = useRef(0);
   const currentComboIndexRef = useRef(-1);
+  // Pending final-Total retirement identity. Set immediately after a
+  // category='total' publish; cleared by handleTotalRetired before
+  // invoking startExitTransition, or by any teardown path. Only one
+  // final Total is pending at a time (per counting owner).
+  const pendingFinalTotalRef = useRef<{
+    announcementId: string;
+    announcementKey: number;
+    roundId: string | null;
+    targetIndex: number;
+  } | null>(null);
+  const startExitTransitionRef = useRef<() => void>(() => {});
+  const debugContextRef = useRef(debugContext);
+  debugContextRef.current = debugContext;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // Clear any pending wait so a late terminal delivery cannot
+      // advance a stale/abandoned target lifecycle.
+      pendingFinalTotalRef.current = null;
+    };
+  }, []);
+
+  const handleTotalRetired = useCallback(
+    (armedKey: number, armedTargetIndex: number, armedRoundId: string | null, armedAnnouncementId: string, _reason: string) => {
+      const pending = pendingFinalTotalRef.current;
+      if (!pending) return;
+      // Identity checks (spec):
+      //   callback ID == pending final-total ID
+      //   round identity == stored round identity
+      //   target index == stored target index
+      if (pending.announcementId !== armedAnnouncementId) return;
+      if (pending.announcementKey !== armedKey) return;
+      if (pending.targetIndex !== armedTargetIndex) return;
+      if (pending.roundId !== armedRoundId) return;
+      // Live lifecycle checks:
+      if (!mountedRef.current) return;
+      if (winFrozenRef.current) return;
+      if (completedRef.current) return;
+      if (currentTargetIndexRef.current !== armedTargetIndex) return;
+      const liveRoundId = debugContextRef.current?.roundId ?? null;
+      if (liveRoundId !== armedRoundId) return;
+      // Clear pending BEFORE invoking so reentrant/duplicate terminal
+      // delivery cannot advance twice.
+      pendingFinalTotalRef.current = null;
+      startExitTransitionRef.current();
+    },
+    [],
+  );
+
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
@@ -122,7 +180,28 @@ export const CribbageCountingPhase = ({
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      onAnnouncementChange?.(text, targetLabel, key, targetIndex);
+
+      // For the final Total publish, arm the terminal retirement wait
+      // and pass a bound `onRetired` up to the parent so it can wire
+      // it into the canonical rail event.
+      let terminal: ((reason: string) => void) | undefined;
+      if (category === 'total') {
+        const armedRoundId = debugContextRef.current?.roundId ?? null;
+        // Announcement id string mirrors the parent's rail-event id
+        // shape and provides the exact "callback ID equals pending
+        // final-total ID" identity check requested by the contract.
+        const armedAnnouncementId = `final-total:${armedRoundId ?? 'no-round'}:${targetIndex}:${key}`;
+        pendingFinalTotalRef.current = {
+          announcementId: armedAnnouncementId,
+          announcementKey: key,
+          roundId: armedRoundId,
+          targetIndex,
+        };
+        terminal = (reason) =>
+          handleTotalRetired(key, targetIndex, armedRoundId, armedAnnouncementId, reason);
+      }
+
+      onAnnouncementChange?.(text, targetLabel, key, targetIndex, category, terminal);
       // Direct wartime emission — announcement publish (combo|total|zero).
       recordCribbageWartime(
         'counting',
@@ -175,7 +254,7 @@ export const CribbageCountingPhase = ({
         });
       }
     },
-    [onAnnouncementChange],
+    [onAnnouncementChange, handleTotalRetired],
   );
 
   // Keep identity refs in sync every render.
@@ -1225,10 +1304,13 @@ export const CribbageCountingPhase = ({
             eventSource: 'gate.finalizeLower',
             eventReason: `about-to-publish-total:${reason}`,
           });
+          // Final Total is published via publishAnnouncement, which
+          // arms `pendingFinalTotalRef` and hands the rail event's
+          // terminal `onRetired` callback to the parent. Target advance
+          // now waits exclusively for canonical rail retirement — the
+          // former fixed 1500ms local timer has been removed so the
+          // rail's 2500ms TTL is the sole owner of this hold duration.
           publishAnnouncement(`Total: ${totalPoints} points`, targetLabel, 'total');
-          innerTimer = setTimeout(() => {
-            if (!winFrozenRef.current) startExitTransition();
-          }, 1500);
         },
         { targetLabel, total: totalPoints },
       );
@@ -1353,6 +1435,25 @@ export const CribbageCountingPhase = ({
       }
     }, EXIT_ANIMATION_MS);
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
+
+  // Install startExitTransition into a ref so `handleTotalRetired`
+  // (declared above publishAnnouncement) can invoke the freshest
+  // instance without pulling it into its dep array.
+  startExitTransitionRef.current = startExitTransition;
+
+  // Teardown/identity-reset paths for the pending final-Total wait.
+  // A boundary/phase-exit terminal callback is NOT an instruction to
+  // advance unconditionally — handleTotalRetired's identity/lifecycle
+  // checks already gate that. But we still clear the pending ref
+  // proactively when the counting owner leaves so a stale terminal
+  // delivery cannot even reach those checks.
+  useEffect(() => {
+    if (winFrozen) pendingFinalTotalRef.current = null;
+  }, [winFrozen]);
+  useEffect(() => {
+    // Target advance / round change clears any prior pending wait.
+    pendingFinalTotalRef.current = null;
+  }, [currentTargetIndex, debugContext?.roundId]);
 
   // ── Announcement propagation is SINGLE-WRITER ──────────────────
   //
