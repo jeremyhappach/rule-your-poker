@@ -1304,10 +1304,13 @@ export const CribbageCountingPhase = ({
             eventSource: 'gate.finalizeLower',
             eventReason: `about-to-publish-total:${reason}`,
           });
+          // Final Total is published via publishAnnouncement, which
+          // arms `pendingFinalTotalRef` and hands the rail event's
+          // terminal `onRetired` callback to the parent. Target advance
+          // now waits exclusively for canonical rail retirement — the
+          // former fixed 1500ms local timer has been removed so the
+          // rail's 2500ms TTL is the sole owner of this hold duration.
           publishAnnouncement(`Total: ${totalPoints} points`, targetLabel, 'total');
-          innerTimer = setTimeout(() => {
-            if (!winFrozenRef.current) startExitTransition();
-          }, 1500);
         },
         { targetLabel, total: totalPoints },
       );
