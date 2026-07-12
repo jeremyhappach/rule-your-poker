@@ -32,13 +32,14 @@
  * consistently clips on a real device.
  */
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
 import { getLifecycleContext } from './lifecycleDebug';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { HudStackTraceProbe } from './HudStackTraceProbe';
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
