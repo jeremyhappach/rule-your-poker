@@ -5477,7 +5477,7 @@ export const CribbageMobileGameTable = ({
   // flight from their seat cardback stack → pegging-row center. Visual-
   // only; reads authoritative state, never writes. Reset baseline at
   // every round boundary and any phase != 'pegging'.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!cribbageState || !cribbageState.pegging) return;
     const roundKey = currentRoundId ?? null;
     if (playCardRoundKeyRef.current !== roundKey) {
