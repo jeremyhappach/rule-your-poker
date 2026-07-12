@@ -1436,6 +1436,25 @@ export const CribbageCountingPhase = ({
     }, EXIT_ANIMATION_MS);
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
+  // Install startExitTransition into a ref so `handleTotalRetired`
+  // (declared above publishAnnouncement) can invoke the freshest
+  // instance without pulling it into its dep array.
+  startExitTransitionRef.current = startExitTransition;
+
+  // Teardown/identity-reset paths for the pending final-Total wait.
+  // A boundary/phase-exit terminal callback is NOT an instruction to
+  // advance unconditionally — handleTotalRetired's identity/lifecycle
+  // checks already gate that. But we still clear the pending ref
+  // proactively when the counting owner leaves so a stale terminal
+  // delivery cannot even reach those checks.
+  useEffect(() => {
+    if (winFrozen) pendingFinalTotalRef.current = null;
+  }, [winFrozen]);
+  useEffect(() => {
+    // Target advance / round change clears any prior pending wait.
+    pendingFinalTotalRef.current = null;
+  }, [currentTargetIndex, debugContext?.roundId]);
+
   // ── Announcement propagation is SINGLE-WRITER ──────────────────
   //
   // Parent `onAnnouncementChange` is written exclusively by:
