@@ -297,23 +297,16 @@ export function Wave4PeggingRowSlot({
           <span className="text-2xl font-bold text-poker-gold">{count}</span>
         </div>
         <div className="flex -space-x-4 justify-center">
-          {playedCards.map((pc, i) => {
-            const inactive =
-              activePlayerId != null &&
-              pc.playerId != null &&
-              pc.playerId !== activePlayerId;
-            return (
-              <div
-                key={i}
-                className={inactive ? 'crib-inactive-pegged-card' : undefined}
-                data-crib-pegged-inactive={inactive ? 'true' : 'false'}
-                data-cribbage-pegging-card=""
-                data-cribbage-pegging-card-index={i}
-              >
-                <CribbagePlayingCard card={pc.card} size="md" />
-              </div>
-            );
-          })}
+          {playedCards.map((pc, i) => (
+            <div
+              key={i}
+              data-cribbage-pegging-card=""
+              data-cribbage-pegging-card-index={i}
+              style={{ zIndex: i }}
+            >
+              <CribbagePlayingCard card={pc.card} size="md" />
+            </div>
+          ))}
 
           {playedCards.length === 0 && showEmptyPlaceholder && (
             <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
@@ -404,27 +397,20 @@ export function Wave4PeggingRowSlot({
           flexShrink: 0,
         }}
       >
-        {playedCards.map((pc, i) => {
-          const inactive =
-            activePlayerId != null &&
-            pc.playerId != null &&
-            pc.playerId !== activePlayerId;
-          return (
-            <div
-              key={i}
-              className={inactive ? 'crib-inactive-pegged-card' : undefined}
-              data-crib-pegged-inactive={inactive ? 'true' : 'false'}
-              data-cribbage-pegging-card=""
-              data-cribbage-pegging-card-index={i}
-              style={{
-                marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
-                flexShrink: 0,
-              }}
-            >
-              <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
-            </div>
-          );
-        })}
+        {playedCards.map((pc, i) => (
+          <div
+            key={i}
+            data-cribbage-pegging-card=""
+            data-cribbage-pegging-card-index={i}
+            style={{
+              marginLeft: i === 0 ? 0 : `${-finalOverlap}px`,
+              flexShrink: 0,
+              zIndex: i,
+            }}
+          >
+            <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
+          </div>
+        ))}
 
         {playedCards.length === 0 && showEmptyPlaceholder && (
           <div
