@@ -3397,6 +3397,12 @@ export const GinRummyGameTable = ({
           waiting_for_player ambient emitted from this component). The
           row-2 local gold-plate fallback has been removed; the timer
           slot stays empty for Gin. */}
+      {/* Phase 1 parity: canonical bottom safe-area spacer. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
+      />
       <div style={{ pointerEvents: 'auto', flex: '0 0 var(--shell-hud-h)', display: 'flex', flexDirection: 'column' }}>
       <ShellHudGrid
         timer={null}
