@@ -118,6 +118,57 @@ export const CribbageCountingPhase = ({
   // inside a scheduled timer.
   const currentTargetIndexRef = useRef(0);
   const currentComboIndexRef = useRef(-1);
+  // Pending final-Total retirement identity. Set immediately after a
+  // category='total' publish; cleared by handleTotalRetired before
+  // invoking startExitTransition, or by any teardown path. Only one
+  // final Total is pending at a time (per counting owner).
+  const pendingFinalTotalRef = useRef<{
+    announcementId: string;
+    announcementKey: number;
+    roundId: string | null;
+    targetIndex: number;
+  } | null>(null);
+  const startExitTransitionRef = useRef<() => void>(() => {});
+  const debugContextRef = useRef(debugContext);
+  debugContextRef.current = debugContext;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // Clear any pending wait so a late terminal delivery cannot
+      // advance a stale/abandoned target lifecycle.
+      pendingFinalTotalRef.current = null;
+    };
+  }, []);
+
+  const handleTotalRetired = useCallback(
+    (armedKey: number, armedTargetIndex: number, armedRoundId: string | null, armedAnnouncementId: string, _reason: string) => {
+      const pending = pendingFinalTotalRef.current;
+      if (!pending) return;
+      // Identity checks (spec):
+      //   callback ID == pending final-total ID
+      //   round identity == stored round identity
+      //   target index == stored target index
+      if (pending.announcementId !== armedAnnouncementId) return;
+      if (pending.announcementKey !== armedKey) return;
+      if (pending.targetIndex !== armedTargetIndex) return;
+      if (pending.roundId !== armedRoundId) return;
+      // Live lifecycle checks:
+      if (!mountedRef.current) return;
+      if (winFrozenRef.current) return;
+      if (completedRef.current) return;
+      if (currentTargetIndexRef.current !== armedTargetIndex) return;
+      const liveRoundId = debugContextRef.current?.roundId ?? null;
+      if (liveRoundId !== armedRoundId) return;
+      // Clear pending BEFORE invoking so reentrant/duplicate terminal
+      // delivery cannot advance twice.
+      pendingFinalTotalRef.current = null;
+      startExitTransitionRef.current();
+    },
+    [],
+  );
+
   const publishAnnouncement = useCallback(
     (text: string, targetLabel: string, category: CountingTruthEntry['announcementCategory'] = 'combo') => {
       const key = ++announcementKeyRef.current;
@@ -129,7 +180,28 @@ export const CribbageCountingPhase = ({
       const targetIndex = currentTargetIndexRef.current;
       const comboIndex = currentComboIndexRef.current;
       setAnnouncementData({ text, targetLabel, key, targetIndex, comboIndex, category });
-      onAnnouncementChange?.(text, targetLabel, key, targetIndex);
+
+      // For the final Total publish, arm the terminal retirement wait
+      // and pass a bound `onRetired` up to the parent so it can wire
+      // it into the canonical rail event.
+      let terminal: ((reason: string) => void) | undefined;
+      if (category === 'total') {
+        const armedRoundId = debugContextRef.current?.roundId ?? null;
+        // Announcement id string mirrors the parent's rail-event id
+        // shape and provides the exact "callback ID equals pending
+        // final-total ID" identity check requested by the contract.
+        const armedAnnouncementId = `final-total:${armedRoundId ?? 'no-round'}:${targetIndex}:${key}`;
+        pendingFinalTotalRef.current = {
+          announcementId: armedAnnouncementId,
+          announcementKey: key,
+          roundId: armedRoundId,
+          targetIndex,
+        };
+        terminal = (reason) =>
+          handleTotalRetired(key, targetIndex, armedRoundId, armedAnnouncementId, reason);
+      }
+
+      onAnnouncementChange?.(text, targetLabel, key, targetIndex, category, terminal);
       // Direct wartime emission — announcement publish (combo|total|zero).
       recordCribbageWartime(
         'counting',
@@ -182,7 +254,7 @@ export const CribbageCountingPhase = ({
         });
       }
     },
-    [onAnnouncementChange],
+    [onAnnouncementChange, handleTotalRetired],
   );
 
   // Keep identity refs in sync every render.
