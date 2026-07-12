@@ -3082,7 +3082,16 @@ export const GinRummyGameTable = ({
   return (
     <div className="h-full flex flex-col bg-transparent relative">
     <DealRuntimeMaybe handContextId={handContextId}>
-      
+
+      {/* Phase 1 parity: canonical top safe-area spacer — matches
+          MobileGameTable/NeutralInterstitial. Restores HUD partition
+          parity with the waiting-branch geometry. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-top-spacer=""
+        style={{ flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none' }}
+      />
+
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
