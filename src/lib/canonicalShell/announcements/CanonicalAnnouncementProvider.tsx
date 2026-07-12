@@ -205,6 +205,34 @@ export function CanonicalAnnouncementProvider({
     for (const resolve of list) resolve();
   }, []);
 
+  // Exactly-once terminal retirement guard. Every ResolvedAnnouncement
+  // whose original event supplied `onRetired` receives ONE callback at
+  // whichever terminal path first removes it — TTL, preempt, dismiss,
+  // scope-retire (active or queued), or boundary teardown (active,
+  // ambient replacement, or queued drop). Competing paths that touch
+  // the same id are no-ops after the first invocation.
+  const retiredIdsRef = useRef<Set<string>>(new Set());
+  const retireEvent = useCallback(
+    (evt: ResolvedAnnouncement | AnnouncementEvent | null | undefined, reason: AnnouncementRetireReason) => {
+      if (!evt) return;
+      if (retiredIdsRef.current.has(evt.id)) return;
+      retiredIdsRef.current.add(evt.id);
+      drainDismiss(evt.id);
+      const cb = evt.onRetired;
+      if (cb) {
+        try {
+          cb(evt.id, reason);
+        } catch (err) {
+          if (import.meta.env?.DEV) {
+            // eslint-disable-next-line no-console
+            console.error('[canonical-rail] onRetired threw', err);
+          }
+        }
+      }
+    },
+    [drainDismiss],
+  );
+
 
   const scopeKey = useCallback(
     (s: AnnouncementScope) => `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`,
