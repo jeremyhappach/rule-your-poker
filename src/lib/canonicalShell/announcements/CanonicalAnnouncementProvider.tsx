@@ -492,7 +492,7 @@ export function CanonicalAnnouncementProvider({
             next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
           },
         );
-        drainDismiss(liveTransient.id);
+        retireEvent(liveTransient, 'preempt');
         transientIdRef.current = resolved.id;
         transientRef.current = resolved;
         setTransient(() => resolved);
