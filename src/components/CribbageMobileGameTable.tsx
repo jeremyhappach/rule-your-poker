@@ -7571,6 +7571,15 @@ export const CribbageMobileGameTable = ({
           CribbageChipTransferAnimation JSX is retired. */}
 
 
+      {/* Phase 1 parity: canonical top safe-area spacer. Mirrors the
+          expression owned by MobileGameTable/NeutralInterstitial so the
+          play/HUD partition is identical across every gameplay branch.
+          Fixes the ~11px HUD upward drift on waiting→gameplay transition. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-top-spacer=""
+        style={{ flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none' }}
+      />
 
       {/* ═══════ UNIFIED FELT AREA — same shell for ALL modes ═══════ */}
       {/* Canonical felt geometry: fixed height + flex:0 0 — matches Gin/Yahtzee.
@@ -8191,6 +8200,13 @@ export const CribbageMobileGameTable = ({
 
         </CribbageGameplayGeometryProvider>
       </div>
+
+      {/* Phase 1 parity: canonical bottom safe-area spacer. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
+      />
 
       {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.1) ═══════
           The HUD region is partitioned by ShellHudGrid into 5 proportional rows:

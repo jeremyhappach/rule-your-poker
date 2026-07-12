@@ -2011,6 +2011,13 @@ export function YahtzeeGameTable({
           the canonical pattern used by MobileGameTable / GinRummy /
           NeutralInterstitial — never a bespoke vw/vh formula, which
           drifts from the shell ellipse and pushes HUD off-screen. */}
+      {/* Phase 1 parity: canonical top safe-area spacer — matches
+          MobileGameTable/NeutralInterstitial. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-top-spacer=""
+        style={{ flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none' }}
+      />
       <div ref={tableContainerRef} className="relative overflow-visible" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
 
         {/* Wave 5D — Yahtzee anchored gameplay stages.
@@ -2170,6 +2177,12 @@ export function YahtzeeGameTable({
           slot. Row 5 is now authoritatively shell-owned across phases
           (cards / chat / lobby / history). Row 4 (pane) is reserved for
           tab content only and MUST NOT spill into row 5. */}
+      {/* Phase 1 parity: canonical bottom safe-area spacer. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
+      />
       <ShellHudGrid
         timer={
           <div
