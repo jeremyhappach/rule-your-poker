@@ -451,6 +451,9 @@ export function DiceTableLayout({
       isHeld: false,
     })) as any;
     stableScatterRollKeyRef.current = undefined;
+    if (stableScatterByDieRef.current.size > 0) {
+      emitScatterAssignmentSnapshot(rollKey, stableScatterByDieRef.current, new Map(), 'cacheKey-reset');
+    }
     stableScatterByDieRef.current = new Map();
     stableHeldRollKeyRef.current = undefined;
     stableHeldSlotByDieRef.current = new Map();
