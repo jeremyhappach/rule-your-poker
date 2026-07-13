@@ -39,7 +39,7 @@ import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
 import { getLifecycleContext } from './lifecycleDebug';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
-import { HudStackTraceProbe } from './HudStackTraceProbe';
+
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
@@ -123,7 +123,7 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
       <div data-hud-row="identity" style={ROW_STYLE}>
         {identity ?? null}
       </div>
-      <HudStackTraceProbe gridRef={gridRef} />
+      
     </div>
   );
 }

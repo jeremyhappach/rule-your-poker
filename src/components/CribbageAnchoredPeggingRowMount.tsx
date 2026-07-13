@@ -14,7 +14,7 @@
 import { useEffect, useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
-import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
 
 export interface CribbageAnchoredPeggingRowMountProps {
   cribbageState: CribbageState;

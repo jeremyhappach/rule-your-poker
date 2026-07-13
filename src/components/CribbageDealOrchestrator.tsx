@@ -29,9 +29,9 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
-import { recordDealTransportDispatch } from '@/lib/cribbage/dealTransportLedger';
-import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
-import { registerCribbageHandContext } from '@/lib/cribbage/cribbageIntentScope';
+const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
+const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
+const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
 
 
 
