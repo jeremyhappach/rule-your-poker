@@ -33,6 +33,14 @@ interface DiceRollAnimationProps {
   runKey?: string | number;
   /** Whether to show wild highlight on 1s (default: !isSCC) */
   showWildHighlight?: boolean;
+  /** Yahtzee wartime batch context (optional — read-only instrumentation). */
+  wartimeContext?: {
+    rollKey: string | number | null;
+    cacheKey: string | number | null;
+    ownerPlayerId: string | null;
+    rollNumber: number | null;
+    reactKey: string | null;
+  };
 }
 
 // Animation duration in ms (reduced for snappier feel)
