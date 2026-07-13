@@ -78,6 +78,8 @@ import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
+import { useYahtzeeWartimeInstrumentation } from "@/lib/yahtzee/useYahtzeeWartimeInstrumentation";
+import { recordYahtzeeWartime as recWartime } from "@/lib/yahtzee/yahtzeeWartimeLedger";
 import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
@@ -691,6 +693,25 @@ export function YahtzeeGameTable({
   }, []);
   const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
 
+  // ── Yahtzee Wartime Truth instrumentation (read-only, no-op when disarmed) ─
+  useYahtzeeWartimeInstrumentation({
+    gameId: gameId ?? null,
+    dealerGameId: dealerGameId ?? null,
+    currentRoundId: currentRoundId ?? null,
+    handNumber: null,
+    authoritative: authoritativeYahtzeeState ?? null,
+    viewState: viewState ?? null,
+    gamePhase: gamePhase ?? null,
+    activePlayerId: currentTurnPlayerId ?? null,
+    localPlayerId: myPlayer?.id ?? null,
+    isMyTurn,
+    localRollsRemaining,
+    scoringInProgress,
+    showInteractiveScorecard,
+    activeTab,
+  });
+
+
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
     if (!myPlayer) return 0;
@@ -858,7 +879,16 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   const handleRoll = useCallback(async () => {
+    recWartime('writer', 'roll_intent_entered', {
+      isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling,
+      localRollsRemaining: localRollsRemainingRef.current,
+      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
+      phase: gamePhase ?? null,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     if (!isMyTurn || !currentRoundId || !myPlayer || rolling) {
+      recWartime('writer', 'roll_intent_rejected', {
+        reason: !isMyTurn ? 'not-my-turn' : !currentRoundId ? 'no-round' : !myPlayer ? 'no-player' : 'rolling',
+      }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
@@ -888,6 +918,11 @@ export function YahtzeeGameTable({
     rollSerialRef.current += 1;
     const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
+    recWartime('writer', 'roll_intent_created', {
+      rollKey: t, rollSerial: rollSerialRef.current, playerId: myPlayer.id,
+      roundId: currentRoundId, rollsRemainingBefore: currentLocalRollsRemaining,
+      heldMask: heldSnapshotRef.current,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     console.log('[ROLL GENERATED]', { rollKey: t, playerId: myPlayer.id, rollSerial: rollSerialRef.current, roundId: currentRoundId });
 
     // CRITICAL: Apply local hold state to the player state before rolling.
@@ -945,9 +980,25 @@ export function YahtzeeGameTable({
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
+    recWartime('writer', 'hold_intent_entered', {
+      dieIndex, isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, rolling,
+      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
+    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
+      recWartime('writer', 'hold_intent_rejected', { reason: 'guard-block', dieIndex },
+        { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
+      return;
+    }
     const myPs = yahtzeeState.playerStates[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
+    if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) {
+      recWartime('writer', 'hold_intent_rejected', {
+        reason: 'no-roll-boundary', dieIndex, rollsRemaining: myPs?.rollsRemaining ?? null,
+      }, { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
+      return;
+    }
+    recWartime('writer', 'hold_intent_created', { dieIndex, rollsRemaining: myPs.rollsRemaining },
+      { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
+
 
     // Apply optimistic guard — the sync framework will reject stale DB hold states
     // Use functional updater so rapid taps always read latest local state
@@ -979,26 +1030,50 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) return;
+    recWartime('writer', 'score_intent_entered', {
+      category, isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, scoringInProgress,
+      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
+    if (!isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) {
+      recWartime('writer', 'score_intent_rejected', { category, reason: 'outer-guard' },
+        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
+      return;
+    }
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
+    if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) {
+      recWartime('writer', 'score_intent_rejected', {
+        category, reason: 'no-state-or-rolls-or-already-scored',
+        rollsRemaining: myPs?.rollsRemaining ?? null,
+        alreadyScored: myPs?.scorecard.scores[category] !== undefined,
+      }, { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
+      return;
+    }
 
 
     const diceValues = myPs.dice.map(d => d.value);
 
     // Enforce Joker rules: restrict category choices when applicable
     const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
-    if (jokerValid && !jokerValid.includes(category)) return;
+    if (jokerValid && !jokerValid.includes(category)) {
+      recWartime('writer', 'score_intent_rejected', { category, reason: 'joker-restricted', jokerValid },
+        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
+      return;
+    }
 
     // Check if this would score zero — ask for confirmation (use Joker score if applicable)
     const potentialScore = jokerValid ? getJokerScore(category, diceValues) : calculateCategoryScore(category, diceValues);
     if (potentialScore === 0) {
+      recWartime('writer', 'score_intent_rejected', { category, reason: 'zero-score-pending-confirm' },
+        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
       setPendingZeroCategory(category);
       return;
     }
 
+    recWartime('writer', 'score_intent_created', { category, potentialScore, diceValues },
+      { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
     await commitScoreCategory(category);
+
   }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
