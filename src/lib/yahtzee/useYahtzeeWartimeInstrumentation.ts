@@ -166,6 +166,7 @@ export function useYahtzeeWartimeInstrumentation(inputs: YahtzeeWartimeInputs): 
 
   // ── Group 3: presentation dice truth ─────────────────────────────
   const prevPresRef = useRef<string | null>(null);
+  const prevAuthHoldForBoundaryRef = useRef<string | null>(null);
   useEffect(() => {
     if (!armed) return;
     const desc = describeAuthDice(inputs.viewState, inputs.activePlayerId);
@@ -179,17 +180,60 @@ export function useYahtzeeWartimeInstrumentation(inputs: YahtzeeWartimeInputs): 
       heldCount: desc.dice.filter(d => d.held).length,
     }, { producer: PRODUCER, fn: '#presDice', key: `pid:${desc.playerId}` });
 
-    // Contradiction: authoritative vs presentation held / value mismatch
+    // Bidirectional authoritative ↔ presentation contradiction checks
     const auth = describeAuthDice(inputs.authoritative, inputs.activePlayerId);
     if (auth && auth.dice.length === desc.dice.length) {
+      let authHeldCount = 0;
+      let presHeldCount = 0;
       for (let i = 0; i < auth.dice.length; i++) {
         const a = auth.dice[i]; const v = desc.dice[i];
+        if (a.held) authHeldCount++;
+        if (v.held) presHeldCount++;
         if (a.value !== v.value && a.value !== 0 && v.value !== 0) {
           recordYahtzeeContradiction('presentation_die_not_in_authoritative_state', {
             index: i, auth: a, pres: v, activePid: inputs.activePlayerId ?? null,
+            rollKey: auth.rollKey ?? null,
           }, { producer: PRODUCER, fn: '#presVsAuth' });
         }
+        // Inverse: authoritative has a value the presentation dropped
+        if (a.value !== 0 && v.value === 0) {
+          recordYahtzeeContradiction('authoritative_die_missing_from_presentation', {
+            index: i, auth: a, pres: v, activePid: inputs.activePlayerId ?? null,
+            rollKey: auth.rollKey ?? null,
+          }, { producer: PRODUCER, fn: '#authVsPres' });
+        }
+        if (a.held && !v.held && a.value > 0 && v.value > 0) {
+          recordYahtzeeContradiction('held_die_rendered_as_rolling', {
+            index: i, auth: a, pres: v, activePid: inputs.activePlayerId ?? null,
+          }, { producer: PRODUCER, fn: '#heldMismatch' });
+        }
+        if (!a.held && v.held && a.value > 0 && v.value > 0) {
+          recordYahtzeeContradiction('rolling_die_rendered_as_held', {
+            index: i, auth: a, pres: v, activePid: inputs.activePlayerId ?? null,
+          }, { producer: PRODUCER, fn: '#heldMismatch' });
+        }
       }
+      if (authHeldCount !== presHeldCount) {
+        recordYahtzeeContradiction('authoritative_held_count_presentation_mismatch', {
+          authHeldCount, presHeldCount, activePid: inputs.activePlayerId ?? null,
+          rollKey: auth.rollKey ?? null,
+          authDice: auth.dice, presDice: desc.dice,
+        }, { producer: PRODUCER, fn: '#heldCountMismatch' });
+      }
+      // Hold-boundary: authoritative hold-signature changed without a rollKey change
+      const authHoldSig = auth.dice.map(d => (d.held ? '1' : '0')).join('');
+      const boundaryKey = `${auth.rollKey ?? ''}:${authHoldSig}`;
+      if (prevAuthHoldForBoundaryRef.current &&
+          prevAuthHoldForBoundaryRef.current.startsWith(`${auth.rollKey ?? ''}:`) &&
+          prevAuthHoldForBoundaryRef.current !== boundaryKey) {
+        // Same rollKey but different hold signature — legal only if user toggled hold.
+        // Emit as a lifecycle marker; consumers correlate with hold_intent_entered.
+        recordYahtzeeWartime('auth-dice', 'hold_state_changed_within_roll', {
+          prev: prevAuthHoldForBoundaryRef.current, next: boundaryKey,
+          activePid: inputs.activePlayerId ?? null, rollKey: auth.rollKey ?? null,
+        }, { producer: PRODUCER, fn: '#holdBoundary' });
+      }
+      prevAuthHoldForBoundaryRef.current = boundaryKey;
     }
   });
 
