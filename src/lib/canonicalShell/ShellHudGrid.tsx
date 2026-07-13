@@ -123,7 +123,7 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
       <div data-hud-row="identity" style={ROW_STYLE}>
         {identity ?? null}
       </div>
-      <HudStackTraceProbe gridRef={gridRef} />
+      
     </div>
   );
 }
