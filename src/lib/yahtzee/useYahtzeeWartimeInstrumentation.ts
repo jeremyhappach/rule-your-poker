@@ -39,21 +39,9 @@ export interface YahtzeeWartimeInputs {
   activeTab: string | null | undefined;
 }
 
-function useArmedTick(): number {
-  const [, setTick] = useForceUpdate();
-  useEffect(() => subscribeYahtzeeWartime(() => setTick()), [setTick]);
-  return 0;
-}
-
-function useForceUpdate(): [number, () => void] {
-  const ref = useRef(0);
-  const setterRef = useRef<null | ((n: number) => void)>(null);
-  // Lazy — only wire when accessed.
-  const [state, setState] = require('react').useState(0) as [number, (n: number) => void];
-  ref.current = state;
-  setterRef.current = setState;
-  const trigger = () => setterRef.current && setterRef.current(ref.current + 1);
-  return [state, trigger];
+function useArmedTick(): void {
+  const [, setTick] = useState(0);
+  useEffect(() => subscribeYahtzeeWartime(() => setTick(t => t + 1)), []);
 }
 
 function describeAuthDice(state: YahtzeeState | null | undefined, activePid: string | null | undefined) {
