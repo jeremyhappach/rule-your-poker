@@ -49,7 +49,7 @@ import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
-import { HudStackTracePill } from "@/components/HudStackTracePill";
+
 import Diagnostics from "@/pages/Diagnostics";
 import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
 import { SessionLifecycleRecoveryPill } from "@/lib/sessionLifecycle/SessionLifecycleRecoveryPill";
