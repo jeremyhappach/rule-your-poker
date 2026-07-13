@@ -269,10 +269,46 @@ export function useYahtzeeWartimeInstrumentation(inputs: YahtzeeWartimeInputs): 
       ? (inputs.showInteractiveScorecard ? 'self-turn:scorecard' : 'self-turn:dice-only')
       : (inputs.activePlayerId ? `opponent-turn:${inputs.activePlayerId}` : 'no-turn');
     if (branch !== prevPaneRef.current) {
+      // DOM-level presence signals (read-only). All queries scoped to the
+      // active pane content wrapper so we never sample seat-cluster DOM.
+      let scorecardPresent = false;
+      let scatterCount = 0;
+      let heldCount = 0;
+      let rollControlsPresent = false;
+      let scoreControlsPresent = false;
+      let scorecardReactKey: string | null = null;
+      try {
+        const pane = typeof document !== 'undefined'
+          ? document.querySelector('[data-yahtzee-active-pane-content]') ?? document.body
+          : null;
+        if (pane) {
+          const sc = pane.querySelector('[data-yahtzee-scorecard]') as HTMLElement | null;
+          scorecardPresent = !!sc;
+          scorecardReactKey = sc?.getAttribute('data-yahtzee-scorecard-react-key') ?? null;
+          scatterCount = pane.querySelectorAll('[data-die-idx][data-die-held="false"]').length;
+          heldCount = pane.querySelectorAll('[data-die-idx][data-die-held="true"]').length;
+          rollControlsPresent = !!pane.querySelector('[data-yahtzee-roll-button], button[data-role="yahtzee-roll"]');
+          scoreControlsPresent = !!(sc && sc.querySelector('button'));
+        }
+      } catch { /* ignore */ }
       recordYahtzeeWartime('active-pane', 'active_pane_branch_changed', {
         prev: prevPaneRef.current, next: branch,
         activePid: inputs.activePlayerId ?? null, localPid: inputs.localPlayerId ?? null,
         phase: inputs.gamePhase ?? null, activeTab: inputs.activeTab ?? null,
+        presentationTurnIdentity: {
+          gameId: inputs.gameId ?? null, dealerGameId: inputs.dealerGameId ?? null,
+          roundId: inputs.currentRoundId ?? null, activePid: inputs.activePlayerId ?? null,
+        },
+        dom: {
+          scorecardSubtreePresent: scorecardPresent,
+          scorecardReactKey,
+          scatterDicePresent: scatterCount > 0,
+          scatterDiceCount: scatterCount,
+          heldDicePresent: heldCount > 0,
+          heldDiceCount: heldCount,
+          rollControlsPresent,
+          scoreControlsPresent,
+        },
       }, { producer: PRODUCER, fn: '#paneBranch' });
       prevPaneRef.current = branch;
     }
