@@ -16,7 +16,7 @@ import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
-import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
   hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
