@@ -725,6 +725,55 @@ export function YahtzeeGameTable({
     activeTab,
   });
 
+  // Yahtzee wartime scope — enables direct-producer emitters in shared
+  // components (DiceRollAnimation, DiceTableLayout). Cleared on unmount so
+  // Horses/SCC producers cannot emit Yahtzee-scoped events.
+  useEffect(() => {
+    setYahtzeeWartimeScope({
+      gameId: gameId ?? null,
+      dealerGameId: dealerGameId ?? null,
+      roundId: currentRoundId ?? null,
+      activePid: currentTurnPlayerId ?? null,
+      localPid: myPlayer?.id ?? null,
+      handNumber: viewState?.currentRound ?? null,
+    });
+    return () => setYahtzeeWartimeScope(null);
+  }, [gameId, dealerGameId, currentRoundId, currentTurnPlayerId, myPlayer?.id, viewState?.currentRound]);
+
+  // Scorecard branch lifecycle emitters.
+  const scorecardBranch: ScorecardBranchDesc = useMemo(() => {
+    if (gamePhase === 'playing' && myPlayer && showInteractiveScorecard) {
+      return {
+        branch: 'self-turn:interactive', playerId: myPlayer.id, reactKey: `sc:${myPlayer.id}`,
+        selectedCategory: null,
+        submissionState: scoringInProgress ? 'in-progress' : 'idle',
+      };
+    }
+    if (gamePhase === 'playing' && currentTurnPlayerId && !showInteractiveScorecard) {
+      return {
+        branch: 'opponent-turn:readonly', playerId: currentTurnPlayerId,
+        reactKey: `sc:${currentTurnPlayerId}`, selectedCategory: null, submissionState: 'idle',
+      };
+    }
+    return { branch: 'none', playerId: null, reactKey: null, selectedCategory: null, submissionState: 'idle' };
+  }, [gamePhase, myPlayer?.id, showInteractiveScorecard, currentTurnPlayerId, scoringInProgress]);
+
+  const prevScorecardBranchRef = useRef<ScorecardBranchDesc | null>(null);
+  useEffect(() => {
+    const prev = prevScorecardBranchRef.current;
+    if (!prev || prev.branch !== scorecardBranch.branch || prev.playerId !== scorecardBranch.playerId) {
+      emitScorecardBranchChanged(prev, scorecardBranch);
+      if (prev && prev.branch !== 'none') {
+        emitScorecardRetirementStarted(prev, `branch:${prev.branch}→${scorecardBranch.branch}`);
+        emitScorecardDomUnmounted(prev, true);
+      }
+      if (scorecardBranch.branch !== 'none') {
+        emitScorecardDomMounted(scorecardBranch);
+      }
+      prevScorecardBranchRef.current = scorecardBranch;
+    }
+  }, [scorecardBranch]);
+
 
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
