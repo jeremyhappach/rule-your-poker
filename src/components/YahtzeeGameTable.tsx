@@ -988,8 +988,25 @@ export function YahtzeeGameTable({
     };
     // Apply optimistic override — sync framework will reject stale DB updates until caught up
     console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
+    const rollWriterId = {
+      rollKey: t,
+      rollSerial: rollSerialRef.current,
+      playerId: myPlayer.id,
+      roundId: currentRoundId,
+      rollNumber: 3 - newPs.rollsRemaining,
+    };
     yahtzeeSync.applyOptimistic(newState);
-    await updateYahtzeeState(currentRoundId, newState);
+    emitRollResultApplied(rollWriterId, newPs.dice.map(d => d.value));
+    emitRollWriteStarted(rollWriterId);
+    try {
+      await updateYahtzeeState(currentRoundId, newState);
+      emitRollWriteAccepted(rollWriterId);
+    } catch (err) {
+      emitRollWriteFailed(rollWriterId, err);
+      throw err;
+    } finally {
+      emitRollPresentationReleased(rollWriterId);
+    }
   }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
 
   /* ---- Hold toggle ---- */
