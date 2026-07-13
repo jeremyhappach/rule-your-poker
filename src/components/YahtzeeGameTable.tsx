@@ -2032,7 +2032,17 @@ export function YahtzeeGameTable({
     );
 
     return (
-      <div className="w-full space-y-1">
+      <div
+        className="w-full space-y-1"
+        data-yahtzee-scorecard=""
+        data-yahtzee-scorecard-branch={isInteractive ? 'self-turn:interactive' : 'opponent-turn:readonly'}
+        data-yahtzee-scorecard-player-id={playerId}
+        data-yahtzee-scorecard-active-player-id={currentTurnPlayerId ?? ''}
+        data-yahtzee-scorecard-round-id={currentRoundId ?? ''}
+        data-yahtzee-scorecard-hand-number={String(viewState?.currentRound ?? '')}
+        data-yahtzee-scorecard-submission-state={scoringInProgress ? 'in-progress' : 'idle'}
+        data-yahtzee-scorecard-react-key={`sc:${playerId}`}
+      >
         {renderRow(UPPER_CATEGORIES, (
           <div className={cn(
             "flex-1 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-md border min-w-0 min-h-[44px]",
