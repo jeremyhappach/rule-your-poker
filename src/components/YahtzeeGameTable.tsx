@@ -691,6 +691,25 @@ export function YahtzeeGameTable({
   }, []);
   const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
 
+  // ── Yahtzee Wartime Truth instrumentation (read-only, no-op when disarmed) ─
+  useYahtzeeWartimeInstrumentation({
+    gameId: gameId ?? null,
+    dealerGameId: dealerGameId ?? null,
+    currentRoundId: currentRoundId ?? null,
+    handNumber: null,
+    authoritative: authoritativeYahtzeeState ?? null,
+    viewState: viewState ?? null,
+    gamePhase: gamePhase ?? null,
+    activePlayerId: currentTurnPlayerId ?? null,
+    localPlayerId: myPlayer?.id ?? null,
+    isMyTurn,
+    localRollsRemaining,
+    scoringInProgress,
+    showInteractiveScorecard,
+    activeTab,
+  });
+
+
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
     if (!myPlayer) return 0;
