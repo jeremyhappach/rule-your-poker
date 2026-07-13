@@ -1061,6 +1061,7 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
+    if (myPlayer) emitScoreCategorySelected(category, myPlayer.id);
     recWartime('writer', 'score_intent_entered', {
       category, isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, scoringInProgress,
       activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
