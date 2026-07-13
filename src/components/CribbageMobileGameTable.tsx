@@ -22,18 +22,16 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
-import { CribbageWartimeTruthPill } from './CribbageWartimeTruthPill';
-import { CribbageWartimeDealRuntimeBridge } from './CribbageWartimeDealRuntimeBridge';
-import {
-  recordCribbageWartime,
-  setCribbageWartimeIdentity,
-} from '@/lib/cribbage/cribbageWartimeLedger';
-
-import {
-  recordPegTransportAttempt,
-  updatePegTransportEntry,
-  getPegTransportEntries,
-} from '@/lib/cribbageTransportInstrumentation';
+// Wartime + peg-transport instrumentation removed post-cleanup. Local
+// no-op stubs preserve existing call-site shape without any diagnostic
+// side effects. UI pills (CribbageWartimeTruthPill,
+// CribbageWartimeDealRuntimeBridge) were deleted; their JSX mounts
+// below were removed.
+const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
+const setCribbageWartimeIdentity: (..._args: unknown[]) => void = () => {};
+const recordPegTransportAttempt: (..._args: unknown[]) => void = () => {};
+const updatePegTransportEntry: (..._args: unknown[]) => void = () => {};
+const getPegTransportEntries: () => Array<{ attemptId: string; animationSettled: boolean; cleanupReason: unknown }> = () => [];
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
