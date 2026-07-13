@@ -11,7 +11,7 @@
  * the ledger disappear entirely when disarmed (all record calls short-circuit).
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { YahtzeeState } from '@/lib/yahtzeeTypes';
 import {
   isYahtzeeWartimeArmed,
