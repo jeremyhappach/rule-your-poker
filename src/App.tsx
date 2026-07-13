@@ -219,6 +219,8 @@ const App = () => {
                   Incident" surface per current session/game. */}
               <IncidentExportPill />
               <ChatFlightPill />
+              <YahtzeeWartimeTruthPill />
+
               
 
               {/* SessionLifecycleRecoveryPill (DIAG + COPY) intentionally
