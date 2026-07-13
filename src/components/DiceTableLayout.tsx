@@ -2030,6 +2030,13 @@ export function DiceTableLayout({
           isSCC={isSCC}
           scatterYOffset={unheldYOffset}
           showWildHighlight={showWildHighlight}
+          wartimeContext={{
+            rollKey: rollKey ?? null,
+            cacheKey: cacheKey ?? null,
+            ownerPlayerId: traceContext?.turnPlayerId ?? null,
+            rollNumber: traceContext?.rollNumber ?? null,
+            reactKey: null,
+          }}
         />
       )}
 
