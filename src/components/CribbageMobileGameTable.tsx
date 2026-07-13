@@ -7870,12 +7870,6 @@ export const CribbageMobileGameTable = ({
 
                 ) : null}
 
-                {currentHandKey && currentPlayerId ? (
-                  <CribbageWartimeDealRuntimeBridge
-                    handContextId={currentHandKey}
-                    selfPlayerId={currentPlayerId}
-                  />
-                ) : null}
 
 
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
