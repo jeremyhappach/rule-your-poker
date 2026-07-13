@@ -80,6 +80,20 @@ import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/Yah
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
 import { useYahtzeeWartimeInstrumentation } from "@/lib/yahtzee/useYahtzeeWartimeInstrumentation";
 import { recordYahtzeeWartime as recWartime } from "@/lib/yahtzee/yahtzeeWartimeLedger";
+import {
+  setYahtzeeWartimeScope,
+  emitRollWriteStarted,
+  emitRollWriteAccepted,
+  emitRollWriteFailed,
+  emitRollResultApplied,
+  emitRollPresentationReleased,
+  emitScorecardBranchChanged,
+  emitScorecardDomMounted,
+  emitScorecardDomUnmounted,
+  emitScorecardRetirementStarted,
+  emitScoreCategorySelected,
+  type ScorecardBranchDesc,
+} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
