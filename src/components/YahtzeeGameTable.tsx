@@ -78,6 +78,8 @@ import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
+import { useYahtzeeWartimeInstrumentation } from "@/lib/yahtzee/useYahtzeeWartimeInstrumentation";
+import { recordYahtzeeWartime as recWartime } from "@/lib/yahtzee/yahtzeeWartimeLedger";
 import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
