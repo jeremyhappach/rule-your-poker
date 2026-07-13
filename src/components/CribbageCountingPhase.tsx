@@ -5,8 +5,13 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
-import { countingTruthLedger, makeEmptyContradictions, type CountingTruthEntry } from '@/lib/cribbage/countingTruthLedger';
-import { recordCribbageWartime } from '@/lib/cribbage/cribbageWartimeLedger';
+// Instrumentation ledgers removed post-wartime cleanup. Local no-op stubs
+// preserve call-site shape while eliminating all diagnostic side effects.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CountingTruthEntry = any;
+const countingTruthLedger = { record: (_e: unknown) => {} };
+const makeEmptyContradictions = () => ({});
+const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
 // CribbageCountingTruthPill is mounted at CribbageMobileGameTable so it
 // escapes any transformed felt ancestor and remains visible.
 
