@@ -80,6 +80,20 @@ import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/Yah
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
 import { useYahtzeeWartimeInstrumentation } from "@/lib/yahtzee/useYahtzeeWartimeInstrumentation";
 import { recordYahtzeeWartime as recWartime } from "@/lib/yahtzee/yahtzeeWartimeLedger";
+import {
+  setYahtzeeWartimeScope,
+  emitRollWriteStarted,
+  emitRollWriteAccepted,
+  emitRollWriteFailed,
+  emitRollResultApplied,
+  emitRollPresentationReleased,
+  emitScorecardBranchChanged,
+  emitScorecardDomMounted,
+  emitScorecardDomUnmounted,
+  emitScorecardRetirementStarted,
+  emitScoreCategorySelected,
+  type ScorecardBranchDesc,
+} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
@@ -711,6 +725,55 @@ export function YahtzeeGameTable({
     activeTab,
   });
 
+  // Yahtzee wartime scope — enables direct-producer emitters in shared
+  // components (DiceRollAnimation, DiceTableLayout). Cleared on unmount so
+  // Horses/SCC producers cannot emit Yahtzee-scoped events.
+  useEffect(() => {
+    setYahtzeeWartimeScope({
+      gameId: gameId ?? null,
+      dealerGameId: dealerGameId ?? null,
+      roundId: currentRoundId ?? null,
+      activePid: currentTurnPlayerId ?? null,
+      localPid: myPlayer?.id ?? null,
+      handNumber: viewState?.currentRound ?? null,
+    });
+    return () => setYahtzeeWartimeScope(null);
+  }, [gameId, dealerGameId, currentRoundId, currentTurnPlayerId, myPlayer?.id, viewState?.currentRound]);
+
+  // Scorecard branch lifecycle emitters.
+  const scorecardBranch: ScorecardBranchDesc = useMemo(() => {
+    if (gamePhase === 'playing' && myPlayer && showInteractiveScorecard) {
+      return {
+        branch: 'self-turn:interactive', playerId: myPlayer.id, reactKey: `sc:${myPlayer.id}`,
+        selectedCategory: null,
+        submissionState: scoringInProgress ? 'in-progress' : 'idle',
+      };
+    }
+    if (gamePhase === 'playing' && currentTurnPlayerId && !showInteractiveScorecard) {
+      return {
+        branch: 'opponent-turn:readonly', playerId: currentTurnPlayerId,
+        reactKey: `sc:${currentTurnPlayerId}`, selectedCategory: null, submissionState: 'idle',
+      };
+    }
+    return { branch: 'none', playerId: null, reactKey: null, selectedCategory: null, submissionState: 'idle' };
+  }, [gamePhase, myPlayer?.id, showInteractiveScorecard, currentTurnPlayerId, scoringInProgress]);
+
+  const prevScorecardBranchRef = useRef<ScorecardBranchDesc | null>(null);
+  useEffect(() => {
+    const prev = prevScorecardBranchRef.current;
+    if (!prev || prev.branch !== scorecardBranch.branch || prev.playerId !== scorecardBranch.playerId) {
+      emitScorecardBranchChanged(prev, scorecardBranch);
+      if (prev && prev.branch !== 'none') {
+        emitScorecardRetirementStarted(prev, `branch:${prev.branch}→${scorecardBranch.branch}`);
+        emitScorecardDomUnmounted(prev, true);
+      }
+      if (scorecardBranch.branch !== 'none') {
+        emitScorecardDomMounted(scorecardBranch);
+      }
+      prevScorecardBranchRef.current = scorecardBranch;
+    }
+  }, [scorecardBranch]);
+
 
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
@@ -974,8 +1037,25 @@ export function YahtzeeGameTable({
     };
     // Apply optimistic override — sync framework will reject stale DB updates until caught up
     console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
+    const rollWriterId = {
+      rollKey: t,
+      rollSerial: rollSerialRef.current,
+      playerId: myPlayer.id,
+      roundId: currentRoundId,
+      rollNumber: 3 - newPs.rollsRemaining,
+    };
     yahtzeeSync.applyOptimistic(newState);
-    await updateYahtzeeState(currentRoundId, newState);
+    emitRollResultApplied(rollWriterId, newPs.dice.map(d => d.value));
+    emitRollWriteStarted(rollWriterId);
+    try {
+      await updateYahtzeeState(currentRoundId, newState);
+      emitRollWriteAccepted(rollWriterId);
+    } catch (err) {
+      emitRollWriteFailed(rollWriterId, err);
+      throw err;
+    } finally {
+      emitRollPresentationReleased(rollWriterId);
+    }
   }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
 
   /* ---- Hold toggle ---- */
@@ -1030,6 +1110,7 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
+    if (myPlayer) emitScoreCategorySelected(category, myPlayer.id);
     recWartime('writer', 'score_intent_entered', {
       category, isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, scoringInProgress,
       activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
@@ -1951,7 +2032,17 @@ export function YahtzeeGameTable({
     );
 
     return (
-      <div className="w-full space-y-1">
+      <div
+        className="w-full space-y-1"
+        data-yahtzee-scorecard=""
+        data-yahtzee-scorecard-branch={isInteractive ? 'self-turn:interactive' : 'opponent-turn:readonly'}
+        data-yahtzee-scorecard-player-id={playerId}
+        data-yahtzee-scorecard-active-player-id={currentTurnPlayerId ?? ''}
+        data-yahtzee-scorecard-round-id={currentRoundId ?? ''}
+        data-yahtzee-scorecard-hand-number={String(viewState?.currentRound ?? '')}
+        data-yahtzee-scorecard-submission-state={scoringInProgress ? 'in-progress' : 'idle'}
+        data-yahtzee-scorecard-react-key={`sc:${playerId}`}
+      >
         {renderRow(UPPER_CATEGORIES, (
           <div className={cn(
             "flex-1 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-md border min-w-0 min-h-[44px]",

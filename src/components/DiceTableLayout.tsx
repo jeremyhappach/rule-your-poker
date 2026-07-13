@@ -6,6 +6,7 @@ import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useIsRectDriven } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import { emitScatterAssignmentSnapshot, type ScatterAssignment } from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
@@ -450,6 +451,9 @@ export function DiceTableLayout({
       isHeld: false,
     })) as any;
     stableScatterRollKeyRef.current = undefined;
+    if (stableScatterByDieRef.current.size > 0) {
+      emitScatterAssignmentSnapshot(rollKey, stableScatterByDieRef.current, new Map(), 'cacheKey-reset');
+    }
     stableScatterByDieRef.current = new Map();
     stableHeldRollKeyRef.current = undefined;
     stableHeldSlotByDieRef.current = new Map();
@@ -861,6 +865,11 @@ export function DiceTableLayout({
         : basePos;
       nextStable.set(dieIndex, stablePos);
     });
+    {
+      const prevMap = stableScatterByDieRef.current;
+      const reason = prevMap.size === 0 ? 'roll-boundary-initial' : 'roll-boundary-rollkey-change';
+      emitScatterAssignmentSnapshot(rollKey, prevMap, nextStable, reason);
+    }
     stableScatterByDieRef.current = nextStable;
     lastScatterTransformByDieRef.current = new Map(nextStable);
 
@@ -2021,6 +2030,13 @@ export function DiceTableLayout({
           isSCC={isSCC}
           scatterYOffset={unheldYOffset}
           showWildHighlight={showWildHighlight}
+          wartimeContext={{
+            rollKey: rollKey ?? null,
+            cacheKey: cacheKey ?? null,
+            ownerPlayerId: traceContext?.turnPlayerId ?? null,
+            rollNumber: traceContext?.rollNumber ?? null,
+            reactKey: null,
+          }}
         />
       )}
 
