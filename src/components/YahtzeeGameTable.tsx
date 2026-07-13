@@ -879,7 +879,16 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   const handleRoll = useCallback(async () => {
+    recWartime('writer', 'roll_intent_entered', {
+      isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling,
+      localRollsRemaining: localRollsRemainingRef.current,
+      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
+      phase: gamePhase ?? null,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     if (!isMyTurn || !currentRoundId || !myPlayer || rolling) {
+      recWartime('writer', 'roll_intent_rejected', {
+        reason: !isMyTurn ? 'not-my-turn' : !currentRoundId ? 'no-round' : !myPlayer ? 'no-player' : 'rolling',
+      }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
