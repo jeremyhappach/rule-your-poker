@@ -8093,9 +8093,6 @@ export const CribbageMobileGameTable = ({
             }}
           />
 
-          {/* Single wartime instrumentation pill — replaces the old
-              Counting Truth / Peg Transport / Layout Status pills. */}
-          <CribbageWartimeTruthPill />
 
 
 
