@@ -372,7 +372,7 @@ export function useYahtzeeWartimeInstrumentation(inputs: YahtzeeWartimeInputs): 
         // we cannot see the scorecard subtree without a dedicated marker
         // (see instrumentation report §blind-spots).
         const paneNode = document.querySelector('[data-yahtzee-active-pane-content]');
-        const scorecardVisible = !!paneNode && !!paneNode.querySelector('table, [role="table"], [data-yahtzee-scorecard]');
+        const scorecardVisible = !!paneNode && !!paneNode.querySelector('[data-yahtzee-scorecard]');
         if (scorecardVisible !== lastScorecardDom) {
           lastScorecardDom = scorecardVisible;
           recordYahtzeeWartime('scorecard', 'scorecard_dom_visibility_changed', {
