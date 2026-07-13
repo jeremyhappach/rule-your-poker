@@ -918,6 +918,11 @@ export function YahtzeeGameTable({
     rollSerialRef.current += 1;
     const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
+    recWartime('writer', 'roll_intent_created', {
+      rollKey: t, rollSerial: rollSerialRef.current, playerId: myPlayer.id,
+      roundId: currentRoundId, rollsRemainingBefore: currentLocalRollsRemaining,
+      heldMask: heldSnapshotRef.current,
+    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     console.log('[ROLL GENERATED]', { rollKey: t, playerId: myPlayer.id, rollSerial: rollSerialRef.current, roundId: currentRoundId });
 
     // CRITICAL: Apply local hold state to the player state before rolling.
