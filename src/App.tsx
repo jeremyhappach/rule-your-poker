@@ -219,7 +219,7 @@ const App = () => {
                   Incident" surface per current session/game. */}
               <IncidentExportPill />
               <ChatFlightPill />
-              <HudStackTracePill />
+              
 
               {/* SessionLifecycleRecoveryPill (DIAG + COPY) intentionally
                   suppressed from published UI per operator request. The
