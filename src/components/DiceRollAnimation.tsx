@@ -2,6 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
+import {
+  emitDiceAnimationBatchMounted,
+  emitDiceAnimationBatchStarted,
+  emitDiceAnimationBatchSettled,
+  emitDiceAnimationBatchCancelled,
+  emitDiceAnimationBatchUnmountedUnsettled,
+  type DiceAnimationBatchIdentity,
+  type DiceAnimationDieDesc,
+} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 
 interface DiceRollAnimationProps {
   /** The dice to animate */
