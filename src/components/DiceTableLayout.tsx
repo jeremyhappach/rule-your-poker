@@ -6,6 +6,7 @@ import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useIsRectDriven } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
+import { emitScatterAssignmentSnapshot, type ScatterAssignment } from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
