@@ -865,6 +865,11 @@ export function DiceTableLayout({
         : basePos;
       nextStable.set(dieIndex, stablePos);
     });
+    {
+      const prevMap = stableScatterByDieRef.current;
+      const reason = prevMap.size === 0 ? 'roll-boundary-initial' : 'roll-boundary-rollkey-change';
+      emitScatterAssignmentSnapshot(rollKey, prevMap, nextStable, reason);
+    }
     stableScatterByDieRef.current = nextStable;
     lastScatterTransformByDieRef.current = new Map(nextStable);
 
