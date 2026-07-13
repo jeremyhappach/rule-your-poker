@@ -70,6 +70,7 @@ export function DiceRollAnimation({
   scatterYOffset = 50,
   runKey,
   showWildHighlight,
+  wartimeContext,
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -77,6 +78,8 @@ export function DiceRollAnimation({
   const startTimeRef = useRef<number | null>(null);
   const completedRef = useRef(false);
   const completionTimeoutRef = useRef<number | null>(null);
+  const settledRef = useRef(false);
+  const batchIdentityRef = useRef<DiceAnimationBatchIdentity | null>(null);
 
   // Granular timing instrumentation (helps detect main-thread stalls / timer drift)
   const perfRef = useRef({
