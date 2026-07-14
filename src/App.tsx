@@ -50,6 +50,7 @@ import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
 import { YahtzeeWartimeTruthPill } from "@/components/YahtzeeWartimeTruthPill";
+import { CribbageLabelTracePill } from "@/components/CribbageLabelTracePill";
 
 import Diagnostics from "@/pages/Diagnostics";
 import RuntimeDiagnostics from "@/pages/RuntimeDiagnostics";
