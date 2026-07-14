@@ -153,6 +153,7 @@ export function CribbageAnchoredCribCutMount({
     : { x: 0, y: 0, width: 0, height: 0 };
 
   const stageHeightPx = assignedRect.height * vminInPx;
+  const stageWidthPx = assignedRect.width * vminInPx;
 
   // Card sizing — width derives from height via CARD_ASPECT so widthPx
   // (the prop CribbagePlayingCard understands) produces the correct height.
@@ -168,6 +169,36 @@ export function CribbageAnchoredCribCutMount({
   const cribToCutGap = useCardOverlap('cardOverlap.cribbage.cribToCutGap');
   const cribCardOverlapPx = cribCardWidthPx * cribFanOverlap;
   const cribToCutGapPx = cribCardWidthPx * cribToCutGap;
+
+  // ── Crib-owner label geometry ────────────────────────────────────────
+  // Label lifecycle: whenever the crib is parked beside the cut card
+  // (before/during/after discards). Hidden during counting and after a
+  // pegging win. Uses the same phase gates as the crib presentation.
+  const cribParked =
+    !isCountingPhase && !isPeggingWin && phaseForLayout !== 'complete';
+
+  // Fixed-width label container. Reserves the crib-side horizontal region
+  // of the stage (everything to the left of the gap + cut card), so the
+  // container center equals slot-center - (cutCardWidthPx + gap)/2 — i.e.
+  // exactly the crib pile center in the 4-card + cut card cluster case,
+  // and a stable felt position across the 0/2/4 crib-card counts. Width
+  // depends only on stageWidth/cutCardWidth/gap, not on player-name
+  // length, so the reserved area does not shift.
+  const labelContainerWidthPx = Math.max(
+    0,
+    stageWidthPx - cutCardWidthPx - cribToCutGapPx,
+  );
+  // Fixed font size (viewport-responsive via stageHeight but content-
+  // independent — never grows/shrinks with name length).
+  const labelFontPx = Math.max(9, Math.round(stageHeightPx * 0.16));
+  // Invisible-spacer font size mirrors the pre-existing inline "Crib"
+  // label so the pile's vertical position does not shift when the visible
+  // "Crib" text is moved into the overlay.
+  const spacerFontPx = Math.max(7, Math.round(cribCardWidthPx * 0.4));
+  const labelText = dealerDisplayName
+    ? `Crib: ${dealerDisplayName}`
+    : 'Crib';
+
 
 
   const cribRef = useRef<HTMLDivElement | null>(null);
