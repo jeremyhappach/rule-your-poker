@@ -511,7 +511,7 @@ export function CribbageAnchoredCribCutMount({
       {showCribOnFelt && resolvedVisibleCribCount > 0 && (() => {
         const visibleCount = resolvedVisibleCribCount;
         return (
-          <div ref={cribRef} className="flex flex-col items-center">
+          <div ref={cribRef} data-parked-crib-group="" className="flex flex-col items-center">
             {/* Invisible spacer — preserves the pile's vertical position.
                 The visible "Crib: {dealer}" label is rendered above as an
                 absolute overlay so its width cannot displace the pile
