@@ -45,6 +45,12 @@ export interface CribbageDiscardIntent {
    * cardCount when provided.
    */
   sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>;
+  /**
+   * Number of crib cards already visually admitted at intent-start.
+   * Card i (0-indexed) targets `[data-card-anchor="crib-slot-${startingOrdinal + i + 1}"]`.
+   * If undefined, falls back to legacy slot-centroid destination.
+   */
+  startingOrdinal?: number;
 }
 
 interface Props {
