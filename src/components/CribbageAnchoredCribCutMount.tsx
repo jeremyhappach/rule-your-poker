@@ -229,6 +229,38 @@ export function CribbageAnchoredCribCutMount({
     ],
   });
 
+  // Absolutely-positioned crib-owner felt label. Kept as a shared node so
+  // both the empty-slot branch and the populated-slot branch render an
+  // identical label. Left/width reserve the crib-side region of the
+  // stage; the container itself does not shift with crib-card count and
+  // never encroaches on the cut card or the crib+cut gap. Truncation
+  // uses the canonical `truncate` utility (matches scoring-rail player
+  // labels) so long names ellipsize instead of resizing the container
+  // or shifting geometry.
+  const cribOwnerLabel = cribParked && stageWidthPx > 0 && labelContainerWidthPx > 0 ? (
+    <div
+      data-crib-owner-label=""
+      className="pointer-events-none absolute"
+      style={{
+        left: 0,
+        top: 0,
+        width: `${labelContainerWidthPx}px`,
+        textAlign: 'center',
+        zIndex: 1,
+      }}
+    >
+      <span
+        className="text-white truncate block leading-none"
+        style={{
+          fontSize: `${labelFontPx}px`,
+          maxWidth: '100%',
+        }}
+      >
+        {labelText}
+      </span>
+    </div>
+  ) : null;
+
   if (!visible) {
     // Task C1 — even when no crib pile / cut card is visible (e.g. during
     // the `discarding` phase before any cards have been submitted), mount
@@ -238,7 +270,9 @@ export function CribbageAnchoredCribCutMount({
     return (
       <Wave4CribCutGroupSlot
         styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
-      />
+      >
+        {cribOwnerLabel}
+      </Wave4CribCutGroupSlot>
     );
   }
 
@@ -246,6 +280,7 @@ export function CribbageAnchoredCribCutMount({
     <Wave4CribCutGroupSlot
       styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
     >
+      {cribOwnerLabel}
 
       {/* Crib pile — sized from stage height. Withhold incoming crib
           cards while their discard-to-crib transport is in flight so
@@ -264,11 +299,17 @@ export function CribbageAnchoredCribCutMount({
         const visibleCount = resolvedVisibleCribCount;
         return (
           <div ref={cribRef} className="flex flex-col items-center">
+            {/* Invisible spacer — preserves the pile's vertical position.
+                The visible "Crib: {dealer}" label is rendered above as an
+                absolute overlay so its width cannot displace the pile
+                horizontally. */}
             <span
-              className="text-white/60 leading-none"
+              aria-hidden="true"
+              className="leading-none"
               style={{
-                fontSize: `${Math.max(7, Math.round(cribCardWidthPx * 0.4))}px`,
+                fontSize: `${spacerFontPx}px`,
                 marginBottom: '2px',
+                visibility: 'hidden',
               }}
             >
               Crib
@@ -310,5 +351,6 @@ export function CribbageAnchoredCribCutMount({
     </Wave4CribCutGroupSlot>
   );
 }
+
 
 export default CribbageAnchoredCribCutMount;
