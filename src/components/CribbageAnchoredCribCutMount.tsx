@@ -588,15 +588,35 @@ export function CribbageAnchoredCribCutMount({
     </div>
   ) : null;
 
-  const renderedCutCard = cribbageState.cutCard && !isCountingPhase && !isPeggingWin ? (
+  // Cut-card slot. Always reserve the cut-card footprint during the
+  // parked lifecycle so the [cribGroup | gap | cutCard] cluster width
+  // (and therefore every crib-slot anchor position) is invariant BEFORE
+  // any card lands and BEFORE the visual cut reveal. If the authoritative
+  // `cutCard` has not resolved yet, render an equivalently-sized
+  // placeholder so layout space is held; the visual reveal happens the
+  // moment `cribbageState.cutCard` becomes available.
+  const cutRevealActive =
+    !!cribbageState.cutCard && !isCountingPhase && !isPeggingWin;
+  const renderedCutCard = cribParked ? (
     <div ref={cutRef} data-cribbage-cut-card="">
-      <CribbageCutCardReveal
-        card={deferCutReveal ? null : cribbageState.cutCard}
-        cardBackColors={cardBackColors}
-        handBoundaryKey={handBoundaryKey}
-        widthPx={cutCardWidthPx}
-        labelInFlow={false}
-      />
+      {cutRevealActive ? (
+        <CribbageCutCardReveal
+          card={deferCutReveal ? null : cribbageState.cutCard}
+          cardBackColors={cardBackColors}
+          handBoundaryKey={handBoundaryKey}
+          widthPx={cutCardWidthPx}
+          labelInFlow={false}
+        />
+      ) : (
+        <div
+          aria-hidden
+          style={{
+            width: `${cutCardWidthPx}px`,
+            height: `${cutCardHeightPx}px`,
+            visibility: 'hidden',
+          }}
+        />
+      )}
     </div>
   ) : null;
 
