@@ -14,6 +14,8 @@ interface CribbageCutCardRevealProps {
    *  and used to size the back-face placeholder so the artwork fits inside the
    *  cribCutGroup assignedRect. When omitted, falls back to the `sm` token. */
   widthPx?: number;
+  /** When false, the "Cut" felt label is absolutely positioned and contributes zero layout height. */
+  labelInFlow?: boolean;
 }
 
 
@@ -60,6 +62,7 @@ export const CribbageCutCardReveal = ({
   cardBackColors,
   handBoundaryKey,
   widthPx,
+  labelInFlow = true,
 }: CribbageCutCardRevealProps) => {
 
   const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
@@ -184,14 +187,28 @@ export const CribbageCutCardReveal = ({
   const backHeight = backWidth * 1.5;
   const labelFontPx = Math.max(7, Math.round(backWidth * 0.28));
 
+  const cutLabel = (
+    <span
+      className="text-white/60 leading-none"
+      style={
+        labelInFlow
+          ? { fontSize: `${labelFontPx}px`, marginBottom: '2px' }
+          : {
+              position: 'absolute',
+              left: '50%',
+              bottom: 'calc(100% + 2px)',
+              transform: 'translateX(-50%)',
+              fontSize: `${labelFontPx}px`,
+            }
+      }
+    >
+      Cut
+    </span>
+  );
+
   return (
-    <div className="flex flex-col items-center">
-      <span
-        className="text-white/60 leading-none"
-        style={{ fontSize: `${labelFontPx}px`, marginBottom: '2px' }}
-      >
-        Cut
-      </span>
+    <div className={labelInFlow ? 'flex flex-col items-center' : 'relative flex items-center justify-center'}>
+      {cutLabel}
       <div
         className="transition-transform duration-600 ease-out"
         style={{

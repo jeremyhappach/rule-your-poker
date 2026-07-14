@@ -5349,7 +5349,7 @@ export const CribbageMobileGameTable = ({
         mode: 'self',
         cardCount: cardIndices.length,
         sourceRects: sourceRects ?? undefined,
-        startingOrdinal: discardsSettledInHand,
+        startingOrdinal: Math.min(4, cribbageState.crib?.length ?? 0),
       });
     } catch {
       /* animation is best-effort; never block gameplay */
@@ -5467,7 +5467,7 @@ export const CribbageMobileGameTable = ({
           mode: 'opponent',
           opponentPosition: pos,
           cardCount: delta,
-          startingOrdinal: discardsSettledInHand,
+          startingOrdinal: Math.min(4, Math.max(0, (cribbageState.crib?.length ?? count) - delta)),
         });
       }
     }

@@ -549,6 +549,7 @@ export function CribbageAnchoredCribCutMount({
           <div
             key={ordinal}
             data-card-anchor={`crib-slot-${ordinal}`}
+            data-artifact-id="cribbage.parkedCribSlot"
             style={{
               position: 'absolute',
               left: `${slotLeftPx}px`,
@@ -578,6 +579,7 @@ export function CribbageAnchoredCribCutMount({
         cardBackColors={cardBackColors}
         handBoundaryKey={handBoundaryKey}
         widthPx={cutCardWidthPx}
+        labelInFlow={false}
       />
     </div>
   ) : null;
