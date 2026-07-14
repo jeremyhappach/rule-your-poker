@@ -87,6 +87,13 @@ export interface CribbageAnchoredCribCutMountProps {
    * authoritative `cribbageState.cutCard` is unchanged.
    */
   deferCutReveal?: boolean;
+  /**
+   * Display name of the current crib owner (dealer). Rendered as
+   * "Crib: {dealerDisplayName}" as felt text centered over the crib
+   * parked position. Purely presentational — undefined/null suppresses
+   * the name suffix and just renders "Crib".
+   */
+  dealerDisplayName?: string | null;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -97,6 +104,7 @@ export function CribbageAnchoredCribCutMount({
   countingOutroActive = false,
   visibleCribCount,
   deferCutReveal = false,
+  dealerDisplayName = null,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
