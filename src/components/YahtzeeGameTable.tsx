@@ -686,6 +686,10 @@ export function YahtzeeGameTable({
   // happens only on a true identity change (turn player advanced past me).
   const [stickyScorecardMounted, setStickyScorecardMounted] = useState(false);
   const scorecardUnmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const turnAdvancedToAnotherPlayer =
+    gamePhase === 'playing' &&
+    currentPlayer != null &&
+    currentPlayer.user_id !== currentUserId;
   useEffect(() => {
     if (isMyTurn) {
       if (scorecardUnmountTimerRef.current) {
@@ -695,13 +699,21 @@ export function YahtzeeGameTable({
       setStickyScorecardMounted(true);
       return;
     }
+    if (turnAdvancedToAnotherPlayer) {
+      if (scorecardUnmountTimerRef.current) {
+        clearTimeout(scorecardUnmountTimerRef.current);
+        scorecardUnmountTimerRef.current = null;
+      }
+      if (stickyScorecardMounted) setStickyScorecardMounted(false);
+      return;
+    }
     if (stickyScorecardMounted && !scorecardUnmountTimerRef.current) {
       scorecardUnmountTimerRef.current = setTimeout(() => {
         setStickyScorecardMounted(false);
         scorecardUnmountTimerRef.current = null;
       }, 350);
     }
-  }, [isMyTurn, stickyScorecardMounted]);
+  }, [isMyTurn, stickyScorecardMounted, turnAdvancedToAnotherPlayer]);
   useEffect(() => () => {
     if (scorecardUnmountTimerRef.current) clearTimeout(scorecardUnmountTimerRef.current);
   }, []);
