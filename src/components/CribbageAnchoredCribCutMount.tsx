@@ -330,6 +330,21 @@ export function CribbageAnchoredCribCutMount({
     sig: '',
   });
 
+  const parkedGroupWatchRef = useRef<string>('');
+
+  const rectOf = (el: Element | null) => {
+    if (!el) return null;
+    const r = (el as HTMLElement).getBoundingClientRect();
+    return {
+      x: Math.round(r.left),
+      y: Math.round(r.top),
+      width: Math.round(r.width),
+      height: Math.round(r.height),
+      centerX: Math.round(r.left + r.width / 2),
+      centerY: Math.round(r.top + r.height / 2),
+    };
+  };
+
   useEffect(() => {
     // Query the actual committed DOM for the label marker so we can
     // report whether the JSX we thought we emitted actually reached the
@@ -360,16 +375,7 @@ export function CribbageAnchoredCribCutMount({
           height: Math.round(r.height),
         };
       }
-      let slotRect: { x: number; y: number; width: number; height: number } | null = null;
-      if (slot) {
-        const r = slot.getBoundingClientRect();
-        slotRect = {
-          x: Math.round(r.left),
-          y: Math.round(r.top),
-          width: Math.round(r.width),
-          height: Math.round(r.height),
-        };
-      }
+      const slotRect = rectOf(slot);
       const present = !!node;
       const sig = [
         present ? 1 : 0,
@@ -378,20 +384,91 @@ export function CribbageAnchoredCribCutMount({
         slotRect ? `${slotRect.x},${slotRect.y},${slotRect.width},${slotRect.height}` : 'null',
         labelEmitted ? 1 : 0,
       ].join('|');
-      if (labelDomWatchRef.current.sig === sig) return;
-      labelDomWatchRef.current = { present, sig };
-      emitCribLabelWartimeEvent('crib_owner_label_dom_changed', {
-        dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
-        labelEmitted,
-        domPresent: present,
-        computedColor: computed?.color ?? null,
-        computedOpacity: computed?.opacity ?? null,
-        computedVisibility: computed?.visibility ?? null,
-        computedDisplay: computed?.display ?? null,
-        labelRect: rect,
-        slotRect,
-        renderBranch,
-      });
+      if (labelDomWatchRef.current.sig !== sig) {
+        labelDomWatchRef.current = { present, sig };
+        emitCribLabelWartimeEvent('crib_owner_label_dom_changed', {
+          dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+          labelEmitted,
+          domPresent: present,
+          computedColor: computed?.color ?? null,
+          computedOpacity: computed?.opacity ?? null,
+          computedVisibility: computed?.visibility ?? null,
+          computedDisplay: computed?.display ?? null,
+          labelRect: rect,
+          slotRect,
+          renderBranch,
+        });
+
+        // Contradiction: label is expected (crib parked, dealer name
+        // resolved, JSX emitted) but the DOM node is missing / zero-
+        // sized / hidden / transparent.
+        const opacityNum = computed ? parseFloat(computed.opacity) : NaN;
+        const effectivelyInvisible =
+          !present ||
+          (rect ? rect.width === 0 || rect.height === 0 : true) ||
+          computed?.display === 'none' ||
+          computed?.visibility === 'hidden' ||
+          (Number.isFinite(opacityNum) && opacityNum < 0.05);
+        if (
+          cribParked &&
+          !!dealerDisplayName &&
+          labelEmitted &&
+          effectivelyInvisible
+        ) {
+          emitCribLabelWartimeEvent('crib_owner_label_expected_but_dom_missing', {
+            dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+            dealerDisplayName,
+            reason:
+              !present
+                ? 'dom-node-absent'
+                : rect && (rect.width === 0 || rect.height === 0)
+                  ? 'zero-sized'
+                  : computed?.display === 'none'
+                    ? 'display-none'
+                    : computed?.visibility === 'hidden'
+                      ? 'visibility-hidden'
+                      : 'transparent',
+            labelRect: rect,
+            slotRect,
+            computedColor: computed?.color ?? null,
+            computedOpacity: computed?.opacity ?? null,
+            computedVisibility: computed?.visibility ?? null,
+            computedDisplay: computed?.display ?? null,
+            renderBranch,
+          });
+        }
+      }
+
+      // ── Parked crib-group rect watch ────────────────────────────────
+      const parkedGroup = document.querySelector<HTMLElement>('[data-parked-crib-group]');
+      const cutEl = cutRef.current;
+      const groupRect = rectOf(parkedGroup);
+      const cutRect = rectOf(cutEl);
+      const cardEls = parkedGroup
+        ? Array.from(parkedGroup.querySelectorAll<HTMLElement>('[data-canonical-card-back], img, svg'))
+        : [];
+      const cardRects = cardEls.map((el) => rectOf(el)).filter(Boolean);
+      const renderedCribCardCount = resolvedVisibleCribCount;
+      const psig = [
+        renderedCribCardCount,
+        groupRect ? `${groupRect.centerX},${groupRect.centerY},${groupRect.width}` : 'null',
+        slotRect ? `${slotRect.x},${slotRect.width}` : 'null',
+        cutRect ? `${cutRect.centerX}` : 'null',
+      ].join('|');
+      if (parkedGroupWatchRef.current !== psig) {
+        parkedGroupWatchRef.current = psig;
+        emitCribLabelWartimeEvent('parked_crib_group_rect_changed', {
+          renderedCribCardCount,
+          renderBranch,
+          groupRect,
+          groupCenter: groupRect ? { x: groupRect.centerX, y: groupRect.centerY } : null,
+          slotRect,
+          cutRect,
+          cribToCutGapPx: Math.round(cribToCutGapPx),
+          cardRects,
+          handBoundaryKey: handBoundaryKey ?? null,
+        });
+      }
     });
     return () => cancelAnimationFrame(raf);
   });
@@ -434,7 +511,7 @@ export function CribbageAnchoredCribCutMount({
       {showCribOnFelt && resolvedVisibleCribCount > 0 && (() => {
         const visibleCount = resolvedVisibleCribCount;
         return (
-          <div ref={cribRef} className="flex flex-col items-center">
+          <div ref={cribRef} data-parked-crib-group="" className="flex flex-col items-center">
             {/* Invisible spacer — preserves the pile's vertical position.
                 The visible "Crib: {dealer}" label is rendered above as an
                 absolute overlay so its width cannot displace the pile

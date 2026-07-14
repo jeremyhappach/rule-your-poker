@@ -131,6 +131,39 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
         ? resolveSelfHandStageRect()
         : resolveOpponentStackRect(intent.opponentPosition);
 
+    // ── Parked crib-group / cut card rect at destination computation ─
+    const parkedGroupEl = document.querySelector<HTMLElement>('[data-parked-crib-group]');
+    const cutEl = document.querySelector<HTMLElement>('[data-cribbage-cut-card]')
+      ?? dstAnchorEl?.querySelector<HTMLElement>('[data-cribbage-cut-card]')
+      ?? null;
+    const rectOf = (el: HTMLElement | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: Math.round(r.left),
+        y: Math.round(r.top),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+        centerX: Math.round(r.left + r.width / 2),
+        centerY: Math.round(r.top + r.height / 2),
+      };
+    };
+    const parkedGroupRect = rectOf(parkedGroupEl);
+    const cutCardRect = rectOf(cutEl);
+    const slotRect = rectOf(dstAnchorEl);
+    const cribToCutGapPx =
+      parkedGroupRect && cutCardRect
+        ? Math.round(cutCardRect.x - (parkedGroupRect.x + parkedGroupRect.width))
+        : null;
+    const currentCribCount = parkedGroupEl
+      ? parkedGroupEl.querySelectorAll('[data-canonical-card-back], img, svg').length
+      : 0;
+    // Geometry policy label — the current destination anchor is the crib
+    // slot centroid; the transport does not currently adapt per resulting
+    // crib count. Recorded so contradiction analysis can prove whether
+    // 0-, 2-, or 4-card geometry was used.
+    const geometryPolicy = 'slot-centroid';
+
     const built: Flight[] = [];
     for (let i = 0; i < intent.cardCount; i += 1) {
       const perCard = intent.sourceRects?.[i];
@@ -160,6 +193,88 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
         endX: Math.round(endX),
         endY: Math.round(endY),
       });
+
+      const expectedCribCountAfterLanding = currentCribCount + (i + 1);
+      const expectedParkedCenter = parkedGroupRect
+        ? { x: parkedGroupRect.centerX, y: parkedGroupRect.centerY }
+        : slotRect
+          ? { x: slotRect.centerX, y: slotRect.centerY }
+          : null;
+      emitCribLabelWartimeEvent('crib_discard_destination_computed', {
+        transportIntentId: intent.id,
+        cardIndex: i,
+        discardOrdinal: i + 1,
+        discardingPlayerId:
+          intent.mode === 'self' ? 'self' : `opp-${intent.opponentPosition ?? 'null'}`,
+        currentAuthoritativeCribCount: currentCribCount,
+        expectedCribCountAfterLanding,
+        cribGeometryUsed:
+          currentCribCount === 0
+            ? '0-card'
+            : currentCribCount <= 2
+              ? '2-card'
+              : '4-card',
+        geometryPolicy,
+        destinationAnchor: 'data-card-anchor="crib"',
+        destinationComponent: 'CribbageAnchoredCribCutMount/Wave4CribCutGroupSlot',
+        sourceRect: src
+          ? {
+              x: Math.round(src.left),
+              y: Math.round(src.top),
+              width: Math.round(src.width),
+              height: Math.round(src.height),
+              centerX: Math.round(src.left + src.width / 2),
+              centerY: Math.round(src.top + src.height / 2),
+            }
+          : null,
+        computedDestinationRect: dst
+          ? {
+              x: Math.round(dst.left),
+              y: Math.round(dst.top),
+              width: Math.round(dst.width),
+              height: Math.round(dst.height),
+            }
+          : null,
+        computedDestinationCenter: { x: Math.round(endX), y: Math.round(endY) },
+        cribCutSlotRect: slotRect,
+        currentCribGroupCenter: parkedGroupRect
+          ? { x: parkedGroupRect.centerX, y: parkedGroupRect.centerY }
+          : null,
+        expectedParkedCribGroupCenter: expectedParkedCenter,
+        cutCardRect,
+        cutCardCenter: cutCardRect ? { x: cutCardRect.centerX, y: cutCardRect.centerY } : null,
+        cribToCutGapPx,
+      });
+
+      // Contradiction: destination center materially differs from where
+      // the parked crib group will actually sit after landing. Threshold
+      // is 4px in either axis (below sub-pixel jitter noise).
+      if (expectedParkedCenter) {
+        const dx = Math.abs(Math.round(endX) - expectedParkedCenter.x);
+        const dy = Math.abs(Math.round(endY) - expectedParkedCenter.y);
+        if (dx > 4 || dy > 4) {
+          emitCribLabelWartimeEvent('crib_transport_destination_mismatch', {
+            transportIntentId: intent.id,
+            cardIndex: i,
+            discardOrdinal: i + 1,
+            currentCribCount,
+            expectedCribCountAfterLanding,
+            computedDestinationCenter: { x: Math.round(endX), y: Math.round(endY) },
+            expectedParkedCribGroupCenter: expectedParkedCenter,
+            deltaX: dx,
+            deltaY: dy,
+            cribGeometryUsed:
+              currentCribCount === 0
+                ? '0-card'
+                : currentCribCount <= 2
+                  ? '2-card'
+                  : '4-card',
+            slotRect,
+            cutCardRect,
+          });
+        }
+      }
+
       if (!src) continue;
       built.push({
         key: `${intent.id}-${i}`,
