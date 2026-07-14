@@ -5467,6 +5467,7 @@ export const CribbageMobileGameTable = ({
           mode: 'opponent',
           opponentPosition: pos,
           cardCount: delta,
+          startingOrdinal: discardsSettledInHand,
         });
       }
     }
