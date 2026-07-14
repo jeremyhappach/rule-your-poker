@@ -198,24 +198,52 @@ export function CribbageAnchoredCribCutMount({
   const cribParked =
     !isCountingPhase && !isPeggingWin && phaseForLayout !== 'complete';
 
-  // Fixed-width label container. Reserves the crib-side horizontal region
-  // of the stage (everything to the left of the gap + cut card), so the
-  // container center equals slot-center - (cutCardWidthPx + gap)/2 — i.e.
-  // exactly the crib pile center in the 4-card + cut card cluster case,
-  // and a stable felt position across the 0/2/4 crib-card counts. Width
-  // depends only on stageWidth/cutCardWidth/gap, not on player-name
-  // length, so the reserved area does not shift.
-  const labelContainerWidthPx = Math.max(
-    0,
-    stageWidthPx - cutCardWidthPx - cribToCutGapPx,
+  // Reserved parked-crib layout count — snaps to {0, 2, 4} and never
+  // generates 1/3/5/6-card geometry. Parent controls this so it can
+  // reserve the 4-card layout BEFORE the second-pair transport launches;
+  // when undefined, we snap authoritative `crib.length`.
+  const reservedCountRaw = reservedCribLayoutCount ?? (
+    cribbageState.crib.length >= 4 ? 4
+      : cribbageState.crib.length >= 2 ? 2
+        : cribbageState.crib.length >= 1 ? 2
+          : 0
   );
+  const reservedCount: 0 | 2 | 4 =
+    reservedCountRaw >= 4 ? 4 : reservedCountRaw >= 2 ? 2 : 0;
+
+  // Crib-group container width for the reserved layout. This is what
+  // the flex row measures on the crib side; the outer flex row centers
+  // [cribGroup | gap | cutCard] within the slot regardless of cribGroup
+  // width — which makes the crib-group CENTER a stable offset from the
+  // slot center for any reservedCount ≥ 2 (see label anchor below).
+  const cribGroup2CardWidthPx = Math.max(
+    0,
+    2 * cribCardWidthPx - 1 * cribCardOverlapPx,
+  );
+  const cribGroup4CardWidthPx = Math.max(
+    0,
+    4 * cribCardWidthPx - 3 * cribCardOverlapPx,
+  );
+  const cribGroupWidthPx =
+    reservedCount === 4 ? cribGroup4CardWidthPx
+      : reservedCount === 2 ? cribGroup2CardWidthPx
+        : 0;
+
+  // Label anchor. Under `justify-content: center` on the Wave4CribCutGroupSlot
+  // flex row, the crib-group CENTER sits at:
+  //   slotCenterX - (gap + cutCardWidth) / 2
+  // — independent of cribGroupWidth. We therefore anchor the label to
+  // that stable point and give the container a FIXED width equal to the
+  // 4-card crib group (the widest reservation). The container width
+  // never changes with crib-card count OR player-name length; long names
+  // ellipsize inside via `truncate`.
+  const labelContainerWidthPx = cribGroup4CardWidthPx;
+  const cribCenterInSlotPx =
+    stageWidthPx / 2 - (cribToCutGapPx + cutCardWidthPx) / 2;
+  const labelLeftPx = cribCenterInSlotPx - labelContainerWidthPx / 2;
   // Fixed font size (viewport-responsive via stageHeight but content-
   // independent — never grows/shrinks with name length).
   const labelFontPx = Math.max(9, Math.round(stageHeightPx * 0.16));
-  // Invisible-spacer font size mirrors the pre-existing inline "Crib"
-  // label so the pile's vertical position does not shift when the visible
-  // "Crib" text is moved into the overlay.
-  const spacerFontPx = Math.max(7, Math.round(cribCardWidthPx * 0.4));
   const labelText = dealerDisplayName
     ? `Crib: ${dealerDisplayName}`
     : 'Crib';
@@ -225,17 +253,17 @@ export function CribbageAnchoredCribCutMount({
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
 
-  // Presentation-owned visible count. If the parent supplies
-  // `visibleCribCount`, we render exactly that many cardbacks and
-  // ignore authoritative `crib.length` — this is the settled-count
-  // contract that prevents incoming cardbacks from appearing before
-  // their transport lands. If the prop is undefined, fall back to
-  // authoritative `crib.length` (legacy call sites).
+  // Presentation-owned visible count — clamped to reservedCount so a
+  // stale visibleCribCount can never render more cardbacks than the
+  // reserved layout has slots for.
   const resolvedVisibleCribCount = Math.max(
     0,
     Math.min(
-      cribbageState.crib.length,
-      visibleCribCount ?? cribbageState.crib.length,
+      reservedCount,
+      Math.min(
+        cribbageState.crib.length,
+        visibleCribCount ?? cribbageState.crib.length,
+      ),
     ),
   );
 
