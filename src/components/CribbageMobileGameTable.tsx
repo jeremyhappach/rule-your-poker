@@ -5471,7 +5471,7 @@ export const CribbageMobileGameTable = ({
         });
       }
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, players]);
+  }, [cribbageState, currentPlayerId, currentRoundId, players, discardsSettledInHand]);
 
   // Task C2 — detect opponent pegging plays and fire a face-up transport
   // flight from their seat cardback stack → pegging-row center. Visual-
