@@ -8032,6 +8032,11 @@ export const CribbageMobileGameTable = ({
                 !!gameplayRenderState.cutCard &&
                 discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0)
               }
+              dealerDisplayName={
+                gameplayRenderState.dealerPlayerId
+                  ? getPlayerUsername(gameplayRenderState.dealerPlayerId)
+                  : null
+              }
             />
           )}
 
