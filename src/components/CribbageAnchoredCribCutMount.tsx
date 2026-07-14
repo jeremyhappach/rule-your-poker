@@ -102,6 +102,17 @@ export interface CribbageAnchoredCribCutMountProps {
    * rendering.
    */
   dealerPlayerId?: string | null;
+  /**
+   * Reserved parked-crib layout size in cards. Only 0, 2, or 4 are valid
+   * (never 1/3/5/6). Parent computes this as the intended FINAL crib
+   * layout for the current transport / discard phase, so:
+   *   - before first pair lands → 2 (2-card centered layout)
+   *   - before second pair lands → 4 (4-card layout; parked cards shift
+   *     to slots 1 & 2, transport targets slots 3 & 4)
+   *   - counting / pre-deal → 0 (crib not parked)
+   * If undefined, falls back to a snap of `crib.length` to {0,2,4}.
+   */
+  reservedCribLayoutCount?: 0 | 2 | 4;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -114,6 +125,7 @@ export function CribbageAnchoredCribCutMount({
   deferCutReveal = false,
   dealerDisplayName = null,
   dealerPlayerId = null,
+  reservedCribLayoutCount,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
