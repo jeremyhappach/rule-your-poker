@@ -222,6 +222,7 @@ const App = () => {
               <IncidentExportPill />
               <ChatFlightPill />
               <YahtzeeWartimeTruthPill />
+              <CribbageLabelTracePill />
 
               
 
