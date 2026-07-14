@@ -95,6 +95,13 @@ export interface CribbageAnchoredCribCutMountProps {
    * the name suffix and just renders "Crib".
    */
   dealerDisplayName?: string | null;
+  /**
+   * Wartime instrumentation only — identifies the dealer whose crib is
+   * displayed, so trace events can correlate label decisions to seat/
+   * player identity in published-runtime bug reports. Not used for
+   * rendering.
+   */
+  dealerPlayerId?: string | null;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -106,6 +113,7 @@ export function CribbageAnchoredCribCutMount({
   visibleCribCount,
   deferCutReveal = false,
   dealerDisplayName = null,
+  dealerPlayerId = null,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
