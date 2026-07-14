@@ -282,12 +282,40 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
       }
 
       if (!src) continue;
+
+      // Per-card destination anchor: prefer the reserved parked-crib
+      // slot (crib-slot-{startingOrdinal + i + 1}); fall back to the
+      // combined slot centroid only if the slot anchor is not mounted.
+      const ordinal = (intent.startingOrdinal ?? 0) + i + 1;
+      const slotEl = document.querySelector<HTMLElement>(
+        `[data-card-anchor="crib-slot-${ordinal}"]`,
+      );
+      let flightEndX = endX;
+      let flightEndY = endY;
+      let destAnchorUsed: 'crib-slot' | 'crib-centroid' = 'crib-centroid';
+      if (slotEl) {
+        const r = slotEl.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          flightEndX = r.left + r.width / 2;
+          flightEndY = r.top + r.height / 2;
+          destAnchorUsed = 'crib-slot';
+        }
+      }
+      emitCribLabelWartimeEvent('crib_discard_destination_perCard', {
+        transportIntentId: intent.id,
+        cardIndex: i,
+        ordinal,
+        destAnchorUsed,
+        flightEndX: Math.round(flightEndX),
+        flightEndY: Math.round(flightEndY),
+      });
+
       built.push({
         key: `${intent.id}-${i}`,
         startX: src.left + src.width / 2,
         startY: src.top + src.height / 2,
-        endX,
-        endY,
+        endX: flightEndX,
+        endY: flightEndY,
         delayMs: i * STAGGER_MS,
       });
     }
