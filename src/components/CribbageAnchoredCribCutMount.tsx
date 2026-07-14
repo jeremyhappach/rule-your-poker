@@ -514,96 +514,85 @@ export function CribbageAnchoredCribCutMount({
   });
 
 
-  if (!visible) {
-    // Task C1 — even when no crib pile / cut card is visible (e.g. during
-    // the `discarding` phase before any cards have been submitted), mount
-    // an empty slot so [data-card-anchor="crib"] resolves for the
-    // discard-to-crib transport animation. Rendering the slot with no
-    // children is visually a no-op — it is only a positioning anchor.
-    return (
-      <Wave4CribCutGroupSlot
-        styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
-      >
-        {cribOwnerLabel}
-      </Wave4CribCutGroupSlot>
-    );
-  }
+  // ── Parked crib-group render ─────────────────────────────────────────
+  // Always render the crib-group container inside the flex row when the
+  // crib is "parked" (i.e. `cribParked`). This gives the outer flex
+  // cluster a stable [cribGroup | gap | cutCard] shape so:
+  //
+  //   1. The label anchor at `slotCenter - (gap + cutW)/2` is stable
+  //      across 0/2/4 admitted cards.
+  //   2. The transport can resolve per-card slot anchors
+  //      `[data-card-anchor="crib-slot-{n}"]` for n = 1..reservedCount
+  //      BEFORE any card is admitted.
+  //   3. The second-pair reservation (reservedCount = 4) shifts the two
+  //      already-admitted cards into slots 1 & 2 of the final 4-card
+  //      layout BEFORE the incoming transport lands, so the incoming
+  //      cards settle exactly where their transport ended.
+  //
+  // Valid `reservedCount` values are 0, 2, 4 — never 1/3/5/6.
+  const renderedCribGroup = cribParked && reservedCount > 0 && cribGroupWidthPx > 0 ? (
+    <div
+      ref={cribRef}
+      data-parked-crib-group=""
+      style={{
+        position: 'relative',
+        width: `${cribGroupWidthPx}px`,
+        height: `${cribCardHeightPx}px`,
+        flex: '0 0 auto',
+      }}
+    >
+      {Array.from({ length: reservedCount }).map((_, i) => {
+        const ordinal = i + 1;
+        const slotLeftPx = i * (cribCardWidthPx - cribCardOverlapPx);
+        const showCard = i < resolvedVisibleCribCount;
+        return (
+          <div
+            key={ordinal}
+            data-card-anchor={`crib-slot-${ordinal}`}
+            style={{
+              position: 'absolute',
+              left: `${slotLeftPx}px`,
+              top: 0,
+              width: `${cribCardWidthPx}px`,
+              height: `${cribCardHeightPx}px`,
+            }}
+          >
+            {showCard && (
+              <CanonicalCardBack
+                widthPx={cribCardWidthPx}
+                heightPx={cribCardHeightPx}
+                variant="flat"
+                radiusPx={2}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
+
+  const renderedCutCard = cribbageState.cutCard && !isCountingPhase && !isPeggingWin ? (
+    <div ref={cutRef} data-cribbage-cut-card="">
+      <CribbageCutCardReveal
+        card={deferCutReveal ? null : cribbageState.cutCard}
+        cardBackColors={cardBackColors}
+        handBoundaryKey={handBoundaryKey}
+        widthPx={cutCardWidthPx}
+      />
+    </div>
+  ) : null;
 
   return (
     <Wave4CribCutGroupSlot
       styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
     >
       {cribOwnerLabel}
-
-      {/* Crib pile — sized from stage height. Withhold incoming crib
-          cards while their discard-to-crib transport is in flight so
-          the pile does not visually grow before flights land.
-
-          Follow-up fix — preserve the previously-settled crib count
-          as a floor while withholding is active. Without this floor,
-          the visible count briefly drops to
-          `previousLength - incoming` (e.g. 2 − 2 = 0) between the
-          moment we seed the discard intent and the moment the RPC
-          echo grows crib.length by `incoming` — producing a visible
-          flash of existing crib cardbacks disappearing. The floor is
-          reset per hand via `handBoundaryKey` so a fresh hand starts
-          from 0 correctly. */}
-      {showCribOnFelt && resolvedVisibleCribCount > 0 && (() => {
-        const visibleCount = resolvedVisibleCribCount;
-        return (
-          <div ref={cribRef} data-parked-crib-group="" className="flex flex-col items-center">
-            {/* Invisible spacer — preserves the pile's vertical position.
-                The visible "Crib: {dealer}" label is rendered above as an
-                absolute overlay so its width cannot displace the pile
-                horizontally. */}
-            <span
-              aria-hidden="true"
-              className="leading-none"
-              style={{
-                fontSize: `${spacerFontPx}px`,
-                marginBottom: '2px',
-                visibility: 'hidden',
-              }}
-            >
-              Crib
-            </span>
-            <div
-              className="flex"
-              style={{
-                marginRight: `${cribCardOverlapPx}px`,
-                minWidth: `${cribCardWidthPx}px`,
-                minHeight: `${cribCardHeightPx}px`,
-              }}
-            >
-              {Array.from({ length: visibleCount }).map((_, i) => (
-                <CanonicalCardBack
-                  key={i}
-                  widthPx={cribCardWidthPx}
-                  heightPx={cribCardHeightPx}
-                  variant="flat"
-                  radiusPx={2}
-                  style={{ marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px` }}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Cut card — artwork only, sized from stage height.
-          `deferCutReveal` gates the flip animation until all crib
-          discard transports have settled. */}
-      <div ref={cutRef}>
-        <CribbageCutCardReveal
-          card={deferCutReveal ? null : cribbageState.cutCard}
-          cardBackColors={cardBackColors}
-          handBoundaryKey={handBoundaryKey}
-          widthPx={cutCardWidthPx}
-        />
-      </div>
+      {renderedCribGroup}
+      {renderedCutCard}
     </Wave4CribCutGroupSlot>
   );
 }
+
 
 
 export default CribbageAnchoredCribCutMount;
