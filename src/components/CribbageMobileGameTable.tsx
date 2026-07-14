@@ -5349,6 +5349,7 @@ export const CribbageMobileGameTable = ({
         mode: 'self',
         cardCount: cardIndices.length,
         sourceRects: sourceRects ?? undefined,
+        startingOrdinal: discardsSettledInHand,
       });
     } catch {
       /* animation is best-effort; never block gameplay */
