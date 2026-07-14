@@ -8037,6 +8037,7 @@ export const CribbageMobileGameTable = ({
                   ? getPlayerUsername(gameplayRenderState.dealerPlayerId)
                   : null
               }
+              dealerPlayerId={gameplayRenderState.dealerPlayerId ?? null}
             />
           )}
 
