@@ -8039,6 +8039,7 @@ export const CribbageMobileGameTable = ({
                 const inFlight = discardIntent?.cardCount ?? 0;
                 const projected = Math.max(
                   authoritative,
+                  authoritative + inFlight,
                   discardsSettledInHand + inFlight,
                 );
                 if (projected >= 3) return 4;
