@@ -286,12 +286,12 @@ export function CribbageAnchoredCribCutMount({
   // uses the canonical `truncate` utility (matches scoring-rail player
   // labels) so long names ellipsize instead of resizing the container
   // or shifting geometry.
-  const cribOwnerLabel = cribParked && stageWidthPx > 0 && labelContainerWidthPx > 0 ? (
+  const cribOwnerLabel = cribParked && !!dealerDisplayName ? (
     <div
       data-crib-owner-label=""
       className="pointer-events-none absolute"
       style={{
-        left: 0,
+        left: `${labelLeftPx}px`,
         top: 0,
         width: `${labelContainerWidthPx}px`,
         textAlign: 'center',
