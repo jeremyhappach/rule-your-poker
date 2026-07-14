@@ -270,6 +270,133 @@ export function CribbageAnchoredCribCutMount({
     </div>
   ) : null;
 
+  const labelEmitted = cribOwnerLabel !== null;
+  const renderBranch = !visible
+    ? 'empty-slot'
+    : (showCribOnFelt && resolvedVisibleCribCount > 0)
+      ? 'crib-pile+cut'
+      : 'cut-only';
+
+  // ── Wartime instrumentation — read-only ──────────────────────────────
+  // Emit the label render decision on every meaningful change so we can
+  // reconstruct why the "Crib: {dealer}" text does or does not appear.
+  emitCribLabelWartimeEvent(
+    'crib_owner_label_decision',
+    {
+      dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+      dealerDisplayName,
+      labelText,
+      cribParked,
+      isCountingPhase,
+      isPeggingWin,
+      phaseForLayout,
+      showCribOnFelt,
+      visible,
+      labelContainerWidthPx: Math.round(labelContainerWidthPx * 100) / 100,
+      stageWidthPx: Math.round(stageWidthPx * 100) / 100,
+      stageHeightPx: Math.round(stageHeightPx * 100) / 100,
+      cutCardWidthPx: Math.round(cutCardWidthPx * 100) / 100,
+      cribToCutGapPx: Math.round(cribToCutGapPx * 100) / 100,
+      renderBranch,
+      labelEmitted,
+      placementResolved: !!placement && !!placement.visible,
+      vminInPx: Math.round(vminInPx * 100) / 100,
+    },
+    {
+      // Dedupe on the identity of the decision. Numeric px are rounded
+      // to whole units for the signature only, so sub-pixel jitter does
+      // not spam.
+      signature: [
+        dealerPlayerId ?? 'null',
+        dealerDisplayName ?? 'null',
+        cribParked ? 1 : 0,
+        isCountingPhase ? 1 : 0,
+        isPeggingWin ? 1 : 0,
+        phaseForLayout,
+        showCribOnFelt ? 1 : 0,
+        visible ? 1 : 0,
+        renderBranch,
+        labelEmitted ? 1 : 0,
+        Math.round(labelContainerWidthPx),
+        Math.round(stageWidthPx),
+        Math.round(cutCardWidthPx),
+        Math.round(cribToCutGapPx),
+      ].join('|'),
+    },
+  );
+
+  const labelDomWatchRef = useRef<{ present: boolean | null; sig: string }>({
+    present: null,
+    sig: '',
+  });
+
+  useEffect(() => {
+    // Query the actual committed DOM for the label marker so we can
+    // report whether the JSX we thought we emitted actually reached the
+    // page (and how the browser resolved its computed styles / rect).
+    const raf = requestAnimationFrame(() => {
+      const node = document.querySelector<HTMLElement>('[data-crib-owner-label]');
+      const slot = document.querySelector<HTMLElement>('[data-card-anchor="crib"]');
+      let computed: {
+        color: string;
+        opacity: string;
+        visibility: string;
+        display: string;
+      } | null = null;
+      let rect: { x: number; y: number; width: number; height: number } | null = null;
+      if (node) {
+        const cs = window.getComputedStyle(node);
+        computed = {
+          color: cs.color,
+          opacity: cs.opacity,
+          visibility: cs.visibility,
+          display: cs.display,
+        };
+        const r = node.getBoundingClientRect();
+        rect = {
+          x: Math.round(r.left),
+          y: Math.round(r.top),
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        };
+      }
+      let slotRect: { x: number; y: number; width: number; height: number } | null = null;
+      if (slot) {
+        const r = slot.getBoundingClientRect();
+        slotRect = {
+          x: Math.round(r.left),
+          y: Math.round(r.top),
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        };
+      }
+      const present = !!node;
+      const sig = [
+        present ? 1 : 0,
+        computed ? `${computed.color}|${computed.opacity}|${computed.visibility}|${computed.display}` : 'null',
+        rect ? `${rect.x},${rect.y},${rect.width},${rect.height}` : 'null',
+        slotRect ? `${slotRect.x},${slotRect.y},${slotRect.width},${slotRect.height}` : 'null',
+        labelEmitted ? 1 : 0,
+      ].join('|');
+      if (labelDomWatchRef.current.sig === sig) return;
+      labelDomWatchRef.current = { present, sig };
+      emitCribLabelWartimeEvent('crib_owner_label_dom_changed', {
+        dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+        labelEmitted,
+        domPresent: present,
+        computedColor: computed?.color ?? null,
+        computedOpacity: computed?.opacity ?? null,
+        computedVisibility: computed?.visibility ?? null,
+        computedDisplay: computed?.display ?? null,
+        labelRect: rect,
+        slotRect,
+        renderBranch,
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+
+
   if (!visible) {
     // Task C1 — even when no crib pile / cut card is visible (e.g. during
     // the `discarding` phase before any cards have been submitted), mount
