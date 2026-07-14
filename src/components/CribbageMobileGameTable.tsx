@@ -8030,6 +8030,24 @@ export const CribbageMobileGameTable = ({
                 discardsSettledInHand,
                 gameplayRenderState.crib?.length ?? 0,
               )}
+              reservedCribLayoutCount={(() => {
+                const authoritative = gameplayRenderState.crib?.length ?? 0;
+                // Reserve for the INTENDED final layout so the parked
+                // crib slots exist at their final positions BEFORE the
+                // incoming transport lands. When an intent is in-flight,
+                // combine already-settled cards with in-flight cards.
+                const inFlight = discardIntent?.cardCount ?? 0;
+                const projected = Math.max(
+                  authoritative,
+                  discardsSettledInHand + inFlight,
+                );
+                if (projected >= 3) return 4;
+                if (projected >= 1) return 2;
+                // Before any discard while the crib is still parked
+                // (dealing → discarding), reserve a 2-card layout so
+                // the first pair can target crib-slot-1 / crib-slot-2.
+                return discardIntent ? 2 : 0;
+              })()}
               deferCutReveal={
                 !!gameplayRenderState.cutCard &&
                 discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0)
