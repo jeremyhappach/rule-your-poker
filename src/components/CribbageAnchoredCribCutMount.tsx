@@ -303,18 +303,22 @@ export function CribbageAnchoredCribCutMount({
       data-crib-owner-label=""
       className="pointer-events-none absolute"
       style={{
-        left: `${labelLeftPx}px`,
+        left: `${cribCenterInSlotPx}px`,
         top: 0,
         width: `${labelContainerWidthPx}px`,
+        transform: 'translateX(-50%)',
         textAlign: 'center',
         zIndex: 1,
       }}
     >
       <span
-        className="text-white truncate block leading-none"
+        className="text-white block leading-none"
         style={{
           fontSize: `${labelFontPx}px`,
           maxWidth: '100%',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {labelText}
