@@ -198,49 +198,61 @@ export function CribbageAnchoredCribCutMount({
   const cribParked =
     !isCountingPhase && !isPeggingWin && phaseForLayout !== 'complete';
 
-  // Reserved parked-crib layout count — snaps to {0, 2, 4} and never
-  // generates 1/3/5/6-card geometry. Parent controls this so it can
-  // reserve the 4-card layout BEFORE the second-pair transport launches;
-  // when undefined, we snap authoritative `crib.length`.
-  const reservedCountRaw = reservedCribLayoutCount ?? (
-    cribbageState.crib.length >= 4 ? 4
-      : cribbageState.crib.length >= 2 ? 2
-        : cribbageState.crib.length >= 1 ? 2
-          : 0
-  );
-  const reservedCount: 0 | 2 | 4 =
-    reservedCountRaw >= 4 ? 4 : reservedCountRaw >= 2 ? 2 : 0;
+  // Reserved parked-crib layout count. Once the crib is parked we ALWAYS
+  // reserve the full 4-card footprint (regardless of authoritative
+  // crib.length or the parent-supplied hint), so:
+  //   - All four `crib-slot-{1..4}` anchors exist BEFORE the first
+  //     discard transport launches.
+  //   - Anchor positions do not shift when the visible crib count
+  //     changes (0 → 2 → 4) or when the cut card is revealed.
+  //   - Transports resolve their per-card destinations from the same
+  //     final parked layout the render will use, eliminating post-settle
+  //     horizontal correction.
+  // The parent-provided `reservedCribLayoutCount` prop is kept in the
+  // signature for backwards compatibility but no longer varies the
+  // reservation; the parked footprint is invariant across the parked
+  // lifecycle.
+  void reservedCribLayoutCount;
+  const reservedCount: 0 | 2 | 4 = cribParked ? 4 : 0;
 
-  // Crib-group container width for the reserved layout. This is what
-  // the flex row measures on the crib side; the outer flex row centers
-  // [cribGroup | gap | cutCard] within the slot regardless of cribGroup
-  // width — which makes the crib-group CENTER a stable offset from the
-  // slot center for any reservedCount ≥ 2 (see label anchor below).
-  const cribGroup2CardWidthPx = Math.max(
-    0,
-    2 * cribCardWidthPx - 1 * cribCardOverlapPx,
-  );
+  // Crib-group container width for the reserved layout. The full 4-card
+  // footprint is the only value ever rendered during the parked
+  // lifecycle, which keeps the outer flex row [cribGroup | gap | cutCard]
+  // width stable and therefore keeps the crib-group CENTER at a fixed
+  // offset from the slot center for the entire parked lifecycle.
   const cribGroup4CardWidthPx = Math.max(
     0,
     4 * cribCardWidthPx - 3 * cribCardOverlapPx,
   );
-  const cribGroupWidthPx =
-    reservedCount === 4 ? cribGroup4CardWidthPx
-      : reservedCount === 2 ? cribGroup2CardWidthPx
-        : 0;
+  const cribGroupWidthPx = reservedCount === 4 ? cribGroup4CardWidthPx : 0;
 
   // Label anchor. Under `justify-content: center` on the Wave4CribCutGroupSlot
-  // flex row, the crib-group CENTER sits at:
+  // flex row with a fixed 4-card cribGroup + gap + cutCard cluster, the
+  // crib-group CENTER sits at:
   //   slotCenterX - (gap + cutCardWidth) / 2
-  // — independent of cribGroupWidth. We therefore anchor the label to
-  // that stable point and give the container a FIXED width equal to the
-  // 4-card crib group (the widest reservation). The container width
-  // never changes with crib-card count OR player-name length; long names
-  // ellipsize inside via `truncate`.
-  const labelContainerWidthPx = cribGroup4CardWidthPx;
+  // — stable across 0/2/4 admitted cards.
   const cribCenterInSlotPx =
     stageWidthPx / 2 - (cribToCutGapPx + cutCardWidthPx) / 2;
-  const labelLeftPx = cribCenterInSlotPx - labelContainerWidthPx / 2;
+
+  // Label container. The label is FELT TEXT, not gameplay chrome — it
+  // does not participate in crib/cut layout and is not constrained by
+  // the crib artifact. Reserve the maximum safe horizontal space
+  // bounded by:
+  //   left  = left edge of the playable felt (felt-frame origin)
+  //   right = left edge of the cut card
+  // In slot-local px coordinates:
+  //   feltLeftInSlot  = -assignedRect.x * vminInPx
+  //   cutLeftInSlot   = slotCenter + cribGroup4W/2 + gap/2 - cutW/2
+  // Anchor the text visually over the crib-group center; the container
+  // grows symmetrically until it hits whichever boundary is tighter, so
+  // the text stays centered over the crib and only ellipsizes when the
+  // full string genuinely cannot fit inside the safe region.
+  const feltLeftInSlotPx = -assignedRect.x * vminInPx;
+  const cutLeftInSlotPx =
+    stageWidthPx / 2 + cribGroup4CardWidthPx / 2 + cribToCutGapPx / 2 - cutCardWidthPx / 2;
+  const leftSafePx = Math.max(0, cribCenterInSlotPx - feltLeftInSlotPx);
+  const rightSafePx = Math.max(0, cutLeftInSlotPx - cribCenterInSlotPx);
+  const labelContainerWidthPx = 2 * Math.min(leftSafePx, rightSafePx);
   // Fixed font size (viewport-responsive via stageHeight but content-
   // independent — never grows/shrinks with name length).
   const labelFontPx = Math.max(9, Math.round(stageHeightPx * 0.16));
@@ -291,18 +303,22 @@ export function CribbageAnchoredCribCutMount({
       data-crib-owner-label=""
       className="pointer-events-none absolute"
       style={{
-        left: `${labelLeftPx}px`,
+        left: `${cribCenterInSlotPx}px`,
         top: 0,
         width: `${labelContainerWidthPx}px`,
+        transform: 'translateX(-50%)',
         textAlign: 'center',
         zIndex: 1,
       }}
     >
       <span
-        className="text-white truncate block leading-none"
+        className="text-white block leading-none"
         style={{
           fontSize: `${labelFontPx}px`,
           maxWidth: '100%',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {labelText}
@@ -572,15 +588,35 @@ export function CribbageAnchoredCribCutMount({
     </div>
   ) : null;
 
-  const renderedCutCard = cribbageState.cutCard && !isCountingPhase && !isPeggingWin ? (
+  // Cut-card slot. Always reserve the cut-card footprint during the
+  // parked lifecycle so the [cribGroup | gap | cutCard] cluster width
+  // (and therefore every crib-slot anchor position) is invariant BEFORE
+  // any card lands and BEFORE the visual cut reveal. If the authoritative
+  // `cutCard` has not resolved yet, render an equivalently-sized
+  // placeholder so layout space is held; the visual reveal happens the
+  // moment `cribbageState.cutCard` becomes available.
+  const cutRevealActive =
+    !!cribbageState.cutCard && !isCountingPhase && !isPeggingWin;
+  const renderedCutCard = cribParked ? (
     <div ref={cutRef} data-cribbage-cut-card="">
-      <CribbageCutCardReveal
-        card={deferCutReveal ? null : cribbageState.cutCard}
-        cardBackColors={cardBackColors}
-        handBoundaryKey={handBoundaryKey}
-        widthPx={cutCardWidthPx}
-        labelInFlow={false}
-      />
+      {cutRevealActive ? (
+        <CribbageCutCardReveal
+          card={deferCutReveal ? null : cribbageState.cutCard}
+          cardBackColors={cardBackColors}
+          handBoundaryKey={handBoundaryKey}
+          widthPx={cutCardWidthPx}
+          labelInFlow={false}
+        />
+      ) : (
+        <div
+          aria-hidden
+          style={{
+            width: `${cutCardWidthPx}px`,
+            height: `${cutCardHeightPx}px`,
+            visibility: 'hidden',
+          }}
+        />
+      )}
     </div>
   ) : null;
 
