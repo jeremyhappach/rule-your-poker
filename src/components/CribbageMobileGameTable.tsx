@@ -8035,11 +8035,16 @@ export const CribbageMobileGameTable = ({
                 // Reserve for the INTENDED final layout so the parked
                 // crib slots exist at their final positions BEFORE the
                 // incoming transport lands. When an intent is in-flight,
-                // combine already-settled cards with in-flight cards.
+                // use the intent's own starting ordinal + card count;
+                // for opponent flights, authoritative crib length already
+                // includes the incoming cards, so do not add inFlight to it.
                 const inFlight = discardIntent?.cardCount ?? 0;
+                const intentProjected = discardIntent
+                  ? (discardIntent.startingOrdinal ?? 0) + inFlight
+                  : 0;
                 const projected = Math.max(
                   authoritative,
-                  authoritative + inFlight,
+                  intentProjected,
                   discardsSettledInHand + inFlight,
                 );
                 if (projected >= 3) return 4;
