@@ -87,6 +87,13 @@ export interface CribbageAnchoredCribCutMountProps {
    * authoritative `cribbageState.cutCard` is unchanged.
    */
   deferCutReveal?: boolean;
+  /**
+   * Display name of the current crib owner (dealer). Rendered as
+   * "Crib: {dealerDisplayName}" as felt text centered over the crib
+   * parked position. Purely presentational — undefined/null suppresses
+   * the name suffix and just renders "Crib".
+   */
+  dealerDisplayName?: string | null;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -97,6 +104,7 @@ export function CribbageAnchoredCribCutMount({
   countingOutroActive = false,
   visibleCribCount,
   deferCutReveal = false,
+  dealerDisplayName = null,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
@@ -145,6 +153,7 @@ export function CribbageAnchoredCribCutMount({
     : { x: 0, y: 0, width: 0, height: 0 };
 
   const stageHeightPx = assignedRect.height * vminInPx;
+  const stageWidthPx = assignedRect.width * vminInPx;
 
   // Card sizing — width derives from height via CARD_ASPECT so widthPx
   // (the prop CribbagePlayingCard understands) produces the correct height.
@@ -160,6 +169,36 @@ export function CribbageAnchoredCribCutMount({
   const cribToCutGap = useCardOverlap('cardOverlap.cribbage.cribToCutGap');
   const cribCardOverlapPx = cribCardWidthPx * cribFanOverlap;
   const cribToCutGapPx = cribCardWidthPx * cribToCutGap;
+
+  // ── Crib-owner label geometry ────────────────────────────────────────
+  // Label lifecycle: whenever the crib is parked beside the cut card
+  // (before/during/after discards). Hidden during counting and after a
+  // pegging win. Uses the same phase gates as the crib presentation.
+  const cribParked =
+    !isCountingPhase && !isPeggingWin && phaseForLayout !== 'complete';
+
+  // Fixed-width label container. Reserves the crib-side horizontal region
+  // of the stage (everything to the left of the gap + cut card), so the
+  // container center equals slot-center - (cutCardWidthPx + gap)/2 — i.e.
+  // exactly the crib pile center in the 4-card + cut card cluster case,
+  // and a stable felt position across the 0/2/4 crib-card counts. Width
+  // depends only on stageWidth/cutCardWidth/gap, not on player-name
+  // length, so the reserved area does not shift.
+  const labelContainerWidthPx = Math.max(
+    0,
+    stageWidthPx - cutCardWidthPx - cribToCutGapPx,
+  );
+  // Fixed font size (viewport-responsive via stageHeight but content-
+  // independent — never grows/shrinks with name length).
+  const labelFontPx = Math.max(9, Math.round(stageHeightPx * 0.16));
+  // Invisible-spacer font size mirrors the pre-existing inline "Crib"
+  // label so the pile's vertical position does not shift when the visible
+  // "Crib" text is moved into the overlay.
+  const spacerFontPx = Math.max(7, Math.round(cribCardWidthPx * 0.4));
+  const labelText = dealerDisplayName
+    ? `Crib: ${dealerDisplayName}`
+    : 'Crib';
+
 
 
   const cribRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +229,38 @@ export function CribbageAnchoredCribCutMount({
     ],
   });
 
+  // Absolutely-positioned crib-owner felt label. Kept as a shared node so
+  // both the empty-slot branch and the populated-slot branch render an
+  // identical label. Left/width reserve the crib-side region of the
+  // stage; the container itself does not shift with crib-card count and
+  // never encroaches on the cut card or the crib+cut gap. Truncation
+  // uses the canonical `truncate` utility (matches scoring-rail player
+  // labels) so long names ellipsize instead of resizing the container
+  // or shifting geometry.
+  const cribOwnerLabel = cribParked && stageWidthPx > 0 && labelContainerWidthPx > 0 ? (
+    <div
+      data-crib-owner-label=""
+      className="pointer-events-none absolute"
+      style={{
+        left: 0,
+        top: 0,
+        width: `${labelContainerWidthPx}px`,
+        textAlign: 'center',
+        zIndex: 1,
+      }}
+    >
+      <span
+        className="text-white truncate block leading-none"
+        style={{
+          fontSize: `${labelFontPx}px`,
+          maxWidth: '100%',
+        }}
+      >
+        {labelText}
+      </span>
+    </div>
+  ) : null;
+
   if (!visible) {
     // Task C1 — even when no crib pile / cut card is visible (e.g. during
     // the `discarding` phase before any cards have been submitted), mount
@@ -199,7 +270,9 @@ export function CribbageAnchoredCribCutMount({
     return (
       <Wave4CribCutGroupSlot
         styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
-      />
+      >
+        {cribOwnerLabel}
+      </Wave4CribCutGroupSlot>
     );
   }
 
@@ -207,6 +280,7 @@ export function CribbageAnchoredCribCutMount({
     <Wave4CribCutGroupSlot
       styleVars={{ ['--cribcut-gap' as string]: `${cribToCutGapPx}px` }}
     >
+      {cribOwnerLabel}
 
       {/* Crib pile — sized from stage height. Withhold incoming crib
           cards while their discard-to-crib transport is in flight so
@@ -225,11 +299,17 @@ export function CribbageAnchoredCribCutMount({
         const visibleCount = resolvedVisibleCribCount;
         return (
           <div ref={cribRef} className="flex flex-col items-center">
+            {/* Invisible spacer — preserves the pile's vertical position.
+                The visible "Crib: {dealer}" label is rendered above as an
+                absolute overlay so its width cannot displace the pile
+                horizontally. */}
             <span
-              className="text-white/60 leading-none"
+              aria-hidden="true"
+              className="leading-none"
               style={{
-                fontSize: `${Math.max(7, Math.round(cribCardWidthPx * 0.4))}px`,
+                fontSize: `${spacerFontPx}px`,
                 marginBottom: '2px',
+                visibility: 'hidden',
               }}
             >
               Crib
@@ -271,5 +351,6 @@ export function CribbageAnchoredCribCutMount({
     </Wave4CribCutGroupSlot>
   );
 }
+
 
 export default CribbageAnchoredCribCutMount;
