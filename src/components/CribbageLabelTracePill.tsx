@@ -22,16 +22,16 @@ import {
 function isEnabled(): boolean {
   try {
     const p = new URLSearchParams(window.location.search);
-    if (p.get('crib_label_trace') === '1') return true;
+    if (p.get('crib_label_trace') === '0') return false;
   } catch {
     /* */
   }
   try {
-    if (window.localStorage.getItem('ptp_crib_label_trace') === '1') return true;
+    if (window.localStorage.getItem('ptp_crib_label_trace') === '0') return false;
   } catch {
     /* */
   }
-  return false;
+  return true;
 }
 
 function download(filename: string, text: string) {
