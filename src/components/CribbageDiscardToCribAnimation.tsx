@@ -96,6 +96,28 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
     if (!intent) return;
 
     const dst = resolveCribRect();
+    const dstAnchorEl = document.querySelector<HTMLElement>('[data-card-anchor="crib"]');
+    const dstAnchorMode = dstAnchorEl?.getAttribute('data-wave4-cribcut-slot') ?? null;
+    const dstArtifactId = dstAnchorEl?.getAttribute('data-artifact-id') ?? null;
+    emitCribLabelWartimeEvent('crib_discard_destination_resolved', {
+      intentId: intent.id,
+      mode: intent.mode,
+      opponentPosition: intent.opponentPosition ?? null,
+      cardCount: intent.cardCount,
+      destRect: dst
+        ? {
+            x: Math.round(dst.left),
+            y: Math.round(dst.top),
+            width: Math.round(dst.width),
+            height: Math.round(dst.height),
+            centerX: Math.round(dst.left + dst.width / 2),
+            centerY: Math.round(dst.top + dst.height / 2),
+          }
+        : null,
+      dstAnchorFound: !!dstAnchorEl,
+      dstAnchorMode,
+      dstArtifactId,
+    });
     if (!dst || dst.width <= 0 || dst.height <= 0) {
       onSettledRef.current(intent.id);
       return;
@@ -113,11 +135,31 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
     for (let i = 0; i < intent.cardCount; i += 1) {
       const perCard = intent.sourceRects?.[i];
       let src: { left: number; top: number; width: number; height: number } | null = null;
+      let srcOrigin: 'perCard' | 'fallback' | 'none' = 'none';
       if (perCard && perCard.width > 0 && perCard.height > 0) {
         src = { left: perCard.x, top: perCard.y, width: perCard.width, height: perCard.height };
+        srcOrigin = 'perCard';
       } else if (fallback && fallback.width > 0 && fallback.height > 0) {
         src = { left: fallback.left, top: fallback.top, width: fallback.width, height: fallback.height };
+        srcOrigin = 'fallback';
       }
+      emitCribLabelWartimeEvent('crib_discard_source_resolved', {
+        intentId: intent.id,
+        cardIndex: i,
+        srcOrigin,
+        srcRect: src
+          ? {
+              x: Math.round(src.left),
+              y: Math.round(src.top),
+              width: Math.round(src.width),
+              height: Math.round(src.height),
+              centerX: Math.round(src.left + src.width / 2),
+              centerY: Math.round(src.top + src.height / 2),
+            }
+          : null,
+        endX: Math.round(endX),
+        endY: Math.round(endY),
+      });
       if (!src) continue;
       built.push({
         key: `${intent.id}-${i}`,
