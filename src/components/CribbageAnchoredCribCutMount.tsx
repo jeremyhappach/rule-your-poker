@@ -387,6 +387,8 @@ export function CribbageAnchoredCribCutMount({
   });
 
   const parkedGroupWatchRef = useRef<string>('');
+  const labelCoverWatchRef = useRef<string>('');
+  const cutLifecycleWatchRef = useRef<string>('');
 
   const rectOf = (el: Element | null) => {
     if (!el) return null;
