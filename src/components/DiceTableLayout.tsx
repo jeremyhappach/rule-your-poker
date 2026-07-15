@@ -2025,7 +2025,7 @@ export function DiceTableLayout({
   }
 
   return (
-    <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
+    <div ref={containerRef} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
       <div className="absolute inset-0 z-10 pointer-events-none" data-dice-layer="scatter" data-layer-z={10}>
         {orderedDice.map((item) => renderDieForLayer(item, "scatter"))}
       </div>
