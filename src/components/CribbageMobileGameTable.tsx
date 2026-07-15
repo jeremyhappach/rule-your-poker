@@ -35,6 +35,10 @@ const getPegTransportEntries: () => Array<{ attemptId: string; animationSettled:
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
+import {
+  recordCribbageActiveHand,
+  recordCribbageActiveHandContradiction,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
