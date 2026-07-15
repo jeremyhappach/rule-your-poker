@@ -15,6 +15,8 @@ import { buildMetaPayload, BUILD_META } from "@/lib/buildMeta";
 import { getClientId, getClientTimestamp, getShortGameId } from "@/lib/clientContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { captureCribbageActiveHandSnapshot } from "@/lib/cribbage/activeHandSnapshotStore";
+
 
 interface VisualBugReportButtonProps {
   gameId: string;
