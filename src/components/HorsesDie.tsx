@@ -235,6 +235,8 @@ export function HorsesDie({
         !canToggle && !isUnusedDie && "opacity-95",
       )}
       style={{
+        // Optional explicit pixel size (Yahtzee Wave 2E fluid sizing).
+        ...(sizePx != null ? { width: sizePx, height: sizePx } : null),
         // 3D edge effect with inset highlight and drop shadow
         boxShadow: animating 
           ? '0 0 12px 2px rgba(251, 191, 36, 0.6), inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3)' 
