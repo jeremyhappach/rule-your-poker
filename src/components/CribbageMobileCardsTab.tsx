@@ -926,7 +926,49 @@ export const CribbageMobileCardsTab = ({
   // mount boundary. Action-legality remains gated separately below.
   const dealingPartialReveal =
     deal?.phase === 'DEALING' && renderedHand.length > 0;
-  if (activeHandBlocked && !shouldSelfHeal && !dealingPartialReveal) {
+  const emptyStageEarlyReturnActive =
+    activeHandBlocked && !shouldSelfHeal && !dealingPartialReveal;
+
+  // Instrumentation only — publish current active-hand presentation
+  // state to the snapshot store so VisualBugReportButton can attach it
+  // to `extra_context.cribbage_active_hand_snapshot` at submit time.
+  // Reuses the existing bounded Cribbage Active-Hand Visibility Ledger
+  // for the trailing trace tail. No gameplay, transport, lifecycle, or
+  // rendering behavior depends on this call.
+  useEffect(() => {
+    publishCribbageActiveHandSnapshot({
+      viewerPlayerId: currentPlayerId,
+      roundId: expectedRoundId,
+      handNumber: renderTrace?.handNumber ?? null,
+      handContextId: renderTrace?.currentHandKey ?? null,
+      authoritativeHandCount: authCount,
+      sourceHandCount: sourceHand.length,
+      presentationHandCount: presentationCount,
+      clippedHandCount: clippedHand.length,
+      renderedHandCount: renderedCount,
+      resolverDecision: visibleHandDecision.decision ?? null,
+      resolverReason: visibleHandDecision.reason ?? null,
+      decisionKind,
+      dealPhase: deal?.phase ?? null,
+      activeIntentCountForHand: deal?.activeIntentsForHand ?? null,
+      settledCardCountForViewer: settledCount,
+      cribbagePhase: cribbageState.phase ?? null,
+      renderHandKey: renderTrace?.renderHandKey ?? null,
+      currentHandKey: renderTrace?.currentHandKey ?? null,
+      parentSuppressed,
+      activeHandBlocked,
+      roundIdentityMismatch,
+      handIdentityMismatch,
+      emptyStageEarlyReturnActive,
+      dealingPartialRevealActive: dealingPartialReveal,
+    });
+  });
+  useEffect(() => {
+    return () => { clearCribbageActiveHandSnapshot(); };
+  }, []);
+
+  if (emptyStageEarlyReturnActive) {
+
     return (
       <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
         <div data-crib-active-hand-stage="" className="overflow-hidden" />
