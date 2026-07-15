@@ -62,6 +62,7 @@ function recordCribbageTransportIntentLifecycle(
   intent: ActiveCardIntent,
   detail: Record<string, unknown>,
 ): void {
+  if (detail.gameType !== 'cribbage') return;
   recordCribbageActiveHand('deal-transport', tag, {
     ...detail,
     intentId: intent.id,

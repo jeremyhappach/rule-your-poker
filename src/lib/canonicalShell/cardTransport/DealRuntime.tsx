@@ -336,7 +336,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       }
     });
     return off;
-  }, [ctx, handContextId, gameType]);
+  }, [ctx, handContextId, gameType, phase, settledCardIds, settledByRecipient]);
 
   const beginDeal = useCallback((count: number) => {
     if (gameType === 'cribbage') {

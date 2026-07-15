@@ -30,6 +30,7 @@ function recordCribbageCardTransportProvider(
   payload: Record<string, unknown>,
   opts: { fn: string; key?: string },
 ): void {
+  if (payload.gameType !== 'cribbage') return;
   recordCribbageActiveHand('deal-transport', tag, payload, {
     producer: 'CardTransportProvider',
     fn: opts.fn,
