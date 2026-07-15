@@ -15,6 +15,8 @@ import { buildMetaPayload, BUILD_META } from "@/lib/buildMeta";
 import { getClientId, getClientTimestamp, getShortGameId } from "@/lib/clientContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { captureCribbageActiveHandSnapshot } from "@/lib/cribbage/activeHandSnapshotStore";
+
 
 interface VisualBugReportButtonProps {
   gameId: string;
@@ -174,6 +176,13 @@ export const VisualBugReportButton = ({
         return;
       }
 
+      // Mounted-game discriminator: the Cribbage snapshot store is
+      // populated only while CribbageMobileCardsTab is mounted. A
+      // non-null capture therefore reflects the currently mounted
+      // client surface, independent of persisted games.game_type
+      // (which can lag or mismatch — tracked separately).
+      const cribbageActiveHandSnapshot = captureCribbageActiveHandSnapshot();
+
       const payload = {
         reporter_user_id: user.id,
         bug_type: entry.value,
@@ -198,8 +207,13 @@ export const VisualBugReportButton = ({
           client_timestamp: getClientTimestamp(),
           short_game_id: getShortGameId(gameId),
           requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
+          ...(cribbageActiveHandSnapshot
+            ? { cribbage_active_hand_snapshot: cribbageActiveHandSnapshot }
+            : {}),
         },
       };
+
+
 
       const { error } = await supabase
         .from('visual_bug_reports' as any)
