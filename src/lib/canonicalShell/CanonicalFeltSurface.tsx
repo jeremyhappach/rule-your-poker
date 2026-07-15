@@ -320,10 +320,10 @@ export function CanonicalFeltSurface({
               </span>
               <span data-canonical-felt-plate-sub="" className="canonical-felt-plate-sub block w-full text-center text-white/40 text-xs font-medium">
                 {pointsToWin !== undefined ? `${pointsToWin} to win` : null}
-                {cribbageSkunk?.skunkEnabled && cribbageSkunk?.skunkThreshold !== undefined &&
-                  ` • Skunk <${cribbageSkunk.skunkThreshold} (2x)`}
-                {cribbageSkunk?.doubleSkunkEnabled && cribbageSkunk?.doubleSkunkThreshold !== undefined &&
-                  ` • Double <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
+              {cribbageSkunk?.skunkEnabled && cribbageSkunk?.skunkThreshold !== undefined &&
+                ` • <${cribbageSkunk.skunkThreshold} (2x)`}
+              {cribbageSkunk?.doubleSkunkEnabled && cribbageSkunk?.doubleSkunkThreshold !== undefined &&
+                ` • <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
               </span>
             </>
           ) : gameKind === "gin-rummy" ? (
