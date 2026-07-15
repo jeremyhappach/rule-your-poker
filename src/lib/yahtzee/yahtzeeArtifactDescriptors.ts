@@ -50,7 +50,7 @@ function opponentDiceStage(): ArtifactDescriptor {
     //   observer client. Matching the descriptor aspect to the natural
     //   200×120 stage lets the fitter reach scale ≥ 1, so opponent dice
     //   render at their proper size across viewports.
-    widthPct: 0.75,
+    widthPct: 0.92,
     aspectRatio: 200 / 120,
   };
 }
