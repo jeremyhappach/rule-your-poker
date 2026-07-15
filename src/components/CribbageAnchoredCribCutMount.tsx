@@ -349,7 +349,6 @@ export function CribbageAnchoredCribCutMount({
   const renderedCribGroup = cribParked && reservedCount > 0 && cribGroupWidthPx > 0 ? (
     <div
       ref={cribRef}
-      data-parked-crib-group=""
       style={{
         position: 'relative',
         width: `${cribGroupWidthPx}px`,
