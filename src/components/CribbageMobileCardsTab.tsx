@@ -20,6 +20,11 @@ import {
   recordCribbageActiveHand,
   recordCribbageActiveHandContradiction,
 } from '@/lib/cribbage/activeHandVisibilityLedger';
+import {
+  publishCribbageActiveHandSnapshot,
+  clearCribbageActiveHandSnapshot,
+} from '@/lib/cribbage/activeHandSnapshotStore';
+
 
 /**
  * Push a payload into the Cribbage active-hand visibility ledger.
