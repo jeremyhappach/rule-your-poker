@@ -2441,6 +2441,7 @@ export function YahtzeeGameTable({
                           canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
                           onToggle={() => handleToggleHold(idx)}
                           size={resolvedDieSize}
+                          sizePx={fluidDiePx ?? undefined}
                           showWildHighlight={false}
                         />
                       );
