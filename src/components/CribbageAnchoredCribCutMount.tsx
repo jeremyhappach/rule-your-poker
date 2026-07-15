@@ -36,7 +36,7 @@
  * pixels.
  */
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
@@ -46,7 +46,6 @@ import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeo
 import { useChildrenBoundsContract } from '@/lib/wave5GameplayGeometry/useChildrenBoundsContract';
 import { toVmin } from '@/lib/wave4LayoutResolver';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
-import { emitCribLabelWartimeEvent } from '@/lib/cribbage/cribLabelWartimeLedger';
 
 
 const CRIB_CUT_GROUP_ID = 'cribbage.cribCutGroup';
