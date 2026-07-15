@@ -207,7 +207,7 @@ export function HorsesDie({
       onClick={canToggle ? onToggle : undefined}
       disabled={!canToggle}
       className={cn(
-        sizeClasses[size],
+        sizePx == null && sizeClasses[size],
         "rounded-lg border-2 relative",
         "transition-[transform,background-color,border-color,box-shadow,opacity] duration-150",
         "flex items-center justify-center",
