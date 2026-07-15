@@ -730,11 +730,13 @@ export function CanonicalSeatCluster({
   // Below-chip stack: score line (and children if growth DOWN).
   const belowChipNodes: ReactNode[] = [];
   if (!hideChipBubble && scoreLine) {
+    // High-contrast score pill: white text on dark translucent plate so it
+    // remains legible from every seat regardless of felt image brightness.
     belowChipNodes.push(
       <span
         key="score"
-        className="text-[10px] font-semibold text-poker-gold leading-none whitespace-nowrap"
-        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+        className="text-[10px] font-semibold text-white leading-none whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5"
+        style={{ minWidth: '2.75rem', textAlign: 'center' }}
       >
         {scoreLine}
       </span>,
