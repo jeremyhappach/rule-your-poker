@@ -8,12 +8,36 @@ import {
   isYahtzeeWartimeArmed,
   subscribeYahtzeeWartime,
 } from '@/lib/yahtzee/yahtzeeWartimeLedger';
+import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 /**
  * Single, temporary on-screen control for the Yahtzee Wartime Truth ledger.
  * Arm/disarm, clear, export TXT, live entry + contradiction counts.
+ *
+ * Admin-gated: this diagnostic surface is only mounted for users whose
+ * canonical `user_roles.role = 'admin'` entitlement is true (see
+ * `useIsAdmin`). Non-admin users see nothing, cannot arm/export/clear,
+ * and the live subscription is not established.
  */
 export function YahtzeeWartimeTruthPill() {
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setUserId(data.session?.user?.id);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUserId(session?.user?.id);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+  const { isAdmin, loading: adminLoading } = useIsAdmin(userId);
+  if (adminLoading || !isAdmin) return null;
+  return <YahtzeeWartimeTruthPillInner />;
+}
+
+function YahtzeeWartimeTruthPillInner() {
   const [armed, setArmed] = useState(isYahtzeeWartimeArmed());
   const [counts, setCounts] = useState(getYahtzeeWartimeCounts());
   const [expanded, setExpanded] = useState(false);
@@ -22,6 +46,7 @@ export function YahtzeeWartimeTruthPill() {
     setArmed(isYahtzeeWartimeArmed());
     setCounts(getYahtzeeWartimeCounts());
   }), []);
+
 
   const contradictionCount = counts.perGroup.contradiction;
 
