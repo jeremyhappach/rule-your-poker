@@ -563,7 +563,6 @@ export const CribbageMobileCardsTab = ({
       producerComponent: 'CribbageMobileCardsTab',
       producerFunction: 'playButtonEligibilityEffect',
       dedupeKey: `play_btn:${sig}`,
-      eventReason: prev == null ? 'first eligibility observed' : 'eligibility inputs changed',
     });
   }, [
     playButtonEnabled,
