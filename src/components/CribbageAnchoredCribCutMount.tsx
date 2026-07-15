@@ -387,6 +387,8 @@ export function CribbageAnchoredCribCutMount({
   });
 
   const parkedGroupWatchRef = useRef<string>('');
+  const labelCoverWatchRef = useRef<string>('');
+  const cutLifecycleWatchRef = useRef<string>('');
 
   const rectOf = (el: Element | null) => {
     if (!el) return null;
@@ -525,6 +527,146 @@ export function CribbageAnchoredCribCutMount({
           handBoundaryKey: handBoundaryKey ?? null,
         });
       }
+
+      // ── Label covering / containing-block probe ────────────────────
+      // Sample the topmost element at the label's visual center and the
+      // label's parent chain up to `[data-canonical-felt-surface]`, so
+      // an invisible label with `labelEmitted:true` can be attributed
+      // to overlay coverage, transformed ancestors, clipping, or a
+      // containing-block change that source alone cannot explain.
+      if (node && rect && rect.width > 0 && rect.height > 0) {
+        const cx = Math.round(rect.x + rect.width / 2);
+        const cy = Math.round(rect.y + rect.height / 2);
+        const top = document.elementFromPoint(cx, cy) as HTMLElement | null;
+        const topIsLabel =
+          !!top && (top === node || node.contains(top) || top.closest('[data-crib-owner-label]') === node);
+        const parent = node.parentElement;
+        const parentCs = parent ? window.getComputedStyle(parent) : null;
+        const surface = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
+        const surfaceRect = rectOf(surface);
+        const insideSurface = !!surfaceRect &&
+          rect.x >= surfaceRect.x &&
+          rect.y >= surfaceRect.y &&
+          rect.x + rect.width <= surfaceRect.x + surfaceRect.width &&
+          rect.y + rect.height <= surfaceRect.y + surfaceRect.height;
+        const topDesc = top
+          ? `${top.tagName.toLowerCase()}${top.id ? '#' + top.id : ''}${
+              top.getAttribute('data-artifact-id') ? '[' + top.getAttribute('data-artifact-id') + ']' : ''
+            }${top.className && typeof top.className === 'string' ? '.' + top.className.split(/\s+/).slice(0, 2).join('.') : ''}`
+          : 'null';
+        const csig = [
+          topIsLabel ? 1 : 0,
+          topDesc,
+          insideSurface ? 1 : 0,
+          parentCs ? `${parentCs.transform}|${parentCs.overflow}|${parentCs.clipPath}` : 'null',
+          phaseForLayout,
+          renderBranch,
+        ].join('|');
+        if (labelCoverWatchRef.current !== csig) {
+          labelCoverWatchRef.current = csig;
+          emitCribLabelWartimeEvent('crib_owner_label_cover_probe', {
+            phaseForLayout,
+            renderBranch,
+            labelCenter: { x: cx, y: cy },
+            topAtCenter: topDesc,
+            topOuterHTMLHead: top ? top.outerHTML.slice(0, 160) : null,
+            topDataAttrs: top
+              ? Object.fromEntries(
+                  Array.from(top.attributes)
+                    .filter((a) => a.name.startsWith('data-'))
+                    .map((a) => [a.name, a.value]),
+                )
+              : null,
+            topIsLabel,
+            insideSurface,
+            surfaceRect,
+            labelRect: rect,
+            parentTag: parent ? parent.tagName.toLowerCase() : null,
+            parentTransform: parentCs?.transform ?? null,
+            parentOverflow: parentCs?.overflow ?? null,
+            parentClipPath: parentCs?.clipPath ?? null,
+            parentZIndex: parentCs?.zIndex ?? null,
+          });
+          if (labelEmitted && cribParked && !!dealerDisplayName && !topIsLabel) {
+            emitCribLabelWartimeEvent('crib_owner_label_covered', {
+              dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+              phaseForLayout,
+              renderBranch,
+              labelCenter: { x: cx, y: cy },
+              coveringElement: topDesc,
+              coveringOuterHTMLHead: top ? top.outerHTML.slice(0, 200) : null,
+              coveringDataAttrs: top
+                ? Object.fromEntries(
+                    Array.from(top.attributes)
+                      .filter((a) => a.name.startsWith('data-'))
+                      .map((a) => [a.name, a.value]),
+                  )
+                : null,
+            });
+          }
+          if (labelEmitted && cribParked && !!dealerDisplayName && !insideSurface) {
+            emitCribLabelWartimeEvent('crib_owner_label_outside_surface', {
+              dealerPlayerId: dealerPlayerId ? dealerPlayerId.slice(0, 8) : null,
+              phaseForLayout,
+              renderBranch,
+              labelRect: rect,
+              surfaceRect,
+            });
+          }
+        }
+      }
+
+      // ── Cut-card lifecycle sample ─────────────────────────────────
+      // Attribute transient cut-card collapses to the exact branch that
+      // produced them. Fires on any change to the gating inputs, phase,
+      // or measured cut rect.
+      const cutEl2 = cutRef.current;
+      const cutRectSample = rectOf(cutEl2);
+      const cutChildCount = cutEl2 ? cutEl2.childElementCount : 0;
+      const renderedCutBranch = !cribParked
+        ? 'unmounted'
+        : cutEligible
+          ? 'reveal'
+          : 'placeholder';
+      const csig2 = [
+        phaseForLayout,
+        renderBranch,
+        renderedCutBranch,
+        cutRevealActive ? 1 : 0,
+        deferCutReveal ? 1 : 0,
+        !!cribbageState.cutCard ? 1 : 0,
+        cutRectSample ? `${cutRectSample.width}x${cutRectSample.height}` : 'null',
+        cutChildCount,
+      ].join('|');
+      if (cutLifecycleWatchRef.current !== csig2) {
+        cutLifecycleWatchRef.current = csig2;
+        emitCribLabelWartimeEvent('cut_card_lifecycle_sample', {
+          phaseForLayout,
+          renderBranch,
+          renderedCutBranch,
+          cutRevealActive,
+          deferCutReveal,
+          hasAuthoritativeCutCard: !!cribbageState.cutCard,
+          cutRect: cutRectSample,
+          cutChildCount,
+        });
+        // Contradiction: authoritative cut card exists, reveal is active,
+        // but the visible cut wrapper is zero-sized.
+        if (
+          cutRevealActive &&
+          !!cribbageState.cutCard &&
+          cutRectSample &&
+          (cutRectSample.width === 0 || cutRectSample.height === 0)
+        ) {
+          emitCribLabelWartimeEvent('cut_card_collapsed_while_eligible', {
+            phaseForLayout,
+            renderBranch,
+            renderedCutBranch,
+            deferCutReveal,
+            cutRect: cutRectSample,
+          });
+        }
+      }
     });
     return () => cancelAnimationFrame(raf);
   });
@@ -597,11 +739,16 @@ export function CribbageAnchoredCribCutMount({
   // moment `cribbageState.cutCard` becomes available.
   const cutRevealActive =
     !!cribbageState.cutCard && !isCountingPhase && !isPeggingWin;
+  // A settled visible cut card must never be replaced by a null-returning
+  // CribbageCutCardReveal. When `deferCutReveal` is true we render the
+  // same hidden placeholder used pre-reveal, preserving geometry without
+  // collapsing the wrapper to 0×0.
+  const cutEligible = cutRevealActive && !deferCutReveal;
   const renderedCutCard = cribParked ? (
     <div ref={cutRef} data-cribbage-cut-card="">
-      {cutRevealActive ? (
+      {cutEligible ? (
         <CribbageCutCardReveal
-          card={deferCutReveal ? null : cribbageState.cutCard}
+          card={cribbageState.cutCard}
           cardBackColors={cardBackColors}
           handBoundaryKey={handBoundaryKey}
           widthPx={cutCardWidthPx}
@@ -610,6 +757,7 @@ export function CribbageAnchoredCribCutMount({
       ) : (
         <div
           aria-hidden
+          data-cribbage-cut-card-placeholder=""
           style={{
             width: `${cutCardWidthPx}px`,
             height: `${cutCardHeightPx}px`,
