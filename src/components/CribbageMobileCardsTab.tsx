@@ -284,7 +284,7 @@ export const CribbageMobileCardsTab = ({
   // Actual record call is fired from a useEffect below, keyed by fingerprint
   // to avoid unbounded writes on every render.
   const authCount = authoritativeHand?.length ?? 0;
-  const presentationCount = sourceHand.length;
+  const presentationCount = clippedHand.length;
   const renderedCount = renderedHand.length;
   const settledCount = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
   const decisionKind: 'render-authoritative' | 'render-presentation' | 'render-clipped-partial' | 'render-empty-pre-deal' | 'render-empty-blocked' | 'self-heal-fallback-to-authoritative' = (() => {
