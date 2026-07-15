@@ -668,13 +668,23 @@ export function YahtzeeGameTable({
   }, []);
 
   const dieRowLayout = useDieRowLayout({
-    availableWidth: Math.max(0, paneWidthPx - 16), // px-2 × 2 sides
+    // Pane content uses px-1 for the dice row wrapper so the available
+    // width for dice is (paneWidth - 8px). Previously px-2 (16px) shaved
+    // the row and the fluid dieSize snapped down to the "lg" 72px bucket.
+    availableWidth: Math.max(0, paneWidthPx - 8), // px-1 × 2 sides
     count: 5,
-    minDieSize: 28,
-    maxDieSize: 96,
+    minDieSize: 36,
+    maxDieSize: 120,
     gapPx: 4,
   });
+  // Wave 2E raw fluid sizing: bypass the discrete size-bucket ladder and
+  // pass the resolver's actual pixel edge to the die. The ladder-based
+  // snap was the limiting expression that kept dice at 72px even when
+  // the container could fit ~74-84px; using the raw fluid value lets the
+  // dice consume the full pane width. `resolvedDieSize` is still passed
+  // for pip sizing (nearest bucket → readable pips).
   const resolvedDieSize = dieRowLayout ? snapToDieSize(dieRowLayout.dieSize) : "lg";
+  const fluidDiePx = dieRowLayout ? Math.round(dieRowLayout.dieSize) : null;
 
   // ── Cause B: Yahtzee scorecard sticky-mount latch ─────────────────────
   // The interactive scorecard mounts on `isMyTurn`. During turn transitions
