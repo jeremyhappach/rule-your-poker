@@ -1947,7 +1947,7 @@ export function DiceTableLayout({
 
   if (showRollingMessage) {
     return (
-      <div className="relative flex items-center justify-center" style={{ width: '200px', height: '120px' }}>
+      <div className="relative flex items-center justify-center" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
         <div className="text-center">
           <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
             You are rolling
@@ -1958,12 +1958,12 @@ export function DiceTableLayout({
   }
 
   if (hasNoOrderedDice) {
-    return <div className="relative" style={{ width: '200px', height: '120px' }} />;
+    return <div className="relative" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }} />;
   }
 
   if (shouldUseFreezePresentation) {
     return (
-      <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+      <div ref={containerRef} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
         {committedHeldLayerIterationOrder.map((item) => {
           const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
           if (!frozenEntry) return null;
