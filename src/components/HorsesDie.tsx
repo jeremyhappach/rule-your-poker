@@ -8,6 +8,14 @@ interface HorsesDieProps {
   isRolling?: boolean;
   onToggle?: () => void;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
+  /**
+   * Optional explicit pixel edge that overrides the size-class dimensions.
+   * When provided the die renders as a `sizePx × sizePx` square via inline
+   * style, bypassing the discrete size ladder so callers can drive a
+   * fluid, container-derived size. Pip sizing continues to follow `size`
+   * (caller should pick the nearest bucket for readable pips).
+   */
+  sizePx?: number;
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
   forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
@@ -22,6 +30,7 @@ export function HorsesDie({
   isRolling = false,
   onToggle,
   size = "md",
+  sizePx,
   showWildHighlight = true,
   isSCCDie = false,
   forceWhiteBackground = false,
@@ -198,7 +207,7 @@ export function HorsesDie({
       onClick={canToggle ? onToggle : undefined}
       disabled={!canToggle}
       className={cn(
-        sizeClasses[size],
+        sizePx == null && sizeClasses[size],
         "rounded-lg border-2 relative",
         "transition-[transform,background-color,border-color,box-shadow,opacity] duration-150",
         "flex items-center justify-center",
@@ -226,6 +235,8 @@ export function HorsesDie({
         !canToggle && !isUnusedDie && "opacity-95",
       )}
       style={{
+        // Optional explicit pixel size (Yahtzee Wave 2E fluid sizing).
+        ...(sizePx != null ? { width: sizePx, height: sizePx } : null),
         // 3D edge effect with inset highlight and drop shadow
         boxShadow: animating 
           ? '0 0 12px 2px rgba(251, 191, 36, 0.6), inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3)' 
