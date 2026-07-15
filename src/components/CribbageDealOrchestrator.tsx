@@ -158,35 +158,34 @@ export function CribbageDealOrchestrator({
       eventReason: allOk ? 'all prerequisites satisfied' : 'prerequisites not yet satisfied',
     });
 
-    if (!deal) {
-      recordCribbageWartime('deal', 'dispatch_suppressed_no_deal_runtime', {
-        handContextId,
-        dealerGameId: dealerGameId ?? null,
-        roundId: roundId ?? null,
-        handNumber: handNumber ?? null,
-        reason: 'useDealRuntime returned null',
-      }, {
-        producerComponent: 'CribbageDealOrchestrator',
-        producerFunction: 'dispatchEffect.guard.noDeal',
-        dedupeKey: `noDeal:${handContextId}`,
-      });
-      return;
-    }
-
-    if (dispatchedRef.current) {
-      recordCribbageWartime('deal', 'duplicate_dispatch_suppressed', {
-        handContextId,
-        runtimeHandContextId: deal.handContextId,
-        runtimePhase: deal.phase,
-        dealerGameId: dealerGameId ?? null,
-        roundId: roundId ?? null,
-        handNumber: handNumber ?? null,
-        reason: 'dispatchedRef.current=true',
-      }, {
-        producerComponent: 'CribbageDealOrchestrator',
-        producerFunction: 'dispatchEffect.guard.dispatchedRef',
-        dedupeKey: `dup:${handContextId}`,
-      });
+    if (!deal || dispatchedRef.current) {
+      if (!deal) {
+        recordCribbageWartime('deal', 'dispatch_suppressed_no_deal_runtime', {
+          handContextId,
+          dealerGameId: dealerGameId ?? null,
+          roundId: roundId ?? null,
+          handNumber: handNumber ?? null,
+          reason: 'useDealRuntime returned null',
+        }, {
+          producerComponent: 'CribbageDealOrchestrator',
+          producerFunction: 'dispatchEffect.guard.noDeal',
+          dedupeKey: `noDeal:${handContextId}`,
+        });
+      } else if (dispatchedRef.current) {
+        recordCribbageWartime('deal', 'duplicate_dispatch_suppressed', {
+          handContextId,
+          runtimeHandContextId: deal.handContextId,
+          runtimePhase: deal.phase,
+          dealerGameId: dealerGameId ?? null,
+          roundId: roundId ?? null,
+          handNumber: handNumber ?? null,
+          reason: 'dispatchedRef.current=true',
+        }, {
+          producerComponent: 'CribbageDealOrchestrator',
+          producerFunction: 'dispatchEffect.guard.dispatchedRef',
+          dedupeKey: `dup:${handContextId}`,
+        });
+      }
       return;
     }
 
