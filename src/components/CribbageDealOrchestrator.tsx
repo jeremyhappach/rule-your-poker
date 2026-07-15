@@ -187,8 +187,6 @@ export function CribbageDealOrchestrator({
         producerFunction: 'dispatchEffect.guard.dispatchedRef',
         dedupeKey: `dup:${handContextId}`,
       });
-      if (dispatchedRef.current) {
-      }
       return;
     }
 
@@ -205,7 +203,11 @@ export function CribbageDealOrchestrator({
       dispatchedRef.current = true;
       recordCribbageWartime('deal', 'duplicate_dispatch_suppressed_by_runtime', {
         handContextId,
+        runtimeHandContextId: deal.handContextId,
         runtimePhase: deal.phase,
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
         reason: 'DealRuntime already past PRE_DEAL for this handContextId (durable canonical gate)',
       }, {
         producerComponent: 'CribbageDealOrchestrator',
