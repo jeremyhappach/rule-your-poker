@@ -278,6 +278,21 @@ export function DiceTableLayout({
 
   // TABLET: Use larger dice size
   const effectiveSize = isTablet ? "lg" : size;
+
+  // Yahtzee opponent-dice sizing (observer + rect-driven path only):
+  //   AssignedRectFitter applies `transform: scale(min(rectW/naturalW, rectH/naturalH))`
+  //   uniformly to the entire subtree. With the previous natural stage of
+  //   200×120px, that scale factor was the single dominant clamp on rendered
+  //   die size — bumping the descriptor's widthPct grew `rect` and `natural`
+  //   in lockstep and produced almost no visible change. Shrinking the
+  //   natural observer stage to 140×84 (same 5:3 aspect) increases the
+  //   fitter's scale multiplier by 200/140 ≈ 1.43× so both scatter positions
+  //   and dice grow together. Because the shrink is uniform, no scatter
+  //   position, no collision constraint, and no held-row layout is altered.
+  //   Non-observer (own-turn) rendering is untouched.
+  const observerStageWidth = isObserver && isRectDriven ? 140 : (isTablet ? 360 : 200);
+  const observerStageHeight = isObserver && isRectDriven ? 84 : (isTablet ? 220 : 120);
+  
   
   // Track fly-in animation state
   const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
@@ -1932,7 +1947,7 @@ export function DiceTableLayout({
 
   if (showRollingMessage) {
     return (
-      <div className="relative flex items-center justify-center" style={{ width: '200px', height: '120px' }}>
+      <div className="relative flex items-center justify-center" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
         <div className="text-center">
           <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
             You are rolling
@@ -1943,12 +1958,12 @@ export function DiceTableLayout({
   }
 
   if (hasNoOrderedDice) {
-    return <div className="relative" style={{ width: '200px', height: '120px' }} />;
+    return <div className="relative" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }} />;
   }
 
   if (shouldUseFreezePresentation) {
     return (
-      <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+      <div ref={containerRef} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
         {committedHeldLayerIterationOrder.map((item) => {
           const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
           if (!frozenEntry) return null;
@@ -2010,7 +2025,7 @@ export function DiceTableLayout({
   }
 
   return (
-    <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
+    <div ref={containerRef} className="relative isolate" style={{ width: `${observerStageWidth}px`, height: `${observerStageHeight}px` }}>
       <div className="absolute inset-0 z-10 pointer-events-none" data-dice-layer="scatter" data-layer-z={10}>
         {orderedDice.map((item) => renderDieForLayer(item, "scatter"))}
       </div>
