@@ -23,6 +23,20 @@ import { describeCardEndpoint } from './types';
 import { cardTransportDbgUpsert } from './cardTransportDbg';
 import { ffRecord } from './holmFullForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
+import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
+
+function recordCribbageCardTransportProvider(
+  tag: string,
+  payload: Record<string, unknown>,
+  opts: { fn: string; key?: string },
+): void {
+  if (payload.gameType !== 'cribbage') return;
+  recordCribbageActiveHand('deal-transport', tag, payload, {
+    producer: 'CardTransportProvider',
+    fn: opts.fn,
+    key: opts.key,
+  });
+}
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;
@@ -85,6 +99,14 @@ export function CardTransportProvider({
   const acceptOne = useCallback(
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
       if (!intent || !intent.id) {
+        recordCribbageCardTransportProvider('card_transport_intent_rejected', {
+          gameId,
+          gameType,
+          reason: 'missing-id',
+          intentPresent: !!intent,
+          intentIdPresent: !!intent?.id,
+          activeCount: activeIntentsRef.current.length,
+        }, { fn: 'acceptOne.missingId', key: `reject-missing:${gameId ?? 'no-game'}` });
         ffRecord({
           writerId: 'CardTransportProvider.tsx:acceptOne:L86',
           source: 'CARD_TRANSPORT',
@@ -100,6 +122,15 @@ export function CardTransportProvider({
         return false;
       }
       if (seenRef.current.has(intent.id)) {
+        recordCribbageCardTransportProvider('card_transport_intent_rejected', {
+          gameId,
+          gameType,
+          reason: 'duplicate-id',
+          intentId: intent.id,
+          cardId: intent.cardId,
+          handContextId: intent.handContextId ?? null,
+          activeCount: activeIntentsRef.current.length,
+        }, { fn: 'acceptOne.duplicateId', key: `reject-duplicate:${intent.id}` });
         ffRecord({
           writerId: 'CardTransportProvider.tsx:acceptOne:L99',
           source: 'CARD_TRANSPORT',
@@ -131,6 +162,20 @@ export function CardTransportProvider({
         lifecycleState: 'active_visible',
         droppedReason: null,
       });
+      recordCribbageCardTransportProvider('card_transport_intent_accepted', {
+        gameId,
+        gameType,
+        intentId: intent.id,
+        cardId: intent.cardId,
+        handContextId: intent.handContextId ?? null,
+        recipientPlayerId: intent.recipientPlayerId ?? null,
+        from: describeCardEndpoint(intent.from),
+        to: describeCardEndpoint(intent.to),
+        enqueueSeq,
+        enqueuedAt: now,
+        priorActiveCount: activeIntentsRef.current.length,
+        nextActiveCount: activeIntentsRef.current.length + 1,
+      }, { fn: 'acceptOne.accepted', key: `accepted:${intent.id}` });
       ffRecord({
         writerId: 'CardTransportProvider.tsx:acceptOne:L119',
         source: 'CARD_TRANSPORT',
@@ -188,6 +233,16 @@ export function CardTransportProvider({
 
   const dispatchMany = useCallback(
     (intents: CardTransportIntent[], opts?: CardDispatchManyOptions) => {
+      recordCribbageCardTransportProvider('card_transport_dispatchMany_init', {
+        gameId,
+        gameType,
+        incoming: intents.length,
+        intentIds: intents.map((i) => i.id),
+        cardIds: intents.map((i) => i.cardId),
+        handContextIds: Array.from(new Set(intents.map((i) => i.handContextId ?? null))),
+        recipientPlayerIds: intents.map((i) => i.recipientPlayerId ?? null),
+        priorActiveCount: activeIntentsRef.current.length,
+      }, { fn: 'dispatchMany.init', key: `dispatchMany:init:${intents.map((i) => i.id).join('|')}` });
       ffRecord({
         writerId: 'CardTransportProvider.tsx:dispatchMany:L170',
         source: 'CARD_TRANSPORT',
@@ -224,6 +279,17 @@ export function CardTransportProvider({
           nextActiveCount: activeIntentsRef.current.length,
         },
       });
+      recordCribbageCardTransportProvider('card_transport_dispatchMany_done', {
+        gameId,
+        gameType,
+        incoming: intents.length,
+        accepted,
+        rejectedAsDuplicateOrEmpty: intents.length - accepted,
+        intentIds: intents.map((i) => i.id),
+        cardIds: intents.map((i) => i.cardId),
+        handContextIds: Array.from(new Set(intents.map((i) => i.handContextId ?? null))),
+        activeCountBeforeStateCommit: activeIntentsRef.current.length,
+      }, { fn: 'dispatchMany.done', key: `dispatchMany:done:${intents.map((i) => i.id).join('|')}:${accepted}` });
       if (gameType === 'gin-rummy') {
         recordGinPhaseTrace({
           kind: 'card-transport-dispatch',
@@ -267,6 +333,18 @@ export function CardTransportProvider({
 
   const markSettled = useCallback((intentId: string, cardId: string, source = 'flight_complete') => {
     const intent = intentByIdRef.current.get(intentId);
+    recordCribbageCardTransportProvider('card_transport_markSettled_called', {
+      gameId,
+      gameType,
+      intentId,
+      cardId,
+      source,
+      intentFound: !!intent,
+      handContextId: intent?.handContextId ?? null,
+      recipientPlayerId: intent?.recipientPlayerId ?? null,
+      priorActiveCount: activeIntentsRef.current.length,
+      nextActiveCount: Math.max(0, activeIntentsRef.current.length - 1),
+    }, { fn: 'markSettled', key: `markSettled:${intentId}:${source}` });
     ffRecord({
       writerId: 'CardTransportProvider.tsx:markSettled:L235',
       source: 'CARD_TRANSPORT',
@@ -326,6 +404,19 @@ export function CardTransportProvider({
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
       const now = performance.now();
+      recordCribbageCardTransportProvider('card_transport_markDropped_called', {
+        gameId,
+        gameType,
+        intentId: intent.id,
+        cardId: intent.cardId,
+        reason,
+        handContextId: intent.handContextId ?? null,
+        recipientPlayerId: intent.recipientPlayerId ?? null,
+        from: describeCardEndpoint(intent.from),
+        to: describeCardEndpoint(intent.to),
+        priorActiveCount: activeIntentsRef.current.length,
+        droppedAt: now,
+      }, { fn: 'markDropped', key: `markDropped:${intent.id}:${reason}` });
       ffRecord({
         writerId: 'CardTransportProvider.tsx:markDropped:L278',
         source: 'CARD_TRANSPORT',

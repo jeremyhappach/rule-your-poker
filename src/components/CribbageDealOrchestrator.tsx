@@ -29,9 +29,30 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
 const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
-const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
 const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
+
+function recordCribbageWartime(
+  group: string,
+  tag: string,
+  payload: Record<string, unknown>,
+  opts: {
+    producerComponent: string;
+    producerFunction: string;
+    dedupeKey?: string;
+    eventReason?: string;
+  },
+): void {
+  recordCribbageActiveHand(group === 'deal' ? 'deal-transport' : 'lifecycle', tag, {
+    ...payload,
+    eventReason: opts.eventReason ?? null,
+  }, {
+    producer: opts.producerComponent,
+    fn: opts.producerFunction,
+    key: opts.dedupeKey,
+  });
+}
 
 
 
@@ -110,12 +131,20 @@ export function CribbageDealOrchestrator({
     const prereqPayload = {
       hasDeal: !!deal,
       alreadyDispatched: dispatchedRef.current,
+      runtimePhase: deal?.phase ?? null,
+      runtimeHandContextId: deal?.handContextId ?? null,
       seatCount: seats.length,
       cardsPerPlayer,
       hasDealerSeat: !!dealerSeatEarly,
       selfHandLength: selfHand?.length ?? 0,
       selfHandSufficient: !!selfHand && selfHand.length >= cardsPerPlayer,
       handContextId,
+      dealerGameId: dealerGameId ?? null,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+      dealerPlayerId,
+      selfPlayerId,
+      seatEntries: seats.map((s) => ({ playerId: s.playerId, position: s.position })),
     };
     const allOk = prereqPayload.hasDeal && !prereqPayload.alreadyDispatched &&
       prereqPayload.seatCount > 0 && prereqPayload.cardsPerPlayer > 0 &&
@@ -130,12 +159,30 @@ export function CribbageDealOrchestrator({
     });
 
     if (!deal || dispatchedRef.current) {
-      if (dispatchedRef.current) {
-        recordCribbageWartime('deal', 'duplicate_dispatch_suppressed', {
-          handContextId, reason: 'dispatchedRef.current=true',
+      if (!deal) {
+        recordCribbageWartime('deal', 'dispatch_suppressed_no_deal_runtime', {
+          handContextId,
+          dealerGameId: dealerGameId ?? null,
+          roundId: roundId ?? null,
+          handNumber: handNumber ?? null,
+          reason: 'useDealRuntime returned null',
         }, {
           producerComponent: 'CribbageDealOrchestrator',
-          producerFunction: 'dispatchEffect.guard',
+          producerFunction: 'dispatchEffect.guard.noDeal',
+          dedupeKey: `noDeal:${handContextId}`,
+        });
+      } else if (dispatchedRef.current) {
+        recordCribbageWartime('deal', 'duplicate_dispatch_suppressed', {
+          handContextId,
+          runtimeHandContextId: deal.handContextId,
+          runtimePhase: deal.phase,
+          dealerGameId: dealerGameId ?? null,
+          roundId: roundId ?? null,
+          handNumber: handNumber ?? null,
+          reason: 'dispatchedRef.current=true',
+        }, {
+          producerComponent: 'CribbageDealOrchestrator',
+          producerFunction: 'dispatchEffect.guard.dispatchedRef',
           dedupeKey: `dup:${handContextId}`,
         });
       }
@@ -155,7 +202,11 @@ export function CribbageDealOrchestrator({
       dispatchedRef.current = true;
       recordCribbageWartime('deal', 'duplicate_dispatch_suppressed_by_runtime', {
         handContextId,
+        runtimeHandContextId: deal.handContextId,
         runtimePhase: deal.phase,
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
         reason: 'DealRuntime already past PRE_DEAL for this handContextId (durable canonical gate)',
       }, {
         producerComponent: 'CribbageDealOrchestrator',
@@ -166,14 +217,82 @@ export function CribbageDealOrchestrator({
     }
 
 
-    if (!seats.length || cardsPerPlayer <= 0) return;
+    if (!seats.length || cardsPerPlayer <= 0) {
+      recordCribbageWartime('deal', 'dispatch_suppressed_prerequisite_guard', {
+        handContextId,
+        runtimeHandContextId: deal.handContextId,
+        runtimePhase: deal.phase,
+        reason: !seats.length ? 'no seats' : 'cardsPerPlayer <= 0',
+        seatCount: seats.length,
+        cardsPerPlayer,
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
+      }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'dispatchEffect.guard.seatsOrCount',
+        dedupeKey: `guardSeats:${handContextId}:${seats.length}:${cardsPerPlayer}`,
+      });
+      return;
+    }
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
-    if (!dealerSeat) return;
-    if (!selfHand || selfHand.length < cardsPerPlayer) return;
+    if (!dealerSeat) {
+      recordCribbageWartime('deal', 'dispatch_suppressed_prerequisite_guard', {
+        handContextId,
+        runtimeHandContextId: deal.handContextId,
+        runtimePhase: deal.phase,
+        reason: 'dealer seat not found',
+        dealerPlayerId,
+        seatEntries: seats.map((s) => ({ playerId: s.playerId, position: s.position })),
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
+      }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'dispatchEffect.guard.dealerSeat',
+        dedupeKey: `guardDealer:${handContextId}:${dealerPlayerId}`,
+      });
+      return;
+    }
+    if (!selfHand || selfHand.length < cardsPerPlayer) {
+      recordCribbageWartime('deal', 'dispatch_suppressed_prerequisite_guard', {
+        handContextId,
+        runtimeHandContextId: deal.handContextId,
+        runtimePhase: deal.phase,
+        reason: 'self hand insufficient',
+        selfHandLength: selfHand?.length ?? 0,
+        cardsPerPlayer,
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
+      }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'dispatchEffect.guard.selfHand',
+        dedupeKey: `guardSelfHand:${handContextId}:${selfHand?.length ?? 0}:${cardsPerPlayer}`,
+      });
+      return;
+    }
 
     const sorted = [...seats].sort((a, b) => a.position - b.position);
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
-    if (dealerIdx < 0) return;
+    if (dealerIdx < 0) {
+      recordCribbageWartime('deal', 'dispatch_suppressed_prerequisite_guard', {
+        handContextId,
+        runtimeHandContextId: deal.handContextId,
+        runtimePhase: deal.phase,
+        reason: 'dealer index < 0 after sort',
+        dealerPlayerId,
+        sortedSeats: sorted.map((s) => ({ playerId: s.playerId, position: s.position })),
+        dealerGameId: dealerGameId ?? null,
+        roundId: roundId ?? null,
+        handNumber: handNumber ?? null,
+      }, {
+        producerComponent: 'CribbageDealOrchestrator',
+        producerFunction: 'dispatchEffect.guard.dealerIdx',
+        dedupeKey: `guardDealerIdx:${handContextId}:${dealerPlayerId}`,
+      });
+      return;
+    }
 
     recordCribbageWartime('deal', 'dispatch_attempt', {
       handContextId, dealerIdx, seatOrder: sorted.map(s => s.playerId),
@@ -270,8 +389,39 @@ export function CribbageDealOrchestrator({
     }
 
     dispatchedRef.current = true;
+    recordCribbageWartime('deal', 'deal_intents_created', {
+      handContextId,
+      runtimeHandContextId: deal.handContextId,
+      runtimePhaseBeforeBeginDeal: deal.phase,
+      totalCount,
+      intentCount: intents.length,
+      intentIds: intents.map((i) => i.id),
+      cardIds: intents.map((i) => i.cardId),
+      recipientPlayerIds: intents.map((i) => i.recipientPlayerId ?? null),
+      dealerGameId: dealerGameId ?? null,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.intentCreation',
+      dedupeKey: `intents:${handContextId}:${intents.length}`,
+    });
     deal.beginDeal(totalCount);
     onLifecycle?.('beginDealCalled');
+    recordCribbageWartime('deal', 'beginDeal_called_by_orchestrator', {
+      handContextId,
+      runtimeHandContextId: deal.handContextId,
+      runtimePhaseBeforeBeginDeal: 'PRE_DEAL',
+      expectedCount: totalCount,
+      intentCount: intents.length,
+      dealerGameId: dealerGameId ?? null,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.beginDeal',
+      dedupeKey: `beginDeal:${handContextId}:${totalCount}`,
+    });
 
     // Record each intent in the deal-transport idempotency ledger.
     // Record-only: does not suppress or repair. Callers inspect the
@@ -301,8 +451,25 @@ export function CribbageDealOrchestrator({
       });
     }
 
-    ct.dispatchMany(intents);
+    const acceptedCount = ct.dispatchMany(intents);
     onLifecycle?.('dispatchManyCalled');
+    recordCribbageWartime('deal', 'dispatchMany_called_by_orchestrator', {
+      handContextId,
+      runtimeHandContextId: deal.handContextId,
+      requestedIntentCount: intents.length,
+      acceptedCount,
+      rejectedCount: intents.length - acceptedCount,
+      intentIds: intents.map((i) => i.id),
+      cardIds: intents.map((i) => i.cardId),
+      recipientPlayerIds: intents.map((i) => i.recipientPlayerId ?? null),
+      dealerGameId: dealerGameId ?? null,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+    }, {
+      producerComponent: 'CribbageDealOrchestrator',
+      producerFunction: 'dispatchEffect.dispatchMany',
+      dedupeKey: `dispatchMany:${handContextId}:${acceptedCount}:${intents.length}`,
+    });
 
     const dispatchId = `${handContextId}#dispatch-${Date.now()}`;
     recordCribbageWartime('deal', 'dispatch_succeeded', {

@@ -487,7 +487,7 @@ function CribbageDealerSelectionVisibilityTracker({
 function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="cribbage">
       {children}
     </DealRuntime>
   );

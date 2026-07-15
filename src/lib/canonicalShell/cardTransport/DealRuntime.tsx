@@ -45,6 +45,7 @@ import {
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
+import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -107,6 +108,18 @@ interface DealContextValue {
 
 const DealContext = createContext<DealContextValue | null>(null);
 
+function recordCribbageDealRuntime(
+  tag: string,
+  payload: Record<string, unknown>,
+  opts: { fn: string; key?: string },
+): void {
+  recordCribbageActiveHand('deal-transport', tag, payload, {
+    producer: 'DealRuntime',
+    fn: opts.fn,
+    key: opts.key,
+  });
+}
+
 export interface DealRuntimeProps {
   /** Authoritative hand identity. Remount when this changes. */
   handContextId: string;
@@ -150,6 +163,14 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       identity: { hci: handContextId },
       payload: { gameType },
     });
+    if (gameType === 'cribbage') {
+      recordCribbageDealRuntime('deal_runtime_mounted', {
+        handContextId,
+        dealRuntimeReactKey: handContextId,
+        gameType,
+        initialPhase: 'PRE_DEAL',
+      }, { fn: 'mountEffect', key: `mount:${handContextId}` });
+    }
     if (gameType === 'gin-rummy') {
       recordGinPhaseTrace({
         kind: 'deal-runtime-mount',
@@ -168,6 +189,13 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         identity: { hci: handContextId },
         payload: { gameType },
       });
+      if (gameType === 'cribbage') {
+        recordCribbageDealRuntime('deal_runtime_unmounted', {
+          handContextId,
+          dealRuntimeReactKey: handContextId,
+          gameType,
+        }, { fn: 'unmountEffect', key: `unmount:${handContextId}` });
+      }
       if (gameType === 'gin-rummy') {
         recordGinPhaseTrace({
           kind: 'deal-runtime-unmount',
@@ -193,14 +221,43 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         settledSize: settledCardIds.size,
       },
     });
+    if (gameType === 'cribbage') {
+      recordCribbageDealRuntime('deal_runtime_phase_snapshot', {
+        handContextId,
+        dealRuntimeReactKey: handContextId,
+        gameType,
+        phase,
+        expectedCount,
+        settledCardIds: Array.from(settledCardIds),
+        settledCount: settledCardIds.size,
+        settledByRecipient: Array.from(settledByRecipient.entries()).map(([playerId, count]) => ({ playerId, count })),
+        settledCardIdsByRecipient: Array.from(settledCardIdsByRecipient.entries()).map(([playerId, ids]) => ({ playerId, ids })),
+        activeIntentsForHand,
+      }, { fn: 'phaseEffect', key: `phase:${handContextId}:${phase}:${expectedCount}:${settledCardIds.size}:${activeIntentsForHand}` });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, handContextId]);
+  }, [phase, handContextId, gameType, expectedCount, settledCardIds, settledByRecipient, settledCardIdsByRecipient, activeIntentsForHand]);
 
   // Subscribe to card-transport settle events with full intent metadata.
   useEffect(() => {
     if (!ctx) return;
     const off = ctx.onCardSettledIntent((intent) => {
       const cardId = intent.cardId;
+      if (gameType === 'cribbage') {
+        recordCribbageDealRuntime('deal_runtime_settle_intent_received', {
+          handContextId,
+          dealRuntimeReactKey: handContextId,
+          gameType,
+          phase,
+          expectedCount: expectedRef.current,
+          intentId: intent.id,
+          cardId,
+          intentHandContextId: intent.handContextId ?? null,
+          recipientPlayerId: intent.recipientPlayerId ?? null,
+          settledCountBefore: settledCardIds.size,
+          settledForRecipientBefore: intent.recipientPlayerId ? (settledByRecipient.get(intent.recipientPlayerId) ?? 0) : null,
+        }, { fn: 'onCardSettledIntent', key: `settleIntent:${handContextId}:${intent.id}` });
+      }
       if (gameType === 'holm-game') holmTimelineRecordSettle(cardId, performance.now());
       if (gameType === 'holm-game' && cardId.includes('#community-')) {
         const slotMatch = cardId.match(/#community-(\d+)$/);
@@ -255,7 +312,19 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         const pid = intent.recipientPlayerId;
         setSettledByRecipient((prev) => {
           const next = new Map(prev);
-          next.set(pid, (next.get(pid) ?? 0) + 1);
+          const nextCount = (next.get(pid) ?? 0) + 1;
+          next.set(pid, nextCount);
+          if (gameType === 'cribbage') {
+            recordCribbageDealRuntime('deal_runtime_recipient_settled_count_changed', {
+              handContextId,
+              dealRuntimeReactKey: handContextId,
+              gameType,
+              playerId: pid,
+              intentId: intent.id,
+              cardId,
+              nextCount,
+            }, { fn: 'setSettledByRecipient', key: `recipientSettled:${handContextId}:${pid}:${nextCount}:${intent.id}` });
+          }
           return next;
         });
         setSettledCardIdsByRecipient((prev) => {
@@ -267,9 +336,22 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       }
     });
     return off;
-  }, [ctx, handContextId, gameType]);
+  }, [ctx, handContextId, gameType, phase, settledCardIds, settledByRecipient]);
 
   const beginDeal = useCallback((count: number) => {
+    if (gameType === 'cribbage') {
+      recordCribbageDealRuntime('deal_runtime_beginDeal_called', {
+        handContextId,
+        dealRuntimeReactKey: handContextId,
+        gameType,
+        expectedCount: count,
+        previousPhase: phase,
+        previousExpectedCount: expectedCount,
+        previousSettledCardIds: Array.from(settledCardIds),
+        previousSettledCount: settledCardIds.size,
+        codePath: 'DealRuntime.beginDeal -> setExpectedCount(count); clear settled ledgers; setPhase(DEALING)',
+      }, { fn: 'beginDeal', key: `beginDeal:${handContextId}:${count}:${phase}:${expectedCount}:${settledCardIds.size}` });
+    }
     if (gameType === 'gin-rummy') {
       recordGinPhaseTrace({
         kind: 'deal-runtime-start',
