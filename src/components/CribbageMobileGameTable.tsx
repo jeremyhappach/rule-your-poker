@@ -7100,6 +7100,191 @@ export const CribbageMobileGameTable = ({
     ? (primaryMountOk ? 'viewState' : 'authoritative')
     : 'not-mounted';
 
+  // ══ Wartime: active-hand visibility producer (parent gates) ══
+  // Emits transitions on every gate that can hide/unmount/suppress
+  // the local player's Cribbage active hand. Also runs a rAF-cadenced
+  // DOM contradiction sampler: when authoritative state contains the
+  // local hand and phase is post-deal, the DOM child count on
+  // [data-crib-active-hand-stage] MUST be > 0.
+  const _wartimeAuthPhase = cribbageState?.phase ?? null;
+  const _wartimeAuthPostDeal = !!cribbageState && isCribbagePostDealPhase(cribbageState.phase);
+  const _wartimeGateFingerprint = [
+    activeTab,
+    isBootstrapMode ? 'B' : '_',
+    isHighCardMode ? 'H' : '_',
+    isGameplayMode ? 'G' : '_',
+    parentAuthoritativeGameplayFallback ? 'F' : '_',
+    cardsTabBlocked ? 'X' : '_',
+    isTransitioning ? 't' : '_',
+    countingStateSnapshot ? 'c' : '_',
+    countingAnimationActiveRef.current ? 'a' : '_',
+    interactionsAllowed ? 'i' : '_',
+    primaryMountOk ? 'P' : '_',
+    selfHealMountOk ? 'S' : '_',
+    cardsTabMounted ? 'M' : '_',
+    cardsTabStateSource,
+    _wartimeAuthPhase ?? 'null',
+    `auth=${authoritativeLocalHandCount}`,
+    `view=${viewStateLocalHandCount}`,
+    `hn=${handNumber}`,
+    `rHK=${(renderHandKey ?? '').slice(0, 12)}`,
+    `cHK=${(currentHandKey ?? '').slice(0, 12)}`,
+  ].join('|');
+  const _wartimePrevGateRef = useRef<string>('');
+  useEffect(() => {
+    if (_wartimePrevGateRef.current === _wartimeGateFingerprint) return;
+    const prev = _wartimePrevGateRef.current;
+    _wartimePrevGateRef.current = _wartimeGateFingerprint;
+    const payload = {
+      prevFingerprint: prev,
+      nextFingerprint: _wartimeGateFingerprint,
+      activeTab,
+      isBootstrapMode,
+      isHighCardMode,
+      isGameplayMode,
+      parentAuthoritativeGameplayFallback,
+      cardsTabBlocked,
+      cardsTabBlockedSubreasons: {
+        isTransitioning: !!isTransitioning,
+        countingStateSnapshotActive: !!countingStateSnapshot,
+        countingAnimationActive: countingAnimationActiveRef.current,
+      },
+      interactionsAllowed,
+      primaryMountOk,
+      selfHealMountOk,
+      cardsTabMounted,
+      cardsTabStateSource,
+      authoritativeLocalHandCount,
+      viewStateLocalHandCount,
+      authoritativePhase: _wartimeAuthPhase,
+      isPostDealAuthoritative: _wartimeAuthPostDeal,
+      handNumber,
+      renderHandKey: (renderHandKey ?? '').slice(0, 24),
+      currentHandKey: (currentHandKey ?? '').slice(0, 24),
+      currentRoundId: (currentRoundId ?? '').slice(0, 8),
+      roundId: (roundId ?? '').slice(0, 8),
+    };
+    const contradictions: string[] = [];
+    // P0 contradiction: authoritative post-deal hand exists, local player
+    // is seated, but no Cards subtree is mounted at all.
+    if (
+      _wartimeAuthPostDeal &&
+      authoritativeLocalHandCount > 0 &&
+      !!currentPlayerId &&
+      !cardsTabMounted &&
+      activeTab === 'cards'
+    ) {
+      contradictions.push('cards_tab_unmounted_with_authoritative_hand');
+    }
+    recordCribbageActiveHand('parent-gate', 'gate_fingerprint_changed', payload, {
+      producer: 'CribbageMobileGameTable',
+      fn: 'wartimeGateFingerprint',
+      key: `gate:${_wartimeGateFingerprint}`,
+      bypassDedupe: false,
+    });
+    for (const c of contradictions) {
+      recordCribbageActiveHandContradiction(c, payload, {
+        producer: 'CribbageMobileGameTable',
+        fn: 'wartimeGateFingerprint',
+        key: `${_wartimeGateFingerprint}:${c}`,
+      });
+    }
+  }, [
+    _wartimeGateFingerprint,
+    _wartimeAuthPhase,
+    _wartimeAuthPostDeal,
+    activeTab,
+    isBootstrapMode,
+    isHighCardMode,
+    isGameplayMode,
+    parentAuthoritativeGameplayFallback,
+    cardsTabBlocked,
+    isTransitioning,
+    countingStateSnapshot,
+    interactionsAllowed,
+    primaryMountOk,
+    selfHealMountOk,
+    cardsTabMounted,
+    cardsTabStateSource,
+    authoritativeLocalHandCount,
+    viewStateLocalHandCount,
+    handNumber,
+    renderHandKey,
+    currentHandKey,
+    currentRoundId,
+    roundId,
+    currentPlayerId,
+  ]);
+
+  // rAF-cadenced DOM contradiction sampler — coalesces to at most one
+  // contradiction emission per unique (auth-count, dom-count, phase, mounted)
+  // signature. Detects: authoritative non-empty post-deal + zero DOM
+  // active-hand cards while the pane is expected to be visible.
+  const _wartimeDomSigRef = useRef<string>('');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let disposed = false;
+    let rafId = 0;
+    const tick = () => {
+      if (disposed) return;
+      const stage = document.querySelector('[data-crib-active-hand-stage]') as HTMLElement | null;
+      const domCount = stage?.querySelectorAll('[data-cribbage-hand-card-key]').length ?? -1;
+      const sig = [
+        _wartimeAuthPostDeal ? '1' : '0',
+        authoritativeLocalHandCount,
+        domCount,
+        cardsTabMounted ? '1' : '0',
+        activeTab,
+        _wartimeAuthPhase ?? '',
+      ].join('|');
+      if (sig !== _wartimeDomSigRef.current) {
+        _wartimeDomSigRef.current = sig;
+        const payload = {
+          authoritativeLocalHandCount,
+          domActiveHandCardCount: domCount,
+          stagePresent: !!stage,
+          cardsTabMounted,
+          activeTab,
+          authoritativePhase: _wartimeAuthPhase,
+          isPostDealAuthoritative: _wartimeAuthPostDeal,
+        };
+        recordCribbageActiveHand('dom', 'dom_sampler_sig_changed', payload, {
+          producer: 'CribbageMobileGameTable',
+          fn: 'wartimeDomSampler',
+          key: `dom:${sig}`,
+        });
+        if (
+          _wartimeAuthPostDeal &&
+          authoritativeLocalHandCount > 0 &&
+          !!currentPlayerId &&
+          activeTab === 'cards' &&
+          domCount === 0
+        ) {
+          recordCribbageActiveHandContradiction(
+            'active_hand_dom_empty_but_authoritative_present',
+            payload,
+            {
+              producer: 'CribbageMobileGameTable',
+              fn: 'wartimeDomSampler',
+              key: `contradict:${sig}`,
+            },
+          );
+        }
+      }
+      rafId = window.requestAnimationFrame(tick);
+    };
+    rafId = window.requestAnimationFrame(tick);
+    return () => { disposed = true; window.cancelAnimationFrame(rafId); };
+  }, [
+    _wartimeAuthPostDeal,
+    _wartimeAuthPhase,
+    authoritativeLocalHandCount,
+    cardsTabMounted,
+    activeTab,
+    currentPlayerId,
+  ]);
+
+
 
 
   // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
