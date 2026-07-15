@@ -27,7 +27,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
-import { emitCribLabelWartimeEvent } from '@/lib/cribbage/cribLabelWartimeLedger';
 
 export type CribbageDiscardSourceMode = 'self' | 'opponent';
 
