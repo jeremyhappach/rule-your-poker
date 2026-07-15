@@ -8,6 +8,14 @@ interface HorsesDieProps {
   isRolling?: boolean;
   onToggle?: () => void;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
+  /**
+   * Optional explicit pixel edge that overrides the size-class dimensions.
+   * When provided the die renders as a `sizePx × sizePx` square via inline
+   * style, bypassing the discrete size ladder so callers can drive a
+   * fluid, container-derived size. Pip sizing continues to follow `size`
+   * (caller should pick the nearest bucket for readable pips).
+   */
+  sizePx?: number;
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
   forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
@@ -22,6 +30,7 @@ export function HorsesDie({
   isRolling = false,
   onToggle,
   size = "md",
+  sizePx,
   showWildHighlight = true,
   isSCCDie = false,
   forceWhiteBackground = false,
