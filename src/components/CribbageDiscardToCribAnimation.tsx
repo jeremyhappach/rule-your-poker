@@ -94,33 +94,8 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
   useEffect(() => {
     if (!intent) return;
 
-    const dstAnchorEl = document.querySelector<HTMLElement>('[data-card-anchor="crib"]');
     const firstOrdinal = (intent.startingOrdinal ?? 0) + 1;
-    const firstSlotEl = document.querySelector<HTMLElement>(
-      `[data-card-anchor="crib-slot-${firstOrdinal}"]`,
-    );
-    const firstSlotRect = firstSlotEl?.getBoundingClientRect() ?? null;
-    const dstAnchorMode = firstSlotEl ? 'parked-crib-slot' : null;
-    const dstArtifactId = firstSlotEl?.getAttribute('data-artifact-id') ?? null;
-    emitCribLabelWartimeEvent('crib_discard_destination_resolved', {
-      intentId: intent.id,
-      mode: intent.mode,
-      opponentPosition: intent.opponentPosition ?? null,
-      cardCount: intent.cardCount,
-      destRect: firstSlotRect
-        ? {
-            x: Math.round(firstSlotRect.left),
-            y: Math.round(firstSlotRect.top),
-            width: Math.round(firstSlotRect.width),
-            height: Math.round(firstSlotRect.height),
-            centerX: Math.round(firstSlotRect.left + firstSlotRect.width / 2),
-            centerY: Math.round(firstSlotRect.top + firstSlotRect.height / 2),
-          }
-        : null,
-      dstAnchorFound: !!firstSlotEl,
-      dstAnchorMode,
-      dstArtifactId,
-    });
+    void firstOrdinal;
 
     // Fallback source rect used when a per-card rect is unavailable.
     const fallback: DOMRect | null =
@@ -128,64 +103,15 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
         ? resolveSelfHandStageRect()
         : resolveOpponentStackRect(intent.opponentPosition);
 
-    // ── Parked crib-group / cut card rect at destination computation ─
-    const parkedGroupEl = document.querySelector<HTMLElement>('[data-parked-crib-group]');
-    const cutEl = document.querySelector<HTMLElement>('[data-cribbage-cut-card]')
-      ?? dstAnchorEl?.querySelector<HTMLElement>('[data-cribbage-cut-card]')
-      ?? null;
-    const rectOf = (el: HTMLElement | null) => {
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return {
-        x: Math.round(r.left),
-        y: Math.round(r.top),
-        width: Math.round(r.width),
-        height: Math.round(r.height),
-        centerX: Math.round(r.left + r.width / 2),
-        centerY: Math.round(r.top + r.height / 2),
-      };
-    };
-    const parkedGroupRect = rectOf(parkedGroupEl);
-    const cutCardRect = rectOf(cutEl);
-    const slotRect = rectOf(dstAnchorEl);
-    const cribToCutGapPx =
-      parkedGroupRect && cutCardRect
-        ? Math.round(cutCardRect.x - (parkedGroupRect.x + parkedGroupRect.width))
-        : null;
-    const currentCribCount = parkedGroupEl
-      ? parkedGroupEl.querySelectorAll('[data-canonical-card-back], img, svg').length
-      : 0;
-    const geometryPolicy = 'parked-crib-slot';
-
     const built: Flight[] = [];
     for (let i = 0; i < intent.cardCount; i += 1) {
       const perCard = intent.sourceRects?.[i];
       let src: { left: number; top: number; width: number; height: number } | null = null;
-      let srcOrigin: 'perCard' | 'fallback' | 'none' = 'none';
       if (perCard && perCard.width > 0 && perCard.height > 0) {
         src = { left: perCard.x, top: perCard.y, width: perCard.width, height: perCard.height };
-        srcOrigin = 'perCard';
       } else if (fallback && fallback.width > 0 && fallback.height > 0) {
         src = { left: fallback.left, top: fallback.top, width: fallback.width, height: fallback.height };
-        srcOrigin = 'fallback';
       }
-      emitCribLabelWartimeEvent('crib_discard_source_resolved', {
-        intentId: intent.id,
-        cardIndex: i,
-        srcOrigin,
-        srcRect: src
-          ? {
-              x: Math.round(src.left),
-              y: Math.round(src.top),
-              width: Math.round(src.width),
-              height: Math.round(src.height),
-              centerX: Math.round(src.left + src.width / 2),
-              centerY: Math.round(src.top + src.height / 2),
-            }
-          : null,
-        endX: null,
-        endY: null,
-      });
 
       const ordinal = (intent.startingOrdinal ?? 0) + i + 1;
       const slotEl = document.querySelector<HTMLElement>(
@@ -198,90 +124,7 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
       const endX = destinationRect.left + destinationRect.width / 2;
       const endY = destinationRect.top + destinationRect.height / 2;
 
-      const expectedCribCountAfterLanding = currentCribCount + (i + 1);
-      const expectedParkedCenter = { x: Math.round(endX), y: Math.round(endY) };
-      emitCribLabelWartimeEvent('crib_discard_destination_computed', {
-        transportIntentId: intent.id,
-        cardIndex: i,
-        discardOrdinal: ordinal,
-        discardingPlayerId:
-          intent.mode === 'self' ? 'self' : `opp-${intent.opponentPosition ?? 'null'}`,
-        currentAuthoritativeCribCount: currentCribCount,
-        expectedCribCountAfterLanding,
-        cribGeometryUsed:
-          currentCribCount === 0
-            ? '0-card'
-            : currentCribCount <= 2
-              ? '2-card'
-              : '4-card',
-        geometryPolicy,
-        destinationAnchor: `data-card-anchor="crib-slot-${ordinal}"`,
-        destinationComponent: 'CribbageAnchoredCribCutMount/parked-crib-card-slot',
-        sourceRect: src
-          ? {
-              x: Math.round(src.left),
-              y: Math.round(src.top),
-              width: Math.round(src.width),
-              height: Math.round(src.height),
-              centerX: Math.round(src.left + src.width / 2),
-              centerY: Math.round(src.top + src.height / 2),
-            }
-          : null,
-        computedDestinationRect: destinationRect
-          ? {
-              x: Math.round(destinationRect.left),
-              y: Math.round(destinationRect.top),
-              width: Math.round(destinationRect.width),
-              height: Math.round(destinationRect.height),
-            }
-          : null,
-        computedDestinationCenter: { x: Math.round(endX), y: Math.round(endY) },
-        cribCutSlotRect: slotRect,
-        currentCribGroupCenter: parkedGroupRect
-          ? { x: parkedGroupRect.centerX, y: parkedGroupRect.centerY }
-          : null,
-        expectedParkedCribGroupCenter: expectedParkedCenter,
-        cutCardRect,
-        cutCardCenter: cutCardRect ? { x: cutCardRect.centerX, y: cutCardRect.centerY } : null,
-        cribToCutGapPx,
-      });
-
-      // Contradiction: destination center materially differs from where
-      // the parked crib group will actually sit after landing. Threshold
-      // is 4px in either axis (below sub-pixel jitter noise).
-      const dx = Math.abs(Math.round(endX) - expectedParkedCenter.x);
-      const dy = Math.abs(Math.round(endY) - expectedParkedCenter.y);
-      if (dx > 4 || dy > 4) {
-        emitCribLabelWartimeEvent('crib_transport_destination_mismatch', {
-          transportIntentId: intent.id,
-          cardIndex: i,
-          discardOrdinal: ordinal,
-          currentCribCount,
-          expectedCribCountAfterLanding,
-          computedDestinationCenter: { x: Math.round(endX), y: Math.round(endY) },
-          expectedParkedCribGroupCenter: expectedParkedCenter,
-          deltaX: dx,
-          deltaY: dy,
-          cribGeometryUsed:
-            currentCribCount === 0
-              ? '0-card'
-              : currentCribCount <= 2
-                ? '2-card'
-                : '4-card',
-          slotRect,
-          cutCardRect,
-        });
-      }
-
       if (!src) continue;
-      emitCribLabelWartimeEvent('crib_discard_destination_perCard', {
-        transportIntentId: intent.id,
-        cardIndex: i,
-        ordinal,
-        destAnchorUsed: 'crib-slot',
-        flightEndX: Math.round(endX),
-        flightEndY: Math.round(endY),
-      });
 
       built.push({
         key: `${intent.id}-${i}`,
@@ -292,6 +135,7 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
         delayMs: i * STAGGER_MS,
       });
     }
+
 
     if (built.length === 0) {
       onSettledRef.current(intent.id);
