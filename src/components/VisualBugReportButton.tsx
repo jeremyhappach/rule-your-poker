@@ -176,6 +176,13 @@ export const VisualBugReportButton = ({
         return;
       }
 
+      // Mounted-game discriminator: the Cribbage snapshot store is
+      // populated only while CribbageMobileCardsTab is mounted. A
+      // non-null capture therefore reflects the currently mounted
+      // client surface, independent of persisted games.game_type
+      // (which can lag or mismatch — tracked separately).
+      const cribbageActiveHandSnapshot = captureCribbageActiveHandSnapshot();
+
       const payload = {
         reporter_user_id: user.id,
         bug_type: entry.value,
@@ -194,6 +201,18 @@ export const VisualBugReportButton = ({
           ...buildMetaPayload(),
           appVersion: BUILD_META.appVersion,
         },
+        extra_context: {
+          ...(extraContext ?? {}),
+          client_id: getClientId(),
+          client_timestamp: getClientTimestamp(),
+          short_game_id: getShortGameId(gameId),
+          requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
+          ...(cribbageActiveHandSnapshot
+            ? { cribbage_active_hand_snapshot: cribbageActiveHandSnapshot }
+            : {}),
+        },
+      };
+
         extra_context: {
           ...(extraContext ?? {}),
           client_id: getClientId(),
