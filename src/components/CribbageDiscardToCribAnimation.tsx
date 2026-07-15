@@ -94,9 +94,6 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
   useEffect(() => {
     if (!intent) return;
 
-    const firstOrdinal = (intent.startingOrdinal ?? 0) + 1;
-    void firstOrdinal;
-
     // Fallback source rect used when a per-card rect is unavailable.
     const fallback: DOMRect | null =
       intent.mode === 'self'
