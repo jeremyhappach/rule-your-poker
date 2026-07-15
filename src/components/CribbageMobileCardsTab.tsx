@@ -16,7 +16,50 @@ import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
-const recordCribbageWartime: (..._args: unknown[]) => void = () => {};
+import {
+  recordCribbageActiveHand,
+  recordCribbageActiveHandContradiction,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
+
+/**
+ * Push a payload into the Cribbage active-hand visibility ledger.
+ * Signature preserved from the prior no-op shim; args map to
+ * (group, tag, payload, {producerComponent, producerFunction,
+ * dedupeKey, contradictions}).
+ */
+function recordCribbageWartime(
+  group: string,
+  tag: string,
+  payload: Record<string, unknown>,
+  opts: {
+    producerComponent: string;
+    producerFunction: string;
+    dedupeKey?: string;
+    contradictions?: string[];
+  },
+): void {
+  // Coerce legacy group names into the new taxonomy.
+  const mapped: 'deal-transport' | 'resolver' | 'child-gate' | 'dom' | 'lifecycle' =
+    group === 'deal' ? 'deal-transport'
+    : group === 'resolver' ? 'resolver'
+    : group === 'dom' ? 'dom'
+    : group === 'lifecycle' ? 'lifecycle'
+    : 'child-gate';
+  recordCribbageActiveHand(mapped, tag, payload, {
+    producer: opts.producerComponent,
+    fn: opts.producerFunction,
+    key: opts.dedupeKey,
+  });
+  if (opts.contradictions && opts.contradictions.length > 0) {
+    for (const c of opts.contradictions) {
+      recordCribbageActiveHandContradiction(c, payload, {
+        producer: opts.producerComponent,
+        fn: opts.producerFunction,
+        key: `${opts.dedupeKey ?? ''}:${c}`,
+      });
+    }
+  }
+}
 
 const CRIB_SUIT_TO_SYMBOL: Record<string, CardType['suit']> = {
   hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠',
