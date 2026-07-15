@@ -597,11 +597,16 @@ export function CribbageAnchoredCribCutMount({
   // moment `cribbageState.cutCard` becomes available.
   const cutRevealActive =
     !!cribbageState.cutCard && !isCountingPhase && !isPeggingWin;
+  // A settled visible cut card must never be replaced by a null-returning
+  // CribbageCutCardReveal. When `deferCutReveal` is true we render the
+  // same hidden placeholder used pre-reveal, preserving geometry without
+  // collapsing the wrapper to 0×0.
+  const cutEligible = cutRevealActive && !deferCutReveal;
   const renderedCutCard = cribParked ? (
     <div ref={cutRef} data-cribbage-cut-card="">
-      {cutRevealActive ? (
+      {cutEligible ? (
         <CribbageCutCardReveal
-          card={deferCutReveal ? null : cribbageState.cutCard}
+          card={cribbageState.cutCard}
           cardBackColors={cardBackColors}
           handBoundaryKey={handBoundaryKey}
           widthPx={cutCardWidthPx}
@@ -610,6 +615,7 @@ export function CribbageAnchoredCribCutMount({
       ) : (
         <div
           aria-hidden
+          data-cribbage-cut-card-placeholder=""
           style={{
             width: `${cutCardWidthPx}px`,
             height: `${cutCardHeightPx}px`,
