@@ -325,12 +325,7 @@ export function CribbageAnchoredCribCutMount({
     </div>
   ) : null;
 
-  const labelEmitted = cribOwnerLabel !== null;
-  const renderBranch = !visible
-    ? 'empty-slot'
-    : (showCribOnFelt && resolvedVisibleCribCount > 0)
-      ? 'crib-pile+cut'
-      : 'cut-only';
+
 
 
 
