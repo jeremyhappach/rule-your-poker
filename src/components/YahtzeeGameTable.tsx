@@ -2414,7 +2414,7 @@ export function YahtzeeGameTable({
           <div className="h-full overflow-hidden">
             {/* CARDS/DICE TAB */}
             {activeTab === 'cards' && (
-              <div ref={paneContentRef} data-yahtzee-active-pane-content="" className="px-2 h-full overflow-y-auto flex flex-col justify-start pt-2">
+              <div ref={paneContentRef} data-yahtzee-active-pane-content="" className="px-1 h-full overflow-y-auto flex flex-col justify-start pt-2">
 
 
                 {/* Dice area — only reserve space when actually rendering
