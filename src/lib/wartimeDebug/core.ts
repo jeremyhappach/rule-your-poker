@@ -65,6 +65,11 @@ let _events: WartimeEvent[] = [];
 let _seq = 0;
 let _dropped = 0;
 let _startedAtMs: number | null = null;
+// Admin override: when true, Wartime is force-disabled for the current
+// signed-in user regardless of the persisted localStorage flag. Used to
+// keep non-administrators off Wartime instrumentation during live play.
+// Default true (locked off) until an authenticated admin check flips it.
+let _adminGateOpen = false;
 let _stoppedAtMs: number | null = null;
 
 const _listeners = new Set<() => void>();
@@ -107,10 +112,17 @@ if (typeof window !== 'undefined') {
 }
 
 export function isWartimeEnabled(): boolean {
-  return _enabled;
+  return _enabled && _adminGateOpen;
 }
 
 export function setWartimeEnabled(next: boolean): void {
+  // Non-admins cannot arm Wartime. The persisted flag is left untouched so
+  // an admin returning later still sees their prior selection.
+  if (next && !_adminGateOpen) {
+    if (_recording) stopWartimeRecording('non-admin-gate');
+    _emitEnable();
+    return;
+  }
   _enabled = next;
   try {
     if (next) localStorage.setItem(ENABLED_KEY, '1');
@@ -121,6 +133,25 @@ export function setWartimeEnabled(next: boolean): void {
   if (!next && _recording) stopWartimeRecording('disabled');
   _emitEnable();
 }
+
+/**
+ * Admin gate for Wartime Debug. Set to `true` only for authenticated
+ * administrators. While the gate is closed, `isWartimeEnabled()` returns
+ * false, any in-progress recording is stopped, and `setWartimeEnabled(true)`
+ * is a no-op. The persisted localStorage flag is preserved so admins keep
+ * their prior selection across sign-out/sign-in.
+ */
+export function setWartimeAdminGate(open: boolean): void {
+  if (_adminGateOpen === open) return;
+  _adminGateOpen = open;
+  if (!open && _recording) stopWartimeRecording('non-admin-gate');
+  _emitEnable();
+}
+
+export function isWartimeAdminGateOpen(): boolean {
+  return _adminGateOpen;
+}
+
 
 export function subscribeWartimeEnabled(cb: () => void): () => void {
   _enableListeners.add(cb);
@@ -135,7 +166,7 @@ export function isWartimeRecording(): boolean {
 }
 
 export function startWartimeRecording(): void {
-  if (!_enabled || _recording) return;
+  if (!_enabled || !_adminGateOpen || _recording) return;
   _recording = true;
   _startedAtMs = Date.now();
   _stoppedAtMs = null;
