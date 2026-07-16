@@ -46,7 +46,7 @@ import { VisibleChipDbgPanel } from "@/lib/canonicalShell/VisibleChipDbgPanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { WartimeAdminGateMount } from "@/lib/wartimeDebug/WartimeAdminGateMount";
-import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
+import { useWartimeEnabled, useWartimeAdminGateOpen } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
@@ -186,7 +186,7 @@ const App = () => {
                 <LayoutFaultBadge />
                 <Wave5ContractViolationBadge />
                 {!hideDebugUI && <LegacyDebugPanels />}
-                {!hideDebugUI && <WartimeDebugPanel />}
+                <WartimeGatedPanel hideDebugUI={hideDebugUI} />
                 {!hideDebugUI && <ShellLifecyclePanel />}
                 <NormalizationDbgPanel />
                 <SettlementDbgPanel />
@@ -268,6 +268,16 @@ function LegacyDebugPanels() {
       <StartupFlightRecorderOverlay />
     </>
   );
+}
+
+/**
+ * Wartime Debug Panel — admin-only. Non-admins never see, mount, or
+ * subscribe to any part of the wartime UI surface.
+ */
+function WartimeGatedPanel({ hideDebugUI }: { hideDebugUI: boolean }) {
+  const adminGateOpen = useWartimeAdminGateOpen();
+  if (hideDebugUI || !adminGateOpen) return null;
+  return <WartimeDebugPanel />;
 }
 
 export default App;

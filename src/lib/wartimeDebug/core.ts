@@ -411,6 +411,10 @@ export function useWartimeEnabled(): boolean {
   return useSyncExternalStore(subscribeWartimeEnabled, isWartimeEnabled, isWartimeEnabled);
 }
 
+export function useWartimeAdminGateOpen(): boolean {
+  return useSyncExternalStore(subscribeWartimeEnabled, isWartimeAdminGateOpen, isWartimeAdminGateOpen);
+}
+
 export function useWartimeEvents(): WartimeEvent[] {
   return useSyncExternalStore(subscribeWartime, getWartimeEvents, getWartimeEvents);
 }
