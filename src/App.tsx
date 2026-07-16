@@ -45,6 +45,7 @@ import { DestReactionDbgPanel } from "@/lib/canonicalShell/DestReactionDbgPanel"
 import { VisibleChipDbgPanel } from "@/lib/canonicalShell/VisibleChipDbgPanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
+import { WartimeAdminGateMount } from "@/lib/wartimeDebug/WartimeAdminGateMount";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
