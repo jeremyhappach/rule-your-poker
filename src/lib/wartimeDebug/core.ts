@@ -65,6 +65,11 @@ let _events: WartimeEvent[] = [];
 let _seq = 0;
 let _dropped = 0;
 let _startedAtMs: number | null = null;
+// Admin override: when true, Wartime is force-disabled for the current
+// signed-in user regardless of the persisted localStorage flag. Used to
+// keep non-administrators off Wartime instrumentation during live play.
+// Default true (locked off) until an authenticated admin check flips it.
+let _adminGateOpen = false;
 let _stoppedAtMs: number | null = null;
 
 const _listeners = new Set<() => void>();
