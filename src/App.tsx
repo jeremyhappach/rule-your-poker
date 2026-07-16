@@ -153,6 +153,7 @@ const App = () => {
           <BrowserRouter>
             <AppNetworkSim>
               <ChatOperationInstrumentationMount />
+              <WartimeAdminGateMount />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
