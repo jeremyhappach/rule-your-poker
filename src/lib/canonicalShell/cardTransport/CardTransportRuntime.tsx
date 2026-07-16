@@ -40,7 +40,10 @@ import { useCardTransportInternal, type ActiveCardIntent } from './CardTransport
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
 import { auditHolmEndpointResolution } from './holmEndpointAudit';
 import { describeCardEndpoint } from './types';
-import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
+import {
+  recordCribbageActiveHand,
+  getCribbageDealIdentityAmbient,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
@@ -63,7 +66,16 @@ function recordCribbageTransportIntentLifecycle(
   detail: Record<string, unknown>,
 ): void {
   if (detail.gameType !== 'cribbage') return;
+  const ident = getCribbageDealIdentityAmbient();
   recordCribbageActiveHand('deal-transport', tag, {
+    identity: {
+      handContextId: ident.handContextId,
+      currentHandKey: ident.currentHandKey,
+      renderHandKey: ident.renderHandKey,
+      roundId: ident.roundId,
+      handNumber: ident.handNumber,
+      dealRuntimeReactKey: ident.dealRuntimeReactKey,
+    },
     ...detail,
     intentId: intent.id,
     cardId: intent.cardId,

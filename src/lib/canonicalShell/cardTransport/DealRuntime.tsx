@@ -45,7 +45,10 @@ import {
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
-import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
+import {
+  recordCribbageActiveHand,
+  getCribbageDealIdentityAmbient,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
@@ -113,7 +116,18 @@ function recordCribbageDealRuntime(
   payload: Record<string, unknown>,
   opts: { fn: string; key?: string },
 ): void {
-  recordCribbageActiveHand('deal-transport', tag, payload, {
+  const ident = getCribbageDealIdentityAmbient();
+  recordCribbageActiveHand('deal-transport', tag, {
+    identity: {
+      handContextId: ident.handContextId,
+      currentHandKey: ident.currentHandKey,
+      renderHandKey: ident.renderHandKey,
+      roundId: ident.roundId,
+      handNumber: ident.handNumber,
+      dealRuntimeReactKey: ident.dealRuntimeReactKey,
+    },
+    ...payload,
+  }, {
     producer: 'DealRuntime',
     fn: opts.fn,
     key: opts.key,

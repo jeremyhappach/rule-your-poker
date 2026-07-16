@@ -23,7 +23,10 @@ import { describeCardEndpoint } from './types';
 import { cardTransportDbgUpsert } from './cardTransportDbg';
 import { ffRecord } from './holmFullForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
-import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
+import {
+  recordCribbageActiveHand,
+  getCribbageDealIdentityAmbient,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
 
 function recordCribbageCardTransportProvider(
   tag: string,
@@ -31,7 +34,18 @@ function recordCribbageCardTransportProvider(
   opts: { fn: string; key?: string },
 ): void {
   if (payload.gameType !== 'cribbage') return;
-  recordCribbageActiveHand('deal-transport', tag, payload, {
+  const ident = getCribbageDealIdentityAmbient();
+  recordCribbageActiveHand('deal-transport', tag, {
+    identity: {
+      handContextId: ident.handContextId,
+      currentHandKey: ident.currentHandKey,
+      renderHandKey: ident.renderHandKey,
+      roundId: ident.roundId,
+      handNumber: ident.handNumber,
+      dealRuntimeReactKey: ident.dealRuntimeReactKey,
+    },
+    ...payload,
+  }, {
     producer: 'CardTransportProvider',
     fn: opts.fn,
     key: opts.key,
