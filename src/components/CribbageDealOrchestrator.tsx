@@ -29,7 +29,10 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
-import { recordCribbageActiveHand } from '@/lib/cribbage/activeHandVisibilityLedger';
+import {
+  recordCribbageActiveHand,
+  getCribbageDealIdentityAmbient,
+} from '@/lib/cribbage/activeHandVisibilityLedger';
 const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
 const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
 
@@ -44,7 +47,16 @@ function recordCribbageWartime(
     eventReason?: string;
   },
 ): void {
+  const ident = getCribbageDealIdentityAmbient();
   recordCribbageActiveHand(group === 'deal' ? 'deal-transport' : 'lifecycle', tag, {
+    identity: {
+      handContextId: ident.handContextId,
+      currentHandKey: ident.currentHandKey,
+      renderHandKey: ident.renderHandKey,
+      roundId: ident.roundId,
+      handNumber: ident.handNumber,
+      dealRuntimeReactKey: ident.dealRuntimeReactKey,
+    },
     ...payload,
     eventReason: opts.eventReason ?? null,
   }, {
