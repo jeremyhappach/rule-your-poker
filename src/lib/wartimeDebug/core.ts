@@ -166,7 +166,7 @@ export function isWartimeRecording(): boolean {
 }
 
 export function startWartimeRecording(): void {
-  if (!_enabled || _recording) return;
+  if (!_enabled || !_adminGateOpen || _recording) return;
   _recording = true;
   _startedAtMs = Date.now();
   _stoppedAtMs = null;
