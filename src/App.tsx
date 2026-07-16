@@ -270,5 +270,15 @@ function LegacyDebugPanels() {
   );
 }
 
+/**
+ * Wartime Debug Panel — admin-only. Non-admins never see, mount, or
+ * subscribe to any part of the wartime UI surface.
+ */
+function WartimeGatedPanel({ hideDebugUI }: { hideDebugUI: boolean }) {
+  const adminGateOpen = useWartimeAdminGateOpen();
+  if (hideDebugUI || !adminGateOpen) return null;
+  return <WartimeDebugPanel />;
+}
+
 export default App;
 
