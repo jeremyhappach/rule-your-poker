@@ -186,7 +186,7 @@ const App = () => {
                 <LayoutFaultBadge />
                 <Wave5ContractViolationBadge />
                 {!hideDebugUI && <LegacyDebugPanels />}
-                {!hideDebugUI && <WartimeDebugPanel />}
+                <WartimeGatedPanel hideDebugUI={hideDebugUI} />
                 {!hideDebugUI && <ShellLifecyclePanel />}
                 <NormalizationDbgPanel />
                 <SettlementDbgPanel />
