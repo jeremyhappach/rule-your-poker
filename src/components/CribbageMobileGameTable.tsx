@@ -38,6 +38,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import {
   recordCribbageActiveHand,
   recordCribbageActiveHandContradiction,
+  setCribbageDealIdentityAmbient,
 } from '@/lib/cribbage/activeHandVisibilityLedger';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
