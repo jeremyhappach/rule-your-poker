@@ -93,6 +93,42 @@ function writeArmed(next: boolean): void {
 }
 armed = readArmed();
 
+/**
+ * Cribbage deal-lifecycle ambient identity.
+ *
+ * Instrumentation-only. Written by the sole Cribbage table parent
+ * (`CribbageMobileGameTable`) each time any of its identity fields
+ * change, and read by every Cribbage deal-lifecycle producer helper
+ * so each ledger event carries the full untruncated identity vector
+ * directly on its payload — no cross-event joining required.
+ *
+ * Does NOT feed rendering, transport, timing, or gameplay logic.
+ */
+export interface CribbageDealIdentityAmbient {
+  handContextId: string | null;
+  currentHandKey: string | null;
+  renderHandKey: string | null;
+  roundId: string | null;
+  handNumber: number | null;
+  dealRuntimeReactKey: string | null;
+}
+let cribbageDealIdentityAmbient: CribbageDealIdentityAmbient = {
+  handContextId: null,
+  currentHandKey: null,
+  renderHandKey: null,
+  roundId: null,
+  handNumber: null,
+  dealRuntimeReactKey: null,
+};
+export function setCribbageDealIdentityAmbient(
+  next: Partial<CribbageDealIdentityAmbient>,
+): void {
+  cribbageDealIdentityAmbient = { ...cribbageDealIdentityAmbient, ...next };
+}
+export function getCribbageDealIdentityAmbient(): CribbageDealIdentityAmbient {
+  return cribbageDealIdentityAmbient;
+}
+
 function notify(): void {
   for (const l of listeners) { try { l(); } catch { /* */ } }
 }
