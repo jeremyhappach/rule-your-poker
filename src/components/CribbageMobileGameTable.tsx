@@ -1372,6 +1372,22 @@ export const CribbageMobileGameTable = ({
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
 
+  // Publish Cribbage deal-lifecycle ambient identity so every producer
+  // helper in this pass can spread untruncated identity onto its payload.
+  // Instrumentation-only. Does not feed rendering, transport, or gameplay.
+  useEffect(() => {
+    setCribbageDealIdentityAmbient({
+      handContextId: currentHandKey || null,
+      currentHandKey: currentHandKey || null,
+      renderHandKey: renderHandKey || null,
+      roundId: roundId ?? null,
+      handNumber: handNumber ?? null,
+      dealRuntimeReactKey: currentHandKey || null,
+    });
+  }, [currentHandKey, renderHandKey, roundId, handNumber]);
+
+
+
 
 
   // ── Action identity guard ──
