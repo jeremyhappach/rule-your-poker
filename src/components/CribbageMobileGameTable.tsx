@@ -1382,10 +1382,22 @@ export const CribbageMobileGameTable = ({
     prevIsDSForTraceRef.current = isDealerSelection;
   }
 
-  // Track hand key to detect hand transitions and prevent stale card flash
-  const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
-  // Render-specific hand key: derived from sync presentation state (what UI actually shows)
-  const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
+  // Track hand key to detect hand transitions and prevent stale card flash.
+  // Authoritative boundary: currentRoundId + currentHandNumber (writer-side,
+  // aligned to authIdentity via the sync framework).
+  const currentHandKey = useMemo(
+    () => getHandKey(cribbageState, { roundId: currentRoundId, handNumber: currentHandNumber }),
+    [cribbageState, currentRoundId, currentHandNumber],
+  );
+  // Render-specific hand key: derived from the existing presentation-owned
+  // boundary (syncHandle.presentationIdentity). No new mirror/latch/timer.
+  const renderHandKey = useMemo(
+    () => getHandKey(viewState, {
+      roundId: syncHandle.presentationIdentity?.roundId,
+      handNumber: syncHandle.presentationIdentity?.handNumber,
+    }),
+    [viewState, syncHandle.presentationIdentity?.roundId, syncHandle.presentationIdentity?.handNumber],
+  );
 
   // Publish Cribbage deal-lifecycle ambient identity so every producer
   // helper in this pass can spread untruncated identity onto its payload.
