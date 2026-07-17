@@ -3084,11 +3084,26 @@ export const GinRummyGameTable = ({
     <div className="h-full flex flex-col bg-transparent relative">
     <DealRuntimeMaybe
       handContextId={handContextId}
-      /* Contract A (refresh/rejoin): once authoritative Gin phase has
-         left 'dealing', the opening deal is finished on the server —
-         initialize GAMEPLAY so GinRummyDealOrchestrator's
-         `deal.phase !== 'PRE_DEAL'` gate suppresses historical replay. */
-      initialPhase={viewState?.phase && viewState.phase !== 'dealing' ? 'GAMEPLAY' : 'PRE_DEAL'}
+      /* Contract A (refresh/rejoin) — Approved authoritative gate.
+         Initialize GAMEPLAY only when ALL source-proven authoritative
+         conditions hold on the accepted (identity-matched) projection:
+           (1) authoritative phase is past 'dealing',
+           (2) local authoritative opening hand has reached
+               GIN_CARDS_PER_PLAYER,
+           (3) authoritative discard top exists.
+         These are the exact three inputs GinRummyDealOrchestrator itself
+         requires before dispatch, so the runtime is only initialized
+         terminal when the server-persisted opening-deal artifacts are
+         complete. Otherwise PRE_DEAL so the live deal animation runs. */
+      initialPhase={(() => {
+        if (!viewState || !currentPlayerId) return 'PRE_DEAL';
+        if (viewState.phase === 'dealing') return 'PRE_DEAL';
+        const selfHand = viewState.playerStates?.[currentPlayerId]?.hand;
+        const discardTop = viewState.discardPile?.[0];
+        if (!selfHand || selfHand.length < GIN_CARDS_PER_PLAYER) return 'PRE_DEAL';
+        if (!discardTop) return 'PRE_DEAL';
+        return 'GAMEPLAY';
+      })()}
     >
 
       {/* Phase 1 parity: canonical top safe-area spacer — matches
