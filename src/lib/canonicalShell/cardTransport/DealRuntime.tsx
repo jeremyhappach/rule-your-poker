@@ -139,6 +139,14 @@ export interface DealRuntimeProps {
   /** Authoritative hand identity. Remount when this changes. */
   handContextId: string;
   gameType?: string | null;
+  /**
+   * Contract A (refresh/rejoin) — initial phase for a freshly-mounted
+   * runtime. Games pass 'GAMEPLAY' when authoritative state proves the
+   * opening deal has already completed for this handContextId, so
+   * orchestrators (which gate dispatch on `phase !== 'PRE_DEAL'`)
+   * suppress historical replay. Defaults to 'PRE_DEAL' (live-deal path).
+   */
+  initialPhase?: DealPhase;
   children: ReactNode;
 }
 
@@ -146,8 +154,8 @@ export interface DealRuntimeProps {
  * Mount DealRuntime with a `key={handContextId}` from the host so a new
  * hand naturally resets state via remount.
  */
-export function DealRuntime({ handContextId, gameType = null, children }: DealRuntimeProps) {
-  const [phase, setPhase] = useState<DealPhase>('PRE_DEAL');
+export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PRE_DEAL', children }: DealRuntimeProps) {
+  const [phase, setPhase] = useState<DealPhase>(initialPhase);
   const [expectedCount, setExpectedCount] = useState(0);
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
