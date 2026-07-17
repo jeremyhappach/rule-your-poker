@@ -1446,6 +1446,27 @@ export const CribbageMobileGameTable = ({
     });
   }, [durableHandKey, currentHandKey, renderHandKey, roundId, handNumber, gameId, dealerGameId]);
 
+  // Clear the ambient identity when the Cribbage game surface unmounts
+  // (route change / game teardown). Read-only signal — DealRuntime's
+  // post-cleanup microtask uses this to distinguish a genuine
+  // table teardown from a mid-hand runtime destruction. Does NOT feed
+  // rendering, transport, or gameplay.
+  useEffect(() => {
+    return () => {
+      setCribbageDealIdentityAmbient({
+        handContextId: null,
+        currentHandKey: null,
+        renderHandKey: null,
+        roundId: null,
+        handNumber: null,
+        dealRuntimeReactKey: null,
+        durableHandKey: null,
+        gameId: null,
+        dealerGameId: null,
+      });
+    };
+  }, []);
+
 
 
 
