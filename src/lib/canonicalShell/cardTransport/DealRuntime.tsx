@@ -170,7 +170,16 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
   const expectedRef = useRef(0);
   expectedRef.current = expectedCount;
 
+  // Live refs for enriched mount/unmount + ownership contradictions.
+  const phaseRef = useRef<DealPhase>('PRE_DEAL');
+  phaseRef.current = phase;
+  const settledCountRef = useRef(0);
+  settledCountRef.current = settledCardIds.size;
+  const activeIntentsRef = useRef(0);
+  activeIntentsRef.current = activeIntentsForHand;
+
   useEffect(() => {
+    const identAtMount = getCribbageDealIdentityAmbient();
     ffRecord({
       writerId: 'DealRuntime:mount',
       source: 'DEAL_RUNTIME',
@@ -184,6 +193,15 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         dealRuntimeReactKey: handContextId,
         gameType,
         initialPhase: 'PRE_DEAL',
+        // Ownership enrichment.
+        durableHandKey: identAtMount.durableHandKey,
+        currentHandKey: identAtMount.currentHandKey,
+        gameId: identAtMount.gameId,
+        dealerGameId: identAtMount.dealerGameId,
+        runtimePhase: 'PRE_DEAL',
+        expectedCount: 0,
+        settledCount: 0,
+        activeIntentsForHand: 0,
       }, { fn: 'mountEffect', key: `mount:${handContextId}` });
     }
     if (gameType === 'gin-rummy') {
@@ -197,6 +215,11 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
       });
     }
     return () => {
+      const identAtUnmount = getCribbageDealIdentityAmbient();
+      const phaseAtUnmount = phaseRef.current;
+      const expectedAtUnmount = expectedRef.current;
+      const settledAtUnmount = settledCountRef.current;
+      const activeAtUnmount = activeIntentsRef.current;
       ffRecord({
         writerId: 'DealRuntime:unmount',
         source: 'DEAL_RUNTIME',
@@ -205,11 +228,67 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
         payload: { gameType },
       });
       if (gameType === 'cribbage') {
-        recordCribbageDealRuntime('deal_runtime_unmounted', {
+        const enrichedPayload = {
           handContextId,
           dealRuntimeReactKey: handContextId,
           gameType,
-        }, { fn: 'unmountEffect', key: `unmount:${handContextId}` });
+          durableHandKey: identAtUnmount.durableHandKey,
+          currentHandKey: identAtUnmount.currentHandKey,
+          gameId: identAtUnmount.gameId,
+          dealerGameId: identAtUnmount.dealerGameId,
+          roundId: identAtUnmount.roundId,
+          handNumber: identAtUnmount.handNumber,
+          runtimePhase: phaseAtUnmount,
+          expectedCount: expectedAtUnmount,
+          settledCount: settledAtUnmount,
+          activeIntentsForHand: activeAtUnmount,
+        };
+        recordCribbageDealRuntime('deal_runtime_unmounted', enrichedPayload, {
+          fn: 'unmountEffect',
+          key: `unmount:${handContextId}`,
+        });
+
+        // Ownership contradiction: DealRuntime is unmounting while the
+        // ambient identity still points at this same durable hand and
+        // no different valid canonical hand key has arrived. This
+        // captures the exact regression the durable latch was
+        // introduced to prevent (published trace: runtime destroyed
+        // between beginDeal and settlement while CardTransportProvider
+        // retained the accepted deterministic intent IDs).
+        //
+        // Deferred via queueMicrotask so the check runs AFTER React
+        // finishes tearing down children in the same commit. If the
+        // parent CribbageMobileGameTable is also unmounting, its
+        // cleanup effect will have cleared the ambient by the time
+        // this microtask runs, and the contradiction will not fire.
+        const runtimeKey = handContextId;
+        queueMicrotask(() => {
+          const identNow = getCribbageDealIdentityAmbient();
+          const sameDurable = !!identNow.durableHandKey &&
+            identNow.durableHandKey === runtimeKey;
+          const currentEmptyOrSame = !identNow.currentHandKey ||
+            identNow.currentHandKey === runtimeKey;
+          if (sameDurable && currentEmptyOrSame) {
+            recordCribbageActiveHandContradiction(
+              'deal_runtime_unmounted_with_same_durable_hand',
+              {
+                ...enrichedPayload,
+                ambientAfterUnmount: {
+                  durableHandKey: identNow.durableHandKey,
+                  currentHandKey: identNow.currentHandKey,
+                  renderHandKey: identNow.renderHandKey,
+                  gameId: identNow.gameId,
+                  dealerGameId: identNow.dealerGameId,
+                },
+              },
+              {
+                producer: 'DealRuntime',
+                fn: 'unmountEffect.postCleanupCheck',
+                key: `runtimeUnmountSameDurable:${runtimeKey}`,
+              },
+            );
+          }
+        });
       }
       if (gameType === 'gin-rummy') {
         recordGinPhaseTrace({
