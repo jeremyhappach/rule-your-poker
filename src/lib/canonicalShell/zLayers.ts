@@ -44,7 +44,7 @@ export const SHELL_Z = {
   CELEBRATION: 90,
   MODAL_OVERLAY: 9998,
   MODAL_CONTENT: 9999,
-  DIAGNOSTIC_PILL: 2147483645,
+  DIAGNOSTIC_PILL: 40,
 } as const;
 
 export type ShellZLayer = keyof typeof SHELL_Z;
