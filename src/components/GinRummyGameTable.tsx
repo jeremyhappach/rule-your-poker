@@ -294,7 +294,7 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * destination consumers fall through to the legacy "full hand
  * immediately" path (useDealRuntime() returns null).
  */
-function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+function DealRuntimeMaybe({ handContextId, initialPhase, children }: { handContextId: string | null | undefined; initialPhase?: 'PRE_DEAL' | 'GAMEPLAY'; children: ReactNode }) {
   useEffect(() => {
     recordGinPhaseTrace({
       kind: handContextId ? 'deal-runtime-host' : 'deal-runtime-reset',
@@ -306,12 +306,13 @@ function DealRuntimeMaybe({ handContextId, children }: { handContextId: string |
         runtimeKey: handContextId ?? null,
         keyInputs: handContextId ? handContextId.split('#') : [],
         mounted: !!handContextId,
+        initialPhase: initialPhase ?? 'PRE_DEAL',
       },
     });
-  }, [handContextId]);
+  }, [handContextId, initialPhase]);
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy">
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy" initialPhase={initialPhase}>
       {children}
     </DealRuntime>
   );
