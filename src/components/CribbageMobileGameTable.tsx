@@ -7185,6 +7185,119 @@ export const CribbageMobileGameTable = ({
   // [data-crib-active-hand-stage] MUST be > 0.
   const _wartimeAuthPhase = cribbageState?.phase ?? null;
   const _wartimeAuthPostDeal = !!cribbageState && isCribbagePostDealPhase(cribbageState.phase);
+
+  // ── Durable DealRuntime latch ownership instrumentation ──
+  // Read-only. Emits `durable_hand_key_changed` on legitimate latch
+  // transitions (initial-valid-key / different-valid-key /
+  // preserved-through-empty). Fires the
+  // `durable_hand_key_crossed_game_scope` contradiction if the durable
+  // key persists across a change in gameId or dealerGameId (proves that
+  // the latch is scoped only to component lifetime and not to
+  // authoritative game scope, per the ownership audit). Does NOT alter
+  // latch behavior.
+  const _durableLatchPrevRef = useRef<{
+    durable: string;
+    current: string;
+    gameId: string;
+    dealerGameId: string;
+    initialized: boolean;
+  }>({ durable: '', current: '', gameId: '', dealerGameId: '', initialized: false });
+  useEffect(() => {
+    const prev = _durableLatchPrevRef.current;
+    const nextDurable = durableHandKey || '';
+    const nextCurrent = currentHandKey || '';
+    const nextGameId = gameId ?? '';
+    const nextDealerGameId = dealerGameId ?? '';
+
+    let reason:
+      | 'initial-valid-key'
+      | 'different-valid-key'
+      | 'preserved-through-empty'
+      | 'game-scope-reset'
+      | null = null;
+
+    if (nextDurable && !prev.durable) {
+      reason = 'initial-valid-key';
+    } else if (nextDurable && prev.durable && nextDurable !== prev.durable) {
+      reason = 'different-valid-key';
+    } else if (
+      nextDurable &&
+      prev.durable === nextDurable &&
+      prev.current &&
+      !nextCurrent
+    ) {
+      reason = 'preserved-through-empty';
+    }
+
+    // Game-scope crossing contradiction: durable was established under
+    // one (gameId, dealerGameId) tuple and remains under a different
+    // one. `<CribbageMobileGameTable>` is intentionally kept mounted
+    // across ante_decision/dealer_selection/in_progress/game_over
+    // (Game.tsx: no React key, single persistent instance), so this
+    // scope check is the only signal that would prove the latch has
+    // outlived its owning canonical scope.
+    const scopeCrossed =
+      prev.initialized &&
+      !!nextDurable &&
+      prev.durable === nextDurable &&
+      ((prev.gameId && nextGameId && prev.gameId !== nextGameId) ||
+        (prev.dealerGameId && nextDealerGameId && prev.dealerGameId !== nextDealerGameId));
+
+    const payload = {
+      previousDurableHandKey: prev.durable || null,
+      nextDurableHandKey: nextDurable || null,
+      currentHandKey: nextCurrent || null,
+      gameId: nextGameId || null,
+      dealerGameId: nextDealerGameId || null,
+      currentRoundId: currentRoundId ?? null,
+      currentHandNumber: currentHandNumber ?? null,
+      isBootstrapMode,
+      isGameplayMode,
+      authoritativeCribbagePhase: _wartimeAuthPhase,
+      reason,
+      prevGameId: prev.gameId || null,
+      prevDealerGameId: prev.dealerGameId || null,
+    };
+
+    if (reason) {
+      recordCribbageActiveHand('lifecycle', 'durable_hand_key_changed', payload, {
+        producer: 'CribbageMobileGameTable',
+        fn: 'durableLatchInstrumentationEffect',
+        key: `durable:${nextDurable}:${reason}`,
+      });
+    }
+
+    if (scopeCrossed) {
+      recordCribbageActiveHandContradiction(
+        'durable_hand_key_crossed_game_scope',
+        payload,
+        {
+          producer: 'CribbageMobileGameTable',
+          fn: 'durableLatchInstrumentationEffect',
+          key: `scopeCross:${nextDurable}:${nextGameId}:${nextDealerGameId}`,
+        },
+      );
+    }
+
+    _durableLatchPrevRef.current = {
+      durable: nextDurable,
+      current: nextCurrent,
+      gameId: nextGameId,
+      dealerGameId: nextDealerGameId,
+      initialized: true,
+    };
+  }, [
+    durableHandKey,
+    currentHandKey,
+    gameId,
+    dealerGameId,
+    currentRoundId,
+    currentHandNumber,
+    isBootstrapMode,
+    isGameplayMode,
+    _wartimeAuthPhase,
+  ]);
+
   const _wartimeGateFingerprint = [
     activeTab,
     isBootstrapMode ? 'B' : '_',
