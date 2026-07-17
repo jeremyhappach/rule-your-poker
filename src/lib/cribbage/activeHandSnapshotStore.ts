@@ -90,20 +90,25 @@ export function captureCribbageActiveHandSnapshot():
   | null {
   if (!latest) return null;
 
-  let domChildCount = 0;
+  let domWrapperCount = 0;
+  let domCardCount = 0;
   try {
     if (typeof document !== 'undefined') {
       const stage = document.querySelector(
         '[data-crib-active-hand-stage]',
       ) as HTMLElement | null;
-      domChildCount = stage?.children.length ?? 0;
+      domWrapperCount = stage?.children.length ?? 0;
+      domCardCount = document.querySelectorAll(
+        '[data-crib-active-hand-stage] [data-cribbage-hand-card-key]',
+      ).length;
     }
   } catch {
-    domChildCount = 0;
+    domWrapperCount = 0;
+    domCardCount = 0;
   }
 
   const authoritativeCardsButEmptyDom =
-    latest.authoritativeHandCount > 0 && domChildCount === 0;
+    latest.authoritativeHandCount > 0 && domCardCount === 0;
 
   // Ledger tail — last 300 entries of the existing bounded ring.
   let ledgerTailText = '';
@@ -125,7 +130,8 @@ export function captureCribbageActiveHandSnapshot():
 
   return {
     ...latest,
-    activeHandDomChildCount: domChildCount,
+    activeHandDomWrapperCount: domWrapperCount,
+    activeHandDomCardCount: domCardCount,
     authoritativeCardsButEmptyDom,
     ledgerTailText,
     capturedAt: new Date().toISOString(),
