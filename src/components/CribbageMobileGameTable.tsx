@@ -500,10 +500,10 @@ function CribbageDealerSelectionVisibilityTracker({
  * destination consumers fall through to the legacy "full hand
  * immediately" path (useDealRuntime() returns null).
  */
-function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+function DealRuntimeMaybe({ handContextId, initialPhase, children }: { handContextId: string | null | undefined; initialPhase?: 'PRE_DEAL' | 'GAMEPLAY'; children: ReactNode }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="cribbage">
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="cribbage" initialPhase={initialPhase}>
       {children}
     </DealRuntime>
   );
