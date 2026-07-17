@@ -8353,14 +8353,22 @@ export const MobileGameTable = ({
     )}
     <ThreeFiveSevenDealRuntimeMaybe
       handContextId={threeFiveSevenHandContextId}
-      /* Contract A (refresh/rejoin): if authoritative self-hand already
-         contains the expected total for the current 3-5-7 round, the
-         current wave has completed on the server — initialize GAMEPLAY
-         so ThreeFiveSevenDealOrchestrator's runtime-phase gate suppresses
-         historical wave replay. */
+      /* Contract A (refresh/rejoin) — Approved authoritative gate.
+         Initialize GAMEPLAY only when BOTH source-proven authoritative
+         conditions hold:
+           (1) canonical authoritative round status (`roundStatus`,
+               derived from rounds.status in Game.tsx) is past the
+               dealing lifecycle — i.e., not 'pending' and not 'ante';
+           (2) `currentPlayerCards.length` has reached the expected
+               total for the current 3-5-7 round.
+         Card count alone is insufficient: the server may persist card
+         rows before advancing the authoritative round status, and
+         during that legitimate live-deal window PRE_DEAL must remain
+         so the wave animation runs. */
       initialPhase={
         __is357GameType(gameType) &&
         typeof currentRound === 'number' && currentRound >= 1 &&
+        !!roundStatus && roundStatus !== 'pending' && roundStatus !== 'ante' &&
         currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
           ? 'GAMEPLAY'
           : 'PRE_DEAL'
