@@ -8263,77 +8263,171 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     traceMilestone('game_start_from_waiting');
-    
-    // Log session event
-    await logStatusChanged(gameId, user?.id, game?.status ?? 'waiting', 'dealer_selection', 'Host started game');
-    
-    // Recovery-waiting hygiene: when starting from a waiting state that
-    // followed an in-progress session (rather than a fresh session), the
-    // games row can still hold stale lifecycle fields from the prior
-    // dealer game — current_game_uuid pinned to the old game, stale
-    // config_deadline / config_complete from a prior configuring pass,
-    // awaiting_next_round latched true, etc. Without clearing them, the
-    // dealer_selection bootstrap reads pre-recovery scaffolding and the
-    // Start Game click hangs. We always clear them on the waiting →
-    // dealer_selection cutover; fresh sessions already have null values
-    // so this is a no-op for them.
-    //
-    // Active players: promote every seated/non-observer/non-left row to
-    // active for this fresh relaunch. Waiting-table Start Game owns this
-    // hygiene pass; stale sitting_out=true / waiting=false timeout rows
-    // must not survive into dealer_selection.
-    const { error: normalizePlayersError } = await supabase
-      .from('players')
-      .update({ status: 'active', sitting_out: false, waiting: false })
-      .eq('game_id', gameId)
-      .neq('status', 'observer')
-      .neq('status', 'left');
 
-    if (normalizePlayersError) {
-      console.error('[GAME START] Failed to normalize waiting-table players:', normalizePlayersError);
+    // ── Start Game persistent trace ────────────────────────────
+    // One correlation ID groups every stage of a single invocation into
+    // debug_events. Instrumentation only — mutations, ordering, and
+    // predicates are unchanged. See src/lib/startGameTrace.ts.
+    const sgTrace = createStartGameTrace(gameId, user?.id ?? null, game?.status ?? null);
+    emitStartGameStage(sgTrace, 'start_game_entered', true, {
+      priorClientGameStatus: game?.status ?? null,
+    });
+
+    // Log session event
+    try {
+      await logStatusChanged(gameId, user?.id, game?.status ?? 'waiting', 'dealer_selection', 'Host started game');
+    } catch (e) {
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'logStatusChanged',
+        ...captureException(e),
+      });
       return;
     }
 
-    // Two-Player Seat Normalization (Cribbage / Gin / Yahtzee).
-    // Second orchestration entry point — runs in the waiting →
-    // dealer_selection pre-game window so the dealer-selection bootstrap
-    // reads already-opposed seats. Safe no-op when the Start Game seating
-    // invariant is not exactly two active seated players (bots included).
+    // Recovery-waiting hygiene (see original comment block below the stage emits).
+    const playersPayload = { status: 'active', sitting_out: false, waiting: false };
+    const playersFilters = { game_id: gameId, 'neq:status': ['observer', 'left'] };
+    emitStartGameStage(sgTrace, 'players_update_started', true, {
+      payload: playersPayload,
+      filters: playersFilters,
+    });
+
+    let playersResult: Awaited<ReturnType<typeof supabase.from>> extends never ? never : any;
+    try {
+      playersResult = await supabase
+        .from('players')
+        .update(playersPayload)
+        .eq('game_id', gameId)
+        .neq('status', 'observer')
+        .neq('status', 'left');
+    } catch (e) {
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'players_update_threw',
+        ...captureException(e),
+      });
+      return;
+    }
+
+    emitStartGameStage(sgTrace, 'players_update_completed', !playersResult.error, {
+      supabase: capturePostgrestResult(playersResult),
+    });
+
+    if (playersResult.error) {
+      console.error('[GAME START] Failed to normalize waiting-table players:', playersResult.error);
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'players_update_error',
+        supabase: capturePostgrestResult(playersResult),
+      });
+      return;
+    }
+
+    // Two-Player Seat Normalization.
+    emitStartGameStage(sgTrace, 'seat_normalization_started', true, {});
     let startGameNormalizeResult: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null = null;
+    let normalizeThrew: unknown = null;
     try {
       recordNormalizationDbg({ kind: 'call-site', caller: 'StartGameFromWaiting', didInvokeNormalizer: true, statusTransition: 'waiting→dealer_selection' });
       await recordStartGameNormalizationDbg('before-normalize');
       startGameNormalizeResult = await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
       await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
     } catch (e) {
+      normalizeThrew = e;
       console.error('[GAME START] normalizeTwoPlayerSeatsIfNeeded threw:', e);
-      await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
+      try { await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult); } catch { /* */ }
     }
-
-
-    // Move to dealer_selection AND clear recovery-waiting scaffolding.
-    const { error } = await supabase
-      .from('games')
-      .update({ 
-        status: 'dealer_selection',
-        dealer_selection_state: null,
-        current_game_uuid: null,
-        config_deadline: null,
-        config_complete: false,
-        awaiting_next_round: false,
-        last_round_result: null,
-      })
-      .eq('id', gameId);
-
-    if (error) {
-      console.error('Start game error:', error);
+    emitStartGameStage(sgTrace, 'seat_normalization_completed', !normalizeThrew, {
+      result: startGameNormalizeResult,
+      ...(normalizeThrew ? captureException(normalizeThrew) : {}),
+    });
+    if (normalizeThrew) {
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'normalizeTwoPlayerSeatsIfNeeded',
+        ...captureException(normalizeThrew),
+      });
       return;
     }
 
-    await recordStartGameNormalizationDbg('after-status-flip', startGameNormalizeResult);
+    // Move to dealer_selection AND clear recovery-waiting scaffolding.
+    const gamesPayload = {
+      status: 'dealer_selection',
+      dealer_selection_state: null,
+      current_game_uuid: null,
+      config_deadline: null,
+      config_complete: false,
+      awaiting_next_round: false,
+      last_round_result: null,
+    };
+    const gamesFilters = { id: gameId };
+    emitStartGameStage(sgTrace, 'games_update_started', true, {
+      payload: gamesPayload,
+      filters: gamesFilters,
+    });
+
+    let gamesResult: any;
+    try {
+      // .select(...).maybeSingle() is diagnostic-only: it returns the row after
+      // the update but does not narrow the update predicate. If RLS filters the
+      // update to zero rows, data will be null with no error; if PostgREST rejects
+      // the request, error will be populated.
+      gamesResult = await supabase
+        .from('games')
+        .update(gamesPayload)
+        .eq('id', gameId)
+        .select('id,status,updated_at')
+        .maybeSingle();
+    } catch (e) {
+      emitStartGameStage(sgTrace, 'games_update_completed', false, {
+        ...captureException(e),
+      });
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'games_update_threw',
+        ...captureException(e),
+      });
+      return;
+    }
+
+    const gamesCaptured = capturePostgrestResult(gamesResult);
+    const rlsFilteredZeroRow = !gamesResult.error && gamesResult.data == null;
+    emitStartGameStage(sgTrace, 'games_update_completed', !gamesResult.error && !rlsFilteredZeroRow, {
+      supabase: gamesCaptured,
+      rlsFilteredZeroRow,
+      returnedRow: gamesResult.data ?? null,
+    });
+
+    if (gamesResult.error) {
+      console.error('Start game error:', gamesResult.error);
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'games_update_error',
+        supabase: gamesCaptured,
+      });
+      return;
+    }
+    if (rlsFilteredZeroRow) {
+      emitStartGameStage(sgTrace, 'start_game_aborted', false, {
+        failingStage: 'games_update_zero_rows',
+        supabase: gamesCaptured,
+      });
+      return;
+    }
+
+    try {
+      await recordStartGameNormalizationDbg('after-status-flip', startGameNormalizeResult);
+    } catch { /* */ }
 
     // Manual refetch to ensure UI updates immediately
-    setTimeout(() => fetchGameData(), 100);
+    emitStartGameStage(sgTrace, 'fetch_game_data_scheduled', true, { delayMs: 100 });
+    setTimeout(async () => {
+      try {
+        await fetchGameData();
+        emitStartGameStage(sgTrace, 'fetch_game_data_completed', true, {});
+      } catch (e) {
+        emitStartGameStage(sgTrace, 'fetch_game_data_completed', false, captureException(e));
+      }
+    }, 100);
+
+    emitStartGameStage(sgTrace, 'start_game_completed', true, {
+      returnedRow: gamesResult.data ?? null,
+    });
   };
 
   const selectDealer = async (dealerPosition: number) => {
