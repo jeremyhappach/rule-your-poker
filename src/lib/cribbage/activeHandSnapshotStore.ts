@@ -48,7 +48,8 @@ export interface CribbageActiveHandSnapshotPublished {
 
 export interface CribbageActiveHandCapturedSnapshot
   extends CribbageActiveHandSnapshotPublished {
-  activeHandDomChildCount: number;
+  activeHandDomWrapperCount: number;
+  activeHandDomCardCount: number;
   authoritativeCardsButEmptyDom: boolean;
   ledgerTailText: string;
   capturedAt: string;
