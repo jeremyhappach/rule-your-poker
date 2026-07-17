@@ -8118,9 +8118,9 @@ export const CribbageMobileGameTable = ({
                     dealer→opp/self intents (substrate proof, NOT full
                     Cribbage deal). Mounted only when we have a dealer +
                     viewer + at least one seated player. */}
-                {currentHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
+                {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
-                    handContextId={currentHandKey}
+                    handContextId={durableHandKey}
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
