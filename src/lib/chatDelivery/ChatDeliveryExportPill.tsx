@@ -7,8 +7,27 @@ import {
   getChatDeliveryLedger,
   installChatDeliveryConsoleTap,
 } from './chatDeliveryLedger';
+import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 export function ChatDeliveryExportPill() {
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setUserId(data.session?.user?.id);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUserId(session?.user?.id);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+  const { isAdmin, loading: adminLoading } = useIsAdmin(userId);
+  if (adminLoading || !isAdmin) return null;
+  return <ChatDeliveryExportPillInner />;
+}
+
+function ChatDeliveryExportPillInner() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
