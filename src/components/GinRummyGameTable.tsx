@@ -3082,7 +3082,14 @@ export const GinRummyGameTable = ({
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
-    <DealRuntimeMaybe handContextId={handContextId}>
+    <DealRuntimeMaybe
+      handContextId={handContextId}
+      /* Contract A (refresh/rejoin): once authoritative Gin phase has
+         left 'dealing', the opening deal is finished on the server —
+         initialize GAMEPLAY so GinRummyDealOrchestrator's
+         `deal.phase !== 'PRE_DEAL'` gate suppresses historical replay. */
+      initialPhase={viewState?.phase && viewState.phase !== 'dealing' ? 'GAMEPLAY' : 'PRE_DEAL'}
+    >
 
       {/* Phase 1 parity: canonical top safe-area spacer — matches
           MobileGameTable/NeutralInterstitial. Restores HUD partition
