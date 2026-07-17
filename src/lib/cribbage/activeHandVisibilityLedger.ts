@@ -111,6 +111,12 @@ export interface CribbageDealIdentityAmbient {
   roundId: string | null;
   handNumber: number | null;
   dealRuntimeReactKey: string | null;
+  /** Durable canonical DealRuntime latch (see CribbageMobileGameTable). */
+  durableHandKey: string | null;
+  /** Session game scope owning the durable latch. */
+  gameId: string | null;
+  /** Dealer-game scope owning the durable latch. */
+  dealerGameId: string | null;
 }
 let cribbageDealIdentityAmbient: CribbageDealIdentityAmbient = {
   handContextId: null,
@@ -119,6 +125,9 @@ let cribbageDealIdentityAmbient: CribbageDealIdentityAmbient = {
   roundId: null,
   handNumber: null,
   dealRuntimeReactKey: null,
+  durableHandKey: null,
+  gameId: null,
+  dealerGameId: null,
 };
 export function setCribbageDealIdentityAmbient(
   next: Partial<CribbageDealIdentityAmbient>,
