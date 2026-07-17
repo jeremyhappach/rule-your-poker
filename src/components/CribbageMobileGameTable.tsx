@@ -7964,7 +7964,14 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <DealRuntimeMaybe handContextId={currentHandKey || durableHandKey}>
+    <DealRuntimeMaybe
+      handContextId={currentHandKey || durableHandKey}
+      /* Contract A (refresh/rejoin): when authoritative Cribbage phase
+         is past 'dealing', the opening deal already completed on the
+         server — initialize GAMEPLAY so the orchestrator's
+         `deal.phase !== 'PRE_DEAL'` gate suppresses historical replay. */
+      initialPhase={cribbageState?.phase && cribbageState.phase !== 'dealing' ? 'GAMEPLAY' : 'PRE_DEAL'}
+    >
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
 
       {/* Phase E: canonical `match_win` announcement owns winner UI.
