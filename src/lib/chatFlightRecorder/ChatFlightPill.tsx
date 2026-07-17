@@ -275,7 +275,7 @@ export function ChatFlightPill() {
         top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 2147483647,
+        zIndex: 40,
         pointerEvents: 'auto',
       }}
       className={

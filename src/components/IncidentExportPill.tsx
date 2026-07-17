@@ -242,7 +242,7 @@ export function IncidentExportPill(): JSX.Element | null {
         top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 2147483646,
+        zIndex: 40,
         maxWidth: '92vw',
         pointerEvents: 'auto',
       }}

@@ -80,7 +80,7 @@ export function HolmTracePill() {
         position: 'fixed',
         bottom: 6,
         right: 6,
-        zIndex: 100000,
+        zIndex: 40,
         background: 'rgba(0,0,0,0.85)',
         color: '#FFD580',
         border: '1px solid #FFD580',

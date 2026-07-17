@@ -438,7 +438,7 @@ export function HolmDealDbgPanel() {
     <div
       data-holm-deal-dbg-panel=""
       style={{
-        ...(inTray ? { position: 'relative' as const } : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 2147483645 }),
+        ...(inTray ? { position: 'relative' as const } : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 40 }),
         width: expanded ? 'min(96vw, 680px)' : 'auto',
         maxWidth: expanded ? undefined : 380,
         background: 'rgba(0,0,0,0.92)',

@@ -125,7 +125,7 @@ export function FeltDebugPill() {
         position: 'fixed',
         right: 8,
         top: 8,
-        zIndex: 99999,
+        zIndex: 40,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 10,
         color: '#fff',

@@ -87,7 +87,7 @@ export function NormalizationDbgPanel() {
       style={{
         ...(inTray
           ? { position: 'relative' as const }
-          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 2147483645 }),
+          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 40 }),
         width: expanded ? 'min(94vw, 520px)' : 'auto',
         maxWidth: expanded ? undefined : 300,
         background: 'rgba(0,0,0,0.85)',

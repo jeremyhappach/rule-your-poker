@@ -48,7 +48,7 @@ function Inner() {
         position: 'fixed',
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 36px)',
         right: 6,
-        zIndex: 2147483645,
+        zIndex: 40,
         pointerEvents: 'auto',
       }}
       className="flex flex-col items-end gap-1 rounded border border-amber-500/70 bg-black/90 px-2 py-1 text-[10px] text-amber-100 shadow-lg font-mono"

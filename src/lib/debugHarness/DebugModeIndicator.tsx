@@ -57,7 +57,7 @@ export function DebugModeIndicator() {
         position: 'fixed',
         right: 8,
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
-        zIndex: 2147483647,
+        zIndex: 40,
         pointerEvents: 'auto',
       };
 
