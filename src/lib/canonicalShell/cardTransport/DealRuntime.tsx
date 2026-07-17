@@ -47,6 +47,7 @@ import {
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
 import {
   recordCribbageActiveHand,
+  recordCribbageActiveHandContradiction,
   getCribbageDealIdentityAmbient,
 } from '@/lib/cribbage/activeHandVisibilityLedger';
 
