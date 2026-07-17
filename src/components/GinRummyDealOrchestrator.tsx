@@ -123,6 +123,31 @@ export function GinRummyDealOrchestrator({
       });
       return;
     }
+    // Contract A (refresh/rejoin) — Durable canonical gate. When
+    // DealRuntime is initialized to GAMEPLAY (host adapter proved the
+    // opening deal already completed on the server) OR any prior phase
+    // transition has already left PRE_DEAL, the opening deal for this
+    // handContextId must not be redispatched. DealRuntime is host-keyed
+    // by handContextId (higher in the tree via DealRuntimeMaybe), so its
+    // phase is the canonical durable ownership signal — do NOT introduce
+    // a parallel module-level dispatch registry beyond the existing
+    // opening-deal manifest set.
+    if (deal.phase !== 'PRE_DEAL') {
+      dispatchedRef.current = true;
+      dispatchedOpeningDealManifests.add(handContextId);
+      recordGinPhaseTrace({
+        kind: 'deal-orchestrator-skip',
+        summary: 'Gin opening deal duplicate_dispatch_suppressed_by_runtime',
+        sourceFile: 'src/components/GinRummyDealOrchestrator.tsx',
+        sourceFunction: 'GinRummyDealOrchestrator.dispatchEffect',
+        identity: { handContextId, dealerPlayerId },
+        detail: {
+          reason: 'DealRuntime already past PRE_DEAL for this handContextId (durable canonical gate)',
+          runtimePhase: deal.phase,
+        },
+      });
+      return;
+    }
     if (!dealTimingHydrated) {
       return;
     }

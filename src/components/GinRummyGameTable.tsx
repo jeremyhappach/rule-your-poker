@@ -294,7 +294,7 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * destination consumers fall through to the legacy "full hand
  * immediately" path (useDealRuntime() returns null).
  */
-function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+function DealRuntimeMaybe({ handContextId, initialPhase, children }: { handContextId: string | null | undefined; initialPhase?: 'PRE_DEAL' | 'GAMEPLAY'; children: ReactNode }) {
   useEffect(() => {
     recordGinPhaseTrace({
       kind: handContextId ? 'deal-runtime-host' : 'deal-runtime-reset',
@@ -306,12 +306,13 @@ function DealRuntimeMaybe({ handContextId, children }: { handContextId: string |
         runtimeKey: handContextId ?? null,
         keyInputs: handContextId ? handContextId.split('#') : [],
         mounted: !!handContextId,
+        initialPhase: initialPhase ?? 'PRE_DEAL',
       },
     });
-  }, [handContextId]);
+  }, [handContextId, initialPhase]);
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy">
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="gin-rummy" initialPhase={initialPhase}>
       {children}
     </DealRuntime>
   );
@@ -3081,7 +3082,14 @@ export const GinRummyGameTable = ({
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
-    <DealRuntimeMaybe handContextId={handContextId}>
+    <DealRuntimeMaybe
+      handContextId={handContextId}
+      /* Contract A (refresh/rejoin): once authoritative Gin phase has
+         left 'dealing', the opening deal is finished on the server —
+         initialize GAMEPLAY so GinRummyDealOrchestrator's
+         `deal.phase !== 'PRE_DEAL'` gate suppresses historical replay. */
+      initialPhase={viewState?.phase && viewState.phase !== 'dealing' ? 'GAMEPLAY' : 'PRE_DEAL'}
+    >
 
       {/* Phase 1 parity: canonical top safe-area spacer — matches
           MobileGameTable/NeutralInterstitial. Restores HUD partition

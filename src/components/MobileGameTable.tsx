@@ -8351,7 +8351,21 @@ export const MobileGameTable = ({
         />
       </>
     )}
-    <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
+    <ThreeFiveSevenDealRuntimeMaybe
+      handContextId={threeFiveSevenHandContextId}
+      /* Contract A (refresh/rejoin): if authoritative self-hand already
+         contains the expected total for the current 3-5-7 round, the
+         current wave has completed on the server — initialize GAMEPLAY
+         so ThreeFiveSevenDealOrchestrator's runtime-phase gate suppresses
+         historical wave replay. */
+      initialPhase={
+        __is357GameType(gameType) &&
+        typeof currentRound === 'number' && currentRound >= 1 &&
+        currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
+          ? 'GAMEPLAY'
+          : 'PRE_DEAL'
+      }
+    >
     <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (

@@ -118,6 +118,17 @@ export function ThreeFiveSevenDealOrchestrator({
   useEffect(() => {
     if (!deal) return;
     if (dispatchedWaveRef.current === waveContextId) return;
+    // Contract A (refresh/rejoin) — Durable canonical gate. If the host
+    // initialized DealRuntime to a non-PRE_DEAL phase AND no wave has
+    // yet accumulated expected cards on this runtime, the current wave
+    // was already dealt on the server before mount — suppress dispatch
+    // to prevent historical replay. `expectedCount === 0` distinguishes
+    // this from live mid-hand wave transitions (r2/r3) where prior
+    // waves have already grown expectedCount > 0.
+    if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
+      dispatchedWaveRef.current = waveContextId;
+      return;
+    }
     if (!dealTimingHydrated) return;
     if (cardsThisWave <= 0) return;
     if (!activeSeats.length) return;
@@ -737,14 +748,18 @@ export function Use357SelfHand<T>({
  */
 export function ThreeFiveSevenDealRuntimeMaybe({
   handContextId,
+  initialPhase,
   children,
 }: {
   handContextId: string | null | undefined;
+  /** Contract A (refresh/rejoin): pass 'GAMEPLAY' when authoritative state
+   *  proves the current wave's cards are already dealt on the server. */
+  initialPhase?: 'PRE_DEAL' | 'GAMEPLAY';
   children: ReactNode;
 }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId} gameType="three-five-seven">
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="three-five-seven" initialPhase={initialPhase}>
       {children}
     </DealRuntime>
   );
