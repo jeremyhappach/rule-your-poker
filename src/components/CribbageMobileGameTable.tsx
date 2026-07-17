@@ -7822,7 +7822,7 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <DealRuntimeMaybe handContextId={currentHandKey}>
+    <DealRuntimeMaybe handContextId={durableHandKey || currentHandKey}>
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
 
       {/* Phase E: canonical `match_win` announcement owns winner UI.
