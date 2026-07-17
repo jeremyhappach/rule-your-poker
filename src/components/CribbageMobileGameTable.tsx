@@ -1434,12 +1434,12 @@ export const CribbageMobileGameTable = ({
   // Instrumentation-only. Does not feed rendering, transport, or gameplay.
   useEffect(() => {
     setCribbageDealIdentityAmbient({
-      handContextId: (durableHandKey || currentHandKey) || null,
+      handContextId: (currentHandKey || durableHandKey) || null,
       currentHandKey: currentHandKey || null,
       renderHandKey: renderHandKey || null,
       roundId: roundId ?? null,
       handNumber: handNumber ?? null,
-      dealRuntimeReactKey: (durableHandKey || currentHandKey) || null,
+      dealRuntimeReactKey: (currentHandKey || durableHandKey) || null,
       durableHandKey: durableHandKey || null,
       gameId: gameId ?? null,
       dealerGameId: dealerGameId ?? null,
