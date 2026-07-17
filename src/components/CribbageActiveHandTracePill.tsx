@@ -8,14 +8,28 @@ import {
   isCribbageActiveHandArmed,
   subscribeCribbageActiveHand,
 } from '@/lib/cribbage/activeHandVisibilityLedger';
+import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 /**
  * Pill for the Cribbage Active-Hand Visibility ledger.
  * Small collapsed pill with expand/collapse + Export TXT + arm/clear
- * per the debug-pill standard. Visible to all users (ungated) so
- * repro captures can come from any client.
+ * per the debug-pill standard. Admin-gated.
  */
 export function CribbageActiveHandTracePill() {
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setUserId(data.session?.user?.id);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUserId(session?.user?.id);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+  const { isAdmin, loading } = useIsAdmin(userId);
+  if (loading || !isAdmin) return null;
   return <Inner />;
 }
 
