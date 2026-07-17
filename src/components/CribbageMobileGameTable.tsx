@@ -8257,7 +8257,7 @@ export const CribbageMobileGameTable = ({
                     viewer + at least one seated player. */}
                 {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
-                    handContextId={durableHandKey}
+                    handContextId={currentHandKey || durableHandKey}
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
