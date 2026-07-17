@@ -20,7 +20,7 @@
  *   MODAL_CONTENT        9999     Radix DialogContent (true blocking modal surface).
  *                                 The dealer-config / ante decision / etc. dialogs render
  *                                 here and MUST visually cover the tab rail.
- *   DIAGNOSTIC_PILL     2147483645+  Diagnostic pills / debug HUD.
+ *   DIAGNOSTIC_PILL       40  Diagnostic pills / debug HUD. MUST stay below Radix/Tailwind modals (z-50+) so any dialog wins visually.
  *
  * Rules:
  *   1. Any new shell surface picks the smallest band that satisfies its
