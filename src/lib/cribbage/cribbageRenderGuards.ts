@@ -87,6 +87,15 @@ export interface ResolveCribbageVisibleHandArgs {
   dealPhase?: DealPhase | null;
   dealExpectedCount?: number;
   dealActiveIntentCount?: number;
+  /**
+   * Contract B — authoritative post-self-discard settlement discriminator.
+   * True iff `playerStates[currentPlayerId].discardedToCrib.length > 0` in
+   * the authoritative Cribbage state. Source-provable from DB truth: only
+   * a committed self-discard commit sets this. Opening-deal transport
+   * never runs after this flips true, and no transport path can grow
+   * `authoritativeHand` during the `discarding` phase.
+   */
+  selfHasDiscarded?: boolean;
 }
 
 export type CribbageVisibleHandDecision =
@@ -97,19 +106,22 @@ export type CribbageVisibleHandDecision =
   | 'render-empty-no-authoritative';
 
 /**
- * Opening-deal contract — DealRuntime lifecycle is the sole discriminator.
+ * Opening-deal contract — DealRuntime lifecycle is the sole discriminator,
+ * except for the Contract B self-heal below.
  *
- *   Lifecycle                              Visible hand
- *   -------------------------------------  ------------------------------
- *   phase past opening (pegging/counting)  self-heal to authoritative
- *   transport terminal (READY/GAMEPLAY)    self-heal to authoritative
- *   transport DEALING with progress        presentation subset
- *   transport DEALING idle / PRE_DEAL      empty (awaiting transport)
+ *   Lifecycle                                Visible hand
+ *   ---------------------------------------  ------------------------------
+ *   phase past opening (cutting/pegging/…)   self-heal to authoritative
+ *   phase='discarding' AND self-has-discarded self-heal (Contract B)
+ *   transport terminal (READY/GAMEPLAY)      self-heal to authoritative
+ *   transport DEALING with progress          presentation subset
+ *   transport DEALING idle / PRE_DEAL        empty (awaiting transport)
  *
- * There is no wall-clock grace / stall fuse here. Canonical transport
- * owns recovery for missing endpoints via endpoint retry → __markDropped
- * → settled → READY, which naturally lifts visibility through the
- * terminal branch above.
+ * Contract B rationale: once the authoritative state records this player's
+ * discard-to-crib, the opening deal has provably completed (server never
+ * flips phase→'discarding' until every player_cards row is inserted) and
+ * no transport can add cards until the next hand. Reconstructing from
+ * authoritative on refresh in this state is safe and required.
  */
 export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs): {
   hand: readonly CribbageCard[];
@@ -123,6 +135,7 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
   const dealPhase = args.dealPhase ?? null;
   const activeIntents = args.dealActiveIntentCount ?? 0;
   const parentSuppressed = !!args.parentSuppressed;
+  const selfHasDiscarded = !!args.selfHasDiscarded;
 
   const isOpeningPhase = args.phase === 'discarding' || args.phase === 'dealing';
   const isPost = isCribbagePostDealPhase(args.phase);
@@ -143,6 +156,21 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
       hand: presentation,
       decision: 'render-presentation',
       reason: 'phase past opening-deal window; presentation matches',
+    };
+  }
+
+  // Contract B — refresh/rejoin reconstruction during 'discarding' after
+  // this player has already discarded. Provably safe: `selfHasDiscarded`
+  // is set only by a committed authoritative discard, which cannot happen
+  // until the opening deal fully completed, and no transport path modifies
+  // authoritative hand cards during `discarding`. Does not fire during
+  // the live opening deal (selfHasDiscarded=false) nor during settled-
+  // prefix reveal (same).
+  if (args.phase === 'discarding' && selfHasDiscarded && authCount > 0 && presCount < authCount) {
+    return {
+      hand: authoritative as readonly CribbageCard[],
+      decision: 'render-authoritative-self-heal',
+      reason: 'Contract B: self already discarded; authoritative post-discard hand is settled',
     };
   }
 
