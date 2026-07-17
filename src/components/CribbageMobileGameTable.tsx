@@ -1434,12 +1434,12 @@ export const CribbageMobileGameTable = ({
   // Instrumentation-only. Does not feed rendering, transport, or gameplay.
   useEffect(() => {
     setCribbageDealIdentityAmbient({
-      handContextId: (durableHandKey || currentHandKey) || null,
+      handContextId: (currentHandKey || durableHandKey) || null,
       currentHandKey: currentHandKey || null,
       renderHandKey: renderHandKey || null,
       roundId: roundId ?? null,
       handNumber: handNumber ?? null,
-      dealRuntimeReactKey: (durableHandKey || currentHandKey) || null,
+      dealRuntimeReactKey: (currentHandKey || durableHandKey) || null,
       durableHandKey: durableHandKey || null,
       gameId: gameId ?? null,
       dealerGameId: dealerGameId ?? null,
@@ -7959,7 +7959,7 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <DealRuntimeMaybe handContextId={durableHandKey || currentHandKey}>
+    <DealRuntimeMaybe handContextId={currentHandKey || durableHandKey}>
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
 
       {/* Phase E: canonical `match_win` announcement owns winner UI.
@@ -8257,7 +8257,7 @@ export const CribbageMobileGameTable = ({
                     viewer + at least one seated player. */}
                 {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
-                    handContextId={durableHandKey}
+                    handContextId={currentHandKey || durableHandKey}
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
