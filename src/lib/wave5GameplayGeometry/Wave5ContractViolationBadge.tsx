@@ -66,7 +66,7 @@ export function Wave5ContractViolationBadge() {
         position: "fixed",
         bottom: 8,
         left: 220,
-        zIndex: 99999,
+        zIndex: 40,
         background: "rgba(146, 64, 14, 0.94)",
         color: "white",
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",

@@ -314,7 +314,7 @@ export function ThreeFiveSevenDealDiagPanel() {
       style={{
         ...(inTray
           ? { position: 'relative' as const }
-          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 2147483645 }),
+          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 40 }),
         width: expanded ? 'min(96vw, 520px)' : 'auto',
         maxWidth: expanded ? undefined : 360,
         background: 'rgba(0,0,0,0.9)',

@@ -48,7 +48,7 @@ export function ChatDeliveryExportPill() {
         position: 'fixed',
         top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
         right: 6,
-        zIndex: 2147483647,
+        zIndex: 40,
         pointerEvents: 'auto',
       }}
       className="flex items-center gap-1 rounded border border-amber-400/60 bg-black/90 px-2 py-1 text-[10px] text-amber-100 shadow-lg"

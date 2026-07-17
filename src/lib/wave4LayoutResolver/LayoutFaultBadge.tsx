@@ -72,7 +72,7 @@ export function LayoutFaultBadge() {
         position: "fixed",
         bottom: 8,
         left: 8,
-        zIndex: 99999,
+        zIndex: 40,
         background: "rgba(120, 0, 0, 0.92)",
         color: "white",
         fontFamily: "ui-monospace, monospace",

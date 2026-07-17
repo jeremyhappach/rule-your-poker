@@ -138,7 +138,7 @@ export function ShellLifecyclePanel() {
       style={{
         ...(inTray
           ? { position: 'relative' as const }
-          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 2147483645 }),
+          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 40 }),
         width: expanded ? 'min(94vw, 460px)' : 'auto',
         maxWidth: expanded ? undefined : 280,
         background: 'rgba(0,0,0,0.85)',

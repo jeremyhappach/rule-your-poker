@@ -95,7 +95,7 @@ export function HolmPresentationLedgerPill() {
         position: 'fixed',
         bottom: 34,
         right: 6,
-        zIndex: 100000,
+        zIndex: 40,
         background: 'rgba(0,0,0,0.85)',
         color: '#B5E7FF',
         border: '1px solid #B5E7FF',

@@ -92,7 +92,7 @@ export function LifecycleDebugBadge() {
         position: 'fixed',
         top: 4,
         right: 4,
-        zIndex: 2147483646,
+        zIndex: 40,
         maxWidth: 380,
         background: 'rgba(255,255,0,0.92)',
         color: '#000',

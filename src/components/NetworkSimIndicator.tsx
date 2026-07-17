@@ -47,7 +47,7 @@ export function NetworkSimIndicator() {
           position: 'fixed',
           right: 8,
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
-          zIndex: 2147483647,
+          zIndex: 40,
           pointerEvents: 'auto',
         };
 
@@ -89,7 +89,7 @@ export function NetworkSimIndicator() {
     width: 'auto',
     maxWidth: 'min(96vw, 320px)',
     marginLeft: 'auto',
-    zIndex: 2147483647,
+    zIndex: 40,
     maxHeight: '70dvh',
     display: 'grid',
     gridTemplateRows: 'auto minmax(0, 1fr)',

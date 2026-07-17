@@ -92,7 +92,7 @@ function Pill<T extends object>({ label, pillKey, store, summarize, top }: PillP
         position: 'fixed',
         right: 8,
         top,
-        zIndex: 99999,
+        zIndex: 40,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 10,
         color: '#fff',

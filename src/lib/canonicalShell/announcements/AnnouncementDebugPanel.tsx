@@ -134,7 +134,7 @@ export function AnnouncementDebugPanel() {
           position: 'fixed',
           right: 8,
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
-          zIndex: 2147483645,
+          zIndex: 40,
           pointerEvents: 'auto',
         };
     return (
@@ -179,7 +179,7 @@ export function AnnouncementDebugPanel() {
         maxHeight: '70dvh',
         display: 'grid',
         gridTemplateRows: 'auto auto minmax(0, 1fr)',
-        zIndex: 2147483645,
+        zIndex: 40,
         background: 'rgba(0,0,0,0.92)',
         color: '#fff',
         border: '1px solid #444',
@@ -194,7 +194,7 @@ export function AnnouncementDebugPanel() {
         position: 'fixed',
         left: 4,
         top: 4,
-        zIndex: 2147483645,
+        zIndex: 40,
         width: 'min(94vw, 460px)',
         background: 'rgba(0,0,0,0.85)',
         color: '#fff',

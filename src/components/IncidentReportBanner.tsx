@@ -240,7 +240,7 @@ export function IncidentReportBanner() {
         top: 8,
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 2147483646,
+        zIndex: 40,
         maxWidth: "92vw",
         pointerEvents: "auto",
       }}

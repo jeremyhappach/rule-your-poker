@@ -215,7 +215,7 @@ export function StartupFlightRecorderOverlay() {
           position: 'fixed',
           right: 8,
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
-          zIndex: 2147483647,
+          zIndex: 40,
           pointerEvents: 'auto',
         };
     return (
@@ -257,7 +257,7 @@ export function StartupFlightRecorderOverlay() {
     width: 'auto',
     maxWidth: 'min(96vw, 520px)',
     marginLeft: 'auto',
-    zIndex: 2147483647,
+    zIndex: 40,
     maxHeight: '60dvh',
     display: 'grid',
     gridTemplateRows: 'auto minmax(0, 1fr)',

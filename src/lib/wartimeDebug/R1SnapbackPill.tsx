@@ -96,7 +96,7 @@ export function R1SnapbackPill() {
         position: 'fixed',
         right: 8,
         bottom: 56,
-        zIndex: 2147483647,
+        zIndex: 40,
         pointerEvents: 'auto',
         display: 'inline-flex',
         gap: 4,

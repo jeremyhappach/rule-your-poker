@@ -37,7 +37,7 @@ export function HolmCommunityLandingPill() {
         position: 'fixed',
         right: 8,
         bottom: 8,
-        zIndex: 2147483647,
+        zIndex: 40,
         pointerEvents: 'auto',
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 10,
