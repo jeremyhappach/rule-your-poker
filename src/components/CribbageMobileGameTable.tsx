@@ -1399,6 +1399,36 @@ export const CribbageMobileGameTable = ({
     [viewState, syncHandle.presentationIdentity?.roundId, syncHandle.presentationIdentity?.handNumber],
   );
 
+  // Durable canonical DealRuntime identity latch.
+  //
+  // Contract:
+  //   • Initialized only from a complete, non-empty currentHandKey.
+  //   • Preserved unchanged while currentHandKey transiently becomes ''
+  //     (bootstrap flap, viewState/cribbageState briefly null,
+  //     presentation identity lag, CardsTab mount flap, isGameplayMode
+  //     flicker). Those transients MUST NOT tear down the DealRuntime
+  //     that already accepted beginDeal for this canonical hand.
+  //   • Replaced immediately when a different, non-empty currentHandKey
+  //     arrives (new canonical hand → rotate DealRuntime + orchestrator).
+  //   • Cleared only when this Cribbage game surface unmounts.
+  //
+  // The prior conditional (`<DealRuntimeMaybe handContextId={currentHandKey}>`)
+  // unmounted DealRuntime whenever currentHandKey briefly evaluated to
+  // '' AFTER beginDeal had already been dispatched. CardTransportProvider
+  // survives above this tree and retains the accepted deterministic
+  // intent IDs; the replacement DealRuntime then calls beginDeal(12)
+  // again but dispatchMany rejects all 12 as duplicates (acceptedCount=0),
+  // leaving the replacement runtime stuck at DEALING with
+  // activeIntentsForHand=0 / settledCount=0. This latch keeps the
+  // hand-scoped DealRuntime owner alive for the lifetime of its
+  // canonical hand.
+  const [durableHandKey, setDurableHandKey] = useState<string>('');
+  useEffect(() => {
+    if (currentHandKey && currentHandKey !== durableHandKey) {
+      setDurableHandKey(currentHandKey);
+    }
+  }, [currentHandKey, durableHandKey]);
+
   // Publish Cribbage deal-lifecycle ambient identity so every producer
   // helper in this pass can spread untruncated identity onto its payload.
   // Instrumentation-only. Does not feed rendering, transport, or gameplay.
@@ -7792,7 +7822,7 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <DealRuntimeMaybe handContextId={currentHandKey}>
+    <DealRuntimeMaybe handContextId={durableHandKey || currentHandKey}>
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
 
       {/* Phase E: canonical `match_win` announcement owns winner UI.
@@ -8088,9 +8118,9 @@ export const CribbageMobileGameTable = ({
                     dealer→opp/self intents (substrate proof, NOT full
                     Cribbage deal). Mounted only when we have a dealer +
                     viewer + at least one seated player. */}
-                {currentHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
+                {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
-                    handContextId={currentHandKey}
+                    handContextId={durableHandKey}
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
