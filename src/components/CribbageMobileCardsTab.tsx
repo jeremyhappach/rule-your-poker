@@ -266,7 +266,9 @@ export const CribbageMobileCardsTab = ({
     dealPhase: deal?.phase ?? null,
     dealExpectedCount: deal?.expectedCount ?? 0,
     dealActiveIntentCount: deal?.activeIntentsForHand ?? 0,
-    
+    // Contract B — authoritative post-self-discard settlement signal.
+    // Source-provable: only set true by a committed authoritative discard.
+    selfHasDiscarded: (myPlayerState?.discardedToCrib?.length ?? 0) > 0,
   });
 
   const shouldSelfHeal = visibleHandDecision.decision === 'render-authoritative-self-heal';

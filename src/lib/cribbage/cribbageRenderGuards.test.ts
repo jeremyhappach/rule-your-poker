@@ -266,6 +266,52 @@ describe('Cribbage render guards', () => {
     expect(result.decision).toBe('render-authoritative-self-heal');
     expect(result.hand).toEqual(hand);
   });
+
+  // ── Contract B: refresh/rejoin during 'discarding' after self-discard ──
+  const fourCardHand = [c('A'), c('2'), c('3'), c('4')];
+
+  it('Contract B: refresh mid-discard-wait — self-heals authoritative 4-card hand', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: fourCardHand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'PRE_DEAL',
+      dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+      selfHasDiscarded: true,
+    });
+    expect(result.decision).toBe('render-authoritative-self-heal');
+    expect(result.hand).toEqual(fourCardHand);
+    expect(result.reason).toContain('Contract B');
+  });
+
+  it('Contract B: does not fire during live opening deal (self has not discarded)', () => {
+    const partial = [c('A'), c('2'), c('3')];
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: partial,
+      phase: 'discarding',
+      dealPhase: 'DEALING',
+      dealExpectedCount: 12,
+      dealActiveIntentCount: 9,
+      selfHasDiscarded: false,
+    });
+    expect(result.decision).toBe('render-presentation');
+    expect(result.hand).toEqual(partial);
+  });
+
+  it('Contract B: refresh pre-self-discard with full auth hand — does not self-heal (Contract A concern)', () => {
+    const result = resolveCribbageVisibleHand({
+      authoritativeHand: hand,
+      presentationHand: [],
+      phase: 'discarding',
+      dealPhase: 'PRE_DEAL',
+      dealExpectedCount: 0,
+      dealActiveIntentCount: 0,
+      selfHasDiscarded: false,
+    });
+    expect(result.decision).not.toBe('render-authoritative-self-heal');
+  });
 });
 
 
