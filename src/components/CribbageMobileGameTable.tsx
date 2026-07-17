@@ -1472,22 +1472,27 @@ export const CribbageMobileGameTable = ({
 
 
   // ── Action identity guard ──
-  // A user-driven mutation (discard / play / Go) may only fire when the rendered
-  // hand identity matches the authoritative actionable hand identity end-to-end:
-  //   • renderHandKey === currentHandKey  → presentation matches local authoritative
-  //   • currentRoundId === roundId        → local round matches latest prop round
-  //   • currentHandNumber === handNumber  → local hand-number matches latest prop
+  // A user-driven mutation may only fire when the canonical identity chain is
+  // aligned end-to-end. Parent `roundId` / `handNumber` props are advisory only
+  // and MUST NOT gate action legality once canonical identities are aligned.
+  //   • renderHandKey === currentHandKey  → presentation matches local writer
+  //   • writerMatchesAuth                 → writer matches authoritative identity
+  //   • syncHandle.interactionsAllowed    → framework sync gate open
   //   • renderHandKey !== ''              → there IS a hand to act on
-  // If ANY of these fail we are looking at a STALE hand (either presentation lag
-  // or a hand boundary in flight) and must suppress every action writer.
+  const writerMatchesAuth = !authIdentity || (
+    (!authIdentity.roundId || authIdentity.roundId === currentRoundId) &&
+    (
+      typeof authIdentity.handNumber !== 'number' ||
+      authIdentity.handNumber === currentHandNumber
+    )
+  );
   const interactionsAllowed = !!(
     renderHandKey &&
     currentHandKey &&
     renderHandKey === currentHandKey &&
     currentRoundId &&
-    roundId &&
-    currentRoundId === roundId &&
-    currentHandNumber === handNumber
+    writerMatchesAuth &&
+    syncHandle.interactionsAllowed
   );
   const interactionsAllowedRef = useRef(interactionsAllowed);
   useEffect(() => {
