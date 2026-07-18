@@ -99,7 +99,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  const { isAdmin: isSuperuser } = useIsAdmin(userId);
   const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
   const [creatingGame, setCreatingGame] = useState(false);
   const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
