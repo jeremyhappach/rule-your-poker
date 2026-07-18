@@ -1495,9 +1495,10 @@ export async function endHolmRound(gameId: string) {
  * Handle showdown against Chucky (ghost player)
  */
 async function handleChuckyShowdown(
-  gameId: string, 
-  roundId: string, 
-  player: any, 
+  gameId: string,
+  roundId: string,
+  handNumber: number,
+  player: any,
   communityCards: Card[],
   game: any,
   chuckyCards: Card[],
