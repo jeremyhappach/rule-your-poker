@@ -3303,7 +3303,7 @@ export type Database = {
           p_game_id: string
           p_hand_number: number
           p_is_chopped: boolean
-          p_last_round_result: Json
+          p_last_round_result: string
           p_pot_final: number
           p_pot_won: number
           p_winner_player_id: string
