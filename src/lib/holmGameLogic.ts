@@ -8,6 +8,7 @@ import {
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
 import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
+import { settleHolmHand } from "./holmSettleHand";
 import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
