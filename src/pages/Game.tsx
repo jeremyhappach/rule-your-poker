@@ -8403,6 +8403,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       returnedRow: gamesResult.data ?? null,
     });
 
+    // Mirror games.update result into session_events for durable diagnosis.
+    void logSessionEvent({
+      gameId,
+      eventType: 'games_status_update_result' as any,
+      eventData: {
+        correlationId: sgTrace.correlationId,
+        hasError: !!gamesResult.error,
+        errorCode: gamesResult.error?.code ?? null,
+        errorMessage: gamesResult.error?.message ?? null,
+        rlsFilteredZeroRow,
+        returnedStatus: (gamesResult.data as any)?.status ?? null,
+        returnedUpdatedAt: (gamesResult.data as any)?.updated_at ?? null,
+      },
+      userId: user?.id,
+    });
+
     if (gamesResult.error) {
       console.error('Start game error:', gamesResult.error);
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
