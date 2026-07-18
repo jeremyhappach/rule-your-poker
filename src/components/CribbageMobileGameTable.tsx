@@ -1429,6 +1429,32 @@ export const CribbageMobileGameTable = ({
     }
   }, [currentHandKey, durableHandKey]);
 
+  // ─── Mount-session live-vs-rejoin discriminator ────────────────────────
+  // A newly mounted table may initialize the FIRST canonical hand it sees
+  // as GAMEPLAY (refresh/rejoin reconstruction). Every LATER distinct
+  // canonical hand observed by that same mounted table must initialize
+  // PRE_DEAL so the normal live opening deal transport runs — even when
+  // the authoritative cribbage phase has already advanced to `discarding`
+  // before our local orchestrator dispatches.
+  //
+  // Scope key: gameId :: dealerGameId. When the mount migrates to a
+  // different scope (or unmounts entirely), the discriminator resets so
+  // the first hand of the new scope is again eligible for rejoin-mode.
+  const mountScopeRef = useRef<string>('');
+  const mountFirstHandKeyRef = useRef<string | null>(null);
+  const scopeKey = `${gameId ?? ''}::${dealerGameId ?? ''}`;
+  if (mountScopeRef.current !== scopeKey) {
+    mountScopeRef.current = scopeKey;
+    mountFirstHandKeyRef.current = null;
+  }
+  const effectiveHandKeyForMount = currentHandKey || durableHandKey;
+  if (effectiveHandKeyForMount && mountFirstHandKeyRef.current === null) {
+    mountFirstHandKeyRef.current = effectiveHandKeyForMount;
+  }
+  const isFirstHandForMount =
+    !!effectiveHandKeyForMount &&
+    mountFirstHandKeyRef.current === effectiveHandKeyForMount;
+
   // Publish Cribbage deal-lifecycle ambient identity so every producer
   // helper in this pass can spread untruncated identity onto its payload.
   // Instrumentation-only. Does not feed rendering, transport, or gameplay.
