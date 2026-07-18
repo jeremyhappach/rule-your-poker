@@ -1405,7 +1405,7 @@ export async function endHolmRound(gameId: string) {
     const roundPot = round.pot || game.pot || 0;
     try {
       logResolutionGate(revealCtx, 'winner-announcement-start', { roundPot });
-      await handleChuckyShowdown(gameId, capturedRoundId, player, communityCards, game, chuckyCards, roundPot);
+      await handleChuckyShowdown(gameId, capturedRoundId, capturedHandNumber, player, communityCards, game, chuckyCards, roundPot);
       logResolutionGate(revealCtx, 'hand-resolution-complete', { roundPot });
     } catch (error) {
       console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
