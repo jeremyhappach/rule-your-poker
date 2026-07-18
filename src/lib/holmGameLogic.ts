@@ -1052,43 +1052,32 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] PUSSY TAX DEBUG - Enabled:', pussyTaxEnabled, 'Amount:', pussyTaxAmount);
     console.log('[HOLM END] PUSSY TAX DEBUG - Active players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips: p.chips })));
     
+    const dealerGameIdForSettle = game.current_game_uuid as string | null;
+    const pussyTaxDeltas: Record<string, number> = {};
     let totalTaxCollected = 0;
     if (pussyTaxAmount > 0) {
-      // Use atomic relative decrement to prevent race conditions / double charges
-      const playerIds = activePlayers.map(p => p.id);
-      console.log('[HOLM END] PUSSY TAX DEBUG - About to call RPC decrement_player_chips with playerIds:', playerIds, 'amount:', pussyTaxAmount);
-      
-      const { error: taxError } = await supabase.rpc('decrement_player_chips', {
-        player_ids: playerIds,
-        amount: pussyTaxAmount
-      });
-      
-      console.log('[HOLM END] PUSSY TAX DEBUG - RPC result error:', taxError);
-      
-      if (taxError) {
-        console.error('[HOLM END] Pussy tax decrement error:', taxError);
-        console.log('[HOLM END] PUSSY TAX DEBUG - Running FALLBACK individual updates');
-        // Fallback to individual updates if RPC doesn't exist
-        for (const player of activePlayers) {
-          await supabase
-            .from('players')
-            .update({ chips: player.chips - pussyTaxAmount })
-            .eq('id', player.id);
-        }
-      } else {
-        console.log('[HOLM END] PUSSY TAX DEBUG - RPC SUCCESS, NO fallback');
+      for (const p of activePlayers) {
+        pussyTaxDeltas[p.id] = -pussyTaxAmount;
       }
       totalTaxCollected = pussyTaxAmount * activePlayers.length;
+    } else {
+      // RPC requires a non-empty delta map. Record every active player with 0
+      // so the terminal marker is inserted with an accurate participant roster
+      // and zero chip motion.
+      for (const p of activePlayers) {
+        pussyTaxDeltas[p.id] = 0;
+      }
     }
 
     const newPot = game.pot + totalTaxCollected;
-    const resultMessage = pussyTaxAmount > 0 
+    const resultMessage = pussyTaxAmount > 0
       ? `Pussy Tax!`
       : 'Everyone folded! No penalty.';
 
     console.log('[HOLM END] Pussy tax - old pot:', game.pot, 'tax collected:', totalTaxCollected, 'new pot:', newPot);
 
-    // RABBIT HUNT: If enabled, reveal the 2 hidden community cards during pussy tax
+    // RABBIT HUNT: If enabled, reveal the 2 hidden community cards during pussy tax.
+    // This is presentation-only state and stays outside the atomic settlement.
     if (game.rabbit_hunt) {
       console.log('[HOLM END] Rabbit hunt enabled - revealing hidden community cards during pussy tax');
       await supabase
@@ -1097,60 +1086,34 @@ export async function endHolmRound(gameId: string) {
         .eq('id', capturedRoundId);
     }
 
-    // Update both games and rounds with the new pot
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({
-        last_round_result: resultMessage,
-        awaiting_next_round: true,
-        pot: newPot
-      })
-      .eq('id', gameId);
-    
-    console.log('[HOLM END] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS');
+    if (!dealerGameIdForSettle) {
+      console.error('[HOLM END] ❌ Cannot settle pussy tax: game.current_game_uuid is null');
+      return;
+    }
 
-    const { error: roundUpdateError } = await supabase
+    const settleResult = await settleHolmHand({
+      gameId,
+      dealerGameId: dealerGameIdForSettle,
+      handNumber: capturedHandNumber,
+      eventKind: 'pussy_tax_carryforward',
+      potFinal: newPot,
+      awaitingNextRound: true,
+      lastRoundResult: resultMessage,
+      chipDeltas: pussyTaxDeltas,
+      winningHandDescription: 'Everyone folded - Pussy Tax applied',
+      winnerPlayerId: null,
+      winnerUsername: 'Pussy Tax',
+      isChopped: false,
+      potWon: 0,
+    });
+
+    console.log('[HOLM END] Pussy tax settled via RPC:', settleResult);
+
+    // Keep rounds.pot fresh for consumers that read it (presentation-only echo).
+    await supabase
       .from('rounds')
-      .update({ 
-        status: 'completed',
-        pot: newPot  // Also update round pot
-      })
+      .update({ pot: newPot })
       .eq('id', capturedRoundId);
-    
-    console.log('[HOLM END] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS');
-
-    // RECORD GAME RESULT for "everyone folded" case
-    // This tracks that a hand happened even though there was no winner
-    // The pot is carried forward, but we record the chip changes (pussy tax deductions)
-    // CRITICAL: Use player.id as key for consistent accounting
-    const playerChipChanges: Record<string, number> = {};
-    if (pussyTaxAmount > 0) {
-      for (const player of activePlayers) {
-        playerChipChanges[player.id] = -pussyTaxAmount;
-      }
-    }
-    
-    console.log('[HOLM END] Recording game_result for everyone-folded case');
-    const { error: resultError } = await supabase
-      .from('game_results')
-      .insert({
-        game_id: gameId,
-        hand_number: capturedHandNumber, // CRITICAL: Use hand_number, not round_number (round_number is always 1 in Holm)
-        winner_player_id: null,
-        winner_username: 'Pussy Tax',
-        pot_won: 0, // No pot won - carried forward
-        winning_hand_description: 'Everyone folded - Pussy Tax applied',
-        is_chopped: false,
-        player_chip_changes: playerChipChanges,
-        game_type: 'holm',
-        dealer_game_id: game.current_game_uuid || null,
-      });
-    
-    if (resultError) {
-      console.error('[HOLM END] Failed to record everyone-folded result:', resultError);
-    } else {
-      console.log('[HOLM END] Successfully recorded everyone-folded game_result');
-    }
 
     console.log('[HOLM END] Pussy tax case completed with new pot:', newPot);
     return;
