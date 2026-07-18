@@ -1429,6 +1429,32 @@ export const CribbageMobileGameTable = ({
     }
   }, [currentHandKey, durableHandKey]);
 
+  // ─── Mount-session live-vs-rejoin discriminator ────────────────────────
+  // A newly mounted table may initialize the FIRST canonical hand it sees
+  // as GAMEPLAY (refresh/rejoin reconstruction). Every LATER distinct
+  // canonical hand observed by that same mounted table must initialize
+  // PRE_DEAL so the normal live opening deal transport runs — even when
+  // the authoritative cribbage phase has already advanced to `discarding`
+  // before our local orchestrator dispatches.
+  //
+  // Scope key: gameId :: dealerGameId. When the mount migrates to a
+  // different scope (or unmounts entirely), the discriminator resets so
+  // the first hand of the new scope is again eligible for rejoin-mode.
+  const mountScopeRef = useRef<string>('');
+  const mountFirstHandKeyRef = useRef<string | null>(null);
+  const scopeKey = `${gameId ?? ''}::${dealerGameId ?? ''}`;
+  if (mountScopeRef.current !== scopeKey) {
+    mountScopeRef.current = scopeKey;
+    mountFirstHandKeyRef.current = null;
+  }
+  const effectiveHandKeyForMount = currentHandKey || durableHandKey;
+  if (effectiveHandKeyForMount && mountFirstHandKeyRef.current === null) {
+    mountFirstHandKeyRef.current = effectiveHandKeyForMount;
+  }
+  const isFirstHandForMount =
+    !!effectiveHandKeyForMount &&
+    mountFirstHandKeyRef.current === effectiveHandKeyForMount;
+
   // Publish Cribbage deal-lifecycle ambient identity so every producer
   // helper in this pass can spread untruncated identity onto its payload.
   // Instrumentation-only. Does not feed rendering, transport, or gameplay.
@@ -7966,11 +7992,20 @@ export const CribbageMobileGameTable = ({
   return (
     <DealRuntimeMaybe
       handContextId={currentHandKey || durableHandKey}
-      /* Contract A (refresh/rejoin): when authoritative Cribbage phase
-         is past 'dealing', the opening deal already completed on the
-         server — initialize GAMEPLAY so the orchestrator's
-         `deal.phase !== 'PRE_DEAL'` gate suppresses historical replay. */
-      initialPhase={cribbageState?.phase && cribbageState.phase !== 'dealing' ? 'GAMEPLAY' : 'PRE_DEAL'}
+      /* Contract A (refresh/rejoin) with mount-session discriminator:
+         GAMEPLAY (suppress historical replay) only when THIS is the
+         first canonical hand seen by this mounted table AND the
+         authoritative phase is already past opening-deal. Every later
+         same-mount hand rotation initializes PRE_DEAL so the live
+         opening transport runs, even when the authoritative snapshot
+         reaches this client before our orchestrator dispatches. */
+      initialPhase={
+        isFirstHandForMount &&
+        cribbageState?.phase &&
+        cribbageState.phase !== 'dealing'
+          ? 'GAMEPLAY'
+          : 'PRE_DEAL'
+      }
     >
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
 
