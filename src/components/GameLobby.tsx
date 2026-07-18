@@ -21,6 +21,7 @@ import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -98,7 +99,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  const { isAdmin: isSuperuser } = useIsAdmin(userId);
   const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
   const [creatingGame, setCreatingGame] = useState(false);
   const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
@@ -173,14 +174,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   }, [userId]);
 
   const checkSuperuser = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    console.log('[SUPERUSER CHECK]', { userId, data, error });
-    setIsSuperuser((data as any)?.is_superuser || false);
+    // Admin role now sourced from canonical user_roles via useIsAdmin.
+    // Kept as a no-op to preserve existing call sites (visibility/focus refresh).
   };
 
   const fetchGames = async () => {
