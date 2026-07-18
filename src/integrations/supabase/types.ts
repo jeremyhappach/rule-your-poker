@@ -3009,6 +3009,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_delete_fake_money_games: { Args: never; Returns: number }
       chat_operation_append_boundary_event: {
         Args: {
           _metadata?: Json
