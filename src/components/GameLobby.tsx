@@ -174,14 +174,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   }, [userId]);
 
   const checkSuperuser = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    console.log('[SUPERUSER CHECK]', { userId, data, error });
-    setIsSuperuser((data as any)?.is_superuser || false);
+    // Admin role now sourced from canonical user_roles via useIsAdmin.
+    // Kept as a no-op to preserve existing call sites (visibility/focus refresh).
   };
 
   const fetchGames = async () => {
