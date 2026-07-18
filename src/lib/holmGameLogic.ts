@@ -1488,7 +1488,7 @@ export async function endHolmRound(gameId: string) {
   const roundPot = round.pot || game.pot || 0;
   
   // CRITICAL: Pass the cached cards (fetched at START of endHolmRound) to avoid race conditions
-  await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot, allPlayerCardsData || []);
+  await handleMultiPlayerShowdown(gameId, capturedRoundId, capturedHandNumber, stayedPlayers, communityCards, game, roundPot, allPlayerCardsData || []);
 }
 
 /**
