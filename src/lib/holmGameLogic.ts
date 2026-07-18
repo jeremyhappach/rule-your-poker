@@ -838,6 +838,7 @@ export async function endHolmRound(gameId: string) {
         await handleMultiPlayerShowdown(
           gameId,
           round.id,
+          round.hand_number ?? 1,
           stayedPlayers,
           communityCards,
           game,
