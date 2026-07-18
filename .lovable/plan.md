@@ -180,13 +180,13 @@ BEGIN
 
   ---------------------------------------------------------------------------
   -- (h) SERVER-OWNED LIFECYCLE.
-  --     Holm dealer-game end predicate: any seated player has reached legs_to_win.
-  --     (`players.legs` and `games.legs_to_win` are confirmed authoritative fields.)
+  --     Source audit of holmGameLogic.ts proves the ONLY paths that flip
+  --     games.status → 'game_over' are the two Chucky-wins-the-hand branches,
+  --     both of which land here as p_event_kind = 'chucky_final_award'.
+  --     Deriving lifecycle from the authoritative event kind (not a
+  --     re-inferred legs predicate) preserves current behavior exactly.
   ---------------------------------------------------------------------------
-  SELECT COALESCE(MAX(legs), 0) INTO v_max_legs
-    FROM public.players WHERE game_id = p_game_id;
-  v_end_game := (v_game.legs_to_win IS NOT NULL
-                 AND v_max_legs >= v_game.legs_to_win);
+  v_end_game := (p_event_kind = 'chucky_final_award');
 
   UPDATE public.games SET
     last_round_result   = p_last_round_result,
@@ -194,6 +194,7 @@ BEGIN
     pot                 = p_pot_final,
     status              = CASE WHEN v_end_game THEN 'game_over' ELSE status END
   WHERE id = p_game_id;
+
 
   ---------------------------------------------------------------------------
   -- (i) ROUND terminal state.

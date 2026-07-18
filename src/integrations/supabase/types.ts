@@ -1588,6 +1588,7 @@ export type Database = {
         Row: {
           created_at: string
           dealer_game_id: string | null
+          event_kind: Database["public"]["Enums"]["holm_event_kind"] | null
           game_id: string
           game_type: string | null
           hand_number: number
@@ -1602,6 +1603,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dealer_game_id?: string | null
+          event_kind?: Database["public"]["Enums"]["holm_event_kind"] | null
           game_id: string
           game_type?: string | null
           hand_number: number
@@ -1616,6 +1618,7 @@ export type Database = {
         Update: {
           created_at?: string
           dealer_game_id?: string | null
+          event_kind?: Database["public"]["Enums"]["holm_event_kind"] | null
           game_id?: string
           game_type?: string | null
           hand_number?: number
@@ -3291,6 +3294,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      holm_settle_hand: {
+        Args: {
+          p_awaiting_next_round: boolean
+          p_chip_deltas: Json
+          p_dealer_game_id: string
+          p_event_kind: Database["public"]["Enums"]["holm_event_kind"]
+          p_game_id: string
+          p_hand_number: number
+          p_is_chopped: boolean
+          p_last_round_result: Json
+          p_pot_final: number
+          p_pot_won: number
+          p_winner_player_id: string
+          p_winner_username: string
+          p_winning_hand_description: string
+        }
+        Returns: Json
+      }
       horses_advance_turn: {
         Args: { _expected_current_player_id: string; _round_id: string }
         Returns: Json
@@ -3330,6 +3351,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      holm_event_kind:
+        | "ante"
+        | "pussy_tax_carryforward"
+        | "chucky_loss_pot_match"
+        | "chucky_tiebreak_pot_match"
+        | "showdown_final_award"
+        | "partial_tie_final_award"
+        | "chucky_final_award"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3458,6 +3487,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      holm_event_kind: [
+        "ante",
+        "pussy_tax_carryforward",
+        "chucky_loss_pot_match",
+        "chucky_tiebreak_pot_match",
+        "showdown_final_award",
+        "partial_tie_final_award",
+        "chucky_final_award",
+      ],
     },
   },
 } as const
