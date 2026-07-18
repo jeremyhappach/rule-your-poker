@@ -1807,6 +1807,7 @@ async function handleChuckyShowdown(
 async function handleMultiPlayerShowdown(
   gameId: string,
   roundId: string,
+  handNumber: number,
   stayedPlayers: any[],
   communityCards: Card[],
   game: any,
