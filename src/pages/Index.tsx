@@ -315,61 +315,23 @@ const Index = () => {
 
   const handleDeleteFakeMoneyOnly = async () => {
     if (!isSuperuser) return;
-    
+
     setIsDeleting(true);
-    
+
     try {
-      // Get all fake money game IDs first
-      const { data: fakeMoneyGames, error: fetchError } = await supabase
-        .from('games')
-        .select('id')
-        .eq('real_money', false);
-      
-      if (fetchError) throw fetchError;
-      
-      if (!fakeMoneyGames || fakeMoneyGames.length === 0) {
-        toast({
-          title: "Info",
-          description: "No fake money sessions to delete",
-        });
-        setIsDeleting(false);
-        return;
-      }
-      
-      const gameIds = fakeMoneyGames.map(g => g.id);
-      
-      // Get all round IDs for these games first
-      const { data: rounds } = await supabase
-        .from('rounds')
-        .select('id')
-        .in('game_id', gameIds);
-      
-      const roundIds = rounds?.map(r => r.id) || [];
-      
-      // Delete player_cards for fake money games
-      if (roundIds.length > 0) {
-        await supabase.from('player_cards').delete().in('round_id', roundIds);
-        await supabase.from('player_actions').delete().in('round_id', roundIds);
-      }
-      
-      // Delete rounds for fake money games
-      await supabase.from('rounds').delete().in('game_id', gameIds);
-      
-      // Delete players for fake money games
-      await supabase.from('players').delete().in('game_id', gameIds);
-      
-      // Delete fake money games
-      const { error } = await supabase.from('games').delete().in('id', gameIds);
-      
+      const { data, error } = await supabase.rpc('admin_delete_fake_money_games');
+
       if (error) throw error;
-      
+
+      const count = (data as number) ?? 0;
       toast({
-        title: "Success",
-        description: `Deleted ${gameIds.length} fake money session(s)`,
+        title: count > 0 ? "Success" : "Info",
+        description: count > 0
+          ? `Deleted ${count} fake money session(s)`
+          : "No fake money sessions to delete",
       });
-      
-      // Refresh the page to update the game list
-      window.location.reload();
+
+      if (count > 0) window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error",
