@@ -21,6 +21,7 @@ import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useWakeLock } from "@/hooks/useWakeLock";
