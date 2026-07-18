@@ -8273,6 +8273,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     emitStartGameStage(sgTrace, 'start_game_entered', true, {
       priorClientGameStatus: game?.status ?? null,
     });
+    // Mirror into session_events (proven-persistent channel for this user)
+    // so we can prove startGameFromWaiting entry even if debug_events drops.
+    void logSessionEvent({
+      gameId,
+      eventType: 'start_game_from_waiting_entered' as any,
+      eventData: { correlationId: sgTrace.correlationId, priorClientGameStatus: game?.status ?? null },
+      userId: user?.id,
+    });
 
     // Log session event
     try {
@@ -8393,6 +8401,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       supabase: gamesCaptured,
       rlsFilteredZeroRow,
       returnedRow: gamesResult.data ?? null,
+    });
+
+    // Mirror games.update result into session_events for durable diagnosis.
+    void logSessionEvent({
+      gameId,
+      eventType: 'games_status_update_result' as any,
+      eventData: {
+        correlationId: sgTrace.correlationId,
+        hasError: !!gamesResult.error,
+        errorCode: gamesResult.error?.code ?? null,
+        errorMessage: gamesResult.error?.message ?? null,
+        rlsFilteredZeroRow,
+        returnedStatus: (gamesResult.data as any)?.status ?? null,
+        returnedUpdatedAt: (gamesResult.data as any)?.updated_at ?? null,
+      },
+      userId: user?.id,
     });
 
     if (gamesResult.error) {
