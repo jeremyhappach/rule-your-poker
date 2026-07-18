@@ -8273,6 +8273,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     emitStartGameStage(sgTrace, 'start_game_entered', true, {
       priorClientGameStatus: game?.status ?? null,
     });
+    // Mirror into session_events (proven-persistent channel for this user)
+    // so we can prove startGameFromWaiting entry even if debug_events drops.
+    void logSessionEvent({
+      gameId,
+      eventType: 'start_game_from_waiting_entered' as any,
+      eventData: { correlationId: sgTrace.correlationId, priorClientGameStatus: game?.status ?? null },
+      userId: user?.id,
+    });
 
     // Log session event
     try {
