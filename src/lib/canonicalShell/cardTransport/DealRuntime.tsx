@@ -105,30 +105,37 @@ interface DealContextValue {
   }) => void;
 }
 
-const DealContext = createContext<DealContextValue | null>(null);
-
-function recordCribbageDealRuntime(
-  tag: string,
-  payload: Record<string, unknown>,
-  opts: { fn: string; key?: string },
-): void {
-  const ident = getCribbageDealIdentityAmbient();
-  recordCribbageActiveHand('deal-transport', tag, {
-    identity: {
-      handContextId: ident.handContextId,
-      currentHandKey: ident.currentHandKey,
-      renderHandKey: ident.renderHandKey,
-      roundId: ident.roundId,
-      handNumber: ident.handNumber,
-      dealRuntimeReactKey: ident.dealRuntimeReactKey,
-    },
-    ...payload,
-  }, {
-    producer: 'DealRuntime',
-    fn: opts.fn,
-    key: opts.key,
-  });
+function getCribbageDealIdentityAmbient(): {
+  handContextId: string | null;
+  currentHandKey: string | null;
+  renderHandKey: string | null;
+  roundId: string | null;
+  handNumber: number | null;
+  dealRuntimeReactKey: string | null;
+} {
+  return {
+    handContextId: null,
+    currentHandKey: null,
+    renderHandKey: null,
+    roundId: null,
+    handNumber: null,
+    dealRuntimeReactKey: null,
+  };
 }
+function recordCribbageActiveHandContradiction(
+  _tag: string,
+  _detail: Record<string, unknown>,
+): void {
+  // no-op — temporary Cribbage wartime instrumentation removed.
+}
+function recordCribbageDealRuntime(
+  _tag: string,
+  _payload: Record<string, unknown>,
+  _opts: { fn: string; key?: string },
+): void {
+  // no-op — temporary Cribbage wartime instrumentation removed.
+}
+
 
 export interface DealRuntimeProps {
   /** Authoritative hand identity. Remount when this changes. */
