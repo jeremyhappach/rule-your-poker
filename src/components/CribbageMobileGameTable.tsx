@@ -201,6 +201,15 @@ interface CribbageMobileGameTableProps {
   roundId: string;
   dealerGameId: string | null; // Required for event logging
   handNumber: number; // Required for event logging (from round data)
+  /**
+   * Entry-mode provenance owned by the persistent parent (Game.tsx route mount).
+   * 'historical-entry' = this client rejoined/refreshed into an already-existing
+   * canonical cribbage hand → DealRuntime initializes GAMEPLAY (suppress replay,
+   * Contract B reconstructs cards). 'live-transition' = this canonical hand was
+   * introduced *after* the route mounted → DealRuntime initializes PRE_DEAL and
+   * runs the normal opening deal transport. Required; passed for every render.
+   */
+  entryMode: 'live-transition' | 'historical-entry';
   players: Player[];
   currentUserId: string;
   dealerPosition: number;
