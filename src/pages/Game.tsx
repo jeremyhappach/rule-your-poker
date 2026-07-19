@@ -12902,6 +12902,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
             const cribbagePot = isCribbageGameOver ? 0 : (isInProgress ? potForDisplay : 0);
 
+            // Persistent-owner provenance capture (one-shot at first hydrated render).
+            // Uses the raw authoritative (current_game_uuid, currentRound.hand_number)
+            // pair — same fields the DB advances when a new dealer game or hand is
+            // created — so the "baseline" reflects exactly what was present at route
+            // entry regardless of transient bootstrap/phase state.
+            if (!initialCribbageIdentityRef.current.captured) {
+              initialCribbageIdentityRef.current = {
+                captured: true,
+                dealerGameId: (game as any).current_game_uuid ?? null,
+                handNumber: currentRound?.hand_number ?? null,
+              };
+            }
+            const _cribBaseline = initialCribbageIdentityRef.current;
+            const _authDealerGameId = (game as any).current_game_uuid ?? null;
+            const _authHandNumber = currentRound?.hand_number ?? null;
+            const cribbageEntryMode: 'live-transition' | 'historical-entry' =
+              _cribBaseline.captured &&
+              _cribBaseline.dealerGameId !== null &&
+              _cribBaseline.dealerGameId === _authDealerGameId &&
+              _cribBaseline.handNumber !== null &&
+              _cribBaseline.handNumber === _authHandNumber
+                ? 'historical-entry'
+                : 'live-transition';
+
             // ── HANDOFF TRACE #8: parent render branch with dealer-selection props ──
             emitCribbageHandoffTrace({
               gameId: gameId!,
