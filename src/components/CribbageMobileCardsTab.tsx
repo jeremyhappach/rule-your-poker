@@ -140,33 +140,8 @@ export const CribbageMobileCardsTab = ({
 
   const setSelectedCards = onSelectedCardsChange;
 
-  // Wartime — mount/unmount lifecycle (bypasses dedupe via CRITICAL_TAGS).
-  useEffect(() => {
-    recordCribbageActiveHand('lifecycle', 'cards_tab_mounted', {
-      gameId,
-      currentPlayerId,
-      handNumber: renderTrace?.handNumber ?? null,
-      renderSource: renderTrace?.renderSource ?? null,
-      phase: cribbageState.phase,
-    }, {
-      producer: 'CribbageMobileCardsTab',
-      fn: 'mountEffect',
-      key: `mount:${gameId}:${currentPlayerId}`,
-      bypassDedupe: true,
-    });
-    return () => {
-      recordCribbageActiveHand('lifecycle', 'cards_tab_unmounted', {
-        gameId,
-        currentPlayerId,
-      }, {
-        producer: 'CribbageMobileCardsTab',
-        fn: 'unmountCleanup',
-        key: `unmount:${gameId}:${currentPlayerId}`,
-        bypassDedupe: true,
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Cribbage active-hand wartime mount/unmount instrumentation removed.
+
 
 
 
