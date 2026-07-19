@@ -45,11 +45,6 @@ import {
   recordCommunitySettle,
 } from './holmCommunityLandingForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
-import {
-  recordCribbageActiveHand,
-  recordCribbageActiveHandContradiction,
-  getCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
 
 export interface HolmExpectedCardManifestEntry {
   cardId: string;
