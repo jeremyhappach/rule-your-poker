@@ -225,7 +225,9 @@ const App = () => {
               <IncidentExportPill />
               <ChatFlightPill />
               <YahtzeeWartimeTruthPill />
-              <CribbageActiveHandTracePill />
+              
+
+
               
 
               
