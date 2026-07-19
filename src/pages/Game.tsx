@@ -828,6 +828,21 @@ const Game = () => {
   if (_game) hasHydratedRef.current = true;
   const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
 
+  // ── Cribbage entry-mode provenance (persistent owner: Game.tsx route mount) ──
+  // Captures the canonical (dealerGameId, handNumber) pair present at the first
+  // render where the route has hydrated a game record. Any later identity that
+  // differs from this baseline was introduced *after* this route instance
+  // mounted → LIVE. An identity matching the baseline is a refresh/rejoin into
+  // a pre-existing hand → HISTORICAL. This replaces the CribbageMobileGameTable
+  // mount-time heuristic, which could not distinguish "already-present client
+  // witnessing a new dealer-game/hand" from "client rejoining after that hand
+  // already existed" (both looked like "first hand seen by this mount").
+  const initialCribbageIdentityRef = useRef<{
+    captured: boolean;
+    dealerGameId: string | null;
+    handNumber: number | null;
+  }>({ captured: false, dealerGameId: null, handNumber: null });
+
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
     configureNetworkSim({
