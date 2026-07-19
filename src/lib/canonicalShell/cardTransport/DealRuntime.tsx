@@ -105,6 +105,8 @@ interface DealContextValue {
   }) => void;
 }
 
+const DealContext = createContext<DealContextValue | null>(null);
+
 function getCribbageDealIdentityAmbient(): {
   handContextId: string | null;
   currentHandKey: string | null;
@@ -112,6 +114,9 @@ function getCribbageDealIdentityAmbient(): {
   roundId: string | null;
   handNumber: number | null;
   dealRuntimeReactKey: string | null;
+  durableHandKey: string | null;
+  gameId: string | null;
+  dealerGameId: string | null;
 } {
   return {
     handContextId: null,
@@ -120,11 +125,15 @@ function getCribbageDealIdentityAmbient(): {
     roundId: null,
     handNumber: null,
     dealRuntimeReactKey: null,
+    durableHandKey: null,
+    gameId: null,
+    dealerGameId: null,
   };
 }
 function recordCribbageActiveHandContradiction(
   _tag: string,
   _detail: Record<string, unknown>,
+  _opts?: Record<string, unknown>,
 ): void {
   // no-op — temporary Cribbage wartime instrumentation removed.
 }
@@ -135,6 +144,7 @@ function recordCribbageDealRuntime(
 ): void {
   // no-op — temporary Cribbage wartime instrumentation removed.
 }
+
 
 
 export interface DealRuntimeProps {
