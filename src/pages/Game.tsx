@@ -12956,6 +12956,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 roundId={cribbageRoundId}
                 dealerGameId={cribbageDealerGameId}
                 handNumber={cribbageHandNumber}
+                entryMode={cribbageEntryMode}
                 players={players}
                 currentUserId={user?.id || ''}
                 dealerPosition={game.dealer_position || 1}
