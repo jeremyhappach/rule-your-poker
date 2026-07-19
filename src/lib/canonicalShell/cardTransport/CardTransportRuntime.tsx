@@ -40,10 +40,6 @@ import { useCardTransportInternal, type ActiveCardIntent } from './CardTransport
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
 import { auditHolmEndpointResolution } from './holmEndpointAudit';
 import { describeCardEndpoint } from './types';
-import {
-  recordCribbageActiveHand,
-  getCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
