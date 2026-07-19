@@ -35,11 +35,12 @@ const getPegTransportEntries: () => Array<{ attemptId: string; animationSettled:
 import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
-import {
-  recordCribbageActiveHand,
-  recordCribbageActiveHandContradiction,
-  setCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
+const recordCribbageActiveHand: (..._args: unknown[]) => void = () => {};
+const recordCribbageActiveHandContradiction: (..._args: unknown[]) => void = () => {};
+const setCribbageDealIdentityAmbient: (..._args: unknown[]) => void = () => {};
+import { traceCribbageScoring } from '@/lib/cribbage/cribbageScoringTrace';
+
+
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
@@ -1904,7 +1905,42 @@ export const CribbageMobileGameTable = ({
       dealerGameId || undefined,
     );
 
+    // ── Persistent Cribbage scoring diagnostics ─────────────────
+    // Always-on, event-driven, deduplicated. Emits to `debug_events`
+    // only when a tracked scoring value or animation owner changes.
+    {
+      const seatedHumansMap: Record<string, string> = {};
+      for (const p of players) {
+        if (p.is_bot) continue;
+        if (p.position === null || p.position === undefined) continue;
+        seatedHumansMap[p.id] = p.profiles?.username ?? p.id.slice(0, 8);
+      }
+      const railStates =
+        (isGameplayMode && gameplayRenderState
+          ? gameplayRenderState.playerStates
+          : latchedPegboardDataRef.current?.playerStates) ?? {};
+      const railScores: Record<string, number> = {};
+      for (const [pid, ps] of Object.entries(railStates)) {
+        railScores[pid] = (ps as { pegScore?: number })?.pegScore ?? 0;
+      }
+      traceCribbageScoring({
+        gameId,
+        dealerGameId,
+        roundId: currentRoundId,
+        handNumber: currentHandNumber,
+        cribbagePhase: state.phase ?? null,
+        viewerPlayerId: currentPlayerId ?? null,
+        currentTurnPlayerId: state.pegging?.currentTurnPlayerId ?? null,
+        peggingCount: state.pegging?.currentCount ?? null,
+        seatedHumans: seatedHumansMap,
+        authoritativeScores,
+        railScores,
+        countingScoreOverrides: countingScoreOverrides ?? null,
+      });
+    }
+
     // Presentation source trace — track when hand/score sources change
+
 
     // INV-1: stale-dealer-game-render
     if (renderHandKey && currentHandKey && !isSnapshotPhase) {

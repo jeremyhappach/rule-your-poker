@@ -40,10 +40,6 @@ import { useCardTransportInternal, type ActiveCardIntent } from './CardTransport
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
 import { auditHolmEndpointResolution } from './holmEndpointAudit';
 import { describeCardEndpoint } from './types';
-import {
-  recordCribbageActiveHand,
-  getCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
@@ -61,39 +57,13 @@ const CARD_W = 44;
 const CARD_H = 66; // 2:3 aspect, matches CribbagePlayingCard md tokens proportionally
 
 function recordCribbageTransportIntentLifecycle(
-  tag: string,
-  intent: ActiveCardIntent,
-  detail: Record<string, unknown>,
+  _tag: string,
+  _intent: ActiveCardIntent,
+  _detail: Record<string, unknown>,
 ): void {
-  if (detail.gameType !== 'cribbage') return;
-  const ident = getCribbageDealIdentityAmbient();
-  recordCribbageActiveHand('deal-transport', tag, {
-    identity: {
-      handContextId: ident.handContextId,
-      currentHandKey: ident.currentHandKey,
-      renderHandKey: ident.renderHandKey,
-      roundId: ident.roundId,
-      handNumber: ident.handNumber,
-      dealRuntimeReactKey: ident.dealRuntimeReactKey,
-    },
-    ...detail,
-    intentId: intent.id,
-    cardId: intent.cardId,
-    handContextId: intent.handContextId ?? null,
-    recipientPlayerId: intent.recipientPlayerId ?? null,
-    from: describeCardEndpoint(intent.from),
-    to: describeCardEndpoint(intent.to),
-    enqueueSeq: intent.enqueueSeq,
-    enqueuedAt: intent.enqueuedAt,
-    launchDelayMs: intent.launchDelayMs ?? null,
-    durationMs: intent.durationMs ?? null,
-    ownershipClaimDelayMs: intent.ownershipClaimDelayMs ?? null,
-  }, {
-    producer: 'CardTransportRuntime',
-    fn: tag,
-    key: `${tag}:${intent.id}`,
-  });
+  // Temporary Cribbage deal-transport wartime instrumentation removed.
 }
+
 
 /**
  * Inspect Mode is OFF. Deal timing comes from Geometry Lab Deal Timing

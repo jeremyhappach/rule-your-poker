@@ -23,34 +23,15 @@ import { describeCardEndpoint } from './types';
 import { cardTransportDbgUpsert } from './cardTransportDbg';
 import { ffRecord } from './holmFullForensics';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
-import {
-  recordCribbageActiveHand,
-  getCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
 
 function recordCribbageCardTransportProvider(
-  tag: string,
-  payload: Record<string, unknown>,
-  opts: { fn: string; key?: string },
+  _tag: string,
+  _payload: Record<string, unknown>,
+  _opts: { fn: string; key?: string },
 ): void {
-  if (payload.gameType !== 'cribbage') return;
-  const ident = getCribbageDealIdentityAmbient();
-  recordCribbageActiveHand('deal-transport', tag, {
-    identity: {
-      handContextId: ident.handContextId,
-      currentHandKey: ident.currentHandKey,
-      renderHandKey: ident.renderHandKey,
-      roundId: ident.roundId,
-      handNumber: ident.handNumber,
-      dealRuntimeReactKey: ident.dealRuntimeReactKey,
-    },
-    ...payload,
-  }, {
-    producer: 'CardTransportProvider',
-    fn: opts.fn,
-    key: opts.key,
-  });
+  // Temporary Cribbage deal-transport wartime instrumentation removed.
 }
+
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;

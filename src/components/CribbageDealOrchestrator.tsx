@@ -29,42 +29,23 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
-import {
-  recordCribbageActiveHand,
-  getCribbageDealIdentityAmbient,
-} from '@/lib/cribbage/activeHandVisibilityLedger';
 const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
 const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
 
 function recordCribbageWartime(
-  group: string,
-  tag: string,
-  payload: Record<string, unknown>,
-  opts: {
+  _group: string,
+  _tag: string,
+  _payload: Record<string, unknown>,
+  _opts: {
     producerComponent: string;
     producerFunction: string;
     dedupeKey?: string;
     eventReason?: string;
   },
 ): void {
-  const ident = getCribbageDealIdentityAmbient();
-  recordCribbageActiveHand(group === 'deal' ? 'deal-transport' : 'lifecycle', tag, {
-    identity: {
-      handContextId: ident.handContextId,
-      currentHandKey: ident.currentHandKey,
-      renderHandKey: ident.renderHandKey,
-      roundId: ident.roundId,
-      handNumber: ident.handNumber,
-      dealRuntimeReactKey: ident.dealRuntimeReactKey,
-    },
-    ...payload,
-    eventReason: opts.eventReason ?? null,
-  }, {
-    producer: opts.producerComponent,
-    fn: opts.producerFunction,
-    key: opts.dedupeKey,
-  });
+  // no-op — temporary Cribbage wartime instrumentation removed.
 }
+
 
 
 
