@@ -38,6 +38,8 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 const recordCribbageActiveHand: (..._args: unknown[]) => void = () => {};
 const recordCribbageActiveHandContradiction: (..._args: unknown[]) => void = () => {};
 const setCribbageDealIdentityAmbient: (..._args: unknown[]) => void = () => {};
+import { traceCribbageScoring } from '@/lib/cribbage/cribbageScoringTrace';
+
 
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
