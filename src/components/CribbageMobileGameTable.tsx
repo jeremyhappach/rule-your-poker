@@ -7989,15 +7989,16 @@ export const CribbageMobileGameTable = ({
   return (
     <DealRuntimeMaybe
       handContextId={currentHandKey || durableHandKey}
-      /* Contract A (refresh/rejoin) with mount-session discriminator:
-         GAMEPLAY (suppress historical replay) only when THIS is the
-         first canonical hand seen by this mounted table AND the
-         authoritative phase is already past opening-deal. Every later
-         same-mount hand rotation initializes PRE_DEAL so the live
-         opening transport runs, even when the authoritative snapshot
-         reaches this client before our orchestrator dispatches. */
+      /* Contract A (refresh/rejoin) with parent-owned entry-mode provenance:
+         GAMEPLAY (suppress historical replay) only when this route mount
+         entered into an already-existing canonical hand (entryMode ===
+         'historical-entry') AND the authoritative phase is already past
+         opening-deal. Any hand introduced *after* the parent route
+         mounted — including hand 1 of a newly started game witnessed by
+         an already-present client — is 'live-transition' and initializes
+         PRE_DEAL so the normal opening transport runs. */
       initialPhase={
-        isFirstHandForMount &&
+        entryMode === 'historical-entry' &&
         cribbageState?.phase &&
         cribbageState.phase !== 'dealing'
           ? 'GAMEPLAY'
