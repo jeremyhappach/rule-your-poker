@@ -573,6 +573,7 @@ export const CribbageMobileGameTable = ({
   roundId,
   dealerGameId,
   handNumber,
+  entryMode,
   players,
   currentUserId,
   dealerPosition,
