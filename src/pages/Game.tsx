@@ -8282,10 +8282,74 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       userId: user?.id,
     });
 
+    const stepEventPayload = (
+      stepName: string,
+      extra: Record<string, unknown> = {},
+    ) => ({
+      correlationId: sgTrace.correlationId,
+      gameId,
+      userId: user?.id ?? null,
+      stepName,
+      elapsedMs: Math.round(performance.now() - sgTrace.startedAt),
+      currentClientKnownGameStatus: game?.status ?? null,
+      ...extra,
+    });
+
+    const emitDurableStartGameStep = async (
+      eventType: 'start_game_step_enter' | 'start_game_step_exit' | 'start_game_step_error' | 'normalize_enter' | 'normalize_exit' | 'normalize_error',
+      stepName: string,
+      extra: Record<string, unknown> = {},
+    ) => {
+      await logSessionEvent({
+        gameId,
+        eventType: eventType as any,
+        eventData: stepEventPayload(stepName, extra),
+        userId: user?.id,
+      });
+    };
+
+    const captureExactError = (e: unknown) => {
+      if (e instanceof Error) {
+        return {
+          errorName: e.name,
+          errorMessage: e.message,
+          errorStack: e.stack ?? null,
+        };
+      }
+      return {
+        errorName: 'unknown',
+        errorMessage: String(e),
+        errorStack: null,
+      };
+    };
+
+    const reportStartGameAbort = async (
+      stepName: string,
+      extra: Record<string, unknown> = {},
+    ) => {
+      await emitDurableStartGameStep('start_game_step_error', stepName, extra);
+      toast({
+        title: 'Start Game failed',
+        description: `Failed step: ${stepName}`,
+        variant: 'destructive',
+      });
+    };
+
     // Log session event
+    const logStatusStep = 'logStatusChanged';
     try {
+      await emitDurableStartGameStep('start_game_step_enter', logStatusStep, {
+        fromStatus: game?.status ?? 'waiting',
+        toStatus: 'dealer_selection',
+      });
       await logStatusChanged(gameId, user?.id, game?.status ?? 'waiting', 'dealer_selection', 'Host started game');
+      await emitDurableStartGameStep('start_game_step_exit', logStatusStep, {
+        fromStatus: game?.status ?? 'waiting',
+        toStatus: 'dealer_selection',
+      });
     } catch (e) {
+      const exactError = captureExactError(e);
+      await reportStartGameAbort(logStatusStep, exactError);
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'logStatusChanged',
         ...captureException(e),
@@ -8302,14 +8366,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     let playersResult: Awaited<ReturnType<typeof supabase.from>> extends never ? never : any;
+    const playersUpdateStep = 'players.update';
     try {
+      await emitDurableStartGameStep('start_game_step_enter', playersUpdateStep, {
+        payload: playersPayload,
+        filters: playersFilters,
+      });
       playersResult = await supabase
         .from('players')
         .update(playersPayload)
         .eq('game_id', gameId)
         .neq('status', 'observer')
         .neq('status', 'left');
+      await emitDurableStartGameStep('start_game_step_exit', playersUpdateStep, {
+        payload: playersPayload,
+        filters: playersFilters,
+        supabase: capturePostgrestResult(playersResult),
+        returnedRow: playersResult.data ?? null,
+      });
     } catch (e) {
+      const exactError = captureExactError(e);
+      await reportStartGameAbort(playersUpdateStep, exactError);
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'players_update_threw',
         ...captureException(e),
@@ -8323,6 +8400,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (playersResult.error) {
       console.error('[GAME START] Failed to normalize waiting-table players:', playersResult.error);
+      await reportStartGameAbort(playersUpdateStep, {
+        payload: playersPayload,
+        filters: playersFilters,
+        supabase: capturePostgrestResult(playersResult),
+        returnedRow: playersResult.data ?? null,
+      });
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'players_update_error',
         supabase: capturePostgrestResult(playersResult),
@@ -8334,21 +8417,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     emitStartGameStage(sgTrace, 'seat_normalization_started', true, {});
     let startGameNormalizeResult: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null = null;
     let normalizeThrew: unknown = null;
+    const normalizeStep = 'normalizeTwoPlayerSeatsIfNeeded';
     try {
+      await emitDurableStartGameStep('start_game_step_enter', normalizeStep, {});
+      await emitDurableStartGameStep('normalize_enter', normalizeStep, {});
       recordNormalizationDbg({ kind: 'call-site', caller: 'StartGameFromWaiting', didInvokeNormalizer: true, statusTransition: 'waiting→dealer_selection' });
       await recordStartGameNormalizationDbg('before-normalize');
       startGameNormalizeResult = await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
       await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
+      await emitDurableStartGameStep('normalize_exit', normalizeStep, {
+        returnedRow: startGameNormalizeResult,
+        result: startGameNormalizeResult,
+      });
+      await emitDurableStartGameStep('start_game_step_exit', normalizeStep, {
+        returnedRow: startGameNormalizeResult,
+        result: startGameNormalizeResult,
+      });
     } catch (e) {
       normalizeThrew = e;
       console.error('[GAME START] normalizeTwoPlayerSeatsIfNeeded threw:', e);
       try { await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult); } catch { /* */ }
+      const exactError = captureExactError(e);
+      await emitDurableStartGameStep('normalize_error', normalizeStep, exactError);
     }
     emitStartGameStage(sgTrace, 'seat_normalization_completed', !normalizeThrew, {
       result: startGameNormalizeResult,
       ...(normalizeThrew ? captureException(normalizeThrew) : {}),
     });
     if (normalizeThrew) {
+      const exactError = captureExactError(normalizeThrew);
+      await reportStartGameAbort(normalizeStep, exactError);
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'normalizeTwoPlayerSeatsIfNeeded',
         ...captureException(normalizeThrew),
@@ -8373,7 +8471,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     let gamesResult: any;
+    const gamesUpdateStep = "games.update(status:'dealer_selection')";
     try {
+      await emitDurableStartGameStep('start_game_step_enter', gamesUpdateStep, {
+        payload: gamesPayload,
+        filters: gamesFilters,
+      });
       // .select(...).maybeSingle() is diagnostic-only: it returns the row after
       // the update but does not narrow the update predicate. If RLS filters the
       // update to zero rows, data will be null with no error; if PostgREST rejects
@@ -8384,7 +8487,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .eq('id', gameId)
         .select('id,status,updated_at')
         .maybeSingle();
+      await emitDurableStartGameStep('start_game_step_exit', gamesUpdateStep, {
+        payload: gamesPayload,
+        filters: gamesFilters,
+        supabase: capturePostgrestResult(gamesResult),
+        returnedRow: gamesResult.data ?? null,
+      });
     } catch (e) {
+      const exactError = captureExactError(e);
+      await reportStartGameAbort(gamesUpdateStep, exactError);
       emitStartGameStage(sgTrace, 'games_update_completed', false, {
         ...captureException(e),
       });
@@ -8421,6 +8532,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (gamesResult.error) {
       console.error('Start game error:', gamesResult.error);
+      await reportStartGameAbort(gamesUpdateStep, {
+        payload: gamesPayload,
+        filters: gamesFilters,
+        supabase: gamesCaptured,
+        returnedRow: gamesResult.data ?? null,
+      });
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'games_update_error',
         supabase: gamesCaptured,
@@ -8428,6 +8545,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     if (rlsFilteredZeroRow) {
+      await reportStartGameAbort(gamesUpdateStep, {
+        payload: gamesPayload,
+        filters: gamesFilters,
+        supabase: gamesCaptured,
+        rlsFilteredZeroRow,
+        returnedRow: gamesResult.data ?? null,
+      });
       emitStartGameStage(sgTrace, 'start_game_aborted', false, {
         failingStage: 'games_update_zero_rows',
         supabase: gamesCaptured,
