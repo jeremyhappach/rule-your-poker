@@ -94,7 +94,15 @@ export function useWaitingRoomActions({
 
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
+  const mountedRef = useRef(true);
   const [isAddingBot, setIsAddingBot] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const playersRef = useRef(players);
   useEffect(() => {
@@ -348,6 +356,10 @@ export function useWaitingRoomActions({
     }, 500);
     // Safety: clear busy state if the surface does not unmount (start failed).
     setTimeout(() => {
+      if (!mountedRef.current) return;
+      if (gameStartTriggeredRef.current) {
+        toast.error("Start Game failed at step: start_game_transition_timeout");
+      }
       setIsStartingGame(false);
       gameStartTriggeredRef.current = false;
     }, 8000);
