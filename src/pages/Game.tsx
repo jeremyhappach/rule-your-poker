@@ -843,6 +843,19 @@ const Game = () => {
     handNumber: number | null;
   }>({ captured: false, dealerGameId: null, handNumber: null });
 
+  // 3-5-7 entry-mode provenance (persistent owner: Game.tsx route mount).
+  // Mirrors the Cribbage contract above. Captures the authoritative
+  // (current_game_uuid, currentRound.hand_number) baseline at the first
+  // render where the 3-5-7 game record has hydrated. A later identity that
+  // differs from this baseline was introduced AFTER route mount → LIVE
+  // (run the opening wave animation). A matching identity is a
+  // refresh/rejoin into a pre-existing hand → HISTORICAL (skip replay).
+  const initial357IdentityRef = useRef<{
+    captured: boolean;
+    dealerGameId: string | null;
+    handNumber: number | null;
+  }>({ captured: false, dealerGameId: null, handNumber: null });
+
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
     configureNetworkSim({
@@ -13198,11 +13211,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
+          // 3-5-7 entry-mode provenance (persistent Game.tsx route owner).
+          // Capture once at first hydrated render; classify current
+          // authoritative identity against the baseline.
+          let _three57EntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;
+          if (is357GameType) {
+            const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
+            const _authHandNumber357 = currentRound?.hand_number ?? null;
+            if (!initial357IdentityRef.current.captured) {
+              initial357IdentityRef.current = {
+                captured: true,
+                dealerGameId: _authDealerGameId357,
+                handNumber: _authHandNumber357,
+              };
+            }
+            const _b357 = initial357IdentityRef.current;
+            _three57EntryMode =
+              _b357.captured &&
+              _b357.dealerGameId !== null &&
+              _b357.dealerGameId === _authDealerGameId357 &&
+              _b357.handNumber !== null &&
+              _b357.handNumber === _authHandNumber357
+                ? 'historical-entry'
+                : 'live-transition';
+          }
+
           return (
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
               gameId={gameId}
+              three57EntryMode={_three57EntryMode}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
               pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
@@ -13341,7 +13380,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               reAnteMessage={reAnteMessage}
             />
           );
-            })()}
+          })()}
           </PlayfieldSlotController>
         )}
 

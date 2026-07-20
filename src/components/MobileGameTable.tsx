@@ -960,6 +960,15 @@ interface MobileGameTableProps {
   onLeaveGameNow?: () => void;
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
+  /**
+   * 3-5-7 entry-mode provenance. Mirrors the Cribbage identity contract:
+   * captured at the persistent Game.tsx route-mount. 'live-transition'
+   * means a new hand was created after this route mounted → PRE_DEAL so
+   * the opening wave animation runs. 'historical-entry' means the client
+   * mounted onto a pre-existing in-flight hand → GAMEPLAY so we don't
+   * replay historical animations.
+   */
+  three57EntryMode?: 'live-transition' | 'historical-entry';
   // Canonical slot-owned waiting content (rendered inside the table container,
   // not as a floating overlay). Used by WaitingForPlayersTable to fold the
   // seated-count message into the canonical stage.
@@ -1234,6 +1243,7 @@ export const MobileGameTable = ({
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
+  three57EntryMode,
 }: MobileGameTableProps) => {
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
@@ -8365,12 +8375,24 @@ export const MobileGameTable = ({
          rows before advancing the authoritative round status, and
          during that legitimate live-deal window PRE_DEAL must remain
          so the wave animation runs. */
+      /* Contract A (refresh/rejoin) — persistent-owner provenance.
+         PRIMARY: `three57EntryMode` captured by Game.tsx at first
+         hydrated route render. 'historical-entry' → GAMEPLAY (skip
+         wave replay). 'live-transition' → PRE_DEAL (run wave).
+         SECONDARY (fallback when parent hasn't provided the prop
+         yet — e.g. legacy call sites): the previous authoritative
+         gate on roundStatus + expected card count. */
       initialPhase={
-        __is357GameType(gameType) &&
-        typeof currentRound === 'number' && currentRound >= 1 &&
-        !!roundStatus && roundStatus !== 'pending' && roundStatus !== 'ante' &&
-        currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
-          ? 'GAMEPLAY'
+        __is357GameType(gameType)
+          ? (three57EntryMode === 'historical-entry'
+              ? 'GAMEPLAY'
+              : three57EntryMode === 'live-transition'
+                ? 'PRE_DEAL'
+                : (typeof currentRound === 'number' && currentRound >= 1 &&
+                   !!roundStatus && roundStatus !== 'pending' && roundStatus !== 'ante' &&
+                   currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
+                     ? 'GAMEPLAY'
+                     : 'PRE_DEAL'))
           : 'PRE_DEAL'
       }
     >
@@ -11075,7 +11097,7 @@ export const MobileGameTable = ({
                     const handScaleNum =
                       gameType !== 'holm-game'
                         ? (currentRound === 1
-                            ? (isTablet || isDesktop ? 2.8 : 1.6)
+                            ? (isTablet || isDesktop ? 2.8 : 2.4)
                             : currentRound === 2
                               ? (isTablet || isDesktop ? 2.8 : 2.2)
                               : (isTablet || isDesktop ? 2.6 : 2.1))
@@ -11084,14 +11106,14 @@ export const MobileGameTable = ({
                       gameType === 'holm-game'
                         ? (isTablet || isDesktop ? 170 : 130)
                         : (currentRound === 1
-                            ? (isTablet || isDesktop ? 200 : 120)
+                            ? (isTablet || isDesktop ? 200 : 160)
                             : currentRound === 2
                               ? (isTablet || isDesktop ? 180 : 105)
                               : (isTablet || isDesktop ? 160 : 90));
                     const currentPlayerHandScaleClass =
                       gameType !== "holm-game"
                         ? (currentRound === 1
-                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]")
+                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.4]")
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]")
                               : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]"))
@@ -11100,7 +11122,7 @@ export const MobileGameTable = ({
                       gameType === "holm-game"
                         ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]")
                         : (currentRound === 1
-                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]")
+                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[160px]")
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
