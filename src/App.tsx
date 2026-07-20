@@ -108,6 +108,11 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const hideDebugUI = useHideDebugUI();
+  // Install 3-5-7 instant-win global error / unhandled-rejection capture.
+  // Idempotent; safe to call every mount.
+  useEffect(() => {
+    install357InstantWinGlobalHandlers();
+  }, []);
   // Global unhandled rejection handler to catch async errors that slip through
   // This prevents the app from crashing to a blank screen on "run it back" and similar flows
   useEffect(() => {
