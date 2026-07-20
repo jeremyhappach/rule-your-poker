@@ -1,4 +1,5 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
+import { emit357InstantWinEvent } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
