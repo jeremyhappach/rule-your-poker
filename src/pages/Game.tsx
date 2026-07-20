@@ -13379,8 +13379,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               on357TimerAllowedChange={setDealTimerAllowed357}
               reAnteMessage={reAnteMessage}
             />
-              );
-            })()
           );
           </PlayfieldSlotController>
         )}
