@@ -28,6 +28,12 @@ async function trace357InstantWin(
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
+import {
+  begin357InstantWinLifecycle,
+  emit357InstantWinEvent,
+  trace357Awaited,
+  summarizeSupabaseResult,
+} from "./threeFiveSeven/instantWinLifecycle";
 
 
 /**
