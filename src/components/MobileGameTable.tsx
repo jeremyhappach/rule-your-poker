@@ -5789,12 +5789,6 @@ export const MobileGameTable = ({
       lastSweepsResultRef.current = lastRoundResult;
       setSweepsPlayerName(playerName);
       setShowSweepsPot(true);
-      void emit357InstantWinEvent('presentation.overlay.begin', {
-        gameId: gameId ?? undefined,
-        source: 'MobileGameTable.SweepsPotDetector',
-        playerName,
-        lastRoundResult,
-      });
     }
   }, [lastRoundResult, gameType, gameId]);
 
@@ -6902,8 +6896,6 @@ export const MobileGameTable = ({
     }
 
 
-    void emit357InstantWinEvent('presentation.overlay.complete', { gameId: gameId ?? undefined, phase: 'legs-to-player.begin' });
-    void emit357InstantWinEvent('presentation.pot.begin', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null, potAmount: threeFiveSevenWinPotAmount });
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
@@ -6941,8 +6933,6 @@ export const MobileGameTable = ({
       });
     }
 
-    void emit357InstantWinEvent('presentation.pot.complete', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null, potAmount: threeFiveSevenWinPotAmount });
-    void emit357InstantWinEvent('presentation.celebration.begin', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null });
 
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
@@ -6955,9 +6945,6 @@ export const MobileGameTable = ({
 
       // Only complete if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
-        void emit357InstantWinEvent('presentation.celebration.complete', {
-          gameId: gameId ?? undefined, success: false, reason: 'stale_animation_id',
-        });
         return;
       }
 
@@ -6968,7 +6955,7 @@ export const MobileGameTable = ({
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
 
-      void emit357InstantWinEvent('presentation.celebration.complete', { gameId: gameId ?? undefined, success: true });
+      emit357InstantWinTerminal('presentation_completed', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null });
 
       if (onThreeFiveSevenWinAnimationComplete) {
         onThreeFiveSevenWinAnimationComplete();
