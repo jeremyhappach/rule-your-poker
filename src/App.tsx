@@ -24,6 +24,7 @@ import { FeltDebugPill } from "@/lib/canonicalShell/FeltDebugPill";
 import { ExtraDebugPills } from "@/lib/canonicalShell/ExtraDebugPills";
 import { LayoutFaultBadge } from "@/lib/wave4LayoutResolver/LayoutFaultBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
+import { install357InstantWinGlobalHandlers } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { ChatFlightPill } from "@/lib/chatFlightRecorder/ChatFlightPill";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
