@@ -843,6 +843,19 @@ const Game = () => {
     handNumber: number | null;
   }>({ captured: false, dealerGameId: null, handNumber: null });
 
+  // 3-5-7 entry-mode provenance (persistent owner: Game.tsx route mount).
+  // Mirrors the Cribbage contract above. Captures the authoritative
+  // (current_game_uuid, currentRound.hand_number) baseline at the first
+  // render where the 3-5-7 game record has hydrated. A later identity that
+  // differs from this baseline was introduced AFTER route mount → LIVE
+  // (run the opening wave animation). A matching identity is a
+  // refresh/rejoin into a pre-existing hand → HISTORICAL (skip replay).
+  const initial357IdentityRef = useRef<{
+    captured: boolean;
+    dealerGameId: string | null;
+    handNumber: number | null;
+  }>({ captured: false, dealerGameId: null, handNumber: null });
+
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
     configureNetworkSim({
