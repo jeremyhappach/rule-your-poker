@@ -649,8 +649,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       roundId: round.id,
       handNumber,
       dealerGameId: currentGameUuid,
-      forcedOverrideId: forcedOverride?.id ?? null,
-      forcedTargetPlayerId: forcedOverride?.target_player_id ?? null,
+      harnessInstantWinActive,
+      harnessTargetPlayerId,
       dealt: (dealtCards ?? []).map(pc => ({
         playerId: (pc as any).player_id,
         cards: pc.cards,
@@ -752,15 +752,6 @@ export async function startRound(gameId: string, roundNumber: number) {
             .update({ pot: 0 })
             .eq('id', gameId);
 
-          let overrideConsumed = false;
-          if (forcedOverride) {
-            overrideConsumed = await consume357ForceDeal(forcedOverride.id, {
-              dealerGameId: currentGameUuid,
-              roundId: round.id,
-              handNumber,
-            });
-          }
-
           await trace357InstantWin('commit.game_over', gameId, {
             roundId: round.id,
             handNumber,
@@ -770,8 +761,8 @@ export async function startRound(gameId: string, roundNumber: number) {
             currentPot,
             totalLegValue,
             totalPrize,
-            forcedOverrideId: forcedOverride?.id ?? null,
-            overrideConsumed,
+            harnessInstantWinActive,
+            harnessTargetPlayerId,
             sweepMessage,
           });
 
@@ -780,12 +771,11 @@ export async function startRound(gameId: string, roundNumber: number) {
       }
     }
 
-    // No detection — if a harness override was applied but detection
+    // No detection — if the instant-win harness was active but detection
     // still failed, that's a contract violation worth surfacing.
-    if (forcedOverride) {
+    if (harnessInstantWinActive) {
       await trace357InstantWin('harness.detection_failed_after_override', gameId, {
-        overrideId: forcedOverride.id,
-        targetPlayerId: forcedOverride.target_player_id,
+        targetPlayerId: harnessTargetPlayerId,
         roundId: round.id,
         handNumber,
         dealtCards: (dealtCards ?? []).map(pc => ({
