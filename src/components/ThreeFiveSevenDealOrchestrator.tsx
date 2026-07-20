@@ -358,7 +358,14 @@ export function Use357OppCount({
   // GAMEPLAY may fall through to authoritative. (READY is the transient
   // gap between waves; admitting authoritative there leaks future cards
   // instantly at r2/r3 start.)
-  const claimOnlyVisible = !!deal && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
+  // Contract A (refresh/rejoin) escape hatch: when DealRuntime was
+  // initialized directly into GAMEPLAY and no wave has ever dispatched
+  // on this runtime (expectedCount===0), transport is guaranteed idle
+  // for the lifetime of this hand and `settled` will never grow.
+  // In that state `defaultCount > settled` would trap opponent card
+  // counts at 0 forever — bypass claim-only and render authoritative.
+  const noWaveEverDispatched = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
+  const claimOnlyVisible = !!deal && !noWaveEverDispatched && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
   const dealingVisible = Math.min(settled, expected);
   const visible = deal
     ? !claimOnlyVisible
@@ -521,7 +528,14 @@ export function Use357SelfHand<T>({
   // has already grown beyond `settled`, that is a pending wave and MUST
   // still be clipped to ownership claims. GAMEPLAY converges naturally
   // once settled === authoritative length.
-  const isClaimOnlyRender = !!deal && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
+  // Contract A (refresh/rejoin) escape hatch: DealRuntime initialized
+  // directly into GAMEPLAY with no wave ever dispatched (expectedCount===0)
+  // means transport is guaranteed idle for the lifetime of this hand and
+  // `settled` will never grow. Without this bypass `sourceCards.length > settled`
+  // permanently traps the self hand at 0 cards, hiding authoritative
+  // playable cards behind the claim-only gate.
+  const noWaveEverDispatchedSelf = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
+  const isClaimOnlyRender = !!deal && !noWaveEverDispatchedSelf && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
   const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
