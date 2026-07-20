@@ -1,5 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
+import { fetchPending357ForceDeal, consume357ForceDeal, type ForceDealRow } from "./threeFiveSeven/instantWinHarness";
+
+/** Persistent 3-5-7 instant-win diagnostic — writes to debug_events (best-effort). */
+async function trace357InstantWin(
+  eventType: string,
+  gameId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await supabase.from('debug_events').insert({
+      event_type: `357.instant_win.${eventType}`,
+      game_id: gameId,
+      round_id: (payload.roundId as string | undefined) ?? null,
+      payload: payload as any,
+    });
+  } catch { /* diagnostic-only */ }
+}
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
@@ -521,16 +538,61 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
 
+  // ── 3-5-7 INSTANT DEALER WIN HARNESS (admin-only override) ─────────
+  // Before assembling deals, check for a pending force-deal override on
+  // this game. If present, and this is Round 1, force the target
+  // player's cards to the harness-configured 3-5-7 hand and remove those
+  // exact cards from the deck so the rest of the deal remains valid.
+  // The override still routes through the normal player_cards insert
+  // and the normal has357Hand detection below — the rule under test is
+  // NOT bypassed.
+  let forcedOverride: ForceDealRow | null = null;
+  const forcedCardsByPlayer = new Map<string, Card[]>();
+  if (roundNumber === 1) {
+    forcedOverride = await fetchPending357ForceDeal(gameId);
+    if (forcedOverride && Array.isArray(forcedOverride.target_cards) && forcedOverride.target_cards.length === 3) {
+      const forced = forcedOverride.target_cards as Card[];
+      // Verify target is in activePlayers.
+      const targetActive = activePlayers.some(p => p.id === forcedOverride!.target_player_id);
+      if (targetActive) {
+        forcedCardsByPlayer.set(forcedOverride.target_player_id, forced);
+        // Remove forced cards from the deck (by rank+suit identity).
+        deck = deck.filter(c => !forced.some(f => f.rank === c.rank && f.suit === c.suit));
+        await trace357InstantWin('harness.override_applied', gameId, {
+          overrideId: forcedOverride.id,
+          targetPlayerId: forcedOverride.target_player_id,
+          forcedCards: forced,
+          roundId: round.id,
+          handNumber,
+          dealerGameId: currentGameUuid,
+        });
+      } else {
+        await trace357InstantWin('harness.override_skipped_target_inactive', gameId, {
+          overrideId: forcedOverride.id,
+          targetPlayerId: forcedOverride.target_player_id,
+          activePlayerIds: activePlayers.map(p => p.id),
+        });
+        forcedOverride = null;
+      }
+    }
+  }
+
   // BATCH: Prepare all player cards for a single insert
   const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
-  
+
   for (const player of activePlayers) {
     // Get existing cards from previous round (if any)
     const existingCards = previousRoundCards.get(player.id) || [];
-    
-    // Deal new cards from deck
-    const newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
-    cardIndex += newCardsToDeal;
+
+    // Deal new cards from deck — or use forced cards if harness is active.
+    let newCards: Card[];
+    const forcedForPlayer = forcedCardsByPlayer.get(player.id);
+    if (forcedForPlayer && existingCards.length === 0 && roundNumber === 1) {
+      newCards = forcedForPlayer;
+    } else {
+      newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
+      cardIndex += newCardsToDeal;
+    }
     const playerCards = [...existingCards, ...newCards];
 
     playerCardInserts.push({
@@ -539,13 +601,13 @@ export async function startRound(gameId: string, roundNumber: number) {
       cards: playerCards as any
     });
   }
-  
+
   // Single batch insert for all player cards
   if (playerCardInserts.length > 0) {
     const { error: cardsError } = await supabase
       .from('player_cards')
       .insert(playerCardInserts);
-    
+
     if (cardsError) {
       console.error('[START_ROUND] Error batch inserting cards:', cardsError);
       throw new Error(`Failed to deal cards: ${cardsError.message}`);
@@ -557,131 +619,167 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Check for 3-5-7 hand immediately after dealing cards - no decision needed!
   if (roundNumber === 1) {
     console.log('[START_ROUND] Checking for immediate 3-5-7 hands...');
-    
+
     // Fetch all player cards just dealt (include is_bot for alias resolution)
     const { data: dealtCards } = await supabase
       .from('player_cards')
       .select('*, players!inner(id, position, legs, user_id, is_bot, profiles(username), created_at)')
       .eq('round_id', round.id);
-    
+
     // Fetch all players for bot alias resolution
     const { data: allPlayersForAlias } = await supabase
       .from('players')
       .select('user_id, is_bot, created_at')
       .eq('game_id', gameId);
-    
+
+    await trace357InstantWin('detect.candidate_cards', gameId, {
+      roundId: round.id,
+      handNumber,
+      dealerGameId: currentGameUuid,
+      forcedOverrideId: forcedOverride?.id ?? null,
+      forcedTargetPlayerId: forcedOverride?.target_player_id ?? null,
+      dealt: (dealtCards ?? []).map(pc => ({
+        playerId: (pc as any).player_id,
+        cards: pc.cards,
+        cardCount: Array.isArray(pc.cards) ? (pc.cards as unknown[]).length : null,
+      })),
+    });
+
     if (dealtCards) {
       for (const pc of dealtCards) {
         const cards = pc.cards as unknown as Card[];
-        if (has357Hand(cards)) {
+        const detected = has357Hand(cards);
+        await trace357InstantWin('detect.has357Hand', gameId, {
+          roundId: round.id,
+          handNumber,
+          playerId: (pc as any).player_id,
+          cards,
+          rankPresent: Array.isArray(cards) ? cards.map(c => c?.rank) : null,
+          result: detected,
+        });
+        if (detected) {
           const player = pc.players as any;
           const username = player?.is_bot && allPlayersForAlias
-            ? getBotAlias(allPlayersForAlias, player.user_id) 
+            ? getBotAlias(allPlayersForAlias, player.user_id)
             : (player?.profiles?.username || `Player ${player?.position}`);
           console.log('[START_ROUND] 🎉 IMMEDIATE 357 DETECTED!', { playerId: player?.id, username, cards });
-          
-          // NOTE: 3-5-7 sweep is an INSTANT WIN - do NOT award legs!
-          // The player wins the game immediately without needing leg accumulation
-          
-          // Set the special result message for 357 sweep (triggers celebration animation)
+
           const sweepMessage = `357_SWEEP:${username}`;
-          
-          // Mark round as completed and set sweep message
-          // DO NOT set status: 'game_over' yet - let animation play first
+
+          // Mark round completed and set sweep message so clients can play
+          // the celebration animation.
           await supabase
             .from('rounds')
             .update({ status: 'completed' })
             .eq('id', round.id);
-          
+
+          // AUTHORITATIVE COMMIT — synchronous, not setTimeout-deferred.
+          // The prior implementation deferred game_over + pot award via a
+          // 5-second setTimeout on the winning client. If that client
+          // navigated away, backgrounded, or reloaded during the window,
+          // the transition never committed and the game hung forever
+          // (paused=true, awaiting_next_round=true, status=in_progress).
+          // We now commit game_over immediately under the same atomic
+          // in_progress → game_over guard. Celebration timing is presentation-only.
+          const { data: guardResult, error: guardError } = await supabase
+            .from('games')
+            .update({
+              status: 'game_over',
+              game_over_at: new Date().toISOString(),
+              current_round: null,
+              awaiting_next_round: false,
+              all_decisions_in: false,
+              last_round_result: sweepMessage,
+              // pot is zeroed below after prize is awarded
+            })
+            .eq('id', gameId)
+            .eq('status', 'in_progress')
+            .select('pot, total_hands, dealer_position, leg_value')
+            .single();
+
+          if (guardError || !guardResult) {
+            await trace357InstantWin('commit.guard_lost', gameId, {
+              roundId: round.id,
+              handNumber,
+              error: guardError?.message ?? null,
+            });
+            return round;
+          }
+
+          const currentPot = guardResult.pot || 0;
+          const legValue = guardResult.leg_value || 1;
+
+          const { data: allPlayers } = await supabase
+            .from('players')
+            .select('id, chips, legs')
+            .eq('game_id', gameId);
+
+          const totalLegValue = (allPlayers || []).reduce((sum, p) => sum + (p.legs * legValue), 0);
+          const totalPrize = currentPot + totalLegValue;
+
+          if (player?.id) {
+            await supabase.rpc('increment_player_chips', {
+              p_player_id: player.id,
+              p_amount: totalPrize,
+            });
+          }
+
+          await supabase
+            .from('players')
+            .update({
+              legs: 0,
+              current_decision: null,
+              decision_locked: false,
+              ante_decision: null,
+            })
+            .eq('game_id', gameId);
+
           await supabase
             .from('games')
-            .update({ 
-              last_round_result: sweepMessage,
-              awaiting_next_round: true  // Block further game logic during animation
-            })
+            .update({ pot: 0 })
             .eq('id', gameId);
-          
-          // After 5 seconds (animation duration), set game_over state directly
-          // Don't use handleGameOver - it would overwrite the sweep message
-          setTimeout(async () => {
-            console.log('[357 SWEEP] Animation complete, attempting atomic transition to game_over');
-            
-            // ATOMIC GUARD: Only the first client to update status from 'in_progress' to 'game_over' proceeds
-            // This prevents duplicate pot awards in human-vs-human games
-            const { data: guardResult, error: guardError } = await supabase
-              .from('games')
-              .update({ 
-                status: 'game_over',
-                game_over_at: new Date().toISOString(),
-                current_round: null,
-                awaiting_next_round: false,
-                all_decisions_in: false
-                // NOTE: Keep last_round_result as the sweep message, keep pot for now
-              })
-              .eq('id', gameId)
-              .eq('status', 'in_progress')  // ATOMIC: Only if still in_progress
-              .select('pot, total_hands, dealer_position, leg_value')
-              .single();
-            
-            if (guardError || !guardResult) {
-              console.log('[357 SWEEP] Another client already processed game over, skipping pot award');
-              return;
-            }
-            
-            console.log('[357 SWEEP] Won atomic guard, proceeding with pot award');
-            
-            const currentPot = guardResult.pot || 0;
-            const legValue = guardResult.leg_value || 1;
-            
-            // Fetch all players to calculate total leg value
-            const { data: allPlayers } = await supabase
-              .from('players')
-              .select('id, chips, legs')
-              .eq('game_id', gameId);
-            
-            // Calculate total leg value from all players
-            const totalLegValue = (allPlayers || []).reduce((sum, p) => sum + (p.legs * legValue), 0);
-            const totalPrize = currentPot + totalLegValue;
-            
-            console.log('[357 SWEEP] Awarding prize to winner:', { 
-              playerId: player?.id,
-              currentPot, 
-              totalLegValue, 
-              totalPrize 
+
+          let overrideConsumed = false;
+          if (forcedOverride) {
+            overrideConsumed = await consume357ForceDeal(forcedOverride.id, {
+              dealerGameId: currentGameUuid,
+              roundId: round.id,
+              handNumber,
             });
-            
-            // Award pot + leg value to the winner using atomic increment
-            const winnerPlayer = (allPlayers || []).find(p => p.id === player?.id);
-            if (winnerPlayer && player?.id) {
-              await supabase.rpc('increment_player_chips', {
-                p_player_id: player.id,
-                p_amount: totalPrize
-              });
-            }
-            
-            // Reset all players' legs to 0 for next game
-            await supabase
-              .from('players')
-              .update({ 
-                legs: 0,
-                current_decision: null,
-                decision_locked: false,
-                ante_decision: null
-              })
-              .eq('game_id', gameId);
-            
-            // Now zero out the pot and update total_hands
-            await supabase
-              .from('games')
-              .update({ 
-                pot: 0
-              })
-              .eq('id', gameId);
-          }, 5000);
-          
+          }
+
+          await trace357InstantWin('commit.game_over', gameId, {
+            roundId: round.id,
+            handNumber,
+            dealerGameId: currentGameUuid,
+            winnerPlayerId: player?.id ?? null,
+            winnerUsername: username,
+            currentPot,
+            totalLegValue,
+            totalPrize,
+            forcedOverrideId: forcedOverride?.id ?? null,
+            overrideConsumed,
+            sweepMessage,
+          });
+
           return round; // Exit early - 357 sweep handled
         }
       }
+    }
+
+    // No detection — if a harness override was applied but detection
+    // still failed, that's a contract violation worth surfacing.
+    if (forcedOverride) {
+      await trace357InstantWin('harness.detection_failed_after_override', gameId, {
+        overrideId: forcedOverride.id,
+        targetPlayerId: forcedOverride.target_player_id,
+        roundId: round.id,
+        handNumber,
+        dealtCards: (dealtCards ?? []).map(pc => ({
+          playerId: (pc as any).player_id,
+          cards: pc.cards,
+        })),
+      });
     }
   }
   // ============ END IMMEDIATE 357 CHECK ============
