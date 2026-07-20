@@ -9935,7 +9935,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const displayPart = resultMessage.split('|||')[0];
     let winnerName = '';
 
-    if (isLegWinMessage) {
+    if (isSweepMessage) {
+      // Format: "357_SWEEP:PlayerName"
+      winnerName = displayPart.slice('357_SWEEP:'.length).trim();
+    } else if (isLegWinMessage) {
       const winnerMatch = displayPart.match(/^(.+?) won a leg/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
     } else if (isGameWinMessage) {
@@ -9943,6 +9946,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const winnerMatch = displayPart.match(/🏆\s*(.+?)\s+won the game/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
     }
+
 
     // Find winner player - check both profile username AND bot alias for bot players
     const winnerPlayer = players.find(p => {
