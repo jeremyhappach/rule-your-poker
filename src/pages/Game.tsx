@@ -9905,11 +9905,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const resultMessage = game.last_round_result;
     
-    // Check for two patterns: "won a leg" (before transition) or "won the game" (after transition)
+    // Check for three patterns: "won a leg", "won the game", or authoritative 357_SWEEP sentinel
     const isLegWinMessage = resultMessage.includes('won a leg');
     const isGameWinMessage = resultMessage.includes('won the game');
-    
-    if (!isLegWinMessage && !isGameWinMessage) return;
+    const isSweepMessage = resultMessage.startsWith('357_SWEEP:');
+
+    if (!isLegWinMessage && !isGameWinMessage && !isSweepMessage) return;
+
     
     
     // Prevent duplicate processing for the same backend result message within this game.
