@@ -358,7 +358,14 @@ export function Use357OppCount({
   // GAMEPLAY may fall through to authoritative. (READY is the transient
   // gap between waves; admitting authoritative there leaks future cards
   // instantly at r2/r3 start.)
-  const claimOnlyVisible = !!deal && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
+  // Contract A (refresh/rejoin) escape hatch: when DealRuntime was
+  // initialized directly into GAMEPLAY and no wave has ever dispatched
+  // on this runtime (expectedCount===0), transport is guaranteed idle
+  // for the lifetime of this hand and `settled` will never grow.
+  // In that state `defaultCount > settled` would trap opponent card
+  // counts at 0 forever — bypass claim-only and render authoritative.
+  const noWaveEverDispatched = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
+  const claimOnlyVisible = !!deal && !noWaveEverDispatched && (deal.phase !== 'GAMEPLAY' || defaultCount > settled);
   const dealingVisible = Math.min(settled, expected);
   const visible = deal
     ? !claimOnlyVisible
