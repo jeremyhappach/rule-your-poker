@@ -10141,7 +10141,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
     console.log('[357 WIN] Animation started, clearing trigger to prevent duplicate');
     setThreeFiveSevenWinTriggerId(null);
-  }, []);
+    void emit357InstantWinEvent('presentation.begin', {
+      gameId: gameId ?? undefined,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      viewerId: user?.id ?? null,
+      currentRound: (game as any)?.current_round ?? null,
+    });
+  }, [gameId, game, user?.id]);
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
@@ -10149,14 +10155,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    await emit357InstantWinEvent('presentation.complete', {
+      gameId: gameId ?? undefined,
+      viewerId: user?.id ?? null,
+    });
+
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
     is357WinAnimationActiveRef.current = false;
 
-    // Clear local win state (we're done animating).
-    // NOTE: Do NOT clear threeFiveSevenWinProcessedRef here; while we are still on the
-    // same game_over result message, clearing it can immediately re-trigger the whole
-    // win sequence again.
     setThreeFiveSevenWinTriggerId(null);
     setThreeFiveSevenWinnerId(null);
     setThreeFiveSevenWinPotAmount(0);
@@ -10171,17 +10178,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .eq('id', gameId)
       .single();
 
-
-    // Only skip if we are POSITIVE another client already transitioned.
-    // If the fetch fails (auth/network/RLS), proceed best-effort so we don't get stuck.
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
-      
       await fetchGameData();
       return;
     }
 
-    await handleGameOverComplete();
-  }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
+    await emit357InstantWinEvent('cross_country.begin', {
+      gameId: gameId ?? undefined,
+      viewerId: user?.id ?? null,
+    });
+    try {
+      await emit357InstantWinEvent('cross_country.advance.begin');
+      await handleGameOverComplete();
+      await emit357InstantWinEvent('cross_country.advance.complete', { success: true });
+      await emit357InstantWinEvent('cross_country.complete', { success: true });
+    } catch (e) {
+      await emit357InstantWinEvent('cross_country.advance.complete', {
+        success: false, exception: e,
+      });
+      await emit357InstantWinEvent('cross_country.complete', {
+        success: false, exception: e,
+      });
+      throw e;
+    } finally {
+      if (has357InstantWinLifecycle()) end357InstantWinLifecycle();
+    }
+  }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData, user?.id]);
 
   // YAHTZEE game_over transition
   // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
