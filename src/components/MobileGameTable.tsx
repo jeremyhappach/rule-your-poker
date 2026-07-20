@@ -11311,9 +11311,9 @@ export const MobileGameTable = ({
                                           *     Use357SelfHand / UseHolmSelfHand wrapper via
                                           *     boundary.baseHandContextId re-keying.
                                           */}
-                                        <PlayerHand
-                                          cards={effectiveCards}
-                                          isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
+                                         <PlayerHand
+                                           cards={effectiveCards}
+                                           isHidden={is357 || is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
                                           expectedCardCount={
                                             gameType === 'holm-game'
                                               ? 4
