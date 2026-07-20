@@ -1243,6 +1243,7 @@ export const MobileGameTable = ({
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
+  three57EntryMode,
 }: MobileGameTableProps) => {
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
