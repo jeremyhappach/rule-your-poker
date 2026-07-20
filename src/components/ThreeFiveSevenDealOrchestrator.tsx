@@ -528,7 +528,14 @@ export function Use357SelfHand<T>({
   // has already grown beyond `settled`, that is a pending wave and MUST
   // still be clipped to ownership claims. GAMEPLAY converges naturally
   // once settled === authoritative length.
-  const isClaimOnlyRender = !!deal && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
+  // Contract A (refresh/rejoin) escape hatch: DealRuntime initialized
+  // directly into GAMEPLAY with no wave ever dispatched (expectedCount===0)
+  // means transport is guaranteed idle for the lifetime of this hand and
+  // `settled` will never grow. Without this bypass `sourceCards.length > settled`
+  // permanently traps the self hand at 0 cards, hiding authoritative
+  // playable cards behind the claim-only gate.
+  const noWaveEverDispatchedSelf = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
+  const isClaimOnlyRender = !!deal && !noWaveEverDispatchedSelf && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
   const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
