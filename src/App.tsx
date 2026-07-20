@@ -24,7 +24,7 @@ import { FeltDebugPill } from "@/lib/canonicalShell/FeltDebugPill";
 import { ExtraDebugPills } from "@/lib/canonicalShell/ExtraDebugPills";
 import { LayoutFaultBadge } from "@/lib/wave4LayoutResolver/LayoutFaultBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
-import { install357InstantWinGlobalHandlers } from "@/lib/threeFiveSeven/instantWinLifecycle";
+// 3-5-7 instant-win wartime global handlers retired (see instantWinLifecycle.ts).
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { ChatFlightPill } from "@/lib/chatFlightRecorder/ChatFlightPill";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
@@ -108,11 +108,7 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const hideDebugUI = useHideDebugUI();
-  // Install 3-5-7 instant-win global error / unhandled-rejection capture.
-  // Idempotent; safe to call every mount.
-  useEffect(() => {
-    install357InstantWinGlobalHandlers();
-  }, []);
+  // 3-5-7 instant-win global handlers retired — they were wartime-only.
   // Global unhandled rejection handler to catch async errors that slip through
   // This prevents the app from crashing to a blank screen on "run it back" and similar flows
   useEffect(() => {

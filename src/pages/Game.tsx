@@ -18,11 +18,7 @@ import {
   recordRecoveryTransition,
 } from "@/lib/sessionRecoveryLease";
 import { MobileGameTable } from "@/components/MobileGameTable";
-import {
-  emit357InstantWinEvent,
-  has357InstantWinLifecycle,
-  end357InstantWinLifecycle,
-} from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { emit357InstantWinTerminal } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
