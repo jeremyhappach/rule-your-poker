@@ -13380,6 +13380,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               reAnteMessage={reAnteMessage}
             />
           );
+          })()}
           </PlayfieldSlotController>
         )}
 
