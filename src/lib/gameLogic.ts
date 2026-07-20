@@ -1,6 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
-import { fetchPending357ForceDeal, consume357ForceDeal, type ForceDealRow } from "./threeFiveSeven/instantWinHarness";
+import { readDebugHarness } from "./debugHarness/useDebugHarness";
+import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
+
+/** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
+const FORCED_357_CARDS: Card[] = [
+  { rank: '3', suit: '♣' },
+  { rank: '5', suit: '♦' },
+  { rank: '7', suit: '♥' },
+];
 
 /** Persistent 3-5-7 instant-win diagnostic — writes to debug_events (best-effort). */
 async function trace357InstantWin(
@@ -200,7 +208,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type, current_host')
       .eq('id', gameId)
       .single(),
     supabase
@@ -538,41 +546,46 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
 
-  // ── 3-5-7 INSTANT DEALER WIN HARNESS (admin-only override) ─────────
-  // Before assembling deals, check for a pending force-deal override on
-  // this game. If present, and this is Round 1, force the target
-  // player's cards to the harness-configured 3-5-7 hand and remove those
-  // exact cards from the deck so the rest of the deal remains valid.
-  // The override still routes through the normal player_cards insert
-  // and the normal has357Hand detection below — the rule under test is
-  // NOT bypassed.
-  let forcedOverride: ForceDealRow | null = null;
+  // ── 3-5-7 INSTANT DEALER WIN HARNESS (admin-only Harness Profile) ──
+  // When Game Defaults → Debug Harness Profile for '3-5-7' is set to
+  // 'instant_win', force the canonical SESSION HOST's Round 1 cards to
+  // 3♣ 5♦ 7♥. Detection still runs through the unchanged has357Hand
+  // path below — the rule under test is NOT bypassed. Deal, transport,
+  // and one-card-at-a-time animation continue to run through the
+  // normal authoritative player_cards insert.
+  let harnessInstantWinActive = false;
+  let harnessTargetPlayerId: string | null = null;
   const forcedCardsByPlayer = new Map<string, Card[]>();
   if (roundNumber === 1) {
-    forcedOverride = await fetchPending357ForceDeal(gameId);
-    if (forcedOverride && Array.isArray(forcedOverride.target_cards) && forcedOverride.target_cards.length === 3) {
-      const forced = forcedOverride.target_cards as Card[];
-      // Verify target is in activePlayers.
-      const targetActive = activePlayers.some(p => p.id === forcedOverride!.target_player_id);
-      if (targetActive) {
-        forcedCardsByPlayer.set(forcedOverride.target_player_id, forced);
-        // Remove forced cards from the deck (by rank+suit identity).
+    const harnessId = await readDebugHarness('3-5-7');
+    if (harnessId === 'instant_win') {
+      harnessTargetPlayerId = resolveSessionHostPlayerId(
+        { current_host: (gameConfig as any)?.current_host ?? null },
+        activePlayers.map((p) => ({
+          id: p.id,
+          user_id: (p as any).user_id ?? null,
+          is_bot: (p as any).is_bot ?? null,
+          created_at: (p as any).created_at ?? null,
+        })),
+      );
+      if (harnessTargetPlayerId) {
+        harnessInstantWinActive = true;
+        const forced = FORCED_357_CARDS;
+        forcedCardsByPlayer.set(harnessTargetPlayerId, forced);
         deck = deck.filter(c => !forced.some(f => f.rank === c.rank && f.suit === c.suit));
         await trace357InstantWin('harness.override_applied', gameId, {
-          overrideId: forcedOverride.id,
-          targetPlayerId: forcedOverride.target_player_id,
+          harnessId,
+          targetPlayerId: harnessTargetPlayerId,
           forcedCards: forced,
           roundId: round.id,
           handNumber,
           dealerGameId: currentGameUuid,
         });
       } else {
-        await trace357InstantWin('harness.override_skipped_target_inactive', gameId, {
-          overrideId: forcedOverride.id,
-          targetPlayerId: forcedOverride.target_player_id,
+        await trace357InstantWin('harness.override_skipped_no_host', gameId, {
+          harnessId,
           activePlayerIds: activePlayers.map(p => p.id),
         });
-        forcedOverride = null;
       }
     }
   }
@@ -636,8 +649,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       roundId: round.id,
       handNumber,
       dealerGameId: currentGameUuid,
-      forcedOverrideId: forcedOverride?.id ?? null,
-      forcedTargetPlayerId: forcedOverride?.target_player_id ?? null,
+      harnessInstantWinActive,
+      harnessTargetPlayerId,
       dealt: (dealtCards ?? []).map(pc => ({
         playerId: (pc as any).player_id,
         cards: pc.cards,
@@ -739,15 +752,6 @@ export async function startRound(gameId: string, roundNumber: number) {
             .update({ pot: 0 })
             .eq('id', gameId);
 
-          let overrideConsumed = false;
-          if (forcedOverride) {
-            overrideConsumed = await consume357ForceDeal(forcedOverride.id, {
-              dealerGameId: currentGameUuid,
-              roundId: round.id,
-              handNumber,
-            });
-          }
-
           await trace357InstantWin('commit.game_over', gameId, {
             roundId: round.id,
             handNumber,
@@ -757,8 +761,8 @@ export async function startRound(gameId: string, roundNumber: number) {
             currentPot,
             totalLegValue,
             totalPrize,
-            forcedOverrideId: forcedOverride?.id ?? null,
-            overrideConsumed,
+            harnessInstantWinActive,
+            harnessTargetPlayerId,
             sweepMessage,
           });
 
@@ -767,12 +771,11 @@ export async function startRound(gameId: string, roundNumber: number) {
       }
     }
 
-    // No detection — if a harness override was applied but detection
+    // No detection — if the instant-win harness was active but detection
     // still failed, that's a contract violation worth surfacing.
-    if (forcedOverride) {
+    if (harnessInstantWinActive) {
       await trace357InstantWin('harness.detection_failed_after_override', gameId, {
-        overrideId: forcedOverride.id,
-        targetPlayerId: forcedOverride.target_player_id,
+        targetPlayerId: harnessTargetPlayerId,
         roundId: round.id,
         handNumber,
         dealtCards: (dealtCards ?? []).map(pc => ({

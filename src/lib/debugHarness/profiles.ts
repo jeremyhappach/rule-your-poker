@@ -130,6 +130,11 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
   '3-5-7': [
     NONE_HARNESS,
     {
+      id: 'instant_win',
+      label: 'Instant 3-5-7 Win',
+      description: 'Session host is dealt 3♣ 5♦ 7♥ on Round 1 of the next normally-created 3-5-7 dealer game. Deal, transport, one-card-at-a-time animation, and has357Hand detection all run through the normal authoritative path — the rule is not bypassed. Remains active until Harness Profile is changed.',
+    },
+    {
       id: 'pause_r1_showdown',
       label: 'R1 Showdown Pause',
       description: 'Pause once on the first real opponent-exposed showdown that resolves in Round 1 of the current dealer game. Leaves awaiting_next_round=true; no auto-proceed, no release button.',
