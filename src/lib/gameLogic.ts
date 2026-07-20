@@ -1,5 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
+import { fetchPending357ForceDeal, consume357ForceDeal, type ForceDealRow } from "./threeFiveSeven/instantWinHarness";
+
+/** Persistent 3-5-7 instant-win diagnostic — writes to debug_events (best-effort). */
+async function trace357InstantWin(
+  eventType: string,
+  gameId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await supabase.from('debug_events').insert({
+      event_type: `357.instant_win.${eventType}`,
+      game_id: gameId,
+      round_id: (payload.roundId as string | undefined) ?? null,
+      payload: payload as any,
+    });
+  } catch { /* diagnostic-only */ }
+}
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
