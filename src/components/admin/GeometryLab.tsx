@@ -64,6 +64,7 @@ import { DealTimingAdminSection } from "./DealTimingAdminSection";
 import { TableDemoAdminSection } from "./TableDemoAdminSection";
 // NoTimersAdminSection lives in Admin Settings; not mounted here.
 import { ThreeFiveSevenShowdownRulesPanel } from "./ThreeFiveSevenShowdownRulesPanel";
+import { Force357InstantWinPanel } from "./Force357InstantWinPanel";
 import { HolmShowdownRulesPanel } from "./HolmShowdownRulesPanel";
 import { CardFrontDesignPanel } from "./CardFrontDesignPanel";
 import { ShellNameplateAdminSection } from "./ShellNameplateAdminSection";
@@ -946,6 +947,12 @@ function GameSections(props: GameSectionsProps) {
           </p>
         )}
       </CollapsibleSection>
+
+      {props.game === "threeFiveSeven" && (
+        <CollapsibleSection title="3-5-7 Instant Dealer Win Harness (admin)">
+          <Force357InstantWinPanel userId={props.userId} />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }
