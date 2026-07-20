@@ -6941,11 +6941,9 @@ export const MobileGameTable = ({
       });
     }
 
-    // Win-presentation instrumentation was removed.
+    void emit357InstantWinEvent('presentation.pot.complete', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null, potAmount: threeFiveSevenWinPotAmount });
+    void emit357InstantWinEvent('presentation.celebration.begin', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null });
 
-
-
-    
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
 
@@ -6957,6 +6955,9 @@ export const MobileGameTable = ({
 
       // Only complete if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
+        void emit357InstantWinEvent('presentation.celebration.complete', {
+          gameId: gameId ?? undefined, success: false, reason: 'stale_animation_id',
+        });
         return;
       }
 
@@ -6966,6 +6967,8 @@ export const MobileGameTable = ({
       setPotOutAnimationActive(false); // Clear POT-OUT flag
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
+
+      void emit357InstantWinEvent('presentation.celebration.complete', { gameId: gameId ?? undefined, success: true });
 
       if (onThreeFiveSevenWinAnimationComplete) {
         onThreeFiveSevenWinAnimationComplete();
