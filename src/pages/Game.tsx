@@ -13211,33 +13211,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
+          // 3-5-7 entry-mode provenance (persistent Game.tsx route owner).
+          // Capture once at first hydrated render; classify current
+          // authoritative identity against the baseline.
+          let _three57EntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;
+          if (is357GameType) {
+            const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
+            const _authHandNumber357 = currentRound?.hand_number ?? null;
+            if (!initial357IdentityRef.current.captured) {
+              initial357IdentityRef.current = {
+                captured: true,
+                dealerGameId: _authDealerGameId357,
+                handNumber: _authHandNumber357,
+              };
+            }
+            const _b357 = initial357IdentityRef.current;
+            _three57EntryMode =
+              _b357.captured &&
+              _b357.dealerGameId !== null &&
+              _b357.dealerGameId === _authDealerGameId357 &&
+              _b357.handNumber !== null &&
+              _b357.handNumber === _authHandNumber357
+                ? 'historical-entry'
+                : 'live-transition';
+          }
+
           return (
-            (() => {
-              // 3-5-7 entry-mode provenance (persistent Game.tsx route owner).
-              // Capture once at first hydrated render; classify current
-              // authoritative identity against the baseline.
-              let _three57EntryMode: 'live-transition' | 'historical-entry' | undefined = undefined;
-              if (is357GameType) {
-                const _authDealerGameId357 = (game as any).current_game_uuid ?? null;
-                const _authHandNumber357 = currentRound?.hand_number ?? null;
-                if (!initial357IdentityRef.current.captured) {
-                  initial357IdentityRef.current = {
-                    captured: true,
-                    dealerGameId: _authDealerGameId357,
-                    handNumber: _authHandNumber357,
-                  };
-                }
-                const _b357 = initial357IdentityRef.current;
-                _three57EntryMode =
-                  _b357.captured &&
-                  _b357.dealerGameId !== null &&
-                  _b357.dealerGameId === _authDealerGameId357 &&
-                  _b357.handNumber !== null &&
-                  _b357.handNumber === _authHandNumber357
-                    ? 'historical-entry'
-                    : 'live-transition';
-              }
-              return (
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
