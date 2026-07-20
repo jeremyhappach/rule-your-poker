@@ -217,10 +217,10 @@ export async function emit357InstantWinEvent(
 
     await supabase.from("debug_events").insert({
       event_type: `357.instant_win.${eventName}`,
-      game_id: ctx.gameId,
-      round_id: ctx.roundId,
+      game_id: ctx.gameId ?? undefined,
+      round_id: ctx.roundId ?? undefined,
       payload: payload as unknown as Record<string, unknown>,
-    });
+    } as never);
   } catch {
     /* diagnostic-only — never throw */
   }
