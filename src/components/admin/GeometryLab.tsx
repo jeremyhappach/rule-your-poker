@@ -950,7 +950,7 @@ function GameSections(props: GameSectionsProps) {
 
       {props.game === "threeFiveSeven" && (
         <CollapsibleSection title="3-5-7 Instant Dealer Win Harness (admin)">
-          <Force357InstantWinPanel userId={props.userId} />
+          <Force357InstantWinPanel />
         </CollapsibleSection>
       )}
     </div>

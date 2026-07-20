@@ -34,7 +34,11 @@ import {
 interface GameRow { id: string; game_type: string; status: string; created_at: string }
 interface PlayerRow { id: string; position: number; user_id: string; is_bot: boolean; status: string; sitting_out: boolean; username?: string | null }
 
-export function Force357InstantWinPanel({ userId }: { userId: string }) {
+export function Force357InstantWinPanel() {
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
+  }, []);
   const { isAdmin, loading: adminLoading } = useIsAdmin(userId);
   const [games, setGames] = useState<GameRow[]>([]);
   const [selectedGameId, setSelectedGameId] = useState<string>('');
@@ -95,7 +99,7 @@ export function Force357InstantWinPanel({ userId }: { userId: string }) {
   const playerLabel = (p: PlayerRow) => `pos ${p.position} · ${p.username ?? p.user_id.slice(0, 8)}${p.sitting_out ? ' (sitting out)' : ''}`;
 
   const onQueue = async () => {
-    if (!selectedGameId || !selectedPlayerId) return;
+    if (!selectedGameId || !selectedPlayerId || !userId) return;
     setBusy(true);
     const res = await queue357ForceDeal({ gameId: selectedGameId, targetPlayerId: selectedPlayerId, createdBy: userId });
     setBusy(false);
