@@ -10143,12 +10143,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
     console.log('[357 WIN] Animation started, clearing trigger to prevent duplicate');
     setThreeFiveSevenWinTriggerId(null);
-    void emit357InstantWinEvent('presentation.begin', {
-      gameId: gameId ?? undefined,
-      dealerGameId: (game as any)?.current_game_uuid ?? null,
-      viewerId: user?.id ?? null,
-      currentRound: (game as any)?.current_round ?? null,
-    });
   }, [gameId, game, user?.id]);
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
@@ -10157,10 +10151,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    await emit357InstantWinEvent('presentation.complete', {
-      gameId: gameId ?? undefined,
-      viewerId: user?.id ?? null,
-    });
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
@@ -10185,25 +10175,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    await emit357InstantWinEvent('cross_country.begin', {
-      gameId: gameId ?? undefined,
-      viewerId: user?.id ?? null,
-    });
     try {
-      await emit357InstantWinEvent('cross_country.advance.begin');
       await handleGameOverComplete();
-      await emit357InstantWinEvent('cross_country.advance.complete', { success: true });
-      await emit357InstantWinEvent('cross_country.complete', { success: true });
     } catch (e) {
-      await emit357InstantWinEvent('cross_country.advance.complete', {
-        success: false, exception: e,
-      });
-      await emit357InstantWinEvent('cross_country.complete', {
-        success: false, exception: e,
+      emit357InstantWinTerminal('failed', {
+        gameId: gameId ?? undefined,
+        eventKind: 'cross_country_advance',
+        error: e,
       });
       throw e;
-    } finally {
-      if (has357InstantWinLifecycle()) end357InstantWinLifecycle();
     }
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData, user?.id]);
 
