@@ -28,6 +28,12 @@ async function trace357InstantWin(
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
+import {
+  begin357InstantWinLifecycle,
+  emit357InstantWinEvent,
+  trace357Awaited,
+  summarizeSupabaseResult,
+} from "./threeFiveSeven/instantWinLifecycle";
 
 
 /**
@@ -258,6 +264,22 @@ export async function startRound(gameId: string, roundNumber: number) {
     });
     console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
     return;
+  }
+
+  // ── 3-5-7 INSTANT WIN LIFECYCLE: deal.begin ─────────────────────────
+  // Start (or restart) the lifecycle when a 3-5-7 round begins. All
+  // subsequent lifecycle events share this correlationId + monotonic
+  // sequenceNumber, and every event carries previousLifecycleEvent.
+  if (is357) {
+    begin357InstantWinLifecycle(gameId);
+    await emit357InstantWinEvent('deal.begin', {
+      gameId,
+      dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
+      currentRound: roundNumber,
+      roundNumber,
+      gameType: gt,
+      gameConfigStatus: gameConfig?.status ?? null,
+    });
   }
 
   const anteAmount = gameConfig?.ante_amount || 1;
@@ -615,23 +637,68 @@ export async function startRound(gameId: string, roundNumber: number) {
     });
   }
 
+  if (is357 && roundNumber === 1) {
+    await emit357InstantWinEvent('deal.cards_generated', {
+      roundId: round.id,
+      handNumber,
+      dealerGameId: currentGameUuid,
+      currentRound: roundNumber,
+      harnessInstantWinActive,
+      harnessTargetPlayerId,
+      inserts: playerCardInserts.map(i => ({ playerId: i.player_id, cards: i.cards })),
+    });
+  }
+
   // Single batch insert for all player cards
   if (playerCardInserts.length > 0) {
-    const { error: cardsError } = await supabase
+    if (is357 && roundNumber === 1) {
+      await emit357InstantWinEvent('deal.cards_persisted.begin', {
+        roundId: round.id,
+        handNumber,
+        inserts: playerCardInserts.length,
+      });
+    }
+    const insertRes = await supabase
       .from('player_cards')
       .insert(playerCardInserts);
 
-    if (cardsError) {
-      console.error('[START_ROUND] Error batch inserting cards:', cardsError);
-      throw new Error(`Failed to deal cards: ${cardsError.message}`);
+    if (is357 && roundNumber === 1) {
+      await emit357InstantWinEvent('deal.cards_persisted.complete', {
+        roundId: round.id,
+        handNumber,
+        success: !insertRes.error,
+        exception: insertRes.error ?? null,
+        ...summarizeSupabaseResult('player_cards_insert', insertRes as any),
+      });
+    }
+
+    if (insertRes.error) {
+      console.error('[START_ROUND] Error batch inserting cards:', insertRes.error);
+      throw new Error(`Failed to deal cards: ${insertRes.error.message}`);
     }
     console.log('[START_ROUND] Batch dealt cards to', playerCardInserts.length, 'players');
+  }
+
+  if (is357 && roundNumber === 1) {
+    await emit357InstantWinEvent('deal.complete', {
+      roundId: round.id,
+      handNumber,
+      dealerGameId: currentGameUuid,
+    });
   }
 
   // ============ IMMEDIATE 357 CHECK FOR ROUND 1 ============
   // Check for 3-5-7 hand immediately after dealing cards - no decision needed!
   if (roundNumber === 1) {
     console.log('[START_ROUND] Checking for immediate 3-5-7 hands...');
+
+    if (is357) {
+      await emit357InstantWinEvent('detect.begin', {
+        roundId: round.id,
+        handNumber,
+        dealerGameId: currentGameUuid,
+      });
+    }
 
     // Fetch all player cards just dealt (include is_bot for alias resolution)
     const { data: dealtCards } = await supabase
@@ -670,6 +737,17 @@ export async function startRound(gameId: string, roundNumber: number) {
           rankPresent: Array.isArray(cards) ? cards.map(c => c?.rank) : null,
           result: detected,
         });
+        if (is357) {
+          await emit357InstantWinEvent('detect.has357Hand', {
+            roundId: round.id,
+            handNumber,
+            playerId: (pc as any).player_id,
+            cards,
+            ranks: Array.isArray(cards) ? cards.map(c => c?.rank) : null,
+            suits: Array.isArray(cards) ? cards.map(c => c?.suit) : null,
+            result: detected,
+          });
+        }
         if (detected) {
           const player = pc.players as any;
           const username = player?.is_bot && allPlayersForAlias
@@ -679,49 +757,69 @@ export async function startRound(gameId: string, roundNumber: number) {
 
           const sweepMessage = `357_SWEEP:${username}`;
 
+          if (is357) {
+            await emit357InstantWinEvent('detect.result', {
+              roundId: round.id,
+              handNumber,
+              playerId: player?.id ?? null,
+              winnerPlayerId: player?.id ?? null,
+              winnerUsername: username,
+              cards,
+              sweepMessage,
+            });
+            await emit357InstantWinEvent('settle.begin', {
+              roundId: round.id,
+              handNumber,
+              playerId: player?.id ?? null,
+            });
+          }
+
           // Mark round completed and set sweep message so clients can play
           // the celebration animation.
-          await supabase
-            .from('rounds')
-            .update({ status: 'completed' })
-            .eq('id', round.id);
+          const roundsUpdate = await trace357Awaited(
+            'settle.rounds',
+            () => supabase
+              .from('rounds')
+              .update({ status: 'completed' })
+              .eq('id', round.id)
+              .select() as any as Promise<any>,
+            (res) => summarizeSupabaseResult('rounds_update', res as any),
+          );
+          void roundsUpdate;
 
-          // AUTHORITATIVE COMMIT — synchronous, not setTimeout-deferred.
-          // The prior implementation deferred game_over + pot award via a
-          // 5-second setTimeout on the winning client. If that client
-          // navigated away, backgrounded, or reloaded during the window,
-          // the transition never committed and the game hung forever
-          // (paused=true, awaiting_next_round=true, status=in_progress).
-          // We now commit game_over immediately under the same atomic
-          // in_progress → game_over guard. Celebration timing is presentation-only.
           // ATOMIC GUARD: win the in_progress → game_over transition once.
-          // game_over_at is intentionally NULL so the frontend canonical
-          // celebration overlay owns the pot-to-player transport and sets
-          // game_over_at when its animation completes — matching the
-          // non-instant handleGameOver contract that drives Cross Country
-          // progression.
-          const { data: guardResult, error: guardError } = await supabase
-            .from('games')
-            .update({
-              status: 'game_over',
-              game_over_at: null,
-              current_round: null,
-              awaiting_next_round: false,
-              all_decisions_in: false,
-              all_decisions_in_round_id: null,
-              last_round_result: sweepMessage,
-              // pot is zeroed below after prize is awarded
-            })
-            .eq('id', gameId)
-            .eq('status', 'in_progress')
-            .select('pot, total_hands, dealer_position, leg_value, pending_session_end')
-            .single();
+          const guardRes: any = await trace357Awaited(
+            'settle.games',
+            () => supabase
+              .from('games')
+              .update({
+                status: 'game_over',
+                game_over_at: null,
+                current_round: null,
+                awaiting_next_round: false,
+                all_decisions_in: false,
+                all_decisions_in_round_id: null,
+                last_round_result: sweepMessage,
+              })
+              .eq('id', gameId)
+              .eq('status', 'in_progress')
+              .select('pot, total_hands, dealer_position, leg_value, pending_session_end')
+              .single() as any as Promise<any>,
+            (res) => summarizeSupabaseResult('games_guard_update', res as any),
+          );
+          const guardResult = guardRes?.data ?? null;
+          const guardError = guardRes?.error ?? null;
 
           if (guardError || !guardResult) {
             await trace357InstantWin('commit.guard_lost', gameId, {
               roundId: round.id,
               handNumber,
               error: guardError?.message ?? null,
+            });
+            await emit357InstantWinEvent('settle.complete', {
+              success: false,
+              reason: 'guard_lost',
+              exception: guardError ?? new Error('guard_lost'),
             });
             return round;
           }
@@ -730,20 +828,32 @@ export async function startRound(gameId: string, roundNumber: number) {
           const legValue = guardResult.leg_value || 1;
           const commitHandNumber = Math.max(guardResult.total_hands || 0, handNumber);
 
-          const { data: allPlayersRow } = await supabase
-            .from('players')
-            .select('id, chips, legs')
-            .eq('game_id', gameId);
-          const allPlayers = allPlayersRow || [];
+          const playersFetchRes: any = await trace357Awaited(
+            'settle.snapshot',
+            () => supabase
+              .from('players')
+              .select('id, chips, legs')
+              .eq('game_id', gameId) as any as Promise<any>,
+            (res) => summarizeSupabaseResult('players_fetch', res as any),
+          );
+          const allPlayers = playersFetchRes?.data || [];
 
-          const totalLegValue = allPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
+          const totalLegValue = allPlayers.reduce((sum: number, p: any) => sum + (p.legs * legValue), 0);
           const totalPrize = currentPot + totalLegValue;
 
           if (player?.id) {
-            await supabase.rpc('increment_player_chips', {
-              p_player_id: player.id,
-              p_amount: totalPrize,
-            });
+            await trace357Awaited(
+              'settle.chips',
+              () => supabase.rpc('increment_player_chips', {
+                p_player_id: player.id,
+                p_amount: totalPrize,
+              }) as any as Promise<any>,
+              (res) => ({
+                ...summarizeSupabaseResult('increment_player_chips', res as any),
+                p_player_id: player.id,
+                p_amount: totalPrize,
+              }),
+            );
           }
 
           // Zero-sum accounting: winner receives totalPrize; other players
@@ -756,6 +866,9 @@ export async function startRound(gameId: string, roundNumber: number) {
           // AUDIT/PROGRESSION: game_results row is what session-level
           // Cross Country progression + hand history + canonical pot
           // transfer read. Without it, the win never advances.
+          await emit357InstantWinEvent('settle.game_results.begin', {
+            commitHandNumber, winnerPlayerId: player?.id ?? null, totalPrize,
+          });
           try {
             await recordGameResult(
               gameId,
@@ -769,42 +882,69 @@ export async function startRound(gameId: string, roundNumber: number) {
               '357',
               currentGameUuid,
             );
+            await emit357InstantWinEvent('settle.game_results.complete', {
+              success: true,
+              commitHandNumber, winnerPlayerId: player?.id ?? null, totalPrize,
+            });
           } catch (e) {
             await trace357InstantWin('commit.record_result_failed', gameId, {
               roundId: round.id,
               handNumber: commitHandNumber,
               error: (e as Error)?.message ?? String(e),
             });
+            await emit357InstantWinEvent('settle.game_results.complete', {
+              success: false,
+              exception: e,
+              commitHandNumber,
+            });
           }
 
           // Fire-and-forget snapshot for audit parity with handleGameOver.
           try { void snapshotPlayerChips(gameId, commitHandNumber); } catch { /* audit-only */ }
 
-          await supabase
-            .from('players')
-            .update({
-              legs: 0,
-              current_decision: null,
-              decision_locked: false,
-            })
-            .eq('game_id', gameId);
+          await trace357Awaited(
+            'settle.dealer_game',
+            () => supabase
+              .from('players')
+              .update({
+                legs: 0,
+                current_decision: null,
+                decision_locked: false,
+              })
+              .eq('game_id', gameId)
+              .select() as any as Promise<any>,
+            (res) => summarizeSupabaseResult('players_reset', res as any),
+          );
 
           // Scope ante_decision reset to eligible participants only
           // (mirrors handleGameOver — never touches observers).
-          await supabase
-            .from('players')
-            .update({ ante_decision: null })
-            .eq('game_id', gameId)
-            .neq('status', 'observer');
+          await trace357Awaited(
+            'settle.ante_decision_reset',
+            () => supabase
+              .from('players')
+              .update({ ante_decision: null })
+              .eq('game_id', gameId)
+              .neq('status', 'observer')
+              .select() as any as Promise<any>,
+            (res) => summarizeSupabaseResult('ante_decision_reset', res as any),
+          );
 
-          await supabase
-            .from('games')
-            .update({ pot: 0, total_hands: commitHandNumber })
-            .eq('id', gameId);
+          await trace357Awaited(
+            'settle.pot_zero',
+            () => supabase
+              .from('games')
+              .update({ pot: 0, total_hands: commitHandNumber })
+              .eq('id', gameId)
+              .select() as any as Promise<any>,
+            (res) => summarizeSupabaseResult('games_pot_zero', res as any),
+          );
 
           // Session end propagation (mirrors handleGameOver tail).
+          await emit357InstantWinEvent('settle.pending_session.begin', {
+            pending_session_end: !!guardResult.pending_session_end,
+          });
           if (guardResult.pending_session_end) {
-            await supabase
+            const sessRes: any = await supabase
               .from('games')
               .update({
                 status: 'session_ended',
@@ -812,7 +952,17 @@ export async function startRound(gameId: string, roundNumber: number) {
                 game_over_at: new Date().toISOString(),
                 pending_session_end: false,
               })
-              .eq('id', gameId);
+              .eq('id', gameId)
+              .select();
+            await emit357InstantWinEvent('settle.pending_session.complete', {
+              success: !sessRes?.error,
+              exception: sessRes?.error ?? null,
+              ...summarizeSupabaseResult('session_end_update', sessRes as any),
+            });
+          } else {
+            await emit357InstantWinEvent('settle.pending_session.complete', {
+              success: true, skipped: true,
+            });
           }
 
           await trace357InstantWin('commit.game_over', gameId, {
@@ -828,6 +978,18 @@ export async function startRound(gameId: string, roundNumber: number) {
             harnessTargetPlayerId,
             sweepMessage,
             gameResultRecorded: true,
+            sessionEnded: !!guardResult.pending_session_end,
+          });
+
+          await emit357InstantWinEvent('settle.complete', {
+            success: true,
+            winnerPlayerId: player?.id ?? null,
+            winnerUsername: username,
+            totalPrize,
+            currentPot,
+            totalLegValue,
+            commitHandNumber,
+            sweepMessage,
             sessionEnded: !!guardResult.pending_session_end,
           });
 
@@ -847,6 +1009,13 @@ export async function startRound(gameId: string, roundNumber: number) {
           playerId: (pc as any).player_id,
           cards: pc.cards,
         })),
+      });
+      await emit357InstantWinEvent('detect.result', {
+        roundId: round.id,
+        handNumber,
+        success: false,
+        detected: false,
+        reason: 'harness_override_no_detection',
       });
     }
   }
