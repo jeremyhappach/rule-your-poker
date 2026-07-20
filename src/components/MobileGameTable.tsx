@@ -5789,8 +5789,14 @@ export const MobileGameTable = ({
       lastSweepsResultRef.current = lastRoundResult;
       setSweepsPlayerName(playerName);
       setShowSweepsPot(true);
+      void emit357InstantWinEvent('presentation.overlay.begin', {
+        gameId: gameId ?? undefined,
+        source: 'MobileGameTable.SweepsPotDetector',
+        playerName,
+        lastRoundResult,
+      });
     }
-  }, [lastRoundResult, gameType]);
+  }, [lastRoundResult, gameType, gameId]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
