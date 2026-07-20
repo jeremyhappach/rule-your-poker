@@ -960,6 +960,15 @@ interface MobileGameTableProps {
   onLeaveGameNow?: () => void;
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
+  /**
+   * 3-5-7 entry-mode provenance. Mirrors the Cribbage identity contract:
+   * captured at the persistent Game.tsx route-mount. 'live-transition'
+   * means a new hand was created after this route mounted → PRE_DEAL so
+   * the opening wave animation runs. 'historical-entry' means the client
+   * mounted onto a pre-existing in-flight hand → GAMEPLAY so we don't
+   * replay historical animations.
+   */
+  three57EntryMode?: 'live-transition' | 'historical-entry';
   // Canonical slot-owned waiting content (rendered inside the table container,
   // not as a floating overlay). Used by WaitingForPlayersTable to fold the
   // seated-count message into the canonical stage.
