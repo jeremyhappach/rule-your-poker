@@ -6902,6 +6902,8 @@ export const MobileGameTable = ({
     }
 
 
+    void emit357InstantWinEvent('presentation.overlay.complete', { gameId: gameId ?? undefined, phase: 'legs-to-player.begin' });
+    void emit357InstantWinEvent('presentation.pot.begin', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null, potAmount: threeFiveSevenWinPotAmount });
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
