@@ -11097,7 +11097,7 @@ export const MobileGameTable = ({
                     const handScaleNum =
                       gameType !== 'holm-game'
                         ? (currentRound === 1
-                            ? (isTablet || isDesktop ? 2.8 : 1.6)
+                            ? (isTablet || isDesktop ? 2.8 : 2.4)
                             : currentRound === 2
                               ? (isTablet || isDesktop ? 2.8 : 2.2)
                               : (isTablet || isDesktop ? 2.6 : 2.1))
@@ -11106,14 +11106,14 @@ export const MobileGameTable = ({
                       gameType === 'holm-game'
                         ? (isTablet || isDesktop ? 170 : 130)
                         : (currentRound === 1
-                            ? (isTablet || isDesktop ? 200 : 120)
+                            ? (isTablet || isDesktop ? 200 : 160)
                             : currentRound === 2
                               ? (isTablet || isDesktop ? 180 : 105)
                               : (isTablet || isDesktop ? 160 : 90));
                     const currentPlayerHandScaleClass =
                       gameType !== "holm-game"
                         ? (currentRound === 1
-                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]")
+                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.4]")
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]")
                               : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]"))
@@ -11122,7 +11122,7 @@ export const MobileGameTable = ({
                       gameType === "holm-game"
                         ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]")
                         : (currentRound === 1
-                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]")
+                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[160px]")
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
