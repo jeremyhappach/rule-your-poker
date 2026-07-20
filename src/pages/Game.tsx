@@ -9905,11 +9905,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const resultMessage = game.last_round_result;
     
-    // Check for two patterns: "won a leg" (before transition) or "won the game" (after transition)
+    // Check for three patterns: "won a leg", "won the game", or authoritative 357_SWEEP sentinel
     const isLegWinMessage = resultMessage.includes('won a leg');
     const isGameWinMessage = resultMessage.includes('won the game');
-    
-    if (!isLegWinMessage && !isGameWinMessage) return;
+    const isSweepMessage = resultMessage.startsWith('357_SWEEP:');
+
+    if (!isLegWinMessage && !isGameWinMessage && !isSweepMessage) return;
+
     
     
     // Prevent duplicate processing for the same backend result message within this game.
@@ -9933,7 +9935,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const displayPart = resultMessage.split('|||')[0];
     let winnerName = '';
 
-    if (isLegWinMessage) {
+    if (isSweepMessage) {
+      // Format: "357_SWEEP:PlayerName"
+      winnerName = displayPart.slice('357_SWEEP:'.length).trim();
+    } else if (isLegWinMessage) {
       const winnerMatch = displayPart.match(/^(.+?) won a leg/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
     } else if (isGameWinMessage) {
@@ -9941,6 +9946,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const winnerMatch = displayPart.match(/🏆\s*(.+?)\s+won the game/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
     }
+
 
     // Find winner player - check both profile username AND bot alias for bot players
     const winnerPlayer = players.find(p => {
