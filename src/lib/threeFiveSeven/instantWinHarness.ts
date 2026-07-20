@@ -13,8 +13,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Card } from "@/lib/cardUtils";
 
-// Deterministic forced hand: 3♣, 5♦, 7♥ — matches the platform's
-// documented instant-win screenshot.
+/** Deterministic forced hand — matches the screenshot: 3♣, 5♦, 7♥. */
 export const FORCED_357_CARDS: Card[] = [
   { rank: '3', suit: '♣' },
   { rank: '5', suit: '♦' },
@@ -34,7 +33,10 @@ export interface ForceDealRow {
   consumed_hand_number: number | null;
 }
 
-/** Fetch pending override for a game (null if none). Admin RLS required. */
+/**
+ * Fetch pending override for a game (null if none / non-admin).
+ * Non-admins hit RLS and see nothing — safe no-op for normal players.
+ */
 export async function fetchPending357ForceDeal(gameId: string): Promise<ForceDealRow | null> {
   const { data, error } = await (supabase as any)
     .from('three_five_seven_force_deal')
@@ -42,17 +44,13 @@ export async function fetchPending357ForceDeal(gameId: string): Promise<ForceDea
     .eq('game_id', gameId)
     .is('consumed_at', null)
     .maybeSingle();
-  if (error) {
-    // Non-admins hit RLS and get null data — treat any error as "no override".
-    return null;
-  }
+  if (error) return null;
   return (data as ForceDealRow) ?? null;
 }
 
 /**
- * Atomically mark override consumed. Uses `consumed_at IS NULL` guard so
- * only the first client to consume it wins.
- * Returns true iff this caller flipped the row.
+ * Atomically flip consumed_at. Only the first caller wins (guarded by
+ * `consumed_at IS NULL`). Returns true iff this caller consumed the row.
  */
 export async function consume357ForceDeal(
   id: string,
@@ -74,13 +72,12 @@ export async function consume357ForceDeal(
   return true;
 }
 
-/** Admin write path: queue a forced deal for a game/player. */
+/** Admin: queue a forced deal for a game/player. */
 export async function queue357ForceDeal(params: {
   gameId: string;
   targetPlayerId: string;
   createdBy: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  // Clear any prior pending row for this game (idempotent).
   await (supabase as any)
     .from('three_five_seven_force_deal')
     .delete()
