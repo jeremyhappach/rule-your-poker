@@ -620,54 +620,19 @@ export async function startRound(gameId: string, roundNumber: number) {
     });
   }
 
-  if (is357 && roundNumber === 1) {
-    await emit357InstantWinEvent('deal.cards_generated', {
-      roundId: round.id,
-      handNumber,
-      dealerGameId: currentGameUuid,
-      currentRound: roundNumber,
-      harnessInstantWinActive,
-      harnessTargetPlayerId,
-      inserts: playerCardInserts.map(i => ({ playerId: i.player_id, cards: i.cards })),
-    });
-  }
+  // (Retired) per-step deal instrumentation — do NOT add begin/complete emits.
 
   // Single batch insert for all player cards
   if (playerCardInserts.length > 0) {
-    if (is357 && roundNumber === 1) {
-      await emit357InstantWinEvent('deal.cards_persisted.begin', {
-        roundId: round.id,
-        handNumber,
-        inserts: playerCardInserts.length,
-      });
-    }
     const insertRes = await supabase
       .from('player_cards')
       .insert(playerCardInserts);
-
-    if (is357 && roundNumber === 1) {
-      await emit357InstantWinEvent('deal.cards_persisted.complete', {
-        roundId: round.id,
-        handNumber,
-        success: !insertRes.error,
-        exception: insertRes.error ?? null,
-        ...summarizeSupabaseResult('player_cards_insert', insertRes as any),
-      });
-    }
 
     if (insertRes.error) {
       console.error('[START_ROUND] Error batch inserting cards:', insertRes.error);
       throw new Error(`Failed to deal cards: ${insertRes.error.message}`);
     }
     console.log('[START_ROUND] Batch dealt cards to', playerCardInserts.length, 'players');
-  }
-
-  if (is357 && roundNumber === 1) {
-    await emit357InstantWinEvent('deal.complete', {
-      roundId: round.id,
-      handNumber,
-      dealerGameId: currentGameUuid,
-    });
   }
 
   // ============ IMMEDIATE 357 CHECK FOR ROUND 1 ============
