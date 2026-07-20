@@ -261,21 +261,9 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
 
-  // ── 3-5-7 INSTANT WIN LIFECYCLE: deal.begin ─────────────────────────
-  // Start (or restart) the lifecycle when a 3-5-7 round begins. All
-  // subsequent lifecycle events share this correlationId + monotonic
-  // sequenceNumber, and every event carries previousLifecycleEvent.
-  if (is357) {
-    begin357InstantWinLifecycle(gameId);
-    await emit357InstantWinEvent('deal.begin', {
-      gameId,
-      dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
-      currentRound: roundNumber,
-      roundNumber,
-      gameType: gt,
-      gameConfigStatus: gameConfig?.status ?? null,
-    });
-  }
+  // Instant-win terminal diagnostics only (fire-and-forget). Wartime
+  // lifecycle instrumentation has been retired — do NOT reintroduce
+  // begin/complete-around-every-op tracing here.
 
   const anteAmount = gameConfig?.ante_amount || 1;
   const legValue = gameConfig?.leg_value || 1;
