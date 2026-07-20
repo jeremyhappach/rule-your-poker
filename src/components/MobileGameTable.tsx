@@ -8375,12 +8375,24 @@ export const MobileGameTable = ({
          rows before advancing the authoritative round status, and
          during that legitimate live-deal window PRE_DEAL must remain
          so the wave animation runs. */
+      /* Contract A (refresh/rejoin) — persistent-owner provenance.
+         PRIMARY: `three57EntryMode` captured by Game.tsx at first
+         hydrated route render. 'historical-entry' → GAMEPLAY (skip
+         wave replay). 'live-transition' → PRE_DEAL (run wave).
+         SECONDARY (fallback when parent hasn't provided the prop
+         yet — e.g. legacy call sites): the previous authoritative
+         gate on roundStatus + expected card count. */
       initialPhase={
-        __is357GameType(gameType) &&
-        typeof currentRound === 'number' && currentRound >= 1 &&
-        !!roundStatus && roundStatus !== 'pending' && roundStatus !== 'ante' &&
-        currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
-          ? 'GAMEPLAY'
+        __is357GameType(gameType)
+          ? (three57EntryMode === 'historical-entry'
+              ? 'GAMEPLAY'
+              : three57EntryMode === 'live-transition'
+                ? 'PRE_DEAL'
+                : (typeof currentRound === 'number' && currentRound >= 1 &&
+                   !!roundStatus && roundStatus !== 'pending' && roundStatus !== 'ante' &&
+                   currentPlayerCards.length >= totalAfterWaveFor357(currentRound)
+                     ? 'GAMEPLAY'
+                     : 'PRE_DEAL'))
           : 'PRE_DEAL'
       }
     >
