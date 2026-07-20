@@ -2561,60 +2561,6 @@ export type Database = {
         }
         Relationships: []
       }
-      three_five_seven_force_deal: {
-        Row: {
-          consumed_at: string | null
-          consumed_dealer_game_id: string | null
-          consumed_hand_number: number | null
-          consumed_round_id: string | null
-          created_at: string
-          created_by: string
-          game_id: string
-          id: string
-          target_cards: Json
-          target_player_id: string
-        }
-        Insert: {
-          consumed_at?: string | null
-          consumed_dealer_game_id?: string | null
-          consumed_hand_number?: number | null
-          consumed_round_id?: string | null
-          created_at?: string
-          created_by: string
-          game_id: string
-          id?: string
-          target_cards: Json
-          target_player_id: string
-        }
-        Update: {
-          consumed_at?: string | null
-          consumed_dealer_game_id?: string | null
-          consumed_hand_number?: number | null
-          consumed_round_id?: string | null
-          created_at?: string
-          created_by?: string
-          game_id?: string
-          id?: string
-          target_cards?: Json
-          target_player_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "three_five_seven_force_deal_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "three_five_seven_force_deal_target_player_id_fkey"
-            columns: ["target_player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       timing_debug_sessions: {
         Row: {
           app_route: string | null

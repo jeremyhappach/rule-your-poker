@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.three_five_seven_force_deal;
