@@ -686,7 +686,28 @@ export async function startRound(gameId: string, roundNumber: number) {
             : (player?.profiles?.username || `Player ${player?.position}`);
           console.log('[START_ROUND] 🎉 IMMEDIATE 357 DETECTED!', { playerId: player?.id, username, cards });
 
-          const sweepMessage = `357_SWEEP:${username}`;
+          // Pre-guard authoritative prize calculation. Snapshot pot + legs
+          // BEFORE the atomic guard so the sentinel can embed the immutable
+          // pre-zero terminal awarded amount in a single write.
+          const { data: prePotRow } = await supabase
+            .from('games')
+            .select('pot, leg_value')
+            .eq('id', gameId)
+            .single();
+          const preGuardPot = (prePotRow as any)?.pot || 0;
+          const preGuardLegValue = (prePotRow as any)?.leg_value || 1;
+          const { data: prePlayersFetch } = await supabase
+            .from('players')
+            .select('id, chips, legs')
+            .eq('game_id', gameId);
+          const preGuardPlayers = prePlayersFetch || [];
+          const preGuardTotalLegValue = preGuardPlayers.reduce(
+            (sum: number, p: any) => sum + ((p.legs || 0) * preGuardLegValue),
+            0,
+          );
+          const preGuardTotalPrize = preGuardPot + preGuardTotalLegValue;
+
+          const sweepMessage = `357_SWEEP:${username}:${preGuardTotalPrize}`;
 
           if (is357) {
             emit357InstantWinTerminal('detected', {
@@ -1952,9 +1973,16 @@ export async function endRound(gameId: string) {
               .update({ legs: legsToWin })
               .eq('id', player.id);
             
-            // Set the special result message for 357 sweep
-            const sweepMessage = `357_SWEEP:${username}`;
-            
+            // Set the special result message for 357 sweep with the immutable
+            // pre-zero terminal awarded amount. Project totalLegValue using
+            // the post-update leg counts (winner=legsToWin, others unchanged).
+            const projectedTotalLegs = allPlayers.reduce(
+              (sum: number, p: any) => sum + (p.id === player.id ? legsToWin : (p.legs || 0)),
+              0,
+            );
+            const projectedTotalPrize = currentPot + (projectedTotalLegs * legValue);
+            const sweepMessage = `357_SWEEP:${username}:${projectedTotalPrize}`;
+
             // Set awaiting_next_round with special sweep message
             await supabase
               .from('games')
