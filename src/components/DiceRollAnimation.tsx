@@ -150,9 +150,9 @@ export function DiceRollAnimation({
 
         completionTimeoutRef.current = window.setTimeout(() => {
           settledRef.current = true;
-          emitDiceAnimationBatchSettled(batch, diceDescs);
           onCompleteRef.current();
         }, 100);
+
       }
     };
 
@@ -164,11 +164,8 @@ export function DiceRollAnimation({
         clearTimeout(completionTimeoutRef.current);
         completionTimeoutRef.current = null;
       }
-      if (!settledRef.current && batchIdentityRef.current) {
-        emitDiceAnimationBatchCancelled(batchIdentityRef.current, 'effect-cleanup:new-run-or-unmount');
-        emitDiceAnimationBatchUnmountedUnsettled(batchIdentityRef.current, 'effect-cleanup:new-run-or-unmount');
-      }
     };
+
     // IMPORTANT: depend on the signature so parent rerenders don't restart the animation,
     // but real animation runs (different dice indices) do.
   }, [animKey, runKey]);
