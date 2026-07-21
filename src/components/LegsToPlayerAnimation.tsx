@@ -3,8 +3,10 @@
 // coordinates now resolve through the shared seat-anchor markers
 // (data-chip-center) — no internal slot math.
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
+import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 
 interface LegChipAnimation {
   id: string;
