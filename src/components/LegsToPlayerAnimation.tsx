@@ -114,6 +114,8 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     // and observer (absolute) projections because both project through
     // the same data-chip-center anchors.
     const endpointCache: EndpointCache = endpointCacheRef.current;
+    // Viewport-absolute coords so we can portal to document.body and escape
+    // any transformed felt ancestor stacking context.
     const getChipCoords = (position: number): { x: number; y: number } => {
       const resolved = resolveChipEndpoint({
         ref: { kind: 'seat', position },
@@ -121,16 +123,16 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         cache: endpointCache,
         debugLabel: '357-legs-to-player',
       });
-      if (resolved) return resolved;
+      if (resolved) return { x: rect.left + resolved.x, y: rect.top + resolved.y };
       // Last-resort fallback (should be rare — anchors are mounted by
       // SeatAnchorLayer for every seated player + observer projection).
-      return { x: rect.width / 2, y: rect.height / 2 };
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     };
 
     const getLegCoords = (position: number): { x: number; y: number } => {
       const chipCoords = getChipCoords(position);
       // Side derived from canonical chip x — legs render inboard of chip.
-      const isRightSide = chipCoords.x > rect.width / 2;
+      const isRightSide = chipCoords.x > rect.left + rect.width / 2;
       const offsetX = isRightSide ? -30 : 30;
       return { x: chipCoords.x + offsetX, y: chipCoords.y };
     };
