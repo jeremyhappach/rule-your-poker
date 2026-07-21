@@ -12986,11 +12986,69 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
           if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
-            const cribbageRoundId = (isInProgress || isCribbageGameOver) ? (currentRound?.id || '') : '';
-            const cribbageDealerGameId = (isInProgress || isCribbageGameOver)
-              ? (currentRound?.dealer_game_id || null)
-              : (game.current_game_uuid || null);
-            const cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
+            // Authoritative dealer-game id lives on the games row (persistent
+            // across the resume window). Prefer it over `currentRound.dealer_game_id`
+            // so a transiently-empty rounds list on visibility/reconnect resume
+            // cannot render a null dealerGameId over a valid in-progress identity.
+            const _authDealerGameIdRaw = (game as any).current_game_uuid ?? null;
+            const _preservedCrib = lastValidCribbageIdentityRef.current;
+            const _preservedApplies = !!(
+              _preservedCrib &&
+              gameId &&
+              _preservedCrib.gameId === gameId &&
+              _authDealerGameIdRaw &&
+              _preservedCrib.dealerGameId === _authDealerGameIdRaw &&
+              isInProgress
+            );
+
+            // In-progress / game-over branch: authoritative round id, with a
+            // narrow same-scope preservation fallback used ONLY when the
+            // authoritative round row has not yet re-landed post-resume.
+            let cribbageRoundId = '';
+            let cribbageDealerGameId: string | null = null;
+            let cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
+            if (isInProgress || isCribbageGameOver) {
+              const liveRoundId = currentRound?.id || '';
+              const liveDealerGameId = (currentRound as any)?.dealer_game_id ?? _authDealerGameIdRaw ?? null;
+              if (liveRoundId && liveDealerGameId) {
+                cribbageRoundId = liveRoundId;
+                cribbageDealerGameId = liveDealerGameId;
+                // Refresh preserved identity (same-scope only).
+                if (gameId && liveDealerGameId) {
+                  lastValidCribbageIdentityRef.current = {
+                    gameId,
+                    dealerGameId: liveDealerGameId,
+                    roundId: liveRoundId,
+                    handNumber: currentRound?.hand_number ?? null,
+                  };
+                }
+              } else if (_preservedApplies && _preservedCrib) {
+                // Use preserved identity only during the resume hydration window.
+                cribbageRoundId = _preservedCrib.roundId;
+                cribbageDealerGameId = _preservedCrib.dealerGameId;
+                if (typeof _preservedCrib.handNumber === 'number') {
+                  cribbageHandNumber = _preservedCrib.handNumber;
+                }
+              } else {
+                cribbageRoundId = liveRoundId;
+                cribbageDealerGameId = liveDealerGameId;
+              }
+            } else {
+              cribbageDealerGameId = game.current_game_uuid || null;
+              // Not in-progress → clear preservation so stale IDs cannot
+              // survive a genuine lifecycle boundary (rotation / game_over /
+              // session reset / return to waiting).
+              lastValidCribbageIdentityRef.current = null;
+            }
+            // Also clear if the authoritative dealer-game rotated.
+            if (
+              lastValidCribbageIdentityRef.current &&
+              _authDealerGameIdRaw &&
+              lastValidCribbageIdentityRef.current.dealerGameId !== _authDealerGameIdRaw
+            ) {
+              lastValidCribbageIdentityRef.current = null;
+            }
+
             const cribbagePot = isCribbageGameOver ? 0 : (isInProgress ? potForDisplay : 0);
 
             // Persistent-owner provenance capture (one-shot at first hydrated render).
