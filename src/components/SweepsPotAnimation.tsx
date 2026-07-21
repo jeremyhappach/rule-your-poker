@@ -3,6 +3,8 @@
 // src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
 // as-is until its consumer migrates in a later wave.
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { SHELL_Z } from "@/lib/canonicalShell/zLayers";
 
 interface SweepsPotAnimationProps {
   show: boolean;
@@ -33,16 +35,26 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
   }, [show]);
 
   if (!visible) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
-      {/* Animated gold/rainbow background pulse — fixed so the pot-win
-          banner sits above shell HUD chrome regardless of any stacking
-          contexts created inside the gameplay container. */}
-      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/30 via-amber-400/40 to-yellow-500/30 animate-pulse" />
-      
+  // Portaled to document.body so the celebration escapes any transformed
+  // felt ancestor stacking context and sits at SHELL_Z.CELEBRATION above
+  // HUD Stack Row 2 (tab rail at HUD_TAB_RAIL). The backdrop below has
+  // pointer-events: auto so the tab rail is non-interactive while active.
+  const node = (
+    <div
+      className="fixed inset-0 flex items-center justify-center overflow-hidden"
+      style={{ zIndex: SHELL_Z.CELEBRATION }}
+    >
+      {/* Animated gold/rainbow background pulse — covers tab rail and
+          captures pointer events so HUD row 2 is non-interactive. */}
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-yellow-500/30 via-amber-400/40 to-yellow-500/30 animate-pulse"
+        style={{ pointerEvents: 'auto' }}
+      />
+
       {/* Firework sparkles */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <div
             key={i}
@@ -56,9 +68,9 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
           />
         ))}
       </div>
-      
+
       {/* 357 Cards Display */}
-      <div className="flex flex-col items-center gap-4 animate-scale-in z-10">
+      <div className="flex flex-col items-center gap-4 animate-scale-in z-10 pointer-events-none">
         {/* Flying 3-5-7 cards */}
         <div className="flex gap-2 mb-2">
           {['3', '5', '7'].map((rank, idx) => (
@@ -71,7 +83,7 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
             </div>
           ))}
         </div>
-        
+
         {/* Main celebration text */}
         <div className="bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 px-6 py-4 rounded-xl border-4 border-yellow-300 shadow-[0_0_40px_rgba(251,191,36,0.9)]">
           <div className="text-center">
@@ -83,7 +95,7 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
             </div>
           </div>
         </div>
-        
+
         {/* Trophy icons */}
         <div className="flex gap-4 text-4xl animate-pulse">
           <span>🏆</span>
@@ -91,9 +103,11 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
           <span>🏆</span>
         </div>
       </div>
-      
+
       {/* Radial glow overlay */}
-      <div className="absolute inset-0 bg-gradient-radial from-yellow-400/20 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-radial from-yellow-400/20 via-transparent to-transparent pointer-events-none" />
     </div>
   );
+
+  return createPortal(node, document.body);
 };
