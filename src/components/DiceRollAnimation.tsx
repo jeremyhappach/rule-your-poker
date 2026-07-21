@@ -2,15 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
-import {
-  emitDiceAnimationBatchMounted,
-  emitDiceAnimationBatchStarted,
-  emitDiceAnimationBatchSettled,
-  emitDiceAnimationBatchCancelled,
-  emitDiceAnimationBatchUnmountedUnsettled,
-  type DiceAnimationBatchIdentity,
-  type DiceAnimationDieDesc,
-} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 
 interface DiceRollAnimationProps {
   /** The dice to animate */
@@ -33,14 +24,7 @@ interface DiceRollAnimationProps {
   runKey?: string | number;
   /** Whether to show wild highlight on 1s (default: !isSCC) */
   showWildHighlight?: boolean;
-  /** Yahtzee wartime batch context (optional — read-only instrumentation). */
-  wartimeContext?: {
-    rollKey: string | number | null;
-    cacheKey: string | number | null;
-    ownerPlayerId: string | null;
-    rollNumber: number | null;
-    reactKey: string | null;
-  };
+
 }
 
 // Animation duration in ms (reduced for snappier feel)
@@ -70,7 +54,7 @@ export function DiceRollAnimation({
   scatterYOffset = 50,
   runKey,
   showWildHighlight,
-  wartimeContext,
+  
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -79,7 +63,7 @@ export function DiceRollAnimation({
   const completedRef = useRef(false);
   const completionTimeoutRef = useRef<number | null>(null);
   const settledRef = useRef(false);
-  const batchIdentityRef = useRef<DiceAnimationBatchIdentity | null>(null);
+
 
   // Granular timing instrumentation (helps detect main-thread stalls / timer drift)
   const perfRef = useRef({
@@ -107,39 +91,9 @@ export function DiceRollAnimation({
   useEffect(() => {
     if (animatingIndices.length === 0) return;
 
-    // Build a stable batch identity for wartime instrumentation.
-    const batchInstanceId = `batch:${runKey ?? animKey}:${Date.now()}`;
-    const batch: DiceAnimationBatchIdentity = {
-      rollKey: wartimeContext?.rollKey ?? (runKey ?? null),
-      ownerPlayerId: wartimeContext?.ownerPlayerId ?? null,
-      rollNumber: wartimeContext?.rollNumber ?? null,
-      batchInstanceId,
-      cacheKey: wartimeContext?.cacheKey != null ? String(wartimeContext.cacheKey) : null,
-      reactKey: wartimeContext?.reactKey ?? null,
-    };
-    batchIdentityRef.current = batch;
     settledRef.current = false;
 
-    const diceDescs: DiceAnimationDieDesc[] = animatingIndices.map((dieIdx, animIdx) => {
-      const d = dice[dieIdx];
-      const target = targetPositions[animIdx] ?? { x: 0, y: 0, rotate: 0 };
-      return {
-        index: dieIdx,
-        value: d?.value ?? 0,
-        held: !!d?.isHeld,
-        renderPath: 'fly-in',
-        srcX: originPosition?.x ?? null,
-        srcY: originPosition?.y ?? null,
-        dstX: target.x,
-        dstY: target.y + (scatterYOffset ?? 0),
-        dstRotate: target.rotate,
-      };
-    });
-    const heldIndicesExcluded = dice
-      .map((d, i) => (d?.isHeld && !animatingIndices.includes(i) ? i : -1))
-      .filter(i => i >= 0);
-    emitDiceAnimationBatchMounted(batch, diceDescs, [...animatingIndices], heldIndicesExcluded);
-    emitDiceAnimationBatchStarted(batch, diceDescs);
+
 
     // Ensure tumbleData always matches the current animation run.
     // This prevents crashes when animatingIndices grows/shrinks due to realtime updates.
@@ -196,9 +150,9 @@ export function DiceRollAnimation({
 
         completionTimeoutRef.current = window.setTimeout(() => {
           settledRef.current = true;
-          emitDiceAnimationBatchSettled(batch, diceDescs);
           onCompleteRef.current();
         }, 100);
+
       }
     };
 
@@ -210,11 +164,8 @@ export function DiceRollAnimation({
         clearTimeout(completionTimeoutRef.current);
         completionTimeoutRef.current = null;
       }
-      if (!settledRef.current && batchIdentityRef.current) {
-        emitDiceAnimationBatchCancelled(batchIdentityRef.current, 'effect-cleanup:new-run-or-unmount');
-        emitDiceAnimationBatchUnmountedUnsettled(batchIdentityRef.current, 'effect-cleanup:new-run-or-unmount');
-      }
     };
+
     // IMPORTANT: depend on the signature so parent rerenders don't restart the animation,
     // but real animation runs (different dice indices) do.
   }, [animKey, runKey]);
