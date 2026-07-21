@@ -3,8 +3,10 @@
 // coordinates now resolve through the shared seat-anchor markers
 // (data-chip-center) — no internal slot math.
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
+import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 
 interface LegChipAnimation {
   id: string;
@@ -112,6 +114,8 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     // and observer (absolute) projections because both project through
     // the same data-chip-center anchors.
     const endpointCache: EndpointCache = endpointCacheRef.current;
+    // Viewport-absolute coords so we can portal to document.body and escape
+    // any transformed felt ancestor stacking context.
     const getChipCoords = (position: number): { x: number; y: number } => {
       const resolved = resolveChipEndpoint({
         ref: { kind: 'seat', position },
@@ -119,16 +123,16 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         cache: endpointCache,
         debugLabel: '357-legs-to-player',
       });
-      if (resolved) return resolved;
+      if (resolved) return { x: rect.left + resolved.x, y: rect.top + resolved.y };
       // Last-resort fallback (should be rare — anchors are mounted by
       // SeatAnchorLayer for every seated player + observer projection).
-      return { x: rect.width / 2, y: rect.height / 2 };
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     };
 
     const getLegCoords = (position: number): { x: number; y: number } => {
       const chipCoords = getChipCoords(position);
       // Side derived from canonical chip x — legs render inboard of chip.
-      const isRightSide = chipCoords.x > rect.width / 2;
+      const isRightSide = chipCoords.x > rect.left + rect.width / 2;
       const offsetX = isRightSide ? -30 : 30;
       return { x: chipCoords.x + offsetX, y: chipCoords.y };
     };
@@ -190,8 +194,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   const displayValue = legValue > 0 ? `$${legValue}` : 'L';
 
   if (animations.length === 0 && !showSweepOverlay) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  const node = (
     <>
       {/* "Sweep the Legs" overlay - non-blocking, runs in parallel */}
       <SweepTheLegsAnimation 
@@ -207,11 +212,12 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         return (
           <div
             key={anim.id}
-            className="absolute z-[100] pointer-events-none"
+            className="fixed pointer-events-none"
             style={{
               left: anim.fromX,
               top: anim.fromY,
               transform: 'translate(-50%, -50%)',
+              zIndex: SHELL_Z.CELEBRATION,
             }}
           >
             <div
@@ -251,6 +257,8 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
       })}
     </>
   );
+
+  return createPortal(node, document.body);
 };
 
 export default LegsToPlayerAnimation;

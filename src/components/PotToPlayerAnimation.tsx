@@ -30,6 +30,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
+import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
@@ -273,7 +274,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const outerStyle: React.CSSProperties = {
     left: animation.fromX - CHIP_SIZE / 2,
     top: animation.fromY - CHIP_SIZE / 2,
-    zIndex: 200,
+    zIndex: SHELL_Z.CELEBRATION,
   };
   if (phase === 'flying') {
     outerStyle.animation = `${animationName} ${animDurationCss} ${timingFn} forwards`;

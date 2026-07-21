@@ -9999,10 +9999,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Parse winner from message - handle both formats
     const displayPart = resultMessage.split('|||')[0];
     let winnerName = '';
+    let sweepAmountFromSentinel: number | null = null;
 
     if (isSweepMessage) {
-      // Format: "357_SWEEP:PlayerName"
-      winnerName = displayPart.slice('357_SWEEP:'.length).trim();
+      // Format: "357_SWEEP:PlayerName:AwardedAmount"
+      const body = displayPart.slice('357_SWEEP:'.length);
+      const lastColon = body.lastIndexOf(':');
+      if (lastColon >= 0) {
+        winnerName = body.slice(0, lastColon).trim();
+        const parsedAmount = Number(body.slice(lastColon + 1).trim());
+        if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
+          sweepAmountFromSentinel = parsedAmount;
+        } else {
+          console.error('[357 WIN] 357_SWEEP sentinel amount missing/malformed/non-positive:', body);
+        }
+      } else {
+        // Legacy sentinel without amount — diagnostic; treat as malformed.
+        winnerName = body.trim();
+        console.error('[357 WIN] 357_SWEEP sentinel missing amount segment:', body);
+      }
     } else if (isLegWinMessage) {
       const winnerMatch = displayPart.match(/^(.+?) won a leg/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
@@ -10038,36 +10053,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Mark as processed for this exact result message (prevents repeat firing).
     threeFiveSevenWinProcessedRef.current = processedKey;
 
-    // CACHE LEG POSITIONS NOW before backend resets them
-    // For game win message, player.legs may already be 0, so use legsToWin for winner
-    // Also, for leg win message if player.legs is already reset, use legsToWin
+    // CACHE LEG POSITIONS NOW before backend resets them.
+    // SWEEP EXCEPTION: the authoritative leg delta for an instant 3-5-7 sweep
+    // is zero (no legs were earned). We MUST NOT reconstruct fake legs from
+    // legsToWin — the legs-to-player phase must be skipped entirely.
     let legPositions: Array<{ playerId: string; position: number; legCount: number }> = [];
-    
-    // First try to get from current player data
-    const playersWithLegs = players.filter(p => p.legs > 0);
-    
-    if (playersWithLegs.length > 0) {
-      // Use live data - legs haven't been reset yet
-      legPositions = playersWithLegs.map(p => ({ 
-        playerId: p.id, 
-        position: p.position, 
-        legCount: p.legs 
-      }));
-      console.log('[357 WIN] Using live leg data:', legPositions);
-    } else if (cachedLegPositionsRef.current.length > 0) {
-      // Use cached data from ref (more reliable than state during rapid updates)
-      legPositions = cachedLegPositionsRef.current;
-      console.log('[357 WIN] Using cached leg data from ref:', legPositions);
+
+    if (isSweepMessage) {
+      legPositions = [];
+      console.log('[357 WIN] Sweep detected — skipping leg reconstruction (legsDelta=0)');
     } else {
-      // Legs already reset and no cache - reconstruct from winner (guaranteed to have legsToWin)
-      legPositions = [{ 
-        playerId: winnerPlayer.id, 
-        position: winnerPlayer.position, 
-        legCount: legsToWin 
-      }];
-      console.log('[357 WIN] Legs already reset, using reconstructed data:', legPositions);
+      // First try to get from current player data
+      const playersWithLegs = players.filter(p => p.legs > 0);
+
+      if (playersWithLegs.length > 0) {
+        // Use live data - legs haven't been reset yet
+        legPositions = playersWithLegs.map(p => ({
+          playerId: p.id,
+          position: p.position,
+          legCount: p.legs
+        }));
+        console.log('[357 WIN] Using live leg data:', legPositions);
+      } else if (cachedLegPositionsRef.current.length > 0) {
+        // Use cached data from ref (more reliable than state during rapid updates)
+        legPositions = cachedLegPositionsRef.current;
+        console.log('[357 WIN] Using cached leg data from ref:', legPositions);
+      } else {
+        // Legs already reset and no cache - reconstruct from winner (guaranteed to have legsToWin)
+        legPositions = [{
+          playerId: winnerPlayer.id,
+          position: winnerPlayer.position,
+          legCount: legsToWin
+        }];
+        console.log('[357 WIN] Legs already reset, using reconstructed data:', legPositions);
+      }
     }
-    
+
     setCachedLegPositions(legPositions);
     cachedLegPositionsRef.current = legPositions;
     console.log('[357 WIN] Final cached leg positions:', legPositions);
@@ -10090,10 +10111,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
     
-    // Extract pot from message if available (format: "$X pot")
-    // Or use cached/live values as fallback
+    // Extract pot from message if available (format: "$X pot").
+    // SWEEP: use the immutable pre-zero terminal awarded amount embedded in
+    // the sentinel — never derive from games.pot after settlement.
     let potAmount = 0;
-    if (isGameWinMessage) {
+    if (isSweepMessage) {
+      if (sweepAmountFromSentinel !== null) {
+        potAmount = sweepAmountFromSentinel;
+      } else {
+        console.error('[357 WIN] Sweep missing immutable amount — refusing to default to $0 via games.pot');
+        // Diagnostic-only fallback to cached max pot; still never games.pot (which is 0 post-settlement).
+        potAmount = cachedPotFor357WinRef.current;
+      }
+    } else if (isGameWinMessage) {
       // Parse pot from message: "🏆 Player won the game with X legs! (+$Y: $Z pot + $W legs)"
       const potMatch = displayPart.match(/\$(\d+)\s*pot/);
       if (potMatch) {
@@ -10101,7 +10131,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
     // Fallback to cached or live pot (use potForDisplay which never flashes to 0)
-     if (potAmount === 0) {
+     if (potAmount === 0 && !isSweepMessage) {
        // Try round.pot first (usually persists longer), then cached max, then stable pot
        // CRITICAL: Scope by dealer_game_id + hand_number to prevent cross-contamination
        const dealerRounds357 = game?.current_game_uuid

@@ -5785,7 +5785,12 @@ export const MobileGameTable = ({
       lastRoundResult.startsWith('357_SWEEP:') &&
       lastRoundResult !== lastSweepsResultRef.current
     ) {
-      const playerName = lastRoundResult.replace('357_SWEEP:', '');
+      // Sentinel format: 357_SWEEP:<name>:<amount>. Strip amount segment for display.
+      const body = lastRoundResult.slice('357_SWEEP:'.length);
+      const lastColon = body.lastIndexOf(':');
+      const playerName = lastColon >= 0 && Number.isFinite(Number(body.slice(lastColon + 1)))
+        ? body.slice(0, lastColon)
+        : body;
       lastSweepsResultRef.current = lastRoundResult;
       setSweepsPlayerName(playerName);
       setShowSweepsPot(true);
@@ -6849,6 +6854,7 @@ export const MobileGameTable = ({
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
     // Then start legs-to-player animation - reduced delay for tighter transition
     // NOTE: This is a FALLBACK path - the LegEarnedAnimation onComplete callback is the primary path
+    const isSweepResultFallback = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
     setTimeout(() => {
       // Only proceed if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
@@ -6860,6 +6866,18 @@ export const MobileGameTable = ({
         console.log('[357 WIN] Already past waiting phase (LegEarnedAnimation path won), skipping Phase 1');
         return;
       }
+      if (isSweepResultFallback) {
+        // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely
+        // and go straight to pot-to-player. Mirrors handleLegsToPlayerComplete tail.
+        console.log('[357 WIN] Sweep path (fallback): jumping directly to pot-to-player');
+        setThreeFiveSevenWinPhase('pot-to-player');
+        threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+        setThreeFiveSevenPotHiddenUntilReset(true);
+        setPotOutAnimationActive(true);
+        setDisplayedPot(0);
+        setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+        return;
+      }
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
@@ -6867,7 +6885,7 @@ export const MobileGameTable = ({
     }, 1800); // Tighter timing - start legs-to-player just after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
-  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver, isWaitingPhase]);
+  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver, isWaitingPhase, lastRoundResult]);
 
   const handleLegsToPlayerComplete = useCallback(() => {
     const animId = currentAnimationIdRef.current;
@@ -9114,10 +9132,23 @@ export const MobileGameTable = ({
                 currentAnimationIdRef.current = animationId;
               }
 
-              // Set phase to legs-to-player to start the sweep animation
-              setThreeFiveSevenWinPhase('legs-to-player');
-              threeFiveSevenWinPhaseRef.current = 'legs-to-player';
-              setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+              const isSweepResultPrimary = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
+              if (isSweepResultPrimary) {
+                // SWEEP: authoritative legs delta is 0 — skip legs-to-player
+                // entirely and go straight to pot-to-player.
+                console.log('[357 WIN] Sweep path (primary): jumping directly to pot-to-player');
+                setThreeFiveSevenWinPhase('pot-to-player');
+                threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+                setThreeFiveSevenPotHiddenUntilReset(true);
+                setPotOutAnimationActive(true);
+                setDisplayedPot(0);
+                setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+              } else {
+                // Set phase to legs-to-player to start the sweep animation
+                setThreeFiveSevenWinPhase('legs-to-player');
+                threeFiveSevenWinPhaseRef.current = 'legs-to-player';
+                setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+              }
             }
           }}
         />
@@ -11185,7 +11216,7 @@ export const MobileGameTable = ({
                           </div>
                         ) : null}
 
-                        {isWinner357InAnimation ? (
+                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) ? (
                           (() => {
                             const isFinalRound = currentRound === 3;
                             return !winner357ShowCards ? (
