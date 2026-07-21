@@ -18,6 +18,7 @@ import {
   recordRecoveryTransition,
 } from "@/lib/sessionRecoveryLease";
 import { MobileGameTable } from "@/components/MobileGameTable";
+import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
@@ -2059,6 +2060,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     seededAt: number;
   } | null>(null);
 
+  // ── Cribbage resume identity preservation ─────────────────────────────
+  // Captures the most recent VALID (gameId, dealerGameId, roundId, handNumber)
+  // observed while status='in_progress'. On client resume (visibility /
+  // realtime reconnect) `game.rounds` can be transiently empty for one render
+  // between the `games` row landing and the rounds refetch completing. In that
+  // narrow window we render preserved identity iff:
+  //   • same gameId
+  //   • preserved.dealerGameId === game.current_game_uuid (authoritative scope)
+  //   • current game status is still `in_progress`
+  // Any of the following invalidate preservation (never survive a genuine
+  // lifecycle boundary): dealer-game rotation (different current_game_uuid),
+  // game_over, session reset, intentional return to waiting, or a newly
+  // fetched games row with a different current_game_uuid.
+  const lastValidCribbageIdentityRef = useRef<{
+    gameId: string;
+    dealerGameId: string;
+    roundId: string;
+    handNumber: number | null;
+  } | null>(null);
+
   // P0 SHELL RECOVERY LEASE (INV-A, INV-B): while this Game route is
   // mounted with an authoritative (gameId, userId) identity, hold a
   // durable recovery lease. Transient disconnects, resubscribe failures,
@@ -3575,9 +3596,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           newValue: status,
         });
 
+        // Expose latest realtime transport status for diagnostic emitters
+        // (read by the Cribbage interaction-gate blocked event, etc.).
+        setRealtimeStatus(status);
+
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
           stopFallbackPolling();
+          // Signal a rehydration to the resume-handler (identical contract to
+          // visibility resume). Dispatched only after the channel is healthy
+          // again; the in-flight guard in the resume handler prevents
+          // duplicate simultaneous refreshes.
+          try {
+            window.dispatchEvent(new CustomEvent('app:realtime-reconnect'));
+          } catch { /* noop */ }
           return;
         }
 
@@ -3602,98 +3634,135 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
   // immediately refetch game data and clear stale caches if the backend shows a different state.
   // This prevents the "stuck in-progress UI" when the user was away and the game transitioned.
+  //
+  // Client resume hydration contract (Cribbage identity lock repro):
+  //   • On visibility → visible while status is `in_progress`, always trigger an
+  //     authoritative fetchGameData() so `game.rounds` / `current_game_uuid` /
+  //     `currentRound` cannot render as null over an already-valid in-progress
+  //     identity.
+  //   • Same-scope preservation for the render branch is done via
+  //     `lastValidCribbageIdentityRef` (see Cribbage render branch below).
+  //   • A single in-flight guard prevents concurrent refreshes fired by
+  //     overlapping visibility / focus / pageshow / realtime-reconnect signals.
+  const resyncInFlightRef = useRef<boolean>(false);
   useEffect(() => {
     if (!gameId || !user) return;
 
     let lastResyncTime = 0;
     const RESYNC_DEBOUNCE_MS = 1000; // Don't resync more than once per second
 
-    const handleResync = async () => {
+    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow' | 'realtime-reconnect') => {
       const now = Date.now();
       if (now - lastResyncTime < RESYNC_DEBOUNCE_MS) return;
+      if (resyncInFlightRef.current) return;
       lastResyncTime = now;
+      resyncInFlightRef.current = true;
 
-      console.log('[AUTO-RESYNC] Tab visible/focused - checking for stale state');
+      try {
+        console.log('[AUTO-RESYNC] Tab visible/focused - checking for stale state', { source });
 
-      // Fetch fresh game status from DB
-      const { data: freshGame, error } = await supabase
-        .from('games')
-        .select('status, current_round, game_type, awaiting_next_round')
-        .eq('id', gameId)
-        .single();
+        // Fetch fresh game status from DB
+        const { data: freshGame, error } = await supabase
+          .from('games')
+          .select('status, current_round, game_type, awaiting_next_round, current_game_uuid')
+          .eq('id', gameId)
+          .single();
 
-      if (error || !freshGame) {
-        console.warn('[AUTO-RESYNC] Failed to fetch fresh game state:', error);
-        return;
-      }
-
-      const localStatus = game?.status;
-      const localRound = game?.current_round;
-      const localGameType = game?.game_type;
-
-      // Detect if backend state diverged significantly from local state
-      const statusChanged = localStatus !== freshGame.status;
-      const roundChanged = localRound !== freshGame.current_round;
-      const gameTypeChanged = localGameType !== freshGame.game_type;
-      const isWaitingOrConfig = ['waiting', 'game_selection', 'configuring', 'dealer_selection', 'session_ended'].includes(freshGame.status);
-
-      console.log('[AUTO-RESYNC] State comparison:', {
-        local: { status: localStatus, round: localRound, gameType: localGameType },
-        fresh: freshGame,
-        statusChanged,
-        roundChanged,
-        gameTypeChanged,
-        isWaitingOrConfig,
-      });
-
-      if (statusChanged || roundChanged || gameTypeChanged) {
-        console.log('[AUTO-RESYNC] 🔄 State divergence detected - refetching and clearing caches');
-
-        // If backend is in waiting/config phase but UI shows in-progress, clear all stale game state
-        if (isWaitingOrConfig) {
-          console.log('[AUTO-RESYNC] 🧹 Backend in setup phase - clearing all card/round caches');
-          clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
-          setCachedRoundData(null);
-          cachedRoundRef.current = null;
-          setPlayerCards([]);
-          setCardStateContext(null);
-          maxRevealedRef.current = 0;
-          cardIdentityRef.current = '';
-          lastKnownGameTypeRef.current = freshGame.game_type ?? null;
-          lastKnownRoundRef.current = null;
+        if (error || !freshGame) {
+          console.warn('[AUTO-RESYNC] Failed to fetch fresh game state:', error);
+          return;
         }
 
-        // Force full refetch
-        fetchGameData();
+        const localStatus = game?.status;
+        const localRound = game?.current_round;
+        const localGameType = game?.game_type;
+        const localDealerGameId = (game as any)?.current_game_uuid ?? null;
+
+        // Detect if backend state diverged significantly from local state
+        const statusChanged = localStatus !== freshGame.status;
+        const roundChanged = localRound !== freshGame.current_round;
+        const gameTypeChanged = localGameType !== freshGame.game_type;
+        const dealerGameChanged = localDealerGameId !== (freshGame as any).current_game_uuid;
+        const isWaitingOrConfig = ['waiting', 'game_selection', 'configuring', 'dealer_selection', 'session_ended'].includes(freshGame.status);
+        // Always rehydrate authoritative identity for an in-progress game on
+        // resume. This is the fix for the Cribbage client-resume hydration
+        // defect where parent identity (dealerGameId / currentRoundId) could
+        // resume as null over an already-valid in-progress identity.
+        const forceRehydrateInProgress = freshGame.status === 'in_progress';
+
+        console.log('[AUTO-RESYNC] State comparison:', {
+          local: { status: localStatus, round: localRound, gameType: localGameType, dealerGameId: localDealerGameId },
+          fresh: freshGame,
+          statusChanged,
+          roundChanged,
+          gameTypeChanged,
+          dealerGameChanged,
+          isWaitingOrConfig,
+          forceRehydrateInProgress,
+          source,
+        });
+
+        if (statusChanged || roundChanged || gameTypeChanged || dealerGameChanged || forceRehydrateInProgress) {
+          console.log('[AUTO-RESYNC] 🔄 Refetching and clearing caches if needed');
+
+          // If backend is in waiting/config phase but UI shows in-progress, clear all stale game state
+          if (isWaitingOrConfig) {
+            console.log('[AUTO-RESYNC] 🧹 Backend in setup phase - clearing all card/round caches');
+            clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
+            setCachedRoundData(null);
+            cachedRoundRef.current = null;
+            setPlayerCards([]);
+            setCardStateContext(null);
+            maxRevealedRef.current = 0;
+            cardIdentityRef.current = '';
+            lastKnownGameTypeRef.current = freshGame.game_type ?? null;
+            lastKnownRoundRef.current = null;
+          }
+
+          // Force full refetch (rehydrates games row + rounds → currentRound).
+          await fetchGameData();
+        }
+      } finally {
+        resyncInFlightRef.current = false;
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        handleResync();
+        markVisibilityResume();
+        void handleResync('visibility');
       }
     };
 
     const handleWindowFocus = () => {
-      handleResync();
+      void handleResync('focus');
     };
 
     // iOS Safari pageshow event (for BFCache restores)
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('[AUTO-RESYNC] BFCache restore detected - forcing resync');
-        handleResync();
+        markVisibilityResume();
+        void handleResync('pageshow');
       }
+    };
+
+    // Realtime reconnect: after transport drops and re-subscribes, treat it
+    // the same as a visibility resume so identity is rehydrated authoritatively.
+    const handleRealtimeReconnect = () => {
+      void handleResync('realtime-reconnect');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pageshow', handlePageShow as EventListener);
+    window.addEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
+      window.removeEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
     };
   }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
@@ -12917,11 +12986,69 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
           if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
-            const cribbageRoundId = (isInProgress || isCribbageGameOver) ? (currentRound?.id || '') : '';
-            const cribbageDealerGameId = (isInProgress || isCribbageGameOver)
-              ? (currentRound?.dealer_game_id || null)
-              : (game.current_game_uuid || null);
-            const cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
+            // Authoritative dealer-game id lives on the games row (persistent
+            // across the resume window). Prefer it over `currentRound.dealer_game_id`
+            // so a transiently-empty rounds list on visibility/reconnect resume
+            // cannot render a null dealerGameId over a valid in-progress identity.
+            const _authDealerGameIdRaw = (game as any).current_game_uuid ?? null;
+            const _preservedCrib = lastValidCribbageIdentityRef.current;
+            const _preservedApplies = !!(
+              _preservedCrib &&
+              gameId &&
+              _preservedCrib.gameId === gameId &&
+              _authDealerGameIdRaw &&
+              _preservedCrib.dealerGameId === _authDealerGameIdRaw &&
+              isInProgress
+            );
+
+            // In-progress / game-over branch: authoritative round id, with a
+            // narrow same-scope preservation fallback used ONLY when the
+            // authoritative round row has not yet re-landed post-resume.
+            let cribbageRoundId = '';
+            let cribbageDealerGameId: string | null = null;
+            let cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
+            if (isInProgress || isCribbageGameOver) {
+              const liveRoundId = currentRound?.id || '';
+              const liveDealerGameId = (currentRound as any)?.dealer_game_id ?? _authDealerGameIdRaw ?? null;
+              if (liveRoundId && liveDealerGameId) {
+                cribbageRoundId = liveRoundId;
+                cribbageDealerGameId = liveDealerGameId;
+                // Refresh preserved identity (same-scope only).
+                if (gameId && liveDealerGameId) {
+                  lastValidCribbageIdentityRef.current = {
+                    gameId,
+                    dealerGameId: liveDealerGameId,
+                    roundId: liveRoundId,
+                    handNumber: currentRound?.hand_number ?? null,
+                  };
+                }
+              } else if (_preservedApplies && _preservedCrib) {
+                // Use preserved identity only during the resume hydration window.
+                cribbageRoundId = _preservedCrib.roundId;
+                cribbageDealerGameId = _preservedCrib.dealerGameId;
+                if (typeof _preservedCrib.handNumber === 'number') {
+                  cribbageHandNumber = _preservedCrib.handNumber;
+                }
+              } else {
+                cribbageRoundId = liveRoundId;
+                cribbageDealerGameId = liveDealerGameId;
+              }
+            } else {
+              cribbageDealerGameId = game.current_game_uuid || null;
+              // Not in-progress → clear preservation so stale IDs cannot
+              // survive a genuine lifecycle boundary (rotation / game_over /
+              // session reset / return to waiting).
+              lastValidCribbageIdentityRef.current = null;
+            }
+            // Also clear if the authoritative dealer-game rotated.
+            if (
+              lastValidCribbageIdentityRef.current &&
+              _authDealerGameIdRaw &&
+              lastValidCribbageIdentityRef.current.dealerGameId !== _authDealerGameIdRaw
+            ) {
+              lastValidCribbageIdentityRef.current = null;
+            }
+
             const cribbagePot = isCribbageGameOver ? 0 : (isInProgress ? potForDisplay : 0);
 
             // Persistent-owner provenance capture (one-shot at first hydrated render).
