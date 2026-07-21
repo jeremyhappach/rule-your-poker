@@ -54,7 +54,7 @@ export function DiceRollAnimation({
   scatterYOffset = 50,
   runKey,
   showWildHighlight,
-  wartimeContext,
+  
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -63,7 +63,7 @@ export function DiceRollAnimation({
   const completedRef = useRef(false);
   const completionTimeoutRef = useRef<number | null>(null);
   const settledRef = useRef(false);
-  const batchIdentityRef = useRef<DiceAnimationBatchIdentity | null>(null);
+
 
   // Granular timing instrumentation (helps detect main-thread stalls / timer drift)
   const perfRef = useRef({
@@ -91,39 +91,9 @@ export function DiceRollAnimation({
   useEffect(() => {
     if (animatingIndices.length === 0) return;
 
-    // Build a stable batch identity for wartime instrumentation.
-    const batchInstanceId = `batch:${runKey ?? animKey}:${Date.now()}`;
-    const batch: DiceAnimationBatchIdentity = {
-      rollKey: wartimeContext?.rollKey ?? (runKey ?? null),
-      ownerPlayerId: wartimeContext?.ownerPlayerId ?? null,
-      rollNumber: wartimeContext?.rollNumber ?? null,
-      batchInstanceId,
-      cacheKey: wartimeContext?.cacheKey != null ? String(wartimeContext.cacheKey) : null,
-      reactKey: wartimeContext?.reactKey ?? null,
-    };
-    batchIdentityRef.current = batch;
     settledRef.current = false;
 
-    const diceDescs: DiceAnimationDieDesc[] = animatingIndices.map((dieIdx, animIdx) => {
-      const d = dice[dieIdx];
-      const target = targetPositions[animIdx] ?? { x: 0, y: 0, rotate: 0 };
-      return {
-        index: dieIdx,
-        value: d?.value ?? 0,
-        held: !!d?.isHeld,
-        renderPath: 'fly-in',
-        srcX: originPosition?.x ?? null,
-        srcY: originPosition?.y ?? null,
-        dstX: target.x,
-        dstY: target.y + (scatterYOffset ?? 0),
-        dstRotate: target.rotate,
-      };
-    });
-    const heldIndicesExcluded = dice
-      .map((d, i) => (d?.isHeld && !animatingIndices.includes(i) ? i : -1))
-      .filter(i => i >= 0);
-    emitDiceAnimationBatchMounted(batch, diceDescs, [...animatingIndices], heldIndicesExcluded);
-    emitDiceAnimationBatchStarted(batch, diceDescs);
+
 
     // Ensure tumbleData always matches the current animation run.
     // This prevents crashes when animatingIndices grows/shrinks due to realtime updates.
