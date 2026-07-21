@@ -62,6 +62,19 @@ export function getYahtzeeProgress(state: YahtzeeStateForProgress): ProgressVect
     totalCategoriesFilled += Object.keys(ps.scorecard.scores).length;
   }
 
+  // Per-player category counts in stable turnOrder. These dims MUST precede
+  // the volatile turn-presentation dims (handoffPhase, rollsUsed) so that any
+  // opponent scorecard commit is recognised as strictly forward and cannot be
+  // masked by a local optimistic snapshot pinning a higher handoffPhase or a
+  // lower rollsUsed. Lexicographic comparison stops at the first differing
+  // dim; appending these trailing would let the volatile dims mask real
+  // opponent progress. Order is stable (turnOrder) so vectors from different
+  // clients compare consistently.
+  const perPlayerCategoryCounts: number[] = state.turnOrder.map((playerId) => {
+    const ps = state.playerStates[playerId];
+    return ps ? Object.keys(ps.scorecard.scores).length : 0;
+  });
+
   const incompletePlayers = state.turnOrder
     .map((playerId) => state.playerStates[playerId])
     .filter((ps): ps is NonNullable<typeof ps> => Boolean(ps) && !ps.isComplete);
@@ -88,5 +101,12 @@ export function getYahtzeeProgress(state: YahtzeeStateForProgress): ProgressVect
   // Rolls used: 0 = hasn't rolled, 3 = all rolls used
   const rollsUsed = currentTurnPlayerState ? (3 - currentTurnPlayerState.rollsRemaining) : 0;
 
-  return [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
+  return [
+    roundOrd,
+    phaseOrd,
+    totalCategoriesFilled,
+    ...perPlayerCategoryCounts,
+    handoffPhase,
+    rollsUsed,
+  ];
 }
