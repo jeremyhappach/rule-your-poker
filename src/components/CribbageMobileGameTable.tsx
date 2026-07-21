@@ -3204,7 +3204,22 @@ export const CribbageMobileGameTable = ({
     // The authoritative pegScore is ALWAYS correct at this point (confirmed by instrumentation).
     //
     // On reconnect, reverse-engineer the baseline since pegScore may already include counting points.
-    const baselineScores = isReconnect ? calculateCountingBaselineScores(state) : stateScores;
+    const rawBaselineScores = isReconnect
+      ? calculateCountingBaselineScores(state)
+      : stateScores;
+
+    const baselineScores: Record<string, number> = {};
+    for (const playerId of Object.keys(stateScores)) {
+      const authoritativeScore = stateScores[playerId];
+      const previousRailScore =
+        lastPeggingScoresRef.current?.[playerId] ?? authoritativeScore;
+      const rawBaseline =
+        rawBaselineScores[playerId] ?? authoritativeScore;
+      baselineScores[playerId] = Math.min(
+        authoritativeScore,
+        Math.max(rawBaseline, previousRailScore),
+      );
+    }
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
     // SAFETY: Clamp negative baselines to 0. Negative scores are always a computation artifact
