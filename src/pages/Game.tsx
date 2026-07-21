@@ -3603,98 +3603,135 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
   // immediately refetch game data and clear stale caches if the backend shows a different state.
   // This prevents the "stuck in-progress UI" when the user was away and the game transitioned.
+  //
+  // Client resume hydration contract (Cribbage identity lock repro):
+  //   • On visibility → visible while status is `in_progress`, always trigger an
+  //     authoritative fetchGameData() so `game.rounds` / `current_game_uuid` /
+  //     `currentRound` cannot render as null over an already-valid in-progress
+  //     identity.
+  //   • Same-scope preservation for the render branch is done via
+  //     `lastValidCribbageIdentityRef` (see Cribbage render branch below).
+  //   • A single in-flight guard prevents concurrent refreshes fired by
+  //     overlapping visibility / focus / pageshow / realtime-reconnect signals.
+  const resyncInFlightRef = useRef<boolean>(false);
   useEffect(() => {
     if (!gameId || !user) return;
 
     let lastResyncTime = 0;
     const RESYNC_DEBOUNCE_MS = 1000; // Don't resync more than once per second
 
-    const handleResync = async () => {
+    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow' | 'realtime-reconnect') => {
       const now = Date.now();
       if (now - lastResyncTime < RESYNC_DEBOUNCE_MS) return;
+      if (resyncInFlightRef.current) return;
       lastResyncTime = now;
+      resyncInFlightRef.current = true;
 
-      console.log('[AUTO-RESYNC] Tab visible/focused - checking for stale state');
+      try {
+        console.log('[AUTO-RESYNC] Tab visible/focused - checking for stale state', { source });
 
-      // Fetch fresh game status from DB
-      const { data: freshGame, error } = await supabase
-        .from('games')
-        .select('status, current_round, game_type, awaiting_next_round')
-        .eq('id', gameId)
-        .single();
+        // Fetch fresh game status from DB
+        const { data: freshGame, error } = await supabase
+          .from('games')
+          .select('status, current_round, game_type, awaiting_next_round, current_game_uuid')
+          .eq('id', gameId)
+          .single();
 
-      if (error || !freshGame) {
-        console.warn('[AUTO-RESYNC] Failed to fetch fresh game state:', error);
-        return;
-      }
-
-      const localStatus = game?.status;
-      const localRound = game?.current_round;
-      const localGameType = game?.game_type;
-
-      // Detect if backend state diverged significantly from local state
-      const statusChanged = localStatus !== freshGame.status;
-      const roundChanged = localRound !== freshGame.current_round;
-      const gameTypeChanged = localGameType !== freshGame.game_type;
-      const isWaitingOrConfig = ['waiting', 'game_selection', 'configuring', 'dealer_selection', 'session_ended'].includes(freshGame.status);
-
-      console.log('[AUTO-RESYNC] State comparison:', {
-        local: { status: localStatus, round: localRound, gameType: localGameType },
-        fresh: freshGame,
-        statusChanged,
-        roundChanged,
-        gameTypeChanged,
-        isWaitingOrConfig,
-      });
-
-      if (statusChanged || roundChanged || gameTypeChanged) {
-        console.log('[AUTO-RESYNC] 🔄 State divergence detected - refetching and clearing caches');
-
-        // If backend is in waiting/config phase but UI shows in-progress, clear all stale game state
-        if (isWaitingOrConfig) {
-          console.log('[AUTO-RESYNC] 🧹 Backend in setup phase - clearing all card/round caches');
-          clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
-          setCachedRoundData(null);
-          cachedRoundRef.current = null;
-          setPlayerCards([]);
-          setCardStateContext(null);
-          maxRevealedRef.current = 0;
-          cardIdentityRef.current = '';
-          lastKnownGameTypeRef.current = freshGame.game_type ?? null;
-          lastKnownRoundRef.current = null;
+        if (error || !freshGame) {
+          console.warn('[AUTO-RESYNC] Failed to fetch fresh game state:', error);
+          return;
         }
 
-        // Force full refetch
-        fetchGameData();
+        const localStatus = game?.status;
+        const localRound = game?.current_round;
+        const localGameType = game?.game_type;
+        const localDealerGameId = (game as any)?.current_game_uuid ?? null;
+
+        // Detect if backend state diverged significantly from local state
+        const statusChanged = localStatus !== freshGame.status;
+        const roundChanged = localRound !== freshGame.current_round;
+        const gameTypeChanged = localGameType !== freshGame.game_type;
+        const dealerGameChanged = localDealerGameId !== (freshGame as any).current_game_uuid;
+        const isWaitingOrConfig = ['waiting', 'game_selection', 'configuring', 'dealer_selection', 'session_ended'].includes(freshGame.status);
+        // Always rehydrate authoritative identity for an in-progress game on
+        // resume. This is the fix for the Cribbage client-resume hydration
+        // defect where parent identity (dealerGameId / currentRoundId) could
+        // resume as null over an already-valid in-progress identity.
+        const forceRehydrateInProgress = freshGame.status === 'in_progress';
+
+        console.log('[AUTO-RESYNC] State comparison:', {
+          local: { status: localStatus, round: localRound, gameType: localGameType, dealerGameId: localDealerGameId },
+          fresh: freshGame,
+          statusChanged,
+          roundChanged,
+          gameTypeChanged,
+          dealerGameChanged,
+          isWaitingOrConfig,
+          forceRehydrateInProgress,
+          source,
+        });
+
+        if (statusChanged || roundChanged || gameTypeChanged || dealerGameChanged || forceRehydrateInProgress) {
+          console.log('[AUTO-RESYNC] 🔄 Refetching and clearing caches if needed');
+
+          // If backend is in waiting/config phase but UI shows in-progress, clear all stale game state
+          if (isWaitingOrConfig) {
+            console.log('[AUTO-RESYNC] 🧹 Backend in setup phase - clearing all card/round caches');
+            clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
+            setCachedRoundData(null);
+            cachedRoundRef.current = null;
+            setPlayerCards([]);
+            setCardStateContext(null);
+            maxRevealedRef.current = 0;
+            cardIdentityRef.current = '';
+            lastKnownGameTypeRef.current = freshGame.game_type ?? null;
+            lastKnownRoundRef.current = null;
+          }
+
+          // Force full refetch (rehydrates games row + rounds → currentRound).
+          await fetchGameData();
+        }
+      } finally {
+        resyncInFlightRef.current = false;
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        handleResync();
+        markVisibilityResume();
+        void handleResync('visibility');
       }
     };
 
     const handleWindowFocus = () => {
-      handleResync();
+      void handleResync('focus');
     };
 
     // iOS Safari pageshow event (for BFCache restores)
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('[AUTO-RESYNC] BFCache restore detected - forcing resync');
-        handleResync();
+        markVisibilityResume();
+        void handleResync('pageshow');
       }
+    };
+
+    // Realtime reconnect: after transport drops and re-subscribes, treat it
+    // the same as a visibility resume so identity is rehydrated authoritatively.
+    const handleRealtimeReconnect = () => {
+      void handleResync('realtime-reconnect');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pageshow', handlePageShow as EventListener);
+    window.addEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
+      window.removeEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
     };
   }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
