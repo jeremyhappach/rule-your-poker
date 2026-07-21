@@ -2,15 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
-import {
-  emitDiceAnimationBatchMounted,
-  emitDiceAnimationBatchStarted,
-  emitDiceAnimationBatchSettled,
-  emitDiceAnimationBatchCancelled,
-  emitDiceAnimationBatchUnmountedUnsettled,
-  type DiceAnimationBatchIdentity,
-  type DiceAnimationDieDesc,
-} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 
 interface DiceRollAnimationProps {
   /** The dice to animate */
@@ -33,14 +24,7 @@ interface DiceRollAnimationProps {
   runKey?: string | number;
   /** Whether to show wild highlight on 1s (default: !isSCC) */
   showWildHighlight?: boolean;
-  /** Yahtzee wartime batch context (optional — read-only instrumentation). */
-  wartimeContext?: {
-    rollKey: string | number | null;
-    cacheKey: string | number | null;
-    ownerPlayerId: string | null;
-    rollNumber: number | null;
-    reactKey: string | null;
-  };
+
 }
 
 // Animation duration in ms (reduced for snappier feel)
