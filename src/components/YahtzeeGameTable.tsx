@@ -1021,24 +1021,12 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (myPlayer) emitScoreCategorySelected(category, myPlayer.id);
-    recWartime('writer', 'score_intent_entered', {
-      category, isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, scoringInProgress,
-      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
-    }, { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
     if (!isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) {
-      recWartime('writer', 'score_intent_rejected', { category, reason: 'outer-guard' },
-        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
       return;
     }
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) {
-      recWartime('writer', 'score_intent_rejected', {
-        category, reason: 'no-state-or-rolls-or-already-scored',
-        rollsRemaining: myPs?.rollsRemaining ?? null,
-        alreadyScored: myPs?.scorecard.scores[category] !== undefined,
-      }, { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
       return;
     }
 
@@ -1048,22 +1036,16 @@ export function YahtzeeGameTable({
     // Enforce Joker rules: restrict category choices when applicable
     const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
     if (jokerValid && !jokerValid.includes(category)) {
-      recWartime('writer', 'score_intent_rejected', { category, reason: 'joker-restricted', jokerValid },
-        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
       return;
     }
 
     // Check if this would score zero — ask for confirmation (use Joker score if applicable)
     const potentialScore = jokerValid ? getJokerScore(category, diceValues) : calculateCategoryScore(category, diceValues);
     if (potentialScore === 0) {
-      recWartime('writer', 'score_intent_rejected', { category, reason: 'zero-score-pending-confirm' },
-        { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
       setPendingZeroCategory(category);
       return;
     }
 
-    recWartime('writer', 'score_intent_created', { category, potentialScore, diceValues },
-      { producer: 'YahtzeeGameTable', fn: 'handleScoreCategory', bypassDedupe: true });
     await commitScoreCategory(category);
 
   }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, scoringInProgress]);
