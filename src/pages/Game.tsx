@@ -3576,9 +3576,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           newValue: status,
         });
 
+        // Expose latest realtime transport status for diagnostic emitters
+        // (read by the Cribbage interaction-gate blocked event, etc.).
+        setRealtimeStatus(status);
+
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
           stopFallbackPolling();
+          // Signal a rehydration to the resume-handler (identical contract to
+          // visibility resume). Dispatched only after the channel is healthy
+          // again; the in-flight guard in the resume handler prevents
+          // duplicate simultaneous refreshes.
+          try {
+            window.dispatchEvent(new CustomEvent('app:realtime-reconnect'));
+          } catch { /* noop */ }
           return;
         }
 
