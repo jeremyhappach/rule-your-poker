@@ -971,39 +971,24 @@ export function YahtzeeGameTable({
       rollNumber: 3 - newPs.rollsRemaining,
     };
     yahtzeeSync.applyOptimistic(newState);
-    emitRollResultApplied(rollWriterId, newPs.dice.map(d => d.value));
-    emitRollWriteStarted(rollWriterId);
     try {
       await updateYahtzeeState(currentRoundId, newState);
-      emitRollWriteAccepted(rollWriterId);
     } catch (err) {
-      emitRollWriteFailed(rollWriterId, err);
       throw err;
-    } finally {
-      emitRollPresentationReleased(rollWriterId);
     }
   }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
-    recWartime('writer', 'hold_intent_entered', {
-      dieIndex, isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, rolling,
-      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
-    }, { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
-      recWartime('writer', 'hold_intent_rejected', { reason: 'guard-block', dieIndex },
-        { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
       return;
     }
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) {
-      recWartime('writer', 'hold_intent_rejected', {
-        reason: 'no-roll-boundary', dieIndex, rollsRemaining: myPs?.rollsRemaining ?? null,
-      }, { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
       return;
     }
-    recWartime('writer', 'hold_intent_created', { dieIndex, rollsRemaining: myPs.rollsRemaining },
-      { producer: 'YahtzeeGameTable', fn: 'handleToggleHold', bypassDedupe: true });
+
+
 
 
     // Apply optimistic guard — the sync framework will reject stale DB hold states
