@@ -51,7 +51,7 @@ import { useWartimeEnabled, useWartimeAdminGateOpen } from "@/lib/wartimeDebug/c
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
-import { YahtzeeWartimeTruthPill } from "@/components/YahtzeeWartimeTruthPill";
+
 
 
 
@@ -226,7 +226,7 @@ const App = () => {
                   Incident" surface per current session/game. */}
               <IncidentExportPill />
               <ChatFlightPill />
-              <YahtzeeWartimeTruthPill />
+              
               
 
 

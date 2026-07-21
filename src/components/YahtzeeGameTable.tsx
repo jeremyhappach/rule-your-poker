@@ -78,22 +78,6 @@ import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
-import { useYahtzeeWartimeInstrumentation } from "@/lib/yahtzee/useYahtzeeWartimeInstrumentation";
-import { recordYahtzeeWartime as recWartime } from "@/lib/yahtzee/yahtzeeWartimeLedger";
-import {
-  setYahtzeeWartimeScope,
-  emitRollWriteStarted,
-  emitRollWriteAccepted,
-  emitRollWriteFailed,
-  emitRollResultApplied,
-  emitRollPresentationReleased,
-  emitScorecardBranchChanged,
-  emitScorecardDomMounted,
-  emitScorecardDomUnmounted,
-  emitScorecardRetirementStarted,
-  emitScoreCategorySelected,
-  type ScorecardBranchDesc,
-} from "@/lib/yahtzee/yahtzeeWartimeEmitters";
 import { YahtzeeAnchoredInteractionSlot } from "@/components/YahtzeeAnchoredInteractionSlot";
 import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
@@ -729,72 +713,6 @@ export function YahtzeeGameTable({
   }, []);
   const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
 
-  // ── Yahtzee Wartime Truth instrumentation (read-only, no-op when disarmed) ─
-  useYahtzeeWartimeInstrumentation({
-    gameId: gameId ?? null,
-    dealerGameId: dealerGameId ?? null,
-    currentRoundId: currentRoundId ?? null,
-    handNumber: null,
-    authoritative: authoritativeYahtzeeState ?? null,
-    viewState: viewState ?? null,
-    gamePhase: gamePhase ?? null,
-    activePlayerId: currentTurnPlayerId ?? null,
-    localPlayerId: myPlayer?.id ?? null,
-    isMyTurn,
-    localRollsRemaining,
-    scoringInProgress,
-    showInteractiveScorecard,
-    activeTab,
-  });
-
-  // Yahtzee wartime scope — enables direct-producer emitters in shared
-  // components (DiceRollAnimation, DiceTableLayout). Cleared on unmount so
-  // Horses/SCC producers cannot emit Yahtzee-scoped events.
-  useEffect(() => {
-    setYahtzeeWartimeScope({
-      gameId: gameId ?? null,
-      dealerGameId: dealerGameId ?? null,
-      roundId: currentRoundId ?? null,
-      activePid: currentTurnPlayerId ?? null,
-      localPid: myPlayer?.id ?? null,
-      handNumber: viewState?.currentRound ?? null,
-    });
-    return () => setYahtzeeWartimeScope(null);
-  }, [gameId, dealerGameId, currentRoundId, currentTurnPlayerId, myPlayer?.id, viewState?.currentRound]);
-
-  // Scorecard branch lifecycle emitters.
-  const scorecardBranch: ScorecardBranchDesc = useMemo(() => {
-    if (gamePhase === 'playing' && myPlayer && showInteractiveScorecard) {
-      return {
-        branch: 'self-turn:interactive', playerId: myPlayer.id, reactKey: `sc:${myPlayer.id}`,
-        selectedCategory: null,
-        submissionState: scoringInProgress ? 'in-progress' : 'idle',
-      };
-    }
-    if (gamePhase === 'playing' && currentTurnPlayerId && !showInteractiveScorecard) {
-      return {
-        branch: 'opponent-turn:readonly', playerId: currentTurnPlayerId,
-        reactKey: `sc:${currentTurnPlayerId}`, selectedCategory: null, submissionState: 'idle',
-      };
-    }
-    return { branch: 'none', playerId: null, reactKey: null, selectedCategory: null, submissionState: 'idle' };
-  }, [gamePhase, myPlayer?.id, showInteractiveScorecard, currentTurnPlayerId, scoringInProgress]);
-
-  const prevScorecardBranchRef = useRef<ScorecardBranchDesc | null>(null);
-  useEffect(() => {
-    const prev = prevScorecardBranchRef.current;
-    if (!prev || prev.branch !== scorecardBranch.branch || prev.playerId !== scorecardBranch.playerId) {
-      emitScorecardBranchChanged(prev, scorecardBranch);
-      if (prev && prev.branch !== 'none') {
-        emitScorecardRetirementStarted(prev, `branch:${prev.branch}→${scorecardBranch.branch}`);
-        emitScorecardDomUnmounted(prev, true);
-      }
-      if (scorecardBranch.branch !== 'none') {
-        emitScorecardDomMounted(scorecardBranch);
-      }
-      prevScorecardBranchRef.current = scorecardBranch;
-    }
-  }, [scorecardBranch]);
 
 
   // Clockwise distance for seat positioning
@@ -964,16 +882,7 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   const handleRoll = useCallback(async () => {
-    recWartime('writer', 'roll_intent_entered', {
-      isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling,
-      localRollsRemaining: localRollsRemainingRef.current,
-      activePid: currentTurnPlayerId ?? null, localPid: myPlayer?.id ?? null,
-      phase: gamePhase ?? null,
-    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     if (!isMyTurn || !currentRoundId || !myPlayer || rolling) {
-      recWartime('writer', 'roll_intent_rejected', {
-        reason: !isMyTurn ? 'not-my-turn' : !currentRoundId ? 'no-round' : !myPlayer ? 'no-player' : 'rolling',
-      }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
@@ -1003,11 +912,6 @@ export function YahtzeeGameTable({
     rollSerialRef.current += 1;
     const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
-    recWartime('writer', 'roll_intent_created', {
-      rollKey: t, rollSerial: rollSerialRef.current, playerId: myPlayer.id,
-      roundId: currentRoundId, rollsRemainingBefore: currentLocalRollsRemaining,
-      heldMask: heldSnapshotRef.current,
-    }, { producer: 'YahtzeeGameTable', fn: 'handleRoll', bypassDedupe: true });
     console.log('[ROLL GENERATED]', { rollKey: t, playerId: myPlayer.id, rollSerial: rollSerialRef.current, roundId: currentRoundId });
 
     // CRITICAL: Apply local hold state to the player state before rolling.
