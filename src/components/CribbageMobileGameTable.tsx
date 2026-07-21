@@ -1522,6 +1522,85 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     interactionsAllowedRef.current = interactionsAllowed;
   }, [interactionsAllowed]);
+
+  // ══ Always-on: crib:interaction_gate_blocked ══════════════════════════
+  // Persists when the local interaction gate is closed while phase is
+  // `discarding` or `pegging` — i.e. the states where a stuck gate is
+  // user-visible (six-card lock, no-play). Emits ONCE per transition into
+  // the blocked state (and any change in the specific failing sub-gate)
+  // so we do not spam. Includes resume-hydration signals so post-hoc audits
+  // can correlate against the visibility-resume window.
+  const _lastGateBlockedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const phase = cribbageState?.phase ?? null;
+    if (phase !== 'discarding' && phase !== 'pegging') {
+      _lastGateBlockedKeyRef.current = null;
+      return;
+    }
+    if (interactionsAllowed) {
+      _lastGateBlockedKeyRef.current = null;
+      return;
+    }
+    const renderMatches = !!(renderHandKey && currentHandKey && renderHandKey === currentHandKey);
+    const failing = [
+      !renderHandKey ? 'no-renderHandKey' : null,
+      !currentHandKey ? 'no-currentHandKey' : null,
+      !renderMatches ? 'render!=current' : null,
+      !currentRoundId ? 'no-currentRoundId' : null,
+      !writerMatchesAuth ? 'writer!=auth' : null,
+      !syncHandle.interactionsAllowed ? 'framework-blocked' : null,
+    ].filter(Boolean).join(',');
+    const key = `${phase}|${failing}|${currentHandKey ?? ''}|${renderHandKey ?? ''}`;
+    if (_lastGateBlockedKeyRef.current === key) return;
+    _lastGateBlockedKeyRef.current = key;
+    try {
+      const msSinceResume = getMsSinceVisibilityResume();
+      persistSyncDebugEvent({
+        gameId: gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber ?? 0,
+        roundId: currentRoundId ?? null,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib:interaction_gate_blocked',
+        payload: {
+          phase,
+          failing,
+          renderHandKey: renderHandKey ?? null,
+          currentHandKey: currentHandKey ?? null,
+          currentRoundId: currentRoundId ?? null,
+          writerMatchesAuth,
+          frameworkInteractionsAllowed: syncHandle.interactionsAllowed,
+          authIdentity: authIdentity ? {
+            dealerGameId: authIdentity.dealerGameId,
+            roundId: authIdentity.roundId,
+            handNumber: authIdentity.handNumber,
+          } : null,
+          propRoundId: roundId ?? null,
+          propHandNumber: handNumber ?? null,
+          msSinceVisibilityResume: msSinceResume,
+          realtimeStatus: getRealtimeStatus(),
+          userId: currentUserId,
+        },
+      });
+    } catch { /* fire-and-forget */ }
+  }, [
+    interactionsAllowed,
+    cribbageState?.phase,
+    renderHandKey,
+    currentHandKey,
+    currentRoundId,
+    writerMatchesAuth,
+    syncHandle.interactionsAllowed,
+    gameId,
+    currentHandNumber,
+    currentUserId,
+    authIdentity?.roundId,
+    authIdentity?.handNumber,
+    authIdentity?.dealerGameId,
+    roundId,
+    handNumber,
+  ]);
   // Framework-level gate (independent of local identity check) — kept as a
   // ref so writer callbacks can read it synchronously.
   const frameworkInteractionsAllowedRef = useRef(syncHandle.interactionsAllowed);
