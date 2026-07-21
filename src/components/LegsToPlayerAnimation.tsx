@@ -194,8 +194,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   const displayValue = legValue > 0 ? `$${legValue}` : 'L';
 
   if (animations.length === 0 && !showSweepOverlay) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  const node = (
     <>
       {/* "Sweep the Legs" overlay - non-blocking, runs in parallel */}
       <SweepTheLegsAnimation 
@@ -211,11 +212,12 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
         return (
           <div
             key={anim.id}
-            className="absolute z-[100] pointer-events-none"
+            className="fixed pointer-events-none"
             style={{
               left: anim.fromX,
               top: anim.fromY,
               transform: 'translate(-50%, -50%)',
+              zIndex: SHELL_Z.CELEBRATION,
             }}
           >
             <div
@@ -255,6 +257,8 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
       })}
     </>
   );
+
+  return createPortal(node, document.body);
 };
 
 export default LegsToPlayerAnimation;
