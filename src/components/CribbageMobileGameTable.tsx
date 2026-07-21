@@ -98,6 +98,7 @@ import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { getMsSinceVisibilityResume, getRealtimeStatus } from '@/lib/resumeSignals';
 import { traceGoRace, peggingSnapshot } from '@/lib/cribbageGoRaceTrace';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
