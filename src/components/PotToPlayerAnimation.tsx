@@ -274,7 +274,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const outerStyle: React.CSSProperties = {
     left: animation.fromX - CHIP_SIZE / 2,
     top: animation.fromY - CHIP_SIZE / 2,
-    zIndex: 200,
+    zIndex: SHELL_Z.CELEBRATION,
   };
   if (phase === 'flying') {
     outerStyle.animation = `${animationName} ${animDurationCss} ${timingFn} forwards`;
