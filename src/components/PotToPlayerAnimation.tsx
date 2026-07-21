@@ -30,6 +30,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
+import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
