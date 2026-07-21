@@ -2060,6 +2060,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     seededAt: number;
   } | null>(null);
 
+  // ── Cribbage resume identity preservation ─────────────────────────────
+  // Captures the most recent VALID (gameId, dealerGameId, roundId, handNumber)
+  // observed while status='in_progress'. On client resume (visibility /
+  // realtime reconnect) `game.rounds` can be transiently empty for one render
+  // between the `games` row landing and the rounds refetch completing. In that
+  // narrow window we render preserved identity iff:
+  //   • same gameId
+  //   • preserved.dealerGameId === game.current_game_uuid (authoritative scope)
+  //   • current game status is still `in_progress`
+  // Any of the following invalidate preservation (never survive a genuine
+  // lifecycle boundary): dealer-game rotation (different current_game_uuid),
+  // game_over, session reset, intentional return to waiting, or a newly
+  // fetched games row with a different current_game_uuid.
+  const lastValidCribbageIdentityRef = useRef<{
+    gameId: string;
+    dealerGameId: string;
+    roundId: string;
+    handNumber: number | null;
+  } | null>(null);
+
   // P0 SHELL RECOVERY LEASE (INV-A, INV-B): while this Game route is
   // mounted with an authoritative (gameId, userId) identity, hold a
   // durable recovery lease. Transient disconnects, resubscribe failures,
