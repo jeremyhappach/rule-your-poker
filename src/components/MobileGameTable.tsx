@@ -9142,21 +9142,20 @@ export const MobileGameTable = ({
 
               const isSweepResultPrimary = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
               if (isSweepResultPrimary) {
-                // SWEEP: authoritative legs delta is 0 — skip legs-to-player
-                // entirely and go straight to pot-to-player.
-                console.log('[357 WIN] Sweep path (primary): jumping directly to pot-to-player');
-                setThreeFiveSevenWinPhase('pot-to-player');
-                threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+                // SWEEP: authoritative legs delta is 0 — skip legs-to-player.
+                // Do NOT start pot-to-player yet: wait for the canonical
+                // match_win announcement to clear so celebration owns the
+                // foreground until its TTL elapses. Awaiter effect advances.
+                console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
+                sweepAwaitingCelebrationRef.current = true;
                 setThreeFiveSevenPotHiddenUntilReset(true);
-                setPotOutAnimationActive(true);
-                setDisplayedPot(0);
-                setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
               } else {
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
                 setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
               }
+
             }
           }}
         />
