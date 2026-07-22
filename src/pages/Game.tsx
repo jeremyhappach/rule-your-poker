@@ -8964,6 +8964,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else if (gameData.status !== 'game_over') {
       // GUARD: If game is no longer in game_over, another client already handled the transition
       console.log('[GAME OVER COMPLETE] Game already transitioned to', gameData?.status, '- skipping');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:fresh-status-not-game_over',
+        returnReason: `fresh-status-${gameData.status}`,
+        returnedStatus: gameData.status,
+      });
       gameOverTransitionRef.current = false;
       return;
     }
@@ -8983,6 +8989,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameOverTransitionRef.current = false;
       recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'pending-session-end' });
       releaseRecoveryLease('session-ended-confirmed', { gameId });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:pending_session_end',
+        returnReason: 'session-ended',
+      });
       setTimeout(() => navigate('/'), 2000);
       return;
     }
@@ -8999,8 +9010,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // from the games row. Both must happen AFTER participation reconciliation and
     // BEFORE branching to waiting / next dealer game, so no prior-dealer-game state
     // can leak forward (e.g. stale current_round triggering ROUND_ALREADY_IN_PROGRESS).
-    await sanitizePlayerAutomationStateForSession(gameId);
-    await clearDealerGameTransientSessionState(gameId);
+    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+    try {
+      await sanitizePlayerAutomationStateForSession(gameId);
+      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+    } catch (e) {
+      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
+      throw e;
+    }
+    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+    try {
+      await clearDealerGameTransientSessionState(gameId);
+      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+    } catch (e) {
+      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'clearDealerGameTransientSessionState', error: e });
+      throw e;
+    }
+
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
