@@ -209,7 +209,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type, current_host')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type, current_host, dealer_position')
       .eq('id', gameId)
       .single(),
     supabase
