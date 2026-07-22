@@ -6876,17 +6876,16 @@ export const MobileGameTable = ({
         return;
       }
       if (isSweepResultFallback) {
-        // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely
-        // and go straight to pot-to-player. Mirrors handleLegsToPlayerComplete tail.
-        console.log('[357 WIN] Sweep path (fallback): jumping directly to pot-to-player');
-        setThreeFiveSevenWinPhase('pot-to-player');
-        threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+        // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely.
+        // Do NOT start pot-to-player yet: wait for the canonical match_win
+        // announcement to clear so the celebration owns the foreground until
+        // its TTL elapses. The awaiter effect below advances the phase.
+        console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        sweepAwaitingCelebrationRef.current = true;
         setThreeFiveSevenPotHiddenUntilReset(true);
-        setPotOutAnimationActive(true);
-        setDisplayedPot(0);
-        setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
         return;
       }
+
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
