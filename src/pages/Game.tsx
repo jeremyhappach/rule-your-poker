@@ -9089,6 +9089,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .from('games')
           .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:session-end-suppressed-stale-active-humans',
+          returnReason: 'reverted-to-waiting',
+        });
         return;
       }
 
