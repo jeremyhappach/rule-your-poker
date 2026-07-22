@@ -92,3 +92,72 @@ export function make357InstantWinCorrelationId(gameId: string | null): string {
   const seed = gameId ? gameId.slice(0, 8) : "orphan";
   return `iw-${seed}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
+
+/**
+ * Narrow, fire-and-forget diagnostic for the canonical
+ * `handleThreeFiveSevenWinAnimationComplete → handleGameOverComplete`
+ * owner chain. Emits `357.game_over_complete.<kind>` into debug_events.
+ * Same shape as emit357InstantWinTerminal — never awaited, never throws.
+ */
+export function emit357GameOverCompleteDiag(
+  kind: string,
+  payload: Record<string, unknown> = {},
+): void {
+  try {
+    const { error, gameId, roundId, ...rest } = payload as {
+      error?: unknown;
+      gameId?: string | null;
+      roundId?: string | null;
+      [k: string]: unknown;
+    };
+    let errName: string | null = null;
+    let errMessage: string | null = null;
+    let errStack: string | null = null;
+    let errCode: string | null = null;
+    let errDetails: string | null = null;
+    let errHint: string | null = null;
+    if (error) {
+      if (typeof error === "string") {
+        errMessage = error;
+      } else if (typeof error === "object") {
+        const e = error as {
+          name?: string;
+          message?: string;
+          stack?: string;
+          code?: string;
+          details?: string;
+          hint?: string;
+        };
+        errName = e.name ?? null;
+        errMessage = e.message ?? null;
+        errStack = e.stack ?? null;
+        errCode = e.code ?? null;
+        errDetails = e.details ?? null;
+        errHint = e.hint ?? null;
+      }
+    }
+    const insertPayload = {
+      ...rest,
+      gameId: gameId ?? null,
+      roundId: roundId ?? null,
+      exceptionName: errName,
+      exceptionMessage: errMessage,
+      exceptionStack: errStack,
+      errorCode: errCode,
+      errorDetails: errDetails,
+      errorHint: errHint,
+      timestamp: new Date().toISOString(),
+    };
+    void supabase
+      .from("debug_events")
+      .insert({
+        event_type: `357.game_over_complete.${kind}`,
+        game_id: gameId ?? undefined,
+        round_id: roundId ?? undefined,
+        payload: insertPayload as unknown as Record<string, unknown>,
+      } as never)
+      .then(() => {}, () => {});
+  } catch {
+    /* diagnostic-only — never throw */
+  }
+}
