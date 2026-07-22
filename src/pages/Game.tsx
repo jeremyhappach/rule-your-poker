@@ -9177,6 +9177,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       }
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:no-active-humans',
+        returnReason: 'activeHumanCount<1',
+      });
       return;
     }
     
@@ -9203,8 +9208,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           config_complete: false,
         })
         .eq('id', gameId);
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:not-enough-players',
+        returnReason: `eligibleDealers=${eligibleDealerCount} activePlayers=${activePlayerCount}`,
+      });
       return;
     }
+
 
     // STEP 3: Determine next dealer - check "make it take it" first, then fallback to rotation
     // First, fetch the most recent winner from game_results
