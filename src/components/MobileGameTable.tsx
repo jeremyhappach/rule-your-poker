@@ -1,5 +1,5 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
-import { emit357InstantWinTerminal } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
