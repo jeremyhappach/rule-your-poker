@@ -1083,13 +1083,21 @@ const DealerGameSetupInner = ({
       ante_decision_deadline: anteDeadline,
       config_deadline: null,
       current_game_uuid: dealerGameId, // Reference the dealer_games record
+      // Lifecycle boundary sanitation: terminal state from the completed dealer
+      // game must not leak into the next dealer game. This is the single
+      // authoritative owner for this transition (DealerGameSetup.handleSubmit).
+      last_round_result: null,
+      game_over_at: null,
+      current_round: isHolmGame ? 1 : null,
+      awaiting_next_round: false,
+      next_round_number: null,
     };
 
     if (isHolmGame) {
       updateData.chucky_cards = parsedChucky;
       updateData.rabbit_hunt = rabbitHunt;
-      // CRITICAL (Holm only): pre-set round 1 + first-hand flag to prevent stale card flashes
-      updateData.current_round = 1;
+      // CRITICAL (Holm only): first-hand flag is still required to prevent
+      // stale card flashes. current_round is consolidated above.
       updateData.is_first_hand = true;
     } else {
       updateData.reveal_at_showdown = revealAtShowdown;
