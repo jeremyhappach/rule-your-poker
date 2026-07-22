@@ -10246,7 +10246,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
+    const _gocIdentity357 = {
+      gameId: gameId ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      handNumber: game?.total_hands ?? null,
+      viewerPlayerId: user?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      animationId: threeFiveSevenWinTriggerId ?? null,
+      lastRoundResult: game?.last_round_result ?? null,
+      clientKnownStatus: game?.status ?? null,
+      currentGameUuid: game?.current_game_uuid ?? null,
+      currentRound: game?.current_round ?? null,
+    };
+    emit357GameOverCompleteDiag('entry', _gocIdentity357);
+
     if (game?.game_type === 'holm-game' || !gameId) {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:preamble',
+        returnReason: !gameId ? 'no-game-id' : 'holm-game',
+      });
       return;
     }
 
@@ -10265,18 +10285,60 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Fetch fresh game status from DB - React state may be stale
     const { data: freshGame, error: fetchError } = await supabase
       .from('games')
-      .select('status')
+      .select('status, current_game_uuid, current_round, game_over_at, last_round_result')
       .eq('id', gameId)
       .single();
 
+    const _branchDecision =
+      !fetchError && freshGame?.status && freshGame.status !== 'game_over'
+        ? 'return_after_fetch_game_data'
+        : 'continue_to_handle_game_over_complete';
+    emit357GameOverCompleteDiag('status_refetch_result', {
+      ..._gocIdentity357,
+      returnedStatus: freshGame?.status ?? null,
+      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
+      returnedCurrentRound: freshGame?.current_round ?? null,
+      returnedGameOverAt: freshGame?.game_over_at ?? null,
+      returnedLastRoundResult: freshGame?.last_round_result ?? null,
+      fetchErrorCode: (fetchError as any)?.code ?? null,
+      fetchErrorMessage: (fetchError as any)?.message ?? null,
+      fetchErrorDetails: (fetchError as any)?.details ?? null,
+      fetchErrorHint: (fetchError as any)?.hint ?? null,
+      branchDecision: _branchDecision,
+      branchReason: fetchError
+        ? 'fetch-error-fallthrough-to-owner'
+        : freshGame?.status && freshGame.status !== 'game_over'
+          ? `status-is-${freshGame.status}-not-game_over`
+          : 'status-is-game_over-or-null',
+    });
+
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:status_refetch',
+        returnReason: `fresh-status-${freshGame.status}-not-game_over`,
+        returnedStatus: freshGame.status,
+      });
       await fetchGameData();
       return;
     }
 
+    emit357GameOverCompleteDiag('owner_invoking', {
+      ..._gocIdentity357,
+      statusPassedIn: freshGame?.status ?? null,
+      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
+      returnedCurrentRound: freshGame?.current_round ?? null,
+    });
+
     try {
       await handleGameOverComplete();
     } catch (e) {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:owner_threw',
+        returnReason: 'handleGameOverComplete-threw',
+        error: e,
+      });
       emit357InstantWinTerminal('failed', {
         gameId: gameId ?? undefined,
         eventKind: 'cross_country_advance',
@@ -10284,7 +10346,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       throw e;
     }
-  }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData, user?.id]);
+  }, [game?.status, game?.game_type, game?.current_game_uuid, game?.current_round, game?.total_hands, game?.last_round_result, gameId, handleGameOverComplete, fetchGameData, user?.id, threeFiveSevenWinnerId, threeFiveSevenWinTriggerId]);
+
 
   // YAHTZEE game_over transition
   // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
