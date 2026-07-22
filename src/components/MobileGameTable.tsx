@@ -1,5 +1,7 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import confetti from 'canvas-confetti';
+import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
@@ -4133,6 +4135,13 @@ export const MobileGameTable = ({
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
 
+  // 3-5-7 sweep pot release gate: canonical match-win announcement must
+  // complete before the pot-to-player animation begins. See DG1 audit —
+  // pot transfer previously started ~2.7s before match_win TTL elapsed.
+  const announcementCtx = useAnnouncementContext();
+  const sweepAwaitingCelebrationRef = useRef(false);
+
+
   // HOLM: monotonic folded-latch for the local self hand.
   // Once `current_decision === 'fold'` is observed for a given
   // handContextId, keep the folded dim on the active self subtree for
@@ -6867,17 +6876,16 @@ export const MobileGameTable = ({
         return;
       }
       if (isSweepResultFallback) {
-        // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely
-        // and go straight to pot-to-player. Mirrors handleLegsToPlayerComplete tail.
-        console.log('[357 WIN] Sweep path (fallback): jumping directly to pot-to-player');
-        setThreeFiveSevenWinPhase('pot-to-player');
-        threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+        // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely.
+        // Do NOT start pot-to-player yet: wait for the canonical match_win
+        // announcement to clear so the celebration owns the foreground until
+        // its TTL elapses. The awaiter effect below advances the phase.
+        console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        sweepAwaitingCelebrationRef.current = true;
         setThreeFiveSevenPotHiddenUntilReset(true);
-        setPotOutAnimationActive(true);
-        setDisplayedPot(0);
-        setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
         return;
       }
+
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
@@ -6951,9 +6959,21 @@ export const MobileGameTable = ({
       });
     }
 
+    // Winner-only confetti after destination bounce / pot-to-player completion.
+    // Cribbage owns its own confetti via triggerWinSequence; 3-5-7 previously
+    // had no confetti caller. Gate on viewer identity so only the winner sees it.
+    if (threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId) {
+      try {
+        const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
+        confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
+      } catch { /* noop — confetti is presentation-only */ }
+    }
 
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
+
 
     // Capture current animation ID
     const animationId = currentAnimationIdRef.current;
@@ -6979,7 +6999,48 @@ export const MobileGameTable = ({
         onThreeFiveSevenWinAnimationComplete();
       }
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id]);
+
+  // Sweep celebration → pot-to-player gate. When a 3-5-7 sweep arms the
+  // awaiter (isSweepResultFallback / isSweepResultPrimary branches), hold
+  // in 'waiting' phase until the canonical match_win announcement clears.
+  // Only then advance to 'pot-to-player'. A safety timeout bounded by the
+  // match_win TTL (4500ms) + margin guarantees forward progress even if the
+  // announcement is dropped or the provider is absent.
+  useEffect(() => {
+    if (!sweepAwaitingCelebrationRef.current) return;
+    if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+    const activeType = announcementCtx?.active?.type ?? null;
+    if (activeType === 'match_win') return; // still celebrating
+    // Celebration cleared (or never present) — advance the pot phase.
+    sweepAwaitingCelebrationRef.current = false;
+    console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
+    setThreeFiveSevenWinPhase('pot-to-player');
+    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+    setPotOutAnimationActive(true);
+    setDisplayedPot(0);
+    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+  }, [announcementCtx?.active?.type]);
+
+  // Safety timeout: if the announcement provider never surfaces match_win
+  // (scope mismatch, dropped emit), release the sweep gate after the TTL
+  // plus a small margin so the winner still sees pot transfer + confetti.
+  useEffect(() => {
+    if (!sweepAwaitingCelebrationRef.current) return;
+    const t = setTimeout(() => {
+      if (!sweepAwaitingCelebrationRef.current) return;
+      if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+      sweepAwaitingCelebrationRef.current = false;
+      console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
+      setThreeFiveSevenWinPhase('pot-to-player');
+      threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+      setPotOutAnimationActive(true);
+      setDisplayedPot(0);
+      setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+    }, 5200); // match_win TTL 4500ms + 700ms margin
+    return () => clearTimeout(t);
+  }, [threeFiveSevenWinTriggerId]);
+
 
   // ── Canonical seat contract (PR-B: single-path collapse) ──────────
   //
@@ -9134,21 +9195,20 @@ export const MobileGameTable = ({
 
               const isSweepResultPrimary = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
               if (isSweepResultPrimary) {
-                // SWEEP: authoritative legs delta is 0 — skip legs-to-player
-                // entirely and go straight to pot-to-player.
-                console.log('[357 WIN] Sweep path (primary): jumping directly to pot-to-player');
-                setThreeFiveSevenWinPhase('pot-to-player');
-                threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+                // SWEEP: authoritative legs delta is 0 — skip legs-to-player.
+                // Do NOT start pot-to-player yet: wait for the canonical
+                // match_win announcement to clear so celebration owns the
+                // foreground until its TTL elapses. Awaiter effect advances.
+                console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
+                sweepAwaitingCelebrationRef.current = true;
                 setThreeFiveSevenPotHiddenUntilReset(true);
-                setPotOutAnimationActive(true);
-                setDisplayedPot(0);
-                setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
               } else {
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
                 setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
               }
+
             }
           }}
         />

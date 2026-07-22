@@ -209,7 +209,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type, current_host')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type, current_host, dealer_position')
       .eq('id', gameId)
       .single(),
     supabase
@@ -553,18 +553,21 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // ── 3-5-7 INSTANT DEALER WIN HARNESS (admin-only Harness Profile) ──
   // When Game Defaults → Debug Harness Profile for '3-5-7' is set to
-  // 'instant_win', force the canonical SESSION HOST's Round 1 cards to
-  // 3♣ 5♦ 7♥. Detection still runs through the unchanged has357Hand
-  // path below — the rule under test is NOT bypassed. Deal, transport,
-  // and one-card-at-a-time animation continue to run through the
-  // normal authoritative player_cards insert.
+  // 'instant_win', force the ROUND 1 DEALER OF THE ACTIVE DEALER GAME
+  // to receive 3♣ 5♦ 7♥. Prior implementation targeted the canonical
+  // session host, which is invariant across dealer games — Dealer Game
+  // 2 of a Cross Country session then failed because host ≠ dealer.
+  // Detection still runs through the unchanged has357Hand path below
+  // — the rule under test is NOT bypassed. The instrumentation payload
+  // reports BOTH the actual harness target (dealer of DG) and the
+  // session host so future traces remain unambiguous.
   let harnessInstantWinActive = false;
   let harnessTargetPlayerId: string | null = null;
   const forcedCardsByPlayer = new Map<string, Card[]>();
   if (roundNumber === 1) {
     const harnessId = await readDebugHarness('3-5-7');
     if (harnessId === 'instant_win') {
-      harnessTargetPlayerId = resolveSessionHostPlayerId(
+      const sessionHostPlayerId = resolveSessionHostPlayerId(
         { current_host: (gameConfig as any)?.current_host ?? null },
         activePlayers.map((p) => ({
           id: p.id,
@@ -573,6 +576,14 @@ export async function startRound(gameId: string, roundNumber: number) {
           created_at: (p as any).created_at ?? null,
         })),
       );
+      // Round 1 dealer of the CURRENT dealer_game: player whose position
+      // matches games.dealer_position. Falls back to session host only if
+      // dealer_position is missing or no active player occupies it.
+      const dealerPos = (gameConfig as any)?.dealer_position ?? null;
+      const dealerPlayer = dealerPos != null
+        ? activePlayers.find((p) => (p as any).position === dealerPos) ?? null
+        : null;
+      harnessTargetPlayerId = dealerPlayer?.id ?? sessionHostPlayerId;
       if (harnessTargetPlayerId) {
         harnessInstantWinActive = true;
         const forced = FORCED_357_CARDS;
@@ -581,6 +592,9 @@ export async function startRound(gameId: string, roundNumber: number) {
         await trace357InstantWin('harness.override_applied', gameId, {
           harnessId,
           targetPlayerId: harnessTargetPlayerId,
+          sessionHostPlayerId,
+          dealerPosition: dealerPos,
+          resolvedFrom: dealerPlayer ? 'dealer_position' : 'session_host_fallback',
           forcedCards: forced,
           roundId: round.id,
           handNumber,
@@ -589,11 +603,14 @@ export async function startRound(gameId: string, roundNumber: number) {
       } else {
         await trace357InstantWin('harness.override_skipped_no_host', gameId, {
           harnessId,
+          sessionHostPlayerId,
+          dealerPosition: dealerPos,
           activePlayerIds: activePlayers.map(p => p.id),
         });
       }
     }
   }
+
 
   // BATCH: Prepare all player cards for a single insert
   const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
