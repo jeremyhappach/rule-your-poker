@@ -6959,9 +6959,21 @@ export const MobileGameTable = ({
       });
     }
 
+    // Winner-only confetti after destination bounce / pot-to-player completion.
+    // Cribbage owns its own confetti via triggerWinSequence; 3-5-7 previously
+    // had no confetti caller. Gate on viewer identity so only the winner sees it.
+    if (threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId) {
+      try {
+        const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
+        confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
+      } catch { /* noop — confetti is presentation-only */ }
+    }
 
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
+
 
     // Capture current animation ID
     const animationId = currentAnimationIdRef.current;
