@@ -19,7 +19,7 @@ import {
 } from "@/lib/sessionRecoveryLease";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
-import { emit357InstantWinTerminal } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
@@ -8793,8 +8793,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
   const handleGameOverComplete = useCallback(async () => {
+    const _gocId = () => ({
+      gameId: gameId ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      handNumber: game?.total_hands ?? null,
+      viewerPlayerId: user?.id ?? null,
+      clientKnownStatus: game?.status ?? null,
+      currentGameUuid: game?.current_game_uuid ?? null,
+      currentRound: game?.current_round ?? null,
+      lastRoundResult: game?.last_round_result ?? null,
+    });
+    emit357GameOverCompleteDiag('owner_entered', _gocId());
+
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:no-game-id',
+        returnReason: 'no-game-id',
+      });
       return;
     }
 
@@ -8803,12 +8821,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // flag off and then call this function.
     if (is357WinAnimationActiveRef.current) {
       console.log('[GAME OVER COMPLETE] Blocked: 357 win animation is active');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:357-anim-active',
+        returnReason: 'is357WinAnimationActiveRef.current-true',
+      });
       return;
     }
 
     // GUARD: Prevent multiple clients from racing to transition the game state
     if (gameOverTransitionRef.current) {
       console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:already-processing',
+        returnReason: 'gameOverTransitionRef.current-true',
+      });
       return;
     }
 
@@ -8820,18 +8848,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     try {
       if (!user?.id) {
         console.log('[GAME OVER COMPLETE] mut02-leader-skip (no user)');
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-no-user',
+          returnReason: 'no-user-id',
+        });
         return;
       }
-      const { data: leaderGame } = await supabase
+      const { data: leaderGame, error: leaderGameErr } = await supabase
         .from('games')
         .select('status, dealer_position, current_game_uuid')
         .eq('id', gameId)
         .maybeSingle();
-      if (!leaderGame || leaderGame.status !== 'game_over') {
-        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
-        return;
-      }
-      const { data: leaderPlayers } = await supabase
+      const { data: leaderPlayers, error: leaderPlayersErr } = await supabase
         .from('players')
         .select('id, user_id, position, is_bot, sitting_out, status')
         .eq('game_id', gameId);
@@ -8839,26 +8868,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !p.is_bot && !p.sitting_out && p.status === 'active'
       );
       let leaderUserId: string | null = null;
-      const dealerSeat = humans.find((p: any) => p.position === leaderGame.dealer_position);
+      const dealerSeat = humans.find((p: any) => p.position === leaderGame?.dealer_position);
       if (dealerSeat) {
         leaderUserId = dealerSeat.user_id;
       } else if (humans.length > 0) {
         const sorted = [...humans].sort((a: any, b: any) => a.position - b.position);
         leaderUserId = sorted[0].user_id;
       }
-      if (!leaderUserId) {
-        // No active humans — let the existing no-humans branch run (safe, no other humans race).
-        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
-      } else if (leaderUserId !== user.id) {
+      const localPlayer = (leaderPlayers || []).find((p: any) => p.user_id === user.id);
+      const isLeader = !leaderUserId || leaderUserId === user.id;
+      const leaderBranch = !leaderGame || leaderGame.status !== 'game_over'
+        ? 'return_status_not_game_over'
+        : !leaderUserId
+          ? 'continue_no_active_humans'
+          : leaderUserId !== user.id
+            ? 'return_not_leader'
+            : 'continue_is_leader';
+      emit357GameOverCompleteDiag('leader_refetch_result', {
+        ..._gocId(),
+        returnedStatus: leaderGame?.status ?? null,
+        returnedDealerPosition: leaderGame?.dealer_position ?? null,
+        returnedCurrentGameUuid: leaderGame?.current_game_uuid ?? null,
+        currentHost: null,
+        localPlayerId: localPlayer?.id ?? null,
+        localPlayerPosition: localPlayer?.position ?? null,
+        computedLeaderUserId: leaderUserId,
+        localIsLeader: isLeader,
+        leaderGameFetchError: (leaderGameErr as any)?.message ?? null,
+        leaderPlayersFetchError: (leaderPlayersErr as any)?.message ?? null,
+        branchDecision: leaderBranch,
+        branchReason: leaderBranch,
+      });
+      if (!leaderGame || leaderGame.status !== 'game_over') {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-status-not-game_over',
+          returnReason: `status-${leaderGame?.status ?? 'null'}`,
+          returnedStatus: leaderGame?.status ?? null,
+        });
+        return;
+      }
+      if (leaderUserId && leaderUserId !== user.id) {
         console.log('[GAME OVER COMPLETE] mut02-leader-skip (not leader)', {
           leaderUserId: leaderUserId.slice(0, 8),
           self: user.id.slice(0, 8),
         });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-not-leader',
+          returnReason: 'local-not-leader',
+          computedLeaderUserId: leaderUserId,
+        });
         return;
+      }
+      if (!leaderUserId) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
       }
     } catch (leaderErr) {
       console.warn('[GAME OVER COMPLETE] mut02-leader-check-failed (continuing)', leaderErr);
+      emit357GameOverCompleteDiag('leader_refetch_result', {
+        ..._gocId(),
+        branchDecision: 'continue_after_leader_check_threw',
+        branchReason: 'leader-check-exception',
+        error: leaderErr,
+      });
     }
+
 
     gameOverTransitionRef.current = true;
 
@@ -8888,6 +8964,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else if (gameData.status !== 'game_over') {
       // GUARD: If game is no longer in game_over, another client already handled the transition
       console.log('[GAME OVER COMPLETE] Game already transitioned to', gameData?.status, '- skipping');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:fresh-status-not-game_over',
+        returnReason: `fresh-status-${gameData.status}`,
+        returnedStatus: gameData.status,
+      });
       gameOverTransitionRef.current = false;
       return;
     }
@@ -8907,6 +8989,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameOverTransitionRef.current = false;
       recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'pending-session-end' });
       releaseRecoveryLease('session-ended-confirmed', { gameId });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:pending_session_end',
+        returnReason: 'session-ended',
+      });
       setTimeout(() => navigate('/'), 2000);
       return;
     }
@@ -8923,8 +9010,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // from the games row. Both must happen AFTER participation reconciliation and
     // BEFORE branching to waiting / next dealer game, so no prior-dealer-game state
     // can leak forward (e.g. stale current_round triggering ROUND_ALREADY_IN_PROGRESS).
-    await sanitizePlayerAutomationStateForSession(gameId);
-    await clearDealerGameTransientSessionState(gameId);
+    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+    try {
+      await sanitizePlayerAutomationStateForSession(gameId);
+      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession' });
+    } catch (e) {
+      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'sanitizePlayerAutomationStateForSession', error: e });
+      throw e;
+    }
+    emit357GameOverCompleteDiag('sanitize_begin', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+    try {
+      await clearDealerGameTransientSessionState(gameId);
+      emit357GameOverCompleteDiag('sanitize_complete', { ..._gocId(), op: 'clearDealerGameTransientSessionState' });
+    } catch (e) {
+      emit357GameOverCompleteDiag('sanitize_error', { ..._gocId(), op: 'clearDealerGameTransientSessionState', error: e });
+      throw e;
+    }
+
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
@@ -8987,6 +9089,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .from('games')
           .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:session-end-suppressed-stale-active-humans',
+          returnReason: 'reverted-to-waiting',
+        });
         return;
       }
 
@@ -9070,6 +9177,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         releaseRecoveryLease('session-ended-confirmed', { gameId });
         setTimeout(() => navigate('/'), 2000);
       }
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:no-active-humans',
+        returnReason: 'activeHumanCount<1',
+      });
       return;
     }
     
@@ -9096,8 +9208,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           config_complete: false,
         })
         .eq('id', gameId);
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:not-enough-players',
+        returnReason: `eligibleDealers=${eligibleDealerCount} activePlayers=${activePlayerCount}`,
+      });
       return;
     }
+
 
     // STEP 3: Determine next dealer - check "make it take it" first, then fallback to rotation
     // First, fetch the most recent winner from game_results
@@ -9161,6 +9279,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       try { await normalizeTwoPlayerSeatsIfNeeded(gameId, 'MIT→dealer_selection'); }
       catch (e) { console.error('[GAME OVER → dealer_selection] normalize threw:', e); }
 
+      emit357GameOverCompleteDiag('advance_begin', {
+        ..._gocId(),
+        outgoingDealerGameId: game?.current_game_uuid ?? null,
+        targetStatus: 'dealer_selection',
+        branch: 'make-it-take-it-selection',
+      });
       // P0 GUARD (MUT-02): atomic DB claim
       const { data: dsClaim, error } = await supabase
         .from('games')
@@ -9187,20 +9311,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       if (error) {
         console.error('[GAME OVER] Failed to start dealer selection:', error);
+        emit357GameOverCompleteDiag('advance_error', {
+          ..._gocId(),
+          targetStatus: 'dealer_selection',
+          error,
+        });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:dealer_selection-claim-error',
+          returnReason: 'atomic-claim-error',
+          error,
+        });
         gameOverTransitionRef.current = false;
         return;
       }
       if (!dsClaim || dsClaim.length === 0) {
         console.log('[GAME OVER] mut02-claim-lost (dealer_selection branch)');
+        emit357GameOverCompleteDiag('advance_complete', {
+          ..._gocId(),
+          targetStatus: 'dealer_selection',
+          resultingStatus: null,
+          claimLost: true,
+        });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:dealer_selection-claim-lost',
+          returnReason: 'mut02-claim-lost',
+        });
         gameOverTransitionRef.current = false;
         await fetchGameData();
         return;
       }
 
       console.log('[GAME OVER] Successfully transitioned to dealer_selection');
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        targetStatus: 'dealer_selection',
+        resultingStatus: 'dealer_selection',
+        claimLost: false,
+      });
       gameOverTransitionRef.current = false;
       anteAnimationFiredRef.current = null;
       await fetchGameData();
+      emit357GameOverCompleteDiag('complete', {
+        ..._gocId(),
+        finalStatus: 'dealer_selection',
+      });
       return;
     }
     
@@ -9225,6 +9381,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await logStatusChanged(gameId, user?.id, 'game_over', 'game_selection', `Starting next game, dealer at position ${newDealerPosition}`);
     await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'handleGameOverComplete');
     
+    emit357GameOverCompleteDiag('advance_begin', {
+      ..._gocId(),
+      outgoingDealerGameId: game?.current_game_uuid ?? null,
+      targetStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+      branch: 'normal-rotation-or-mit-position',
+    });
     // Skip dealer_announcement, go directly to game_selection
     // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
     // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
@@ -9252,17 +9415,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('[GAME OVER] Failed to start game selection:', error);
+      emit357GameOverCompleteDiag('advance_error', {
+        ..._gocId(),
+        targetStatus: 'game_selection',
+        error,
+      });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:game_selection-claim-error',
+        returnReason: 'atomic-claim-error',
+        error,
+      });
       gameOverTransitionRef.current = false;
       return;
     }
     if (!claimRows || claimRows.length === 0) {
       console.log('[GAME OVER] mut02-claim-lost (status no longer game_over) — another client advanced');
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        targetStatus: 'game_selection',
+        resultingStatus: null,
+        claimLost: true,
+      });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:game_selection-claim-lost',
+        returnReason: 'mut02-claim-lost',
+      });
       gameOverTransitionRef.current = false;
       await fetchGameData();
       return;
     }
 
     console.log('[GAME OVER] Successfully transitioned to game_selection, new dealer:', newDealerPosition);
+    emit357GameOverCompleteDiag('advance_complete', {
+      ..._gocId(),
+      targetStatus: 'game_selection',
+      resultingStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+      claimLost: false,
+    });
 
     // Reset transition guard and ante animation guard for next game
     gameOverTransitionRef.current = false;
@@ -9273,10 +9465,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] Calling fetchGameData to sync UI');
     await fetchGameData();
     console.log('[GAME OVER] fetchGameData completed');
+    emit357GameOverCompleteDiag('complete', {
+      ..._gocId(),
+      finalStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+    });
+
   } catch (error: any) {
     // If anything throws above, the previous code would leave gameOverTransitionRef stuck true,
     // permanently blocking progression. This catch + finally makes the flow resilient.
     console.error('[GAME OVER COMPLETE] Unhandled error during transition:', error);
+    emit357GameOverCompleteDiag('unhandled_exception', {
+      ..._gocId(),
+      error,
+    });
     toast({
       title: 'Error',
       description: error?.message || 'Failed to start next game. Please try again.',
@@ -10246,7 +10448,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
+    const _gocIdentity357 = {
+      gameId: gameId ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      handNumber: game?.total_hands ?? null,
+      viewerPlayerId: user?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      animationId: threeFiveSevenWinTriggerId ?? null,
+      lastRoundResult: game?.last_round_result ?? null,
+      clientKnownStatus: game?.status ?? null,
+      currentGameUuid: game?.current_game_uuid ?? null,
+      currentRound: game?.current_round ?? null,
+    };
+    emit357GameOverCompleteDiag('entry', _gocIdentity357);
+
     if (game?.game_type === 'holm-game' || !gameId) {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:preamble',
+        returnReason: !gameId ? 'no-game-id' : 'holm-game',
+      });
       return;
     }
 
@@ -10265,18 +10487,60 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Fetch fresh game status from DB - React state may be stale
     const { data: freshGame, error: fetchError } = await supabase
       .from('games')
-      .select('status')
+      .select('status, current_game_uuid, current_round, game_over_at, last_round_result')
       .eq('id', gameId)
       .single();
 
+    const _branchDecision =
+      !fetchError && freshGame?.status && freshGame.status !== 'game_over'
+        ? 'return_after_fetch_game_data'
+        : 'continue_to_handle_game_over_complete';
+    emit357GameOverCompleteDiag('status_refetch_result', {
+      ..._gocIdentity357,
+      returnedStatus: freshGame?.status ?? null,
+      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
+      returnedCurrentRound: freshGame?.current_round ?? null,
+      returnedGameOverAt: freshGame?.game_over_at ?? null,
+      returnedLastRoundResult: freshGame?.last_round_result ?? null,
+      fetchErrorCode: (fetchError as any)?.code ?? null,
+      fetchErrorMessage: (fetchError as any)?.message ?? null,
+      fetchErrorDetails: (fetchError as any)?.details ?? null,
+      fetchErrorHint: (fetchError as any)?.hint ?? null,
+      branchDecision: _branchDecision,
+      branchReason: fetchError
+        ? 'fetch-error-fallthrough-to-owner'
+        : freshGame?.status && freshGame.status !== 'game_over'
+          ? `status-is-${freshGame.status}-not-game_over`
+          : 'status-is-game_over-or-null',
+    });
+
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:status_refetch',
+        returnReason: `fresh-status-${freshGame.status}-not-game_over`,
+        returnedStatus: freshGame.status,
+      });
       await fetchGameData();
       return;
     }
 
+    emit357GameOverCompleteDiag('owner_invoking', {
+      ..._gocIdentity357,
+      statusPassedIn: freshGame?.status ?? null,
+      returnedCurrentGameUuid: freshGame?.current_game_uuid ?? null,
+      returnedCurrentRound: freshGame?.current_round ?? null,
+    });
+
     try {
       await handleGameOverComplete();
     } catch (e) {
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocIdentity357,
+        returnSite: 'handleThreeFiveSevenWinAnimationComplete:owner_threw',
+        returnReason: 'handleGameOverComplete-threw',
+        error: e,
+      });
       emit357InstantWinTerminal('failed', {
         gameId: gameId ?? undefined,
         eventKind: 'cross_country_advance',
@@ -10284,7 +10548,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       throw e;
     }
-  }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData, user?.id]);
+  }, [game?.status, game?.game_type, game?.current_game_uuid, game?.current_round, game?.total_hands, game?.last_round_result, gameId, handleGameOverComplete, fetchGameData, user?.id, threeFiveSevenWinnerId, threeFiveSevenWinTriggerId]);
+
 
   // YAHTZEE game_over transition
   // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
