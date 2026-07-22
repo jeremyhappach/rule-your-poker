@@ -71,6 +71,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   gameType,
   onAnimationStart,
   onAnimationEnd,
+  onAnimationEnd,
+  destinationSelector,
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const [phase, setPhase] = useState<ArtifactPhase>('flying');
