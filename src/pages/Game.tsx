@@ -9475,6 +9475,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // If anything throws above, the previous code would leave gameOverTransitionRef stuck true,
     // permanently blocking progression. This catch + finally makes the flow resilient.
     console.error('[GAME OVER COMPLETE] Unhandled error during transition:', error);
+    emit357GameOverCompleteDiag('unhandled_exception', {
+      ..._gocId(),
+      error,
+    });
     toast({
       title: 'Error',
       description: error?.message || 'Failed to start next game. Please try again.',
