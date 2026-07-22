@@ -6999,7 +6999,48 @@ export const MobileGameTable = ({
         onThreeFiveSevenWinAnimationComplete();
       }
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id]);
+
+  // Sweep celebration → pot-to-player gate. When a 3-5-7 sweep arms the
+  // awaiter (isSweepResultFallback / isSweepResultPrimary branches), hold
+  // in 'waiting' phase until the canonical match_win announcement clears.
+  // Only then advance to 'pot-to-player'. A safety timeout bounded by the
+  // match_win TTL (4500ms) + margin guarantees forward progress even if the
+  // announcement is dropped or the provider is absent.
+  useEffect(() => {
+    if (!sweepAwaitingCelebrationRef.current) return;
+    if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+    const activeType = announcementCtx?.active?.type ?? null;
+    if (activeType === 'match_win') return; // still celebrating
+    // Celebration cleared (or never present) — advance the pot phase.
+    sweepAwaitingCelebrationRef.current = false;
+    console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
+    setThreeFiveSevenWinPhase('pot-to-player');
+    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+    setPotOutAnimationActive(true);
+    setDisplayedPot(0);
+    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+  }, [announcementCtx?.active?.type]);
+
+  // Safety timeout: if the announcement provider never surfaces match_win
+  // (scope mismatch, dropped emit), release the sweep gate after the TTL
+  // plus a small margin so the winner still sees pot transfer + confetti.
+  useEffect(() => {
+    if (!sweepAwaitingCelebrationRef.current) return;
+    const t = setTimeout(() => {
+      if (!sweepAwaitingCelebrationRef.current) return;
+      if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+      sweepAwaitingCelebrationRef.current = false;
+      console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
+      setThreeFiveSevenWinPhase('pot-to-player');
+      threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+      setPotOutAnimationActive(true);
+      setDisplayedPot(0);
+      setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+    }, 5200); // match_win TTL 4500ms + 700ms margin
+    return () => clearTimeout(t);
+  }, [threeFiveSevenWinTriggerId]);
+
 
   // ── Canonical seat contract (PR-B: single-path collapse) ──────────
   //
