@@ -4135,6 +4135,13 @@ export const MobileGameTable = ({
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
 
+  // 3-5-7 sweep pot release gate: canonical match-win announcement must
+  // complete before the pot-to-player animation begins. See DG1 audit —
+  // pot transfer previously started ~2.7s before match_win TTL elapsed.
+  const announcementCtx = useAnnouncementContext();
+  const sweepAwaitingCelebrationRef = useRef(false);
+
+
   // HOLM: monotonic folded-latch for the local self hand.
   // Once `current_decision === 'fold'` is observed for a given
   // handContextId, keep the folded dim on the active self subtree for
