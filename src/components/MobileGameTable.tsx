@@ -6935,15 +6935,23 @@ export const MobileGameTable = ({
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     const animId = currentAnimationIdRef.current;
-    
 
-    // One-shot guard: only fire once per animation sequence
+    // Sole idempotency guard: one canonical completion per animation
+    // identity. Deliberately NOT gated on phase or on a stale-animation
+    // id comparison — the visible pot-to-player artifact has already
+    // finished by the time this callback fires; refusing to advance the
+    // canonical lifecycle here strands the dealer game in game_over.
     if (potToPlayerCompletedRef.current === animId) {
-      return;
-    }
-
-    // Use ref to get current phase (avoids stale closure)
-    if (threeFiveSevenWinPhaseRef.current !== 'pot-to-player') {
+      // Fail-loud persistent event so a suppressed completion is
+      // provable in production without any additional audit.
+      emit357GameOverCompleteDiag('pot_complete_suppressed', {
+        gameId: gameId ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        handContextId: handContextId ?? null,
+        reason: 'duplicate_animation_id',
+        animationId: animId,
+        phase: threeFiveSevenWinPhaseRef.current,
+      });
       return;
     }
 
@@ -6960,8 +6968,6 @@ export const MobileGameTable = ({
     }
 
     // Winner-only confetti after destination bounce / pot-to-player completion.
-    // Cribbage owns its own confetti via triggerWinSequence; 3-5-7 previously
-    // had no confetti caller. Gate on viewer identity so only the winner sees it.
     if (threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId) {
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
@@ -6971,33 +6977,44 @@ export const MobileGameTable = ({
       } catch { /* noop — confetti is presentation-only */ }
     }
 
+    // Hold the win-animation geometry owner in the terminal 'delay'
+    // phase across the presentation tail. Do NOT set 'idle' before the
+    // canonical completion callback returns — that release is what lets
+    // the active hand shrink to gameplay geometry while the old dealer
+    // game is still visible on screen.
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
 
-
-    // Capture current animation ID
-    const animationId = currentAnimationIdRef.current;
-
-    // 300ms delay before proceeding to next game
+    // 300ms presentation tail, then invoke the canonical completion
+    // callback, then finally release the win-animation geometry.
     setTimeout(() => {
+      emit357InstantWinTerminal('presentation_completed', {
+        gameId: gameId ?? undefined,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      });
 
-      // Only complete if this is still the current animation
-      if (currentAnimationIdRef.current !== animationId) {
-        return;
+      // Canonical handoff. Fired unconditionally — the visible pot
+      // animation has finished, so there is no valid state in which
+      // this callback should be swallowed. Any downstream idempotency
+      // is the parent handler's responsibility.
+      try {
+        onThreeFiveSevenWinAnimationComplete?.();
+      } catch (err) {
+        emit357GameOverCompleteDiag('pot_complete_callback_threw', {
+          gameId: gameId ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          error: err,
+        });
       }
 
-
+      // Only NOW release the geometry owner — after the canonical
+      // completion callback has been invoked. The parent's dealer-game
+      // transition will unmount the stale hand naturally.
       setThreeFiveSevenWinPhase('idle');
       threeFiveSevenWinPhaseRef.current = 'idle';
-      setPotOutAnimationActive(false); // Clear POT-OUT flag
+      setPotOutAnimationActive(false);
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
-
-      emit357InstantWinTerminal('presentation_completed', { gameId: gameId ?? undefined, winnerPlayerId: threeFiveSevenWinnerId ?? null });
-
-      if (onThreeFiveSevenWinAnimationComplete) {
-        onThreeFiveSevenWinAnimationComplete();
-      }
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id]);
 
