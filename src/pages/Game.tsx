@@ -8793,8 +8793,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
   const handleGameOverComplete = useCallback(async () => {
+    const _gocId = () => ({
+      gameId: gameId ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      handNumber: game?.total_hands ?? null,
+      viewerPlayerId: user?.id ?? null,
+      clientKnownStatus: game?.status ?? null,
+      currentGameUuid: game?.current_game_uuid ?? null,
+      currentRound: game?.current_round ?? null,
+      lastRoundResult: game?.last_round_result ?? null,
+    });
+    emit357GameOverCompleteDiag('owner_entered', _gocId());
+
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:no-game-id',
+        returnReason: 'no-game-id',
+      });
       return;
     }
 
@@ -8803,12 +8821,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // flag off and then call this function.
     if (is357WinAnimationActiveRef.current) {
       console.log('[GAME OVER COMPLETE] Blocked: 357 win animation is active');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:357-anim-active',
+        returnReason: 'is357WinAnimationActiveRef.current-true',
+      });
       return;
     }
 
     // GUARD: Prevent multiple clients from racing to transition the game state
     if (gameOverTransitionRef.current) {
       console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:already-processing',
+        returnReason: 'gameOverTransitionRef.current-true',
+      });
       return;
     }
 
@@ -8820,18 +8848,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     try {
       if (!user?.id) {
         console.log('[GAME OVER COMPLETE] mut02-leader-skip (no user)');
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-no-user',
+          returnReason: 'no-user-id',
+        });
         return;
       }
-      const { data: leaderGame } = await supabase
+      const { data: leaderGame, error: leaderGameErr } = await supabase
         .from('games')
         .select('status, dealer_position, current_game_uuid')
         .eq('id', gameId)
         .maybeSingle();
-      if (!leaderGame || leaderGame.status !== 'game_over') {
-        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
-        return;
-      }
-      const { data: leaderPlayers } = await supabase
+      const { data: leaderPlayers, error: leaderPlayersErr } = await supabase
         .from('players')
         .select('id, user_id, position, is_bot, sitting_out, status')
         .eq('game_id', gameId);
@@ -8839,26 +8868,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !p.is_bot && !p.sitting_out && p.status === 'active'
       );
       let leaderUserId: string | null = null;
-      const dealerSeat = humans.find((p: any) => p.position === leaderGame.dealer_position);
+      const dealerSeat = humans.find((p: any) => p.position === leaderGame?.dealer_position);
       if (dealerSeat) {
         leaderUserId = dealerSeat.user_id;
       } else if (humans.length > 0) {
         const sorted = [...humans].sort((a: any, b: any) => a.position - b.position);
         leaderUserId = sorted[0].user_id;
       }
-      if (!leaderUserId) {
-        // No active humans — let the existing no-humans branch run (safe, no other humans race).
-        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
-      } else if (leaderUserId !== user.id) {
+      const localPlayer = (leaderPlayers || []).find((p: any) => p.user_id === user.id);
+      const isLeader = !leaderUserId || leaderUserId === user.id;
+      const leaderBranch = !leaderGame || leaderGame.status !== 'game_over'
+        ? 'return_status_not_game_over'
+        : !leaderUserId
+          ? 'continue_no_active_humans'
+          : leaderUserId !== user.id
+            ? 'return_not_leader'
+            : 'continue_is_leader';
+      emit357GameOverCompleteDiag('leader_refetch_result', {
+        ..._gocId(),
+        returnedStatus: leaderGame?.status ?? null,
+        returnedDealerPosition: leaderGame?.dealer_position ?? null,
+        returnedCurrentGameUuid: leaderGame?.current_game_uuid ?? null,
+        currentHost: null,
+        localPlayerId: localPlayer?.id ?? null,
+        localPlayerPosition: localPlayer?.position ?? null,
+        computedLeaderUserId: leaderUserId,
+        localIsLeader: isLeader,
+        leaderGameFetchError: (leaderGameErr as any)?.message ?? null,
+        leaderPlayersFetchError: (leaderPlayersErr as any)?.message ?? null,
+        branchDecision: leaderBranch,
+        branchReason: leaderBranch,
+      });
+      if (!leaderGame || leaderGame.status !== 'game_over') {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-status-not-game_over',
+          returnReason: `status-${leaderGame?.status ?? 'null'}`,
+          returnedStatus: leaderGame?.status ?? null,
+        });
+        return;
+      }
+      if (leaderUserId && leaderUserId !== user.id) {
         console.log('[GAME OVER COMPLETE] mut02-leader-skip (not leader)', {
           leaderUserId: leaderUserId.slice(0, 8),
           self: user.id.slice(0, 8),
         });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:mut02-not-leader',
+          returnReason: 'local-not-leader',
+          computedLeaderUserId: leaderUserId,
+        });
         return;
+      }
+      if (!leaderUserId) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
       }
     } catch (leaderErr) {
       console.warn('[GAME OVER COMPLETE] mut02-leader-check-failed (continuing)', leaderErr);
+      emit357GameOverCompleteDiag('leader_refetch_result', {
+        ..._gocId(),
+        branchDecision: 'continue_after_leader_check_threw',
+        branchReason: 'leader-check-exception',
+        error: leaderErr,
+      });
     }
+
 
     gameOverTransitionRef.current = true;
 
