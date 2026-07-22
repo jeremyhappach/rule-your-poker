@@ -42,6 +42,15 @@ interface PotToPlayerAnimationProps {
   gameType?: string | null; // For position adjustment
   onAnimationStart?: () => void;
   onAnimationEnd?: () => void;
+  /**
+   * Optional canonical destination selector. When supplied, this selector
+   * is the ONLY source for the winner endpoint — no `data-chip-center`
+   * lookup, no `data-seat-chip-position` fallback, no cache, no slot math.
+   * Used by 3-5-7 sweep/instant-win to target a uniquely-owned chipstack
+   * root marker instead of the ambiguous generic seat-position marker
+   * (which can resolve to legs/trophy/shim nodes sharing the seat).
+   */
+  destinationSelector?: string | null;
 }
 
 type ArtifactPhase = 'flying' | 'arrival_hold' | 'bouncing' | 'complete';
