@@ -9229,25 +9229,35 @@ export const MobileGameTable = ({
         )}
         
         {/* 3-5-7 Pot To Player Animation */}
-        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
-          <PotToPlayerAnimation
-            triggerId={potToPlayerTriggerId357}
-            amount={threeFiveSevenWinPotAmount}
-            winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
-            currentPlayerPosition={currentPlayer?.position ?? null}
-            getClockwiseDistance={getClockwiseDistance}
-            containerRef={tableContainerRef}
-            gameType={gameType}
-            onAnimationStart={() => {
-              // Pot goes to 0 visually
-              setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
-            }}
-
-            onAnimationEnd={() => {
-              handlePotToPlayerComplete357();
-            }}
-          />
-        )}
+        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (() => {
+          const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1;
+          // Canonical uniquely-owned destination: the winner's
+          // CanonicalChipstack root (data-chipstack-root +
+          // data-chipstack-position). This selector is emitted ONLY by
+          // CanonicalChipstack — never by leg/trophy/Horses/SCC shim
+          // nodes — so the zero-leg 3-5-7 sweep cannot accidentally
+          // resolve to a legs target sharing the same seat position.
+          const destSel = `[data-chipstack-root][data-chipstack-position="${winnerPos}"]`;
+          return (
+            <PotToPlayerAnimation
+              triggerId={potToPlayerTriggerId357}
+              amount={threeFiveSevenWinPotAmount}
+              winnerPosition={winnerPos}
+              currentPlayerPosition={currentPlayer?.position ?? null}
+              getClockwiseDistance={getClockwiseDistance}
+              containerRef={tableContainerRef}
+              gameType={gameType}
+              destinationSelector={destSel}
+              onAnimationStart={() => {
+                // Pot goes to 0 visually
+                setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
+              }}
+              onAnimationEnd={() => {
+                handlePotToPlayerComplete357();
+              }}
+            />
+          );
+        })()}
         
         {/* threeFiveSeven.winnerTabledCardsStage — Wave 5D anchored.
             Persistent stage: stays mounted across the entire win
