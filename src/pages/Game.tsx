@@ -9279,6 +9279,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       try { await normalizeTwoPlayerSeatsIfNeeded(gameId, 'MIT→dealer_selection'); }
       catch (e) { console.error('[GAME OVER → dealer_selection] normalize threw:', e); }
 
+      emit357GameOverCompleteDiag('advance_begin', {
+        ..._gocId(),
+        outgoingDealerGameId: game?.current_game_uuid ?? null,
+        targetStatus: 'dealer_selection',
+        branch: 'make-it-take-it-selection',
+      });
       // P0 GUARD (MUT-02): atomic DB claim
       const { data: dsClaim, error } = await supabase
         .from('games')
@@ -9305,20 +9311,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       if (error) {
         console.error('[GAME OVER] Failed to start dealer selection:', error);
+        emit357GameOverCompleteDiag('advance_error', {
+          ..._gocId(),
+          targetStatus: 'dealer_selection',
+          error,
+        });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:dealer_selection-claim-error',
+          returnReason: 'atomic-claim-error',
+          error,
+        });
         gameOverTransitionRef.current = false;
         return;
       }
       if (!dsClaim || dsClaim.length === 0) {
         console.log('[GAME OVER] mut02-claim-lost (dealer_selection branch)');
+        emit357GameOverCompleteDiag('advance_complete', {
+          ..._gocId(),
+          targetStatus: 'dealer_selection',
+          resultingStatus: null,
+          claimLost: true,
+        });
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:dealer_selection-claim-lost',
+          returnReason: 'mut02-claim-lost',
+        });
         gameOverTransitionRef.current = false;
         await fetchGameData();
         return;
       }
 
       console.log('[GAME OVER] Successfully transitioned to dealer_selection');
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        targetStatus: 'dealer_selection',
+        resultingStatus: 'dealer_selection',
+        claimLost: false,
+      });
       gameOverTransitionRef.current = false;
       anteAnimationFiredRef.current = null;
       await fetchGameData();
+      emit357GameOverCompleteDiag('complete', {
+        ..._gocId(),
+        finalStatus: 'dealer_selection',
+      });
       return;
     }
     
@@ -9343,6 +9381,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await logStatusChanged(gameId, user?.id, 'game_over', 'game_selection', `Starting next game, dealer at position ${newDealerPosition}`);
     await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'handleGameOverComplete');
     
+    emit357GameOverCompleteDiag('advance_begin', {
+      ..._gocId(),
+      outgoingDealerGameId: game?.current_game_uuid ?? null,
+      targetStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+      branch: 'normal-rotation-or-mit-position',
+    });
     // Skip dealer_announcement, go directly to game_selection
     // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
     // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
@@ -9370,17 +9415,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('[GAME OVER] Failed to start game selection:', error);
+      emit357GameOverCompleteDiag('advance_error', {
+        ..._gocId(),
+        targetStatus: 'game_selection',
+        error,
+      });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:game_selection-claim-error',
+        returnReason: 'atomic-claim-error',
+        error,
+      });
       gameOverTransitionRef.current = false;
       return;
     }
     if (!claimRows || claimRows.length === 0) {
       console.log('[GAME OVER] mut02-claim-lost (status no longer game_over) — another client advanced');
+      emit357GameOverCompleteDiag('advance_complete', {
+        ..._gocId(),
+        targetStatus: 'game_selection',
+        resultingStatus: null,
+        claimLost: true,
+      });
+      emit357GameOverCompleteDiag('returned', {
+        ..._gocId(),
+        returnSite: 'handleGameOverComplete:game_selection-claim-lost',
+        returnReason: 'mut02-claim-lost',
+      });
       gameOverTransitionRef.current = false;
       await fetchGameData();
       return;
     }
 
     console.log('[GAME OVER] Successfully transitioned to game_selection, new dealer:', newDealerPosition);
+    emit357GameOverCompleteDiag('advance_complete', {
+      ..._gocId(),
+      targetStatus: 'game_selection',
+      resultingStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+      claimLost: false,
+    });
 
     // Reset transition guard and ante animation guard for next game
     gameOverTransitionRef.current = false;
@@ -9391,6 +9465,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] Calling fetchGameData to sync UI');
     await fetchGameData();
     console.log('[GAME OVER] fetchGameData completed');
+    emit357GameOverCompleteDiag('complete', {
+      ..._gocId(),
+      finalStatus: 'game_selection',
+      selectedNextDealerPosition: newDealerPosition,
+    });
+
   } catch (error: any) {
     // If anything throws above, the previous code would leave gameOverTransitionRef stuck true,
     // permanently blocking progression. This catch + finally makes the flow resilient.
