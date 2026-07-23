@@ -1482,7 +1482,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameId: game?.id ?? null,
       dealerGameId: game?.current_game_uuid ?? null,
       roundId: game?.current_round != null ? String(game.current_round) : null,
-      viewerPlayerId: currentPlayer?.id ?? null,
     }, {
       prevActive: prev,
       nextActive: is357WinAnimationActive,
@@ -1490,7 +1489,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameStatus: game?.status ?? null,
       lastRoundResult: game?.last_round_result ?? null,
     });
-  }, [is357WinAnimationActive, game?.id, game?.current_game_uuid, game?.current_round, game?.status, game?.last_round_result, currentPlayer?.id]);
+  }, [is357WinAnimationActive, game?.id, game?.current_game_uuid, game?.current_round, game?.status, game?.last_round_result]);
 
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
