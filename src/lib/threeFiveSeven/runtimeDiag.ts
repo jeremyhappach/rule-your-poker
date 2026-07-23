@@ -32,7 +32,52 @@ export type ThreeFiveSevenRuntimeEventKind =
   | "pot_animation_begin"
   | "pot_animation_complete"
   | "dealer_game_boundary_reset"
-  | "global_error";
+  | "global_error"
+  // A. Live deal ownership / transport
+  | "deal_runtime_mount"
+  | "wave_dispatch_decision"
+  | "wave_dispatch_begin"
+  | "wave_dispatch_complete"
+  | "first_card_visible"
+  | "full_hand_visible"
+  // B. Show Cards eligibility (superset of show_cards_decision — emits
+  //    every time the eligibility inputs change, incl. pre-deal flash).
+  | "show_cards_eligibility_changed"
+  // C. Active-hand geometry transitions
+  | "active_hand_geometry_changed"
+  // D. Pot destination resolution
+  | "pot_destination_resolution"
+  // E. Error toast invocation (the toast-producing owner boundary,
+  //    complementary to window.onerror / unhandledrejection).
+  | "error_toast_invoked"
+  // F. Win-animation active flag transitions
+  | "win_animation_active_changed";
+
+// ── Correlation envelope ─────────────────────────────────────────────
+// A single per-page-load correlationId groups every 357.runtime.* row
+// into one harness run. sequenceNumber is a monotonic counter across
+// ALL runtime events (regardless of kind) so a consumer can order rows
+// deterministically even when timestamps collide. previousLifecycleEvent
+// is the full event_type of the previous successful runtime event and
+// gives every row an explicit predecessor pointer.
+
+function generateCorrelationId(): string {
+  try {
+    const c: Crypto | undefined = typeof crypto !== "undefined" ? crypto : undefined;
+    if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  } catch {
+    /* noop */
+  }
+  return `corr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+const _correlationId: string = generateCorrelationId();
+let _sequenceNumber = 0;
+let _previousLifecycleEvent: string | null = null;
+
+export function get357RuntimeCorrelationId(): string {
+  return _correlationId;
+}
 
 export interface ThreeFiveSevenRuntimeIdentity {
   gameId?: string | null;
