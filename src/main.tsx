@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+// Release-integrity — MUST load before any other module so window.__APP_BUILD_SHA__
+// and the <meta name="app-build-sha"> tag are installed before any diagnostic fires.
+import "@/lib/buildIdentity";
+import { install357RuntimeGlobalErrorHandlers } from "@/lib/threeFiveSeven/runtimeDiag";
 import { supabase } from "@/integrations/supabase/client";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
@@ -124,5 +128,8 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 import { installPageShowHandler } from "@/lib/pageResumeHandler";
 installPageShowHandler();
+
+// Release-integrity: install 357.runtime.global_error listeners before render.
+install357RuntimeGlobalErrorHandlers();
 
 createRoot(document.getElementById("root")!).render(<App />);

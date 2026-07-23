@@ -1,5 +1,6 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
@@ -6884,12 +6885,56 @@ export const MobileGameTable = ({
         // announcement to clear so the celebration owns the foreground until
         // its TTL elapses. The awaiter effect below advances the phase.
         console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        // C. Sweep wait armed — fallback branch.
+        setLastKnown357TerminalResultIdentity(lastRoundResult ?? null);
+        emit357RuntimeDiag('sweep_wait_armed', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          branch: 'fallback',
+          currentPhase: threeFiveSevenWinPhaseRef.current,
+          activeAnnouncementType: announcementCtx?.active?.type ?? null,
+          triggerId: threeFiveSevenWinTriggerId ?? null,
+        });
+        // E. Legs-phase decision — fallback sweep path selects skip-legs.
+        emit357RuntimeDiag('legs_phase_decision', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          branch: 'fallback',
+          authoritativeLegDelta: 0,
+          playersWithLegsLength: null,
+          cachedLegPositionsLength: capturedLegPositions?.length ?? null,
+          isSweepPath: true,
+          selectedNextPhase: 'await_celebration',
+        });
         sweepAwaitingCelebrationRef.current = true;
         setThreeFiveSevenPotHiddenUntilReset(true);
         return;
       }
 
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
+      // E. Legs-phase decision — fallback non-sweep path selects legs-to-player.
+      emit357RuntimeDiag('legs_phase_decision', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        branch: 'fallback',
+        authoritativeLegDelta: null,
+        playersWithLegsLength: null,
+        cachedLegPositionsLength: capturedLegPositions?.length ?? null,
+        isSweepPath: false,
+        selectedNextPhase: 'legs-to-player',
+      });
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
@@ -6925,6 +6970,22 @@ export const MobileGameTable = ({
     }
 
 
+    // E. Legs-phase decision — primary non-sweep path advances to pot-to-player.
+    emit357RuntimeDiag('legs_phase_decision', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      branch: 'legs_to_player_complete',
+      authoritativeLegDelta: totalLegs,
+      playersWithLegsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+      cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+      isSweepPath: false,
+      selectedNextPhase: 'pot-to-player',
+    });
+
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
@@ -6932,8 +6993,24 @@ export const MobileGameTable = ({
     // CRITICAL: Mark POT-OUT animation as active and set pot to 0 when animation begins
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
-    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId]);
+    const potTid = `pot-to-player-357-${Date.now()}`;
+    setPotToPlayerTriggerId357(potTid);
+    // F. Pot animation begin — non-sweep (legs-complete) branch.
+    emit357RuntimeDiag('pot_animation_begin', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      branch: 'legs_to_player_complete',
+      immutableParsedPrize: null,
+      currentGamesPot: null,
+      amountPassedToAnimation: threeFiveSevenWinPotAmount,
+      destinationSelector: `[data-chip-reaction-target="${players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null}"]`,
+      triggerId: potTid,
+    });
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
@@ -6971,14 +7048,34 @@ export const MobileGameTable = ({
     }
 
     // Winner-only confetti after destination bounce / pot-to-player completion.
-    if (threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId) {
+    const viewerIsWinner = !!(threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId);
+    let confettiAttempted = false;
+    let confettiSucceeded = false;
+    let confettiErr: unknown = null;
+    if (viewerIsWinner) {
+      confettiAttempted = true;
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
         confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
         setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
         setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
-      } catch { /* noop — confetti is presentation-only */ }
+        confettiSucceeded = true;
+      } catch (e) { confettiErr = e; /* noop — confetti is presentation-only */ }
     }
+    // G. Pot animation complete + confetti attempt/result.
+    emit357RuntimeDiag('pot_animation_complete', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      viewerIsWinner,
+      destinationBounceCompleted: true,
+      confettiAttempted,
+      confettiSucceeded,
+      error: confettiErr,
+    });
 
     // Hold the win-animation geometry owner in the terminal 'delay'
     // phase across the presentation tail. Do NOT set 'idle' before the
@@ -7033,13 +7130,29 @@ export const MobileGameTable = ({
     const activeType = announcementCtx?.active?.type ?? null;
     if (activeType === 'match_win') return; // still celebrating
     // Celebration cleared (or never present) — advance the pot phase.
+    const phaseBefore = threeFiveSevenWinPhaseRef.current;
     sweepAwaitingCelebrationRef.current = false;
     console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
-    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+    const releasedTid = `pot-to-player-357-${Date.now()}`;
+    setPotToPlayerTriggerId357(releasedTid);
+    // D. Sweep wait released — match_win cleared branch.
+    emit357RuntimeDiag('sweep_wait_released', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      releaseReason: 'match_win_cleared',
+      activeAnnouncementBeforeRelease: activeType,
+      phaseBefore,
+      phaseAfter: 'pot-to-player',
+      generatedPotTriggerId: releasedTid,
+    });
   }, [announcementCtx?.active?.type]);
 
   // Safety timeout: if the announcement provider never surfaces match_win
@@ -7050,13 +7163,30 @@ export const MobileGameTable = ({
     const t = setTimeout(() => {
       if (!sweepAwaitingCelebrationRef.current) return;
       if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+      const phaseBefore = threeFiveSevenWinPhaseRef.current;
+      const activeType = announcementCtx?.active?.type ?? null;
       sweepAwaitingCelebrationRef.current = false;
       console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
       setThreeFiveSevenWinPhase('pot-to-player');
       threeFiveSevenWinPhaseRef.current = 'pot-to-player';
       setPotOutAnimationActive(true);
       setDisplayedPot(0);
-      setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+      const forcedTid = `pot-to-player-357-${Date.now()}`;
+      setPotToPlayerTriggerId357(forcedTid);
+      // D. Sweep wait released — 5200ms safety fallback branch.
+      emit357RuntimeDiag('sweep_wait_released', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        releaseReason: '5200ms_safety_fallback',
+        activeAnnouncementBeforeRelease: activeType,
+        phaseBefore,
+        phaseAfter: 'pot-to-player',
+        generatedPotTriggerId: forcedTid,
+      });
     }, 5200); // match_win TTL 4500ms + 700ms margin
     return () => clearTimeout(t);
   }, [threeFiveSevenWinTriggerId]);
@@ -9222,11 +9352,54 @@ export const MobileGameTable = ({
                 console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
                 sweepAwaitingCelebrationRef.current = true;
                 setThreeFiveSevenPotHiddenUntilReset(true);
+                // C. Sweep wait armed — primary branch.
+                emit357RuntimeDiag('sweep_wait_armed', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  currentPhase: threeFiveSevenWinPhaseRef.current,
+                  activeAnnouncementType: announcementCtx?.active?.type ?? null,
+                  triggerId: threeFiveSevenWinTriggerId ?? null,
+                });
+                // E. Legs-phase decision — primary sweep path selects skip-legs.
+                emit357RuntimeDiag('legs_phase_decision', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  authoritativeLegDelta: 0,
+                  playersWithLegsLength: null,
+                  cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+                  isSweepPath: true,
+                  selectedNextPhase: 'await_celebration',
+                });
               } else {
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
                 setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+                // E. Legs-phase decision — primary non-sweep path selects legs-to-player.
+                emit357RuntimeDiag('legs_phase_decision', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  authoritativeLegDelta: null,
+                  playersWithLegsLength: null,
+                  cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+                  isSweepPath: false,
+                  selectedNextPhase: 'legs-to-player',
+                });
               }
 
             }

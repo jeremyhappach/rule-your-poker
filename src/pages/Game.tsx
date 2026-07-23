@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
+import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -9285,6 +9286,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         targetStatus: 'dealer_selection',
         branch: 'make-it-take-it-selection',
       });
+      // H. Dealer game boundary reset — dealer_selection branch.
+      emit357RuntimeDiag('dealer_game_boundary_reset', {
+        gameId: gameId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        terminalResultIdentity: game?.last_round_result ?? null,
+      }, {
+        origin: 'handleGameOverComplete',
+        branch: 'dealer_selection',
+        outgoingDealerGameId: game?.current_game_uuid ?? null,
+        payloadFieldsCleared: ['last_round_result','current_round','awaiting_next_round','next_round_number','pot','all_decisions_in','all_decisions_in_round_id','game_over_at','buck_position','total_hands','dealer_selection_state'],
+      });
       // P0 GUARD (MUT-02): atomic DB claim
       const { data: dsClaim, error } = await supabase
         .from('games')
@@ -9389,6 +9401,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       branch: 'normal-rotation-or-mit-position',
     });
     // Skip dealer_announcement, go directly to game_selection
+    // H. Dealer game boundary reset — game_selection branch.
+    emit357RuntimeDiag('dealer_game_boundary_reset', {
+      gameId: gameId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      terminalResultIdentity: game?.last_round_result ?? null,
+    }, {
+      origin: 'handleGameOverComplete',
+      branch: 'game_selection',
+      outgoingDealerGameId: game?.current_game_uuid ?? null,
+      selectedNextDealerPosition: newDealerPosition,
+      configDeadline,
+      payloadFieldsCleared: ['last_round_result','current_round','awaiting_next_round','next_round_number','pot','all_decisions_in','all_decisions_in_round_id','game_over_at','buck_position','total_hands'],
+    });
     // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
     // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
     const { data: claimRows, error } = await supabase
@@ -10316,6 +10341,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: game?.current_game_uuid
       });
     }
+
+    // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
+    emit357RuntimeDiag('sweep_parser_entered', {
+      gameId: game?.id ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: winnerPlayer?.id ?? null,
+      terminalResultIdentity: resultMessage,
+    }, {
+      rawResultMessage: resultMessage,
+      matchedIsSweep: isSweepMessage,
+      parsedWinnerName: winnerName || null,
+      parsedAmount: sweepAmountFromSentinel,
+      parseError: isSweepMessage && sweepAmountFromSentinel === null ? 'missing_or_malformed_amount' : null,
+    });
+
+    // B. Show-cards decision diagnostic.
+    emit357RuntimeDiag('show_cards_decision', {
+      gameId: game?.id ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: winnerPlayer?.id ?? null,
+      terminalResultIdentity: resultMessage,
+    }, {
+      expectedCardCount,
+      rawWinnerCardCount: rawWinnerCards.length,
+      cardsAcceptedForDisplay: winnerCards.length,
+      staleContaminationRejected: rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount,
+      currentRound: game?.current_round ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
+
     
     // Extract pot from message if available (format: "$X pot").
     // SWEEP: use the immutable pre-zero terminal awarded amount embedded in
