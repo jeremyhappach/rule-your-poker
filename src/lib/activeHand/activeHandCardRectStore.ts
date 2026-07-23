@@ -90,7 +90,7 @@ function emitGeometryDiag(
   transition: 'first-publish' | 'changed' | 'cleared',
 ): void {
   try {
-    if (game !== 'three-five-seven') return;
+    if (game !== 'threeFiveSeven') return;
     void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
       emit357RuntimeDiag('active_hand_geometry_changed', {}, {
         gameKey: game,
