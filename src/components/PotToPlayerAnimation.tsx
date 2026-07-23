@@ -161,6 +161,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const gameTypeRef = useRef(gameType);
   const amountRef = useRef(amount);
   const destinationSelectorRef = useRef(destinationSelector);
+  const destinationElementRef = useRef<HTMLElement | null>(destinationElement ?? null);
 
   useEffect(() => {
     winnerPositionRef.current = winnerPosition;
@@ -170,6 +171,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     gameTypeRef.current = gameType;
     amountRef.current = amount;
     destinationSelectorRef.current = destinationSelector;
+    destinationElementRef.current = destinationElement ?? null;
   });
 
   useEffect(() => {
