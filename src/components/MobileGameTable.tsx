@@ -5000,13 +5000,19 @@ export const MobileGameTable = ({
   // P0 fix B: Holm decisions are blocked until the canonical deal
   // barrier opens (holmDealReady). Non-Holm games default true.
   const holmDecisionGate = gameType === 'holm-game' ? holmDealReady : true;
-  // Surgical repair item 6: block Drop/Stay/Show Cards the instant the
-  // authoritative self-hand contains 3+5+7. Independent of announcement
-  // gates, round nullification, or advancement timing.
+  // Surgical repair item 1: authoritative-hand suppression.
+  // Uses `rawCurrentPlayerCards` — the DB-authoritative player_cards row
+  // for the local seat — NOT the DealRuntime-scoped presentation subset
+  // (`currentPlayerCards`) which may release cards one at a time and
+  // therefore lag behind the true hand contents. This boolean flips the
+  // instant the authoritative row contains a length-3 3-5-7 hand, and
+  // is applied in the same render as an eligibility gate for decision
+  // controls — no effect / state-setter chain is required.
   const selfHandHasActive357 = __is357GameType(gameType)
-    && Array.isArray(currentPlayerCards)
-    && currentPlayerCards.length > 0
-    && has357Hand(currentPlayerCards as CardType[]);
+    && activeDealerGameIdentityMatches
+    && Array.isArray(rawCurrentPlayerCards)
+    && rawCurrentPlayerCards.length === 3
+    && has357Hand(rawCurrentPlayerCards as CardType[]);
   const threeFiveSevenDecisionBoundaryOpen = __is357GameType(gameType)
     ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
