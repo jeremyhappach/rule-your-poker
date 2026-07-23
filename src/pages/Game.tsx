@@ -9286,6 +9286,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         targetStatus: 'dealer_selection',
         branch: 'make-it-take-it-selection',
       });
+      // H. Dealer game boundary reset — dealer_selection branch.
+      emit357RuntimeDiag('dealer_game_boundary_reset', {
+        gameId: gameId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        terminalResultIdentity: game?.last_round_result ?? null,
+      }, {
+        origin: 'handleGameOverComplete',
+        branch: 'dealer_selection',
+        outgoingDealerGameId: game?.current_game_uuid ?? null,
+        payloadFieldsCleared: ['last_round_result','current_round','awaiting_next_round','next_round_number','pot','all_decisions_in','all_decisions_in_round_id','game_over_at','buck_position','total_hands','dealer_selection_state'],
+      });
       // P0 GUARD (MUT-02): atomic DB claim
       const { data: dsClaim, error } = await supabase
         .from('games')
