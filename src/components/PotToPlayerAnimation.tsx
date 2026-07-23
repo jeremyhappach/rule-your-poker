@@ -248,9 +248,36 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
           }
         }
       }
+      // D. Pot destination resolution diagnostic (fire-and-forget).
+      try {
+        const explicit = destinationSelectorRef.current;
+        const explicitEl = explicit ? freshContainer.querySelector(explicit) as HTMLElement | null : null;
+        void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+          emit357RuntimeDiag('pot_destination_resolution', {
+            viewerPlayerId: null,
+          }, {
+            gameType: gameTypeRef.current ?? null,
+            winnerPosition: winnerPositionRef.current,
+            destinationSelector: explicit ?? null,
+            destinationSelectorResolved: !!explicitEl,
+            resolvedElementTag: explicitEl?.tagName ?? null,
+            resolvedElementId: explicitEl?.id ?? null,
+            resolvedElementDataAttrs: explicitEl
+              ? Array.from(explicitEl.attributes)
+                  .filter((a) => a.name.startsWith('data-'))
+                  .map((a) => `${a.name}=${a.value}`)
+              : null,
+            resolvedPathToStart: winnerCoords,
+            potCoords,
+            containerSize: { w: rect.width, h: rect.height },
+            fallbackUsed: !explicit,
+          });
+        }).catch(() => {});
+      } catch { /* diagnostic-only */ }
 
       // Notify start - pot should show 0 now
       onStartRef.current?.();
+
 
       setAnimation({
         fromX: rect.left + potCoords.x,
