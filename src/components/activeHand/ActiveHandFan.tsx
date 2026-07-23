@@ -21,7 +21,7 @@
  *     content — those remain owned by the calling pane.
  */
 
-import { useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { PlayingCard, getCardSize } from '@/components/PlayingCard';
 import type { Card as CardType } from '@/lib/cardUtils';
 import type { CardFrontTierKey } from '@/lib/cardFrontDesign/config';
