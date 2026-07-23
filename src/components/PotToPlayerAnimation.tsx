@@ -51,6 +51,20 @@ interface PotToPlayerAnimationProps {
    * (which can resolve to legs/trophy/shim nodes sharing the seat).
    */
   destinationSelector?: string | null;
+  /**
+   * OPT-IN canonical destination element. When supplied and mounted,
+   * this element is measured (`getBoundingClientRect()`) at animation
+   * start and used as the winner endpoint EXCLUSIVELY — no selector
+   * query, no `data-chip-center` lookup, no `data-seat-chip-position`
+   * fallback, no cache, no slot math.
+   *
+   * Provided by the shell-owned WinnerChipEndpointRegistry via the
+   * table-scoped resolver. If null/undefined, the existing selector +
+   * canonical-endpoint + slot-math fallback chain is used unchanged.
+   * A stale (detached) element falls through to the existing path
+   * rather than aborting flight.
+   */
+  destinationElement?: HTMLElement | null;
 }
 
 type ArtifactPhase = 'flying' | 'arrival_hold' | 'bouncing' | 'complete';
