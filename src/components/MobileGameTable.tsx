@@ -9352,11 +9352,54 @@ export const MobileGameTable = ({
                 console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
                 sweepAwaitingCelebrationRef.current = true;
                 setThreeFiveSevenPotHiddenUntilReset(true);
+                // C. Sweep wait armed — primary branch.
+                emit357RuntimeDiag('sweep_wait_armed', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  currentPhase: threeFiveSevenWinPhaseRef.current,
+                  activeAnnouncementType: announcementCtx?.active?.type ?? null,
+                  triggerId: threeFiveSevenWinTriggerId ?? null,
+                });
+                // E. Legs-phase decision — primary sweep path selects skip-legs.
+                emit357RuntimeDiag('legs_phase_decision', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  authoritativeLegDelta: 0,
+                  playersWithLegsLength: null,
+                  cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+                  isSweepPath: true,
+                  selectedNextPhase: 'await_celebration',
+                });
               } else {
                 // Set phase to legs-to-player to start the sweep animation
                 setThreeFiveSevenWinPhase('legs-to-player');
                 threeFiveSevenWinPhaseRef.current = 'legs-to-player';
                 setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+                // E. Legs-phase decision — primary non-sweep path selects legs-to-player.
+                emit357RuntimeDiag('legs_phase_decision', {
+                  gameId: gameId ?? null,
+                  roundId: handContextId ?? null,
+                  viewerPlayerId: currentPlayer?.id ?? null,
+                  winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                  terminalResultIdentity: lastRoundResult ?? null,
+                }, {
+                  branch: 'primary',
+                  authoritativeLegDelta: null,
+                  playersWithLegsLength: null,
+                  cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+                  isSweepPath: false,
+                  selectedNextPhase: 'legs-to-player',
+                });
               }
 
             }
