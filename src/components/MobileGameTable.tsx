@@ -7013,7 +7013,7 @@ export const MobileGameTable = ({
           isSweepPath: true,
           selectedNextPhase: 'await_celebration',
         });
-        sweepAwaitingCelebrationRef.current = true;
+        sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
         setThreeFiveSevenPotHiddenUntilReset(true);
         return;
       }
@@ -7224,21 +7224,45 @@ export const MobileGameTable = ({
   // match_win TTL (4500ms) + margin guarantees forward progress even if the
   // announcement is dropped or the provider is absent.
   useEffect(() => {
-    if (!sweepAwaitingCelebrationRef.current) return;
+    const stored = sweepAwaitingCelebrationRef.current;
+    if (!stored) return;
     if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+    const active = build357PresentationIdentity();
+    if (!matches357PresentationIdentity(stored, active)) {
+      // Cross-dealer-game leakage: refuse to release a stale sweep.
+      emit357RuntimeDiag('dealer_game_boundary_reset', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        site: 'sweep_release_effect',
+        suppressionReason: 'cross_dealer_game_cancelled',
+        storedDealerGameId: stored.dealerGameId,
+        activeDealerGameId: active.dealerGameId,
+        storedTerminalResultIdentity: stored.terminalResultIdentity,
+        activeTerminalResultIdentity: active.terminalResultIdentity,
+        storedHandContextId: stored.handContextId,
+        activeHandContextId: active.handContextId,
+        storedTriggerId: stored.triggerId,
+        activeTriggerId: active.triggerId,
+      });
+      sweepAwaitingCelebrationRef.current = null;
+      return;
+    }
     const activeType = announcementCtx?.active?.type ?? null;
     if (activeType === 'match_win') return; // still celebrating
-    // Celebration cleared (or never present) — advance the pot phase.
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
-    sweepAwaitingCelebrationRef.current = false;
+    sweepAwaitingCelebrationRef.current = null;
     console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
     const releasedTid = `pot-to-player-357-${Date.now()}`;
+    activePotIdentityRef.current = active;
     setPotToPlayerTriggerId357(releasedTid);
-    // D. Sweep wait released — match_win cleared branch.
     emit357RuntimeDiag('sweep_wait_released', {
       gameId: gameId ?? null,
       roundId: handContextId ?? null,
@@ -7252,27 +7276,55 @@ export const MobileGameTable = ({
       phaseAfter: 'pot-to-player',
       generatedPotTriggerId: releasedTid,
     });
-  }, [announcementCtx?.active?.type]);
+  }, [announcementCtx?.active?.type, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
 
-  // Safety timeout: if the announcement provider never surfaces match_win
-  // (scope mismatch, dropped emit), release the sweep gate after the TTL
-  // plus a small margin so the winner still sees pot transfer + confetti.
+  // Safety timeout with identity binding + boundary-cancellable ref.
   useEffect(() => {
-    if (!sweepAwaitingCelebrationRef.current) return;
-    const t = setTimeout(() => {
-      if (!sweepAwaitingCelebrationRef.current) return;
+    const armed = sweepAwaitingCelebrationRef.current;
+    if (!armed) return;
+    const boundIdentity: Three57PresentationIdentity = armed;
+    if (sweepSafetyTimeoutRef.current) clearTimeout(sweepSafetyTimeoutRef.current);
+    sweepSafetyTimeoutRef.current = setTimeout(() => {
+      sweepSafetyTimeoutRef.current = null;
+      const stored = sweepAwaitingCelebrationRef.current;
+      if (!stored) return;
+      const active = build357PresentationIdentity();
+      // Identity must match BOTH the bound identity captured at arming AND
+      // the currently-stored identity. Any drift → cross-dealer-game leak.
+      if (!matches357PresentationIdentity(stored, boundIdentity) ||
+          !matches357PresentationIdentity(stored, active)) {
+        emit357RuntimeDiag('dealer_game_boundary_reset', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          site: 'sweep_safety_timeout',
+          suppressionReason: 'cross_dealer_game_cancelled',
+          storedDealerGameId: stored.dealerGameId,
+          activeDealerGameId: active.dealerGameId,
+          storedTerminalResultIdentity: stored.terminalResultIdentity,
+          activeTerminalResultIdentity: active.terminalResultIdentity,
+          storedHandContextId: stored.handContextId,
+          activeHandContextId: active.handContextId,
+          storedTriggerId: stored.triggerId,
+          activeTriggerId: active.triggerId,
+        });
+        return;
+      }
       if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
       const phaseBefore = threeFiveSevenWinPhaseRef.current;
       const activeType = announcementCtx?.active?.type ?? null;
-      sweepAwaitingCelebrationRef.current = false;
+      sweepAwaitingCelebrationRef.current = null;
       console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
       setThreeFiveSevenWinPhase('pot-to-player');
       threeFiveSevenWinPhaseRef.current = 'pot-to-player';
       setPotOutAnimationActive(true);
       setDisplayedPot(0);
       const forcedTid = `pot-to-player-357-${Date.now()}`;
+      activePotIdentityRef.current = active;
       setPotToPlayerTriggerId357(forcedTid);
-      // D. Sweep wait released — 5200ms safety fallback branch.
       emit357RuntimeDiag('sweep_wait_released', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -7287,8 +7339,60 @@ export const MobileGameTable = ({
         generatedPotTriggerId: forcedTid,
       });
     }, 5200); // match_win TTL 4500ms + 700ms margin
-    return () => clearTimeout(t);
-  }, [threeFiveSevenWinTriggerId]);
+    return () => {
+      if (sweepSafetyTimeoutRef.current) {
+        clearTimeout(sweepSafetyTimeoutRef.current);
+        sweepSafetyTimeoutRef.current = null;
+      }
+    };
+  }, [threeFiveSevenWinTriggerId, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
+
+  // DEALER-GAME BOUNDARY: on dealerGameId or handContextId transition,
+  // cancel every stale sweep-wait, timer, pot trigger, and completion
+  // ownership so DG1 presentation cannot leak into DG2.
+  const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
+  useEffect(() => {
+    const prev = prev357BoundaryIdentityRef.current;
+    const nextDgId = three57DealerGameId;
+    const nextHandCtx = handContextId ?? null;
+    prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
+    if (!prev) return;
+    const boundaryCrossed =
+      prev.dealerGameId !== nextDgId ||
+      prev.handContextId !== nextHandCtx;
+    if (!boundaryCrossed) return;
+    const staleSweep = sweepAwaitingCelebrationRef.current;
+    const stalePot = activePotIdentityRef.current;
+    const hasStale = !!staleSweep || !!stalePot || !!sweepSafetyTimeoutRef.current;
+    if (!hasStale) return;
+    if (sweepSafetyTimeoutRef.current) {
+      clearTimeout(sweepSafetyTimeoutRef.current);
+      sweepSafetyTimeoutRef.current = null;
+    }
+    sweepAwaitingCelebrationRef.current = null;
+    activePotIdentityRef.current = null;
+    emit357RuntimeDiag('dealer_game_boundary_reset', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      site: 'dealer_game_boundary',
+      suppressionReason: 'cross_dealer_game_cancelled',
+      storedDealerGameId: (staleSweep ?? stalePot)?.dealerGameId ?? null,
+      activeDealerGameId: nextDgId,
+      storedTerminalResultIdentity: (staleSweep ?? stalePot)?.terminalResultIdentity ?? null,
+      activeTerminalResultIdentity: lastRoundResult ?? null,
+      storedHandContextId: (staleSweep ?? stalePot)?.handContextId ?? null,
+      activeHandContextId: nextHandCtx,
+      storedTriggerId: (staleSweep ?? stalePot)?.triggerId ?? null,
+      activeTriggerId: threeFiveSevenWinTriggerId ?? null,
+      hadArmedSweep: !!staleSweep,
+      hadActivePot: !!stalePot,
+    });
+  }, [three57DealerGameId, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
+
 
 
   // ── Canonical seat contract (PR-B: single-path collapse) ──────────
@@ -9449,7 +9553,7 @@ export const MobileGameTable = ({
                 // match_win announcement to clear so celebration owns the
                 // foreground until its TTL elapses. Awaiter effect advances.
                 console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
-                sweepAwaitingCelebrationRef.current = true;
+                sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
                 setThreeFiveSevenPotHiddenUntilReset(true);
                 // C. Sweep wait armed — primary branch.
                 emit357RuntimeDiag('sweep_wait_armed', {
