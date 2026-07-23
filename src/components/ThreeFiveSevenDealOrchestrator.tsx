@@ -296,9 +296,8 @@ export function ThreeFiveSevenDealOrchestrator({
     dispatchedWaveRef.current = waveContextId;
 
     // A. wave_dispatch_begin — emit IMMEDIATELY before ownership call.
-    const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
-    const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
-    const dealerGameId = waveContextId.split('#')[0] ?? null;
+    // (handIdentity/roundStr/dealerGameId reused from decision effect scope.)
+    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const expectedCountBefore = deal.expectedCount;
     const runtimePhaseBefore = deal.phase;
