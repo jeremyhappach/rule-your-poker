@@ -11471,7 +11471,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
     if (!gameId || !user) return;
 
-    if (game?.game_type === '3-5-7' && (game.status === 'game_over' || currentRound == null)) {
+    if (is357GameType && (game?.status === 'game_over' || currentRound == null)) {
       console.warn('[PLAYER DECISION] reject Stay — 3-5-7 terminal/missing round boundary', {
         status: game.status,
         currentRoundId: currentRound?.id ?? null,
@@ -11562,7 +11562,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold') => {
     if (!gameId || !user) return;
 
-    if (game?.game_type === '3-5-7' && (game.status === 'game_over' || currentRound == null)) {
+    if (is357GameType && (game?.status === 'game_over' || currentRound == null)) {
       console.warn('[PLAYER DECISION] reject Fold — 3-5-7 terminal/missing round boundary', {
         status: game.status,
         currentRoundId: currentRound?.id ?? null,
@@ -13805,6 +13805,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameStatus={game.status}
               holmDealerGameId={(game as any).current_game_uuid ?? null}
               horsesRoundId={currentRound?.id ?? null}
+              horsesHandNumber={currentRound?.hand_number ?? null}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
@@ -13882,7 +13883,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               externalShowdownRoundNumber={isInProgress && hasActiveRound ? showdownRoundNumberRef : undefined}
               externalCommunityCardsCache={isInProgress && hasActiveRound ? communityCardsCacheRef : undefined}
               externalCommunityCacheEpoch={communityCacheEpoch}
-              handContextId={isInProgress && hasActiveRound ? handContextKey : null}
+              handContextId={hasActiveRound ? handContextKey : null}
               winner357ShowCards={winner357ShowCards}
               onWinner357ShowCards={handleWinner357ShowCards}
               holmPreFold={holmPreFold}

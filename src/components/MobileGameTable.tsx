@@ -3170,9 +3170,17 @@ export const MobileGameTable = ({
   } else {
     prevRoundForHandEpochRef.current = null;
   }
+  const threeFiveSevenDealerGameScope = __is357GameType(gameType)
+    ? ((holmDealerGameId ?? horsesDealerGameId) ?? gameId ?? null)
+    : null;
+  const threeFiveSevenHandIdentity = __is357GameType(gameType)
+    ? (typeof horsesHandNumber === 'number'
+        ? `h${horsesHandNumber}`
+        : `h${threeFiveSevenHandEpochRef.current}`)
+    : null;
   const threeFiveSevenHandContextId =
-    __is357GameType(gameType) && gameId
-      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}`
+    threeFiveSevenDealerGameScope && threeFiveSevenHandIdentity
+      ? `${threeFiveSevenDealerGameScope}#${threeFiveSevenHandIdentity}`
       : null;
   const threeFiveSevenWaveContextId =
     threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
@@ -4215,8 +4223,7 @@ export const MobileGameTable = ({
     terminalResultIdentity: string | null;
     triggerId: string | null;
   };
-  const three57DealerGameId =
-    (holmDealerGameId ?? horsesDealerGameId) ?? null;
+  const three57DealerGameId = threeFiveSevenDealerGameScope;
   const build357PresentationIdentity =
     useCallback((): Three57PresentationIdentity => ({
       dealerGameId: three57DealerGameId,
@@ -4232,6 +4239,7 @@ export const MobileGameTable = ({
     if (!stored) return false;
     return (
       stored.dealerGameId === active.dealerGameId &&
+      stored.roundId === active.roundId &&
       stored.handContextId === active.handContextId &&
       stored.terminalResultIdentity === active.terminalResultIdentity &&
       stored.triggerId === active.triggerId
@@ -4980,8 +4988,8 @@ export const MobileGameTable = ({
   // P0 fix B: Holm decisions are blocked until the canonical deal
   // barrier opens (holmDealReady). Non-Holm games default true.
   const holmDecisionGate = gameType === 'holm-game' ? holmDealReady : true;
-  const threeFiveSevenDecisionBoundaryOpen = gameType === '3-5-7'
-    ? gameStatus !== 'game_over' && currentRound != null
+  const threeFiveSevenDecisionBoundaryOpen = __is357GameType(gameType)
+    ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
 
@@ -7221,6 +7229,7 @@ export const MobileGameTable = ({
     // 300ms presentation tail, then invoke the canonical completion
     // callback, then finally release the win-animation geometry.
     setTimeout(() => {
+      void (async () => {
       emit357InstantWinTerminal('presentation_completed', {
         gameId: gameId ?? undefined,
         winnerPlayerId: threeFiveSevenWinnerId ?? null,
@@ -7231,7 +7240,7 @@ export const MobileGameTable = ({
       // this callback should be swallowed. Any downstream idempotency
       // is the parent handler's responsibility.
       try {
-        onThreeFiveSevenWinAnimationComplete?.();
+        await Promise.resolve(onThreeFiveSevenWinAnimationComplete?.());
       } catch (err) {
         emit357GameOverCompleteDiag('pot_complete_callback_threw', {
           gameId: gameId ?? null,
@@ -7249,6 +7258,7 @@ export const MobileGameTable = ({
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       activePotIdentityRef.current = null;
+      })();
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity]);
 
