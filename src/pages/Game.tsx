@@ -9611,11 +9611,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // IMPORTANT: We do NOT return a cleanup here, because React would run it on every re-render
   // and repeatedly cancel the timer before it can fire.
   useEffect(() => {
+    const lrr357 = game?.last_round_result ?? '';
     const is357StuckGameOver =
       game?.status === 'game_over' &&
       game?.game_type !== 'holm-game' &&
       !game?.game_over_at &&
-      game?.last_round_result?.includes('won the game');
+      (lrr357.includes('won the game') || lrr357.startsWith('357_SWEEP:'));
+
 
     const clearFallbackTimers = () => {
       if (safety357FallbackTimerRef.current) {
