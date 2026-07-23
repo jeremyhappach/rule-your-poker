@@ -86,6 +86,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   onAnimationStart,
   onAnimationEnd,
   destinationSelector,
+  destinationElement,
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const [phase, setPhase] = useState<ArtifactPhase>('flying');
