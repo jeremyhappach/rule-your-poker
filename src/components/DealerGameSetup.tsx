@@ -1103,6 +1103,18 @@ const DealerGameSetupInner = ({
       updateData.reveal_at_showdown = revealAtShowdown;
     }
 
+    // H. Dealer game boundary reset — DealerGameSetup atomic owner.
+    emit357RuntimeDiag('dealer_game_boundary_reset', {
+      gameId: gameId ?? null,
+      dealerGameId: dealerGameId ?? null,
+    }, {
+      origin: 'DealerGameSetup.handleSubmit',
+      branch: 'ante_decision',
+      gameTypeToSubmit,
+      isHolmGame,
+      payloadFieldsCleared: ['last_round_result','game_over_at','current_round','awaiting_next_round','next_round_number'],
+      currentRoundValue: isHolmGame ? 1 : null,
+    });
     const { error } = await supabase
       .from('games')
       .update(updateData)
