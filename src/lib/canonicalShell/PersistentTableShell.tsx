@@ -461,8 +461,10 @@ export function PersistentTableShell({
             <ShellTabBarProvider>
               <ShellTimerProvider>
                 <ShellFeltContextProvider>
-                  <LobbyAnnouncementReset lobbyMode={lobbyMode} />
-                  {body}
+                  <WinnerChipEndpointRegistryProvider>
+                    <LobbyAnnouncementReset lobbyMode={lobbyMode} />
+                    {body}
+                  </WinnerChipEndpointRegistryProvider>
                 </ShellFeltContextProvider>
               </ShellTimerProvider>
             </ShellTabBarProvider>
