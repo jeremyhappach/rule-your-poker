@@ -85,6 +85,11 @@ export function ThreeFiveSevenDealOrchestrator({
   const ct = useCardTransport();
   const deal = useDealRuntime();
   const dispatchedWaveRef = useRef<string | null>(null);
+  // Tracks per-wave dispatch begin time (used for first_card_visible /
+  // full_hand_visible elapsed-time computation). Fire-and-forget only.
+  const waveDispatchBeginAtRef = useRef<Map<string, number>>(new Map());
+  const firstCardVisibleEmittedRef = useRef<Set<string>>(new Set());
+  const fullHandVisibleEmittedRef = useRef<Set<string>>(new Set());
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
