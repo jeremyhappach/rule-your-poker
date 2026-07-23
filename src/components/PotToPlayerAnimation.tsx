@@ -193,12 +193,25 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       // ambiguity where the generic per-position marker resolves to a
       // legs/trophy/shim node that happens to share the seat.
       let winnerCoords: { x: number; y: number } | null = null;
+      let explicitMatchedElements: HTMLElement[] | null = null;
+      let explicitChosenElement: HTMLElement | null = null;
       const explicitSelector = destinationSelectorRef.current;
       if (explicitSelector) {
-        const el = freshContainer.querySelector(explicitSelector) as HTMLElement | null;
-        if (el) {
-          const containerRect = freshContainer.getBoundingClientRect();
+        explicitMatchedElements = Array.from(freshContainer.querySelectorAll<HTMLElement>(explicitSelector));
+        const isVisibleReactionTarget = (el: HTMLElement): boolean => {
           const r = el.getBoundingClientRect();
+          const s = window.getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || '1') > 0;
+        };
+        const canonicalClusterSelector = `[data-canonical-seat-cluster][data-seat-position="${winnerPositionRef.current}"]`;
+        explicitChosenElement =
+          explicitMatchedElements.find((el) => !!el.closest(canonicalClusterSelector) && isVisibleReactionTarget(el)) ??
+          explicitMatchedElements.find((el) => !!el.closest('[data-canonical-shell-viewer-chip-endpoint]') && isVisibleReactionTarget(el)) ??
+          explicitMatchedElements.find(isVisibleReactionTarget) ??
+          null;
+        if (explicitChosenElement) {
+          const containerRect = freshContainer.getBoundingClientRect();
+          const r = explicitChosenElement.getBoundingClientRect();
           winnerCoords = {
             x: r.left - containerRect.left + r.width / 2,
             y: r.top - containerRect.top + r.height / 2,
@@ -251,10 +264,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       // C. Pot destination resolution diagnostic — enriched (fire-and-forget).
       try {
         const explicit = destinationSelectorRef.current;
-        const nodeList = explicit ? freshContainer.querySelectorAll(explicit) : null;
+        const nodeList = explicit ? (explicitMatchedElements ?? Array.from(freshContainer.querySelectorAll<HTMLElement>(explicit))) : null;
         const matchedElementCount = nodeList ? nodeList.length : 0;
         const matchedElements = nodeList
-          ? Array.from(nodeList).slice(0, 8).map((n) => {
+          ? nodeList.slice(0, 8).map((n) => {
               const el = n as HTMLElement;
               const r = el.getBoundingClientRect();
               return {
@@ -270,7 +283,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
               };
             })
           : null;
-        const chosenEl = (nodeList && nodeList[0]) as HTMLElement | null;
+        const chosenEl = explicitChosenElement ?? ((nodeList && nodeList[0]) as HTMLElement | null);
         const chosenRect = chosenEl ? chosenEl.getBoundingClientRect() : null;
         const containerRect = freshContainer.getBoundingClientRect();
         void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {

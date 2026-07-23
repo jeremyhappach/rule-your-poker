@@ -996,6 +996,25 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
   const roundNumber = typeof game.current_round === 'number' ? game.current_round : null;
 
+  if (is357Game && (game.status === 'game_over' || roundNumber === null)) {
+    console.warn('[MAKE DECISION] Ignoring stale 3-5-7 decision at terminal/missing-round boundary', {
+      gameId,
+      gameType: game.game_type,
+      status: game.status,
+      currentRound: game.current_round,
+      playerId,
+      decision,
+    });
+    logRaceConditionGuard(gameId, 'gameLogic:makeDecision', 'BLOCKED_357_TERMINAL_OR_MISSING_ROUND', {
+      gameType: game.game_type,
+      status: game.status,
+      currentRound: game.current_round,
+      playerId,
+      decision,
+    });
+    return;
+  }
+
   if (!isHolmGame && roundNumber === null) {
     console.error('[MAKE DECISION] No current_round set for non-Holm game', { gameId, gameType: game.game_type });
     throw new Error('No current round');
