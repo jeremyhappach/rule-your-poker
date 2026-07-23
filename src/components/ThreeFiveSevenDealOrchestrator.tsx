@@ -294,8 +294,75 @@ export function ThreeFiveSevenDealOrchestrator({
     }
 
     dispatchedWaveRef.current = waveContextId;
-    deal.beginWave(intents.length);
-    ct.dispatchMany(intents);
+
+    // A. wave_dispatch_begin — emit IMMEDIATELY before ownership call.
+    const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
+    const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
+    const dealerGameId = waveContextId.split('#')[0] ?? null;
+    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
+    const expectedCountBefore = deal.expectedCount;
+    const runtimePhaseBefore = deal.phase;
+    const intentIds = intents.map((i) => i.id);
+    const dispatchBeginAt = performance.now();
+    waveDispatchBeginTimeRef.current.set(waveContextId, dispatchBeginAt);
+
+    emit357RuntimeDiag('wave_dispatch_begin', {
+      dealerGameId,
+      roundId: roundStr,
+      handNumber: handNumberStr ? Number(handNumberStr) : null,
+      viewerPlayerId: selfPlayerId,
+    }, {
+      waveContextId,
+      handIdentity,
+      dealRuntimeKey: handIdentity,
+      runtimePhase: runtimePhaseBefore,
+      expectedCountBefore,
+      cardsThisWave,
+      totalExpectedAfterWave: expectedCountBefore + intents.length,
+      activeIntentCount: intents.length,
+      dispatchIntentCount: intents.length,
+      dispatchManifestIds: intentIds,
+      firstIntentId: intentIds[0] ?? null,
+      lastIntentId: intentIds[intentIds.length - 1] ?? null,
+      dealerPosition,
+      activeSeatCount: activeSeats.length,
+      selfPlayerId,
+      dispatchBeginAt,
+    });
+
+    let dispatchError: unknown = null;
+    try {
+      deal.beginWave(intents.length);
+      ct.dispatchMany(intents);
+    } catch (err) {
+      dispatchError = err;
+    }
+
+    // A. wave_dispatch_complete — emits ONLY after the ownership call
+    // returns (success OR error). Transport settlement is NOT dispatch
+    // completion; that's covered separately by first_card_visible /
+    // full_hand_visible.
+    emit357RuntimeDiag('wave_dispatch_complete', {
+      dealerGameId,
+      roundId: roundStr,
+      handNumber: handNumberStr ? Number(handNumberStr) : null,
+      viewerPlayerId: selfPlayerId,
+    }, {
+      waveContextId,
+      handIdentity,
+      dealRuntimeKey: handIdentity,
+      expectedCountAfter: deal.expectedCount,
+      runtimePhaseAfter: deal.phase,
+      activeIntentCount: intents.length,
+      dispatchedIntentCount: dispatchError ? 0 : intents.length,
+      dispatchManifestIds: intentIds,
+      dispatchBeginAt,
+      dispatchCompleteAt: performance.now(),
+      dispatchDurationMs: performance.now() - dispatchBeginAt,
+      success: !dispatchError,
+      error: dispatchError,
+    });
+
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
