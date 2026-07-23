@@ -11391,6 +11391,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleStay = async (traceSource: 'live stay' | 'pre-stay execute' = 'live stay') => {
     if (!gameId || !user) return;
 
+    if (game?.game_type === '3-5-7' && (game.status === 'game_over' || currentRound == null)) {
+      console.warn('[PLAYER DECISION] reject Stay — 3-5-7 terminal/missing round boundary', {
+        status: game.status,
+        currentRoundId: currentRound?.id ?? null,
+      });
+      return;
+    }
+
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
@@ -11473,6 +11481,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleFold = async (traceSource: 'live fold' | 'pre-fold execute' = 'live fold') => {
     if (!gameId || !user) return;
+
+    if (game?.game_type === '3-5-7' && (game.status === 'game_over' || currentRound == null)) {
+      console.warn('[PLAYER DECISION] reject Fold — 3-5-7 terminal/missing round boundary', {
+        status: game.status,
+        currentRoundId: currentRound?.id ?? null,
+      });
+      return;
+    }
 
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {

@@ -4880,7 +4880,10 @@ export const MobileGameTable = ({
   // P0 fix B: Holm decisions are blocked until the canonical deal
   // barrier opens (holmDealReady). Non-Holm games default true.
   const holmDecisionGate = gameType === 'holm-game' ? holmDealReady : true;
-  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate;
+  const threeFiveSevenDecisionBoundaryOpen = gameType === '3-5-7'
+    ? gameStatus !== 'game_over' && currentRound != null
+    : true;
+  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and
@@ -9248,13 +9251,9 @@ export const MobileGameTable = ({
         {/* 3-5-7 Pot To Player Animation */}
         {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (() => {
           const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1;
-          // Canonical uniquely-owned destination: the winner's
-          // CanonicalChipstack root (data-chipstack-root +
-          // data-chipstack-position). This selector is emitted ONLY by
-          // CanonicalChipstack — never by leg/trophy/Horses/SCC shim
-          // nodes — so the zero-leg 3-5-7 sweep cannot accidentally
-          // resolve to a legs target sharing the same seat position.
-          const destSel = `[data-chipstack-root][data-chipstack-position="${winnerPos}"]`;
+          // Canonical production destination: player chip reaction target.
+          // Do not fall back to generic data-chip-center for 3-5-7 sweeps.
+          const destSel = `[data-chip-reaction-target="${winnerPos}"]`;
           return (
             <PotToPlayerAnimation
               triggerId={potToPlayerTriggerId357}
