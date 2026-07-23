@@ -212,7 +212,25 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       let winnerCoords: { x: number; y: number } | null = null;
       let explicitMatchedElements: HTMLElement[] | null = null;
       let explicitChosenElement: HTMLElement | null = null;
-      const explicitSelector = destinationSelectorRef.current;
+
+      // Opt-in canonical destination element (registry-provided).
+      // Measured at animation start. If the element is detached or has
+      // zero geometry we fall through to the existing selector /
+      // canonical-endpoint / slot-math chain rather than aborting.
+      const explicitElement = destinationElementRef.current;
+      if (explicitElement && freshContainer.contains(explicitElement)) {
+        const containerRect = freshContainer.getBoundingClientRect();
+        const r = explicitElement.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          winnerCoords = {
+            x: r.left - containerRect.left + r.width / 2,
+            y: r.top - containerRect.top + r.height / 2,
+          };
+          explicitChosenElement = explicitElement;
+        }
+      }
+
+      const explicitSelector = winnerCoords ? null : destinationSelectorRef.current;
       if (explicitSelector) {
         explicitMatchedElements = Array.from(freshContainer.querySelectorAll<HTMLElement>(explicitSelector));
         const isVisibleReactionTarget = (el: HTMLElement): boolean => {
