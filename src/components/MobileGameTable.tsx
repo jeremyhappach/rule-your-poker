@@ -5009,7 +5009,7 @@ export const MobileGameTable = ({
   // is applied in the same render as an eligibility gate for decision
   // controls — no effect / state-setter chain is required.
   const selfHandHasActive357 = __is357GameType(gameType)
-    && activeDealerGameIdentityMatches
+    && handContextId != null
     && Array.isArray(rawCurrentPlayerCards)
     && rawCurrentPlayerCards.length === 3
     && has357Hand(rawCurrentPlayerCards as CardType[]);
