@@ -3376,6 +3376,9 @@ export const MobileGameTable = ({
     (currentRound === 2 || currentRound === 3) && 
     stayedPlayersCount >= 2 && 
     (allDecisionsIn || awaitingNextRound);
+
+  // B. Show Cards eligibility effect is declared AFTER currentPlayer.
+
   
   // ── HOLM hand-lifecycle gating (root-cause fix #1) ──────────────
   // Solo eligibility MUST be scoped to the active Holm hand. The DealRuntime
@@ -4135,6 +4138,62 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+
+  // B. Show Cards eligibility diagnostic — mirrors the exact render
+  //    expression at L~11478. Fire-and-forget, no behavior change.
+  const showCardsEligibilitySigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    const isWinner357InAnimation =
+      threeFiveSevenWinnerId === currentPlayer?.id &&
+      threeFiveSevenWinPhase !== 'idle';
+    const isSweepPath = !!lastRoundResult?.startsWith('357_SWEEP:');
+    const shouldRender = isWinner357InAnimation && !isSweepPath;
+    const buttonShown = shouldRender && !winner357ShowCards;
+    const reason = !isWinner357InAnimation
+      ? 'not-winner-or-idle-phase'
+      : isSweepPath
+        ? 'sweep-path-suppresses-show-cards'
+        : winner357ShowCards
+          ? 'already-shown'
+          : 'render-button';
+    const authoritativeCardCount = Array.isArray(playerCards)
+      ? playerCards.filter((c: { player_id?: string }) => c.player_id === currentPlayer?.id).length
+      : 0;
+    const expectedCardCount = currentRound === 1 ? 3 : currentRound === 2 ? 5 : currentRound === 3 ? 7 : 0;
+    const sig = [
+      shouldRender, buttonShown, isWinner357InAnimation, isSweepPath,
+      winner357ShowCards, threeFiveSevenWinPhase, threeFiveSevenWinnerId,
+      currentPlayer?.id ?? '', gameType, gameStatus, currentRound,
+      lastRoundResult ?? '', is357MultiPlayerShowdown,
+      authoritativeCardCount, expectedCardCount,
+    ].join('|');
+    if (showCardsEligibilitySigRef.current === sig) return;
+    const prevSig = showCardsEligibilitySigRef.current;
+    showCardsEligibilitySigRef.current = sig;
+    void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+      emit357RuntimeDiag('show_cards_eligibility_changed', {
+        gameId: gameId ?? null,
+        roundId: currentRound != null ? String(currentRound) : null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        shouldRender, buttonShown, reason,
+        gameType, gameStatus, currentRound,
+        lastRoundResult: lastRoundResult ?? null,
+        isSweepPath, winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        authoritativeCardCount, expectedCardCount,
+        displayedCardCount: authoritativeCardCount,
+        threeFiveSevenWinPhase, is357MultiPlayerShowdown, winner357ShowCards,
+        prevSig, nextSig: sig,
+      });
+    }).catch(() => {});
+  }, [
+    gameType, gameStatus, currentRound, lastRoundResult, gameId,
+    threeFiveSevenWinnerId, threeFiveSevenWinPhase,
+    is357MultiPlayerShowdown, winner357ShowCards, currentPlayer?.id, playerCards,
+  ]);
 
   // 3-5-7 sweep pot release gate: canonical match-win announcement must
   // complete before the pot-to-player animation begins. See DG1 audit —

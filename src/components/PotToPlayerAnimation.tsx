@@ -248,10 +248,31 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
           }
         }
       }
-      // D. Pot destination resolution diagnostic (fire-and-forget).
+      // C. Pot destination resolution diagnostic — enriched (fire-and-forget).
       try {
         const explicit = destinationSelectorRef.current;
-        const explicitEl = explicit ? freshContainer.querySelector(explicit) as HTMLElement | null : null;
+        const nodeList = explicit ? freshContainer.querySelectorAll(explicit) : null;
+        const matchedElementCount = nodeList ? nodeList.length : 0;
+        const matchedElements = nodeList
+          ? Array.from(nodeList).slice(0, 8).map((n) => {
+              const el = n as HTMLElement;
+              const r = el.getBoundingClientRect();
+              return {
+                tag: el.tagName,
+                id: el.id || null,
+                dataAttrs: Array.from(el.attributes)
+                  .filter((a) => a.name.startsWith('data-'))
+                  .map((a) => `${a.name}=${a.value}`),
+                rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+                viewportRect: {
+                  top: r.top, left: r.left, bottom: r.bottom, right: r.right,
+                },
+              };
+            })
+          : null;
+        const chosenEl = (nodeList && nodeList[0]) as HTMLElement | null;
+        const chosenRect = chosenEl ? chosenEl.getBoundingClientRect() : null;
+        const containerRect = freshContainer.getBoundingClientRect();
         void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
           emit357RuntimeDiag('pot_destination_resolution', {
             viewerPlayerId: null,
@@ -259,21 +280,40 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             gameType: gameTypeRef.current ?? null,
             winnerPosition: winnerPositionRef.current,
             destinationSelector: explicit ?? null,
-            destinationSelectorResolved: !!explicitEl,
-            resolvedElementTag: explicitEl?.tagName ?? null,
-            resolvedElementId: explicitEl?.id ?? null,
-            resolvedElementDataAttrs: explicitEl
-              ? Array.from(explicitEl.attributes)
+            destinationSelectorResolved: !!chosenEl,
+            matchedElementCount,
+            matchedElements,
+            chosenElementRect: chosenRect
+              ? { x: chosenRect.x, y: chosenRect.y, w: chosenRect.width, h: chosenRect.height }
+              : null,
+            chosenElementViewportOffset: chosenRect
+              ? { top: chosenRect.top, left: chosenRect.left }
+              : null,
+            containerRect: {
+              x: containerRect.x, y: containerRect.y,
+              w: containerRect.width, h: containerRect.height,
+              top: containerRect.top, left: containerRect.left,
+            },
+            resolvedElementTag: chosenEl?.tagName ?? null,
+            resolvedElementId: chosenEl?.id ?? null,
+            resolvedElementDataAttrs: chosenEl
+              ? Array.from(chosenEl.attributes)
                   .filter((a) => a.name.startsWith('data-'))
                   .map((a) => `${a.name}=${a.value}`)
               : null,
             resolvedPathToStart: winnerCoords,
             potCoords,
             containerSize: { w: rect.width, h: rect.height },
-            fallbackUsed: !explicit,
+            fallbackUsed: !explicit || !chosenEl,
+            fallbackReason: !explicit
+              ? 'no-selector-provided'
+              : !chosenEl
+                ? 'selector-matched-zero-elements'
+                : null,
           });
         }).catch(() => {});
       } catch { /* diagnostic-only */ }
+
 
       // Notify start - pot should show 0 now
       onStartRef.current?.();
