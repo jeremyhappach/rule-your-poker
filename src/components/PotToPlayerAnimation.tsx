@@ -261,7 +261,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
           onEndRef.current?.();
           return;
         }
-      } else {
+      } else if (!winnerCoords) {
         const canonicalWinner = resolveChipEndpoint({
           ref: { kind: 'seat', position: winnerPositionRef.current },
           container: freshContainer,
