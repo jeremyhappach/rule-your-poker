@@ -7130,13 +7130,29 @@ export const MobileGameTable = ({
     const activeType = announcementCtx?.active?.type ?? null;
     if (activeType === 'match_win') return; // still celebrating
     // Celebration cleared (or never present) — advance the pot phase.
+    const phaseBefore = threeFiveSevenWinPhaseRef.current;
     sweepAwaitingCelebrationRef.current = false;
     console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
-    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+    const releasedTid = `pot-to-player-357-${Date.now()}`;
+    setPotToPlayerTriggerId357(releasedTid);
+    // D. Sweep wait released — match_win cleared branch.
+    emit357RuntimeDiag('sweep_wait_released', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      releaseReason: 'match_win_cleared',
+      activeAnnouncementBeforeRelease: activeType,
+      phaseBefore,
+      phaseAfter: 'pot-to-player',
+      generatedPotTriggerId: releasedTid,
+    });
   }, [announcementCtx?.active?.type]);
 
   // Safety timeout: if the announcement provider never surfaces match_win
@@ -7147,13 +7163,30 @@ export const MobileGameTable = ({
     const t = setTimeout(() => {
       if (!sweepAwaitingCelebrationRef.current) return;
       if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
+      const phaseBefore = threeFiveSevenWinPhaseRef.current;
+      const activeType = announcementCtx?.active?.type ?? null;
       sweepAwaitingCelebrationRef.current = false;
       console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
       setThreeFiveSevenWinPhase('pot-to-player');
       threeFiveSevenWinPhaseRef.current = 'pot-to-player';
       setPotOutAnimationActive(true);
       setDisplayedPot(0);
-      setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+      const forcedTid = `pot-to-player-357-${Date.now()}`;
+      setPotToPlayerTriggerId357(forcedTid);
+      // D. Sweep wait released — 5200ms safety fallback branch.
+      emit357RuntimeDiag('sweep_wait_released', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        releaseReason: '5200ms_safety_fallback',
+        activeAnnouncementBeforeRelease: activeType,
+        phaseBefore,
+        phaseAfter: 'pot-to-player',
+        generatedPotTriggerId: forcedTid,
+      });
     }, 5200); // match_win TTL 4500ms + 700ms margin
     return () => clearTimeout(t);
   }, [threeFiveSevenWinTriggerId]);
