@@ -259,6 +259,61 @@ export function ActiveHandFan({
   );
   useActiveHandCardRectPublisher(game, publishRect);
 
+  // D. Enriched 3-5-7 active-hand geometry trace — emits on every
+  //    resolved layout change with the full sizing-owner inputs. Diagnostic
+  //    only, fire-and-forget, no polling.
+  const geometrySigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (game !== 'threeFiveSeven') return;
+    const sig = [
+      publishRect?.cardWidthPx ?? 0,
+      publishRect?.cardHeightPx ?? 0,
+      effectiveLayout.cardWidth,
+      effectiveLayout.cardHeight,
+      resolvedStageRect?.width ?? 0,
+      resolvedStageRect?.height ?? 0,
+      capacity,
+      cards.length,
+      isFallback ? 'fallback' : 'measured',
+      fallbackReason ?? '',
+      activeHandFanRenderKey ?? '',
+    ].join('|');
+    if (geometrySigRef.current === sig) return;
+    const prevSig = geometrySigRef.current;
+    geometrySigRef.current = sig;
+    void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+      emit357RuntimeDiag('active_hand_geometry_changed', {}, {
+        source: 'ActiveHandFan.resolver',
+        game,
+        resolvedScale: null,
+        reserveHeightPx: null,
+        cardWidthPx: effectiveLayout.cardWidth,
+        cardHeightPx: effectiveLayout.cardHeight,
+        layoutMode: isFallback ? 'fallback' : 'measured',
+        fallbackReason,
+        branchExpression: isFallback
+          ? `layout==null; fallbackReason=${fallbackReason}`
+          : 'resolveActiveHandLayout(resolvedStageRect,capacity,policy,aspect)',
+        stageRectWidth: resolvedStageRect?.width ?? null,
+        stageRectHeight: resolvedStageRect?.height ?? null,
+        capacity,
+        cardsLength: cards.length,
+        aspect,
+        policyName: (policy as { name?: string })?.name ?? null,
+        activeHandFanRenderKey: activeHandFanRenderKey ?? null,
+        publishRect: publishRect
+          ? { w: publishRect.cardWidthPx, h: publishRect.cardHeightPx }
+          : null,
+        prevSig,
+        nextSig: sig,
+      });
+    }).catch(() => {});
+  }, [
+    game, publishRect, effectiveLayout.cardWidth, effectiveLayout.cardHeight,
+    resolvedStageRect?.width, resolvedStageRect?.height, capacity, cards.length,
+    isFallback, fallbackReason, activeHandFanRenderKey, aspect, policy,
+  ]);
+
   useLayoutEffect(() => {
     if (game !== 'threeFiveSeven') return;
     const root = rootRef.current;
