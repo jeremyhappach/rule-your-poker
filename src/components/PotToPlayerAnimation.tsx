@@ -51,20 +51,6 @@ interface PotToPlayerAnimationProps {
    * (which can resolve to legs/trophy/shim nodes sharing the seat).
    */
   destinationSelector?: string | null;
-  /**
-   * OPT-IN canonical destination element. When supplied and mounted,
-   * this element is measured (`getBoundingClientRect()`) at animation
-   * start and used as the winner endpoint EXCLUSIVELY — no selector
-   * query, no `data-chip-center` lookup, no `data-seat-chip-position`
-   * fallback, no cache, no slot math.
-   *
-   * Provided by the shell-owned WinnerChipEndpointRegistry via the
-   * table-scoped resolver. If null/undefined, the existing selector +
-   * canonical-endpoint + slot-math fallback chain is used unchanged.
-   * A stale (detached) element falls through to the existing path
-   * rather than aborting flight.
-   */
-  destinationElement?: HTMLElement | null;
 }
 
 type ArtifactPhase = 'flying' | 'arrival_hold' | 'bouncing' | 'complete';
@@ -86,7 +72,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   onAnimationStart,
   onAnimationEnd,
   destinationSelector,
-  destinationElement,
+  
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const [phase, setPhase] = useState<ArtifactPhase>('flying');
@@ -161,7 +147,6 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const gameTypeRef = useRef(gameType);
   const amountRef = useRef(amount);
   const destinationSelectorRef = useRef(destinationSelector);
-  const destinationElementRef = useRef<HTMLElement | null>(destinationElement ?? null);
 
   useEffect(() => {
     winnerPositionRef.current = winnerPosition;
@@ -171,7 +156,6 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     gameTypeRef.current = gameType;
     amountRef.current = amount;
     destinationSelectorRef.current = destinationSelector;
-    destinationElementRef.current = destinationElement ?? null;
   });
 
   useEffect(() => {
@@ -213,22 +197,9 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       let explicitMatchedElements: HTMLElement[] | null = null;
       let explicitChosenElement: HTMLElement | null = null;
 
-      // Opt-in canonical destination element (registry-provided).
-      // Measured at animation start. If the element is detached or has
-      // zero geometry we fall through to the existing selector /
-      // canonical-endpoint / slot-math chain rather than aborting.
-      const explicitElement = destinationElementRef.current;
-      if (explicitElement && freshContainer.contains(explicitElement)) {
-        const containerRect = freshContainer.getBoundingClientRect();
-        const r = explicitElement.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) {
-          winnerCoords = {
-            x: r.left - containerRect.left + r.width / 2,
-            y: r.top - containerRect.top + r.height / 2,
-          };
-          explicitChosenElement = explicitElement;
-        }
-      }
+      // Winner endpoint resolution: selector (if provided) → canonical
+      // seat endpoint → DOM lookup → cached percentage → slot math.
+
 
       const explicitSelector = winnerCoords ? null : destinationSelectorRef.current;
       if (explicitSelector) {

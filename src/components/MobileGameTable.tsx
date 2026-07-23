@@ -104,6 +104,7 @@ import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
+import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
   observerSlotForPosition,
@@ -163,7 +164,7 @@ import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
-import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
+import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices, has357Hand } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
@@ -2126,6 +2127,17 @@ export const MobileGameTable = ({
   const [showSweepsPot, setShowSweepsPot] = useState(false);
   const [sweepsPlayerName, setSweepsPlayerName] = useState('');
   const lastSweepsResultRef = useRef<string | null>(null);
+  // Surgical repair: sweep-celebration completion is the SOLE release
+  // signal for the sweep-wait phase. Captured at SweepsPotAnimation (and
+  // optional SweepTheLegsAnimation) onComplete. See item 1 of the
+  // surgical repair spec.
+  const [showSweepTheLegs357, setShowSweepTheLegs357] = useState(false);
+  const [sweepCelebrationCompleted, setSweepCelebrationCompleted] = useState(false);
+  // Detection-time snapshot: did any authoritative player have legs > 0
+  // when the 357_SWEEP: sentinel was observed? Governs the conditional
+  // SweepTheLegsAnimation overlay only — NEVER used to infer a leg
+  // award (that is legs delta from settlement, which is zero for sweep).
+  const hadLegsBeforeSweepRef = useRef<boolean>(false);
   
   // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
   // ⚠ TODO WAVE 5 — ThreeFiveSevenWinController is parked. See
@@ -4246,7 +4258,7 @@ export const MobileGameTable = ({
     );
   };
   const sweepAwaitingCelebrationRef = useRef<Three57PresentationIdentity | null>(null);
-  const sweepSafetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const activePotIdentityRef = useRef<Three57PresentationIdentity | null>(null);
 
 
@@ -4988,8 +5000,15 @@ export const MobileGameTable = ({
   // P0 fix B: Holm decisions are blocked until the canonical deal
   // barrier opens (holmDealReady). Non-Holm games default true.
   const holmDecisionGate = gameType === 'holm-game' ? holmDealReady : true;
+  // Surgical repair item 6: block Drop/Stay/Show Cards the instant the
+  // authoritative self-hand contains 3+5+7. Independent of announcement
+  // gates, round nullification, or advancement timing.
+  const selfHandHasActive357 = __is357GameType(gameType)
+    && Array.isArray(currentPlayerCards)
+    && currentPlayerCards.length > 0
+    && has357Hand(currentPlayerCards as CardType[]);
   const threeFiveSevenDecisionBoundaryOpen = __is357GameType(gameType)
-    ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1
+    ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
 
@@ -5913,9 +5932,16 @@ export const MobileGameTable = ({
         : body;
       lastSweepsResultRef.current = lastRoundResult;
       setSweepsPlayerName(playerName);
+      // Detection-time legs snapshot governs the conditional
+      // SweepTheLegsAnimation overlay. Any player.legs > 0 at
+      // detection → arm the overlay. Zero across every player → skip.
+      hadLegsBeforeSweepRef.current = Array.isArray(players)
+        && players.some((p) => typeof p?.legs === 'number' && (p.legs as number) > 0);
+      setSweepCelebrationCompleted(false);
+      setShowSweepTheLegs357(false);
       setShowSweepsPot(true);
     }
-  }, [lastRoundResult, gameType, gameId]);
+  }, [lastRoundResult, gameType, gameId, players]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
@@ -7262,19 +7288,20 @@ export const MobileGameTable = ({
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity]);
 
-  // Sweep celebration → pot-to-player gate. When a 3-5-7 sweep arms the
-  // awaiter (isSweepResultFallback / isSweepResultPrimary branches), hold
-  // in 'waiting' phase until the canonical match_win announcement clears.
-  // Only then advance to 'pot-to-player'. A safety timeout bounded by the
-  // match_win TTL (4500ms) + margin guarantees forward progress even if the
-  // announcement is dropped or the provider is absent.
+  // SURGICAL REPAIR — sweep celebration release.
+  //
+  // The sweep-wait phase releases IFF the local sweep celebration
+  // (SweepsPotAnimation + optional SweepTheLegsAnimation) has completed
+  // AND the active presentation identity still matches the identity
+  // captured when the awaiter was armed. No match_win announcement gate,
+  // no safety timer — the celebration onComplete IS the release signal.
   useEffect(() => {
+    if (!sweepCelebrationCompleted) return;
     const stored = sweepAwaitingCelebrationRef.current;
     if (!stored) return;
     if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
     const active = build357PresentationIdentity();
     if (!matches357PresentationIdentity(stored, active)) {
-      // Cross-dealer-game leakage: refuse to release a stale sweep.
       emit357RuntimeDiag('dealer_game_boundary_reset', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -7296,11 +7323,8 @@ export const MobileGameTable = ({
       sweepAwaitingCelebrationRef.current = null;
       return;
     }
-    const activeType = announcementCtx?.active?.type ?? null;
-    if (activeType === 'match_win') return; // still celebrating
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
     sweepAwaitingCelebrationRef.current = null;
-    console.log('[357 WIN] Sweep celebration cleared — advancing to pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
@@ -7315,86 +7339,16 @@ export const MobileGameTable = ({
       winnerPlayerId: threeFiveSevenWinnerId ?? null,
       terminalResultIdentity: lastRoundResult ?? null,
     }, {
-      releaseReason: 'match_win_cleared',
-      activeAnnouncementBeforeRelease: activeType,
+      releaseReason: 'sweep_celebration_completed',
       phaseBefore,
       phaseAfter: 'pot-to-player',
       generatedPotTriggerId: releasedTid,
     });
-  }, [announcementCtx?.active?.type, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
-
-  // Safety timeout with identity binding + boundary-cancellable ref.
-  useEffect(() => {
-    const armed = sweepAwaitingCelebrationRef.current;
-    if (!armed) return;
-    const boundIdentity: Three57PresentationIdentity = armed;
-    if (sweepSafetyTimeoutRef.current) clearTimeout(sweepSafetyTimeoutRef.current);
-    sweepSafetyTimeoutRef.current = setTimeout(() => {
-      sweepSafetyTimeoutRef.current = null;
-      const stored = sweepAwaitingCelebrationRef.current;
-      if (!stored) return;
-      const active = build357PresentationIdentity();
-      // Identity must match BOTH the bound identity captured at arming AND
-      // the currently-stored identity. Any drift → cross-dealer-game leak.
-      if (!matches357PresentationIdentity(stored, boundIdentity) ||
-          !matches357PresentationIdentity(stored, active)) {
-        emit357RuntimeDiag('dealer_game_boundary_reset', {
-          gameId: gameId ?? null,
-          roundId: handContextId ?? null,
-          viewerPlayerId: currentPlayer?.id ?? null,
-          winnerPlayerId: threeFiveSevenWinnerId ?? null,
-          terminalResultIdentity: lastRoundResult ?? null,
-        }, {
-          site: 'sweep_safety_timeout',
-          suppressionReason: 'cross_dealer_game_cancelled',
-          storedDealerGameId: stored.dealerGameId,
-          activeDealerGameId: active.dealerGameId,
-          storedTerminalResultIdentity: stored.terminalResultIdentity,
-          activeTerminalResultIdentity: active.terminalResultIdentity,
-          storedHandContextId: stored.handContextId,
-          activeHandContextId: active.handContextId,
-          storedTriggerId: stored.triggerId,
-          activeTriggerId: active.triggerId,
-        });
-        return;
-      }
-      if (threeFiveSevenWinPhaseRef.current !== 'waiting') return;
-      const phaseBefore = threeFiveSevenWinPhaseRef.current;
-      const activeType = announcementCtx?.active?.type ?? null;
-      sweepAwaitingCelebrationRef.current = null;
-      console.warn('[357 WIN] Sweep celebration gate timed out — forcing pot-to-player');
-      setThreeFiveSevenWinPhase('pot-to-player');
-      threeFiveSevenWinPhaseRef.current = 'pot-to-player';
-      setPotOutAnimationActive(true);
-      setDisplayedPot(0);
-      const forcedTid = `pot-to-player-357-${Date.now()}`;
-      activePotIdentityRef.current = active;
-      setPotToPlayerTriggerId357(forcedTid);
-      emit357RuntimeDiag('sweep_wait_released', {
-        gameId: gameId ?? null,
-        roundId: handContextId ?? null,
-        viewerPlayerId: currentPlayer?.id ?? null,
-        winnerPlayerId: threeFiveSevenWinnerId ?? null,
-        terminalResultIdentity: lastRoundResult ?? null,
-      }, {
-        releaseReason: '5200ms_safety_fallback',
-        activeAnnouncementBeforeRelease: activeType,
-        phaseBefore,
-        phaseAfter: 'pot-to-player',
-        generatedPotTriggerId: forcedTid,
-      });
-    }, 5200); // match_win TTL 4500ms + 700ms margin
-    return () => {
-      if (sweepSafetyTimeoutRef.current) {
-        clearTimeout(sweepSafetyTimeoutRef.current);
-        sweepSafetyTimeoutRef.current = null;
-      }
-    };
-  }, [threeFiveSevenWinTriggerId, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
+  }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
 
   // DEALER-GAME BOUNDARY: on dealerGameId or handContextId transition,
-  // cancel every stale sweep-wait, timer, pot trigger, and completion
-  // ownership so DG1 presentation cannot leak into DG2.
+  // cancel every stale sweep-wait, pot trigger, and celebration state
+  // so DG1 presentation cannot leak into DG2.
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
     const prev = prev357BoundaryIdentityRef.current;
@@ -7408,35 +7362,37 @@ export const MobileGameTable = ({
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
-    const hasStale = !!staleSweep || !!stalePot || !!sweepSafetyTimeoutRef.current;
-    if (!hasStale) return;
-    if (sweepSafetyTimeoutRef.current) {
-      clearTimeout(sweepSafetyTimeoutRef.current);
-      sweepSafetyTimeoutRef.current = null;
-    }
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
-    emit357RuntimeDiag('dealer_game_boundary_reset', {
-      gameId: gameId ?? null,
-      roundId: handContextId ?? null,
-      viewerPlayerId: currentPlayer?.id ?? null,
-      winnerPlayerId: threeFiveSevenWinnerId ?? null,
-      terminalResultIdentity: lastRoundResult ?? null,
-    }, {
-      site: 'dealer_game_boundary',
-      suppressionReason: 'cross_dealer_game_cancelled',
-      storedDealerGameId: (staleSweep ?? stalePot)?.dealerGameId ?? null,
-      activeDealerGameId: nextDgId,
-      storedTerminalResultIdentity: (staleSweep ?? stalePot)?.terminalResultIdentity ?? null,
-      activeTerminalResultIdentity: lastRoundResult ?? null,
-      storedHandContextId: (staleSweep ?? stalePot)?.handContextId ?? null,
-      activeHandContextId: nextHandCtx,
-      storedTriggerId: (staleSweep ?? stalePot)?.triggerId ?? null,
-      activeTriggerId: threeFiveSevenWinTriggerId ?? null,
-      hadArmedSweep: !!staleSweep,
-      hadActivePot: !!stalePot,
-    });
+    setShowSweepsPot(false);
+    setShowSweepTheLegs357(false);
+    setSweepCelebrationCompleted(false);
+    hadLegsBeforeSweepRef.current = false;
+    lastSweepsResultRef.current = null;
+    if (staleSweep || stalePot) {
+      emit357RuntimeDiag('dealer_game_boundary_reset', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        site: 'dealer_game_boundary',
+        suppressionReason: 'cross_dealer_game_cancelled',
+        storedDealerGameId: (staleSweep ?? stalePot)?.dealerGameId ?? null,
+        activeDealerGameId: nextDgId,
+        storedTerminalResultIdentity: (staleSweep ?? stalePot)?.terminalResultIdentity ?? null,
+        activeTerminalResultIdentity: lastRoundResult ?? null,
+        storedHandContextId: (staleSweep ?? stalePot)?.handContextId ?? null,
+        activeHandContextId: nextHandCtx,
+        storedTriggerId: (staleSweep ?? stalePot)?.triggerId ?? null,
+        activeTriggerId: threeFiveSevenWinTriggerId ?? null,
+        hadArmedSweep: !!staleSweep,
+        hadActivePot: !!stalePot,
+      });
+    }
   }, [three57DealerGameId, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
+
 
 
 
@@ -8995,12 +8951,33 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
-        {/* 357 Sweeps Pot Animation */}
-        <SweepsPotAnimation 
-          show={showSweepsPot} 
-          playerName={sweepsPlayerName} 
-          onComplete={() => setShowSweepsPot(false)} 
+        {/* 357 Sweeps Pot Animation — completion is the SOLE release
+            signal for the sweep-wait phase. If legs were present at
+            detection, chain into SweepTheLegsAnimation before releasing;
+            otherwise mark celebration complete immediately. */}
+        <SweepsPotAnimation
+          show={showSweepsPot}
+          playerName={sweepsPlayerName}
+          onComplete={() => {
+            setShowSweepsPot(false);
+            if (hadLegsBeforeSweepRef.current) {
+              setShowSweepTheLegs357(true);
+            } else {
+              setSweepCelebrationCompleted(true);
+            }
+          }}
         />
+        {/* Conditional Sweep-The-Legs overlay — armed only when
+            detection-time legs > 0. Its completion (or immediate skip)
+            releases the sweep-wait phase. */}
+        <SweepTheLegsAnimation
+          show={showSweepTheLegs357}
+          onComplete={() => {
+            setShowSweepTheLegs357(false);
+            setSweepCelebrationCompleted(true);
+          }}
+        />
+
         
         {/* Ante Up Animation */}
         <AnteUpAnimation
@@ -9672,9 +9649,9 @@ export const MobileGameTable = ({
         {/* 3-5-7 Pot To Player Animation */}
         {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (() => {
           const winnerPos = players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1;
-          // Canonical production destination: player chip reaction target.
-          // Do not fall back to generic data-chip-center for 3-5-7 sweeps.
-          const destSel = `[data-chip-reaction-target="${winnerPos}"]`;
+          // Surgical repair item 4: use the working canonical
+          // `[data-chip-center]` endpoint via PotToPlayerAnimation's
+          // default resolver — do NOT pass a bespoke destinationSelector.
           return (
             <PotToPlayerAnimation
               triggerId={potToPlayerTriggerId357}
@@ -9684,7 +9661,6 @@ export const MobileGameTable = ({
               getClockwiseDistance={getClockwiseDistance}
               containerRef={tableContainerRef}
               gameType={gameType}
-              destinationSelector={destSel}
               onAnimationStart={() => {
                 // Pot goes to 0 visually
                 setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
