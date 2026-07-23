@@ -40,7 +40,8 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { cloneElement, isValidElement, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { useRegisterWinnerChipEndpoint } from './WinnerChipEndpointRegistry';
 import {
   getShellNameplateConfig,
   subscribeShellNameplate,
