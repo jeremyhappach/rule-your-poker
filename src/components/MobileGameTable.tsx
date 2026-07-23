@@ -6885,12 +6885,56 @@ export const MobileGameTable = ({
         // announcement to clear so the celebration owns the foreground until
         // its TTL elapses. The awaiter effect below advances the phase.
         console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        // C. Sweep wait armed — fallback branch.
+        setLastKnown357TerminalResultIdentity(lastRoundResult ?? null);
+        emit357RuntimeDiag('sweep_wait_armed', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          branch: 'fallback',
+          currentPhase: threeFiveSevenWinPhaseRef.current,
+          activeAnnouncementType: announcementCtx?.active?.type ?? null,
+          triggerId: threeFiveSevenWinTriggerId ?? null,
+        });
+        // E. Legs-phase decision — fallback sweep path selects skip-legs.
+        emit357RuntimeDiag('legs_phase_decision', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          branch: 'fallback',
+          authoritativeLegDelta: 0,
+          playersWithLegsLength: null,
+          cachedLegPositionsLength: capturedLegPositions?.length ?? null,
+          isSweepPath: true,
+          selectedNextPhase: 'await_celebration',
+        });
         sweepAwaitingCelebrationRef.current = true;
         setThreeFiveSevenPotHiddenUntilReset(true);
         return;
       }
 
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
+      // E. Legs-phase decision — fallback non-sweep path selects legs-to-player.
+      emit357RuntimeDiag('legs_phase_decision', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        branch: 'fallback',
+        authoritativeLegDelta: null,
+        playersWithLegsLength: null,
+        cachedLegPositionsLength: capturedLegPositions?.length ?? null,
+        isSweepPath: false,
+        selectedNextPhase: 'legs-to-player',
+      });
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
