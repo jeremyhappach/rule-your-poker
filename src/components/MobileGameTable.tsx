@@ -4198,8 +4198,48 @@ export const MobileGameTable = ({
   // 3-5-7 sweep pot release gate: canonical match-win announcement must
   // complete before the pot-to-player animation begins. See DG1 audit —
   // pot transfer previously started ~2.7s before match_win TTL elapsed.
+  //
+  // CROSS-DEALER-GAME LEAKAGE FIX: Every armed sweep, pending timeout, and
+  // pot trigger carries a stable identity envelope. Release paths, the
+  // safety timeout, the pot-completion handler, and confetti all verify
+  // the stored identity still matches the active identity before firing.
+  // On dealer-game boundary (dealerGameId or handContextId transition) we
+  // cancel stale sweep waits, stale timers, and clear stale completion
+  // ownership so DG1 presentation cannot leak into DG2. Late callbacks
+  // for the SAME dealer game remain valid.
   const announcementCtx = useAnnouncementContext();
-  const sweepAwaitingCelebrationRef = useRef(false);
+  type Three57PresentationIdentity = {
+    dealerGameId: string | null;
+    roundId: string | null;
+    handContextId: string | null;
+    terminalResultIdentity: string | null;
+    triggerId: string | null;
+  };
+  const three57DealerGameId =
+    (holmDealerGameId ?? horsesDealerGameId) ?? null;
+  const build357PresentationIdentity =
+    useCallback((): Three57PresentationIdentity => ({
+      dealerGameId: three57DealerGameId,
+      roundId: horsesRoundId ?? null,
+      handContextId: handContextId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+      triggerId: threeFiveSevenWinTriggerId ?? null,
+    }), [three57DealerGameId, horsesRoundId, handContextId, lastRoundResult, threeFiveSevenWinTriggerId]);
+  const matches357PresentationIdentity = (
+    stored: Three57PresentationIdentity | null,
+    active: Three57PresentationIdentity,
+  ): boolean => {
+    if (!stored) return false;
+    return (
+      stored.dealerGameId === active.dealerGameId &&
+      stored.handContextId === active.handContextId &&
+      stored.terminalResultIdentity === active.terminalResultIdentity &&
+      stored.triggerId === active.triggerId
+    );
+  };
+  const sweepAwaitingCelebrationRef = useRef<Three57PresentationIdentity | null>(null);
+  const sweepSafetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activePotIdentityRef = useRef<Three57PresentationIdentity | null>(null);
 
 
   // HOLM: monotonic folded-latch for the local self hand.
