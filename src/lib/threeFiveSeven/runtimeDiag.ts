@@ -172,9 +172,16 @@ export function emit357RuntimeDiag(
       };
     }
 
+    _sequenceNumber += 1;
+    const sequenceNumber = _sequenceNumber;
+    const previousLifecycleEvent = _previousLifecycleEvent;
+
     const insertPayload: Record<string, unknown> = {
       ...envelope,
       buildShaShort: envelope.buildSha.slice(0, 12),
+      correlationId: _correlationId,
+      sequenceNumber,
+      previousLifecycleEvent,
       ...identity,
       timestamp,
       ...detailOut,
@@ -184,6 +191,7 @@ export function emit357RuntimeDiag(
     // the global error handler always has the freshest correlation.
     if (kind !== "global_error") {
       _lastSuccessfulEvent = { eventType, identity: { ...identity }, timestamp };
+      _previousLifecycleEvent = eventType;
       if (identity.terminalResultIdentity) {
         _lastKnownTerminalResultIdentity = identity.terminalResultIdentity;
       }
