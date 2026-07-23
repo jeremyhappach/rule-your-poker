@@ -321,6 +321,26 @@ export function CanonicalSeatCluster({
     clusterInstanceIdRef.current = `csc-p${position}-${++_csc_seq}`;
   }
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  const setRootRef = useCallback((el: HTMLDivElement | null) => {
+    rootRef.current = el;
+    setRootEl(el);
+  }, []);
+  // Winner chip-endpoint registry — registers the visible chip cluster
+  // element under authoritative (playerId, position). Skipped when this
+  // cluster is the viewer's own suppressed seat (allowSelfRender=false;
+  // returns null below without a chip DOM node) or when the chip is
+  // explicitly hidden. Registration cleanup is token-scoped: unmount
+  // removes only this component's entry — a newer registration for the
+  // same key cannot be clobbered by a stale unmount.
+  useRegisterWinnerChipEndpoint({
+    playerId,
+    position,
+    element:
+      hideChipBubble || chipPresentation === 'hidden'
+        ? null
+        : rootEl,
+  });
   const providerInstanceId = anchors?.providerInstanceId ?? null;
   const surfaceLabel =
     anchors?.projectionMode === 'observer-absolute'
