@@ -7185,7 +7185,7 @@ export const MobileGameTable = ({
     let confettiAttempted = false;
     let confettiSucceeded = false;
     let confettiErr: unknown = null;
-    if (viewerIsWinner) {
+    if (viewerIsWinner && confettiIdentityValid) {
       confettiAttempted = true;
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
@@ -7248,8 +7248,9 @@ export const MobileGameTable = ({
       setPotOutAnimationActive(false);
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
+      activePotIdentityRef.current = null;
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity]);
 
   // Sweep celebration → pot-to-player gate. When a 3-5-7 sweep arms the
   // awaiter (isSweepResultFallback / isSweepResultPrimary branches), hold
