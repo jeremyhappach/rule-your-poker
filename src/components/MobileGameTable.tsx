@@ -7048,14 +7048,34 @@ export const MobileGameTable = ({
     }
 
     // Winner-only confetti after destination bounce / pot-to-player completion.
-    if (threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId) {
+    const viewerIsWinner = !!(threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId);
+    let confettiAttempted = false;
+    let confettiSucceeded = false;
+    let confettiErr: unknown = null;
+    if (viewerIsWinner) {
+      confettiAttempted = true;
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
         confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
         setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
         setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
-      } catch { /* noop — confetti is presentation-only */ }
+        confettiSucceeded = true;
+      } catch (e) { confettiErr = e; /* noop — confetti is presentation-only */ }
     }
+    // G. Pot animation complete + confetti attempt/result.
+    emit357RuntimeDiag('pot_animation_complete', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      viewerIsWinner,
+      destinationBounceCompleted: true,
+      confettiAttempted,
+      confettiSucceeded,
+      error: confettiErr,
+    });
 
     // Hold the win-animation geometry owner in the terminal 'delay'
     // phase across the presentation tail. Do NOT set 'idle' before the
