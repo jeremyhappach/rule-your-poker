@@ -298,12 +298,11 @@ export function ThreeFiveSevenDealOrchestrator({
     // A. wave_dispatch_begin — emit IMMEDIATELY before ownership call.
     // (handIdentity/roundStr/dealerGameId reused from decision effect scope.)
     const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
-    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const expectedCountBefore = deal.expectedCount;
     const runtimePhaseBefore = deal.phase;
     const intentIds = intents.map((i) => i.id);
     const dispatchBeginAt = performance.now();
-    waveDispatchBeginTimeRef.current.set(waveContextId, dispatchBeginAt);
+    waveDispatchBeginAtRef.current.set(waveContextId, dispatchBeginAt);
 
     emit357RuntimeDiag('wave_dispatch_begin', {
       dealerGameId,
