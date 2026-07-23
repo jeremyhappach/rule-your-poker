@@ -1472,6 +1472,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
 
+  // F. Win-animation active-flag transition diagnostic.
+  const prevIs357WinAnimationActiveRef = useRef<boolean>(false);
+  useEffect(() => {
+    const prev = prevIs357WinAnimationActiveRef.current;
+    if (prev === is357WinAnimationActive) return;
+    prevIs357WinAnimationActiveRef.current = is357WinAnimationActive;
+    emit357RuntimeDiag('win_animation_active_changed', {
+      gameId: game?.id ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+    }, {
+      prevActive: prev,
+      nextActive: is357WinAnimationActive,
+      refValueAtEmit: is357WinAnimationActiveRef.current,
+      gameStatus: game?.status ?? null,
+      lastRoundResult: game?.last_round_result ?? null,
+    });
+  }, [is357WinAnimationActive, game?.id, game?.current_game_uuid, game?.current_round, game?.status, game?.last_round_result, currentPlayer?.id]);
+
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
   const safety357FallbackTimerRef = useRef<number | null>(null);
