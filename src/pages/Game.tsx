@@ -13804,6 +13804,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
               holmDealerGameId={(game as any).current_game_uuid ?? null}
+              horsesRoundId={currentRound?.id ?? null}
               isWaitingPhase={!renderRoundContext}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
