@@ -7093,6 +7093,7 @@ export const MobileGameTable = ({
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
     const potTid = `pot-to-player-357-${Date.now()}`;
+    activePotIdentityRef.current = build357PresentationIdentity();
     setPotToPlayerTriggerId357(potTid);
     // F. Pot animation begin — non-sweep (legs-complete) branch.
     emit357RuntimeDiag('pot_animation_begin', {
@@ -7114,6 +7115,35 @@ export const MobileGameTable = ({
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     const animId = currentAnimationIdRef.current;
+
+    // CROSS-DEALER-GAME LEAKAGE GUARD. Verify the pot completion still
+    // belongs to the active dealer game. Late callbacks for the SAME
+    // dealer game remain valid; a callback whose stored identity no
+    // longer matches the active identity is DG1 leakage into DG2.
+    const storedPotIdentity = activePotIdentityRef.current;
+    const activePresentationIdentity = build357PresentationIdentity();
+    if (storedPotIdentity && !matches357PresentationIdentity(storedPotIdentity, activePresentationIdentity)) {
+      emit357RuntimeDiag('dealer_game_boundary_reset', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        site: 'pot_complete_callback',
+        suppressionReason: 'cross_dealer_game_cancelled',
+        storedDealerGameId: storedPotIdentity.dealerGameId,
+        activeDealerGameId: activePresentationIdentity.dealerGameId,
+        storedTerminalResultIdentity: storedPotIdentity.terminalResultIdentity,
+        activeTerminalResultIdentity: activePresentationIdentity.terminalResultIdentity,
+        storedHandContextId: storedPotIdentity.handContextId,
+        activeHandContextId: activePresentationIdentity.handContextId,
+        storedTriggerId: storedPotIdentity.triggerId,
+        activeTriggerId: activePresentationIdentity.triggerId,
+      });
+      activePotIdentityRef.current = null;
+      return;
+    }
 
     // Sole idempotency guard: one canonical completion per animation
     // identity. Deliberately NOT gated on phase or on a stale-animation
@@ -7146,7 +7176,11 @@ export const MobileGameTable = ({
       });
     }
 
-    // Winner-only confetti after destination bounce / pot-to-player completion.
+    // Winner-only confetti — AND identity-guarded. Confetti fires only if
+    // the pot identity still matches the active dealer game. Combined
+    // with the guard above this is defense-in-depth: DG1 confetti cannot
+    // fire during DG2.
+    const confettiIdentityValid = !storedPotIdentity || matches357PresentationIdentity(storedPotIdentity, activePresentationIdentity);
     const viewerIsWinner = !!(threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId);
     let confettiAttempted = false;
     let confettiSucceeded = false;
