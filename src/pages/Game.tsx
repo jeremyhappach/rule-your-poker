@@ -9737,11 +9737,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // POLLING (357): Once the win animation is finished, poll until the game transitions.
   // IMPORTANT: We do NOT return a cleanup here either (same reason: avoid cancel-on-rerender).
   useEffect(() => {
+    const lrrPoll357 = game?.last_round_result ?? '';
     const is357GameOverNeedingProgress =
       game?.status === 'game_over' &&
       game?.game_type !== 'holm-game' &&
       !game?.game_over_at &&
-      !!game?.last_round_result?.includes('won the game');
+      (lrrPoll357.includes('won the game') || lrrPoll357.startsWith('357_SWEEP:'));
+
 
     const clearPollTimers = () => {
       if (poll357IntervalRef.current) {
