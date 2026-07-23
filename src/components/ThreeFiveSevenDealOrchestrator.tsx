@@ -58,6 +58,7 @@ import {
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
+import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
 
 export interface ThreeFiveSevenSeatEntry {
   playerId: string;
