@@ -33,43 +33,50 @@
  * `container.querySelector`. The shell endpoint is the fallback, not
  * the override.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShellFeltFrameElement } from './useShellFeltFrameElement';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
 import { SLOT } from './seatAnchors';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
+import { useRegisterWinnerChipEndpoint } from './WinnerChipEndpointRegistry';
 
-export function ShellViewerChipEndpoint(): JSX.Element | null {
+export function ShellViewerChipEndpoint(
+  { viewerPlayerId = null }: { viewerPlayerId?: string | null } = {},
+): JSX.Element | null {
   const anchors = useSeatAnchorsOptional();
   const viewerPosition = anchors?.viewerPosition ?? null;
   const felt = useShellFeltFrameElement(viewerPosition != null);
   const [, force] = useState(0);
+  const [endpointEl, setEndpointEl] = useState<HTMLElement | null>(null);
+  const setEndpointRef = useCallback((el: HTMLDivElement | null) => {
+    setEndpointEl(el);
+  }, []);
 
   // Re-render once the felt surface attaches so the portal target binds.
   useEffect(() => {
     if (felt) force(n => n + 1);
   }, [felt]);
 
+  // Registry-scoped registration: authoritative (viewerPlayerId, viewerPosition).
+  useRegisterWinnerChipEndpoint({
+    playerId: viewerPlayerId,
+    position: viewerPosition,
+    element: endpointEl,
+  });
+
   if (viewerPosition == null || !felt) return null;
 
-  // HOME slot placement on the felt rail (bottom-center). Reuses the
-  // same Tailwind classes as opponent seats so the endpoint sits at the
-  // canonical viewer-seat location, not at HUD coordinates.
   const placement = getCanonicalSlotPlacement(SLOT.HOME);
 
   return createPortal(
     <div
+      ref={setEndpointRef}
       data-canonical-shell-viewer-chip-endpoint=""
       aria-hidden="true"
       className={`absolute ${placement.className} pointer-events-none`}
     >
-      {/* Transparent, value-less chip body. The disc publishes
-          `data-chip-center` and `data-chip-reaction-target` for the
-          viewer's seat — the visible canonical endpoint required for
-          chip transport AND destination-reaction targeting. The HUD
-          owns numeric chip display; this disc owns geometry + bounce. */}
       <CanonicalChipDisc
         amount={null}
         bgClass="bg-transparent border-transparent"
