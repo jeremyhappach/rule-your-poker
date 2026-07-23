@@ -10316,6 +10316,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: game?.current_game_uuid
       });
     }
+
+    // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
+    emit357RuntimeDiag('sweep_parser', {
+      gameId: game?.id ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: winnerPlayer?.id ?? null,
+      terminalResultIdentity: resultMessage,
+    }, {
+      rawResultMessage: resultMessage,
+      matchedIsSweep: isSweepMessage,
+      parsedWinnerName: winnerName || null,
+      parsedAmount: sweepAmountFromSentinel,
+      parseError: isSweepMessage && sweepAmountFromSentinel === null ? 'missing_or_malformed_amount' : null,
+    });
+
+    // B. Show-cards decision diagnostic.
+    emit357RuntimeDiag('show_cards_decision', {
+      gameId: game?.id ?? null,
+      roundId: game?.current_round != null ? String(game.current_round) : null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: winnerPlayer?.id ?? null,
+      terminalResultIdentity: resultMessage,
+    }, {
+      expectedCardCount,
+      rawWinnerCardCount: rawWinnerCards.length,
+      cardsAcceptedForDisplay: winnerCards.length,
+      staleContaminationRejected: rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount,
+      currentRound: game?.current_round ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
+
     
     // Extract pot from message if available (format: "$X pot").
     // SWEEP: use the immutable pre-zero terminal awarded amount embedded in
