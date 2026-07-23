@@ -736,6 +736,82 @@ export function Use357SelfHand<T>({
       renderGuardPassed: true,
     });
   }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase, sourceCards.length]);
+
+  // A. first_card_visible / full_hand_visible — self-hand presentation
+  //    boundary. Emits only on real count transitions; deduped per
+  //    (baseHandContextId + expectedCount). All fire-and-forget.
+  const firstCardVisibleKeyRef = useRef<Set<string>>(new Set());
+  const fullHandVisibleKeyRef = useRef<Set<string>>(new Set());
+  const prevEffectiveLenRef = useRef<number>(0);
+  useEffect(() => {
+    if (!deal || !currentPlayerId) return;
+    const authoritativeCount = sourceCards.length;
+    const expectedCount = deal.expectedCount;
+    const waveIdentityKey = `${baseHandContextId}#exp:${expectedCount}`;
+    const dealerGameId = baseHandContextId.split('#')[0] ?? null;
+    const handNumberStr = baseHandContextId.match(/#h(\d+)/)?.[1] ?? null;
+    // Elapsed time: use MOST RECENT wave dispatch begin under this
+    // baseHandContextId if the orchestrator stored one. (Refs live in
+    // the ORCHESTRATOR component; Use357SelfHand doesn't have access.
+    // So elapsed is computed as null here — the wave_dispatch_begin row
+    // already carries dispatchBeginAt on the same correlationId.)
+    const prevLen = prevEffectiveLenRef.current;
+    const nextLen = effectiveCards.length;
+    prevEffectiveLenRef.current = nextLen;
+
+    // 0 → >0 transition (first_card_visible), deduped per baseHandContextId.
+    if (prevLen === 0 && nextLen > 0 && !firstCardVisibleKeyRef.current.has(baseHandContextId)) {
+      firstCardVisibleKeyRef.current.add(baseHandContextId);
+      emit357RuntimeDiag('first_card_visible', {
+        dealerGameId,
+        handNumber: handNumberStr ? Number(handNumberStr) : null,
+        viewerPlayerId: currentPlayerId,
+      }, {
+        baseHandContextId,
+        waveIdentity: waveIdentityKey,
+        authoritativeCount,
+        presentationCount: nextLen,
+        renderedCount: nextLen,
+        settledCount: settled,
+        activeIntents: expectedCount,
+        runtimePhase: phase,
+        renderSource: isClaimOnlyRender ? 'claim-only' : 'authoritative-passthrough',
+        renderDecision: `effectiveCards[${nextLen}] from ${isClaimOnlyRender ? 'settled' : 'sourceCards'}`,
+        prevVisibleCount: prevLen,
+      });
+    }
+
+    // Full hand visible: presentation === authoritative (and non-zero),
+    // deduped per (baseHandContextId + expectedCount).
+    if (
+      nextLen > 0 &&
+      authoritativeCount > 0 &&
+      nextLen >= authoritativeCount &&
+      !fullHandVisibleKeyRef.current.has(waveIdentityKey)
+    ) {
+      fullHandVisibleKeyRef.current.add(waveIdentityKey);
+      emit357RuntimeDiag('full_hand_visible', {
+        dealerGameId,
+        handNumber: handNumberStr ? Number(handNumberStr) : null,
+        viewerPlayerId: currentPlayerId,
+      }, {
+        baseHandContextId,
+        waveIdentity: waveIdentityKey,
+        authoritativeCount,
+        presentationCount: nextLen,
+        renderedCount: nextLen,
+        settledCount: settled,
+        activeIntents: expectedCount,
+        runtimePhase: phase,
+        renderSource: isClaimOnlyRender ? 'claim-only' : 'authoritative-passthrough',
+        renderDecision: `effectiveCards[${nextLen}] >= authoritative[${authoritativeCount}]`,
+        prevVisibleCount: prevLen,
+      });
+    }
+  }, [
+    deal, currentPlayerId, baseHandContextId, effectiveCards.length,
+    sourceCards.length, settled, phase, isClaimOnlyRender,
+  ]);
   const forensicsId = `357Self:${currentPlayerId || 'unknown'}`;
   const firstSettledRectRef = useRef<Set<string>>(new Set());
   const firstResizeRectRef = useRef<Set<string>>(new Set());
