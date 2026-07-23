@@ -6970,6 +6970,22 @@ export const MobileGameTable = ({
     }
 
 
+    // E. Legs-phase decision — primary non-sweep path advances to pot-to-player.
+    emit357RuntimeDiag('legs_phase_decision', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      branch: 'legs_to_player_complete',
+      authoritativeLegDelta: totalLegs,
+      playersWithLegsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+      cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
+      isSweepPath: false,
+      selectedNextPhase: 'pot-to-player',
+    });
+
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
@@ -6977,8 +6993,24 @@ export const MobileGameTable = ({
     // CRITICAL: Mark POT-OUT animation as active and set pot to 0 when animation begins
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
-    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId]);
+    const potTid = `pot-to-player-357-${Date.now()}`;
+    setPotToPlayerTriggerId357(potTid);
+    // F. Pot animation begin — non-sweep (legs-complete) branch.
+    emit357RuntimeDiag('pot_animation_begin', {
+      gameId: gameId ?? null,
+      roundId: handContextId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+      terminalResultIdentity: lastRoundResult ?? null,
+    }, {
+      branch: 'legs_to_player_complete',
+      immutableParsedPrize: null,
+      currentGamesPot: null,
+      amountPassedToAnimation: threeFiveSevenWinPotAmount,
+      destinationSelector: `[data-chip-reaction-target="${players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null}"]`,
+      triggerId: potTid,
+    });
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
