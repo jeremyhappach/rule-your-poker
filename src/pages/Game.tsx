@@ -10319,7 +10319,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
-    emit357RuntimeDiag('sweep_parser', {
+    emit357RuntimeDiag('sweep_parser_entered', {
       gameId: game?.id ?? null,
       roundId: game?.current_round != null ? String(game.current_round) : null,
       viewerPlayerId: currentPlayer?.id ?? null,
