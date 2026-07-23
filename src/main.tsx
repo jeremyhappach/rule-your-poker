@@ -129,4 +129,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 import { installPageShowHandler } from "@/lib/pageResumeHandler";
 installPageShowHandler();
 
+// Release-integrity: install 357.runtime.global_error listeners before render.
+install357RuntimeGlobalErrorHandlers();
+
 createRoot(document.getElementById("root")!).render(<App />);
