@@ -9401,6 +9401,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       branch: 'normal-rotation-or-mit-position',
     });
     // Skip dealer_announcement, go directly to game_selection
+    // H. Dealer game boundary reset — game_selection branch.
+    emit357RuntimeDiag('dealer_game_boundary_reset', {
+      gameId: gameId ?? null,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      terminalResultIdentity: game?.last_round_result ?? null,
+    }, {
+      origin: 'handleGameOverComplete',
+      branch: 'game_selection',
+      outgoingDealerGameId: game?.current_game_uuid ?? null,
+      selectedNextDealerPosition: newDealerPosition,
+      configDeadline,
+      payloadFieldsCleared: ['last_round_result','current_round','awaiting_next_round','next_round_number','pot','all_decisions_in','all_decisions_in_round_id','game_over_at','buck_position','total_hands'],
+    });
     // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
     // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
     const { data: claimRows, error } = await supabase
