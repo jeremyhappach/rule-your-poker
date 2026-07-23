@@ -58,6 +58,7 @@ import {
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
+import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
 
 export interface ThreeFiveSevenSeatEntry {
   playerId: string;
@@ -115,9 +116,58 @@ export function ThreeFiveSevenDealOrchestrator({
   const fallbackUsed = !committedCardRect || anchorWidth < 8 || anchorHeight < 8;
   const transportAnchorRenderKey = `357-anchor|${waveContextId}|p:${selfPlayerId}|${anchorWidth.toFixed(2)}x${anchorHeight.toFixed(2)}|pub:${committedCardRect?.publishedAt ?? 'none'}`;
 
+  // Mount diagnostic — persists once per orchestrator instance, so
+  // reruns produce one row per wave/dealerGame identity.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
+    const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
+    const dealerGameId = waveContextId.split('#')[0] ?? null;
+    emit357RuntimeDiag('deal_runtime_mount', {
+      dealerGameId,
+      roundId: roundStr,
+      viewerPlayerId: selfPlayerId,
+    }, {
+      waveContextId,
+      handIdentity,
+      dealerPosition,
+      selfPosition,
+      dealerIsSelf,
+      activeSeatCount: activeSeats.length,
+      cardsThisWave,
+      runtimePhase: deal?.phase ?? null,
+      runtimeExpectedCount: deal?.expectedCount ?? null,
+    });
+  }, [waveContextId, selfPlayerId, dealerPosition, selfPosition, dealerIsSelf, activeSeats, cardsThisWave, deal]);
+
   useEffect(() => {
     if (!deal) return;
     if (dispatchedWaveRef.current === waveContextId) return;
+    const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
+    const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
+    const dealerGameId = waveContextId.split('#')[0] ?? null;
+    const emitDecision = (dispatchDecision: 'dispatch' | 'suppress' | 'defer', suppressionReason: string | null) => {
+      emit357RuntimeDiag('wave_dispatch_decision', {
+        dealerGameId,
+        roundId: roundStr,
+        viewerPlayerId: selfPlayerId,
+      }, {
+        waveContextId,
+        handIdentity,
+        runtimePhase: deal.phase,
+        runtimeExpectedCount: deal.expectedCount,
+        dealTimingHydrated,
+        cardsThisWave,
+        activeSeatCount: activeSeats.length,
+        dealerPosition,
+        dealerIsSelf,
+        selfDealerFeltIsSurface,
+        dispatchDecision,
+        suppressionReason,
+      });
+    };
     // Contract A (refresh/rejoin) — Durable canonical gate. If the host
     // initialized DealRuntime to a non-PRE_DEAL phase AND no wave has
     // yet accumulated expected cards on this runtime, the current wave
@@ -127,13 +177,15 @@ export function ThreeFiveSevenDealOrchestrator({
     // waves have already grown expectedCount > 0.
     if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
       dispatchedWaveRef.current = waveContextId;
+      emitDecision('suppress', 'refresh_rejoin_historical_wave_suppressed');
       return;
     }
-    if (!dealTimingHydrated) return;
-    if (cardsThisWave <= 0) return;
-    if (!activeSeats.length) return;
-    if (typeof dealerPosition !== 'number' || dealerPosition <= 0) return;
-    if (dealerIsSelf && !selfDealerFeltIsSurface) return;
+    if (!dealTimingHydrated) { emitDecision('defer', 'deal_timing_not_hydrated'); return; }
+    if (cardsThisWave <= 0) { emitDecision('defer', 'cards_this_wave_zero'); return; }
+    if (!activeSeats.length) { emitDecision('defer', 'no_active_seats'); return; }
+    if (typeof dealerPosition !== 'number' || dealerPosition <= 0) { emitDecision('defer', 'invalid_dealer_position'); return; }
+    if (dealerIsSelf && !selfDealerFeltIsSurface) { emitDecision('defer', 'self_dealer_felt_not_surface'); return; }
+    emitDecision('dispatch', null);
 
     // Build deal order:
     //   left-of-dealer first, then continue clockwise (LOWER position in

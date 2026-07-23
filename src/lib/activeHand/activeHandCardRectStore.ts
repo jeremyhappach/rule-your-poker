@@ -61,6 +61,7 @@ export function publishActiveHandCardRect(
     if (prev == null) return;
     rects.delete(game);
     notify(game);
+    emitGeometryDiag(game, prev, null, 'cleared');
     return;
   }
   if (
@@ -78,6 +79,33 @@ export function publishActiveHandCardRect(
     activeHandFanRenderKey: rect.activeHandFanRenderKey ?? null,
   });
   notify(game);
+  emitGeometryDiag(game, prev, rect, prev ? 'changed' : 'first-publish');
+}
+
+// C. Active-hand geometry diagnostic — fire-and-forget, 3-5-7 only.
+function emitGeometryDiag(
+  game: GameKey,
+  prev: ActiveHandCardRect | null,
+  next: ActiveHandCardRect | null,
+  transition: 'first-publish' | 'changed' | 'cleared',
+): void {
+  try {
+    if (game !== 'threeFiveSeven') return;
+    void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+      emit357RuntimeDiag('active_hand_geometry_changed', {}, {
+        gameKey: game,
+        transition,
+        prev: prev
+          ? { w: prev.cardWidthPx, h: prev.cardHeightPx, renderKey: prev.activeHandFanRenderKey ?? null }
+          : null,
+        next: next
+          ? { w: next.cardWidthPx, h: next.cardHeightPx, renderKey: next.activeHandFanRenderKey ?? null, publishedAt: next.publishedAt }
+          : null,
+        widthDelta: prev && next ? next.cardWidthPx - prev.cardWidthPx : null,
+        heightDelta: prev && next ? next.cardHeightPx - prev.cardHeightPx : null,
+      });
+    }).catch(() => {});
+  } catch { /* diagnostic-only */ }
 }
 
 export function subscribeActiveHandCardRect(game: GameKey, cb: Listener): () => void {
