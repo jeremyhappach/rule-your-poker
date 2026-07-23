@@ -135,6 +135,20 @@ const App = () => {
       } catch {
         /* noop */
       }
+      // E. Error toast invocation diagnostic — pins the toast owner so a
+      //    visible "An error occurred" during 3-5-7 harness runs can be
+      //    correlated with 357.runtime.global_error and the last
+      //    lifecycle event.
+      try {
+        void import("@/lib/threeFiveSeven/runtimeDiag").then(({ emit357RuntimeDiag }) => {
+          emit357RuntimeDiag("error_toast_invoked", {}, {
+            source: "App#unhandledrejection",
+            route: window.location.pathname,
+            reasonMessage: String(event.reason?.message ?? event.reason ?? "unknown"),
+            reasonStack: (event.reason && (event.reason as { stack?: string }).stack) ?? null,
+          });
+        }).catch(() => {});
+      } catch { /* diagnostic-only */ }
       toast.error("An error occurred. Please try again.");
       event.preventDefault();
     };
