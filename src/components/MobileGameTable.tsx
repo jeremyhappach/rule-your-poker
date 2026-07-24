@@ -7226,7 +7226,20 @@ export const MobileGameTable = ({
     // Then start legs-to-player animation - reduced delay for tighter transition
     // NOTE: This is a FALLBACK path - the LegEarnedAnimation onComplete callback is the primary path
     const isSweepResultFallback = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
+    const fallbackAsyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: 'mgt.357.win_fallback_phase1',
+      kind: 'timeout',
+      delayMs: 1800,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
     setTimeout(() => {
+      __emitWartimeAsyncFired({
+        asyncOwnerId: fallbackAsyncOwnerId,
+        outcome: 'fired',
+        identity: __wartimeMgtIdentity,
+        liveIdentity: build357PresentationIdentity(),
+      });
       // Only proceed if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
         console.log('[357 WIN] Stale animation (ID mismatch), skipping Phase 1');
@@ -7243,6 +7256,7 @@ export const MobileGameTable = ({
         // announcement to clear so the celebration owns the foreground until
         // its TTL elapses. The awaiter effect below advances the phase.
         console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        __capture357Checkpoint('sweep_wait_arm:fallback', { animationId, triggerId: threeFiveSevenWinTriggerId ?? null });
         // C. Sweep wait armed — fallback branch.
         setLastKnown357TerminalResultIdentity(lastRoundResult ?? null);
         emit357RuntimeDiag('sweep_wait_armed', {
@@ -7290,6 +7304,7 @@ export const MobileGameTable = ({
       }
 
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
+      __capture357Checkpoint('legs_to_player_begin:fallback', { animationId, triggerId: threeFiveSevenWinTriggerId ?? null });
       // E. Legs-phase decision — fallback non-sweep path selects legs-to-player.
       emit357RuntimeDiag('legs_phase_decision', {
         gameId: gameId ?? null,
