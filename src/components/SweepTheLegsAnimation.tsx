@@ -4,6 +4,7 @@
 // as-is until its consumer migrates in a later wave.
 import { useEffect, useState, useRef } from "react";
 import sweepTheLegImage from "@/assets/sweep-the-leg.png";
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSTL } from "@/lib/threeFiveSeven/wartime";
 
 interface SweepTheLegsAnimationProps {
   show: boolean;
@@ -19,11 +20,19 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
+    __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'mount', {});
+    return () => { __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'unmount', {}); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (show && !hasShownRef.current) {
       hasShownRef.current = true;
       setVisible(true);
+      __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'begin', {});
       const timer = setTimeout(() => {
         setVisible(false);
+        __wartimeEmitPresentationLifecycleSTL('sweep_the_legs', 'complete', {});
         onCompleteRef.current?.();
       }, 4000); // 4 seconds display
       return () => clearTimeout(timer);

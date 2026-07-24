@@ -20,6 +20,9 @@ export {
   emitCoverageManifest,
   WARTIME_IMPLEMENTATION_PHASE,
   WARTIME_REQUIRED_REPRO_PHASE,
+  TARGETED_357_PROFILE,
+  checkTargetedReady,
+  isTargetedReadyForHarness,
 } from './readiness';
 export { getSinkCounters, isSinkRoundTripPassed } from './sink';
 export { getWartimeSessionId, ensureWartimeSession, resetWartimeSession } from './session';
@@ -58,6 +61,8 @@ export {
   emitGeometryTransition,
   emitPotDestinationResolution,
   emitProgressionAdvancement,
+  emitProgressionAdvancementAt,
+  emitPresentationLifecycle,
   emitChannelSettled,
   installGlobalErrorListeners,
   reportGlobalErrorOrigin,
@@ -66,7 +71,8 @@ export {
   trackAsyncOwner,
   emitAsyncOwnerFired,
 } from './phase3Wiring';
-export type { GeometryDecision } from './phase3Wiring';
+export type { GeometryDecision, PresentationLifecycleOpts } from './phase3Wiring';
+export type { PresentationComponentKey, PresentationPhaseKey } from './sourceSites';
 export { setWartimeTimeout, requestWartimeAnimationFrame, trackWartimePromise } from './async';
 export { withWartimeMutation } from './db';
 export { wrapWartimeRealtime } from './realtime';

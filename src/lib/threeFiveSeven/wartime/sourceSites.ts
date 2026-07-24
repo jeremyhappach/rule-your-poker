@@ -223,7 +223,40 @@ export const SRC = {
   REALTIME_SHOW_CARDS: reg({ id: 'realtime.causality.show_cards_broadcast', file: 'src/pages/Game.tsx', fn: '(alias) show-cards broadcast subscription', requirementIds: ['realtime.causality'], runtimeExpectation: 'preflight_only' }),
   ASYNC_OWNER: reg({ id: 'async.owner', file: 'src/components/MobileGameTable.tsx', fn: 'MobileGameTable.lifecycle timers (aggregate helper)', requirementIds: ['async.owner'], runtimeExpectation: 'preflight_only' }),
   DEAL_SELF_FACE_UP_SETTLED: reg({ id: 'deal.self_face_up_settled', file: 'src/components/ThreeFiveSevenDealOrchestrator.tsx', fn: 'emitChannelSettled (helper aggregate)', requirementIds: ['deal.self_face_up.channel_settled'], runtimeExpectation: 'preflight_only' }),
+
+  // ── presentation.lifecycle — targeted profile (16 sites: 4 components × 4 phases) ──
+  // Every 3-5-7 presentation component emits mount / begin / complete /
+  // unmount so the targeted_357_root_cause harness profile can attribute
+  // each defect (stale confetti, wrong destination, card shrink, 10s
+  // freeze, deal ownership, table overlap) to its owning artifact.
+  PRES_SWEEPSPOT_MOUNT:    reg({ id: 'presentation.lifecycle.sweeps_pot.mount',       file: 'src/components/SweepsPotAnimation.tsx',       fn: 'SweepsPotAnimation.mount',       requirementIds: ['presentation.lifecycle'] }),
+  PRES_SWEEPSPOT_BEGIN:    reg({ id: 'presentation.lifecycle.sweeps_pot.begin',       file: 'src/components/SweepsPotAnimation.tsx',       fn: 'SweepsPotAnimation.begin',       requirementIds: ['presentation.lifecycle'] }),
+  PRES_SWEEPSPOT_COMPLETE: reg({ id: 'presentation.lifecycle.sweeps_pot.complete',    file: 'src/components/SweepsPotAnimation.tsx',       fn: 'SweepsPotAnimation.complete',    requirementIds: ['presentation.lifecycle'] }),
+  PRES_SWEEPSPOT_UNMOUNT:  reg({ id: 'presentation.lifecycle.sweeps_pot.unmount',     file: 'src/components/SweepsPotAnimation.tsx',       fn: 'SweepsPotAnimation.unmount',     requirementIds: ['presentation.lifecycle'] }),
+  PRES_STL_MOUNT:          reg({ id: 'presentation.lifecycle.sweep_the_legs.mount',   file: 'src/components/SweepTheLegsAnimation.tsx',    fn: 'SweepTheLegsAnimation.mount',    requirementIds: ['presentation.lifecycle'] }),
+  PRES_STL_BEGIN:          reg({ id: 'presentation.lifecycle.sweep_the_legs.begin',   file: 'src/components/SweepTheLegsAnimation.tsx',    fn: 'SweepTheLegsAnimation.begin',    requirementIds: ['presentation.lifecycle'] }),
+  PRES_STL_COMPLETE:       reg({ id: 'presentation.lifecycle.sweep_the_legs.complete',file: 'src/components/SweepTheLegsAnimation.tsx',    fn: 'SweepTheLegsAnimation.complete', requirementIds: ['presentation.lifecycle'] }),
+  PRES_STL_UNMOUNT:        reg({ id: 'presentation.lifecycle.sweep_the_legs.unmount', file: 'src/components/SweepTheLegsAnimation.tsx',    fn: 'SweepTheLegsAnimation.unmount',  requirementIds: ['presentation.lifecycle'] }),
+  PRES_LTP_MOUNT:          reg({ id: 'presentation.lifecycle.legs_to_player.mount',   file: 'src/components/LegsToPlayerAnimation.tsx',    fn: 'LegsToPlayerAnimation.mount',    requirementIds: ['presentation.lifecycle'] }),
+  PRES_LTP_BEGIN:          reg({ id: 'presentation.lifecycle.legs_to_player.begin',   file: 'src/components/LegsToPlayerAnimation.tsx',    fn: 'LegsToPlayerAnimation.begin',    requirementIds: ['presentation.lifecycle'] }),
+  PRES_LTP_COMPLETE:       reg({ id: 'presentation.lifecycle.legs_to_player.complete',file: 'src/components/LegsToPlayerAnimation.tsx',    fn: 'LegsToPlayerAnimation.complete', requirementIds: ['presentation.lifecycle'] }),
+  PRES_LTP_UNMOUNT:        reg({ id: 'presentation.lifecycle.legs_to_player.unmount', file: 'src/components/LegsToPlayerAnimation.tsx',    fn: 'LegsToPlayerAnimation.unmount',  requirementIds: ['presentation.lifecycle'] }),
+  PRES_POT_MOUNT:          reg({ id: 'presentation.lifecycle.pot_to_player.mount',    file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.mount',     requirementIds: ['presentation.lifecycle'] }),
+  PRES_POT_BEGIN:          reg({ id: 'presentation.lifecycle.pot_to_player.begin',    file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.begin',     requirementIds: ['presentation.lifecycle'] }),
+  PRES_POT_COMPLETE:       reg({ id: 'presentation.lifecycle.pot_to_player.complete', file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.complete',  requirementIds: ['presentation.lifecycle'] }),
+  PRES_POT_UNMOUNT:        reg({ id: 'presentation.lifecycle.pot_to_player.unmount',  file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.unmount',   requirementIds: ['presentation.lifecycle'] }),
 } as const;
+
+/** Presentation-lifecycle site lookup for the targeted profile. */
+export type PresentationComponentKey = 'sweeps_pot' | 'sweep_the_legs' | 'legs_to_player' | 'pot_to_player';
+export type PresentationPhaseKey = 'mount' | 'begin' | 'complete' | 'unmount';
+
+export function presentationLifecycleSiteId(
+  component: PresentationComponentKey,
+  phase: PresentationPhaseKey,
+): string {
+  return `presentation.lifecycle.${component}.${phase}`;
+}
 
 export function getSourceSite(id: string): WartimeSourceSite | null {
   return REGISTRY[id] ?? null;

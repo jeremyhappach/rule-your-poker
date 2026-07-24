@@ -8,6 +8,7 @@ import {
   wrapRealtimeCausality as __wrapWartimeRealtimeCausality,
   trackAsyncOwner as __trackWartimeAsyncOwner,
   emitAsyncOwnerFired as __emitWartimeAsyncOwnerFired,
+  emitProgressionAdvancementAt as __emitWartimeProgressionAt,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
@@ -45,6 +46,11 @@ for (const __src of [
 ]) {
   __wartimeRegisterHookGame({ requirementId: 'async.owner', sourceSiteId: __src.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __src.fn });
   __wartimeRegisterEmitterGame('async.owner', __src.id);
+}
+// Progression entry/return production owners for the two Game.tsx callbacks
+// exercised by the targeted_357_root_cause profile.
+for (const __psrc of [__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY, __WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE]) {
+  __wartimeRegisterHookGame({ requirementId: 'progression.advancement', sourceSiteId: __psrc.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __psrc.fn });
 }
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -9265,6 +9271,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       lastRoundResult: game?.last_round_result ?? null,
     });
     emit357GameOverCompleteDiag('owner_entered', _gocId());
+    __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY.id, {
+      callback: 'handleGameOverComplete',
+      entry: 'entry',
+      reason: 'owner_entered',
+      identity: { gameId: gameId ?? null, dealerGameId: game?.current_game_uuid ?? null },
+      gameStatus: game?.status ?? null,
+    });
 
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
@@ -9272,6 +9285,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ..._gocId(),
         returnSite: 'handleGameOverComplete:no-game-id',
         returnReason: 'no-game-id',
+      });
+      __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY.id, {
+        callback: 'handleGameOverComplete',
+        entry: 'return',
+        reason: 'no-game-id',
+        identity: { gameId: null, dealerGameId: game?.current_game_uuid ?? null },
+        gameStatus: game?.status ?? null,
       });
       return;
     }
@@ -11031,12 +11051,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentRound: game?.current_round ?? null,
     };
     emit357GameOverCompleteDiag('entry', _gocIdentity357);
+    __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
+      callback: 'handleThreeFiveSevenWinAnimationComplete',
+      entry: 'entry',
+      identity: {
+        gameId: gameId ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        triggerId: threeFiveSevenWinTriggerId ?? null,
+      },
+      gameStatus: game?.status ?? null,
+    });
 
     if (game?.game_type === 'holm-game' || !gameId) {
       emit357GameOverCompleteDiag('returned', {
         ..._gocIdentity357,
         returnSite: 'handleThreeFiveSevenWinAnimationComplete:preamble',
         returnReason: !gameId ? 'no-game-id' : 'holm-game',
+      });
+      __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
+        callback: 'handleThreeFiveSevenWinAnimationComplete',
+        entry: 'return',
+        reason: !gameId ? 'no-game-id' : 'holm-game',
+        identity: {
+          gameId: gameId ?? null,
+          dealerGameId: game?.current_game_uuid ?? null,
+          triggerId: threeFiveSevenWinTriggerId ?? null,
+        },
+        gameStatus: game?.status ?? null,
       });
       return;
     }

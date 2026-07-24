@@ -5,6 +5,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { SHELL_Z } from "@/lib/canonicalShell/zLayers";
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSP } from "@/lib/threeFiveSeven/wartime";
 
 interface SweepsPotAnimationProps {
   show: boolean;
@@ -21,18 +22,26 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
+    __wartimeEmitPresentationLifecycleSP('sweeps_pot', 'mount', { payload: { playerName } });
+    return () => { __wartimeEmitPresentationLifecycleSP('sweeps_pot', 'unmount', { payload: { playerName } }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (show && !hasShownRef.current) {
       hasShownRef.current = true;
       setVisible(true);
+      __wartimeEmitPresentationLifecycleSP('sweeps_pot', 'begin', { payload: { playerName } });
       const timer = setTimeout(() => {
         setVisible(false);
+        __wartimeEmitPresentationLifecycleSP('sweeps_pot', 'complete', { payload: { playerName } });
         onCompleteRef.current?.();
       }, 5000); // 5 seconds as requested
       return () => clearTimeout(timer);
     } else if (!show) {
       hasShownRef.current = false;
     }
-  }, [show]);
+  }, [show, playerName]);
 
   if (!visible) return null;
   if (typeof document === 'undefined') return null;

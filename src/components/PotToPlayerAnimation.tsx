@@ -38,6 +38,7 @@ import {
   emitAsyncOwnerFired as __emitWartimeAsyncFired,
   registerActualEmitterInvocation as __wartimeRegisterEmitterPot,
   registerWartimeProductionHook as __wartimeRegisterHookPot,
+  emitPresentationLifecycle as __wartimeEmitPresentationLifecyclePot,
   SRC as __WARTIME_SRC_POT,
 } from '@/lib/threeFiveSeven/wartime';
 
@@ -157,6 +158,40 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     identity: { triggerId: triggerId ?? null },
     branch: { winnerPosition, currentPlayerPosition, gameType, phase, amount },
   });
+
+  // ── Presentation lifecycle (targeted profile) ──────────────
+  // Emit mount/unmount for this artifact owner. begin/complete are
+  // driven off the phase transition below.
+  useEffect(() => {
+    __wartimeEmitPresentationLifecyclePot('pot_to_player', 'mount', {
+      identity: { triggerId: triggerId ?? null },
+      owner: __wartimePotOwner,
+      payload: { winnerPosition, currentPlayerPosition, gameType, amount },
+    });
+    return () => {
+      __wartimeEmitPresentationLifecyclePot('pot_to_player', 'unmount', {
+        identity: { triggerId: triggerId ?? null },
+        owner: __wartimePotOwner,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const __wartimeLastPhaseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = __wartimeLastPhaseRef.current;
+    __wartimeLastPhaseRef.current = phase;
+    if (prev !== phase && (phase === 'flying' || phase === 'complete')) {
+      __wartimeEmitPresentationLifecyclePot(
+        'pot_to_player',
+        phase === 'flying' ? 'begin' : 'complete',
+        {
+          identity: { triggerId: triggerId ?? null },
+          owner: __wartimePotOwner,
+          payload: { prevPhase: prev, phase },
+        },
+      );
+    }
+  }, [phase, triggerId, __wartimePotOwner]);
 
   // IMPORTANT: parent often passes inline callbacks which change identity on re-render.
   // If we include callbacks in the animation effect deps, React will run cleanup on re-render

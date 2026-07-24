@@ -128,6 +128,90 @@ installPhase2Site('deal.opponent_card_back',  SRC.DEAL_OPPONENT_CARD_BACK.id);
 // Redispatch detector — conditional but its site is required
 installPhase2Site('deal.redispatch_attempt', SRC.DEAL_REDISPATCH.id);
 
+// ── Presentation lifecycle production owners (targeted profile) ──
+// The 4 presentation components self-emit mount/begin/complete/unmount
+// via emitPresentationLifecycle; each invocation registers itself. We
+// declare the production owner at import time so `productionOwnerRegistered`
+// is truthful for the presentation.lifecycle requirement.
+for (const site of [
+  SRC.PRES_SWEEPSPOT_MOUNT, SRC.PRES_SWEEPSPOT_BEGIN, SRC.PRES_SWEEPSPOT_COMPLETE, SRC.PRES_SWEEPSPOT_UNMOUNT,
+  SRC.PRES_STL_MOUNT,       SRC.PRES_STL_BEGIN,       SRC.PRES_STL_COMPLETE,       SRC.PRES_STL_UNMOUNT,
+  SRC.PRES_LTP_MOUNT,       SRC.PRES_LTP_BEGIN,       SRC.PRES_LTP_COMPLETE,       SRC.PRES_LTP_UNMOUNT,
+  SRC.PRES_POT_MOUNT,       SRC.PRES_POT_BEGIN,       SRC.PRES_POT_COMPLETE,       SRC.PRES_POT_UNMOUNT,
+]) {
+  registerWartimeProductionHook({
+    requirementId: 'presentation.lifecycle',
+    sourceSiteId: site.id,
+    sourceFile: site.file,
+    sourceFunction: site.fn,
+  });
+}
+
+// ── Targeted profile: `targeted_357_root_cause` ───────────────
+// Enumerates ONLY the invocation sites needed to attribute the six
+// remaining root-cause defects: presentation lifecycles (mount/begin/
+// complete/unmount for the four owners), geometry decisions and their
+// resize observer, progression entry/return at pot completion + game-
+// over + 357-win-complete, and per-channel deal transport specificity.
+export const TARGETED_357_PROFILE = {
+  name: 'targeted_357_root_cause' as const,
+  requiredSiteIds: [
+    // Presentation lifecycles (16)
+    SRC.PRES_SWEEPSPOT_MOUNT.id, SRC.PRES_SWEEPSPOT_BEGIN.id, SRC.PRES_SWEEPSPOT_COMPLETE.id, SRC.PRES_SWEEPSPOT_UNMOUNT.id,
+    SRC.PRES_STL_MOUNT.id,       SRC.PRES_STL_BEGIN.id,       SRC.PRES_STL_COMPLETE.id,       SRC.PRES_STL_UNMOUNT.id,
+    SRC.PRES_LTP_MOUNT.id,       SRC.PRES_LTP_BEGIN.id,       SRC.PRES_LTP_COMPLETE.id,       SRC.PRES_LTP_UNMOUNT.id,
+    SRC.PRES_POT_MOUNT.id,       SRC.PRES_POT_BEGIN.id,       SRC.PRES_POT_COMPLETE.id,       SRC.PRES_POT_UNMOUNT.id,
+    // Progression entry/return at every 3-5-7 lifecycle boundary
+    SRC.PROG_POT_COMPLETE.id,
+    SRC.PROG_HANDLE_GAMEOVER_ENTRY.id,
+    SRC.PROG_HANDLE357_WINCOMPLETE.id,
+    // Pot destination resolution branches
+    SRC.POT_RES_BEGIN.id,
+    SRC.POT_RES_CANDIDATES.id,
+    SRC.POT_RES_SELECTED.id,
+    SRC.POT_RES_COMMITTED.id,
+    // Geometry transition (card shrink defect)
+    SRC.GEO_BRANCH.id,
+    // ResizeObserver on the self-hand (card-shrink attribution)
+    SRC.DOM_RO_SELF_HAND.id,
+    // Deal channel specificity (deal ownership defect)
+    SRC.DEAL_SELF_FACE_UP.id,
+    SRC.DEAL_OPPONENT_CARD_BACK.id,
+  ] as const,
+};
+
+export function checkTargetedReady(): {
+  ready: boolean;
+  missing: string[];
+  installed: string[];
+  profile: typeof TARGETED_357_PROFILE.name;
+} {
+  const installed: string[] = [];
+  const missing: string[] = [];
+  const invoked = new Set<string>();
+  for (const r of listRequirements()) {
+    for (const s of r.actualEmitterInvocationSites) invoked.add(s);
+  }
+  for (const siteId of TARGETED_357_PROFILE.requiredSiteIds) {
+    if (invoked.has(siteId)) installed.push(siteId);
+    else missing.push(siteId);
+  }
+  return { ready: missing.length === 0, missing, installed, profile: TARGETED_357_PROFILE.name };
+}
+
+export function isTargetedReadyForHarness(context: Record<string, unknown> = {}): boolean {
+  const snap = checkTargetedReady();
+  if (!snap.ready) {
+    emitWartime({
+      eventName: 'targeted_not_ready',
+      sourceSiteId: SRC.READINESS_GATE.id,
+      payload: { profile: snap.profile, missing: snap.missing, installed: snap.installed, context },
+    });
+  }
+  return snap.ready;
+}
+
+
 export interface WartimeReadinessSnapshot {
   ready: boolean;
   reasons: string[];

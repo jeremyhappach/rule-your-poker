@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleLTP } from '@/lib/threeFiveSeven/wartime';
 
 interface LegChipAnimation {
   id: string;
@@ -69,6 +70,13 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     containerRefRef.current = containerRef;
     legsToWinRef.current = legsToWin;
   });
+
+  // ── Presentation lifecycle (targeted profile) ──────────────
+  useEffect(() => {
+    __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'mount', {});
+    return () => { __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'unmount', {}); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Main animation effect - ONLY depends on triggerId to prevent multi-fire
   useEffect(() => {
@@ -167,6 +175,10 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
     setAnimations(newAnimations);
     setShowSweepOverlay(true);
+    __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'begin', {
+      identity: { triggerId: triggerId ?? null },
+      payload: { animationCount: newAnimations.length },
+    });
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
     // Animation duration: 3.5s + stagger delays + buffer
@@ -174,6 +186,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     
     completionTimeoutRef.current = setTimeout(() => {
       setAnimations([]);
+      __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'complete', {
+        identity: { triggerId: triggerId ?? null },
+      });
       if (!completedRef.current) {
         completedRef.current = true;
         onCompleteRef.current?.();
