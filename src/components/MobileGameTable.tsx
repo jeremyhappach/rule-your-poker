@@ -7938,6 +7938,10 @@ export const MobileGameTable = ({
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'dealer_game_boundary' });
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
+    // Clear canonical-entry latch/identity on real dealer-game boundary
+    // so a fresh generation can enter the canonical downstream path.
+    canonical357EntryGenerationRef.current = null;
+    canonicalTerminal357IdentityRef.current = null;
     setShowSweepsPot(false);
     setShowSweepTheLegs357(false);
     setSweepCelebrationCompleted(false);
