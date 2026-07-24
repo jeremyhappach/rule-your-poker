@@ -7282,7 +7282,15 @@ export const MobileGameTable = ({
     // force the leg-earned banner so the win moment still feels right.
     // CRITICAL: Check legAnimationActiveRef SYNCHRONOUSLY - showLegEarned state may be stale due to async batching
     // ALSO check isWinningLegAnimation state - if it's already true, the primary path already triggered
-    if (!legAnimationActiveRef.current && !showLegEarned && !isWinningLegAnimation && threeFiveSevenWinnerId) {
+    // Slice 3 correction — instant-357 exclusion for the fallback trigger arm.
+    // The controller owns the winner exposure; do not set winningLegPlayerId
+    // (which activates the showdown-reveal geometry that shrinks the real
+    // hand and drops DealRuntime settledCardIds).
+    const instant357SuppressFallback =
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'));
+    if (!instant357SuppressFallback
+        && !legAnimationActiveRef.current && !showLegEarned && !isWinningLegAnimation && threeFiveSevenWinnerId) {
       const winner = players.find((p) => p.id === threeFiveSevenWinnerId);
       if (winner) {
         const winnerName = winner.is_bot
@@ -7296,7 +7304,21 @@ export const MobileGameTable = ({
         legAnimationActiveRef.current = true; // Mark ref to prevent any further triggers
         setWinningLegPlayerId(winner.id);
       }
+    } else if (instant357SuppressFallback) {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        callerSourceAnchor: 'fallback_trigger.setShowLegEarned',
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
+        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+        guardMode: 'descriptor_source_or_sentinel',
+      });
     }
+
 
     // Mark as handled for this component instance.
     lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
