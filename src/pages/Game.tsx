@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
+import {
+  useWartimeComponentInstance as __useWartimeComponentInstance,
+  useWartimeStateWrite as __useWartimeStateWrite,
+  emitRefWrite as __emitWartimeRefWrite,
+  SRC as __WARTIME_SRC,
+} from "@/lib/threeFiveSeven/wartime";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -1490,6 +1496,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       lastRoundResult: game?.last_round_result ?? null,
     });
   }, [is357WinAnimationActive, game?.id, game?.current_game_uuid, game?.current_round, game?.status, game?.last_round_result]);
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  const __wartimeGameIdentity = {
+    gameId: game?.id ?? null,
+    dealerGameId: game?.current_game_uuid ?? null,
+    roundId: null,
+    handNumber: (game as { total_hands?: number | null } | null)?.total_hands ?? null,
+  };
+  const __wartimeGameOwner = __useWartimeComponentInstance({
+    componentType: 'Game',
+    sourceSiteId: __WARTIME_SRC.GAME_MOUNT.id,
+    identity: __wartimeGameIdentity,
+    branch: {
+      status: game?.status ?? null,
+      gameType: (game as { game_type?: string | null } | null)?.game_type ?? null,
+    },
+  });
+  __useWartimeStateWrite({
+    fieldName: 'is357WinAnimationActive',
+    sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id,
+    value: is357WinAnimationActive,
+    owner: __wartimeGameOwner,
+    identity: __wartimeGameIdentity,
+  });
 
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
