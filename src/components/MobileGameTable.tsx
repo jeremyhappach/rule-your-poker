@@ -4402,6 +4402,7 @@ export const MobileGameTable = ({
     gameType, gameStatus, currentRound, lastRoundResult, gameId,
     threeFiveSevenWinnerId, threeFiveSevenWinPhase,
     is357MultiPlayerShowdown, winner357ShowCards, currentPlayer?.id, playerCards,
+    threeFiveSevenTerminalDescriptor?.source,
   ]);
 
   // 3-5-7 sweep pot release gate: canonical match-win announcement must
