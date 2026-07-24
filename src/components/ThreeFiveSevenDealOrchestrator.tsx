@@ -364,6 +364,13 @@ export function ThreeFiveSevenDealOrchestrator({
       selfPlayerId,
       dispatchBeginAt,
     });
+    __emitWartimeOpponentCardBack({
+      event: 'wave_dispatch_begin',
+      sourceSiteId: __WARTIME_SRC_DEAL.DEAL_OPPONENT_CARD_BACK.id,
+      identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null },
+      owner: __wartimeDealOwner,
+      payload: { intentCount: intents.length, dealerPosition, activeSeatCount: activeSeats.length },
+    });
 
     let dispatchError: unknown = null;
     try {
