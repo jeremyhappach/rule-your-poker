@@ -66,7 +66,7 @@ export const ThreeFiveSevenTerminalController = ({
       targetLegs: descriptor.targetLegs,
       proofCardsCount: descriptor.proofCards?.length ?? 0,
       hadAuthoritativeLegs: descriptor.hadAuthoritativeLegs,
-      playersAtDetection: descriptor.playersAtDetection,
+      playersAtHandStart: descriptor.playersAtHandStart ?? null,
     });
   }, [descriptor]);
 
