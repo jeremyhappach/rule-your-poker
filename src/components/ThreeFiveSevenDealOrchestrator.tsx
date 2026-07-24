@@ -865,6 +865,12 @@ export function Use357SelfHand<T>({
         renderDecision: `effectiveCards[${nextLen}] >= authoritative[${authoritativeCount}]`,
         prevVisibleCount: prevLen,
       });
+      __emitWartimeSelfFaceUp({
+        event: 'full_hand_visible',
+        sourceSiteId: __WARTIME_SRC_DEAL.DEAL_SELF_FACE_UP.id,
+        identity: { handContextId: baseHandContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId },
+        payload: { authoritativeCount, presentationCount: nextLen, runtimePhase: phase },
+      });
     }
   }, [
     deal, currentPlayerId, baseHandContextId, effectiveCards.length,
