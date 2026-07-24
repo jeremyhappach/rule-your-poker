@@ -2338,6 +2338,7 @@ export type Database = {
           presentation_generation: number
           round_number: number
           status: string
+          three_five_seven_legs_at_start: Json | null
           yahtzee_state: Json | null
         }
         Insert: {
@@ -2365,6 +2366,7 @@ export type Database = {
           presentation_generation?: number
           round_number: number
           status?: string
+          three_five_seven_legs_at_start?: Json | null
           yahtzee_state?: Json | null
         }
         Update: {
@@ -2392,6 +2394,7 @@ export type Database = {
           presentation_generation?: number
           round_number?: number
           status?: string
+          three_five_seven_legs_at_start?: Json | null
           yahtzee_state?: Json | null
         }
         Relationships: [
