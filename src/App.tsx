@@ -48,6 +48,18 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { WartimeAdminGateMount } from "@/lib/wartimeDebug/WartimeAdminGateMount";
 import { useWartimeEnabled, useWartimeAdminGateOpen } from "@/lib/wartimeDebug/core";
+import { registerWartimeProductionHook as __wartimeRegisterHookApp, SRC as __WARTIME_SRC_APP } from "@/lib/threeFiveSeven/wartime";
+
+// 3-5-7 Wartime — canonical production owner for global.error.origin.
+// App.tsx owns the top-level React error boundary and application
+// toast surface; reportGlobalErrorOrigin fires from those owners in
+// addition to the always-on window listeners.
+__wartimeRegisterHookApp({
+  requirementId: 'global.error.origin',
+  sourceSiteId: __WARTIME_SRC_APP.GLOBAL_ERROR_ORIGIN.id,
+  sourceFile: 'src/App.tsx',
+  sourceFunction: 'App.errorBoundaryAndToast',
+});
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";

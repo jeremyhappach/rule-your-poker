@@ -5,8 +5,19 @@ import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
   isWartimeReadyForHarness,
   emitWartime,
+  registerWartimeProductionHook as __wartimeRegisterHookGL,
   SRC as WARTIME_SRC,
 } from "./threeFiveSeven/wartime";
+
+// 3-5-7 Wartime — canonical production owner for db.mutation.correlation.
+// gameLogic.ts contains the 3-5-7 round/ante/deal/settlement mutations.
+// withDbMutationCorrelation wraps each real Supabase call site.
+__wartimeRegisterHookGL({
+  requirementId: 'db.mutation.correlation',
+  sourceSiteId: WARTIME_SRC.DB_MUTATION_CORRELATION.id,
+  sourceFile: 'src/lib/gameLogic.ts',
+  sourceFunction: 'gameLogic.dbMutations',
+});
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
