@@ -10,8 +10,6 @@
 
 import { useEffect, useRef } from 'react';
 import { emitWartime, type WartimeIdentity, type WartimeOwner } from './emit';
-import { markRequirementInstalled } from './coverage';
-import { SRC } from './sourceSites';
 
 let componentSeq = 0;
 function makeInstanceId(componentType: string): string {
