@@ -334,7 +334,35 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
-  
+
+  // 3-5-7 HAND-OPENING LEGS SNAPSHOT
+  // ---------------------------------
+  // Populated ONLY on the canonical Round 1 insert for a 3-5-7 hand.
+  // This is the immutable authoritative source for instant-357 Sweep
+  // the Legs eligibility downstream (see terminalDescriptor.ts).
+  //
+  // Race-loser behavior: the race-losing INSERT never reaches the DB
+  // (unique index on (dealer_game_id, hand_number, round_number)), so
+  // no overwrite is possible. Losing callers refetch the winner's row
+  // in the error branch below and inherit the winner's snapshot.
+  //
+  // Roster source: `startRound` has no prior authoritative fetch of
+  // `players` in-scope at this point, so one scoped read is performed
+  // here. This is the same roster predicate used by later ante/deal
+  // steps in the winning branch.
+  let three57LegsAtStart: Array<{ player_id: string; position: number; legs: number }> | null = null;
+  if (is357 && roundNumber === 1) {
+    const { data: rosterAtStart } = await supabase
+      .from('players')
+      .select('id, position, legs')
+      .eq('game_id', gameId);
+    three57LegsAtStart = (rosterAtStart ?? []).map((p: any) => ({
+      player_id: p.id as string,
+      position: Number(p.position ?? 0),
+      legs: Number(p.legs ?? 0),
+    }));
+  }
+
   // CRITICAL: Use INSERT-AS-LOCK pattern with unique constraint on (game_id, hand_number, round_number)
   // The unique index prevents duplicate rounds - only ONE client can successfully insert.
   // That winning client is the ONLY one that charges antes, updates pot, etc.
@@ -348,7 +376,10 @@ export async function startRound(gameId: string, roundNumber: number) {
       pot: 0, // Will be updated after ante collection
       decision_deadline: deadline.toISOString(),
       hand_number: handNumber,
-      dealer_game_id: currentGameUuid
+      dealer_game_id: currentGameUuid,
+      ...(three57LegsAtStart !== null
+        ? { three_five_seven_legs_at_start: three57LegsAtStart as any }
+        : {}),
     })
     .select()
     .single();
