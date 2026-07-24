@@ -6179,19 +6179,16 @@ export const MobileGameTable = ({
     if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
     // Slice 3 — instant-357 controller ownership. When the controller
     // holds prelude ownership for the active descriptor generation,
-    // SUPPRESS the legacy sentinel-detection arm entirely. The
-    // controller will drive announcement + proof cards + optional
-    // Sweep-the-Legs and then hand off to the canonical downstream
-    // path via the shared adapter.
-    // Descriptor-source is the SYNCHRONOUS authority: if the terminal
-    // is instant-357 the controller owns the prelude — never race the
-    // ref which registers after the controller's mount effect. Also
-    // gate on the sentinel itself (357_SWEEP:) as a defensive fallback
-    // in case the descriptor state hasn't been threaded yet.
-    if (
-      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
-    ) {
+    // SUPPRESS the legacy sentinel-detection arm entirely.
+    //
+    // ATOMIC OWNERSHIP PREDICATE — the sole synchronous authority is
+    // `threeFiveSevenTerminalDescriptor?.source === 'instant-357'`. The
+    // sentinel-only OR fallback that used to gate this branch has been
+    // removed: the descriptor is now deterministic (Game.tsx emits it
+    // in the same tick as the sweep sentinel, even when proof cards
+    // are pending), so legacy is disabled iff the controller is
+    // guaranteed to activate.
+    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
       emit357RuntimeDiag('legacy_prelude_suppressed', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -6202,7 +6199,7 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_or_sentinel',
+        guardMode: 'descriptor_source_only',
       });
       return;
     }
