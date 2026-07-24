@@ -831,6 +831,12 @@ export function Use357SelfHand<T>({
         renderDecision: `effectiveCards[${nextLen}] from ${isClaimOnlyRender ? 'settled' : 'sourceCards'}`,
         prevVisibleCount: prevLen,
       });
+      __emitWartimeSelfFaceUp({
+        event: 'first_card_visible',
+        sourceSiteId: __WARTIME_SRC_DEAL.DEAL_SELF_FACE_UP.id,
+        identity: { handContextId: baseHandContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId },
+        payload: { authoritativeCount, presentationCount: nextLen, runtimePhase: phase },
+      });
     }
 
     // Full hand visible: presentation === authoritative (and non-zero),

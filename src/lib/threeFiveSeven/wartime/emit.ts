@@ -25,6 +25,7 @@ export interface WartimeIdentity {
   currentPlayerPosition?: number | null;
   dealerPlayerId?: string | null;
   dealerPosition?: number | null;
+  triggerId?: string | null;
 }
 
 export interface WartimeOwner {
