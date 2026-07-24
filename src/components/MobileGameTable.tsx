@@ -1257,6 +1257,7 @@ export const MobileGameTable = ({
   threeFiveSevenCachedLegPositions = [],
   onThreeFiveSevenWinAnimationStarted,
   onThreeFiveSevenWinAnimationComplete,
+  threeFiveSevenTerminalDescriptor = null,
   isGameOver,
   isDealer,
   onNextGame,
