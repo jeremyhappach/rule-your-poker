@@ -8,20 +8,45 @@
 
 export type WartimeRuntimeExpectation = 'must_emit' | 'conditional' | 'preflight_only';
 
+/**
+ * Every mandatory source site is identified by a stable `sourceAnchor`
+ * — a dot-format identifier tied to a specific production branch,
+ * callback, or emitter call site. Numeric line numbers are forbidden:
+ * they are brittle under refactors and produce false positives at the
+ * coverage gate. Uniqueness of `sourceAnchor` (and of `id`) is enforced
+ * at registration time.
+ */
 export interface WartimeSourceSite {
   id: string;
   file: string;
   fn: string;
-  line: number;
+  sourceAnchor: string;
   requirementIds: string[];
   runtimeExpectation: WartimeRuntimeExpectation;
 }
 
 const REGISTRY: Record<string, WartimeSourceSite> = {};
+const ANCHOR_INDEX: Record<string, string> = {};
 
-function reg(site: Omit<WartimeSourceSite, 'runtimeExpectation'> & { runtimeExpectation?: WartimeRuntimeExpectation }): WartimeSourceSite {
+function reg(
+  site: Omit<WartimeSourceSite, 'runtimeExpectation' | 'sourceAnchor'> & {
+    sourceAnchor?: string;
+    runtimeExpectation?: WartimeRuntimeExpectation;
+  },
+): WartimeSourceSite {
+  const anchor = site.sourceAnchor ?? site.id;
+  if (ANCHOR_INDEX[anchor] && ANCHOR_INDEX[anchor] !== site.id) {
+    throw new Error(
+      `[wartime] duplicate sourceAnchor "${anchor}" between site "${ANCHOR_INDEX[anchor]}" and "${site.id}"`,
+    );
+  }
+  ANCHOR_INDEX[anchor] = site.id;
   const full: WartimeSourceSite = {
-    ...site,
+    id: site.id,
+    file: site.file,
+    fn: site.fn,
+    sourceAnchor: anchor,
+    requirementIds: site.requirementIds,
     runtimeExpectation: site.runtimeExpectation ?? 'must_emit',
   };
   REGISTRY[full.id] = full;
