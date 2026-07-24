@@ -7502,7 +7502,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   // Show "Re-Ante" announcement during 3-5-7 subsequent round 1
                   setReAnteMessage('Re-Ante');
                   // Clear the message after animation completes (3 seconds)
-                  setTimeout(() => setReAnteMessage(null), 3000);
+                  __scheduleWartimeTimeout({
+                    sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_MESSAGE_CLEAR.id,
+                    ownerLabel: 'game.357ReAnteMessageClear',
+                    delayMs: 3000,
+                    extra: { purpose: 'clear 3-5-7 re-ante announcement' },
+                    fn: () => setReAnteMessage(null),
+                  });
                 }
               }
             }
@@ -7532,6 +7538,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
       console.log('[AWAITING_NEXT_ROUND] No longer awaiting, clearing timer');
+      __cancelWartimeAsyncOwner(awaitingTimerRef.current as unknown as number, 'awaiting_flag_false');
       clearTimeout(awaitingTimerRef.current);
       awaitingTimerRef.current = null;
       gameStateAtTimerStart.current = null;
@@ -7541,7 +7548,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
 
   // Clear timer when results are shown
   useEffect(() => {
