@@ -32,6 +32,14 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useWartimeComponentInstance as __useWartimeDealComponentInstance,
+  useWartimeStateWrite as __useWartimeDealStateWrite,
+  useDealRedispatchDetector as __useDealRedispatchDetector,
+  emitSelfFaceUpChannel as __emitWartimeSelfFaceUp,
+  emitOpponentCardBackChannel as __emitWartimeOpponentCardBack,
+  SRC as __WARTIME_SRC_DEAL,
+} from '@/lib/threeFiveSeven/wartime';
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -84,6 +92,30 @@ export function ThreeFiveSevenDealOrchestrator({
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  const __wartimeDealIdentity = {
+    handContextId: waveContextId,
+  };
+  const __wartimeDealOwner = __useWartimeDealComponentInstance({
+    componentType: 'ThreeFiveSevenDealOrchestrator',
+    sourceSiteId: __WARTIME_SRC_DEAL.DEAL_ORCH_MOUNT.id,
+    identity: __wartimeDealIdentity,
+    branch: { cardsThisWave, dealerPosition, selfPosition, activeSeatsCount: activeSeats.length },
+  });
+  __useWartimeDealStateWrite({
+    fieldName: 'dispatchedWaveContextId',
+    sourceSiteId: __WARTIME_SRC_DEAL.STATE_DEAL_RUNTIME.id,
+    value: waveContextId,
+    owner: __wartimeDealOwner,
+    identity: __wartimeDealIdentity,
+  });
+  __useDealRedispatchDetector({
+    sourceSiteId: __WARTIME_SRC_DEAL.DEAL_REDISPATCH.id,
+    currentIdentity: __wartimeDealIdentity,
+    currentIdentityKey: waveContextId,
+    isTerminalOrStale: false,
+  });
   const dispatchedWaveRef = useRef<string | null>(null);
   // Tracks per-wave dispatch begin time (used for first_card_visible /
   // full_hand_visible elapsed-time computation). Fire-and-forget only.
