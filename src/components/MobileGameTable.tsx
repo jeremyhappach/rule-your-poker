@@ -2126,17 +2126,27 @@ export const MobileGameTable = ({
   // 357 Sweeps pot animation state
   const [showSweepsPot, setShowSweepsPot] = useState(false);
   const [sweepsPlayerName, setSweepsPlayerName] = useState('');
-  const lastSweepsResultRef = useRef<string | null>(null);
-  // Surgical repair: sweep-celebration completion is the SOLE release
-  // signal for the sweep-wait phase. Captured at SweepsPotAnimation (and
-  // optional SweepTheLegsAnimation) onComplete. See item 1 of the
-  // surgical repair spec.
+  // Surgical repair item 1: identity-scoped one-shot key. Sentinel text
+  // (`357_SWEEP:<name>:<amount>`) can repeat verbatim across dealer
+  // games; keying the one-shot on the sentinel string alone caused DG2
+  // to be rejected as "already seen". The one-shot now compares a full
+  // terminal identity tuple.
+  type Three57SweepDetectionIdentity = {
+    dealerGameId: string | null;
+    handContextId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+    lastRoundResult: string;
+  };
+  const lastSweepsIdentityRef = useRef<Three57SweepDetectionIdentity | null>(null);
   const [showSweepTheLegs357, setShowSweepTheLegs357] = useState(false);
   const [sweepCelebrationCompleted, setSweepCelebrationCompleted] = useState(false);
-  // Detection-time snapshot: did any authoritative player have legs > 0
-  // when the 357_SWEEP: sentinel was observed? Governs the conditional
-  // SweepTheLegsAnimation overlay only — NEVER used to infer a leg
-  // award (that is legs delta from settlement, which is zero for sweep).
+  // Immutable pre-settlement legs latch (per handContextId). Updated on
+  // every render where legs > 0 is observed for the CURRENT hand and
+  // no 357_SWEEP sentinel is present yet. Sentinel detection reads this
+  // latch instead of recomputing from live `players` (settlement may
+  // have already zeroed player.legs by the time the sentinel arrives).
+  const latchedLegsForHandRef = useRef<{ handContextId: string | null; hadLegs: boolean }>({ handContextId: null, hadLegs: false });
   const hadLegsBeforeSweepRef = useRef<boolean>(false);
   
   // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
@@ -5922,32 +5932,58 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyVisualRevealComplete]);
 
-  // Detect 357 sweep animation (3-5-7 games only)
+  // Pre-settlement legs latch — mirrors player.legs > 0 for the CURRENT
+  // handContextId while no 357_SWEEP sentinel is present. On sentinel
+  // detection we read this latch instead of live `players` because
+  // settlement may already have zeroed legs by that render.
   useEffect(() => {
-    if (
-      gameType !== 'holm-game' && 
-      lastRoundResult && 
-      lastRoundResult.startsWith('357_SWEEP:') &&
-      lastRoundResult !== lastSweepsResultRef.current
-    ) {
-      // Sentinel format: 357_SWEEP:<name>:<amount>. Strip amount segment for display.
-      const body = lastRoundResult.slice('357_SWEEP:'.length);
-      const lastColon = body.lastIndexOf(':');
-      const playerName = lastColon >= 0 && Number.isFinite(Number(body.slice(lastColon + 1)))
-        ? body.slice(0, lastColon)
-        : body;
-      lastSweepsResultRef.current = lastRoundResult;
-      setSweepsPlayerName(playerName);
-      // Detection-time legs snapshot governs the conditional
-      // SweepTheLegsAnimation overlay. Any player.legs > 0 at
-      // detection → arm the overlay. Zero across every player → skip.
-      hadLegsBeforeSweepRef.current = Array.isArray(players)
-        && players.some((p) => typeof p?.legs === 'number' && (p.legs as number) > 0);
-      setSweepCelebrationCompleted(false);
-      setShowSweepTheLegs357(false);
-      setShowSweepsPot(true);
+    if (gameType === 'holm-game') return;
+    if (!__is357GameType(gameType)) return;
+    const hci = handContextId ?? null;
+    if (latchedLegsForHandRef.current.handContextId !== hci) {
+      latchedLegsForHandRef.current = { handContextId: hci, hadLegs: false };
     }
-  }, [lastRoundResult, gameType, gameId, players]);
+    if (lastRoundResult?.startsWith('357_SWEEP:')) return;
+    const anyLegs = Array.isArray(players)
+      && players.some((p) => typeof p?.legs === 'number' && (p.legs as number) > 0);
+    if (anyLegs) latchedLegsForHandRef.current.hadLegs = true;
+  }, [gameType, handContextId, players, lastRoundResult]);
+
+  // Detect 357 sweep animation (3-5-7 games only) — identity-scoped one-shot.
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
+    const nextIdentity: Three57SweepDetectionIdentity = {
+      dealerGameId: threeFiveSevenDealerGameScope ?? null,
+      handContextId: handContextId ?? null,
+      roundId: horsesRoundId ?? null,
+      handNumber: (typeof horsesHandNumber === 'number' ? horsesHandNumber : null),
+      lastRoundResult,
+    };
+    const prev = lastSweepsIdentityRef.current;
+    const sameIdentity = !!prev
+      && prev.dealerGameId === nextIdentity.dealerGameId
+      && prev.handContextId === nextIdentity.handContextId
+      && prev.roundId === nextIdentity.roundId
+      && prev.handNumber === nextIdentity.handNumber
+      && prev.lastRoundResult === nextIdentity.lastRoundResult;
+    if (sameIdentity) return;
+    // Sentinel format: 357_SWEEP:<name>:<amount>. Strip amount for display.
+    const body = lastRoundResult.slice('357_SWEEP:'.length);
+    const lastColon = body.lastIndexOf(':');
+    const playerName = lastColon >= 0 && Number.isFinite(Number(body.slice(lastColon + 1)))
+      ? body.slice(0, lastColon)
+      : body;
+    lastSweepsIdentityRef.current = nextIdentity;
+    setSweepsPlayerName(playerName);
+    // Read the pre-settlement legs latch scoped to the current hand.
+    const latch = latchedLegsForHandRef.current;
+    const hadLegs = latch.handContextId === (handContextId ?? null) && latch.hadLegs;
+    hadLegsBeforeSweepRef.current = hadLegs;
+    setSweepCelebrationCompleted(false);
+    setShowSweepTheLegs357(false);
+    setShowSweepsPot(true);
+  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
@@ -7053,7 +7089,18 @@ export const MobileGameTable = ({
           isSweepPath: true,
           selectedNextPhase: 'await_celebration',
         });
-        sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
+        (() => {
+          const armId = build357PresentationIdentity();
+          const prevArm = sweepAwaitingCelebrationRef.current;
+          if (prevArm
+              && prevArm.dealerGameId === armId.dealerGameId
+              && prevArm.handContextId === armId.handContextId
+              && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
+            // Already armed for this identity — idempotent no-op.
+            return;
+          }
+          sweepAwaitingCelebrationRef.current = armId;
+        })();
         setThreeFiveSevenPotHiddenUntilReset(true);
         return;
       }
@@ -7352,19 +7399,32 @@ export const MobileGameTable = ({
     });
   }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
 
-  // DEALER-GAME BOUNDARY: on dealerGameId or handContextId transition,
-  // cancel every stale sweep-wait, pot trigger, and celebration state
-  // so DG1 presentation cannot leak into DG2.
+  // DEALER-GAME BOUNDARY: last-concrete-identity contract.
+  // A transient null identity (settlement can briefly null dealerGameId
+  // / handContextId) MUST NOT count as a boundary — that would wipe the
+  // armed sweep-wait and celebration state for the same terminal event.
+  // Only a transition between two DIFFERENT non-null identities is a
+  // true dealer-game boundary. `prev357BoundaryIdentityRef` therefore
+  // stores the last CONCRETE (non-null) identity ever seen.
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
-    const prev = prev357BoundaryIdentityRef.current;
     const nextDgId = three57DealerGameId;
     const nextHandCtx = handContextId ?? null;
-    prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
-    if (!prev) return;
+    const nextIsConcrete = nextDgId != null && nextHandCtx != null;
+    if (!nextIsConcrete) {
+      // Settlement may temporarily null live identity. Preserve both
+      // the active presentation and the last concrete identity.
+      return;
+    }
+    const prev = prev357BoundaryIdentityRef.current;
+    if (!prev) {
+      prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
+      return;
+    }
     const boundaryCrossed =
       prev.dealerGameId !== nextDgId ||
       prev.handContextId !== nextHandCtx;
+    prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
@@ -7374,7 +7434,7 @@ export const MobileGameTable = ({
     setShowSweepTheLegs357(false);
     setSweepCelebrationCompleted(false);
     hadLegsBeforeSweepRef.current = false;
-    lastSweepsResultRef.current = null;
+    lastSweepsIdentityRef.current = null;
     if (staleSweep || stalePot) {
       emit357RuntimeDiag('dealer_game_boundary_reset', {
         gameId: gameId ?? null,
@@ -9581,7 +9641,17 @@ export const MobileGameTable = ({
                 // match_win announcement to clear so celebration owns the
                 // foreground until its TTL elapses. Awaiter effect advances.
                 console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
-                sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
+                (() => {
+                  const armId = build357PresentationIdentity();
+                  const prevArm = sweepAwaitingCelebrationRef.current;
+                  if (prevArm
+                      && prevArm.dealerGameId === armId.dealerGameId
+                      && prevArm.handContextId === armId.handContextId
+                      && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
+                    return;
+                  }
+                  sweepAwaitingCelebrationRef.current = armId;
+                })();
                 setThreeFiveSevenPotHiddenUntilReset(true);
                 // C. Sweep wait armed — primary branch.
                 emit357RuntimeDiag('sweep_wait_armed', {
@@ -11705,7 +11775,7 @@ export const MobileGameTable = ({
                           </div>
                         ) : null}
 
-                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) ? (
+                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) && !selfHandHasActive357 ? (
                           (() => {
                             const isFinalRound = currentRound === 3;
                             return !winner357ShowCards ? (
