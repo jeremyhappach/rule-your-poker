@@ -11090,6 +11090,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       // ---- Authoritative proof cards (instant-357 only) -------------
+      // CORRECTION — descriptor readiness must be DETERMINISTIC. We no
+      // longer defer the descriptor on missing proof cards; the
+      // controller consumes `proofCards === null` by skipping the
+      // proof-card step and progressing to the optional sweep-legs
+      // step or direct canonical handoff. Missing cards are recorded
+      // diagnostically but never black-hole the terminal.
       let proofCards: CardType[] | null = null;
       if (isInstant357Terminal) {
         const winnerRow = playerCards.find((pc) => pc.player_id === winnerPlayer.id);
@@ -11104,13 +11110,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             winnerPlayerId: winnerPlayer.id,
             terminalResultIdentity: resultMessage,
           }, {
-            diagnostic: 'terminal_descriptor_deferred_missing_proof_cards',
+            diagnostic: 'terminal_descriptor_proof_cards_missing_nonblocking',
             expectedCardCount,
             rawWinnerCardCount: raw.length,
             dealerGameId: game.current_game_uuid ?? null,
             handNumber: currentRound?.hand_number ?? null,
           });
-          return; // leave descriptor pending
+          proofCards = null;
         }
       }
 
