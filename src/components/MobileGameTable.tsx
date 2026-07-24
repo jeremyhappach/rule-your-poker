@@ -4351,7 +4351,9 @@ export const MobileGameTable = ({
   const showCardsEligibilitySigRef = useRef<string | null>(null);
   useEffect(() => {
     if (gameType === 'holm-game') return;
+    const isInstant357TerminalActive = threeFiveSevenTerminalDescriptor?.source === 'instant-357';
     const isWinner357InAnimation =
+      !isInstant357TerminalActive &&
       threeFiveSevenWinnerId === currentPlayer?.id &&
       threeFiveSevenWinPhase !== 'idle';
     const isSweepPath = !!lastRoundResult?.startsWith('357_SWEEP:');
@@ -4372,7 +4374,7 @@ export const MobileGameTable = ({
       shouldRender, buttonShown, isWinner357InAnimation, isSweepPath,
       winner357ShowCards, threeFiveSevenWinPhase, threeFiveSevenWinnerId,
       currentPlayer?.id ?? '', gameType, gameStatus, currentRound,
-      lastRoundResult ?? '', is357MultiPlayerShowdown,
+      lastRoundResult ?? '', is357MultiPlayerShowdown, isInstant357TerminalActive,
       authoritativeCardCount, expectedCardCount,
     ].join('|');
     if (showCardsEligibilitySigRef.current === sig) return;
@@ -8834,16 +8836,18 @@ export const MobileGameTable = ({
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
     const isRightSideSlot = slot >= 3;
     const isBottomPosition = slot === 0 || slot === 5 || slot === -1;
+    const isInstant357TerminalActive = threeFiveSevenTerminalDescriptor?.source === 'instant-357';
 
     // 357 showdown derivation — three exclusive reveal modes.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
-    const isWinningLegReveal = winningLegPlayerId === player.id && cards.length > 0;
+    const isWinningLegReveal = !isInstant357TerminalActive && winningLegPlayerId === player.id && cards.length > 0;
     const isRound3MultiShowdown = is357Round3MultiPlayerShowdown && hasExposedCards;
     const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
     const isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
 
     // Win-animation / solo-vs-Chucky tabling suppression.
     const isWinAnimationWinner =
+      !isInstant357TerminalActive &&
       threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
     const soloLockedId = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayerForChip =
@@ -9016,8 +9020,8 @@ export const MobileGameTable = ({
     // Hide opponent card backs as soon as a 357 winner is identified
     // (covers the brief gap before the win animation phase machine
     // engages). Preserved verbatim from legacy.
-    const winnerIdForBackHide = threeFiveSevenWinnerId ?? winningLegPlayerId;
-    const isWinContextActive = threeFiveSevenWinPhase !== 'idle' || !!winningLegPlayerId;
+    const winnerIdForBackHide = isInstant357TerminalActive ? null : (threeFiveSevenWinnerId ?? winningLegPlayerId);
+    const isWinContextActive = !isInstant357TerminalActive && (threeFiveSevenWinPhase !== 'idle' || !!winningLegPlayerId);
     const hideBacksDuringWin =
       isWinContextActive && !!winnerIdForBackHide && player.id !== winnerIdForBackHide;
 
@@ -10479,6 +10483,7 @@ export const MobileGameTable = ({
         {(() => {
           const winnerStageVisible =
             gameType !== 'holm-game' &&
+            threeFiveSevenTerminalDescriptor?.source !== 'instant-357' &&
             !!threeFiveSevenWinnerId &&
             threeFiveSevenWinPhase !== 'idle' &&
             threeFiveSevenWinnerCards.length > 0 &&
@@ -12393,7 +12398,9 @@ export const MobileGameTable = ({
                   {gameType === 'holm-game' && <HolmActivePaneGeometryPill />}
 
                   {(() => {
+                    const isInstant357TerminalActive = threeFiveSevenTerminalDescriptor?.source === 'instant-357';
                     const isWinner357InAnimation = gameType !== 'holm-game' &&
+                      !isInstant357TerminalActive &&
                       threeFiveSevenWinnerId === currentPlayer?.id &&
                       threeFiveSevenWinPhase !== 'idle';
 
