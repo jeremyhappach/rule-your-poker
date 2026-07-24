@@ -10263,10 +10263,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const clearPollTimers = () => {
       if (poll357IntervalRef.current) {
+        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'progress_poll_cleared');
         window.clearInterval(poll357IntervalRef.current);
         poll357IntervalRef.current = null;
       }
       if (poll357StopTimerRef.current) {
+        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'progress_poll_stop_cleared');
         window.clearTimeout(poll357StopTimerRef.current);
         poll357StopTimerRef.current = null;
       }
