@@ -1,6 +1,12 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
+import {
+  useWartimeComponentInstance as __useWartimeComponentInstance,
+  useWartimeStateWrite as __useWartimeStateWrite,
+  emitRefWrite as __emitWartimeRefWrite,
+  SRC as __WARTIME_SRC,
+} from "@/lib/threeFiveSeven/wartime";
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
