@@ -200,6 +200,7 @@ export function ThreeFiveSevenDealOrchestrator({
     if (dispatchedWaveRef.current === waveContextId) return;
     const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
     const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
+    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const dealerGameId = waveContextId.split('#')[0] ?? null;
     const emitDecision = (dispatchDecision: 'dispatch' | 'suppress' | 'defer', suppressionReason: string | null) => {
       emit357RuntimeDiag('wave_dispatch_decision', {
