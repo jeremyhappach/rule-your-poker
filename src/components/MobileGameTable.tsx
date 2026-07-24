@@ -11754,7 +11754,7 @@ export const MobileGameTable = ({
                           </div>
                         ) : null}
 
-                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) ? (
+                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) && !selfHandHasActive357 ? (
                           (() => {
                             const isFinalRound = currentRound === 3;
                             return !winner357ShowCards ? (
