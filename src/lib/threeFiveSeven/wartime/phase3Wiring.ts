@@ -12,8 +12,13 @@
  */
 
 import { emitWartime, type WartimeIdentity, type WartimeOwner } from './emit';
-import { markHelperImplemented } from './coverage';
-import { SRC } from './sourceSites';
+import { markHelperImplemented, registerActualEmitterInvocation } from './coverage';
+import {
+  SRC,
+  presentationLifecycleSiteId,
+  type PresentationComponentKey,
+  type PresentationPhaseKey,
+} from './sourceSites';
 
 // ── DOM snapshot ──────────────────────────────────────────────
 
