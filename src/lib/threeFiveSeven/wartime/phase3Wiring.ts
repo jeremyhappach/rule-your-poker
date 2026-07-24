@@ -584,6 +584,7 @@ export async function withDbMutationCorrelation<T extends { error: unknown }>(
     owner?: WartimeOwner;
     payloadHash?: string | null;
     causedByEventId?: string | null;
+    sourceSiteId?: string;
   },
   runner: (requestId: string) => Promise<T>,
 ): Promise<T> {
@@ -592,7 +593,7 @@ export async function withDbMutationCorrelation<T extends { error: unknown }>(
   const start = performance.now();
   emitWartime({
     eventName: 'db_mutation_begin',
-    sourceSiteId: SRC.DB_MUTATION_CORRELATION.id,
+    sourceSiteId: ctx.sourceSiteId ?? SRC.DB_MUTATION_CORRELATION.id,
     identity: ctx.identity,
     owner: ctx.owner,
     payload: {
@@ -607,7 +608,7 @@ export async function withDbMutationCorrelation<T extends { error: unknown }>(
     const eventName = anyRes.error ? 'db_mutation_error' : 'db_mutation_complete';
     emitWartime({
       eventName,
-      sourceSiteId: SRC.DB_MUTATION_CORRELATION.id,
+      sourceSiteId: ctx.sourceSiteId ?? SRC.DB_MUTATION_CORRELATION.id,
       identity: ctx.identity,
       owner: ctx.owner,
       payload: {
@@ -621,7 +622,7 @@ export async function withDbMutationCorrelation<T extends { error: unknown }>(
   } catch (err) {
     emitWartime({
       eventName: 'db_mutation_error',
-      sourceSiteId: SRC.DB_MUTATION_CORRELATION.id,
+      sourceSiteId: ctx.sourceSiteId ?? SRC.DB_MUTATION_CORRELATION.id,
       identity: ctx.identity,
       owner: ctx.owner,
       payload: {
@@ -653,6 +654,7 @@ let rtCauseReceiptSeq = 0;
 export function wrapRealtimeCausality<TPayload>(opts: {
   channelLabel: string;
   table: string | null;
+  sourceSiteId?: string;
   identity?: () => WartimeIdentity | undefined;
   handler: (payload: TPayload) => void | Promise<void>;
 }): (payload: TPayload) => void {
@@ -665,7 +667,7 @@ export function wrapRealtimeCausality<TPayload>(opts: {
     };
     emitWartime({
       eventName: 'realtime.causality',
-      sourceSiteId: SRC.REALTIME_CAUSALITY.id,
+      sourceSiteId: opts.sourceSiteId ?? SRC.REALTIME_CAUSALITY.id,
       identity: opts.identity?.() ?? undefined,
       payload: {
         ownerId,
@@ -684,7 +686,7 @@ export function wrapRealtimeCausality<TPayload>(opts: {
     } catch (err) {
       emitWartime({
         eventName: 'realtime.causality.handler_error',
-        sourceSiteId: SRC.REALTIME_CAUSALITY.id,
+        sourceSiteId: opts.sourceSiteId ?? SRC.REALTIME_CAUSALITY.id,
         payload: {
           ownerId,
           message: err instanceof Error ? err.message : String(err),
@@ -710,22 +712,25 @@ function sampleIdentityFields(row: Record<string, unknown> | null): Record<strin
 let asyncOwnerSeq3 = 0;
 export function trackAsyncOwner(opts: {
   ownerLabel: string;
-  kind: 'timeout' | 'rAF' | 'promise' | 'animation_end' | 'transition_end' | 'effect_cleanup' | 'orchestrator_completion' | 'realtime_callback' | 'supabase_continuation';
+  kind: 'timeout' | 'interval' | 'rAF' | 'promise' | 'animation_end' | 'transition_end' | 'effect_cleanup' | 'orchestrator_completion' | 'realtime_callback' | 'supabase_continuation';
   identity?: WartimeIdentity;
   owner?: WartimeOwner;
   delayMs?: number | null;
   causedByEventId?: string | null;
+  sourceSiteId?: string;
+  extra?: Record<string, unknown>;
 }): string {
   asyncOwnerSeq3 += 1;
   const asyncOwnerId = `ao3.${opts.ownerLabel}.${asyncOwnerSeq3.toString(36)}`;
   emitWartime({
-    eventName: 'async.owner.scheduled',
-    sourceSiteId: SRC.ASYNC_OWNER.id,
+    eventName: 'async_scheduled',
+    sourceSiteId: opts.sourceSiteId ?? SRC.ASYNC_OWNER.id,
     identity: opts.identity,
     owner: opts.owner,
     payload: {
       asyncOwnerId, ownerLabel: opts.ownerLabel, kind: opts.kind,
       delayMs: opts.delayMs ?? null, causedByEventId: opts.causedByEventId ?? null,
+      ...(opts.extra ?? {}),
     },
   });
   return asyncOwnerId;
@@ -740,10 +745,16 @@ export function emitAsyncOwnerFired(opts: {
   suppressionReason?: string | null;
   resultingStateWriteEventId?: string | null;
   resultingDbRequestId?: string | null;
+  sourceSiteId?: string;
+  extra?: Record<string, unknown>;
 }): void {
   emitWartime({
-    eventName: 'async.owner.fired',
-    sourceSiteId: SRC.ASYNC_OWNER.id,
+    eventName: opts.outcome === 'cancelled'
+      ? 'async_cancelled'
+      : opts.outcome === 'suppressed'
+        ? 'async_suppressed'
+        : 'async_fired',
+    sourceSiteId: opts.sourceSiteId ?? SRC.ASYNC_OWNER.id,
     identity: opts.identity,
     payload: {
       asyncOwnerId: opts.asyncOwnerId,
@@ -753,6 +764,7 @@ export function emitAsyncOwnerFired(opts: {
       suppressionReason: opts.suppressionReason ?? null,
       resultingStateWriteEventId: opts.resultingStateWriteEventId ?? null,
       resultingDbRequestId: opts.resultingDbRequestId ?? null,
+      ...(opts.extra ?? {}),
     },
   });
 }

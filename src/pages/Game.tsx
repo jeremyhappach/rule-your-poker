@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
+  emitWartime as __emitWartime,
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
   wrapRealtimeCausality as __wrapWartimeRealtimeCausality,
+  trackAsyncOwner as __trackWartimeAsyncOwner,
+  emitAsyncOwnerFired as __emitWartimeAsyncOwnerFired,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
@@ -20,6 +23,29 @@ __wartimeRegisterHookGame({
   sourceFunction: 'Game.realtimeSubscriptions',
 });
 __wartimeRegisterEmitterGame('realtime.causality', __WARTIME_SRC.REALTIME_CAUSALITY.id);
+__wartimeRegisterHookGame({ requirementId: 'realtime.causality', sourceSiteId: __WARTIME_SRC.REALTIME_SHOW_CARDS.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: 'show-cards broadcast callback' });
+__wartimeRegisterEmitterGame('realtime.causality', __WARTIME_SRC.REALTIME_SHOW_CARDS.id);
+__wartimeRegisterHookGame({ requirementId: 'state.write.show_cards', sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: 'show-cards broadcast setWinner357ShowCards' });
+__wartimeRegisterEmitterGame('state.write.show_cards', __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id);
+for (const __src of [
+  __WARTIME_SRC.ASYNC_GAME_RT_DEBOUNCE,
+  __WARTIME_SRC.ASYNC_GAME_RT_DELAYED_FETCH,
+  __WARTIME_SRC.ASYNC_GAME_RT_FALLBACK_POLL,
+  __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL,
+  __WARTIME_SRC.ASYNC_GAME_CRITICAL_POLL,
+  __WARTIME_SRC.ASYNC_GAME_357_SYNC_POLL,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER,
+  __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR,
+  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK,
+  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION,
+  __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL,
+  __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP,
+]) {
+  __wartimeRegisterHookGame({ requirementId: 'async.owner', sourceSiteId: __src.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __src.fn });
+  __wartimeRegisterEmitterGame('async.owner', __src.id);
+}
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -1535,6 +1561,150 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     identity: __wartimeGameIdentity,
   });
 
+  const __wartimeGameMountedRef = useRef(true);
+  const __wartimeAsyncOwnersRef = useRef(new Map<number, { asyncOwnerId: string; sourceSiteId: string; identity: any; extra?: Record<string, unknown> }>());
+  useEffect(() => {
+    __wartimeGameMountedRef.current = true;
+    return () => { __wartimeGameMountedRef.current = false; };
+  }, []);
+
+  const __wartimeLiveGameIdentity = useCallback(() => {
+    const liveGame = lastGameRef.current ?? game;
+    const liveCurrentPlayer = playersRef.current.find((p) => p.user_id === user?.id) ?? null;
+    return {
+      gameId: liveGame?.id ?? gameId ?? null,
+      dealerGameId: liveGame?.current_game_uuid ?? null,
+      roundId: cardStateContext?.roundId ?? (liveGame?.current_round != null ? String(liveGame.current_round) : null),
+      handNumber: liveGame?.total_hands ?? null,
+      handContextId: cardStateContext?.roundId ?? null,
+      terminalResultIdentity: liveGame?.last_round_result ?? null,
+      currentPlayerId: liveCurrentPlayer?.id ?? null,
+      currentPlayerPosition: liveCurrentPlayer?.position ?? null,
+    };
+  }, [cardStateContext?.roundId, game, gameId, user?.id]);
+
+  const __wartimeIdentityMatches = useCallback((captured: ReturnType<typeof __wartimeLiveGameIdentity>, live: ReturnType<typeof __wartimeLiveGameIdentity>) => (
+    captured.gameId === live.gameId &&
+    captured.dealerGameId === live.dealerGameId &&
+    captured.handContextId === live.handContextId &&
+    captured.terminalResultIdentity === live.terminalResultIdentity
+  ), []);
+
+  const __scheduleWartimeTimeout = useCallback((opts: {
+    sourceSiteId: string;
+    ownerLabel: string;
+    delayMs: number;
+    extra?: Record<string, unknown>;
+    fn: (asyncOwnerId: string, capturedIdentity: ReturnType<typeof __wartimeLiveGameIdentity>) => void | Promise<void>;
+  }) => {
+    const capturedIdentity = __wartimeLiveGameIdentity();
+    const asyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: opts.ownerLabel,
+      kind: 'timeout',
+      sourceSiteId: opts.sourceSiteId,
+      identity: capturedIdentity,
+      owner: __wartimeGameOwner,
+      delayMs: opts.delayMs,
+      extra: {
+        capturedDealerGameId: capturedIdentity.dealerGameId,
+        capturedHandContextId: capturedIdentity.handContextId,
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(opts.extra ?? {}),
+      },
+    });
+    const timerId = window.setTimeout(() => {
+      __wartimeAsyncOwnersRef.current.delete(timerId);
+      const liveIdentity = __wartimeLiveGameIdentity();
+      __emitWartimeAsyncOwnerFired({
+        asyncOwnerId,
+        outcome: 'fired',
+        sourceSiteId: opts.sourceSiteId,
+        identity: capturedIdentity,
+        liveIdentity,
+        identityMatch: __wartimeIdentityMatches(capturedIdentity, liveIdentity),
+        extra: {
+          ownerMounted: __wartimeGameMountedRef.current,
+          liveDealerGameId: liveIdentity.dealerGameId,
+          liveHandContextId: liveIdentity.handContextId,
+          ...(opts.extra ?? {}),
+        },
+      });
+      void opts.fn(asyncOwnerId, capturedIdentity);
+    }, opts.delayMs);
+    __wartimeAsyncOwnersRef.current.set(timerId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
+    return timerId;
+  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+
+  const __scheduleWartimeInterval = useCallback((opts: {
+    sourceSiteId: string;
+    ownerLabel: string;
+    intervalMs: number;
+    extra?: Record<string, unknown>;
+    fn: (asyncOwnerId: string, tickNumber: number, capturedIdentity: ReturnType<typeof __wartimeLiveGameIdentity>) => void | Promise<void>;
+  }) => {
+    const capturedIdentity = __wartimeLiveGameIdentity();
+    let tickNumber = 0;
+    const asyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: opts.ownerLabel,
+      kind: 'interval',
+      sourceSiteId: opts.sourceSiteId,
+      identity: capturedIdentity,
+      owner: __wartimeGameOwner,
+      delayMs: opts.intervalMs,
+      extra: {
+        intervalCadenceMs: opts.intervalMs,
+        capturedDealerGameId: capturedIdentity.dealerGameId,
+        capturedHandContextId: capturedIdentity.handContextId,
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(opts.extra ?? {}),
+      },
+    });
+    const intervalId = window.setInterval(() => {
+      tickNumber += 1;
+      const liveIdentity = __wartimeLiveGameIdentity();
+      __emitWartimeAsyncOwnerFired({
+        asyncOwnerId,
+        outcome: 'fired',
+        sourceSiteId: opts.sourceSiteId,
+        identity: capturedIdentity,
+        liveIdentity,
+        identityMatch: __wartimeIdentityMatches(capturedIdentity, liveIdentity),
+        extra: {
+          tickNumber,
+          intervalCadenceMs: opts.intervalMs,
+          ownerMounted: __wartimeGameMountedRef.current,
+          liveDealerGameId: liveIdentity.dealerGameId,
+          liveHandContextId: liveIdentity.handContextId,
+          ...(opts.extra ?? {}),
+        },
+      });
+      void opts.fn(asyncOwnerId, tickNumber, capturedIdentity);
+    }, opts.intervalMs);
+    __wartimeAsyncOwnersRef.current.set(intervalId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
+    return intervalId;
+  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+
+  const __cancelWartimeAsyncOwner = useCallback((timerOrIntervalId: number | null | undefined, reason: string) => {
+    if (timerOrIntervalId == null) return;
+    const record = __wartimeAsyncOwnersRef.current.get(timerOrIntervalId);
+    if (!record) return;
+    __wartimeAsyncOwnersRef.current.delete(timerOrIntervalId);
+    const liveIdentity = __wartimeLiveGameIdentity();
+    __emitWartimeAsyncOwnerFired({
+      asyncOwnerId: record.asyncOwnerId,
+      outcome: 'cancelled',
+      sourceSiteId: record.sourceSiteId,
+      identity: record.identity,
+      liveIdentity,
+      identityMatch: __wartimeIdentityMatches(record.identity, liveIdentity),
+      suppressionReason: reason,
+      extra: {
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(record.extra ?? {}),
+      },
+    });
+  }, [__wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
   const safety357FallbackTimerRef = useRef<number | null>(null);
@@ -3044,10 +3214,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetch = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
+      if (debounceTimer) {
+        __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'debounce_rescheduled');
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = __scheduleWartimeTimeout({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_DEBOUNCE.id,
+        ownerLabel: 'game.realtime.debouncedFetch',
+        delayMs: 300,
+        extra: { purpose: 'batch realtime fetchGameData', gameStatus: game?.status ?? null },
+        fn: () => {
         fetchGameData();
-      }, 300); // 300ms balances responsiveness and batching
+        },
+      }); // 300ms balances responsiveness and batching
     };
 
 
@@ -3058,12 +3237,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (safetyPollsDisabled) return;
       if (fallbackPollInterval) return;
       // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
-      fallbackPollInterval = setInterval(() => {
+      fallbackPollInterval = __scheduleWartimeInterval({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_FALLBACK_POLL.id,
+        ownerLabel: 'game.realtime.fallbackPolling',
+        intervalMs: 5000,
+        extra: { purpose: 'realtime fallback polling' },
+        fn: () => {
         fetchGameData();
-      }, 5000);
+        },
+      });
     };
     const stopFallbackPolling = () => {
       if (!fallbackPollInterval) return;
+      __cancelWartimeAsyncOwner(fallbackPollInterval as unknown as number, 'fallback_poll_stopped');
       clearInterval(fallbackPollInterval);
       fallbackPollInterval = null;
     };
@@ -3163,9 +3349,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setCachedRoundData(null);
             cachedRoundRef.current = null;
             maxRevealedRef.current = 0;
-            if (debounceTimer) clearTimeout(debounceTimer);
+            if (debounceTimer) {
+              __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'game_type_switch_immediate_fetch');
+              clearTimeout(debounceTimer);
+            }
             // Fetch fresh data after a short delay to allow DB to settle
-            setTimeout(() => fetchGameData(), 200);
+            __scheduleWartimeTimeout({
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_DELAYED_FETCH.id,
+              ownerLabel: 'game.realtime.gameTypeDelayedFetch',
+              delayMs: 200,
+              extra: { purpose: 'fetch after game-type switch realtime payload' },
+              fn: () => fetchGameData(),
+            });
             return;
           }
           
@@ -3864,10 +4059,51 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[BROADCAST] Setting up show-cards channel');
     const channel = supabase
       .channel(`show-cards-${gameId}`)
-      .on('broadcast', { event: 'show-cards' }, (payload) => {
+      .on('broadcast', { event: 'show-cards' }, __wrapWartimeRealtimeCausality({
+        channelLabel: `show-cards-${gameId}`,
+        table: null,
+        sourceSiteId: __WARTIME_SRC.REALTIME_SHOW_CARDS.id,
+        identity: () => __wartimeLiveGameIdentity(),
+        handler: (payload: any) => {
+        const callbackOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'game.showCardsBroadcast.callback',
+          kind: 'realtime_callback',
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK.id,
+          identity: __wartimeLiveGameIdentity(),
+          owner: __wartimeGameOwner,
+          extra: {
+            topic: `show-cards-${gameId}`,
+            currentDealerGameId: game?.current_game_uuid ?? null,
+            currentRoundId: currentRoundLateRef.current?.id ?? null,
+            currentRoundNumber: game?.current_round ?? null,
+            handContextId: cardStateContext?.roundId ?? null,
+            terminalOrCrossDealer: game?.status === 'game_over' || game?.status === 'session_ended',
+          },
+        });
         // Only accept show-cards for the CURRENT game (using current_game_uuid) to prevent carryover
         const payloadGameUuid = (payload.payload as any)?.currentGameUuid;
         const currentGameUuid = game?.current_game_uuid;
+        const payloadMatchedActiveIdentity = !(payloadGameUuid && currentGameUuid && payloadGameUuid !== currentGameUuid);
+
+        __emitWartimeAsyncOwnerFired({
+          asyncOwnerId: callbackOwnerId,
+          outcome: payloadMatchedActiveIdentity ? 'fired' : 'suppressed',
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK.id,
+          identity: __wartimeLiveGameIdentity(),
+          liveIdentity: __wartimeLiveGameIdentity(),
+          identityMatch: payloadMatchedActiveIdentity,
+          suppressionReason: payloadMatchedActiveIdentity ? null : 'stale_show_cards_payload',
+          extra: {
+            topic: `show-cards-${gameId}`,
+            payloadDealerGameId: payloadGameUuid ?? null,
+            currentDealerGameId: currentGameUuid ?? null,
+            roundId: currentRoundLateRef.current?.id ?? null,
+            handContextId: cardStateContext?.roundId ?? null,
+            firedAfterTerminalSettlement: game?.status === 'game_over' || game?.status === 'session_ended',
+            firedDuringAnotherDealerGame: !payloadMatchedActiveIdentity,
+            resultingShowCardsState: payloadMatchedActiveIdentity ? true : winner357ShowCards,
+          },
+        });
         
         if (payloadGameUuid && currentGameUuid && payloadGameUuid !== currentGameUuid) {
           console.log('[BROADCAST] Ignoring stale show-cards event from different game');
@@ -3875,8 +4111,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
         
         console.log('[BROADCAST] Received show-cards event for game', payloadGameUuid);
+        __emitWartime({
+          eventName: 'state_write',
+          sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id,
+          identity: __wartimeLiveGameIdentity(),
+          owner: __wartimeGameOwner,
+          payload: {
+            fieldName: 'winner357ShowCards',
+            previous: winner357ShowCards,
+            next: true,
+            writer: 'show-cards broadcast callback',
+            channelTopic: `show-cards-${gameId}`,
+            payloadMatchedActiveIdentity,
+          },
+        });
         setWinner357ShowCards(true);
-      })
+        },
+      }))
       .subscribe();
     
     showCardsChannelRef.current = channel;
@@ -3976,7 +4227,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[SAFETY POLL] Game in awaiting_next_round state, setting up safety poll');
     
-    const safetyPoll = setInterval(async () => {
+    const safetyPoll = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
+      ownerLabel: 'game.awaitingNextRound.statusPoll',
+      intervalMs: 2000,
+      extra: {
+        purpose: 'detect missed game_over while awaiting_next_round',
+        guard_gameStatus: game.status,
+        guard_awaitingNextRound: game.awaiting_next_round,
+      },
+      fn: async (asyncOwnerId, tickNumber) => {
       console.log('[SAFETY POLL] Checking if game status changed to game_over...');
       const { data: freshGame, error } = await supabase
         .from('games')
@@ -3989,15 +4249,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[SAFETY POLL] 🚨 DETECTED STATUS CHANGE TO:', freshGame.status, '- FETCHING!');
           fetchGameData();
           // Clear interval since we caught it
+          __emitWartimeAsyncOwnerFired({
+            asyncOwnerId,
+            outcome: 'cancelled',
+            sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
+            identity: __wartimeLiveGameIdentity(),
+            liveIdentity: __wartimeLiveGameIdentity(),
+            suppressionReason: 'game_over_detected',
+            extra: { tickNumber, freshStatus: freshGame.status },
+          });
+          __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'game_over_detected');
           clearInterval(safetyPoll);
         }
       }
-    }, 2000); // Check every 2 seconds
+      },
+    }); // Check every 2 seconds
     
     return () => {
+      __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'effect_cleanup');
       clearInterval(safetyPoll);
     };
-  }, [gameId, game?.status, game?.awaiting_next_round]);
+  }, [gameId, game?.status, game?.awaiting_next_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
 
   // Update pause ref and clear timer when paused
   
@@ -4540,7 +4812,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
       (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || holmNoRound) ? 2000 : 3000;
     
-    const intervalId = setInterval(async () => {
+    const intervalId = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_CRITICAL_POLL.id,
+      ownerLabel: 'game.criticalLifecyclePoll',
+      intervalMs: pollInterval,
+      extra: {
+        purpose: 'critical lifecycle polling',
+        guard_waitingForAnteDialog: waitingForAnteDialog,
+        guard_stuckOnGameOver: stuckOnGameOver,
+        guard_waitingForConfig: waitingForConfig,
+        guard_waitingForGameStart: waitingForGameStart,
+        guard_holmNoRound: holmNoRound,
+        guard_holmShowdownStuck: holmShowdownStuck,
+      },
+      fn: async (_asyncOwnerId, tickNumber) => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
 
       // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
@@ -4578,13 +4863,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       
       fetchGameData();
-    }, pollInterval);
+    },
+    });
     
     return () => {
       console.log('[CRITICAL POLL] Stopping polling');
+      __cancelWartimeAsyncOwner(intervalId as unknown as number, 'effect_cleanup');
       clearInterval(intervalId);
     };
-   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
@@ -4624,13 +4911,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
     
     // Poll every 3 seconds as fallback for round sync (not 750ms which hammers DB)
-    const pollInterval = setInterval(syncPoll, 3000);
+    const pollInterval = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SYNC_POLL.id,
+      ownerLabel: 'game.357RoundSyncPoll',
+      intervalMs: 3000,
+      extra: {
+        purpose: '3-5-7 round sync fallback',
+        guard_gameType: game?.game_type ?? null,
+        guard_status: game?.status ?? null,
+        guard_localRound: game?.current_round ?? null,
+      },
+      fn: () => syncPoll(),
+    });
     
     // Also sync immediately on mount
     syncPoll();
     
-    return () => clearInterval(pollInterval);
-  }, [gameId, game?.game_type, game?.status, game?.current_round]);
+    return () => {
+      __cancelWartimeAsyncOwner(pollInterval as unknown as number, 'effect_cleanup');
+      clearInterval(pollInterval);
+    };
+  }, [gameId, game?.game_type, game?.status, game?.current_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
   
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
@@ -6558,7 +6859,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (shouldPoll && !awaitingPollRef.current) {
       console.log('[AWAITING_POLL] 🔄 Starting poll for awaiting_next_round');
       
-      awaitingPollRef.current = setInterval(async () => {
+      awaitingPollRef.current = __scheduleWartimeInterval({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
+        ownerLabel: 'game.awaitingNextRound.dbPoll',
+        intervalMs: 500,
+        extra: {
+          purpose: 'detect awaiting_next_round after round completion',
+          guard_roundCompleted: roundCompleted,
+          guard_allDecisionsIn: allDecisionsIn,
+          guard_alreadyAwaiting: alreadyAwaiting,
+          guard_gameInProgress: gameInProgress,
+        },
+        fn: async (asyncOwnerId, tickNumber) => {
         console.log('[AWAITING_POLL] 🔍 Checking for awaiting_next_round...');
         
         const { data: freshGame } = await supabase
@@ -6572,25 +6884,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (freshGame?.awaiting_next_round) {
           console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
           if (awaitingPollRef.current) {
+            __emitWartimeAsyncOwnerFired({
+              asyncOwnerId,
+              outcome: 'cancelled',
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
+              identity: __wartimeLiveGameIdentity(),
+              liveIdentity: __wartimeLiveGameIdentity(),
+              suppressionReason: 'awaiting_next_round_detected',
+              extra: { tickNumber, freshLastRoundResult: freshGame.last_round_result ?? null, freshNextRoundNumber: freshGame.next_round_number ?? null },
+            });
+            __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'awaiting_next_round_detected');
             clearInterval(awaitingPollRef.current);
             awaitingPollRef.current = null;
           }
           await fetchGameData();
         }
-      }, 500); // Poll every 500ms
+        },
+      }); // Poll every 500ms
     } else if (!shouldPoll && awaitingPollRef.current) {
       console.log('[AWAITING_POLL] 🛑 Stopping poll');
+      __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'guard_closed');
       clearInterval(awaitingPollRef.current);
       awaitingPollRef.current = null;
     }
     
     return () => {
       if (awaitingPollRef.current) {
+        __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'effect_cleanup');
         clearInterval(awaitingPollRef.current);
         awaitingPollRef.current = null;
       }
     };
-  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status]);
+  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
@@ -6900,7 +7225,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       
       // Wait 4 seconds to show the result, then start next round
-      awaitingTimerRef.current = setTimeout(async () => {
+      awaitingTimerRef.current = __scheduleWartimeTimeout({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+        ownerLabel: 'game.awaitingNextRound.autoProceedTimer',
+        delayMs: 4000,
+        extra: {
+          purpose: 'awaiting_next_round auto proceed delay',
+          guard_currentAwaiting: currentAwaiting,
+          guard_currentRound: currentRound,
+          guard_gameType: game?.game_type ?? null,
+          guard_isPaused: game?.is_paused ?? null,
+          guard_transitionType357: tType357,
+        },
+        fn: async (asyncOwnerId, capturedIdentity) => {
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
         const timerId = awaitingTimerRef.current;
         awaitingTimerRef.current = null;
@@ -6916,6 +7253,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (pauseCheck?.is_paused) {
             console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
+            __emitWartimeAsyncOwnerFired({
+              asyncOwnerId,
+              outcome: 'suppressed',
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+              identity: capturedIdentity,
+              liveIdentity: __wartimeLiveGameIdentity(),
+              suppressionReason: 'paused_on_fire',
+              extra: { guard_pauseCheck: true },
+            });
             return;
           }
           
@@ -6936,17 +7282,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'fresh_status_game_over',
+                extra: { freshStatus: freshGame.status },
+              });
               return;
             }
             
             // CRITICAL: Skip if game was paused after timer started
             if (freshGame?.is_paused) {
               console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'fresh_is_paused',
+                extra: { freshStatus: freshGame.status ?? null },
+              });
               return;
             }
 
             if (freshGame?.awaiting_next_round !== true) {
               console.log('[AWAITING_NEXT_ROUND] Awaiting flag already cleared by primary progression path, skipping fallback');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'awaiting_flag_cleared',
+                extra: { freshStatus: freshGame?.status ?? null, freshAwaitingNextRound: freshGame?.awaiting_next_round ?? null },
+              });
               return;
             }
 
@@ -7129,7 +7502,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   // Show "Re-Ante" announcement during 3-5-7 subsequent round 1
                   setReAnteMessage('Re-Ante');
                   // Clear the message after animation completes (3 seconds)
-                  setTimeout(() => setReAnteMessage(null), 3000);
+                  __scheduleWartimeTimeout({
+                    sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR.id,
+                    ownerLabel: 'game.357ReAnteMessageClear',
+                    delayMs: 3000,
+                    extra: { purpose: 'clear 3-5-7 re-ante announcement' },
+                    fn: () => setReAnteMessage(null),
+                  });
                 }
               }
             }
@@ -7142,7 +7521,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] ERROR during proceed:', error);
         }
-      }, 4000);
+        },
+      });
       
       // ── 357-auto-proceed-started ──
       if (game?.game_type === '3-5-7') {
@@ -7158,6 +7538,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
       console.log('[AWAITING_NEXT_ROUND] No longer awaiting, clearing timer');
+      __cancelWartimeAsyncOwner(awaitingTimerRef.current as unknown as number, 'awaiting_flag_false');
       clearTimeout(awaitingTimerRef.current);
       awaitingTimerRef.current = null;
       gameStateAtTimerStart.current = null;
@@ -7167,7 +7548,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
 
   // Clear timer when results are shown
   useEffect(() => {
