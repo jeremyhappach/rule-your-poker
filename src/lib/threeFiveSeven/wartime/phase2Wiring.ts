@@ -10,8 +10,6 @@
 
 import { useEffect, useRef } from 'react';
 import { emitWartime, type WartimeIdentity, type WartimeOwner } from './emit';
-import { markRequirementInstalled } from './coverage';
-import { SRC } from './sourceSites';
 
 let componentSeq = 0;
 function makeInstanceId(componentType: string): string {
@@ -223,27 +221,8 @@ export function useDealRedispatchDetector(opts: {
 }
 
 // ── Requirement installation ──────────────────────────────────
-// Each import of this module wires the hook primitives. The wired
-// production sites below (Phase 2 owners) are the actual satisfaction
-// evidence; when they import from this module + call the corresponding
-// hook, they will also register their own source-site IDs (see
-// individual owner files).
-
-// Register site IDs the primitives above are guaranteed to satisfy
-// as soon as they mount. These constants are re-marked at each hook
-// call site's module-load time. See owner files.
-markRequirementInstalled('component.mount', SRC.MGT_MOUNT.id);
-markRequirementInstalled('component.mount', SRC.GAME_MOUNT.id);
-markRequirementInstalled('component.mount', SRC.DEAL_ORCH_MOUNT.id);
-markRequirementInstalled('component.mount', SRC.POT_ANIM_MOUNT.id);
-markRequirementInstalled('component.render_branch', SRC.MGT_MOUNT.id);
-markRequirementInstalled('state.write.win_phase', SRC.STATE_WIN_PHASE.id);
-markRequirementInstalled('state.write.sweep_flags', SRC.STATE_SWEEP_FLAGS.id);
-markRequirementInstalled('state.write.sweep_awaiting', SRC.STATE_SWEEP_AWAITING.id);
-markRequirementInstalled('state.write.win_animation_active', SRC.STATE_WIN_ANIM_ACTIVE.id);
-markRequirementInstalled('state.write.show_cards', SRC.STATE_SHOW_CARDS.id);
-markRequirementInstalled('state.write.deal_runtime', SRC.STATE_DEAL_RUNTIME.id);
-markRequirementInstalled('authoritative.snapshot', SRC.AUTH_SNAPSHOT.id);
-markRequirementInstalled('deal.self_face_up', SRC.DEAL_SELF_FACE_UP.id);
-markRequirementInstalled('deal.opponent_card_back', SRC.DEAL_OPPONENT_CARD_BACK.id);
-markRequirementInstalled('deal.redispatch_attempt', SRC.DEAL_REDISPATCH.id);
+// Phase 2 requirement/site installation moved to readiness.ts
+// (see installPhase2Site). This module owns hook primitives only;
+// the truthful production owner + actual-emitter-invocation
+// registration lives in the readiness bootstrap, so a single path
+// asserts that every mandatory Phase 2 site is wired.
