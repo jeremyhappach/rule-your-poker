@@ -176,6 +176,7 @@ export function ThreeFiveSevenDealOrchestrator({
     mountedRef.current = true;
     const handIdentity = waveContextId.match(/^(.*#h\d+)#r\d+$/)?.[1] ?? waveContextId;
     const roundStr = waveContextId.match(/#r(\d+)$/)?.[1] ?? null;
+    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const dealerGameId = waveContextId.split('#')[0] ?? null;
     emit357RuntimeDiag('deal_runtime_mount', {
       dealerGameId,
@@ -369,7 +370,6 @@ export function ThreeFiveSevenDealOrchestrator({
 
     // A. wave_dispatch_begin — emit IMMEDIATELY before ownership call.
     // (handIdentity/roundStr/dealerGameId reused from decision effect scope.)
-    const handNumberStr = waveContextId.match(/#h(\d+)#/)?.[1] ?? null;
     const expectedCountBefore = deal.expectedCount;
     const runtimePhaseBefore = deal.phase;
     const intentIds = intents.map((i) => i.id);
