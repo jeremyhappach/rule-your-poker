@@ -2,6 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
+import {
+  isWartimeReadyForHarness,
+  emitWartime,
+  SRC as WARTIME_SRC,
+} from "./threeFiveSeven/wartime";
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
@@ -567,7 +572,19 @@ export async function startRound(gameId: string, roundNumber: number) {
   if (roundNumber === 1) {
     const harnessId = await readDebugHarness('3-5-7');
     if (harnessId === 'instant_win') {
-      const sessionHostPlayerId = resolveSessionHostPlayerId(
+      // ADMIN-HARNESS-ONLY READINESS GATE — the ONLY behavioral change
+      // permitted by the wartime-instrumentation contract. If the
+      // wartime sink is not ready, refuse to arm the instant-win
+      // forcing branch. A `not_ready` diagnostic is emitted by the gate.
+      if (!isWartimeReadyForHarness({ gameId, roundId: round.id, handNumber })) {
+        emitWartime({
+          eventName: 'harness_instant_win_refused',
+          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
+          identity: { gameId, roundId: round.id, handNumber },
+          payload: { harnessId },
+        });
+        // Fall through to normal deal — harness is a no-op this turn.
+      } else {
         { current_host: (gameConfig as any)?.current_host ?? null },
         activePlayers.map((p) => ({
           id: p.id,
