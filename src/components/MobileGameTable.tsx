@@ -9227,6 +9227,10 @@ export const MobileGameTable = ({
           show={showSweepsPot}
           playerName={sweepsPlayerName}
           onComplete={() => {
+            __capture357Checkpoint('sweeps_pot_complete', {
+              hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
+              phase: threeFiveSevenWinPhaseRef.current,
+            });
             setShowSweepsPot(false);
             if (hadLegsBeforeSweepRef.current) {
               setShowSweepTheLegs357(true);
@@ -9241,6 +9245,9 @@ export const MobileGameTable = ({
         <SweepTheLegsAnimation
           show={showSweepTheLegs357}
           onComplete={() => {
+            __capture357Checkpoint('sweep_the_legs_complete', {
+              phase: threeFiveSevenWinPhaseRef.current,
+            });
             setShowSweepTheLegs357(false);
             setSweepCelebrationCompleted(true);
           }}
