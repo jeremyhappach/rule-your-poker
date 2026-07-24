@@ -7503,7 +7503,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   setReAnteMessage('Re-Ante');
                   // Clear the message after animation completes (3 seconds)
                   __scheduleWartimeTimeout({
-                    sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_MESSAGE_CLEAR.id,
+                    sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR.id,
                     ownerLabel: 'game.357ReAnteMessageClear',
                     delayMs: 3000,
                     extra: { purpose: 'clear 3-5-7 re-ante announcement' },
