@@ -11051,12 +11051,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentRound: game?.current_round ?? null,
     };
     emit357GameOverCompleteDiag('entry', _gocIdentity357);
+    __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
+      callback: 'handleThreeFiveSevenWinAnimationComplete',
+      entry: 'entry',
+      identity: {
+        gameId: gameId ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        triggerId: threeFiveSevenWinTriggerId ?? null,
+      },
+      gameStatus: game?.status ?? null,
+    });
 
     if (game?.game_type === 'holm-game' || !gameId) {
       emit357GameOverCompleteDiag('returned', {
         ..._gocIdentity357,
         returnSite: 'handleThreeFiveSevenWinAnimationComplete:preamble',
         returnReason: !gameId ? 'no-game-id' : 'holm-game',
+      });
+      __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE.id, {
+        callback: 'handleThreeFiveSevenWinAnimationComplete',
+        entry: 'return',
+        reason: !gameId ? 'no-game-id' : 'holm-game',
+        identity: {
+          gameId: gameId ?? null,
+          dealerGameId: game?.current_game_uuid ?? null,
+          triggerId: threeFiveSevenWinTriggerId ?? null,
+        },
+        gameStatus: game?.status ?? null,
       });
       return;
     }
