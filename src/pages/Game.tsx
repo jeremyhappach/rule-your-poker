@@ -10965,34 +10965,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // ALONGSIDE the bespoke instant-win path. The new controller consumes
     // this in Slice 3; today it is diagnostic-only.
     //
-    // FOUR CORRECTIONS (see Slice 1 report):
-    //  1. playersAtDetection is captured from the AUTHORITATIVE realtime
-    //     `players` rows at detection. No cachedLegPositionsRef fallback,
-    //     no reconstruction from legsToWin/sentinel. What `players` says
-    //     at this instant IS the truth carried forward through settlement.
-    //  2. proofCards are read from the AUTHORITATIVE playerCards row for
-    //     winnerId (scoped to the current dealerGameId/roundId/handNumber
-    //     because playerCards is realtime-scoped to the active round).
-    //     Card count MUST equal expectedCardCount for the current round.
-    //     Instant-357 descriptors may NOT be finalized with empty/wrong-
-    //     length proof cards.
-    //  3. Explicit mutually-exclusive predicates below. No fallthrough.
-    //  4. Descriptor is cleared ONLY on dealerGameId rotation to a
-    //     different non-null value — see the cleanup effect further down.
+    // CORRECTED SLICE 1 RULES:
+    //  - Instant-357 sweep eligibility for SweepTheLegsAnimation is
+    //    governed by the IMMUTABLE Round 1 opening legs snapshot persisted
+    //    on `rounds.three_five_seven_legs_at_start`. If that row is not
+    //    yet available (transient realtime gap) the descriptor is left
+    //    PENDING and this effect re-runs when `game?.rounds` changes.
+    //    Only a definitively-null stored column (legacy pre-migration
+    //    hand) is treated as "no legs at start".
+    //  - Normal-win eligibility is ALWAYS true — the normal prelude
+    //    settles the winning final leg before entering the shared path.
+    //    We do NOT read Round 1 opening metadata for normal wins.
+    //  - `proofCards` still requires exactly three authoritative cards
+    //    on winnerId's playerCards row for instant-357. Empty → pending.
+    //  - Descriptor is cleared ONLY on dealerGameId rotation (see
+    //    cleanup effect further down).
     (() => {
       if (!game?.id) return;
-      if (game?.game_type !== 'three-five-seven') return;
+      const gt = game?.game_type;
+      const is357GameType = gt === '3-5-7' || gt === '3-5-7-game' || gt === '357';
+      if (!is357GameType) return;
 
-      // ---- (3) Explicit source predicates ---------------------------
-      // Instant sweep: the authoritative 357_SWEEP sentinel for THIS
-      // exact terminalResultIdentity, with a well-formed amount.
+      // ---- Explicit source predicates (mutually exclusive) ----------
       const isInstant357Terminal =
         isSweepMessage
         && sweepAmountFromSentinel !== null
         && !!winnerPlayer;
-      // Normal final-leg win: canonical leg-win/game-win text where the
-      // winner has actually reached legsToWin (already gated above via
-      // `isLegWinMessage && winnerPlayer.legs < legsToWin → return`).
       const isNormal357Terminal =
         !isInstant357Terminal
         && (isGameWinMessage || (isLegWinMessage && winnerPlayer.legs >= legsToWin));
@@ -11002,22 +11000,92 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const source: 'normal-win' | 'instant-357' =
         isInstant357Terminal ? 'instant-357' : 'normal-win';
 
-      // ---- (1) Authoritative pre-settlement legs snapshot -----------
-      // Source: the live realtime `players` rows at the moment we react
-      // to the terminal sentinel. NO cachedLegPositionsRef fallback. NO
-      // reconstruction. Truth-in / truth-out.
-      const playersAtDetection: Terminal357PlayerLegsSnapshot[] = players.map((p) => ({
-        playerId: p.id,
-        position: p.position,
-        legs: Number(p.legs ?? 0),
-      }));
-      const hadAuthoritativeLegs = playersAtDetection.some((p) => p.legs > 0);
+      // ---- Instant-357 only: locate the canonical Round 1 row and
+      //      read the immutable legs-at-hand-start snapshot from
+      //      `rounds.three_five_seven_legs_at_start`. -----------------
+      let playersAtHandStart: Terminal357PlayerLegsSnapshot[] | undefined;
+      let hadAuthoritativeLegs: boolean;
 
-      // ---- (2) Authoritative proof cards ----------------------------
-      // For instant-357: read authoritative winner hand directly from
-      // the playerCards row (scoped to current round by realtime). Must
-      // be exactly `expectedCardCount` (3 on round 1). Refuse to build
-      // an unusable instant descriptor — emit a diagnostic instead.
+      if (isInstant357Terminal) {
+        const dealerGameId = game.current_game_uuid ?? null;
+        const handNumberForLookup =
+          (currentRound?.hand_number ?? null) as number | null;
+        const round1Row = (game?.rounds as any[] | undefined)?.find((r: any) =>
+          r?.round_number === 1
+          && r?.dealer_game_id === dealerGameId
+          && (r?.hand_number ?? null) === handNumberForLookup
+        );
+        if (!round1Row) {
+          emit357RuntimeDiag('sweep_parser_entered', {
+            gameId: game.id,
+            roundId: currentRound?.id ?? null,
+            viewerPlayerId: currentPlayer?.id ?? null,
+            winnerPlayerId: winnerPlayer.id,
+            terminalResultIdentity: resultMessage,
+          }, {
+            diagnostic: '357.wartime.legs_at_start_missing',
+            reason: 'round1_row_not_yet_available',
+            dealerGameId,
+            handNumber: handNumberForLookup,
+          });
+          return; // leave descriptor pending; re-run on rounds update
+        }
+        const storedSnapshot = (round1Row as any).three_five_seven_legs_at_start;
+        if (storedSnapshot == null) {
+          // Legacy pre-migration hand OR (transiently) not yet propagated
+          // through realtime for this client. We can distinguish only by
+          // the row's created_at vs. the migration timestamp; without
+          // that ground truth we still fail-safe (skip sweep) but log
+          // the incidence for post-hoc review.
+          emit357RuntimeDiag('sweep_parser_entered', {
+            gameId: game.id,
+            roundId: currentRound?.id ?? null,
+            viewerPlayerId: currentPlayer?.id ?? null,
+            winnerPlayerId: winnerPlayer.id,
+            terminalResultIdentity: resultMessage,
+          }, {
+            diagnostic: '357.wartime.legs_at_start_missing',
+            reason: 'stored_snapshot_null',
+            round1RowId: round1Row.id ?? null,
+            round1CreatedAt: round1Row.created_at ?? null,
+            dealerGameId,
+            handNumber: handNumberForLookup,
+          });
+          playersAtHandStart = [];
+          hadAuthoritativeLegs = false;
+        } else if (Array.isArray(storedSnapshot)) {
+          playersAtHandStart = (storedSnapshot as any[]).map((p) => ({
+            playerId: String(p.player_id ?? p.playerId ?? ''),
+            position: Number(p.position ?? 0),
+            legs: Number(p.legs ?? 0),
+          }));
+          hadAuthoritativeLegs = playersAtHandStart.some(
+            (p) => Number(p.legs ?? 0) > 0,
+          );
+        } else {
+          // Corrupt shape — do not guess. Fail-safe skip + diagnostic.
+          emit357RuntimeDiag('sweep_parser_entered', {
+            gameId: game.id,
+            roundId: currentRound?.id ?? null,
+            viewerPlayerId: currentPlayer?.id ?? null,
+            winnerPlayerId: winnerPlayer.id,
+            terminalResultIdentity: resultMessage,
+          }, {
+            diagnostic: '357.wartime.legs_at_start_missing',
+            reason: 'stored_snapshot_wrong_shape',
+            snapshotTypeof: typeof storedSnapshot,
+          });
+          playersAtHandStart = [];
+          hadAuthoritativeLegs = false;
+        }
+      } else {
+        // Normal-win: eligibility is unconditional. Do NOT read the
+        // Round 1 opening snapshot — it is stale by construction.
+        hadAuthoritativeLegs = true;
+        playersAtHandStart = undefined;
+      }
+
+      // ---- Authoritative proof cards (instant-357 only) -------------
       let proofCards: CardType[] | null = null;
       if (isInstant357Terminal) {
         const winnerRow = playerCards.find((pc) => pc.player_id === winnerPlayer.id);
@@ -11038,10 +11106,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             dealerGameId: game.current_game_uuid ?? null,
             handNumber: currentRound?.hand_number ?? null,
           });
-          // Leave descriptor pending — do NOT finalize with empty proof
-          // cards. A subsequent playerCards realtime update will re-run
-          // this effect via the `playerCards` dep and finalize truthfully.
-          return;
+          return; // leave descriptor pending
         }
       }
 
@@ -11063,7 +11128,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         winnerPosition: winnerPlayer.position,
         targetLegs,
         proofCards,
-        playersAtDetection,
+        playersAtHandStart,
         hadAuthoritativeLegs,
       };
       setTerminal357Descriptor(descriptor);
