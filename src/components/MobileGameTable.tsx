@@ -7317,6 +7317,29 @@ export const MobileGameTable = ({
         return;
       }
       if (isSweepResultFallback) {
+        // Slice 3 — controller ownership check. When the instant-357
+        // controller owns the active descriptor generation, do NOT arm
+        // the legacy sweep-await gate here. The controller drives the
+        // full prelude and hands off via the canonical adapter.
+        const controllerGenId = controllerInstant357OwnedGenIdRef.current;
+        const descriptorGenId =
+          threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+            ? threeFiveSevenTerminalDescriptor.terminalGenerationId
+            : null;
+        if (controllerGenId != null && controllerGenId === descriptorGenId) {
+          emit357RuntimeDiag('legacy_prelude_suppressed', {
+            gameId: gameId ?? null,
+            roundId: handContextId ?? null,
+            winnerPlayerId: threeFiveSevenWinnerId ?? null,
+            terminalResultIdentity: lastRoundResult ?? null,
+          }, {
+            callerSourceAnchor: 'fallback_arm.sweepAwaitingCelebrationRef',
+            terminalGenerationId: controllerGenId,
+            dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+            handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+          });
+          return;
+        }
         // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely.
         // Do NOT start pot-to-player yet: wait for the canonical match_win
         // announcement to clear so the celebration owns the foreground until
