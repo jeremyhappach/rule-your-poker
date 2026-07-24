@@ -11134,7 +11134,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setTerminal357Descriptor(descriptor);
     })();
     // Win-presentation instrumentation was removed.
-  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards, threeFiveSevenWinTriggerId]);
+  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId]);
   
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
