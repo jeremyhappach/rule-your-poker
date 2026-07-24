@@ -7089,7 +7089,18 @@ export const MobileGameTable = ({
           isSweepPath: true,
           selectedNextPhase: 'await_celebration',
         });
-        sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
+        (() => {
+          const armId = build357PresentationIdentity();
+          const prevArm = sweepAwaitingCelebrationRef.current;
+          if (prevArm
+              && prevArm.dealerGameId === armId.dealerGameId
+              && prevArm.handContextId === armId.handContextId
+              && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
+            // Already armed for this identity — idempotent no-op.
+            return;
+          }
+          sweepAwaitingCelebrationRef.current = armId;
+        })();
         setThreeFiveSevenPotHiddenUntilReset(true);
         return;
       }
