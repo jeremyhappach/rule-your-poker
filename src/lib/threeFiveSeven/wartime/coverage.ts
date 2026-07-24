@@ -118,6 +118,8 @@ req('global.error.origin',               'window.error / unhandledrejection / bo
 req('db.mutation.correlation',           'DB mutation begin/complete/error at real call sites', 3);
 req('realtime.causality',                'Realtime callback ownership at real subscriptions',   3);
 req('async.owner',                       'Lifecycle async sites wrapped with wartime ownership',3);
+req('presentation.lifecycle',            'Mount/begin/complete/unmount for the 4 presentation components (targeted profile)', 3);
+
 
 // ── Auto-populate required invocation sites from the registry ──
 // Every site registered in sourceSites.ts against a requirementId
