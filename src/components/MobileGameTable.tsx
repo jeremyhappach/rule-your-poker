@@ -2267,7 +2267,7 @@ export const MobileGameTable = ({
     const sig = `${__wartimeMgtIdentity.gameId}|${__wartimeMgtIdentity.dealerGameId}|${__wartimeMgtIdentity.handContextId}|${gameStatus}`;
     if (__wartimeSnapshotSigRef.current === sig) return;
     __wartimeSnapshotSigRef.current = sig;
-    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot, captureCanonical357Snapshot }) => {
+    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot }) => {
       emitAuthoritativeSnapshot({
         checkpoint: 'identity_change',
         sourceSiteId: __WARTIME_SRC.AUTH_SNAPSHOT.id,
@@ -2284,13 +2284,26 @@ export const MobileGameTable = ({
           playerCount: Array.isArray(players) ? players.length : 0,
         },
       });
-      captureCanonical357Snapshot({
+    }).catch(() => {});
+    try {
+      __captureCanonical357Snapshot({
         checkpoint: `identity_change:${gameStatus ?? 'unknown'}`,
         identity: __wartimeMgtIdentity,
         owner: __wartimeMgtOwner,
       });
-    }).catch(() => {});
+    } catch { /* diagnostic-only */ }
   });
+
+  const __capture357Checkpoint = useCallback((checkpoint: string, extra?: Record<string, unknown>) => {
+    try {
+      __captureCanonical357Snapshot({
+        checkpoint,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+        extra,
+      });
+    } catch { /* diagnostic-only */ }
+  }, [__wartimeMgtIdentity, __wartimeMgtOwner]);
 
   // Install passive Mutation/Resize observers on the felt surface once.
   const __wartimeObserversInstalledRef = useRef(false);
