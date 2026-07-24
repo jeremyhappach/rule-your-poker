@@ -211,6 +211,165 @@ export function isTargetedReadyForHarness(context: Record<string, unknown> = {})
   return snap.ready;
 }
 
+// ── True preflight gate (pre-round) ─────────────────────────────
+// Distinct from `checkTargetedReady()` — which is the POST-repro
+// coverage assertion, requiring runtime invocations of presentation
+// / pot / geometry / progression sites that CANNOT fire before the
+// round starts. Preflight requires ONLY conditions provable before
+// `startRound` performs any mutation:
+//   - wartime session exists
+//   - buildSha + bundle known
+//   - coverage manifest already emitted (for this session)
+//   - sink round-trip probe passed
+//   - zero drops / sink failures / serialization failures
+//   - sequence continuity through the sink (persisted+queued+drops covers max seq)
+//   - every targeted-profile site is statically registered
+//     (file + fn + sourceAnchor) AND its requirement has ≥1
+//     registered canonical production owner
+// It NEVER requires runtime execution of presentation lifecycle,
+// deal channel dispatch, geometry decisions, pot destination
+// resolution, progression callbacks, modal lifecycle, or any other
+// site that can only occur after the round begins. Those remain
+// post-repro integrity requirements (see `postReproIntegrity`).
+export interface TargetedPreflightSiteMiss {
+  siteId: string;
+  missingFile: boolean;
+  missingFn: boolean;
+  missingAnchor: boolean;
+  noProductionOwner: boolean;
+  requirementIds: string[];
+}
+
+export interface WartimeTargetedPreflightSnapshot {
+  preflightReady: boolean;
+  reasons: string[];
+  sessionId: string | null;
+  buildSha: string;
+  bundleFilename: string | null;
+  coverageManifestEmitted: boolean;
+  sink: ReturnType<typeof getSinkCounters>;
+  currentMaxSequence: number;
+  targetedProfile: typeof TARGETED_357_PROFILE.name;
+  targetedSitesRequired: number;
+  targetedSitesStaticallyRegistered: number;
+  targetedSitesMissing: TargetedPreflightSiteMiss[];
+  /** Post-repro coverage completeness — reported here for observability
+   *  ONLY. It is NEVER used to gate the preflight. */
+  postReproCoverageComplete: boolean;
+}
+
+export function checkTargetedPreflight(): WartimeTargetedPreflightSnapshot {
+  const reasons: string[] = [];
+  const sessionId = getWartimeSessionId();
+  if (!sessionId) reasons.push('no-session');
+  const buildSha = BUILD_IDENTITY.buildSha;
+  if (!buildSha) reasons.push('no-build-sha');
+  const coverageManifestEmitted = !!sessionId && coverageEmittedForSession === sessionId;
+  if (!coverageManifestEmitted) reasons.push('coverage-manifest-not-emitted');
+  const sink = getSinkCounters();
+  if (!isSinkRoundTripPassed()) reasons.push('sink-round-trip-not-passed');
+  if (sink.droppedEventCount > 0) reasons.push('dropped-events');
+  if (sink.sinkFailureCount > 0) reasons.push('sink-failures');
+  if (sink.serializationFailureCount > 0) reasons.push('serialization-failures');
+  const maxSeq = currentMaxSequence();
+  // Sequence contiguity: every allocated sequence is either persisted or
+  // queued or accounted for as dropped. A gap indicates a lost event.
+  if (sink.persistedThroughSequence + sink.queueDepth + sink.droppedEventCount < maxSeq) {
+    reasons.push('sequence-gap');
+  }
+
+  // Static per-site registration check for the targeted profile.
+  const reqIndex: Record<string, ReturnType<typeof listRequirements>[number]> = {};
+  for (const r of listRequirements()) reqIndex[r.requirementId] = r;
+  const missing: TargetedPreflightSiteMiss[] = [];
+  let ok = 0;
+  for (const siteId of TARGETED_357_PROFILE.requiredSiteIds) {
+    const site = getSourceSite(siteId);
+    const missingFile = !site || !site.file;
+    const missingFn = !site || !site.fn;
+    const missingAnchor = !site || !site.sourceAnchor;
+    let noProductionOwner = false;
+    const requirementIds: string[] = site?.requirementIds ?? [];
+    if (!site) {
+      noProductionOwner = true;
+    } else if (requirementIds.length === 0) {
+      noProductionOwner = true;
+    } else {
+      for (const reqId of requirementIds) {
+        const req = reqIndex[reqId];
+        if (!req || req.productionSourceSites.length === 0) {
+          noProductionOwner = true;
+          break;
+        }
+      }
+    }
+    if (missingFile || missingFn || missingAnchor || noProductionOwner) {
+      missing.push({ siteId, missingFile, missingFn, missingAnchor, noProductionOwner, requirementIds });
+    } else {
+      ok += 1;
+    }
+  }
+  if (missing.length > 0) reasons.push('targeted-sites-not-statically-registered');
+
+  const postReproCoverageComplete = coverageComplete(WARTIME_REQUIRED_REPRO_PHASE);
+
+  return {
+    preflightReady: reasons.length === 0,
+    reasons,
+    sessionId,
+    buildSha,
+    bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+    coverageManifestEmitted,
+    sink,
+    currentMaxSequence: maxSeq,
+    targetedProfile: TARGETED_357_PROFILE.name,
+    targetedSitesRequired: TARGETED_357_PROFILE.requiredSiteIds.length,
+    targetedSitesStaticallyRegistered: ok,
+    targetedSitesMissing: missing,
+    postReproCoverageComplete,
+  };
+}
+
+export interface HarnessPreflightResult {
+  preflightReady: boolean;
+  snapshot: WartimeTargetedPreflightSnapshot;
+}
+
+/**
+ * Preflight gate used by `startRound` before ANY mutation. Fails
+ * closed but only on conditions that are provable at preflight time.
+ * On refusal, emits `preflight_not_ready` with the full snapshot.
+ */
+export function isTargetedWartimePreflightReadyForHarness(
+  context: Record<string, unknown> = {},
+): HarnessPreflightResult {
+  const snapshot = checkTargetedPreflight();
+  if (!snapshot.preflightReady) {
+    emitWartime({
+      eventName: 'preflight_not_ready',
+      sourceSiteId: SRC.READINESS_GATE.id,
+      payload: {
+        reasons: snapshot.reasons,
+        sessionId: snapshot.sessionId,
+        buildSha: snapshot.buildSha,
+        bundleFilename: snapshot.bundleFilename,
+        coverageManifestEmitted: snapshot.coverageManifestEmitted,
+        sink: snapshot.sink,
+        currentMaxSequence: snapshot.currentMaxSequence,
+        targetedProfile: snapshot.targetedProfile,
+        targetedSitesRequired: snapshot.targetedSitesRequired,
+        targetedSitesStaticallyRegistered: snapshot.targetedSitesStaticallyRegistered,
+        targetedSitesMissing: snapshot.targetedSitesMissing,
+        postReproCoverageComplete: snapshot.postReproCoverageComplete,
+        context,
+      },
+    });
+  }
+  return { preflightReady: snapshot.preflightReady, snapshot };
+}
+
+
+
 
 export interface WartimeReadinessSnapshot {
   ready: boolean;
