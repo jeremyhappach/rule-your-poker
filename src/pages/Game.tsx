@@ -4059,10 +4059,51 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[BROADCAST] Setting up show-cards channel');
     const channel = supabase
       .channel(`show-cards-${gameId}`)
-      .on('broadcast', { event: 'show-cards' }, (payload) => {
+      .on('broadcast', { event: 'show-cards' }, __wrapWartimeRealtimeCausality({
+        channelLabel: `show-cards-${gameId}`,
+        table: null,
+        sourceSiteId: __WARTIME_SRC.REALTIME_SHOW_CARDS.id,
+        identity: () => __wartimeLiveGameIdentity(),
+        handler: (payload: any) => {
+        const callbackOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'game.showCardsBroadcast.callback',
+          kind: 'realtime_callback',
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK.id,
+          identity: __wartimeLiveGameIdentity(),
+          owner: __wartimeGameOwner,
+          extra: {
+            topic: `show-cards-${gameId}`,
+            currentDealerGameId: game?.current_game_uuid ?? null,
+            currentRoundId: currentRoundLateRef.current?.id ?? null,
+            currentRoundNumber: game?.current_round ?? null,
+            handContextId: cardStateContext?.roundId ?? null,
+            terminalOrCrossDealer: game?.status === 'game_over' || game?.status === 'session_ended',
+          },
+        });
         // Only accept show-cards for the CURRENT game (using current_game_uuid) to prevent carryover
         const payloadGameUuid = (payload.payload as any)?.currentGameUuid;
         const currentGameUuid = game?.current_game_uuid;
+        const payloadMatchedActiveIdentity = !(payloadGameUuid && currentGameUuid && payloadGameUuid !== currentGameUuid);
+
+        __emitWartimeAsyncOwnerFired({
+          asyncOwnerId: callbackOwnerId,
+          outcome: payloadMatchedActiveIdentity ? 'fired' : 'suppressed',
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK.id,
+          identity: __wartimeLiveGameIdentity(),
+          liveIdentity: __wartimeLiveGameIdentity(),
+          identityMatch: payloadMatchedActiveIdentity,
+          suppressionReason: payloadMatchedActiveIdentity ? null : 'stale_show_cards_payload',
+          extra: {
+            topic: `show-cards-${gameId}`,
+            payloadDealerGameId: payloadGameUuid ?? null,
+            currentDealerGameId: currentGameUuid ?? null,
+            roundId: currentRoundLateRef.current?.id ?? null,
+            handContextId: cardStateContext?.roundId ?? null,
+            firedAfterTerminalSettlement: game?.status === 'game_over' || game?.status === 'session_ended',
+            firedDuringAnotherDealerGame: !payloadMatchedActiveIdentity,
+            resultingShowCardsState: payloadMatchedActiveIdentity ? true : winner357ShowCards,
+          },
+        });
         
         if (payloadGameUuid && currentGameUuid && payloadGameUuid !== currentGameUuid) {
           console.log('[BROADCAST] Ignoring stale show-cards event from different game');
@@ -4070,8 +4111,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
         
         console.log('[BROADCAST] Received show-cards event for game', payloadGameUuid);
+        __emitWartime({
+          eventName: 'state_write',
+          sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id,
+          identity: __wartimeLiveGameIdentity(),
+          owner: __wartimeGameOwner,
+          payload: {
+            fieldName: 'winner357ShowCards',
+            previous: winner357ShowCards,
+            next: true,
+            writer: 'show-cards broadcast callback',
+            channelTopic: `show-cards-${gameId}`,
+            payloadMatchedActiveIdentity,
+          },
+        });
         setWinner357ShowCards(true);
-      })
+        },
+      }))
       .subscribe();
     
     showCardsChannelRef.current = channel;
@@ -4081,7 +4137,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       supabase.removeChannel(channel);
       showCardsChannelRef.current = null;
     };
-  }, [gameId]);
+  }, [gameId, game?.current_game_uuid, game?.current_round, game?.status, cardStateContext?.roundId, winner357ShowCards, __wartimeGameOwner, __wartimeLiveGameIdentity]);
   
   // Handler for winner to broadcast "show cards" and persist to database
   const handleWinner357ShowCards = useCallback(() => {
