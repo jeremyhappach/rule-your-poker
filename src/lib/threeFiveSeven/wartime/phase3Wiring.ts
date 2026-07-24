@@ -266,14 +266,13 @@ interface ResizeObserverOpts {
 
 export function installTargetedResizeObserver(opts: ResizeObserverOpts): () => void {
   if (typeof ResizeObserver === 'undefined') return () => {};
-  const prevRef: { w: number; h: number } | Record<string, never> = {};
+  const prevRef: { w?: number; h?: number } = {};
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const cr = e.contentRect;
       const w = Math.round(cr.width * 100) / 100;
       const h = Math.round(cr.height * 100) / 100;
-      const prev = prevRef as { w?: number; h?: number };
-      if (prev.w === w && prev.h === h) continue;
+      if (prevRef.w === w && prevRef.h === h) continue;
       let transform: string | null = null;
       try { transform = window.getComputedStyle(e.target).transform; } catch { /* ignore */ }
       emitWartime({
@@ -283,7 +282,7 @@ export function installTargetedResizeObserver(opts: ResizeObserverOpts): () => v
         owner: opts.owner,
         payload: {
           key: opts.key,
-          previous: { w: prev.w ?? null, h: prev.h ?? null },
+          previous: { w: prevRef.w ?? null, h: prevRef.h ?? null },
           next: { w, h },
           transform,
           ownership: extractOwnership(e.target),
@@ -291,8 +290,8 @@ export function installTargetedResizeObserver(opts: ResizeObserverOpts): () => v
           ...(opts.extra?.() ?? {}),
         },
       });
-      (prevRef as { w: number; h: number }).w = w;
-      (prevRef as { w: number; h: number }).h = h;
+      prevRef.w = w;
+      prevRef.h = h;
     }
   });
   ro.observe(opts.el);
