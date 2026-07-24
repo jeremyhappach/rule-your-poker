@@ -3,7 +3,7 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, forma
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
-  isWartimeReadyForHarness,
+  isTargetedWartimePreflightReadyForHarness,
   emitWartime,
   withDbMutationCorrelation as __withWartimeDbMutationCorrelation,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGL,
@@ -295,25 +295,84 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
 
-  // ── FAIL-CLOSED HARNESS PRE-GATE ──────────────────────────────
-  // If an admin has requested the 3-5-7 instant-win harness but the
-  // wartime instrumentation is not fully ready, refuse the harness
-  // BEFORE any mutation — no round insert, no ante charge, no deal.
-  try {
-    const preHarnessId = await readDebugHarness('3-5-7');
-    if (preHarnessId === 'instant_win' && !isWartimeReadyForHarness({ gameId, roundNumber })) {
+  // ── PREFLIGHT HARNESS GATE (pre-mutation) ─────────────────────
+  // Fails closed on STATIC / PROVABLE-BEFORE-ROUND-START conditions
+  // only. Post-repro coverage (presentation lifecycle, deal channel
+  // dispatch, geometry, pot, progression) is NOT checked here — those
+  // cannot fire until the round exists. The bare silent catch has been
+  // removed: any throw persists a `harness_preflight_error` diagnostic
+  // and returns a structured blocked result so the caller can restore
+  // status='ante_decision' and surface an admin-only visible error.
+  {
+    let preHarnessId: string | null = null;
+    try {
+      preHarnessId = await readDebugHarness('3-5-7');
+    } catch (err) {
       emitWartime({
-        eventName: 'harness_instant_win_refused',
+        eventName: 'harness_preflight_error',
         sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
         identity: { gameId },
-        payload: { harnessId: preHarnessId, phase: 'pre_round_insert', reason: 'wartime_not_ready' },
+        payload: {
+          phase: 'read_debug_harness',
+          errorName: err instanceof Error ? err.name : 'unknown',
+          errorMessage: err instanceof Error ? err.message : String(err),
+          errorStack: err instanceof Error ? err.stack ?? null : null,
+          roundNumber,
+          dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
+        },
       });
-      console.warn('[START_ROUND] Instant-win harness requested but wartime not ready — refusing (no mutations performed).');
-      return { blocked: true, reason: 'wartime_not_ready' } as const;
+      return { blocked: true, reason: 'harness_preflight_error' } as const;
     }
-  } catch {
-    /* fire-and-forget diagnostic path */
+    if (preHarnessId === 'instant_win') {
+      let preflight: ReturnType<typeof isTargetedWartimePreflightReadyForHarness>;
+      try {
+        preflight = isTargetedWartimePreflightReadyForHarness({
+          gameId,
+          roundNumber,
+          dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
+        });
+      } catch (err) {
+        emitWartime({
+          eventName: 'harness_preflight_error',
+          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
+          identity: { gameId },
+          payload: {
+            phase: 'preflight_check',
+            errorName: err instanceof Error ? err.name : 'unknown',
+            errorMessage: err instanceof Error ? err.message : String(err),
+            errorStack: err instanceof Error ? err.stack ?? null : null,
+            roundNumber,
+            dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
+          },
+        });
+        return { blocked: true, reason: 'harness_preflight_error' } as const;
+      }
+      if (!preflight.preflightReady) {
+        emitWartime({
+          eventName: 'harness_instant_win_refused',
+          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
+          identity: { gameId },
+          payload: {
+            harnessId: preHarnessId,
+            phase: 'pre_round_insert',
+            reason: 'preflight_not_ready',
+            roundNumber,
+            preflight: preflight.snapshot,
+          },
+        });
+        console.warn(
+          '[START_ROUND] Instant-win harness preflight not ready — refusing (no mutations performed). Reasons:',
+          preflight.snapshot.reasons,
+        );
+        return {
+          blocked: true,
+          reason: 'preflight_not_ready',
+          preflight: preflight.snapshot,
+        } as const;
+      }
+    }
   }
+
 
 
 
@@ -623,20 +682,10 @@ export async function startRound(gameId: string, roundNumber: number) {
   if (roundNumber === 1) {
     const harnessId = await readDebugHarness('3-5-7');
     if (harnessId === 'instant_win') {
-      // ADMIN-HARNESS-ONLY READINESS GATE — the ONLY behavioral change
-      // permitted by the wartime-instrumentation contract. If the
-      // wartime sink is not ready, refuse to arm the instant-win
-      // forcing branch. A `not_ready` diagnostic is emitted by the gate.
-      if (!isWartimeReadyForHarness({ gameId, roundId: round.id, handNumber })) {
-        emitWartime({
-          eventName: 'harness_instant_win_refused',
-          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
-          identity: { gameId, roundId: round.id, handNumber },
-          payload: { harnessId },
-        });
-        // Fall through to normal deal — harness is a no-op this turn.
-      } else {
-        const sessionHostPlayerId = resolveSessionHostPlayerId(
+      // Preflight already validated in pre-mutation gate above. No
+      // second readiness check here — a duplicate gate at this point
+      // (after ante charge / round insert) can only strand the game.
+      const sessionHostPlayerId = resolveSessionHostPlayerId(
         { current_host: (gameConfig as any)?.current_host ?? null },
         activePlayers.map((p) => ({
           id: p.id,
@@ -676,10 +725,10 @@ export async function startRound(gameId: string, roundNumber: number) {
           dealerPosition: dealerPos,
           activePlayerIds: activePlayers.map(p => p.id),
         });
-        }
       }
     }
   }
+
 
 
   // BATCH: Prepare all player cards for a single insert

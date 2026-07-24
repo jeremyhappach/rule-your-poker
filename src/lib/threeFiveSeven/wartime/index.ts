@@ -23,6 +23,13 @@ export {
   TARGETED_357_PROFILE,
   checkTargetedReady,
   isTargetedReadyForHarness,
+  checkTargetedPreflight,
+  isTargetedWartimePreflightReadyForHarness,
+} from './readiness';
+export type {
+  WartimeTargetedPreflightSnapshot,
+  TargetedPreflightSiteMiss,
+  HarnessPreflightResult,
 } from './readiness';
 export { getSinkCounters, isSinkRoundTripPassed } from './sink';
 export { getWartimeSessionId, ensureWartimeSession, resetWartimeSession } from './session';
