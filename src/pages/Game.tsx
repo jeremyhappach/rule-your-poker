@@ -11043,6 +11043,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setIs357WinAnimationActive(false);
       __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
+      setTerminal357Descriptor(null);
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
