@@ -4227,7 +4227,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[SAFETY POLL] Game in awaiting_next_round state, setting up safety poll');
     
-    const safetyPoll = setInterval(async () => {
+    const safetyPoll = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
+      ownerLabel: 'game.awaitingNextRound.statusPoll',
+      intervalMs: 2000,
+      extra: {
+        purpose: 'detect missed game_over while awaiting_next_round',
+        guard_gameStatus: game.status,
+        guard_awaitingNextRound: game.awaiting_next_round,
+      },
+      fn: async (asyncOwnerId, tickNumber) => {
       console.log('[SAFETY POLL] Checking if game status changed to game_over...');
       const { data: freshGame, error } = await supabase
         .from('games')
@@ -4240,15 +4249,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[SAFETY POLL] 🚨 DETECTED STATUS CHANGE TO:', freshGame.status, '- FETCHING!');
           fetchGameData();
           // Clear interval since we caught it
+          __emitWartimeAsyncOwnerFired({
+            asyncOwnerId,
+            outcome: 'cancelled',
+            sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL.id,
+            identity: __wartimeLiveGameIdentity(),
+            liveIdentity: __wartimeLiveGameIdentity(),
+            suppressionReason: 'game_over_detected',
+            extra: { tickNumber, freshStatus: freshGame.status },
+          });
+          __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'game_over_detected');
           clearInterval(safetyPoll);
         }
       }
-    }, 2000); // Check every 2 seconds
+      },
+    }); // Check every 2 seconds
     
     return () => {
+      __cancelWartimeAsyncOwner(safetyPoll as unknown as number, 'effect_cleanup');
       clearInterval(safetyPoll);
     };
-  }, [gameId, game?.status, game?.awaiting_next_round]);
+  }, [gameId, game?.status, game?.awaiting_next_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
 
   // Update pause ref and clear timer when paused
   
