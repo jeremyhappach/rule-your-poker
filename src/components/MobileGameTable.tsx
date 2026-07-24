@@ -7356,6 +7356,11 @@ export const MobileGameTable = ({
 
 
     // E. Legs-phase decision — primary non-sweep path advances to pot-to-player.
+    __capture357Checkpoint('legs_to_player_complete', {
+      animId,
+      totalLegs,
+      phase: threeFiveSevenWinPhaseRef.current,
+    });
     emit357RuntimeDiag('legs_phase_decision', {
       gameId: gameId ?? null,
       roundId: handContextId ?? null,
@@ -7381,6 +7386,10 @@ export const MobileGameTable = ({
     const potTid = `pot-to-player-357-${Date.now()}`;
     activePotIdentityRef.current = build357PresentationIdentity();
     setPotToPlayerTriggerId357(potTid);
+    __capture357Checkpoint('pot_to_player_begin:legs_complete', {
+      triggerId: potTid,
+      amount: threeFiveSevenWinPotAmount,
+    });
     // F. Pot animation begin — non-sweep (legs-complete) branch.
     emit357RuntimeDiag('pot_animation_begin', {
       gameId: gameId ?? null,
@@ -7396,7 +7405,7 @@ export const MobileGameTable = ({
       destinationSelector: `[data-chip-reaction-target="${players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null}"]`,
       triggerId: potTid,
     });
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult]);
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
