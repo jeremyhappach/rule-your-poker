@@ -1562,6 +1562,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
 
   const __wartimeGameMountedRef = useRef(true);
+  const __wartimeAsyncOwnersRef = useRef(new Map<number, { asyncOwnerId: string; sourceSiteId: string; identity: ReturnType<typeof __wartimeLiveGameIdentity>; extra?: Record<string, unknown> }>());
   useEffect(() => {
     __wartimeGameMountedRef.current = true;
     return () => { __wartimeGameMountedRef.current = false; };
@@ -1611,7 +1612,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ...(opts.extra ?? {}),
       },
     });
-    return window.setTimeout(() => {
+    const timerId = window.setTimeout(() => {
+      __wartimeAsyncOwnersRef.current.delete(timerId);
       const liveIdentity = __wartimeLiveGameIdentity();
       __emitWartimeAsyncOwnerFired({
         asyncOwnerId,
@@ -1629,6 +1631,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       void opts.fn(asyncOwnerId, capturedIdentity);
     }, opts.delayMs);
+    __wartimeAsyncOwnersRef.current.set(timerId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
+    return timerId;
   }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
 
   const __scheduleWartimeInterval = useCallback((opts: {
@@ -1655,7 +1659,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ...(opts.extra ?? {}),
       },
     });
-    return window.setInterval(() => {
+    const intervalId = window.setInterval(() => {
       tickNumber += 1;
       const liveIdentity = __wartimeLiveGameIdentity();
       __emitWartimeAsyncOwnerFired({
@@ -1676,7 +1680,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       void opts.fn(asyncOwnerId, tickNumber, capturedIdentity);
     }, opts.intervalMs);
+    __wartimeAsyncOwnersRef.current.set(intervalId, { asyncOwnerId, sourceSiteId: opts.sourceSiteId, identity: capturedIdentity, extra: opts.extra });
+    return intervalId;
   }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+
+  const __cancelWartimeAsyncOwner = useCallback((timerOrIntervalId: number | null | undefined, reason: string) => {
+    if (timerOrIntervalId == null) return;
+    const record = __wartimeAsyncOwnersRef.current.get(timerOrIntervalId);
+    if (!record) return;
+    __wartimeAsyncOwnersRef.current.delete(timerOrIntervalId);
+    const liveIdentity = __wartimeLiveGameIdentity();
+    __emitWartimeAsyncOwnerFired({
+      asyncOwnerId: record.asyncOwnerId,
+      outcome: 'cancelled',
+      sourceSiteId: record.sourceSiteId,
+      identity: record.identity,
+      liveIdentity,
+      identityMatch: __wartimeIdentityMatches(record.identity, liveIdentity),
+      suppressionReason: reason,
+      extra: {
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(record.extra ?? {}),
+      },
+    });
+  }, [__wartimeIdentityMatches, __wartimeLiveGameIdentity]);
 
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
