@@ -1569,6 +1569,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const __wartimeLiveGameIdentity = useCallback(() => {
     const liveGame = lastGameRef.current ?? game;
+    const liveCurrentPlayer = playersRef.current.find((p) => p.user_id === user?.id) ?? null;
     return {
       gameId: liveGame?.id ?? gameId ?? null,
       dealerGameId: liveGame?.current_game_uuid ?? null,
@@ -1576,10 +1577,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       handNumber: liveGame?.total_hands ?? null,
       handContextId: cardStateContext?.roundId ?? null,
       terminalResultIdentity: liveGame?.last_round_result ?? null,
-      currentPlayerId: currentPlayer?.id ?? null,
-      currentPlayerPosition: currentPlayer?.position ?? null,
+      currentPlayerId: liveCurrentPlayer?.id ?? null,
+      currentPlayerPosition: liveCurrentPlayer?.position ?? null,
     };
-  }, [cardStateContext?.roundId, currentPlayer?.id, currentPlayer?.position, game, gameId]);
+  }, [cardStateContext?.roundId, game, gameId, user?.id]);
 
   const __wartimeIdentityMatches = useCallback((captured: ReturnType<typeof __wartimeLiveGameIdentity>, live: ReturnType<typeof __wartimeLiveGameIdentity>) => (
     captured.gameId === live.gameId &&
