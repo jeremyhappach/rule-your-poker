@@ -10331,10 +10331,7 @@ export const MobileGameTable = ({
                 // Slice 3 — controller ownership check. Suppress the
                 // legacy primary sweep-arm when the instant-357
                 // controller owns this descriptor generation.
-                if (
-                  threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-                  || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
-                ) {
+                if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
                   emit357RuntimeDiag('legacy_prelude_suppressed', {
                     gameId: gameId ?? null,
                     roundId: handContextId ?? null,
@@ -10345,7 +10342,7 @@ export const MobileGameTable = ({
                     terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
                     dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
                     handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-                    guardMode: 'descriptor_source_or_sentinel',
+                    guardMode: 'descriptor_source_only',
                   });
                   return;
                 }
