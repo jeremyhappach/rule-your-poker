@@ -7528,16 +7528,38 @@ export const MobileGameTable = ({
       selectedNextPhase: 'pot-to-player',
     });
 
-    setThreeFiveSevenWinPhase('pot-to-player');
-    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+    // Legacy legs-complete extras remain at the caller (byte-equivalent).
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
     setThreeFiveSevenPotHiddenUntilReset(true);
-    // CRITICAL: Mark POT-OUT animation as active and set pot to 0 when animation begins
-    setPotOutAnimationActive(true);
-    setDisplayedPot(0);
-    const potTid = `pot-to-player-357-${Date.now()}`;
-    activePotIdentityRef.current = build357PresentationIdentity();
-    setPotToPlayerTriggerId357(potTid);
+
+    // Shared canonical adapter — replaces the duplicated 7-statement
+    // transition block. Legacy caller supplies its live-state identity
+    // via `legacyPotIdentity` so downstream cross-DG guards see the same
+    // shape as before.
+    const winnerPositionForEntry =
+      players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null;
+    const legacyLegsIdentity: Three57PresentationIdentity = build357PresentationIdentity();
+    const legsEntryResult = enterCanonical357TerminalPresentation({
+      identity: {
+        gameId: gameId ?? null,
+        dealerGameId: legacyLegsIdentity.dealerGameId,
+        roundId: legacyLegsIdentity.roundId,
+        handNumber: null,
+        handContextId: legacyLegsIdentity.handContextId,
+        terminalResultIdentity: legacyLegsIdentity.terminalResultIdentity,
+        terminalGenerationId: null,
+        winnerId: threeFiveSevenWinnerId ?? null,
+        winnerPosition: winnerPositionForEntry,
+        awardedPot: threeFiveSevenWinPotAmount ?? null,
+      },
+      legacyPotIdentity: legacyLegsIdentity,
+      source: 'legacy-legs-complete',
+    });
+    if ('suppressed' in legsEntryResult) {
+      // Adapter refused — do not run legs-complete tail diagnostics.
+      return;
+    }
+    const potTid = legsEntryResult.potTriggerId;
     __capture357Checkpoint('pot_to_player_begin:legs_complete', {
       triggerId: potTid,
       amount: threeFiveSevenWinPotAmount,
@@ -7554,10 +7576,10 @@ export const MobileGameTable = ({
       immutableParsedPrize: null,
       currentGamesPot: null,
       amountPassedToAnimation: threeFiveSevenWinPotAmount,
-      destinationSelector: `[data-chip-reaction-target="${players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null}"]`,
+      destinationSelector: `[data-chip-reaction-target="${winnerPositionForEntry}"]`,
       triggerId: potTid,
     });
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity]);
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
