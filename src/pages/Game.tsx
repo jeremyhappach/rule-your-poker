@@ -11096,7 +11096,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setIs357WinAnimationActive(false);
       __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
-      setTerminal357Descriptor(null);
+      // NOTE: terminal357Descriptor is NOT cleared here. See the
+      // dealerGameId-rotation effect below for the correct cleanup
+      // predicate — the old table surface can still be mounted during
+      // `in_progress`/round-1 bootstrap of the next dealer game, and we
+      // must keep the descriptor alive through pot/confetti/completion
+      // of the outgoing terminal.
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
@@ -11111,9 +11116,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setIs357WinAnimationActive(false);
       __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
-      setTerminal357Descriptor(null);
+      // NOTE: terminal357Descriptor is NOT cleared here. Status alone is
+      // not a safe erase signal — the old table surface can persist
+      // through this transition. See the dedicated cleanup effect below.
     }
   }, [game?.status, game?.current_round]);
+
+  // Terminal descriptor cleanup — Slice 1 correction #4.
+  // Clear the descriptor ONLY when the active dealerGameId rotates to a
+  // DIFFERENT non-null value than the one the descriptor was built for.
+  // A null current_game_uuid (between dealer games), a status transition,
+  // or a current_round=null blip do NOT clear it — the old surface may
+  // still be visually mounted and we must retain the announcement, proof
+  // cards, hadAuthoritativeLegs, and winner identity through the last
+  // rendered frame.
+  useEffect(() => {
+    if (!terminal357Descriptor) return;
+    const activeDealerGameId = game?.current_game_uuid ?? null;
+    const descriptorDealerGameId = terminal357Descriptor.dealerGameId;
+    if (
+      activeDealerGameId != null
+      && descriptorDealerGameId != null
+      && activeDealerGameId !== descriptorDealerGameId
+    ) {
+      console.log('[357 TERMINAL DESCRIPTOR] Cleared on dealerGameId rotation', {
+        previous: descriptorDealerGameId,
+        next: activeDealerGameId,
+      });
+      setTerminal357Descriptor(null);
+    }
+  }, [game?.current_game_uuid, terminal357Descriptor]);
 
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
