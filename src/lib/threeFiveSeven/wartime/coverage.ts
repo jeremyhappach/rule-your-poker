@@ -186,6 +186,7 @@ export function registerActualEmitterInvocation(requirementId: string, sourceSit
   if (!r.actualEmitterInvocationSites.includes(sourceSiteId)) {
     r.actualEmitterInvocationSites.push(sourceSiteId);
   }
+  recomputeReadiness(r);
 }
 
 /** Bump the runtime event counter for a requirement (called by emit). */
