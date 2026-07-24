@@ -7164,8 +7164,7 @@ export const MobileGameTable = ({
     // DealRuntime settledCardIds below expectedCount and flips dealSettled back
     // to false — starving the controller of its wait signal.
     const instant357Suppress =
-      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'));
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357';
 
     if (instant357Suppress) {
       // Still advance the baseline so we don't replay a stale delta after the
@@ -7183,7 +7182,7 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_or_sentinel',
+        guardMode: 'descriptor_source_only',
       });
       return;
     }
