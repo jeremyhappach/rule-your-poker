@@ -7146,6 +7146,7 @@ export const MobileGameTable = ({
             // Already armed for this identity — idempotent no-op.
             return;
           }
+          __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: armId, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'fallback_arm' });
           sweepAwaitingCelebrationRef.current = armId;
         })();
         setThreeFiveSevenPotHiddenUntilReset(true);
@@ -7420,11 +7421,13 @@ export const MobileGameTable = ({
         storedTriggerId: stored.triggerId,
         activeTriggerId: active.triggerId,
       });
+      __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'stale_identity_reset' });
       sweepAwaitingCelebrationRef.current = null;
       return;
     }
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
-    sweepAwaitingCelebrationRef.current = null;
+    __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'release_to_pot' });
+      sweepAwaitingCelebrationRef.current = null;
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
@@ -7475,6 +7478,7 @@ export const MobileGameTable = ({
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
+    __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'dealer_game_boundary' });
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
     setShowSweepsPot(false);
@@ -9697,6 +9701,7 @@ export const MobileGameTable = ({
                       && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
                     return;
                   }
+                  __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: armId, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'primary_arm' });
                   sweepAwaitingCelebrationRef.current = armId;
                 })();
                 setThreeFiveSevenPotHiddenUntilReset(true);
