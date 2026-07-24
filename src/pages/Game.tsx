@@ -7225,7 +7225,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       
       // Wait 4 seconds to show the result, then start next round
-      awaitingTimerRef.current = setTimeout(async () => {
+      awaitingTimerRef.current = __scheduleWartimeTimeout({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+        ownerLabel: 'game.awaitingNextRound.autoProceedTimer',
+        delayMs: 4000,
+        extra: {
+          purpose: 'awaiting_next_round auto proceed delay',
+          guard_currentAwaiting: currentAwaiting,
+          guard_currentRound: currentRound,
+          guard_gameType: game?.game_type ?? null,
+          guard_isPaused: game?.is_paused ?? null,
+          guard_transitionType357: tType357,
+        },
+        fn: async (asyncOwnerId, capturedIdentity) => {
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
         const timerId = awaitingTimerRef.current;
         awaitingTimerRef.current = null;
@@ -7241,6 +7253,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (pauseCheck?.is_paused) {
             console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
+            __emitWartimeAsyncOwnerFired({
+              asyncOwnerId,
+              outcome: 'suppressed',
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+              identity: capturedIdentity,
+              liveIdentity: __wartimeLiveGameIdentity(),
+              suppressionReason: 'paused_on_fire',
+              extra: { guard_pauseCheck: true },
+            });
             return;
           }
           
@@ -7261,17 +7282,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'fresh_status_game_over',
+                extra: { freshStatus: freshGame.status },
+              });
               return;
             }
             
             // CRITICAL: Skip if game was paused after timer started
             if (freshGame?.is_paused) {
               console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'fresh_is_paused',
+                extra: { freshStatus: freshGame.status ?? null },
+              });
               return;
             }
 
             if (freshGame?.awaiting_next_round !== true) {
               console.log('[AWAITING_NEXT_ROUND] Awaiting flag already cleared by primary progression path, skipping fallback');
+              __emitWartimeAsyncOwnerFired({
+                asyncOwnerId,
+                outcome: 'suppressed',
+                sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
+                identity: capturedIdentity,
+                liveIdentity: __wartimeLiveGameIdentity(),
+                suppressionReason: 'awaiting_flag_cleared',
+                extra: { freshStatus: freshGame?.status ?? null, freshAwaitingNextRound: freshGame?.awaiting_next_round ?? null },
+              });
               return;
             }
 
@@ -7467,7 +7515,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] ERROR during proceed:', error);
         }
-      }, 4000);
+        },
+      });
       
       // ── 357-auto-proceed-started ──
       if (game?.game_type === '3-5-7') {
