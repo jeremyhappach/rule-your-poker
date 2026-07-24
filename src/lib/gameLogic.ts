@@ -21,6 +21,20 @@ __wartimeRegisterHookGL({
   sourceFunction: 'gameLogic.dbMutations',
 });
 __wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_MUTATION_CORRELATION.id);
+__wartimeRegisterHookGL({
+  requirementId: 'db.mutation.correlation',
+  sourceSiteId: WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id,
+  sourceFile: 'src/lib/gameLogic.ts',
+  sourceFunction: 'instant-win recordGameResult correlation call site',
+});
+__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id);
+__wartimeRegisterHookGL({
+  requirementId: 'db.mutation.correlation',
+  sourceSiteId: WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id,
+  sourceFile: 'src/lib/gameLogic.ts',
+  sourceFunction: 'instant-win snapshotPlayerChips correlation call site',
+});
+__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id);
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
@@ -879,19 +893,38 @@ export async function startRound(gameId: string, roundNumber: number) {
             }
 
             // AUDIT/PROGRESSION: game_results row is what Cross Country reads.
+            const __recordResultCausedBy = `357.instant_win.settlement|${gameId}|${round.id}|${commitHandNumber}`;
             try {
-              await recordGameResult(
-                gameId,
-                commitHandNumber,
-                player?.id ?? null,
-                username,
-                '3-5-7 Sweep',
-                totalPrize,
-                playerChipChanges,
-                false,
-                '357',
-                currentGameUuid,
-              );
+              await __withWartimeDbMutationCorrelation({
+                label: 'instant_win.record_game_result',
+                table: 'game_results',
+                op: 'insert',
+                identity: {
+                  gameId,
+                  roundId: round.id,
+                  dealerGameId: currentGameUuid,
+                  handNumber: commitHandNumber,
+                  terminalResultIdentity: sweepMessage,
+                  currentPlayerId: player?.id ?? null,
+                },
+                payloadHash: `winner=${player?.id ?? 'null'}|hand=${commitHandNumber}|prize=${totalPrize}|desc=357_Sweep`,
+                causedByEventId: __recordResultCausedBy,
+                sourceSiteId: WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id,
+              }, async () => {
+                await recordGameResult(
+                  gameId,
+                  commitHandNumber,
+                  player?.id ?? null,
+                  username,
+                  '3-5-7 Sweep',
+                  totalPrize,
+                  playerChipChanges,
+                  false,
+                  '357',
+                  currentGameUuid,
+                );
+                return { error: null } as { error: null };
+              });
             } catch (e) {
               await trace357InstantWin('commit.record_result_failed', gameId, {
                 roundId: round.id,
@@ -901,7 +934,26 @@ export async function startRound(gameId: string, roundNumber: number) {
             }
 
             // Fire-and-forget snapshot for audit parity with handleGameOver.
-            try { void snapshotPlayerChips(gameId, commitHandNumber); } catch { /* audit-only */ }
+            try {
+              void __withWartimeDbMutationCorrelation({
+                label: 'instant_win.snapshot_player_chips',
+                table: 'session_player_snapshots',
+                op: 'insert',
+                identity: {
+                  gameId,
+                  roundId: round.id,
+                  dealerGameId: currentGameUuid,
+                  handNumber: commitHandNumber,
+                  terminalResultIdentity: sweepMessage,
+                },
+                payloadHash: `snapshot|hand=${commitHandNumber}|players=${allPlayers.length}`,
+                causedByEventId: __recordResultCausedBy,
+                sourceSiteId: WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id,
+              }, async () => {
+                await snapshotPlayerChips(gameId, commitHandNumber);
+                return { error: null } as { error: null };
+              });
+            } catch { /* audit-only */ }
 
             await __withWartimeDbMutationCorrelation({
               label: 'instant_win.players_reset_legs_decisions',

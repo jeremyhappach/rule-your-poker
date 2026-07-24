@@ -10073,18 +10073,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     return () => {
       if (safety357FallbackTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(safety357FallbackTimerRef.current);
         safety357FallbackTimerRef.current = null;
       }
       if (safety357FallbackExtendTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(safety357FallbackExtendTimerRef.current);
         safety357FallbackExtendTimerRef.current = null;
       }
       if (poll357IntervalRef.current) {
+        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'unmount_cleanup');
         window.clearInterval(poll357IntervalRef.current);
         poll357IntervalRef.current = null;
       }
       if (poll357StopTimerRef.current) {
+        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(poll357StopTimerRef.current);
         poll357StopTimerRef.current = null;
       }
@@ -10105,10 +10109,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const clearFallbackTimers = () => {
       if (safety357FallbackTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'safety_fallback_rescheduled_or_cleared');
         window.clearTimeout(safety357FallbackTimerRef.current);
         safety357FallbackTimerRef.current = null;
       }
       if (safety357FallbackExtendTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'safety_extension_rescheduled_or_cleared');
         window.clearTimeout(safety357FallbackExtendTimerRef.current);
         safety357FallbackExtendTimerRef.current = null;
       }
@@ -10158,11 +10164,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       key,
     });
 
-    safety357FallbackTimerRef.current = window.setTimeout(async () => {
+    safety357FallbackTimerRef.current = __scheduleWartimeTimeout({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK.id,
+      ownerLabel: '3-5-7 safety fallback timeout',
+      delayMs: fallbackMs,
+      extra: {
+        key,
+        fallbackMs,
+        legsToWin,
+        legsToAnimate,
+        legsToPlayerMs,
+        winAnimationActiveGuard: is357WinAnimationActiveRef.current,
+      },
+      fn: async () => {
       // If the win animation is still active, do NOT cut it off.
       if (is357WinAnimationActiveRef.current) {
         console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 5s');
-        safety357FallbackExtendTimerRef.current = window.setTimeout(async () => {
+        safety357FallbackExtendTimerRef.current = __scheduleWartimeTimeout({
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION.id,
+          ownerLabel: '3-5-7 safety fallback extension timeout',
+          delayMs: 5000,
+          extra: {
+            key,
+            reason: 'win_animation_still_active_at_fallback',
+          },
+          fn: async () => {
           const { data: freshGame, error: freshGameError } = await supabase
             .from('games')
             .select('status, game_over_at')
@@ -10189,7 +10215,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame);
           }
-        }, 5000);
+          },
+        });
         return;
       }
 
@@ -10219,7 +10246,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       } else {
         console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame);
       }
-    }, fallbackMs);
+      },
+    });
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.legs_to_win, gameId, handleGameOverComplete]);
 
   // POLLING (357): Once the win animation is finished, poll until the game transitions.
@@ -10235,10 +10263,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const clearPollTimers = () => {
       if (poll357IntervalRef.current) {
+        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'progress_poll_cleared');
         window.clearInterval(poll357IntervalRef.current);
         poll357IntervalRef.current = null;
       }
       if (poll357StopTimerRef.current) {
+        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'progress_poll_stop_cleared');
         window.clearTimeout(poll357StopTimerRef.current);
         poll357StopTimerRef.current = null;
       }
@@ -10306,15 +10336,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     checkAndProceed();
 
     // Then poll every 2 seconds (not 800ms which hammers DB)
-    poll357IntervalRef.current = window.setInterval(checkAndProceed, 2000);
+    poll357IntervalRef.current = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL.id,
+      ownerLabel: '3-5-7 post-animation progress poll',
+      intervalMs: 2000,
+      extra: { key, initialStatus: game?.status ?? null, initialGameOverAt: game?.game_over_at ?? null },
+      fn: async () => { await checkAndProceed(); },
+    });
 
     // Hard stop after 15 seconds (reduced from 25s)
-    poll357StopTimerRef.current = window.setTimeout(() => {
-      console.log('[357 POLL] Hard stop reached, stopping polling');
-      clearPollTimers();
-      poll357KeyRef.current = null;
-    }, 15_000);
+    poll357StopTimerRef.current = __scheduleWartimeTimeout({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP.id,
+      ownerLabel: '3-5-7 post-animation poll hard-stop',
+      delayMs: 15_000,
+      extra: { key, hardStopMs: 15_000 },
+      fn: async () => {
+        console.log('[357 POLL] Hard stop reached, stopping polling');
+        clearPollTimers();
+        poll357KeyRef.current = null;
+      },
+    });
   }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
+
 
 
   useEffect(() => {

@@ -29,6 +29,9 @@ export interface WartimeRequirementCoverage {
   helperSourceSiteIds: string[];
   productionSourceSites: WartimeProductionHook[];
   actualEmitterInvocationSites: string[];
+  requiredInvocationSiteIds: string[];
+  installedInvocationSiteIds: string[];
+  missingInvocationSiteIds: string[];
   runtimeEventCount: number;
   expectedDuringRepro: boolean;
   runtimeExpectation: WartimeRuntimeExpectation;
@@ -48,6 +51,7 @@ function req(
   description: string,
   phase: WartimePhase,
   runtimeExpectation: WartimeRuntimeExpectation = 'expected_during_repro',
+  requiredInvocationSiteIds: string[] = [],
 ): void {
   REQUIREMENTS[requirementId] = {
     requirementId,
@@ -59,6 +63,9 @@ function req(
     helperSourceSiteIds: [],
     productionSourceSites: [],
     actualEmitterInvocationSites: [],
+    requiredInvocationSiteIds: [...requiredInvocationSiteIds],
+    installedInvocationSiteIds: [],
+    missingInvocationSiteIds: [...requiredInvocationSiteIds],
     runtimeEventCount: 0,
     expectedDuringRepro: runtimeExpectation === 'expected_during_repro',
     runtimeExpectation,
@@ -98,9 +105,39 @@ req('geometry.transition', 'Active-hand geometry decision inputs+outputs+branch 
 req('pot_destination.resolution', 'PotToPlayerAnimation destination resolution forensics', 3);
 req('progression.advancement', 'Entry+return of every 3-5-7 progression/advancement callback', 3);
 req('global.error.origin', 'window.error / unhandledrejection / error-boundary / toast origin', 3);
-req('db.mutation.correlation', 'DB mutation begin/complete/error with requestId at real call sites', 3);
+req(
+  'db.mutation.correlation',
+  'DB mutation begin/complete/error with requestId at real call sites',
+  3,
+  'expected_during_repro',
+  [
+    'db.mutation.correlation.record_game_result.instant_win',
+    'db.mutation.correlation.snapshot_player_chips.instant_win',
+  ],
+);
 req('realtime.causality', 'Realtime callback ownership + local receipt sequence at real subscriptions', 3);
-req('async.owner', 'Relevant lifecycle async sites wrapped with wartime ownership', 3);
+req(
+  'async.owner',
+  'Relevant lifecycle async sites wrapped with wartime ownership',
+  3,
+  'expected_during_repro',
+  [
+    'async.owner.game.realtime_debounce',
+    'async.owner.game.realtime_delayed_fetch',
+    'async.owner.game.realtime_fallback_poll',
+    'async.owner.game.show_cards_callback',
+    'async.owner.game.awaiting_status_poll',
+    'async.owner.game.critical_poll',
+    'async.owner.game.357_sync_poll',
+    'async.owner.game.awaiting_poll',
+    'async.owner.game.awaiting_timer',
+    'async.owner.game.reante_clear_timer',
+    'async.owner.game.357_safety_fallback',
+    'async.owner.game.357_safety_extension',
+    'async.owner.game.357_progress_poll',
+    'async.owner.game.357_poll_stop',
+  ],
+);
 
 // ── Mutators ───────────────────────────────────────────────────
 
@@ -115,7 +152,9 @@ export function markHelperImplemented(requirementId: string, helperSourceSiteId:
 }
 
 /** Register a canonical production owner site. MUST be called from
- *  the actual owner module, adjacent to the emitter invocation. */
+ *  the actual owner module, adjacent to the emitter invocation.
+ *  Ownership is only satisfied when every required invocation site
+ *  is installed AND the production owner list is non-empty. */
 export function registerWartimeProductionHook(hook: WartimeProductionHook): void {
   const r = REQUIREMENTS[hook.requirementId];
   if (!r) return;
@@ -125,7 +164,18 @@ export function registerWartimeProductionHook(hook: WartimeProductionHook): void
   if (!already) {
     r.productionSourceSites.push(hook);
   }
-  r.productionOwnerRegistered = r.productionSourceSites.length > 0;
+  recomputeReadiness(r);
+}
+
+function recomputeReadiness(r: WartimeRequirementCoverage): void {
+  r.installedInvocationSiteIds = r.actualEmitterInvocationSites.filter((id) =>
+    r.requiredInvocationSiteIds.includes(id),
+  );
+  r.missingInvocationSiteIds = r.requiredInvocationSiteIds.filter(
+    (id) => !r.actualEmitterInvocationSites.includes(id),
+  );
+  const requiredSatisfied = r.missingInvocationSiteIds.length === 0;
+  r.productionOwnerRegistered = r.productionSourceSites.length > 0 && requiredSatisfied;
 }
 
 /** Register that a production owner contains a real runtime emitter call.
@@ -136,6 +186,7 @@ export function registerActualEmitterInvocation(requirementId: string, sourceSit
   if (!r.actualEmitterInvocationSites.includes(sourceSiteId)) {
     r.actualEmitterInvocationSites.push(sourceSiteId);
   }
+  recomputeReadiness(r);
 }
 
 /** Bump the runtime event counter for a requirement (called by emit). */
@@ -177,25 +228,36 @@ export interface CoverageGateResult {
   missingHelpers: string[];
   missingProductionOwners: string[];
   missingActualEmitters: string[];
+  missingInvocationSites: { requirementId: string; sourceSiteId: string }[];
 }
 
 /** Preflight gate: every required requirement (phase<=phase) must
- *  have helperImplemented && productionOwnerRegistered. */
+ *  have helperImplemented && productionOwnerRegistered (which in turn
+ *  requires every requiredInvocationSiteId to be installed). */
 export function coverageGate(phase: WartimePhase): CoverageGateResult {
   const missingHelpers: string[] = [];
   const missingProductionOwners: string[] = [];
   const missingActualEmitters: string[] = [];
+  const missingInvocationSites: { requirementId: string; sourceSiteId: string }[] = [];
   for (const r of listRequirements()) {
     if (r.phase > phase) continue;
     if (!r.helperImplemented) missingHelpers.push(r.requirementId);
     if (!r.productionOwnerRegistered) missingProductionOwners.push(r.requirementId);
     if (r.actualEmitterInvocationSites.length === 0) missingActualEmitters.push(r.requirementId);
+    for (const siteId of r.missingInvocationSiteIds) {
+      missingInvocationSites.push({ requirementId: r.requirementId, sourceSiteId: siteId });
+    }
   }
   return {
-    ready: missingHelpers.length === 0 && missingProductionOwners.length === 0 && missingActualEmitters.length === 0,
+    ready:
+      missingHelpers.length === 0 &&
+      missingProductionOwners.length === 0 &&
+      missingActualEmitters.length === 0 &&
+      missingInvocationSites.length === 0,
     missingHelpers,
     missingProductionOwners,
     missingActualEmitters,
+    missingInvocationSites,
   };
 }
 
