@@ -83,6 +83,12 @@ export async function bootstrapWartime(): Promise<void> {
   if (bootstrapKicked) return;
   bootstrapKicked = true;
   const sessionId = ensureWartimeSession();
+  // Install global error/unhandled-rejection listeners as early as
+  // possible so Phase 3 error-origin capture is armed at page load.
+  try {
+    const { installGlobalErrorListeners } = await import('./phase3Wiring');
+    installGlobalErrorListeners();
+  } catch { /* ignore */ }
   emitWartime({
     eventName: 'session_start',
     sourceSiteId: SRC.SESSION_START.id,
