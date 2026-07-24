@@ -51,7 +51,15 @@ export type ThreeFiveSevenRuntimeEventKind =
   //    complementary to window.onerror / unhandledrejection).
   | "error_toast_invoked"
   // F. Win-animation active flag transitions
-  | "win_animation_active_changed";
+  | "win_animation_active_changed"
+  // G. Canonical 3-5-7 terminal-entry adapter (Slice 2). Fired ONLY from
+  //    `enterCanonical357TerminalPresentation`. Diagnoses one-shot latch
+  //    activation, duplicate-generation suppression, and Option-B
+  //    identity-invariant mismatches between the existing normal-win
+  //    identity and the descriptor-authored controller identity.
+  | "canonical_entry_armed"
+  | "canonical_entry_suppressed_duplicate"
+  | "canonical_entry_invariant_mismatch";
 
 // ── Correlation envelope ─────────────────────────────────────────────
 // A single per-page-load correlationId groups every 357.runtime.* row
