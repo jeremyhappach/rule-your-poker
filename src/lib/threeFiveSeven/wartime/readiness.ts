@@ -86,6 +86,48 @@ installPhase1Site('integrity.round_trip',   SRC.SINK_PROBE.id);
 installPhase1Site('harness.readiness_gate', SRC.READINESS_GATE.id);
 installPhase1Site('harness.readiness_gate', SRC.HARNESS_GATED.id);
 
+// ── Batch 3: Phase 2 production-hook installation ─────────────
+// Register the truthful production owner (file + fn from the source-
+// site registry) and mark every mandatory Phase 2 invocation site
+// installed. The runtime emit still originates from the owning
+// component/module (see MobileGameTable, Game, ThreeFiveSevenDeal
+// Orchestrator, PotToPlayerAnimation, and the wartime helper modules
+// for async/db/realtime ownership). Phase 2 requirements that share
+// a site with another requirement (e.g. MGT_MOUNT satisfying both
+// component.mount and component.render_branch; DEAL_ORCH_MOUNT
+// satisfying component.mount + deal.self_face_up + deal.opponent_
+// card_back) are installed against each requirement explicitly.
+const installPhase2Site = installPhase1Site;
+
+// component.mount — every 3-5-7 owner mount
+installPhase2Site('component.mount', SRC.MGT_MOUNT.id);
+installPhase2Site('component.mount', SRC.GAME_MOUNT.id);
+installPhase2Site('component.mount', SRC.DEAL_ORCH_MOUNT.id);
+installPhase2Site('component.mount', SRC.POT_ANIM_MOUNT.id);
+// component.render_branch — MGT branch emitter
+installPhase2Site('component.render_branch', SRC.MGT_MOUNT.id);
+// State / ref write sites
+installPhase2Site('state.write.win_phase',            SRC.STATE_WIN_PHASE.id);
+installPhase2Site('state.write.sweep_flags',          SRC.STATE_SWEEP_FLAGS.id);
+installPhase2Site('state.write.sweep_awaiting',       SRC.STATE_SWEEP_AWAITING.id);
+installPhase2Site('state.write.win_animation_active', SRC.STATE_WIN_ANIM_ACTIVE.id);
+installPhase2Site('state.write.show_cards',           SRC.STATE_SHOW_CARDS.id);
+installPhase2Site('state.write.show_cards',           SRC.STATE_SHOW_CARDS_GAME.id);
+installPhase2Site('state.write.deal_runtime',         SRC.STATE_DEAL_RUNTIME.id);
+// Ownership-substrate preflight sites
+installPhase2Site('async.owner_registry', SRC.ASYNC_REGISTRY.id);
+installPhase2Site('db.mutation_causality', SRC.DB_MUTATION.id);
+installPhase2Site('realtime.owner',        SRC.REALTIME_OWNER.id);
+// Authoritative snapshot
+installPhase2Site('authoritative.snapshot', SRC.AUTH_SNAPSHOT.id);
+// Deal transport channels — orchestrator mount + channel emitter
+installPhase2Site('deal.self_face_up',        SRC.DEAL_ORCH_MOUNT.id);
+installPhase2Site('deal.self_face_up',        SRC.DEAL_SELF_FACE_UP.id);
+installPhase2Site('deal.opponent_card_back',  SRC.DEAL_ORCH_MOUNT.id);
+installPhase2Site('deal.opponent_card_back',  SRC.DEAL_OPPONENT_CARD_BACK.id);
+// Redispatch detector — conditional but its site is required
+installPhase2Site('deal.redispatch_attempt', SRC.DEAL_REDISPATCH.id);
+
 export interface WartimeReadinessSnapshot {
   ready: boolean;
   reasons: string[];
