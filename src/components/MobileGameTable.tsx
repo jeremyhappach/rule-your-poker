@@ -2168,6 +2168,47 @@ export const MobileGameTable = ({
   
   // DEBUG: Track when phase changed for elapsed time in overlay
   const phaseChangedAtRef = useRef<number>(Date.now());
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  const __wartimeMgtIdentity = {
+    gameId: gameId ?? null,
+    dealerGameId: (holmDealerGameId ?? horsesDealerGameId ?? null) as string | null,
+    roundId: (horsesRoundId ?? null) as string | null,
+    handNumber: (horsesHandNumber ?? null) as number | null,
+    handContextId: handContextId ?? null,
+  };
+  const __wartimeMgtOwner = __useWartimeComponentInstance({
+    componentType: 'MobileGameTable',
+    sourceSiteId: __WARTIME_SRC.MGT_MOUNT.id,
+    identity: __wartimeMgtIdentity,
+    branch: {
+      gameType,
+      gameStatus,
+      instanceLabel,
+    },
+  });
+  __useWartimeStateWrite({
+    fieldName: 'threeFiveSevenWinPhase',
+    sourceSiteId: __WARTIME_SRC.STATE_WIN_PHASE.id,
+    value: threeFiveSevenWinPhase,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'showSweepsPot',
+    sourceSiteId: __WARTIME_SRC.STATE_SWEEP_FLAGS.id,
+    value: showSweepsPot,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'showSweepTheLegs357',
+    sourceSiteId: __WARTIME_SRC.STATE_SWEEP_FLAGS.id,
+    value: showSweepTheLegs357,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+
   const [debugElapsedMs, setDebugElapsedMs] = useState(0);
   
   // Update elapsed time every 100ms when not idle (for debug overlay)
