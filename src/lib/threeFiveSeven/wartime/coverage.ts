@@ -18,7 +18,12 @@
  * installed if it appears in this requirement's required list.
  */
 
-import { listSourceSitesForRequirement, type WartimeRuntimeExpectation } from './sourceSites';
+import {
+  getSourceSite,
+  listSourceSitesForRequirement,
+  type WartimeRuntimeExpectation,
+  type WartimeSourceSite,
+} from './sourceSites';
 
 export type WartimePhase = 1 | 2 | 3;
 export type { WartimeRuntimeExpectation };
@@ -225,16 +230,28 @@ export interface CoverageGateResult {
   missingActualEmitters: string[];
   missingInvocationSites: { requirementId: string; sourceSiteId: string }[];
   requirementsWithEmptyRequiredList: string[];
+  requiredSitesWithUnknownLocation: { requirementId: string; sourceSiteId: string }[];
+  requiredSitesWithMissingAnchor: { requirementId: string; sourceSiteId: string }[];
+  duplicateSourceAnchors: { sourceAnchor: string; siteIds: string[] }[];
 }
 
 /** Preflight gate: helper implemented + production owner registered
- *  + every mandatory site installed, at the phase or below. */
+ *  + every mandatory site installed, at the phase or below. Fails if
+ *  any required site is missing file/fn/sourceAnchor, if any anchor
+ *  is duplicated, or if any requirement has no invocation sites. */
 export function coverageGate(phase: WartimePhase): CoverageGateResult {
   const missingHelpers: string[] = [];
   const missingProductionOwners: string[] = [];
   const missingActualEmitters: string[] = [];
   const missingInvocationSites: { requirementId: string; sourceSiteId: string }[] = [];
   const requirementsWithEmptyRequiredList: string[] = [];
+  const requiredSitesWithUnknownLocation: { requirementId: string; sourceSiteId: string }[] = [];
+  const requiredSitesWithMissingAnchor: { requirementId: string; sourceSiteId: string }[] = [];
+
+  // Anchor uniqueness across all sites participating in required lists
+  // for this phase or below.
+  const anchorToSites: Record<string, Set<string>> = {};
+
   for (const r of listRequirements()) {
     if (r.phase > phase) continue;
     if (!r.helperImplemented) missingHelpers.push(r.requirementId);
@@ -244,19 +261,46 @@ export function coverageGate(phase: WartimePhase): CoverageGateResult {
     for (const siteId of r.missingInvocationSiteIds) {
       missingInvocationSites.push({ requirementId: r.requirementId, sourceSiteId: siteId });
     }
+    for (const siteId of r.requiredInvocationSiteIds) {
+      const site: WartimeSourceSite | null = getSourceSite(siteId);
+      if (!site || !site.file || !site.fn) {
+        requiredSitesWithUnknownLocation.push({ requirementId: r.requirementId, sourceSiteId: siteId });
+      }
+      if (!site || !site.sourceAnchor) {
+        requiredSitesWithMissingAnchor.push({ requirementId: r.requirementId, sourceSiteId: siteId });
+        continue;
+      }
+      (anchorToSites[site.sourceAnchor] ??= new Set<string>()).add(site.id);
+    }
   }
+
+  const duplicateSourceAnchors: { sourceAnchor: string; siteIds: string[] }[] = [];
+  for (const [anchor, ids] of Object.entries(anchorToSites)) {
+    if (ids.size > 1) {
+      duplicateSourceAnchors.push({ sourceAnchor: anchor, siteIds: [...ids].sort() });
+    }
+  }
+
+  const ready =
+    missingHelpers.length === 0 &&
+    missingProductionOwners.length === 0 &&
+    missingActualEmitters.length === 0 &&
+    missingInvocationSites.length === 0 &&
+    requirementsWithEmptyRequiredList.length === 0 &&
+    requiredSitesWithUnknownLocation.length === 0 &&
+    requiredSitesWithMissingAnchor.length === 0 &&
+    duplicateSourceAnchors.length === 0;
+
   return {
-    ready:
-      missingHelpers.length === 0 &&
-      missingProductionOwners.length === 0 &&
-      missingActualEmitters.length === 0 &&
-      missingInvocationSites.length === 0 &&
-      requirementsWithEmptyRequiredList.length === 0,
+    ready,
     missingHelpers,
     missingProductionOwners,
     missingActualEmitters,
     missingInvocationSites,
     requirementsWithEmptyRequiredList,
+    requiredSitesWithUnknownLocation,
+    requiredSitesWithMissingAnchor,
+    duplicateSourceAnchors,
   };
 }
 
