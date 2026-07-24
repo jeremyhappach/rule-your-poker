@@ -20,6 +20,9 @@ export {
   emitCoverageManifest,
   WARTIME_IMPLEMENTATION_PHASE,
   WARTIME_REQUIRED_REPRO_PHASE,
+  TARGETED_357_PROFILE,
+  checkTargetedReady,
+  isTargetedReadyForHarness,
 } from './readiness';
 export { getSinkCounters, isSinkRoundTripPassed } from './sink';
 export { getWartimeSessionId, ensureWartimeSession, resetWartimeSession } from './session';
