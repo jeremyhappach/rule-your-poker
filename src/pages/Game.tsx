@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
 import {
+  emitWartime as __emitWartime,
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
   wrapRealtimeCausality as __wrapWartimeRealtimeCausality,
+  trackAsyncOwner as __trackWartimeAsyncOwner,
+  emitAsyncOwnerFired as __emitWartimeAsyncOwnerFired,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
@@ -20,6 +23,29 @@ __wartimeRegisterHookGame({
   sourceFunction: 'Game.realtimeSubscriptions',
 });
 __wartimeRegisterEmitterGame('realtime.causality', __WARTIME_SRC.REALTIME_CAUSALITY.id);
+__wartimeRegisterHookGame({ requirementId: 'realtime.causality', sourceSiteId: __WARTIME_SRC.REALTIME_SHOW_CARDS.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: 'show-cards broadcast callback' });
+__wartimeRegisterEmitterGame('realtime.causality', __WARTIME_SRC.REALTIME_SHOW_CARDS.id);
+__wartimeRegisterHookGame({ requirementId: 'state.write.show_cards', sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: 'show-cards broadcast setWinner357ShowCards' });
+__wartimeRegisterEmitterGame('state.write.show_cards', __WARTIME_SRC.STATE_SHOW_CARDS_GAME.id);
+for (const __src of [
+  __WARTIME_SRC.ASYNC_GAME_RT_DEBOUNCE,
+  __WARTIME_SRC.ASYNC_GAME_RT_DELAYED_FETCH,
+  __WARTIME_SRC.ASYNC_GAME_RT_FALLBACK_POLL,
+  __WARTIME_SRC.ASYNC_GAME_SHOW_CARDS_CALLBACK,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_STATUS_POLL,
+  __WARTIME_SRC.ASYNC_GAME_CRITICAL_POLL,
+  __WARTIME_SRC.ASYNC_GAME_357_SYNC_POLL,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL,
+  __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER,
+  __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR,
+  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK,
+  __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION,
+  __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL,
+  __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP,
+]) {
+  __wartimeRegisterHookGame({ requirementId: 'async.owner', sourceSiteId: __src.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __src.fn });
+  __wartimeRegisterEmitterGame('async.owner', __src.id);
+}
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -1534,6 +1560,122 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     owner: __wartimeGameOwner,
     identity: __wartimeGameIdentity,
   });
+
+  const __wartimeGameMountedRef = useRef(true);
+  useEffect(() => {
+    __wartimeGameMountedRef.current = true;
+    return () => { __wartimeGameMountedRef.current = false; };
+  }, []);
+
+  const __wartimeLiveGameIdentity = useCallback(() => {
+    const liveGame = lastGameRef.current ?? game;
+    return {
+      gameId: liveGame?.id ?? gameId ?? null,
+      dealerGameId: liveGame?.current_game_uuid ?? null,
+      roundId: cardStateContext?.roundId ?? (liveGame?.current_round != null ? String(liveGame.current_round) : null),
+      handNumber: liveGame?.total_hands ?? null,
+      handContextId: cardStateContext?.roundId ?? null,
+      terminalResultIdentity: liveGame?.last_round_result ?? null,
+      currentPlayerId: currentPlayer?.id ?? null,
+      currentPlayerPosition: currentPlayer?.position ?? null,
+    };
+  }, [cardStateContext?.roundId, currentPlayer?.id, currentPlayer?.position, game, gameId]);
+
+  const __wartimeIdentityMatches = useCallback((captured: ReturnType<typeof __wartimeLiveGameIdentity>, live: ReturnType<typeof __wartimeLiveGameIdentity>) => (
+    captured.gameId === live.gameId &&
+    captured.dealerGameId === live.dealerGameId &&
+    captured.handContextId === live.handContextId &&
+    captured.terminalResultIdentity === live.terminalResultIdentity
+  ), []);
+
+  const __scheduleWartimeTimeout = useCallback((opts: {
+    sourceSiteId: string;
+    ownerLabel: string;
+    delayMs: number;
+    extra?: Record<string, unknown>;
+    fn: (asyncOwnerId: string, capturedIdentity: ReturnType<typeof __wartimeLiveGameIdentity>) => void | Promise<void>;
+  }) => {
+    const capturedIdentity = __wartimeLiveGameIdentity();
+    const asyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: opts.ownerLabel,
+      kind: 'timeout',
+      sourceSiteId: opts.sourceSiteId,
+      identity: capturedIdentity,
+      owner: __wartimeGameOwner,
+      delayMs: opts.delayMs,
+      extra: {
+        capturedDealerGameId: capturedIdentity.dealerGameId,
+        capturedHandContextId: capturedIdentity.handContextId,
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(opts.extra ?? {}),
+      },
+    });
+    return window.setTimeout(() => {
+      const liveIdentity = __wartimeLiveGameIdentity();
+      __emitWartimeAsyncOwnerFired({
+        asyncOwnerId,
+        outcome: 'fired',
+        sourceSiteId: opts.sourceSiteId,
+        identity: capturedIdentity,
+        liveIdentity,
+        identityMatch: __wartimeIdentityMatches(capturedIdentity, liveIdentity),
+        extra: {
+          ownerMounted: __wartimeGameMountedRef.current,
+          liveDealerGameId: liveIdentity.dealerGameId,
+          liveHandContextId: liveIdentity.handContextId,
+          ...(opts.extra ?? {}),
+        },
+      });
+      void opts.fn(asyncOwnerId, capturedIdentity);
+    }, opts.delayMs);
+  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
+
+  const __scheduleWartimeInterval = useCallback((opts: {
+    sourceSiteId: string;
+    ownerLabel: string;
+    intervalMs: number;
+    extra?: Record<string, unknown>;
+    fn: (asyncOwnerId: string, tickNumber: number, capturedIdentity: ReturnType<typeof __wartimeLiveGameIdentity>) => void | Promise<void>;
+  }) => {
+    const capturedIdentity = __wartimeLiveGameIdentity();
+    let tickNumber = 0;
+    const asyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: opts.ownerLabel,
+      kind: 'interval',
+      sourceSiteId: opts.sourceSiteId,
+      identity: capturedIdentity,
+      owner: __wartimeGameOwner,
+      delayMs: opts.intervalMs,
+      extra: {
+        intervalCadenceMs: opts.intervalMs,
+        capturedDealerGameId: capturedIdentity.dealerGameId,
+        capturedHandContextId: capturedIdentity.handContextId,
+        ownerMounted: __wartimeGameMountedRef.current,
+        ...(opts.extra ?? {}),
+      },
+    });
+    return window.setInterval(() => {
+      tickNumber += 1;
+      const liveIdentity = __wartimeLiveGameIdentity();
+      __emitWartimeAsyncOwnerFired({
+        asyncOwnerId,
+        outcome: 'fired',
+        sourceSiteId: opts.sourceSiteId,
+        identity: capturedIdentity,
+        liveIdentity,
+        identityMatch: __wartimeIdentityMatches(capturedIdentity, liveIdentity),
+        extra: {
+          tickNumber,
+          intervalCadenceMs: opts.intervalMs,
+          ownerMounted: __wartimeGameMountedRef.current,
+          liveDealerGameId: liveIdentity.dealerGameId,
+          liveHandContextId: liveIdentity.handContextId,
+          ...(opts.extra ?? {}),
+        },
+      });
+      void opts.fn(asyncOwnerId, tickNumber, capturedIdentity);
+    }, opts.intervalMs);
+  }, [__wartimeGameOwner, __wartimeIdentityMatches, __wartimeLiveGameIdentity]);
 
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
