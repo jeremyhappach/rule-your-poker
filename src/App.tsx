@@ -48,7 +48,12 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { WartimeAdminGateMount } from "@/lib/wartimeDebug/WartimeAdminGateMount";
 import { useWartimeEnabled, useWartimeAdminGateOpen } from "@/lib/wartimeDebug/core";
-import { registerWartimeProductionHook as __wartimeRegisterHookApp, SRC as __WARTIME_SRC_APP } from "@/lib/threeFiveSeven/wartime";
+import {
+  reportGlobalErrorOrigin as __reportWartimeGlobalErrorOrigin,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterApp,
+  registerWartimeProductionHook as __wartimeRegisterHookApp,
+  SRC as __WARTIME_SRC_APP,
+} from "@/lib/threeFiveSeven/wartime";
 
 // 3-5-7 Wartime — canonical production owner for global.error.origin.
 // App.tsx owns the top-level React error boundary and application
@@ -60,6 +65,7 @@ __wartimeRegisterHookApp({
   sourceFile: 'src/App.tsx',
   sourceFunction: 'App.errorBoundaryAndToast',
 });
+__wartimeRegisterEmitterApp('global.error.origin', __WARTIME_SRC_APP.GLOBAL_ERROR_ORIGIN.id);
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
@@ -152,6 +158,12 @@ const App = () => {
       //    correlated with 357.runtime.global_error and the last
       //    lifecycle event.
       try {
+        __reportWartimeGlobalErrorOrigin({
+          kind: 'error_toast',
+          message: String(event.reason?.message ?? event.reason ?? 'unknown'),
+          errorName: event.reason instanceof Error ? event.reason.name : typeof event.reason,
+          stack: event.reason instanceof Error ? event.reason.stack ?? null : null,
+        });
         void import("@/lib/threeFiveSeven/runtimeDiag").then(({ emit357RuntimeDiag }) => {
           emit357RuntimeDiag("error_toast_invoked", {}, {
             source: "App#unhandledrejection",
