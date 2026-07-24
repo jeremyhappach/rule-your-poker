@@ -228,25 +228,36 @@ export interface CoverageGateResult {
   missingHelpers: string[];
   missingProductionOwners: string[];
   missingActualEmitters: string[];
+  missingInvocationSites: { requirementId: string; sourceSiteId: string }[];
 }
 
 /** Preflight gate: every required requirement (phase<=phase) must
- *  have helperImplemented && productionOwnerRegistered. */
+ *  have helperImplemented && productionOwnerRegistered (which in turn
+ *  requires every requiredInvocationSiteId to be installed). */
 export function coverageGate(phase: WartimePhase): CoverageGateResult {
   const missingHelpers: string[] = [];
   const missingProductionOwners: string[] = [];
   const missingActualEmitters: string[] = [];
+  const missingInvocationSites: { requirementId: string; sourceSiteId: string }[] = [];
   for (const r of listRequirements()) {
     if (r.phase > phase) continue;
     if (!r.helperImplemented) missingHelpers.push(r.requirementId);
     if (!r.productionOwnerRegistered) missingProductionOwners.push(r.requirementId);
     if (r.actualEmitterInvocationSites.length === 0) missingActualEmitters.push(r.requirementId);
+    for (const siteId of r.missingInvocationSiteIds) {
+      missingInvocationSites.push({ requirementId: r.requirementId, sourceSiteId: siteId });
+    }
   }
   return {
-    ready: missingHelpers.length === 0 && missingProductionOwners.length === 0 && missingActualEmitters.length === 0,
+    ready:
+      missingHelpers.length === 0 &&
+      missingProductionOwners.length === 0 &&
+      missingActualEmitters.length === 0 &&
+      missingInvocationSites.length === 0,
     missingHelpers,
     missingProductionOwners,
     missingActualEmitters,
+    missingInvocationSites,
   };
 }
 
