@@ -38,7 +38,13 @@ import {
   record357DealLandingTrace,
   rectFromDomRect,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
-import { registerWartimeProductionHook as __wartimeRegisterHook, SRC as __WARTIME_SRC_AHF } from '@/lib/threeFiveSeven/wartime';
+import {
+  emitGeometryTransition as __emitWartimeGeometryTransition,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterAHF,
+  registerWartimeProductionHook as __wartimeRegisterHook,
+  SRC as __WARTIME_SRC_AHF,
+  type GeometryDecision as __WartimeGeometryDecision,
+} from '@/lib/threeFiveSeven/wartime';
 
 // 3-5-7 Wartime — canonical production owner for geometry.transition.
 // The active-hand geometry decision is emitted from this component's
@@ -50,6 +56,7 @@ __wartimeRegisterHook({
   sourceFile: 'src/components/activeHand/ActiveHandFan.tsx',
   sourceFunction: 'ActiveHandFan.resolveActiveHandLayout',
 });
+__wartimeRegisterEmitterAHF('geometry.transition', __WARTIME_SRC_AHF.GEOMETRY_TRANSITION.id);
 
 const DEFAULT_ASPECT = 2 / 3;
 
@@ -275,6 +282,7 @@ export function ActiveHandFan({
   //    resolved layout change with the full sizing-owner inputs. Diagnostic
   //    only, fire-and-forget, no polling.
   const geometrySigRef = useRef<string | null>(null);
+  const wartimeGeometryDecisionRef = useRef<__WartimeGeometryDecision | null>(null);
   useEffect(() => {
     if (game !== 'threeFiveSeven') return;
     const sig = [
@@ -293,6 +301,48 @@ export function ActiveHandFan({
     if (geometrySigRef.current === sig) return;
     const prevSig = geometrySigRef.current;
     geometrySigRef.current = sig;
+    const nextDecision: __WartimeGeometryDecision = {
+      branch: isFallback ? `fallback:${fallbackReason ?? 'unknown'}` : 'measured:resolveActiveHandLayout',
+      cardWidthPx: effectiveLayout.cardWidth,
+      cardHeightPx: effectiveLayout.cardHeight,
+      scale: null,
+      gapPx: effectiveLayout.overlapPx,
+      reservePx: lowerZoneMinPx ?? null,
+      containerWidthPx: resolvedStageRect?.width ?? null,
+      containerHeightPx: resolvedStageRect?.height ?? null,
+      visibleCardCount: cards.length,
+      terminalHold: activeHandFanRenderKey?.includes('win') ?? null,
+      showCards: null,
+      winAnimationActive: activeHandFanRenderKey?.includes('win') ?? null,
+      phase: null,
+    };
+    try {
+      __emitWartimeGeometryTransition({
+        previous: wartimeGeometryDecisionRef.current,
+        next: nextDecision,
+        inputs: {
+          game,
+          capacity,
+          cardsLength: cards.length,
+          aspect,
+          policyName: (policy as { name?: string })?.name ?? null,
+          activeHandFanRenderKey: activeHandFanRenderKey ?? null,
+          publishRect: publishRect
+            ? { w: publishRect.cardWidthPx, h: publishRect.cardHeightPx }
+            : null,
+          resolvedStageRect: resolvedStageRect
+            ? { width: resolvedStageRect.width, height: resolvedStageRect.height }
+            : null,
+          prevSig,
+          nextSig: sig,
+        },
+        identity: { handContextId: activeHandFanRenderKey ?? null },
+        sourceExpressionId: isFallback
+          ? `layout==null; fallbackReason=${fallbackReason}`
+          : 'resolveActiveHandLayout(resolvedStageRect,capacity,policy,aspect)',
+      });
+      wartimeGeometryDecisionRef.current = nextDecision;
+    } catch { /* diagnostic-only */ }
     void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
       emit357RuntimeDiag('active_hand_geometry_changed', {}, {
         source: 'ActiveHandFan.resolver',
