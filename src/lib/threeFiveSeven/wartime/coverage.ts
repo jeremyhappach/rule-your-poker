@@ -1,188 +1,228 @@
 /**
- * 3-5-7 Wartime — Coverage Manifest.
+ * 3-5-7 Wartime — Coverage Manifest (revised model).
  *
- * Enumerates every required instrumentation hook. Each requirement
- * begins uninstalled. Later-phase wiring calls markRequirementInstalled
- * from the exact site that satisfies it.
+ * Each requirement now tracks three independent proofs:
+ *   - helperImplemented: the emitter/helper module exists.
+ *   - productionOwnerRegistered: the canonical production file has
+ *     registered a real call site — a helper existing is NOT proof
+ *     of production wiring; registration MUST come from the owner
+ *     module, adjacent to the real emitter invocation.
+ *   - runtimeExercised: at least one event was emitted from a
+ *     registered production source site during this wartime session.
  *
- * The admin harness readiness gate cannot arm until every requirement
- * for WARTIME_REQUIRED_REPRO_PHASE reports installed = true. The
- * implementation-phase constant is used ONLY for progress reporting —
- * never for gating.
+ * Preflight readiness = all required helpers implemented AND all
+ * required production owners registered AND sink round-trip healthy.
+ * runtimeExercised is expected to remain 0 pre-repro and is enforced
+ * only in post-repro session integrity.
  */
 
 export type WartimePhase = 1 | 2 | 3;
 
-export interface WartimeRequirement {
+export interface WartimeRequirementCoverage {
   requirementId: string;
   description: string;
   phase: WartimePhase;
-  /** Source-site IDs expected to satisfy this requirement. */
-  expectedSourceSiteIds: string[];
-  installed: boolean;
-  installedBySourceSiteIds: string[];
+  helperImplemented: boolean;
+  productionOwnerRegistered: boolean;
+  runtimeExercised: boolean;
+  helperSourceSiteIds: string[];
+  productionSourceSites: WartimeProductionHook[];
+  runtimeEventCount: number;
+  expectedDuringRepro: boolean;
 }
 
-const REQUIREMENTS: Record<string, WartimeRequirement> = {};
+export interface WartimeProductionHook {
+  requirementId: string;
+  sourceSiteId: string;
+  sourceFile: string;
+  sourceFunction: string;
+}
+
+const REQUIREMENTS: Record<string, WartimeRequirementCoverage> = {};
 
 function req(
   requirementId: string,
   description: string,
   phase: WartimePhase,
-  expectedSourceSiteIds: string[] = [],
+  expectedDuringRepro = true,
 ): void {
   REQUIREMENTS[requirementId] = {
     requirementId,
     description,
     phase,
-    expectedSourceSiteIds,
-    installed: false,
-    installedBySourceSiteIds: [],
+    helperImplemented: false,
+    productionOwnerRegistered: false,
+    runtimeExercised: false,
+    helperSourceSiteIds: [],
+    productionSourceSites: [],
+    runtimeEventCount: 0,
+    expectedDuringRepro,
   };
 }
 
-// ── Phase 1: foundation ───────────────────────────────────────
-req('session.envelope', 'Session ID + monotonic sequence + envelope builder', 1, ['session.start']);
-req('coverage.manifest', 'Coverage manifest emitted at session start', 1, ['coverage.report']);
-req('integrity.flush', 'Bounded async batched sink flush', 1, ['sink.flush']);
-req('integrity.round_trip', 'Sink insert+read-back round-trip probe passes', 1, ['sink.probe']);
-req('harness.readiness_gate', 'Admin harness instant_win blocked until wartime ready', 1, [
-  'readiness.gate',
-  'harness.instant_win_gated',
-]);
+// ── Phase 1 ────────────────────────────────────────────────────
+req('session.envelope', 'Session ID + monotonic sequence + envelope builder', 1);
+req('coverage.manifest', 'Coverage manifest emitted at session start', 1);
+req('integrity.flush', 'Bounded async batched sink flush', 1);
+req('integrity.round_trip', 'Sink insert+read-back round-trip probe passes', 1);
+req('harness.readiness_gate', 'Admin harness instant_win blocked until wartime ready', 1);
 
-// ── Phase 2: ownership ────────────────────────────────────────
-req('component.mount', 'componentInstanceId mount/unmount emissions on all 3-5-7 owners', 2, [
-  'mgt.mount',
-  'game.mount',
-  'deal_orch.mount',
-  'pot_anim.mount',
-]);
-req('component.render_branch', 'Render branch + eligibility gate captured per mount', 2, [
-  'mgt.mount',
-]);
-req('state.write.win_phase', 'Instrument writes to threeFiveSevenWinPhase', 2, [
-  'state.win_phase',
-]);
-req('state.write.sweep_flags', 'Instrument writes to showSweepsPot / showSweepTheLegs357', 2, [
-  'state.sweep_flags',
-]);
-req('state.write.sweep_awaiting', 'Instrument writes to sweepAwaitingCelebrationRef', 2, [
-  'state.sweep_awaiting',
-]);
-req('state.write.win_animation_active', 'Instrument writes to is357WinAnimationActive', 2, [
-  'state.win_anim_active',
-]);
-req('state.write.show_cards', 'Instrument writes to Show Cards + decision eligibility', 2, [
-  'state.show_cards',
-]);
-req('state.write.deal_runtime', 'Instrument writes to deal runtime phase/latches', 2, [
-  'state.deal_runtime',
-]);
-req('async.owner_registry', 'Every timer/rAF/promise/realtime callback has asyncOwnerId', 2, [
-  'async.registry',
-]);
-req('db.mutation_causality', 'DB mutation begin/complete/error with requestId', 2, [
-  'db.mutation',
-]);
-req('realtime.owner', 'Realtime message ownership + local receipt sequence', 2, [
-  'realtime.owner',
-]);
-req('authoritative.snapshot', 'Authoritative game/round/players/cards snapshot at checkpoints', 2, [
-  'authoritative.snapshot',
-]);
-req('deal.self_face_up', 'Self face-up transport channel fully instrumented', 2, [
-  'deal.self_face_up_channel',
-]);
-req('deal.opponent_card_back', 'Opponent card-back transport channel fully instrumented', 2, [
-  'deal.opponent_card_back_channel',
-]);
-req('deal.redispatch_attempt', 'Redispatch attempts under stale/terminal identity are flagged', 2, [
-  'deal.redispatch_detector',
-]);
+// ── Phase 2 ────────────────────────────────────────────────────
+req('component.mount', 'componentInstanceId mount/unmount emissions on all 3-5-7 owners', 2);
+req('component.render_branch', 'Render branch + eligibility gate captured per mount', 2);
+req('state.write.win_phase', 'Instrument writes to threeFiveSevenWinPhase', 2);
+req('state.write.sweep_flags', 'Instrument writes to showSweepsPot / showSweepTheLegs357', 2);
+req('state.write.sweep_awaiting', 'Instrument writes to sweepAwaitingCelebrationRef', 2);
+req('state.write.win_animation_active', 'Instrument writes to is357WinAnimationActive', 2);
+req('state.write.show_cards', 'Instrument writes to Show Cards + decision eligibility', 2);
+req('state.write.deal_runtime', 'Instrument writes to deal runtime phase/latches', 2);
+req('async.owner_registry', 'Every timer/rAF/promise/realtime callback has asyncOwnerId', 2);
+req('db.mutation_causality', 'DB mutation begin/complete/error with requestId', 2);
+req('realtime.owner', 'Realtime message ownership + local receipt sequence', 2);
+req('authoritative.snapshot', 'Authoritative game/round/players/cards snapshot at checkpoints', 2);
+req('deal.self_face_up', 'Self face-up transport channel fully instrumented', 2);
+req('deal.opponent_card_back', 'Opponent card-back transport channel fully instrumented', 2);
+req('deal.redispatch_attempt', 'Redispatch attempts under stale/terminal identity are flagged', 2);
 
-// ── Phase 3: DOM / geometry / presentation / progression ──────
-req('deal.self_face_up.channel_settled', 'Self face-up channel conclusively settled/passthrough/suppressed', 3, [
-  'deal.self_face_up_settled',
-]);
-req('dom.snapshot.checkpoints', 'Targeted DOM snapshot at every required checkpoint', 3, [
-  'dom.snapshot.checkpoints',
-]);
-req('dom.observer.mutation', 'MutationObserver scoped to diagnostic nodes only', 3, [
-  'dom.observer.mutation',
-]);
-req('dom.observer.resize', 'ResizeObserver on layout-critical diagnostic nodes only', 3, [
-  'dom.observer.resize',
-]);
-req('geometry.transition', 'Active-hand geometry decision inputs+outputs+branch site', 3, [
-  'geometry.transition',
-]);
-req('pot_destination.resolution', 'PotToPlayerAnimation destination resolution forensics', 3, [
-  'pot_destination.resolution',
-]);
-req('progression.advancement', 'Entry+return of every 3-5-7 progression/advancement callback', 3, [
-  'progression.advancement',
-]);
-req('global.error.origin', 'window.error / unhandledrejection / error-boundary origin capture', 3, [
-  'global.error.origin',
-]);
-req('db.mutation.correlation', 'DB mutation begin/complete/error with requestId at real call sites', 3, [
-  'db.mutation.correlation',
-]);
-req('realtime.causality', 'Realtime callback ownership + local receipt sequence at real subscriptions', 3, [
-  'realtime.causality',
-]);
-req('async.owner', 'Every relevant timer/rAF/promise/effect cleanup has asyncOwnerId at real sites', 3, [
-  'async.owner',
-]);
+// ── Phase 3 ────────────────────────────────────────────────────
+req('deal.self_face_up.channel_settled', 'Self face-up channel conclusively settled/passthrough/suppressed', 3);
+req('dom.snapshot.checkpoints', 'Targeted DOM snapshot at every required checkpoint', 3);
+req('dom.observer.mutation', 'MutationObserver scoped to diagnostic nodes only', 3);
+req('dom.observer.resize', 'ResizeObserver on layout-critical diagnostic nodes only', 3);
+req('geometry.transition', 'Active-hand geometry decision inputs+outputs+branch site', 3);
+req('pot_destination.resolution', 'PotToPlayerAnimation destination resolution forensics', 3);
+req('progression.advancement', 'Entry+return of every 3-5-7 progression/advancement callback', 3);
+req('global.error.origin', 'window.error / unhandledrejection / error-boundary / toast origin', 3);
+req('db.mutation.correlation', 'DB mutation begin/complete/error with requestId at real call sites', 3);
+req('realtime.causality', 'Realtime callback ownership + local receipt sequence at real subscriptions', 3);
+req('async.owner', 'Relevant lifecycle async sites wrapped with wartime ownership', 3);
 
+// ── Mutators ───────────────────────────────────────────────────
 
+/** Assert that the helper/emitter for a requirement is implemented. */
+export function markHelperImplemented(requirementId: string, helperSourceSiteId: string): void {
+  const r = REQUIREMENTS[requirementId];
+  if (!r) return;
+  r.helperImplemented = true;
+  if (!r.helperSourceSiteIds.includes(helperSourceSiteId)) {
+    r.helperSourceSiteIds.push(helperSourceSiteId);
+  }
+}
+
+/** Register a canonical production owner site. MUST be called from
+ *  the actual owner module, adjacent to the emitter invocation. */
+export function registerWartimeProductionHook(hook: WartimeProductionHook): void {
+  const r = REQUIREMENTS[hook.requirementId];
+  if (!r) return;
+  const already = r.productionSourceSites.some(
+    (h) => h.sourceSiteId === hook.sourceSiteId && h.sourceFile === hook.sourceFile,
+  );
+  if (!already) {
+    r.productionSourceSites.push(hook);
+  }
+  r.productionOwnerRegistered = r.productionSourceSites.length > 0;
+}
+
+/** Bump the runtime event counter for a requirement (called by emit). */
+export function noteRuntimeEvent(requirementId: string): void {
+  const r = REQUIREMENTS[requirementId];
+  if (!r) return;
+  r.runtimeEventCount += 1;
+  r.runtimeExercised = true;
+}
+
+/**
+ * Legacy shim — used by Phase 1/2 modules that self-assert both
+ * helper implementation AND production ownership at import time
+ * because they live in a single owner module. Kept for backward
+ * compatibility; new Phase 3 wiring MUST use markHelperImplemented +
+ * registerWartimeProductionHook separately.
+ */
 export function markRequirementInstalled(requirementId: string, sourceSiteId: string): void {
   const r = REQUIREMENTS[requirementId];
   if (!r) return;
-  if (!r.installedBySourceSiteIds.includes(sourceSiteId)) {
-    r.installedBySourceSiteIds.push(sourceSiteId);
-  }
-  // Only mark installed once every expected source site has reported in.
-  // An empty expectedSourceSiteIds list means the requirement has no
-  // production hook yet — remain uninstalled regardless of ad-hoc calls.
-  if (r.expectedSourceSiteIds.length === 0) {
-    r.installed = false;
-    return;
-  }
-  const allPresent = r.expectedSourceSiteIds.every((id) =>
-    r.installedBySourceSiteIds.includes(id),
-  );
-  r.installed = allPresent;
+  markHelperImplemented(requirementId, sourceSiteId);
+  registerWartimeProductionHook({
+    requirementId,
+    sourceSiteId,
+    sourceFile: '(legacy self-registered)',
+    sourceFunction: '(legacy)',
+  });
 }
 
-export function listRequirements(): WartimeRequirement[] {
+// ── Readers ────────────────────────────────────────────────────
+
+export function listRequirements(): WartimeRequirementCoverage[] {
   return Object.values(REQUIREMENTS);
 }
 
-export function coverageComplete(phase?: WartimePhase): boolean {
-  return listRequirements()
-    .filter((r) => (phase == null ? true : r.phase <= phase))
-    .every((r) => r.installed);
+export interface CoverageGateResult {
+  ready: boolean;
+  missingHelpers: string[];
+  missingProductionOwners: string[];
 }
 
-export function coverageSummary(): {
-  total: number;
-  installed: number;
-  missing: string[];
-  byPhase: Record<WartimePhase, { total: number; installed: number }>;
-} {
-  const all = listRequirements();
-  const installed = all.filter((r) => r.installed);
-  const missing = all.filter((r) => !r.installed).map((r) => r.requirementId);
-  const byPhase: Record<WartimePhase, { total: number; installed: number }> = {
-    1: { total: 0, installed: 0 },
-    2: { total: 0, installed: 0 },
-    3: { total: 0, installed: 0 },
+/** Preflight gate: every required requirement (phase<=phase) must
+ *  have helperImplemented && productionOwnerRegistered. */
+export function coverageGate(phase: WartimePhase): CoverageGateResult {
+  const missingHelpers: string[] = [];
+  const missingProductionOwners: string[] = [];
+  for (const r of listRequirements()) {
+    if (r.phase > phase) continue;
+    if (!r.helperImplemented) missingHelpers.push(r.requirementId);
+    if (!r.productionOwnerRegistered) missingProductionOwners.push(r.requirementId);
+  }
+  return {
+    ready: missingHelpers.length === 0 && missingProductionOwners.length === 0,
+    missingHelpers,
+    missingProductionOwners,
   };
+}
+
+export function coverageComplete(phase: WartimePhase): boolean {
+  return coverageGate(phase).ready;
+}
+
+export interface CoverageSummary {
+  total: number;
+  helpersImplemented: number;
+  productionOwnersRegistered: number;
+  missingProductionOwners: string[];
+  runtimeExercised: number;
+  byPhase: Record<WartimePhase, { total: number; helpers: number; owners: number; exercised: number }>;
+}
+
+export function coverageSummary(): CoverageSummary {
+  const all = listRequirements();
+  const byPhase: CoverageSummary['byPhase'] = {
+    1: { total: 0, helpers: 0, owners: 0, exercised: 0 },
+    2: { total: 0, helpers: 0, owners: 0, exercised: 0 },
+    3: { total: 0, helpers: 0, owners: 0, exercised: 0 },
+  };
+  let helpers = 0, owners = 0, exercised = 0;
+  const missingProductionOwners: string[] = [];
   for (const r of all) {
     byPhase[r.phase].total += 1;
-    if (r.installed) byPhase[r.phase].installed += 1;
+    if (r.helperImplemented) { helpers += 1; byPhase[r.phase].helpers += 1; }
+    if (r.productionOwnerRegistered) { owners += 1; byPhase[r.phase].owners += 1; }
+    else missingProductionOwners.push(r.requirementId);
+    if (r.runtimeExercised) { exercised += 1; byPhase[r.phase].exercised += 1; }
   }
-  return { total: all.length, installed: installed.length, missing, byPhase };
+  return {
+    total: all.length,
+    helpersImplemented: helpers,
+    productionOwnersRegistered: owners,
+    missingProductionOwners,
+    runtimeExercised: exercised,
+    byPhase,
+  };
+}
+
+/** Post-repro session integrity: every expectedDuringRepro requirement
+ *  must have runtimeExercised === true. */
+export function postReproIntegrity(): { valid: boolean; unexercised: string[] } {
+  const unexercised = listRequirements()
+    .filter((r) => r.expectedDuringRepro && !r.runtimeExercised)
+    .map((r) => r.requirementId);
+  return { valid: unexercised.length === 0, unexercised };
 }

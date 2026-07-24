@@ -23,7 +23,16 @@ export {
 } from './readiness';
 export { getSinkCounters, isSinkRoundTripPassed } from './sink';
 export { getWartimeSessionId, ensureWartimeSession, resetWartimeSession } from './session';
-export { markRequirementInstalled, coverageSummary, listRequirements } from './coverage';
+export {
+  markRequirementInstalled,
+  markHelperImplemented,
+  registerWartimeProductionHook,
+  noteRuntimeEvent,
+  coverageSummary,
+  coverageGate,
+  postReproIntegrity,
+  listRequirements,
+} from './coverage';
 export { SRC, registerSourceSite, listSourceSites } from './sourceSites';
 // Phase 2 wiring primitives (side-effect: registers Phase 2 sites).
 import './phase2Wiring';

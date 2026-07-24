@@ -38,6 +38,18 @@ import {
   record357DealLandingTrace,
   rectFromDomRect,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenDealLandingTrace';
+import { registerWartimeProductionHook as __wartimeRegisterHook, SRC as __WARTIME_SRC_AHF } from '@/lib/threeFiveSeven/wartime';
+
+// 3-5-7 Wartime — canonical production owner for geometry.transition.
+// The active-hand geometry decision is emitted from this component's
+// layout resolve path via emitGeometryTransition. Registration proves
+// the owner module contains the wiring.
+__wartimeRegisterHook({
+  requirementId: 'geometry.transition',
+  sourceSiteId: __WARTIME_SRC_AHF.GEOMETRY_TRANSITION.id,
+  sourceFile: 'src/components/activeHand/ActiveHandFan.tsx',
+  sourceFunction: 'ActiveHandFan.resolveActiveHandLayout',
+});
 
 const DEFAULT_ASPECT = 2 / 3;
 

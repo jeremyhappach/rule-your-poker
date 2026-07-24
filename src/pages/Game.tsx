@@ -4,8 +4,19 @@ import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
+  registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
 } from "@/lib/threeFiveSeven/wartime";
+
+// 3-5-7 Wartime — canonical production owner for realtime.causality.
+// Game.tsx owns the games/rounds/players/player_cards/game_results
+// realtime subscriptions; wrapRealtimeCausality wraps each handler.
+__wartimeRegisterHookGame({
+  requirementId: 'realtime.causality',
+  sourceSiteId: __WARTIME_SRC.REALTIME_CAUSALITY.id,
+  sourceFile: 'src/pages/Game.tsx',
+  sourceFunction: 'Game.realtimeSubscriptions',
+});
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";

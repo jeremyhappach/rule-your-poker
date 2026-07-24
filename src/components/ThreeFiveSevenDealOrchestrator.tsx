@@ -38,8 +38,20 @@ import {
   useDealRedispatchDetector as __useDealRedispatchDetector,
   emitSelfFaceUpChannel as __emitWartimeSelfFaceUp,
   emitOpponentCardBackChannel as __emitWartimeOpponentCardBack,
+  registerWartimeProductionHook as __wartimeRegisterHookOrch,
   SRC as __WARTIME_SRC_DEAL,
 } from '@/lib/threeFiveSeven/wartime';
+
+// 3-5-7 Wartime — canonical production owner for
+// deal.self_face_up.channel_settled. The orchestrator is the sole
+// owner of the self face-up transport channel; emitChannelSettled is
+// invoked at every conclusive exit inside this component.
+__wartimeRegisterHookOrch({
+  requirementId: 'deal.self_face_up.channel_settled',
+  sourceSiteId: __WARTIME_SRC_DEAL.DEAL_SELF_FACE_UP_SETTLED.id,
+  sourceFile: 'src/components/ThreeFiveSevenDealOrchestrator.tsx',
+  sourceFunction: 'ThreeFiveSevenDealOrchestrator.selfFaceUpChannel',
+});
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
