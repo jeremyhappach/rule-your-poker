@@ -34,6 +34,8 @@ import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import {
   useWartimeComponentInstance as __useWartimePotInstance,
   emitPotDestinationResolution as __emitWartimePotResolution,
+  trackAsyncOwner as __trackWartimeAsyncOwner,
+  emitAsyncOwnerFired as __emitWartimeAsyncFired,
   registerActualEmitterInvocation as __wartimeRegisterEmitterPot,
   registerWartimeProductionHook as __wartimeRegisterHookPot,
   SRC as __WARTIME_SRC_POT,
@@ -50,6 +52,13 @@ __wartimeRegisterHookPot({
   sourceFunction: 'PotToPlayerAnimation.resolveDestination',
 });
 __wartimeRegisterEmitterPot('pot_destination.resolution', __WARTIME_SRC_POT.POT_DESTINATION_RESOLUTION.id);
+__wartimeRegisterHookPot({
+  requirementId: 'async.owner',
+  sourceSiteId: __WARTIME_SRC_POT.ASYNC_OWNER.id,
+  sourceFile: 'src/components/PotToPlayerAnimation.tsx',
+  sourceFunction: 'PotToPlayerAnimation.phaseTimers',
+});
+__wartimeRegisterEmitterPot('async.owner', __WARTIME_SRC_POT.ASYNC_OWNER.id);
 
 function __wartimeRectFromDomRect(r: DOMRect | null): Record<string, number> | null {
   if (!r) return null;
@@ -142,7 +151,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
 
   // ── Wartime Phase 2 instrumentation ─────────────────────────
-  __useWartimePotInstance({
+  const __wartimePotOwner = __useWartimePotInstance({
     componentType: 'PotToPlayerAnimation',
     sourceSiteId: __WARTIME_SRC_POT.POT_ANIM_MOUNT.id,
     identity: { triggerId: triggerId ?? null },
@@ -237,8 +246,32 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     lockedAmountRef.current = amountRef.current;
 
     const capturedTriggerId = triggerId;
+    const wartimePotIdentity = { triggerId: capturedTriggerId };
+    const resolveFrameAsyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: 'pot_to_player.resolve_frame',
+      kind: 'rAF',
+      identity: wartimePotIdentity,
+      owner: __wartimePotOwner,
+    });
     requestAnimationFrame(() => {
-      if (lastTriggerIdRef.current !== capturedTriggerId) return;
+      if (lastTriggerIdRef.current !== capturedTriggerId) {
+        __emitWartimeAsyncFired({
+          asyncOwnerId: resolveFrameAsyncOwnerId,
+          outcome: 'suppressed',
+          identity: wartimePotIdentity,
+          liveIdentity: { triggerId: lastTriggerIdRef.current },
+          identityMatch: false,
+          suppressionReason: 'stale_trigger',
+        });
+        return;
+      }
+      __emitWartimeAsyncFired({
+        asyncOwnerId: resolveFrameAsyncOwnerId,
+        outcome: 'fired',
+        identity: wartimePotIdentity,
+        liveIdentity: { triggerId: lastTriggerIdRef.current },
+        identityMatch: true,
+      });
       const freshContainer = containerRefRef.current?.current;
       if (!freshContainer) return;
 
@@ -453,16 +486,88 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
       // Phase transitions — chained timers, all cancelable if a new
       // triggerId arrives.
+      const flightEndAsyncOwnerId = __trackWartimeAsyncOwner({
+        ownerLabel: 'pot_to_player.flight_end',
+        kind: 'timeout',
+        delayMs: animDuration,
+        identity: wartimePotIdentity,
+        owner: __wartimePotOwner,
+      });
       const flightEnd = window.setTimeout(() => {
-        if (lastTriggerIdRef.current !== capturedTriggerId) return;
+        if (lastTriggerIdRef.current !== capturedTriggerId) {
+          __emitWartimeAsyncFired({
+            asyncOwnerId: flightEndAsyncOwnerId,
+            outcome: 'suppressed',
+            identity: wartimePotIdentity,
+            liveIdentity: { triggerId: lastTriggerIdRef.current },
+            identityMatch: false,
+            suppressionReason: 'stale_trigger',
+          });
+          return;
+        }
+        __emitWartimeAsyncFired({
+          asyncOwnerId: flightEndAsyncOwnerId,
+          outcome: 'fired',
+          identity: wartimePotIdentity,
+          liveIdentity: { triggerId: lastTriggerIdRef.current },
+          identityMatch: true,
+        });
         setPhase('arrival_hold');
 
+        const bounceStartAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'pot_to_player.bounce_start',
+          kind: 'timeout',
+          delayMs: ARRIVAL_HOLD_MS,
+          identity: wartimePotIdentity,
+          owner: __wartimePotOwner,
+        });
         const bounceStart = window.setTimeout(() => {
-          if (lastTriggerIdRef.current !== capturedTriggerId) return;
+          if (lastTriggerIdRef.current !== capturedTriggerId) {
+            __emitWartimeAsyncFired({
+              asyncOwnerId: bounceStartAsyncOwnerId,
+              outcome: 'suppressed',
+              identity: wartimePotIdentity,
+              liveIdentity: { triggerId: lastTriggerIdRef.current },
+              identityMatch: false,
+              suppressionReason: 'stale_trigger',
+            });
+            return;
+          }
+          __emitWartimeAsyncFired({
+            asyncOwnerId: bounceStartAsyncOwnerId,
+            outcome: 'fired',
+            identity: wartimePotIdentity,
+            liveIdentity: { triggerId: lastTriggerIdRef.current },
+            identityMatch: true,
+          });
           setPhase('bouncing');
 
+          const bounceEndAsyncOwnerId = __trackWartimeAsyncOwner({
+            ownerLabel: 'pot_to_player.bounce_end',
+            kind: 'timeout',
+            delayMs: BOUNCE_DURATION_MS + BOUNCE_TEARDOWN_TAIL_MS,
+            identity: wartimePotIdentity,
+            owner: __wartimePotOwner,
+          });
           const bounceEnd = window.setTimeout(() => {
-            if (lastTriggerIdRef.current !== capturedTriggerId) return;
+            if (lastTriggerIdRef.current !== capturedTriggerId) {
+              __emitWartimeAsyncFired({
+                asyncOwnerId: bounceEndAsyncOwnerId,
+                outcome: 'suppressed',
+                identity: wartimePotIdentity,
+                liveIdentity: { triggerId: lastTriggerIdRef.current },
+                identityMatch: false,
+                suppressionReason: 'stale_trigger',
+              });
+              return;
+            }
+            __emitWartimeAsyncFired({
+              asyncOwnerId: bounceEndAsyncOwnerId,
+              outcome: 'fired',
+              identity: wartimePotIdentity,
+              liveIdentity: { triggerId: lastTriggerIdRef.current },
+              identityMatch: true,
+            });
             // COMPLETE: unmount artifact first, THEN allow consumer
             // teardown. onAnimationEnd is intentionally fired only
             // here — never at flight completion.
