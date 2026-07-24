@@ -5932,32 +5932,58 @@ export const MobileGameTable = ({
     }
   }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyVisualRevealComplete]);
 
-  // Detect 357 sweep animation (3-5-7 games only)
+  // Pre-settlement legs latch — mirrors player.legs > 0 for the CURRENT
+  // handContextId while no 357_SWEEP sentinel is present. On sentinel
+  // detection we read this latch instead of live `players` because
+  // settlement may already have zeroed legs by that render.
   useEffect(() => {
-    if (
-      gameType !== 'holm-game' && 
-      lastRoundResult && 
-      lastRoundResult.startsWith('357_SWEEP:') &&
-      lastRoundResult !== lastSweepsResultRef.current
-    ) {
-      // Sentinel format: 357_SWEEP:<name>:<amount>. Strip amount segment for display.
-      const body = lastRoundResult.slice('357_SWEEP:'.length);
-      const lastColon = body.lastIndexOf(':');
-      const playerName = lastColon >= 0 && Number.isFinite(Number(body.slice(lastColon + 1)))
-        ? body.slice(0, lastColon)
-        : body;
-      lastSweepsResultRef.current = lastRoundResult;
-      setSweepsPlayerName(playerName);
-      // Detection-time legs snapshot governs the conditional
-      // SweepTheLegsAnimation overlay. Any player.legs > 0 at
-      // detection → arm the overlay. Zero across every player → skip.
-      hadLegsBeforeSweepRef.current = Array.isArray(players)
-        && players.some((p) => typeof p?.legs === 'number' && (p.legs as number) > 0);
-      setSweepCelebrationCompleted(false);
-      setShowSweepTheLegs357(false);
-      setShowSweepsPot(true);
+    if (gameType === 'holm-game') return;
+    if (!__is357GameType(gameType)) return;
+    const hci = handContextId ?? null;
+    if (latchedLegsForHandRef.current.handContextId !== hci) {
+      latchedLegsForHandRef.current = { handContextId: hci, hadLegs: false };
     }
-  }, [lastRoundResult, gameType, gameId, players]);
+    if (lastRoundResult?.startsWith('357_SWEEP:')) return;
+    const anyLegs = Array.isArray(players)
+      && players.some((p) => typeof p?.legs === 'number' && (p.legs as number) > 0);
+    if (anyLegs) latchedLegsForHandRef.current.hadLegs = true;
+  }, [gameType, handContextId, players, lastRoundResult]);
+
+  // Detect 357 sweep animation (3-5-7 games only) — identity-scoped one-shot.
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
+    const nextIdentity: Three57SweepDetectionIdentity = {
+      dealerGameId: threeFiveSevenDealerGameScope ?? null,
+      handContextId: handContextId ?? null,
+      roundId: horsesRoundId ?? null,
+      handNumber: (typeof horsesHandNumber === 'number' ? horsesHandNumber : null),
+      lastRoundResult,
+    };
+    const prev = lastSweepsIdentityRef.current;
+    const sameIdentity = !!prev
+      && prev.dealerGameId === nextIdentity.dealerGameId
+      && prev.handContextId === nextIdentity.handContextId
+      && prev.roundId === nextIdentity.roundId
+      && prev.handNumber === nextIdentity.handNumber
+      && prev.lastRoundResult === nextIdentity.lastRoundResult;
+    if (sameIdentity) return;
+    // Sentinel format: 357_SWEEP:<name>:<amount>. Strip amount for display.
+    const body = lastRoundResult.slice('357_SWEEP:'.length);
+    const lastColon = body.lastIndexOf(':');
+    const playerName = lastColon >= 0 && Number.isFinite(Number(body.slice(lastColon + 1)))
+      ? body.slice(0, lastColon)
+      : body;
+    lastSweepsIdentityRef.current = nextIdentity;
+    setSweepsPlayerName(playerName);
+    // Read the pre-settlement legs latch scoped to the current hand.
+    const latch = latchedLegsForHandRef.current;
+    const hadLegs = latch.handContextId === (handContextId ?? null) && latch.hadLegs;
+    hadLegsBeforeSweepRef.current = hadLegs;
+    setSweepCelebrationCompleted(false);
+    setShowSweepTheLegs357(false);
+    setShowSweepsPot(true);
+  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
