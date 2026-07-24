@@ -71,6 +71,7 @@ export type ThreeFiveSevenRuntimeEventKind =
   | "controller_state_transition"
   | "controller_deal_settled_signal"
   | "controller_proof_cards_complete"
+  | "controller_proof_cards_skipped"
   | "controller_sweep_legs_skipped"
   | "controller_sweep_legs_complete"
   | "controller_canonical_handoff"
