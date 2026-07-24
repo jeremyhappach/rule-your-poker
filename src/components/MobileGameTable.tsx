@@ -9342,6 +9342,14 @@ export const MobileGameTable = ({
             signal for the sweep-wait phase. If legs were present at
             detection, chain into SweepTheLegsAnimation before releasing;
             otherwise mark celebration complete immediately. */}
+        {/* Slice 1 (inert): normalized 3-5-7 terminal presentation
+            controller. Renders null until the atomic instant-win cutover
+            in Slice 3 wires the announcement + proof-card prelude and
+            shared terminal path. Mounted here — inside MobileGameTable's
+            table surface — so it can consume the same felt-relative DOM
+            anchors as existing presentation owners. */}
+        <ThreeFiveSevenTerminalController descriptor={threeFiveSevenTerminalDescriptor} />
+
         <SweepsPotAnimation
           show={showSweepsPot}
           playerName={sweepsPlayerName}
