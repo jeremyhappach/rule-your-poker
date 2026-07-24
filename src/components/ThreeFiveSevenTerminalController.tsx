@@ -158,6 +158,37 @@ export const ThreeFiveSevenTerminalController = ({
         dealHandContextId: deal?.handContextId ?? null,
       });
     }
+    // If proof cards are unavailable, skip the proof-card step entirely
+    // rather than mounting the animation with an empty array (which
+    // never fires onComplete and would black-hole the terminal).
+    const hasProofCards =
+      Array.isArray(descriptor.proofCards) && descriptor.proofCards.length === 3;
+    if (!hasProofCards) {
+      emit357RuntimeDiag("controller_proof_cards_skipped", {
+        gameId: descriptor.gameId,
+        terminalResultIdentity: descriptor.terminalResultIdentity,
+        winnerPlayerId: descriptor.winnerId,
+      }, {
+        terminalGenerationId: descriptor.terminalGenerationId,
+        reason: "proof_cards_missing_or_incomplete",
+        proofCardsCount: descriptor.proofCards?.length ?? 0,
+        hadAuthoritativeLegs: descriptor.hadAuthoritativeLegs,
+      });
+      if (descriptor.hadAuthoritativeLegs) {
+        emit357RuntimeDiag("controller_state_transition", {
+          gameId: descriptor.gameId,
+          terminalResultIdentity: descriptor.terminalResultIdentity,
+        }, {
+          terminalGenerationId: descriptor.terminalGenerationId,
+          from: "announce_wait_deal_settled",
+          to: "sweep_legs",
+        });
+        setPhase("sweep_legs");
+      } else {
+        enterCanonicalNow("sweep_legs_skipped");
+      }
+      return;
+    }
     emit357RuntimeDiag("controller_state_transition", {
       gameId: descriptor.gameId,
       terminalResultIdentity: descriptor.terminalResultIdentity,

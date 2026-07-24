@@ -6179,19 +6179,16 @@ export const MobileGameTable = ({
     if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
     // Slice 3 — instant-357 controller ownership. When the controller
     // holds prelude ownership for the active descriptor generation,
-    // SUPPRESS the legacy sentinel-detection arm entirely. The
-    // controller will drive announcement + proof cards + optional
-    // Sweep-the-Legs and then hand off to the canonical downstream
-    // path via the shared adapter.
-    // Descriptor-source is the SYNCHRONOUS authority: if the terminal
-    // is instant-357 the controller owns the prelude — never race the
-    // ref which registers after the controller's mount effect. Also
-    // gate on the sentinel itself (357_SWEEP:) as a defensive fallback
-    // in case the descriptor state hasn't been threaded yet.
-    if (
-      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
-    ) {
+    // SUPPRESS the legacy sentinel-detection arm entirely.
+    //
+    // ATOMIC OWNERSHIP PREDICATE — the sole synchronous authority is
+    // `threeFiveSevenTerminalDescriptor?.source === 'instant-357'`. The
+    // sentinel-only OR fallback that used to gate this branch has been
+    // removed: the descriptor is now deterministic (Game.tsx emits it
+    // in the same tick as the sweep sentinel, even when proof cards
+    // are pending), so legacy is disabled iff the controller is
+    // guaranteed to activate.
+    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
       emit357RuntimeDiag('legacy_prelude_suppressed', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -6202,7 +6199,7 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_or_sentinel',
+        guardMode: 'descriptor_source_only',
       });
       return;
     }
@@ -7167,8 +7164,7 @@ export const MobileGameTable = ({
     // DealRuntime settledCardIds below expectedCount and flips dealSettled back
     // to false — starving the controller of its wait signal.
     const instant357Suppress =
-      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'));
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357';
 
     if (instant357Suppress) {
       // Still advance the baseline so we don't replay a stale delta after the
@@ -7186,7 +7182,7 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_or_sentinel',
+        guardMode: 'descriptor_source_only',
       });
       return;
     }
@@ -7275,6 +7271,31 @@ export const MobileGameTable = ({
       return;
     }
 
+    // ATOMIC OWNERSHIP — instant-357 controller drives its own prelude
+    // and hands off directly to the canonical downstream via
+    // `enterCanonical357TerminalPresentation`. This legacy fallback
+    // trigger must never advance the win phase (which would activate
+    // `isWinner357InAnimation` and shrink the real self-hand region)
+    // for descriptor-owned generations.
+    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        callerSourceAnchor: 'fallback_trigger.effect_entry',
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
+        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+        guardMode: 'descriptor_source_only',
+      });
+      lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
+      onThreeFiveSevenWinAnimationStarted?.();
+      return;
+    }
+
+
     // NOTE: Removed game_over check - the animation should run for all players regardless of local game status.
     // The parent (Game.tsx) triggers this only when appropriate.
 
@@ -7282,15 +7303,10 @@ export const MobileGameTable = ({
     // force the leg-earned banner so the win moment still feels right.
     // CRITICAL: Check legAnimationActiveRef SYNCHRONOUSLY - showLegEarned state may be stale due to async batching
     // ALSO check isWinningLegAnimation state - if it's already true, the primary path already triggered
-    // Slice 3 correction — instant-357 exclusion for the fallback trigger arm.
-    // The controller owns the winner exposure; do not set winningLegPlayerId
-    // (which activates the showdown-reveal geometry that shrinks the real
-    // hand and drops DealRuntime settledCardIds).
-    const instant357SuppressFallback =
-      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'));
-    if (!instant357SuppressFallback
-        && !legAnimationActiveRef.current && !showLegEarned && !isWinningLegAnimation && threeFiveSevenWinnerId) {
+    // Instant-357 has already returned above; here descriptor is either
+    // null or a normal-win terminal. Preserve the legacy final-leg
+    // forcing logic unchanged for normal wins.
+    if (!legAnimationActiveRef.current && !showLegEarned && !isWinningLegAnimation && threeFiveSevenWinnerId) {
       const winner = players.find((p) => p.id === threeFiveSevenWinnerId);
       if (winner) {
         const winnerName = winner.is_bot
@@ -7304,19 +7320,6 @@ export const MobileGameTable = ({
         legAnimationActiveRef.current = true; // Mark ref to prevent any further triggers
         setWinningLegPlayerId(winner.id);
       }
-    } else if (instant357SuppressFallback) {
-      emit357RuntimeDiag('legacy_prelude_suppressed', {
-        gameId: gameId ?? null,
-        roundId: handContextId ?? null,
-        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? threeFiveSevenWinnerId ?? null,
-        terminalResultIdentity: lastRoundResult ?? null,
-      }, {
-        callerSourceAnchor: 'fallback_trigger.setShowLegEarned',
-        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
-        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
-        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_or_sentinel',
-      });
     }
 
 
@@ -7383,10 +7386,7 @@ export const MobileGameTable = ({
         // controller owns the active descriptor generation, do NOT arm
         // the legacy sweep-await gate here. The controller drives the
         // full prelude and hands off via the canonical adapter.
-        if (
-          threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-          || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
-        ) {
+        if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
           emit357RuntimeDiag('legacy_prelude_suppressed', {
             gameId: gameId ?? null,
             roundId: handContextId ?? null,
@@ -7397,7 +7397,7 @@ export const MobileGameTable = ({
             terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
             dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
             handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-            guardMode: 'descriptor_source_or_sentinel',
+            guardMode: 'descriptor_source_only',
           });
           return;
         }
@@ -9697,12 +9697,15 @@ export const MobileGameTable = ({
 
         {/* Legacy bespoke instant-win overlays. Behaviorally UNREACHABLE
             for instant-357 terminals: the controller above owns the
-            prelude and hands off to the canonical downstream. Gated on
-            the immutable descriptor source AND the sweep sentinel so
-            the race between descriptor threading and controller mount
-            cannot leak either overlay onto the felt. */}
-        {(threeFiveSevenTerminalDescriptor?.source !== 'instant-357'
-          && !(typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))) && (
+            prelude and hands off to the canonical downstream. Gated
+            on the SINGLE synchronous authority — the immutable
+            descriptor source. Because Game.tsx now emits the
+            descriptor deterministically in the same tick as the
+            sweep sentinel (proof cards may be null; the controller
+            skips its proof step gracefully), we no longer need a
+            sentinel-based defensive branch, which was the source of
+            the "legacy-suppressed / controller-inert" black hole. */}
+        {threeFiveSevenTerminalDescriptor?.source !== 'instant-357' && (
           <>
             <SweepsPotAnimation
               show={showSweepsPot}
@@ -10331,10 +10334,7 @@ export const MobileGameTable = ({
                 // Slice 3 — controller ownership check. Suppress the
                 // legacy primary sweep-arm when the instant-357
                 // controller owns this descriptor generation.
-                if (
-                  threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-                  || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
-                ) {
+                if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
                   emit357RuntimeDiag('legacy_prelude_suppressed', {
                     gameId: gameId ?? null,
                     roundId: handContextId ?? null,
@@ -10345,7 +10345,7 @@ export const MobileGameTable = ({
                     terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
                     dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
                     handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-                    guardMode: 'descriptor_source_or_sentinel',
+                    guardMode: 'descriptor_source_only',
                   });
                   return;
                 }
