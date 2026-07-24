@@ -6177,6 +6177,31 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType === 'holm-game') return;
     if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
+    // Slice 3 — instant-357 controller ownership. When the controller
+    // holds prelude ownership for the active descriptor generation,
+    // SUPPRESS the legacy sentinel-detection arm entirely. The
+    // controller will drive announcement + proof cards + optional
+    // Sweep-the-Legs and then hand off to the canonical downstream
+    // path via the shared adapter.
+    const controllerGenId = controllerInstant357OwnedGenIdRef.current;
+    const descriptorGenId =
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+        ? threeFiveSevenTerminalDescriptor.terminalGenerationId
+        : null;
+    if (controllerGenId != null && controllerGenId === descriptorGenId) {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
+        terminalResultIdentity: lastRoundResult,
+      }, {
+        callerSourceAnchor: 'sentinel_detection.setShowSweepsPot',
+        terminalGenerationId: controllerGenId,
+        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+      });
+      return;
+    }
     const nextIdentity: Three57SweepDetectionIdentity = {
       dealerGameId: threeFiveSevenDealerGameScope ?? null,
       handContextId: handContextId ?? null,
@@ -6207,7 +6232,7 @@ export const MobileGameTable = ({
     setSweepCelebrationCompleted(false);
     setShowSweepTheLegs357(false);
     setShowSweepsPot(true);
-  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber]);
+  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber, threeFiveSevenTerminalDescriptor]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
