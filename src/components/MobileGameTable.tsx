@@ -156,6 +156,8 @@ import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
+import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
+import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
@@ -996,6 +998,11 @@ interface MobileGameTableProps {
   threeFiveSevenCachedLegPositions?: { playerId: string; position: number; legCount: number }[];
   onThreeFiveSevenWinAnimationStarted?: () => void; // Called when animation starts to clear trigger
   onThreeFiveSevenWinAnimationComplete?: () => void;
+  /** Slice 1 (inert): immutable terminal descriptor built by Game.tsx at
+   *  authoritative 3-5-7 terminal detection. Passed through to the new
+   *  ThreeFiveSevenTerminalController mounted below. Bespoke instant-win
+   *  path remains active until Slice 3 cutover. */
+  threeFiveSevenTerminalDescriptor?: Terminal357Descriptor | null;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -1250,6 +1257,7 @@ export const MobileGameTable = ({
   threeFiveSevenCachedLegPositions = [],
   onThreeFiveSevenWinAnimationStarted,
   onThreeFiveSevenWinAnimationComplete,
+  threeFiveSevenTerminalDescriptor = null,
   isGameOver,
   isDealer,
   onNextGame,
@@ -9334,6 +9342,14 @@ export const MobileGameTable = ({
             signal for the sweep-wait phase. If legs were present at
             detection, chain into SweepTheLegsAnimation before releasing;
             otherwise mark celebration complete immediately. */}
+        {/* Slice 1 (inert): normalized 3-5-7 terminal presentation
+            controller. Renders null until the atomic instant-win cutover
+            in Slice 3 wires the announcement + proof-card prelude and
+            shared terminal path. Mounted here — inside MobileGameTable's
+            table surface — so it can consume the same felt-relative DOM
+            anchors as existing presentation owners. */}
+        <ThreeFiveSevenTerminalController descriptor={threeFiveSevenTerminalDescriptor} />
+
         <SweepsPotAnimation
           show={showSweepsPot}
           playerName={sweepsPlayerName}
