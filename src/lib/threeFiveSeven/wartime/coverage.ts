@@ -51,6 +51,7 @@ function req(
   description: string,
   phase: WartimePhase,
   runtimeExpectation: WartimeRuntimeExpectation = 'expected_during_repro',
+  requiredInvocationSiteIds: string[] = [],
 ): void {
   REQUIREMENTS[requirementId] = {
     requirementId,
@@ -62,6 +63,9 @@ function req(
     helperSourceSiteIds: [],
     productionSourceSites: [],
     actualEmitterInvocationSites: [],
+    requiredInvocationSiteIds: [...requiredInvocationSiteIds],
+    installedInvocationSiteIds: [],
+    missingInvocationSiteIds: [...requiredInvocationSiteIds],
     runtimeEventCount: 0,
     expectedDuringRepro: runtimeExpectation === 'expected_during_repro',
     runtimeExpectation,
@@ -101,9 +105,39 @@ req('geometry.transition', 'Active-hand geometry decision inputs+outputs+branch 
 req('pot_destination.resolution', 'PotToPlayerAnimation destination resolution forensics', 3);
 req('progression.advancement', 'Entry+return of every 3-5-7 progression/advancement callback', 3);
 req('global.error.origin', 'window.error / unhandledrejection / error-boundary / toast origin', 3);
-req('db.mutation.correlation', 'DB mutation begin/complete/error with requestId at real call sites', 3);
+req(
+  'db.mutation.correlation',
+  'DB mutation begin/complete/error with requestId at real call sites',
+  3,
+  'expected_during_repro',
+  [
+    'db.mutation.correlation.record_game_result.instant_win',
+    'db.mutation.correlation.snapshot_player_chips.instant_win',
+  ],
+);
 req('realtime.causality', 'Realtime callback ownership + local receipt sequence at real subscriptions', 3);
-req('async.owner', 'Relevant lifecycle async sites wrapped with wartime ownership', 3);
+req(
+  'async.owner',
+  'Relevant lifecycle async sites wrapped with wartime ownership',
+  3,
+  'expected_during_repro',
+  [
+    'async.owner.game.realtime_debounce',
+    'async.owner.game.realtime_delayed_fetch',
+    'async.owner.game.realtime_fallback_poll',
+    'async.owner.game.show_cards_callback',
+    'async.owner.game.awaiting_status_poll',
+    'async.owner.game.critical_poll',
+    'async.owner.game.357_sync_poll',
+    'async.owner.game.awaiting_poll',
+    'async.owner.game.awaiting_timer',
+    'async.owner.game.reante_clear_timer',
+    'async.owner.game.357_safety_fallback',
+    'async.owner.game.357_safety_extension',
+    'async.owner.game.357_progress_poll',
+    'async.owner.game.357_poll_stop',
+  ],
+);
 
 // ── Mutators ───────────────────────────────────────────────────
 
