@@ -5,6 +5,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { SHELL_Z } from "@/lib/canonicalShell/zLayers";
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSP } from "@/lib/threeFiveSeven/wartime";
 
 interface SweepsPotAnimationProps {
   show: boolean;
