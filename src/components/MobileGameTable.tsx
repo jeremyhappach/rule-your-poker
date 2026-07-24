@@ -2126,17 +2126,27 @@ export const MobileGameTable = ({
   // 357 Sweeps pot animation state
   const [showSweepsPot, setShowSweepsPot] = useState(false);
   const [sweepsPlayerName, setSweepsPlayerName] = useState('');
-  const lastSweepsResultRef = useRef<string | null>(null);
-  // Surgical repair: sweep-celebration completion is the SOLE release
-  // signal for the sweep-wait phase. Captured at SweepsPotAnimation (and
-  // optional SweepTheLegsAnimation) onComplete. See item 1 of the
-  // surgical repair spec.
+  // Surgical repair item 1: identity-scoped one-shot key. Sentinel text
+  // (`357_SWEEP:<name>:<amount>`) can repeat verbatim across dealer
+  // games; keying the one-shot on the sentinel string alone caused DG2
+  // to be rejected as "already seen". The one-shot now compares a full
+  // terminal identity tuple.
+  type Three57SweepDetectionIdentity = {
+    dealerGameId: string | null;
+    handContextId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+    lastRoundResult: string;
+  };
+  const lastSweepsIdentityRef = useRef<Three57SweepDetectionIdentity | null>(null);
   const [showSweepTheLegs357, setShowSweepTheLegs357] = useState(false);
   const [sweepCelebrationCompleted, setSweepCelebrationCompleted] = useState(false);
-  // Detection-time snapshot: did any authoritative player have legs > 0
-  // when the 357_SWEEP: sentinel was observed? Governs the conditional
-  // SweepTheLegsAnimation overlay only — NEVER used to infer a leg
-  // award (that is legs delta from settlement, which is zero for sweep).
+  // Immutable pre-settlement legs latch (per handContextId). Updated on
+  // every render where legs > 0 is observed for the CURRENT hand and
+  // no 357_SWEEP sentinel is present yet. Sentinel detection reads this
+  // latch instead of recomputing from live `players` (settlement may
+  // have already zeroed player.legs by the time the sentinel arrives).
+  const latchedLegsForHandRef = useRef<{ handContextId: string | null; hadLegs: boolean }>({ handContextId: null, hadLegs: false });
   const hadLegsBeforeSweepRef = useRef<boolean>(false);
   
   // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
