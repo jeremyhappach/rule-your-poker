@@ -266,6 +266,28 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
 
+  // ── FAIL-CLOSED HARNESS PRE-GATE ──────────────────────────────
+  // If an admin has requested the 3-5-7 instant-win harness but the
+  // wartime instrumentation is not fully ready, refuse the harness
+  // BEFORE any mutation — no round insert, no ante charge, no deal.
+  try {
+    const preHarnessId = await readDebugHarness('3-5-7');
+    if (preHarnessId === 'instant_win' && !isWartimeReadyForHarness({ gameId, roundNumber })) {
+      emitWartime({
+        eventName: 'harness_instant_win_refused',
+        sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
+        identity: { gameId },
+        payload: { harnessId: preHarnessId, phase: 'pre_round_insert', reason: 'wartime_not_ready' },
+      });
+      console.warn('[START_ROUND] Instant-win harness requested but wartime not ready — refusing (no mutations performed).');
+      return { blocked: true, reason: 'wartime_not_ready' } as const;
+    }
+  } catch {
+    /* fire-and-forget diagnostic path */
+  }
+
+
+
   // Instant-win terminal diagnostics only (fire-and-forget). Wartime
   // lifecycle instrumentation has been retired — do NOT reintroduce
   // begin/complete-around-every-op tracing here.

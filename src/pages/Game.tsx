@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
+import {
+  useWartimeComponentInstance as __useWartimeComponentInstance,
+  useWartimeStateWrite as __useWartimeStateWrite,
+  emitRefWrite as __emitWartimeRefWrite,
+  SRC as __WARTIME_SRC,
+} from "@/lib/threeFiveSeven/wartime";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -1490,6 +1496,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       lastRoundResult: game?.last_round_result ?? null,
     });
   }, [is357WinAnimationActive, game?.id, game?.current_game_uuid, game?.current_round, game?.status, game?.last_round_result]);
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  const __wartimeGameIdentity = {
+    gameId: game?.id ?? null,
+    dealerGameId: game?.current_game_uuid ?? null,
+    roundId: null,
+    handNumber: (game as { total_hands?: number | null } | null)?.total_hands ?? null,
+  };
+  const __wartimeGameOwner = __useWartimeComponentInstance({
+    componentType: 'Game',
+    sourceSiteId: __WARTIME_SRC.GAME_MOUNT.id,
+    identity: __wartimeGameIdentity,
+    branch: {
+      status: game?.status ?? null,
+      gameType: (game as { game_type?: string | null } | null)?.game_type ?? null,
+    },
+  });
+  __useWartimeStateWrite({
+    fieldName: 'is357WinAnimationActive',
+    sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id,
+    value: is357WinAnimationActive,
+    owner: __wartimeGameOwner,
+    identity: __wartimeGameIdentity,
+  });
 
   // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
   const safety357FallbackKeyRef = useRef<string | null>(null);
@@ -9734,6 +9764,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               freshGameError,
             });
             setIs357WinAnimationActive(false);
+            __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
             is357WinAnimationActiveRef.current = false;
             await handleGameOverComplete();
             return;
@@ -9742,6 +9773,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
             console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), forcing transition');
             setIs357WinAnimationActive(false);
+            __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
             is357WinAnimationActiveRef.current = false;
             await handleGameOverComplete();
           } else {
@@ -9762,6 +9794,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           freshGameError,
         });
         setIs357WinAnimationActive(false);
+        __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
         is357WinAnimationActiveRef.current = false;
         await handleGameOverComplete();
         return;
@@ -9770,6 +9803,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
         console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), forcing transition');
         setIs357WinAnimationActive(false);
+        __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
         is357WinAnimationActiveRef.current = false;
         await handleGameOverComplete();
       } else {
@@ -10432,8 +10466,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Mark animation as active - this blocks GameOverCountdown and ante animations until animation completes
     setIs357WinAnimationActive(true);
+    __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: true, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
     is357WinAnimationActiveRef.current = true;
-    
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);
     setThreeFiveSevenWinnerCards(winnerCards);
@@ -10465,6 +10499,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
+      __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
@@ -10478,6 +10513,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
+      __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
     }
   }, [game?.status, game?.current_round]);
@@ -10555,8 +10591,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
+    __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
     is357WinAnimationActiveRef.current = false;
-
     setThreeFiveSevenWinTriggerId(null);
     setThreeFiveSevenWinnerId(null);
     setThreeFiveSevenWinPotAmount(0);

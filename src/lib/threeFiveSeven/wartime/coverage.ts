@@ -3,13 +3,12 @@
  *
  * Enumerates every required instrumentation hook. Each requirement
  * begins uninstalled. Later-phase wiring calls markRequirementInstalled
- * from the exact site that satisfies it. The admin harness readiness
- * gate cannot arm until every required hook reports installed = true.
+ * from the exact site that satisfies it.
  *
- * Phase 1 lands the manifest itself: only session/sink/gate
- * requirements are installable. All defect-owner requirements are
- * declared but remain installed=false so the gate stays closed until
- * phase 2/3 wire them.
+ * The admin harness readiness gate cannot arm until every requirement
+ * for WARTIME_REQUIRED_REPRO_PHASE reports installed = true. The
+ * implementation-phase constant is used ONLY for progress reporting —
+ * never for gating.
  */
 
 export type WartimePhase = 1 | 2 | 3;
@@ -52,22 +51,55 @@ req('harness.readiness_gate', 'Admin harness instant_win blocked until wartime r
   'harness.instant_win_gated',
 ]);
 
-// ── Phase 2: ownership (declared, not installed) ──────────────
-req('component.mount', 'componentInstanceId mount/unmount emissions on all 3-5-7 owners', 2);
-req('component.render_branch', 'Render branch + eligibility gate captured per mount', 2);
-req('state.write.win_phase', 'Instrument writes to threeFiveSevenWinPhase', 2);
-req('state.write.sweep_flags', 'Instrument writes to showSweepsPot / showSweepTheLegs357', 2);
-req('state.write.sweep_awaiting', 'Instrument writes to sweepAwaitingCelebrationRef', 2);
-req('state.write.win_animation_active', 'Instrument writes to is357WinAnimationActive', 2);
-req('state.write.show_cards', 'Instrument writes to Show Cards + decision eligibility', 2);
-req('state.write.deal_runtime', 'Instrument writes to deal runtime phase/latches', 2);
-req('async.owner_registry', 'Every timer/rAF/promise/realtime callback has asyncOwnerId', 2);
-req('db.mutation_causality', 'DB mutation begin/complete/error with requestId', 2);
-req('realtime.owner', 'Realtime message ownership + local receipt sequence', 2);
-req('authoritative.snapshot', 'Authoritative game/round/players/cards snapshot at checkpoints', 2);
-req('deal.self_face_up', 'Self face-up transport channel fully instrumented', 2);
-req('deal.opponent_card_back', 'Opponent card-back transport channel fully instrumented', 2);
-req('deal.redispatch_attempt', 'Redispatch attempts under stale/terminal identity are flagged', 2);
+// ── Phase 2: ownership ────────────────────────────────────────
+req('component.mount', 'componentInstanceId mount/unmount emissions on all 3-5-7 owners', 2, [
+  'mgt.mount',
+  'game.mount',
+  'deal_orch.mount',
+  'pot_anim.mount',
+]);
+req('component.render_branch', 'Render branch + eligibility gate captured per mount', 2, [
+  'mgt.mount',
+]);
+req('state.write.win_phase', 'Instrument writes to threeFiveSevenWinPhase', 2, [
+  'state.win_phase',
+]);
+req('state.write.sweep_flags', 'Instrument writes to showSweepsPot / showSweepTheLegs357', 2, [
+  'state.sweep_flags',
+]);
+req('state.write.sweep_awaiting', 'Instrument writes to sweepAwaitingCelebrationRef', 2, [
+  'state.sweep_awaiting',
+]);
+req('state.write.win_animation_active', 'Instrument writes to is357WinAnimationActive', 2, [
+  'state.win_anim_active',
+]);
+req('state.write.show_cards', 'Instrument writes to Show Cards + decision eligibility', 2, [
+  'state.show_cards',
+]);
+req('state.write.deal_runtime', 'Instrument writes to deal runtime phase/latches', 2, [
+  'state.deal_runtime',
+]);
+req('async.owner_registry', 'Every timer/rAF/promise/realtime callback has asyncOwnerId', 2, [
+  'async.registry',
+]);
+req('db.mutation_causality', 'DB mutation begin/complete/error with requestId', 2, [
+  'db.mutation',
+]);
+req('realtime.owner', 'Realtime message ownership + local receipt sequence', 2, [
+  'realtime.owner',
+]);
+req('authoritative.snapshot', 'Authoritative game/round/players/cards snapshot at checkpoints', 2, [
+  'authoritative.snapshot',
+]);
+req('deal.self_face_up', 'Self face-up transport channel fully instrumented', 2, [
+  'deal.self_face_up_channel',
+]);
+req('deal.opponent_card_back', 'Opponent card-back transport channel fully instrumented', 2, [
+  'deal.opponent_card_back_channel',
+]);
+req('deal.redispatch_attempt', 'Redispatch attempts under stale/terminal identity are flagged', 2, [
+  'deal.redispatch_detector',
+]);
 
 // ── Phase 3: DOM / geometry / presentation / progression ──────
 req('dom.attributes', 'Diagnostic-only data-357-* attributes on all owner nodes', 3);
@@ -87,7 +119,17 @@ export function markRequirementInstalled(requirementId: string, sourceSiteId: st
   if (!r.installedBySourceSiteIds.includes(sourceSiteId)) {
     r.installedBySourceSiteIds.push(sourceSiteId);
   }
-  r.installed = true;
+  // Only mark installed once every expected source site has reported in.
+  // An empty expectedSourceSiteIds list means the requirement has no
+  // production hook yet — remain uninstalled regardless of ad-hoc calls.
+  if (r.expectedSourceSiteIds.length === 0) {
+    r.installed = false;
+    return;
+  }
+  const allPresent = r.expectedSourceSiteIds.every((id) =>
+    r.installedBySourceSiteIds.includes(id),
+  );
+  r.installed = allPresent;
 }
 
 export function listRequirements(): WartimeRequirement[] {

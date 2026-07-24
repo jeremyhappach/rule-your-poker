@@ -1,6 +1,12 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
 import { emit357RuntimeDiag, setLastKnown357TerminalResultIdentity } from "@/lib/threeFiveSeven/runtimeDiag";
+import {
+  useWartimeComponentInstance as __useWartimeComponentInstance,
+  useWartimeStateWrite as __useWartimeStateWrite,
+  emitRefWrite as __emitWartimeRefWrite,
+  SRC as __WARTIME_SRC,
+} from "@/lib/threeFiveSeven/wartime";
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
@@ -2168,6 +2174,75 @@ export const MobileGameTable = ({
   
   // DEBUG: Track when phase changed for elapsed time in overlay
   const phaseChangedAtRef = useRef<number>(Date.now());
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  const __wartimeMgtIdentity = {
+    gameId: gameId ?? null,
+    dealerGameId: (holmDealerGameId ?? horsesDealerGameId ?? null) as string | null,
+    roundId: (horsesRoundId ?? null) as string | null,
+    handNumber: (horsesHandNumber ?? null) as number | null,
+    handContextId: handContextId ?? null,
+  };
+  const __wartimeMgtOwner = __useWartimeComponentInstance({
+    componentType: 'MobileGameTable',
+    sourceSiteId: __WARTIME_SRC.MGT_MOUNT.id,
+    identity: __wartimeMgtIdentity,
+    branch: {
+      gameType,
+      gameStatus,
+      instanceLabel,
+    },
+  });
+  __useWartimeStateWrite({
+    fieldName: 'threeFiveSevenWinPhase',
+    sourceSiteId: __WARTIME_SRC.STATE_WIN_PHASE.id,
+    value: threeFiveSevenWinPhase,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'showSweepsPot',
+    sourceSiteId: __WARTIME_SRC.STATE_SWEEP_FLAGS.id,
+    value: showSweepsPot,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'showSweepTheLegs357',
+    sourceSiteId: __WARTIME_SRC.STATE_SWEEP_FLAGS.id,
+    value: showSweepTheLegs357,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+
+  // Authoritative snapshot at identity change (checkpoint).
+  const __wartimeSnapshotSigRef = useRef<string>('');
+  useEffect(() => {
+    const sig = `${__wartimeMgtIdentity.gameId}|${__wartimeMgtIdentity.dealerGameId}|${__wartimeMgtIdentity.handContextId}|${gameStatus}`;
+    if (__wartimeSnapshotSigRef.current === sig) return;
+    __wartimeSnapshotSigRef.current = sig;
+    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot }) => {
+      emitAuthoritativeSnapshot({
+        checkpoint: 'identity_change',
+        sourceSiteId: __WARTIME_SRC.AUTH_SNAPSHOT.id,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+        snapshot: {
+          gameType,
+          gameStatus,
+          instanceLabel,
+          currentRound,
+          allDecisionsIn,
+          pot,
+          lastRoundResult,
+          playerCount: Array.isArray(players) ? players.length : 0,
+        },
+      });
+    }).catch(() => {});
+  });
+
+
+
   const [debugElapsedMs, setDebugElapsedMs] = useState(0);
   
   // Update elapsed time every 100ms when not idle (for debug overlay)
@@ -5027,6 +5102,20 @@ export const MobileGameTable = ({
     ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
+  __useWartimeStateWrite({
+    fieldName: 'selfHandHasActive357',
+    sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS.id,
+    value: selfHandHasActive357,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'threeFiveSevenDecisionBoundaryOpen',
+    sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS.id,
+    value: threeFiveSevenDecisionBoundaryOpen,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and
@@ -7099,6 +7188,7 @@ export const MobileGameTable = ({
             // Already armed for this identity — idempotent no-op.
             return;
           }
+          __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: armId, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'fallback_arm' });
           sweepAwaitingCelebrationRef.current = armId;
         })();
         setThreeFiveSevenPotHiddenUntilReset(true);
@@ -7373,11 +7463,13 @@ export const MobileGameTable = ({
         storedTriggerId: stored.triggerId,
         activeTriggerId: active.triggerId,
       });
+      __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'stale_identity_reset' });
       sweepAwaitingCelebrationRef.current = null;
       return;
     }
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
-    sweepAwaitingCelebrationRef.current = null;
+    __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'release_to_pot' });
+      sweepAwaitingCelebrationRef.current = null;
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotOutAnimationActive(true);
@@ -7428,6 +7520,7 @@ export const MobileGameTable = ({
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
+    __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'dealer_game_boundary' });
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
     setShowSweepsPot(false);
@@ -9650,6 +9743,7 @@ export const MobileGameTable = ({
                       && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
                     return;
                   }
+                  __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: armId, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'primary_arm' });
                   sweepAwaitingCelebrationRef.current = armId;
                 })();
                 setThreeFiveSevenPotHiddenUntilReset(true);
