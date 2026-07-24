@@ -3214,10 +3214,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetch = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
+      if (debounceTimer) {
+        __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'debounce_rescheduled');
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = __scheduleWartimeTimeout({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_DEBOUNCE.id,
+        ownerLabel: 'game.realtime.debouncedFetch',
+        delayMs: 300,
+        extra: { purpose: 'batch realtime fetchGameData', gameStatus: game?.status ?? null },
+        fn: () => {
         fetchGameData();
-      }, 300); // 300ms balances responsiveness and batching
+        },
+      }); // 300ms balances responsiveness and batching
     };
 
 
@@ -3228,12 +3237,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (safetyPollsDisabled) return;
       if (fallbackPollInterval) return;
       // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
-      fallbackPollInterval = setInterval(() => {
+      fallbackPollInterval = __scheduleWartimeInterval({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_FALLBACK_POLL.id,
+        ownerLabel: 'game.realtime.fallbackPolling',
+        intervalMs: 5000,
+        extra: { purpose: 'realtime fallback polling' },
+        fn: () => {
         fetchGameData();
-      }, 5000);
+        },
+      });
     };
     const stopFallbackPolling = () => {
       if (!fallbackPollInterval) return;
+      __cancelWartimeAsyncOwner(fallbackPollInterval as unknown as number, 'fallback_poll_stopped');
       clearInterval(fallbackPollInterval);
       fallbackPollInterval = null;
     };
@@ -3333,9 +3349,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setCachedRoundData(null);
             cachedRoundRef.current = null;
             maxRevealedRef.current = 0;
-            if (debounceTimer) clearTimeout(debounceTimer);
+            if (debounceTimer) {
+              __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'game_type_switch_immediate_fetch');
+              clearTimeout(debounceTimer);
+            }
             // Fetch fresh data after a short delay to allow DB to settle
-            setTimeout(() => fetchGameData(), 200);
+            __scheduleWartimeTimeout({
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_RT_DELAYED_FETCH.id,
+              ownerLabel: 'game.realtime.gameTypeDelayedFetch',
+              delayMs: 200,
+              extra: { purpose: 'fetch after game-type switch realtime payload' },
+              fn: () => fetchGameData(),
+            });
             return;
           }
           
