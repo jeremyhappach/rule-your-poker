@@ -5,14 +5,11 @@
  * cards. Does NOT reparent or mutate the actual hand DOM; the winner's
  * hand region keeps its native layout space reserved.
  *
- * Presentation is deliberately geometry-simple in this slice:
- *   - Absolutely positioned overlay inside the same felt surface the
- *     terminal controller mounts under.
- *   - Three cards start slightly offset toward the winner's seat edge
- *     (top/bottom) with 0 scale + 0 opacity, then lift/enlarge and
- *     settle into three centered felt slots.
- *   - After the settle transition finishes the animation emits
- *     `onComplete` exactly once for the active `generationKey`.
+ * Presentation contract:
+ *   - Measure the live hand cards as origins; never move/reparent them.
+ *   - Measure the existing winner-tabled-cards felt stage as destination.
+ *   - Render three fixed-position overlay copies from descriptor.proofCards.
+ *   - Complete only after all three transform transitions finish.
  *   - The tabled cards remain visible until the controller unmounts
  *     the animation (descriptor rotation).
  *
@@ -82,6 +79,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   const onInvariantFailureRef = useRef(onInvariantFailure);
   onCompleteRef.current = onComplete;
   onInvariantFailureRef.current = onInvariantFailure;
+  const proofCardSignature = cards.slice(0, 3).map((card) => `${card.rank}-${card.suit}`).join("|");
 
   useEffect(() => {
     setPortalHost(typeof document === "undefined" ? null : document.body);
@@ -252,8 +250,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show, generationKey, cards, winnerPosition]);
+  }, [show, generationKey, proofCardSignature, winnerPosition]);
 
   useEffect(() => {
     if (phase !== "settled") return;
