@@ -86,7 +86,7 @@ export function emitWartime(input: WartimeEmit): string {
     sourceSiteId: input.sourceSiteId,
     sourceFile: site?.file ?? null,
     sourceFunction: site?.fn ?? null,
-    sourceLine: site?.line ?? null,
+    sourceAnchor: site?.sourceAnchor ?? null,
     sourceSiteRegistered: !!site,
     causedByEventId: input.causedByEventId ?? null,
     stack: input.captureStack ? captureStack() : null,
