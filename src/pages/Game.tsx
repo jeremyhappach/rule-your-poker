@@ -10073,18 +10073,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     return () => {
       if (safety357FallbackTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(safety357FallbackTimerRef.current);
         safety357FallbackTimerRef.current = null;
       }
       if (safety357FallbackExtendTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(safety357FallbackExtendTimerRef.current);
         safety357FallbackExtendTimerRef.current = null;
       }
       if (poll357IntervalRef.current) {
+        __cancelWartimeAsyncOwner(poll357IntervalRef.current, 'unmount_cleanup');
         window.clearInterval(poll357IntervalRef.current);
         poll357IntervalRef.current = null;
       }
       if (poll357StopTimerRef.current) {
+        __cancelWartimeAsyncOwner(poll357StopTimerRef.current, 'unmount_cleanup');
         window.clearTimeout(poll357StopTimerRef.current);
         poll357StopTimerRef.current = null;
       }
