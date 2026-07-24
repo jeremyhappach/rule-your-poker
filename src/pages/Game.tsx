@@ -10164,11 +10164,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       key,
     });
 
-    safety357FallbackTimerRef.current = window.setTimeout(async () => {
+    safety357FallbackTimerRef.current = __scheduleWartimeTimeout({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_FALLBACK.id,
+      ownerLabel: '3-5-7 safety fallback timeout',
+      delayMs: fallbackMs,
+      extra: {
+        key,
+        fallbackMs,
+        legsToWin,
+        legsToAnimate,
+        legsToPlayerMs,
+        winAnimationActiveGuard: is357WinAnimationActiveRef.current,
+      },
+      fn: async () => {
       // If the win animation is still active, do NOT cut it off.
       if (is357WinAnimationActiveRef.current) {
         console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 5s');
-        safety357FallbackExtendTimerRef.current = window.setTimeout(async () => {
+        safety357FallbackExtendTimerRef.current = __scheduleWartimeTimeout({
+          sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SAFETY_EXTENSION.id,
+          ownerLabel: '3-5-7 safety fallback extension timeout',
+          delayMs: 5000,
+          extra: {
+            key,
+            reason: 'win_animation_still_active_at_fallback',
+          },
+          fn: async () => {
           const { data: freshGame, error: freshGameError } = await supabase
             .from('games')
             .select('status, game_over_at')
@@ -10195,7 +10215,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame);
           }
-        }, 5000);
+          },
+        });
         return;
       }
 
@@ -10225,7 +10246,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       } else {
         console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame);
       }
-    }, fallbackMs);
+      },
+    });
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.legs_to_win, gameId, handleGameOverComplete]);
 
   // POLLING (357): Once the win animation is finished, poll until the game transitions.
