@@ -11479,6 +11479,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Authoritative-hand suppression: local viewer already holds a
+    // length-3 3-5-7 hand → terminal presentation is imminent, reject.
+    if (is357GameType) {
+      const selfPlayer = players.find((p) => p.user_id === user.id) ?? null;
+      const selfCardsRow = selfPlayer ? playerCards.find((pc) => pc.player_id === selfPlayer.id) : null;
+      const selfCards = (selfCardsRow?.cards ?? []) as CardType[];
+      if (Array.isArray(selfCards) && selfCards.length === 3 && has357Hand(selfCards)) {
+        console.warn('[PLAYER DECISION] reject Stay — 3-5-7 authoritative hand held');
+        return;
+      }
+    }
+
+
     // P0 fix B: Holm decision actionability requires deal readiness.
     if (game?.game_type === 'holm-game' && !isHolmHandReady(handContextKey)) {
       console.warn('[PLAYER DECISION] reject Stay — Holm deal not ready');
