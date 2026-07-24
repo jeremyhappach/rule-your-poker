@@ -83,7 +83,7 @@ export async function bootstrapWartime(): Promise<void> {
     emitWartime({
       eventName: passed ? 'sink_probe_passed' : 'sink_probe_failed',
       sourceSiteId: SRC.SINK_PROBE.id,
-      payload: getSinkCounters(),
+      payload: { ...getSinkCounters() },
     });
   });
 }
