@@ -7577,6 +7577,10 @@ export const MobileGameTable = ({
       return;
     }
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
+    __capture357Checkpoint('sweep_wait_release_to_pot', {
+      phaseBefore,
+      triggerId: active.triggerId,
+    });
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'release_to_pot' });
       sweepAwaitingCelebrationRef.current = null;
     setThreeFiveSevenWinPhase('pot-to-player');
