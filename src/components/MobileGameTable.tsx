@@ -9637,35 +9637,46 @@ export const MobileGameTable = ({
         />
 
 
-        <SweepsPotAnimation
-          show={showSweepsPot}
-          playerName={sweepsPlayerName}
-          onComplete={() => {
-            __capture357Checkpoint('sweeps_pot_complete', {
-              hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
-              phase: threeFiveSevenWinPhaseRef.current,
-            });
-            setShowSweepsPot(false);
-            if (hadLegsBeforeSweepRef.current) {
-              setShowSweepTheLegs357(true);
-            } else {
-              setSweepCelebrationCompleted(true);
-            }
-          }}
-        />
-        {/* Conditional Sweep-The-Legs overlay — armed only when
-            detection-time legs > 0. Its completion (or immediate skip)
-            releases the sweep-wait phase. */}
-        <SweepTheLegsAnimation
-          show={showSweepTheLegs357}
-          onComplete={() => {
-            __capture357Checkpoint('sweep_the_legs_complete', {
-              phase: threeFiveSevenWinPhaseRef.current,
-            });
-            setShowSweepTheLegs357(false);
-            setSweepCelebrationCompleted(true);
-          }}
-        />
+        {/* Legacy bespoke instant-win overlays. Behaviorally UNREACHABLE
+            for instant-357 terminals: the controller above owns the
+            prelude and hands off to the canonical downstream. Gated on
+            the immutable descriptor source AND the sweep sentinel so
+            the race between descriptor threading and controller mount
+            cannot leak either overlay onto the felt. */}
+        {(threeFiveSevenTerminalDescriptor?.source !== 'instant-357'
+          && !(typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))) && (
+          <>
+            <SweepsPotAnimation
+              show={showSweepsPot}
+              playerName={sweepsPlayerName}
+              onComplete={() => {
+                __capture357Checkpoint('sweeps_pot_complete', {
+                  hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
+                  phase: threeFiveSevenWinPhaseRef.current,
+                });
+                setShowSweepsPot(false);
+                if (hadLegsBeforeSweepRef.current) {
+                  setShowSweepTheLegs357(true);
+                } else {
+                  setSweepCelebrationCompleted(true);
+                }
+              }}
+            />
+            {/* Conditional Sweep-The-Legs overlay — armed only when
+                detection-time legs > 0. Its completion (or immediate skip)
+                releases the sweep-wait phase. */}
+            <SweepTheLegsAnimation
+              show={showSweepTheLegs357}
+              onComplete={() => {
+                __capture357Checkpoint('sweep_the_legs_complete', {
+                  phase: threeFiveSevenWinPhaseRef.current,
+                });
+                setShowSweepTheLegs357(false);
+                setSweepCelebrationCompleted(true);
+              }}
+            />
+          </>
+        )}
 
         
         {/* Ante Up Animation */}
