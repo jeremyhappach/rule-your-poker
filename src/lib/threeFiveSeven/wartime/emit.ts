@@ -13,6 +13,7 @@ import { BUILD_IDENTITY } from '@/lib/buildIdentity';
 import { allocSequence, ensureWartimeSession, makeEventId } from './session';
 import { enqueue } from './sink';
 import { getSourceSite } from './sourceSites';
+import { noteRuntimeEvent } from './coverage';
 
 export interface WartimeIdentity {
   gameId?: string | null;
@@ -92,6 +93,10 @@ export function emitWartime(input: WartimeEmit): string {
   };
 
   const fullPayload: Record<string, unknown> = { ...envelope, ...(input.payload ?? {}) };
+
+  for (const requirementId of site?.requirementIds ?? []) {
+    noteRuntimeEvent(requirementId);
+  }
 
   enqueue({
     event_type: `357.wartime.${input.eventName}`,
