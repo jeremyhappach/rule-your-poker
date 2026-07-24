@@ -11090,17 +11090,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       // ---- Authoritative proof cards (instant-357 only) -------------
-      // CORRECTION — descriptor readiness must be DETERMINISTIC. We no
-      // longer defer the descriptor on missing proof cards; the
-      // controller consumes `proofCards === null` by skipping the
-      // proof-card step and progressing to the optional sweep-legs
-      // step or direct canonical handoff. Missing cards are recorded
-      // diagnostically but never black-hole the terminal.
+      // Instant-357 is detected after terminal settlement, when
+      // `games.current_round` can already be null. Therefore the proof
+      // source must be the immutable terminal source shape itself: an
+      // instant 3-5-7 winner has exactly three authoritative cards on
+      // the winner's player_cards row. Do not reuse the generic
+      // expectedCardCount derived from games.current_round here; that
+      // value is for normal round display only and incorrectly becomes
+      // 7 after settlement nulls the round.
       let proofCards: CardType[] | null = null;
       if (isInstant357Terminal) {
         const winnerRow = playerCards.find((pc) => pc.player_id === winnerPlayer.id);
         const raw = (winnerRow?.cards ?? []) as CardType[];
-        if (raw.length === expectedCardCount && raw.length === 3) {
+        const expectedInstantProofCardCount = 3;
+        if (raw.length === expectedInstantProofCardCount) {
           proofCards = raw;
         } else {
           emit357RuntimeDiag('sweep_parser_entered', {
@@ -11112,6 +11115,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }, {
             diagnostic: 'terminal_descriptor_proof_cards_missing_nonblocking',
             expectedCardCount,
+            expectedInstantProofCardCount,
             rawWinnerCardCount: raw.length,
             dealerGameId: game.current_game_uuid ?? null,
             handNumber: currentRound?.hand_number ?? null,
