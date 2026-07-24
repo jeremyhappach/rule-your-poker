@@ -152,7 +152,9 @@ export function markHelperImplemented(requirementId: string, helperSourceSiteId:
 }
 
 /** Register a canonical production owner site. MUST be called from
- *  the actual owner module, adjacent to the emitter invocation. */
+ *  the actual owner module, adjacent to the emitter invocation.
+ *  Ownership is only satisfied when every required invocation site
+ *  is installed AND the production owner list is non-empty. */
 export function registerWartimeProductionHook(hook: WartimeProductionHook): void {
   const r = REQUIREMENTS[hook.requirementId];
   if (!r) return;
@@ -162,7 +164,18 @@ export function registerWartimeProductionHook(hook: WartimeProductionHook): void
   if (!already) {
     r.productionSourceSites.push(hook);
   }
-  r.productionOwnerRegistered = r.productionSourceSites.length > 0;
+  recomputeReadiness(r);
+}
+
+function recomputeReadiness(r: WartimeRequirementCoverage): void {
+  r.installedInvocationSiteIds = r.actualEmitterInvocationSites.filter((id) =>
+    r.requiredInvocationSiteIds.includes(id),
+  );
+  r.missingInvocationSiteIds = r.requiredInvocationSiteIds.filter(
+    (id) => !r.actualEmitterInvocationSites.includes(id),
+  );
+  const requiredSatisfied = r.missingInvocationSiteIds.length === 0;
+  r.productionOwnerRegistered = r.productionSourceSites.length > 0 && requiredSatisfied;
 }
 
 /** Register that a production owner contains a real runtime emitter call.
