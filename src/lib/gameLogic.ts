@@ -863,7 +863,7 @@ export async function startRound(gameId: string, roundNumber: number) {
                 label: 'instant_win.increment_player_chips',
                 table: 'rpc.increment_player_chips',
                 op: 'rpc',
-                identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber, playerId: player.id },
+                identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber, currentPlayerId: player.id },
                 payloadHash: `player=${player.id}|amount=${totalPrize}`,
               }, async () => await supabase.rpc('increment_player_chips', {
                 p_player_id: player.id,
