@@ -54,13 +54,18 @@ export interface Terminal357Descriptor {
 
   /** Instant-357 only. Authoritative 3, 5, 7 faces the proof-card overlay
    *  will render. Consumers MUST animate copies of these — never the
-   *  actual hand-card DOM. */
+   *  actual hand-card DOM. INVARIANT: when `source === 'instant-357'`,
+   *  `proofCards.length === 3` (read from the authoritative playerCards
+   *  row for winnerId at descriptor construction, scoped to the current
+   *  dealerGameId/roundId/handNumber). The builder refuses to finalize
+   *  an instant-357 descriptor without exactly three proof cards. */
   proofCards: CardType[] | null;
 
-  /** Immutable pre-settlement legs snapshot. For instant-357 this MUST be
-   *  captured before settlement mutation zeroes legs; for normal-win it
-   *  reflects the canonical legs state at the moment the final leg is
-   *  detected. */
+  /** Immutable pre-settlement legs snapshot, sourced directly from the
+   *  authoritative realtime `players` rows at detection. No cache
+   *  fallback, no reconstruction. `hadAuthoritativeLegs` below is
+   *  derived from this snapshot and consumed by BOTH terminal sources
+   *  to gate the shared SweepTheLegsAnimation step. */
   playersAtDetection: Terminal357PlayerLegsSnapshot[];
 
   /** Derived from playersAtDetection. Consumed by BOTH sources to gate

@@ -10963,36 +10963,89 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Slice 1 (inert): build the immutable normalized terminal descriptor
     // ALONGSIDE the bespoke instant-win path. The new controller consumes
-    // this in Slice 3; today it is diagnostic-only. `playersAtDetection`
-    // captures pre-settlement legs (live players first, cachedLegPositionsRef
-    // fallback when realtime has already zeroed) so both terminal sources
-    // can derive hadAuthoritativeLegs from the same immutable snapshot.
+    // this in Slice 3; today it is diagnostic-only.
+    //
+    // FOUR CORRECTIONS (see Slice 1 report):
+    //  1. playersAtDetection is captured from the AUTHORITATIVE realtime
+    //     `players` rows at detection. No cachedLegPositionsRef fallback,
+    //     no reconstruction from legsToWin/sentinel. What `players` says
+    //     at this instant IS the truth carried forward through settlement.
+    //  2. proofCards are read from the AUTHORITATIVE playerCards row for
+    //     winnerId (scoped to the current dealerGameId/roundId/handNumber
+    //     because playerCards is realtime-scoped to the active round).
+    //     Card count MUST equal expectedCardCount for the current round.
+    //     Instant-357 descriptors may NOT be finalized with empty/wrong-
+    //     length proof cards.
+    //  3. Explicit mutually-exclusive predicates below. No fallthrough.
+    //  4. Descriptor is cleared ONLY on dealerGameId rotation to a
+    //     different non-null value — see the cleanup effect further down.
     (() => {
       if (!game?.id) return;
-      const liveLegsAtDetection: Terminal357PlayerLegsSnapshot[] = players.map((p) => ({
+      if (game?.game_type !== 'three-five-seven') return;
+
+      // ---- (3) Explicit source predicates ---------------------------
+      // Instant sweep: the authoritative 357_SWEEP sentinel for THIS
+      // exact terminalResultIdentity, with a well-formed amount.
+      const isInstant357Terminal =
+        isSweepMessage
+        && sweepAmountFromSentinel !== null
+        && !!winnerPlayer;
+      // Normal final-leg win: canonical leg-win/game-win text where the
+      // winner has actually reached legsToWin (already gated above via
+      // `isLegWinMessage && winnerPlayer.legs < legsToWin → return`).
+      const isNormal357Terminal =
+        !isInstant357Terminal
+        && (isGameWinMessage || (isLegWinMessage && winnerPlayer.legs >= legsToWin));
+      if (!isInstant357Terminal && !isNormal357Terminal) {
+        return;
+      }
+      const source: 'normal-win' | 'instant-357' =
+        isInstant357Terminal ? 'instant-357' : 'normal-win';
+
+      // ---- (1) Authoritative pre-settlement legs snapshot -----------
+      // Source: the live realtime `players` rows at the moment we react
+      // to the terminal sentinel. NO cachedLegPositionsRef fallback. NO
+      // reconstruction. Truth-in / truth-out.
+      const playersAtDetection: Terminal357PlayerLegsSnapshot[] = players.map((p) => ({
         playerId: p.id,
         position: p.position,
         legs: Number(p.legs ?? 0),
       }));
-      const anyLiveLegs = liveLegsAtDetection.some((p) => p.legs > 0);
-      let playersAtDetection: Terminal357PlayerLegsSnapshot[] = liveLegsAtDetection;
-      if (!anyLiveLegs && cachedLegPositionsRef.current.length > 0) {
-        // Realtime already zeroed legs before this detection tick. Rehydrate
-        // from the pre-zero mirror so hadAuthoritativeLegs is truthful.
-        const cachedByPlayer = new Map(
-          cachedLegPositionsRef.current.map((c) => [c.playerId, c.legCount] as const),
-        );
-        playersAtDetection = liveLegsAtDetection.map((p) => ({
-          ...p,
-          legs: cachedByPlayer.get(p.playerId) ?? p.legs,
-        }));
-      }
       const hadAuthoritativeLegs = playersAtDetection.some((p) => p.legs > 0);
-      const source: 'normal-win' | 'instant-357' = isSweepMessage ? 'instant-357' : 'normal-win';
+
+      // ---- (2) Authoritative proof cards ----------------------------
+      // For instant-357: read authoritative winner hand directly from
+      // the playerCards row (scoped to current round by realtime). Must
+      // be exactly `expectedCardCount` (3 on round 1). Refuse to build
+      // an unusable instant descriptor — emit a diagnostic instead.
+      let proofCards: CardType[] | null = null;
+      if (isInstant357Terminal) {
+        const winnerRow = playerCards.find((pc) => pc.player_id === winnerPlayer.id);
+        const raw = (winnerRow?.cards ?? []) as CardType[];
+        if (raw.length === expectedCardCount && raw.length === 3) {
+          proofCards = raw;
+        } else {
+          emit357RuntimeDiag('sweep_parser_entered', {
+            gameId: game.id,
+            roundId: game?.current_round != null ? String(game.current_round) : null,
+            viewerPlayerId: currentPlayer?.id ?? null,
+            winnerPlayerId: winnerPlayer.id,
+            terminalResultIdentity: resultMessage,
+          }, {
+            diagnostic: 'terminal_descriptor_deferred_missing_proof_cards',
+            expectedCardCount,
+            rawWinnerCardCount: raw.length,
+            dealerGameId: game.current_game_uuid ?? null,
+            handNumber: currentRound?.hand_number ?? null,
+          });
+          // Leave descriptor pending — do NOT finalize with empty proof
+          // cards. A subsequent playerCards realtime update will re-run
+          // this effect via the `playerCards` dep and finalize truthfully.
+          return;
+        }
+      }
+
       const targetLegs = source === 'normal-win' ? legsToWin : null;
-      const proofCards = source === 'instant-357'
-        ? (winnerCards.length === 3 ? winnerCards : null)
-        : null;
       const identityInput = {
         gameId: game.id,
         dealerGameId: game.current_game_uuid ?? null,
@@ -11043,7 +11096,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setIs357WinAnimationActive(false);
       __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
-      setTerminal357Descriptor(null);
+      // NOTE: terminal357Descriptor is NOT cleared here. See the
+      // dealerGameId-rotation effect below for the correct cleanup
+      // predicate — the old table surface can still be mounted during
+      // `in_progress`/round-1 bootstrap of the next dealer game, and we
+      // must keep the descriptor alive through pot/confetti/completion
+      // of the outgoing terminal.
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
@@ -11058,9 +11116,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setIs357WinAnimationActive(false);
       __emitWartimeRefWrite({ fieldName: 'is357WinAnimationActiveRef', sourceSiteId: __WARTIME_SRC.STATE_WIN_ANIM_ACTIVE.id, previous: is357WinAnimationActiveRef.current, next: false, identity: __wartimeGameIdentity, owner: __wartimeGameOwner });
       is357WinAnimationActiveRef.current = false;
-      setTerminal357Descriptor(null);
+      // NOTE: terminal357Descriptor is NOT cleared here. Status alone is
+      // not a safe erase signal — the old table surface can persist
+      // through this transition. See the dedicated cleanup effect below.
     }
   }, [game?.status, game?.current_round]);
+
+  // Terminal descriptor cleanup — Slice 1 correction #4.
+  // Clear the descriptor ONLY when the active dealerGameId rotates to a
+  // DIFFERENT non-null value than the one the descriptor was built for.
+  // A null current_game_uuid (between dealer games), a status transition,
+  // or a current_round=null blip do NOT clear it — the old surface may
+  // still be visually mounted and we must retain the announcement, proof
+  // cards, hadAuthoritativeLegs, and winner identity through the last
+  // rendered frame.
+  useEffect(() => {
+    if (!terminal357Descriptor) return;
+    const activeDealerGameId = game?.current_game_uuid ?? null;
+    const descriptorDealerGameId = terminal357Descriptor.dealerGameId;
+    if (
+      activeDealerGameId != null
+      && descriptorDealerGameId != null
+      && activeDealerGameId !== descriptorDealerGameId
+    ) {
+      console.log('[357 TERMINAL DESCRIPTOR] Cleared on dealerGameId rotation', {
+        previous: descriptorDealerGameId,
+        next: activeDealerGameId,
+      });
+      setTerminal357Descriptor(null);
+    }
+  }, [game?.current_game_uuid, terminal357Descriptor]);
 
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
