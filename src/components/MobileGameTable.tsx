@@ -6183,12 +6183,15 @@ export const MobileGameTable = ({
     // controller will drive announcement + proof cards + optional
     // Sweep-the-Legs and then hand off to the canonical downstream
     // path via the shared adapter.
-    const controllerGenId = controllerInstant357OwnedGenIdRef.current;
-    const descriptorGenId =
+    // Descriptor-source is the SYNCHRONOUS authority: if the terminal
+    // is instant-357 the controller owns the prelude — never race the
+    // ref which registers after the controller's mount effect. Also
+    // gate on the sentinel itself (357_SWEEP:) as a defensive fallback
+    // in case the descriptor state hasn't been threaded yet.
+    if (
       threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-        ? threeFiveSevenTerminalDescriptor.terminalGenerationId
-        : null;
-    if (controllerGenId != null && controllerGenId === descriptorGenId) {
+      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
+    ) {
       emit357RuntimeDiag('legacy_prelude_suppressed', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -6196,9 +6199,10 @@ export const MobileGameTable = ({
         terminalResultIdentity: lastRoundResult,
       }, {
         callerSourceAnchor: 'sentinel_detection.setShowSweepsPot',
-        terminalGenerationId: controllerGenId,
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+        guardMode: 'descriptor_source_or_sentinel',
       });
       return;
     }
