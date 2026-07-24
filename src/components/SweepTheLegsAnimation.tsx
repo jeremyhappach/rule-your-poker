@@ -4,6 +4,7 @@
 // as-is until its consumer migrates in a later wave.
 import { useEffect, useState, useRef } from "react";
 import sweepTheLegImage from "@/assets/sweep-the-leg.png";
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleSTL } from "@/lib/threeFiveSeven/wartime";
 
 interface SweepTheLegsAnimationProps {
   show: boolean;
