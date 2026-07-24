@@ -6859,7 +6859,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (shouldPoll && !awaitingPollRef.current) {
       console.log('[AWAITING_POLL] 🔄 Starting poll for awaiting_next_round');
       
-      awaitingPollRef.current = setInterval(async () => {
+      awaitingPollRef.current = __scheduleWartimeInterval({
+        sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
+        ownerLabel: 'game.awaitingNextRound.dbPoll',
+        intervalMs: 500,
+        extra: {
+          purpose: 'detect awaiting_next_round after round completion',
+          guard_roundCompleted: roundCompleted,
+          guard_allDecisionsIn: allDecisionsIn,
+          guard_alreadyAwaiting: alreadyAwaiting,
+          guard_gameInProgress: gameInProgress,
+        },
+        fn: async (asyncOwnerId, tickNumber) => {
         console.log('[AWAITING_POLL] 🔍 Checking for awaiting_next_round...');
         
         const { data: freshGame } = await supabase
@@ -6873,25 +6884,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (freshGame?.awaiting_next_round) {
           console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
           if (awaitingPollRef.current) {
+            __emitWartimeAsyncOwnerFired({
+              asyncOwnerId,
+              outcome: 'cancelled',
+              sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_POLL.id,
+              identity: __wartimeLiveGameIdentity(),
+              liveIdentity: __wartimeLiveGameIdentity(),
+              suppressionReason: 'awaiting_next_round_detected',
+              extra: { tickNumber, freshLastRoundResult: freshGame.last_round_result ?? null, freshNextRoundNumber: freshGame.next_round_number ?? null },
+            });
+            __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'awaiting_next_round_detected');
             clearInterval(awaitingPollRef.current);
             awaitingPollRef.current = null;
           }
           await fetchGameData();
         }
-      }, 500); // Poll every 500ms
+        },
+      }); // Poll every 500ms
     } else if (!shouldPoll && awaitingPollRef.current) {
       console.log('[AWAITING_POLL] 🛑 Stopping poll');
+      __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'guard_closed');
       clearInterval(awaitingPollRef.current);
       awaitingPollRef.current = null;
     }
     
     return () => {
       if (awaitingPollRef.current) {
+        __cancelWartimeAsyncOwner(awaitingPollRef.current as unknown as number, 'effect_cleanup');
         clearInterval(awaitingPollRef.current);
         awaitingPollRef.current = null;
       }
     };
-  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status]);
+  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status, __cancelWartimeAsyncOwner, __scheduleWartimeInterval, __wartimeLiveGameIdentity]);
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
