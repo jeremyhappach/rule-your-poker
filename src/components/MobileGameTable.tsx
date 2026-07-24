@@ -5,8 +5,44 @@ import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
+  registerWartimeProductionHook as __wartimeRegisterHookMGT,
   SRC as __WARTIME_SRC,
 } from "@/lib/threeFiveSeven/wartime";
+
+// 3-5-7 Wartime — canonical production owner for the table-surface
+// DOM checkpoint suite, mutation/resize observers, progression /
+// advancement callbacks, and async-owner-tracked lifecycle timers.
+// Emitter invocations live in this component's effects and callbacks.
+__wartimeRegisterHookMGT({
+  requirementId: 'dom.snapshot.checkpoints',
+  sourceSiteId: __WARTIME_SRC.DOM_SNAPSHOT.id,
+  sourceFile: 'src/components/MobileGameTable.tsx',
+  sourceFunction: 'MobileGameTable.canonical357Snapshot',
+});
+__wartimeRegisterHookMGT({
+  requirementId: 'dom.observer.mutation',
+  sourceSiteId: __WARTIME_SRC.DOM_MUTATION.id,
+  sourceFile: 'src/components/MobileGameTable.tsx',
+  sourceFunction: 'MobileGameTable.mutationObserver',
+});
+__wartimeRegisterHookMGT({
+  requirementId: 'dom.observer.resize',
+  sourceSiteId: __WARTIME_SRC.DOM_RESIZE.id,
+  sourceFile: 'src/components/MobileGameTable.tsx',
+  sourceFunction: 'MobileGameTable.resizeObserver',
+});
+__wartimeRegisterHookMGT({
+  requirementId: 'progression.advancement',
+  sourceSiteId: __WARTIME_SRC.PROGRESSION_ADVANCEMENT.id,
+  sourceFile: 'src/components/MobileGameTable.tsx',
+  sourceFunction: 'MobileGameTable.progressionCallbacks',
+});
+__wartimeRegisterHookMGT({
+  requirementId: 'async.owner',
+  sourceSiteId: __WARTIME_SRC.ASYNC_OWNER.id,
+  sourceFile: 'src/components/MobileGameTable.tsx',
+  sourceFunction: 'MobileGameTable.lifecycleTimers',
+});
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
