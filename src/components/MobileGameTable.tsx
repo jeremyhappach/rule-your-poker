@@ -156,6 +156,8 @@ import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
+import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
+import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
