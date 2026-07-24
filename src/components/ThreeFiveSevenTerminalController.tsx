@@ -354,6 +354,24 @@ export const ThreeFiveSevenTerminalController = ({
             enterCanonicalNow("sweep_legs_skipped");
           }
         }}
+        onInvariantFailure={(failure) => {
+          emit357RuntimeDiag("controller_proof_cards_skipped", {
+            gameId: descriptor.gameId,
+            dealerGameId: descriptor.dealerGameId,
+            roundId: descriptor.roundId,
+            handNumber: descriptor.handNumber,
+            terminalResultIdentity: descriptor.terminalResultIdentity,
+            winnerPlayerId: descriptor.winnerId,
+          }, {
+            terminalGenerationId: descriptor.terminalGenerationId,
+            reason: failure.reason,
+            blocked: true,
+            invariant: "proofComplete requires three valid origins, three valid felt destinations, and three completed transform transitions",
+            cardCount: failure.cardCount,
+            missingOrigins: failure.missingOrigins,
+            missingDestinations: failure.missingDestinations,
+          });
+        }}
       />
 
       <SweepTheLegsAnimation

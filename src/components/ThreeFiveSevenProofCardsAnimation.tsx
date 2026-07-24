@@ -5,14 +5,11 @@
  * cards. Does NOT reparent or mutate the actual hand DOM; the winner's
  * hand region keeps its native layout space reserved.
  *
- * Presentation is deliberately geometry-simple in this slice:
- *   - Absolutely positioned overlay inside the same felt surface the
- *     terminal controller mounts under.
- *   - Three cards start slightly offset toward the winner's seat edge
- *     (top/bottom) with 0 scale + 0 opacity, then lift/enlarge and
- *     settle into three centered felt slots.
- *   - After the settle transition finishes the animation emits
- *     `onComplete` exactly once for the active `generationKey`.
+ * Presentation contract:
+ *   - Measure the live hand cards as origins; never move/reparent them.
+ *   - Measure the existing winner-tabled-cards felt stage as destination.
+ *   - Render three fixed-position overlay copies from descriptor.proofCards.
+ *   - Complete only after all three transform transitions finish.
  *   - The tabled cards remain visible until the controller unmounts
  *     the animation (descriptor rotation).
  *
@@ -21,9 +18,33 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { ThreeFiveSevenAnchoredSlot } from "@/components/ThreeFiveSevenAnchoredSlot";
+
+type RectSnapshot = { x: number; y: number; width: number; height: number };
+
+type ProofCardTransport = {
+  index: number;
+  card: CardType;
+  originRect: RectSnapshot;
+  destinationRect: RectSnapshot;
+  originSelector: string;
+  destinationSelector: string;
+  distancePx: number;
+};
+
+export interface ThreeFiveSevenProofCardsInvariantFailure {
+  reason:
+    | "proof_cards_missing_or_incomplete"
+    | "origin_anchor_missing"
+    | "destination_anchor_missing";
+  generationKey: string;
+  cardCount: number;
+  missingOrigins: Array<{ index: number; cardId: string; selector: string }>;
+  missingDestinations: Array<{ index: number; cardId: string; selector: string }>;
+}
 
 export interface ThreeFiveSevenProofCardsAnimationProps {
   show: boolean;
@@ -37,6 +58,7 @@ export interface ThreeFiveSevenProofCardsAnimationProps {
    *  key. */
   generationKey: string;
   onComplete?: () => void;
+  onInvariantFailure?: (failure: ThreeFiveSevenProofCardsInvariantFailure) => void;
 }
 
 export const ThreeFiveSevenProofCardsAnimation = ({
@@ -45,121 +67,294 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   winnerPosition,
   generationKey,
   onComplete,
+  onInvariantFailure,
 }: ThreeFiveSevenProofCardsAnimationProps) => {
-  const [phase, setPhase] = useState<"hidden" | "measuring" | "entering" | "settled">("hidden");
-  const [offsets, setOffsets] = useState<Array<{ x: number; y: number; scale: number }>>([]);
+  const [phase, setPhase] = useState<"hidden" | "measuring" | "origin" | "transporting" | "settled" | "blocked">("hidden");
+  const [transports, setTransports] = useState<ProofCardTransport[]>([]);
+  const [completedIndices, setCompletedIndices] = useState<ReadonlySet<number>>(() => new Set());
+  const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
   const completedForKeyRef = useRef<string | null>(null);
+  const failedForKeyRef = useRef<string | null>(null);
   const onCompleteRef = useRef(onComplete);
+  const onInvariantFailureRef = useRef(onInvariantFailure);
   onCompleteRef.current = onComplete;
+  onInvariantFailureRef.current = onInvariantFailure;
+  const proofCardSignature = cards.slice(0, 3).map((card) => `${card.rank}-${card.suit}`).join("|");
+
+  useEffect(() => {
+    setPortalHost(typeof document === "undefined" ? null : document.body);
+  }, []);
 
   // Reset when generation rotates.
   useEffect(() => {
     completedForKeyRef.current = null;
+    failedForKeyRef.current = null;
     setPhase("hidden");
+    setTransports([]);
+    setCompletedIndices(new Set());
   }, [generationKey]);
+
+  const emitInvariantFailure = (failure: ThreeFiveSevenProofCardsInvariantFailure) => {
+    if (failedForKeyRef.current === generationKey) return;
+    failedForKeyRef.current = generationKey;
+    setPhase("blocked");
+    onInvariantFailureRef.current?.(failure);
+  };
 
   useEffect(() => {
     if (!show) {
       setPhase("hidden");
-      setOffsets([]);
+      setTransports([]);
+      setCompletedIndices(new Set());
       return;
     }
-    // Render once at the canonical tabled-card stage with opacity 0 so
-    // the final rects are measurable, then animate overlay copies from
-    // the live dealt-card rects into that same stage.
+
+    const proofCards = cards.slice(0, 3);
+    if (proofCards.length !== 3) {
+      emitInvariantFailure({
+        reason: "proof_cards_missing_or_incomplete",
+        generationKey,
+        cardCount: cards.length,
+        missingOrigins: [],
+        missingDestinations: [],
+      });
+      return;
+    }
+
     setPhase("measuring");
-    let settleRaf = 0;
-    const measureRaf = requestAnimationFrame(() => {
+    setTransports([]);
+    setCompletedIndices(new Set());
+    let cancelled = false;
+    let raf = 0;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    const rectSnapshot = (el: HTMLElement): RectSnapshot | null => {
+      const r = el.getBoundingClientRect();
+      if (!Number.isFinite(r.width) || !Number.isFinite(r.height) || r.width <= 0 || r.height <= 0) return null;
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    };
+
+    const cssEscape = (value: string) => {
+      const esc = (globalThis as { CSS?: { escape?: (s: string) => string } }).CSS?.escape;
+      return esc ? esc(value) : value.replace(/(["\\#.;:[\]()])/g, "\\$1");
+    };
+
+    const visibleElement = (el: HTMLElement | null): el is HTMLElement => {
+      if (!el) return false;
+      if (el.closest("[data-controller-357-proof-cards]")) return false;
+      if (el.closest("[data-controller-357-proof-overlay-layer]")) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return false;
+      const cs = window.getComputedStyle(el);
+      return cs.display !== "none" && cs.visibility !== "hidden" && Number(cs.opacity) > 0;
+    };
+
+    const firstVisible = (selector: string): HTMLElement | null => {
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector));
+      return nodes.find(visibleElement) ?? null;
+    };
+
+    const measure = () => {
+      if (cancelled) return;
       const root = document.querySelector<HTMLElement>(
         `[data-controller-357-proof-cards="${generationKey}"]`,
       );
-      const cssEscape = (value: string) => {
-        const esc = (globalThis as { CSS?: { escape?: (s: string) => string } }).CSS?.escape;
-        return esc ? esc(value) : value.replace(/(["\\#.;:[\]()])/g, "\\$1");
-      };
-      const nextOffsets = cards.slice(0, 3).map((card, index) => {
-        const target = root?.querySelector<HTMLElement>(
-          `[data-controller-357-proof-card-index="${index}"] [data-playing-card-root]`,
-        );
-        const cardId = `${card.rank}-${card.suit}`;
-        const candidates = Array.from(
-          document.querySelectorAll<HTMLElement>(`[data-card-id="${cssEscape(cardId)}"]`),
-        ).filter((el) => !el.closest("[data-controller-357-proof-cards]"));
-        const origin = candidates[index] ?? candidates[0] ?? null;
-        if (!target || !origin) {
-          const enterFromTop = typeof winnerPosition === "number" && winnerPosition <= 2;
-          return { x: 0, y: enterFromTop ? -window.innerHeight * 0.4 : window.innerHeight * 0.4, scale: 0.4 };
+      if (!root) {
+        attempts += 1;
+        if (attempts < maxAttempts) raf = requestAnimationFrame(measure);
+        else {
+          const missingDestinations = proofCards.map((card, index) => ({
+            index,
+            cardId: `${card.rank}-${card.suit}`,
+            selector: `[data-controller-357-proof-cards="${generationKey}"]`,
+          }));
+          emitInvariantFailure({
+            reason: "destination_anchor_missing",
+            generationKey,
+            cardCount: cards.length,
+            missingOrigins: [],
+            missingDestinations,
+          });
         }
-        const tr = target.getBoundingClientRect();
-        const or = origin.getBoundingClientRect();
-        const targetCx = tr.left + tr.width / 2;
-        const targetCy = tr.top + tr.height / 2;
-        const originCx = or.left + or.width / 2;
-        const originCy = or.top + or.height / 2;
-        return {
-          x: originCx - targetCx,
-          y: originCy - targetCy,
-          scale: tr.width > 0 ? Math.max(0.35, Math.min(1.4, or.width / tr.width)) : 0.65,
-        };
+        return;
+      }
+
+      const nextTransports: ProofCardTransport[] = [];
+      const missingOrigins: ThreeFiveSevenProofCardsInvariantFailure["missingOrigins"] = [];
+      const missingDestinations: ThreeFiveSevenProofCardsInvariantFailure["missingDestinations"] = [];
+
+      proofCards.forEach((card, index) => {
+        const cardId = `${card.rank}-${card.suit}`;
+        const escapedCardId = cssEscape(cardId);
+        const activeHandSelector = `[data-357-active-hand-region] [data-playing-card-root][data-card-id="${escapedCardId}"]`;
+        const winnerSeatSelector = typeof winnerPosition === "number"
+          ? `[data-canonical-seat-cluster][data-seat-position="${winnerPosition}"] [data-playing-card-root][data-card-id="${escapedCardId}"]`
+          : activeHandSelector;
+        const originSelector = activeHandSelector;
+        const origin = firstVisible(activeHandSelector) ?? firstVisible(winnerSeatSelector);
+        const destinationSelector = `[data-controller-357-proof-target-index="${index}"] [data-playing-card-root]`;
+        const destination = root.querySelector<HTMLElement>(destinationSelector);
+        const originRect = origin ? rectSnapshot(origin) : null;
+        const destinationRect = destination ? rectSnapshot(destination) : null;
+
+        if (!originRect) {
+          missingOrigins.push({ index, cardId, selector: originSelector });
+        }
+        if (!destinationRect) {
+          missingDestinations.push({ index, cardId, selector: destinationSelector });
+        }
+        if (originRect && destinationRect) {
+          const originCx = originRect.x + originRect.width / 2;
+          const originCy = originRect.y + originRect.height / 2;
+          const destCx = destinationRect.x + destinationRect.width / 2;
+          const destCy = destinationRect.y + destinationRect.height / 2;
+          nextTransports.push({
+            index,
+            card,
+            originRect,
+            destinationRect,
+            originSelector: origin === null ? originSelector : (origin.closest("[data-357-active-hand-region]") ? activeHandSelector : winnerSeatSelector),
+            destinationSelector,
+            distancePx: Math.hypot(destCx - originCx, destCy - originCy),
+          });
+        }
       });
-      setOffsets(nextOffsets);
-      setPhase("entering");
-      settleRaf = requestAnimationFrame(() => setPhase("settled"));
-    });
-    // Fire completion once the settle transition finishes.
-    const t = setTimeout(() => {
-      if (completedForKeyRef.current === generationKey) return;
-      completedForKeyRef.current = generationKey;
-      onCompleteRef.current?.();
-    }, 1500);
-    return () => {
-      cancelAnimationFrame(measureRaf);
-      cancelAnimationFrame(settleRaf);
-      clearTimeout(t);
+
+      if (missingOrigins.length > 0 || missingDestinations.length > 0 || nextTransports.length !== 3) {
+        attempts += 1;
+        if (attempts < maxAttempts) {
+          raf = requestAnimationFrame(measure);
+          return;
+        }
+        emitInvariantFailure({
+          reason: missingOrigins.length > 0 ? "origin_anchor_missing" : "destination_anchor_missing",
+          generationKey,
+          cardCount: cards.length,
+          missingOrigins,
+          missingDestinations,
+        });
+        return;
+      }
+
+      setTransports(nextTransports);
+      setCompletedIndices(new Set());
+      setPhase("origin");
+      raf = requestAnimationFrame(() => {
+        if (!cancelled) setPhase("transporting");
+      });
     };
-  }, [show, generationKey, cards, winnerPosition]);
+
+    raf = requestAnimationFrame(measure);
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [show, generationKey, proofCardSignature, winnerPosition]);
+
+  useEffect(() => {
+    if (phase !== "settled") return;
+    if (transports.length !== 3) return;
+    if (completedForKeyRef.current === generationKey) return;
+    if (completedIndices.size !== 3) return;
+    completedForKeyRef.current = generationKey;
+    onCompleteRef.current?.();
+  }, [phase, transports.length, completedIndices, generationKey]);
 
   if (!show || !cards || cards.length === 0) return null;
 
-  return (
-    <ThreeFiveSevenAnchoredSlot
-      artifactId="threeFiveSeven.winnerTabledCardsStage"
-      zIndex={45}
-      innerStyle={{ pointerEvents: "none" }}
-    >
-      <div
-        className="flex gap-2 sm:gap-3 items-center justify-center w-full h-full"
-        data-anchor-owner="ThreeFiveSevenTerminalController.proofCards"
-        data-controller-357-proof-cards={generationKey}
-      >
-        {cards.slice(0, 3).map((c, i) => {
-          const settled = phase === "settled";
-          const entering = phase === "entering";
-          const offset = offsets[i] ?? { x: 0, y: 0, scale: 0.4 };
-          return (
-            <div
-              key={`${generationKey}-${i}-${c.rank}${c.suit}`}
-              data-controller-357-proof-card-index={i}
-              style={{
-                transform: settled
-                  ? "translate3d(0, 0, 0) scale(1)"
-                  : entering
-                    ? `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${offset.scale})`
+  const overlay = portalHost && transports.length === 3 && phase !== "measuring" && phase !== "hidden" && phase !== "blocked"
+    ? createPortal(
+        <div
+          data-controller-357-proof-overlay-layer={generationKey}
+          style={{
+            position: "fixed",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 1000,
+          }}
+        >
+          {transports.map((transport) => {
+            const dx = transport.destinationRect.x - transport.originRect.x;
+            const dy = transport.destinationRect.y - transport.originRect.y;
+            const scaleX = transport.originRect.width > 0
+              ? transport.destinationRect.width / transport.originRect.width
+              : 1;
+            const scaleY = transport.originRect.height > 0
+              ? transport.destinationRect.height / transport.originRect.height
+              : 1;
+            const moving = phase === "transporting" || phase === "settled";
+            return (
+              <div
+                key={`${generationKey}-overlay-${transport.index}-${transport.card.rank}${transport.card.suit}`}
+                data-controller-357-proof-overlay-card={transport.index}
+                data-controller-357-proof-origin-selector={transport.originSelector}
+                data-controller-357-proof-destination-selector={transport.destinationSelector}
+                data-controller-357-proof-distance-px={transport.distancePx.toFixed(2)}
+                style={{
+                  position: "fixed",
+                  left: transport.originRect.x,
+                  top: transport.originRect.y,
+                  width: transport.originRect.width,
+                  height: transport.originRect.height,
+                  transformOrigin: "top left",
+                  transform: moving
+                    ? `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`
                     : "translate3d(0, 0, 0) scale(1)",
-                opacity: settled ? 1 : 0,
-                transition:
-                  phase === "measuring"
+                  transition: phase === "origin"
                     ? "none"
-                    : "transform 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 700ms ease-out",
-                transitionDelay: settled ? `${i * 120}ms` : "0ms",
-                filter: settled ? "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" : "none",
-              }}
+                    : "transform 900ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  willChange: "transform",
+                }}
+                onTransitionEnd={(event) => {
+                  if (event.propertyName !== "transform") return;
+                  if (phase !== "transporting") return;
+                  setCompletedIndices((prev) => {
+                    const next = new Set(prev);
+                    next.add(transport.index);
+                    if (next.size === 3) setPhase("settled");
+                    return next;
+                  });
+                }}
+              >
+                <PlayingCard
+                  card={transport.card}
+                  size="md"
+                  style={{ width: "100%", height: "100%" }}
+                />
+              </div>
+            );
+          })}
+        </div>,
+        portalHost,
+      )
+    : null;
+
+  return (
+    <>
+      <ThreeFiveSevenAnchoredSlot
+        artifactId="threeFiveSeven.winnerTabledCardsStage"
+        zIndex={45}
+        innerStyle={{ pointerEvents: "none" }}
+      >
+        <div
+          className="flex gap-2 sm:gap-3 items-center justify-center w-full h-full"
+          data-anchor-owner="ThreeFiveSevenTerminalController.proofCards.targets"
+          data-controller-357-proof-cards={generationKey}
+          data-controller-357-proof-phase={phase}
+          style={{ visibility: "hidden" }}
+        >
+          {cards.slice(0, 3).map((c, i) => (
+            <div
+              key={`${generationKey}-target-${i}-${c.rank}${c.suit}`}
+              data-controller-357-proof-target-index={i}
             >
               <PlayingCard card={c} size="md" />
             </div>
-          );
-        })}
-      </div>
-    </ThreeFiveSevenAnchoredSlot>
+          ))}
+        </div>
+      </ThreeFiveSevenAnchoredSlot>
+      {overlay}
+    </>
   );
 };
