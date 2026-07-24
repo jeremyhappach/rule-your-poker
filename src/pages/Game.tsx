@@ -10109,10 +10109,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     const clearFallbackTimers = () => {
       if (safety357FallbackTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackTimerRef.current, 'safety_fallback_rescheduled_or_cleared');
         window.clearTimeout(safety357FallbackTimerRef.current);
         safety357FallbackTimerRef.current = null;
       }
       if (safety357FallbackExtendTimerRef.current) {
+        __cancelWartimeAsyncOwner(safety357FallbackExtendTimerRef.current, 'safety_extension_rescheduled_or_cleared');
         window.clearTimeout(safety357FallbackExtendTimerRef.current);
         safety357FallbackExtendTimerRef.current = null;
       }
