@@ -295,83 +295,12 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
 
-  // ── PREFLIGHT HARNESS GATE (pre-mutation) ─────────────────────
-  // Fails closed on STATIC / PROVABLE-BEFORE-ROUND-START conditions
-  // only. Post-repro coverage (presentation lifecycle, deal channel
-  // dispatch, geometry, pot, progression) is NOT checked here — those
-  // cannot fire until the round exists. The bare silent catch has been
-  // removed: any throw persists a `harness_preflight_error` diagnostic
-  // and returns a structured blocked result so the caller can restore
-  // status='ante_decision' and surface an admin-only visible error.
-  {
-    let preHarnessId: string | null = null;
-    try {
-      preHarnessId = await readDebugHarness('3-5-7');
-    } catch (err) {
-      emitWartime({
-        eventName: 'harness_preflight_error',
-        sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
-        identity: { gameId },
-        payload: {
-          phase: 'read_debug_harness',
-          errorName: err instanceof Error ? err.name : 'unknown',
-          errorMessage: err instanceof Error ? err.message : String(err),
-          errorStack: err instanceof Error ? err.stack ?? null : null,
-          roundNumber,
-          dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
-        },
-      });
-      return { blocked: true, reason: 'harness_preflight_error' } as const;
-    }
-    if (preHarnessId === 'instant_win') {
-      let preflight: ReturnType<typeof isTargetedWartimePreflightReadyForHarness>;
-      try {
-        preflight = isTargetedWartimePreflightReadyForHarness({
-          gameId,
-          roundNumber,
-          dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
-        });
-      } catch (err) {
-        emitWartime({
-          eventName: 'harness_preflight_error',
-          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
-          identity: { gameId },
-          payload: {
-            phase: 'preflight_check',
-            errorName: err instanceof Error ? err.name : 'unknown',
-            errorMessage: err instanceof Error ? err.message : String(err),
-            errorStack: err instanceof Error ? err.stack ?? null : null,
-            roundNumber,
-            dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
-          },
-        });
-        return { blocked: true, reason: 'harness_preflight_error' } as const;
-      }
-      if (!preflight.preflightReady) {
-        emitWartime({
-          eventName: 'harness_instant_win_refused',
-          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
-          identity: { gameId },
-          payload: {
-            harnessId: preHarnessId,
-            phase: 'pre_round_insert',
-            reason: 'preflight_not_ready',
-            roundNumber,
-            preflight: preflight.snapshot,
-          },
-        });
-        console.warn(
-          '[START_ROUND] Instant-win harness preflight not ready — refusing (no mutations performed). Reasons:',
-          preflight.snapshot.reasons,
-        );
-        return {
-          blocked: true,
-          reason: 'preflight_not_ready',
-          preflight: preflight.snapshot,
-        } as const;
-      }
-    }
-  }
+  // Wartime preflight is owned by the CALLER (see `handleAllAnteDecisionsIn`
+  // in Game.tsx). `startRound` must not repeat the preflight — a
+  // second gate here would either double-block or (if bypassed) allow
+  // partial mutation ambiguity. There is one preflight owner, and one
+  // canonical round-start owner (this function).
+
 
 
 
