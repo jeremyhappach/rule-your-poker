@@ -4,6 +4,8 @@ import {
   useWartimeComponentInstance as __useWartimeComponentInstance,
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
+  wrapRealtimeCausality as __wrapWartimeRealtimeCausality,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
 } from "@/lib/threeFiveSeven/wartime";
@@ -17,6 +19,7 @@ __wartimeRegisterHookGame({
   sourceFile: 'src/pages/Game.tsx',
   sourceFunction: 'Game.realtimeSubscriptions',
 });
+__wartimeRegisterEmitterGame('realtime.causality', __WARTIME_SRC.REALTIME_CAUSALITY.id);
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -3075,7 +3078,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        simulateRealtime('games', (payload) => {
+        simulateRealtime('games', __wrapWartimeRealtimeCausality({
+          channelLabel: `game-${gameId}:games`,
+          table: 'games',
+          identity: () => ({ gameId, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null }),
+          handler: (payload: any) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
@@ -3443,7 +3450,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
-        })
+          },
+        }))
       )
       .on(
         'postgres_changes',
@@ -3453,7 +3461,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        simulateRealtime('players', (payload) => {
+        simulateRealtime('players', __wrapWartimeRealtimeCausality({
+          channelLabel: `game-${gameId}:players`,
+          table: 'players',
+          identity: () => ({ gameId, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null }),
+          handler: (payload: any) => {
           recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'players realtime callback',
@@ -3511,7 +3523,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
-        })
+          },
+        }))
       )
       .on(
         'postgres_changes',
@@ -3521,7 +3534,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        simulateRealtime('rounds', (payload) => {
+        simulateRealtime('rounds', __wrapWartimeRealtimeCausality({
+          channelLabel: `game-${gameId}:rounds`,
+          table: 'rounds',
+          identity: () => ({ gameId, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null }),
+          handler: (payload: any) => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
@@ -3645,7 +3662,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-        })
+          },
+        }))
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
