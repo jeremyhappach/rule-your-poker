@@ -71,6 +71,13 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     legsToWinRef.current = legsToWin;
   });
 
+  // ── Presentation lifecycle (targeted profile) ──────────────
+  useEffect(() => {
+    __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'mount', {});
+    return () => { __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'unmount', {}); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Main animation effect - ONLY depends on triggerId to prevent multi-fire
   useEffect(() => {
     if (!triggerId || triggerId === lastTriggerIdRef.current) {
