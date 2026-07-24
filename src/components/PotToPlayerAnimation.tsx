@@ -33,8 +33,20 @@ import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import {
   useWartimeComponentInstance as __useWartimePotInstance,
+  registerWartimeProductionHook as __wartimeRegisterHookPot,
   SRC as __WARTIME_SRC_POT,
 } from '@/lib/threeFiveSeven/wartime';
+
+// 3-5-7 Wartime — canonical production owner for pot_destination.resolution.
+// PotToPlayerAnimation is the sole resolver of the winner destination
+// selector, candidates, and coordinate conversion. Registration lives
+// adjacent to the emitter invocation in the component body.
+__wartimeRegisterHookPot({
+  requirementId: 'pot_destination.resolution',
+  sourceSiteId: __WARTIME_SRC_POT.POT_DESTINATION_RESOLUTION.id,
+  sourceFile: 'src/components/PotToPlayerAnimation.tsx',
+  sourceFunction: 'PotToPlayerAnimation.resolveDestination',
+});
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
