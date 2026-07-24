@@ -10336,15 +10336,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     checkAndProceed();
 
     // Then poll every 2 seconds (not 800ms which hammers DB)
-    poll357IntervalRef.current = window.setInterval(checkAndProceed, 2000);
+    poll357IntervalRef.current = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_PROGRESS_POLL.id,
+      ownerLabel: '3-5-7 post-animation progress poll',
+      intervalMs: 2000,
+      extra: { key, initialStatus: game?.status ?? null, initialGameOverAt: game?.game_over_at ?? null },
+      fn: async () => { await checkAndProceed(); },
+    });
 
     // Hard stop after 15 seconds (reduced from 25s)
-    poll357StopTimerRef.current = window.setTimeout(() => {
-      console.log('[357 POLL] Hard stop reached, stopping polling');
-      clearPollTimers();
-      poll357KeyRef.current = null;
-    }, 15_000);
+    poll357StopTimerRef.current = __scheduleWartimeTimeout({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_POLL_STOP.id,
+      ownerLabel: '3-5-7 post-animation poll hard-stop',
+      delayMs: 15_000,
+      extra: { key, hardStopMs: 15_000 },
+      fn: async () => {
+        console.log('[357 POLL] Hard stop reached, stopping polling');
+        clearPollTimers();
+        poll357KeyRef.current = null;
+      },
+    });
   }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
+
 
 
   useEffect(() => {
