@@ -107,6 +107,7 @@ async function flushBatch(): Promise<void> {
   flushInFlight = true;
   flushBatchCounter += 1;
   const batchId = flushBatchCounter;
+  const queueDepthBefore = buffer.length;
   const batch = buffer.splice(0, BATCH_MAX);
   const started = Date.now();
 
@@ -133,11 +134,71 @@ async function flushBatch(): Promise<void> {
     // Retry once at the head — preserves order for this batch.
     buffer = [...batch, ...buffer];
     scheduleFlush();
+    emitSinkFlush({
+      batchId,
+      batch,
+      queueDepthBefore,
+      success: false,
+      errorMessage: error.message ?? 'unknown',
+    });
     return;
   }
   const maxSeq = batch.reduce((m, e) => (e.sequence > m ? e.sequence : m), persistedThroughSequence);
   persistedThroughSequence = maxSeq;
+  emitSinkFlush({
+    batchId,
+    batch,
+    queueDepthBefore,
+    success: true,
+    errorMessage: null,
+  });
   if (buffer.length > 0) scheduleFlush();
+}
+
+/**
+ * Persistent-sink flush-completion instrumentation. Emits ONE
+ * `sink_flush` event per non-self batch so the queue converges to
+ * zero when gameplay stops emitting. Batches that contained only
+ * prior `sink_flush` events are not re-announced — otherwise the
+ * queue would tail forever.
+ */
+function emitSinkFlush(args: {
+  batchId: number;
+  batch: BufferedEvent[];
+  queueDepthBefore: number;
+  success: boolean;
+  errorMessage: string | null;
+}): void {
+  const nonSelfCount = args.batch.reduce(
+    (n, e) => (e.event_type === '357.wartime.sink_flush' ? n : n + 1),
+    0,
+  );
+  if (nonSelfCount === 0) return;
+  const first = args.batch[0];
+  const last = args.batch[args.batch.length - 1];
+  // Lazy import avoids a circular dep at module init (emit → session → sink).
+  void import('./emit').then(({ emitWartime }) => {
+    emitWartime({
+      eventName: 'sink_flush',
+      sourceSiteId: 'sink.flush',
+      payload: {
+        flushBatchId: args.batchId,
+        firstSequenceInBatch: first?.sequence ?? null,
+        lastSequenceInBatch: last?.sequence ?? null,
+        eventCount: args.batch.length,
+        nonSelfEventCount: nonSelfCount,
+        queueDepthBefore: args.queueDepthBefore,
+        queueDepthAfter: buffer.length,
+        persistedThroughSequence,
+        latencyMs: lastFlushLatencyMs,
+        droppedEventCount,
+        sinkFailureCount,
+        serializationFailureCount,
+        success: args.success,
+        errorMessage: args.errorMessage,
+      },
+    });
+  });
 }
 
 export function flushNow(): void {
