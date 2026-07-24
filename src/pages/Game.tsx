@@ -8,6 +8,7 @@ import {
   wrapRealtimeCausality as __wrapWartimeRealtimeCausality,
   trackAsyncOwner as __trackWartimeAsyncOwner,
   emitAsyncOwnerFired as __emitWartimeAsyncOwnerFired,
+  emitProgressionAdvancementAt as __emitWartimeProgressionAt,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
