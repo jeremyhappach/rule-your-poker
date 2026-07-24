@@ -7271,6 +7271,31 @@ export const MobileGameTable = ({
       return;
     }
 
+    // ATOMIC OWNERSHIP — instant-357 controller drives its own prelude
+    // and hands off directly to the canonical downstream via
+    // `enterCanonical357TerminalPresentation`. This legacy fallback
+    // trigger must never advance the win phase (which would activate
+    // `isWinner357InAnimation` and shrink the real self-hand region)
+    // for descriptor-owned generations.
+    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        callerSourceAnchor: 'fallback_trigger.effect_entry',
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
+        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+        guardMode: 'descriptor_source_only',
+      });
+      lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
+      onThreeFiveSevenWinAnimationStarted?.();
+      return;
+    }
+
+
     // NOTE: Removed game_over check - the animation should run for all players regardless of local game status.
     // The parent (Game.tsx) triggers this only when appropriate.
 
