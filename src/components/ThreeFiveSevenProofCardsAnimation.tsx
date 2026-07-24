@@ -39,11 +39,26 @@ export interface ThreeFiveSevenProofCardsInvariantFailure {
   reason:
     | "proof_cards_missing_or_incomplete"
     | "origin_anchor_missing"
-    | "destination_anchor_missing";
+    | "destination_anchor_missing"
+    | "zero_distance_transform";
   generationKey: string;
   cardCount: number;
   missingOrigins: Array<{ index: number; cardId: string; selector: string }>;
   missingDestinations: Array<{ index: number; cardId: string; selector: string }>;
+  zeroDistanceTransforms?: Array<{
+    index: number;
+    cardId: string;
+    originRect: RectSnapshot;
+    destinationRect: RectSnapshot;
+    distancePx: number;
+  }>;
+  domSnapshot?: {
+    activeHandRegionCount: number;
+    activeHandCardIds: string[];
+    activeHandCardRootCount: number;
+    destinationTargetCount: number;
+    destinationCardIds: string[];
+  };
 }
 
 export interface ThreeFiveSevenProofCardsAnimationProps {
@@ -155,6 +170,26 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       return nodes.find(visibleElement) ?? null;
     };
 
+      const buildDomSnapshot = () => {
+        const activeRegions = Array.from(document.querySelectorAll<HTMLElement>("[data-357-active-hand-region]"));
+        const activeCards = activeRegions.flatMap((region) =>
+          Array.from(region.querySelectorAll<HTMLElement>("[data-playing-card-root]")),
+        );
+        const destinationTargets = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-controller-357-proof-cards="${generationKey}"] [data-controller-357-proof-target-index]`),
+        );
+        const destinationCards = destinationTargets.flatMap((target) =>
+          Array.from(target.querySelectorAll<HTMLElement>("[data-playing-card-root]")),
+        );
+        return {
+          activeHandRegionCount: activeRegions.length,
+          activeHandCardIds: activeCards.map((node) => node.getAttribute("data-card-id") ?? "<missing-data-card-id>"),
+          activeHandCardRootCount: activeCards.length,
+          destinationTargetCount: destinationTargets.length,
+          destinationCardIds: destinationCards.map((node) => node.getAttribute("data-card-id") ?? "<missing-data-card-id>"),
+        };
+      };
+
     const measure = () => {
       if (cancelled) return;
       const root = document.querySelector<HTMLElement>(
@@ -175,6 +210,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             cardCount: cards.length,
             missingOrigins: [],
             missingDestinations,
+            domSnapshot: buildDomSnapshot(),
           });
         }
         return;
@@ -183,6 +219,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       const nextTransports: ProofCardTransport[] = [];
       const missingOrigins: ThreeFiveSevenProofCardsInvariantFailure["missingOrigins"] = [];
       const missingDestinations: ThreeFiveSevenProofCardsInvariantFailure["missingDestinations"] = [];
+      const zeroDistanceTransforms: NonNullable<ThreeFiveSevenProofCardsInvariantFailure["zeroDistanceTransforms"]> = [];
 
       proofCards.forEach((card, index) => {
         const cardId = `${card.rank}-${card.suit}`;
@@ -209,6 +246,16 @@ export const ThreeFiveSevenProofCardsAnimation = ({
           const originCy = originRect.y + originRect.height / 2;
           const destCx = destinationRect.x + destinationRect.width / 2;
           const destCy = destinationRect.y + destinationRect.height / 2;
+          const distancePx = Math.hypot(destCx - originCx, destCy - originCy);
+          if (distancePx <= 0.5) {
+            zeroDistanceTransforms.push({
+              index,
+              cardId,
+              originRect,
+              destinationRect,
+              distancePx,
+            });
+          }
           nextTransports.push({
             index,
             card,
@@ -216,23 +263,29 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             destinationRect,
             originSelector: origin === null ? originSelector : (origin.closest("[data-357-active-hand-region]") ? activeHandSelector : winnerSeatSelector),
             destinationSelector,
-            distancePx: Math.hypot(destCx - originCx, destCy - originCy),
+            distancePx,
           });
         }
       });
 
-      if (missingOrigins.length > 0 || missingDestinations.length > 0 || nextTransports.length !== 3) {
+      if (missingOrigins.length > 0 || missingDestinations.length > 0 || nextTransports.length !== 3 || zeroDistanceTransforms.length > 0) {
         attempts += 1;
         if (attempts < maxAttempts) {
           raf = requestAnimationFrame(measure);
           return;
         }
         emitInvariantFailure({
-          reason: missingOrigins.length > 0 ? "origin_anchor_missing" : "destination_anchor_missing",
+          reason: missingOrigins.length > 0
+            ? "origin_anchor_missing"
+            : missingDestinations.length > 0
+              ? "destination_anchor_missing"
+              : "zero_distance_transform",
           generationKey,
           cardCount: cards.length,
           missingOrigins,
           missingDestinations,
+          zeroDistanceTransforms,
+          domSnapshot: buildDomSnapshot(),
         });
         return;
       }
@@ -241,7 +294,9 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       setCompletedIndices(new Set());
       setPhase("origin");
       raf = requestAnimationFrame(() => {
-        if (!cancelled) setPhase("transporting");
+        raf = requestAnimationFrame(() => {
+          if (!cancelled) setPhase("transporting");
+        });
       });
     };
 
@@ -291,6 +346,8 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                 data-controller-357-proof-origin-selector={transport.originSelector}
                 data-controller-357-proof-destination-selector={transport.destinationSelector}
                 data-controller-357-proof-distance-px={transport.distancePx.toFixed(2)}
+                data-controller-357-proof-origin-rect={JSON.stringify(transport.originRect)}
+                data-controller-357-proof-destination-rect={JSON.stringify(transport.destinationRect)}
                 style={{
                   position: "fixed",
                   left: transport.originRect.x,
@@ -307,6 +364,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                   willChange: "transform",
                 }}
                 onTransitionEnd={(event) => {
+                  if (event.target !== event.currentTarget) return;
                   if (event.propertyName !== "transform") return;
                   if (phase !== "transporting") return;
                   setCompletedIndices((prev) => {
