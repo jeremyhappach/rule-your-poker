@@ -18,7 +18,12 @@
  * installed if it appears in this requirement's required list.
  */
 
-import { listSourceSitesForRequirement, type WartimeRuntimeExpectation } from './sourceSites';
+import {
+  getSourceSite,
+  listSourceSitesForRequirement,
+  type WartimeRuntimeExpectation,
+  type WartimeSourceSite,
+} from './sourceSites';
 
 export type WartimePhase = 1 | 2 | 3;
 export type { WartimeRuntimeExpectation };
