@@ -9697,12 +9697,15 @@ export const MobileGameTable = ({
 
         {/* Legacy bespoke instant-win overlays. Behaviorally UNREACHABLE
             for instant-357 terminals: the controller above owns the
-            prelude and hands off to the canonical downstream. Gated on
-            the immutable descriptor source AND the sweep sentinel so
-            the race between descriptor threading and controller mount
-            cannot leak either overlay onto the felt. */}
-        {(threeFiveSevenTerminalDescriptor?.source !== 'instant-357'
-          && !(typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))) && (
+            prelude and hands off to the canonical downstream. Gated
+            on the SINGLE synchronous authority — the immutable
+            descriptor source. Because Game.tsx now emits the
+            descriptor deterministically in the same tick as the
+            sweep sentinel (proof cards may be null; the controller
+            skips its proof step gracefully), we no longer need a
+            sentinel-based defensive branch, which was the source of
+            the "legacy-suppressed / controller-inert" black hole. */}
+        {threeFiveSevenTerminalDescriptor?.source !== 'instant-357' && (
           <>
             <SweepsPotAnimation
               show={showSweepsPot}
