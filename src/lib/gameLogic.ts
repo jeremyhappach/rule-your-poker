@@ -914,7 +914,7 @@ export async function startRound(gameId: string, roundNumber: number) {
                 causedByEventId: __recordResultCausedBy,
                 sourceSiteId: WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id,
               }, async () => {
-                await recordGameResult(
+                const rec = await recordGameResult(
                   gameId,
                   commitHandNumber,
                   player?.id ?? null,
@@ -926,7 +926,9 @@ export async function startRound(gameId: string, roundNumber: number) {
                   '357',
                   currentGameUuid,
                 );
-                return { error: null } as { error: null };
+                // Propagate the real created row so the correlation
+                // wrapper can sample the returned game_results.id.
+                return { error: rec.error, data: rec.id ? { id: rec.id } : null } as { error: unknown; data: { id: string } | null };
               });
             } catch (e) {
               await trace357InstantWin('commit.record_result_failed', gameId, {
