@@ -11855,57 +11855,88 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // fetchGameData() and no setTimeout enrich on the critical path.
 
           } else {
-            // Call startRound FIRST; do not flip status='in_progress'
-            // before we know the round was accepted. A preflight refusal
-            // returns a structured blocked result — we then leave status
-            // as ante_decision and surface an admin-only visible error
-            // instead of stranding the game at status=in_progress with
-            // current_round=null.
-            const startResult: any = await startRound(gameId, 1);
-            if (startResult && startResult.blocked === true) {
-              const reasons: string[] = Array.isArray(startResult.preflight?.reasons)
-                ? startResult.preflight.reasons
+            // ── SINGLE-OWNER PREFLIGHT ──────────────────────────
+            // Preflight is a READ-ONLY check performed BEFORE any
+            // mutation. `startRound` no longer contains a second gate.
+            // If preflight fails → leave status='ante_decision',
+            // persist a visible failure event, admin-only toast, return.
+            // If preflight passes (or is inapplicable) → execute the
+            // ORIGINAL canonical production ordering unchanged:
+            //   games.status='in_progress'  →  startRound(gameId, 1)
+            let preflightBlocked:
+              | { reason: string; reasons: string[]; snapshot: any }
+              | null = null;
+            try {
+              const harnessId = await readDebugHarness('3-5-7');
+              if (harnessId === 'instant_win') {
+                const pf = isTargetedWartimePreflightReadyForHarness({
+                  gameId,
+                  dealerGameId: game?.current_game_uuid ?? null,
+                });
+                if (!pf.preflightReady) {
+                  preflightBlocked = {
+                    reason: 'preflight_not_ready',
+                    reasons: pf.snapshot?.reasons ?? [],
+                    snapshot: pf.snapshot,
+                  };
+                }
+              }
+            } catch (err: any) {
+              preflightBlocked = {
+                reason: 'harness_preflight_error',
+                reasons: [err?.message ?? 'unknown'],
+                snapshot: null,
+              };
+            }
+            if (preflightBlocked) {
+              const missingSites: any[] = Array.isArray(
+                preflightBlocked.snapshot?.targetedSitesMissing,
+              )
+                ? preflightBlocked.snapshot.targetedSitesMissing
                 : [];
-              const missingSites: any[] = Array.isArray(startResult.preflight?.targetedSitesMissing)
-                ? startResult.preflight.targetedSitesMissing
-                : [];
-              // Persistent record — never silent, event visible to any admin
-              // querying debug_events.
-              try {
-                await supabase.from('debug_events').insert({
-                  event_type: '357.wartime.harness_preflight_blocked_visible',
-                  game_id: gameId,
-                  payload: {
-                    reason: startResult.reason ?? 'blocked',
-                    reasons,
-                    targetedSitesMissingCount: missingSites.length,
-                    targetedSitesMissing: missingSites.slice(0, 20),
-                    sessionId: startResult.preflight?.sessionId ?? null,
-                    buildSha: startResult.preflight?.buildSha ?? null,
-                    bundleFilename: startResult.preflight?.bundleFilename ?? null,
-                    dealerGameId: game?.current_game_uuid ?? null,
-                  } as any,
-                } as never);
-              } catch { /* diagnostic-only */ }
+              await supabase.from('debug_events').insert({
+                event_type: '357.wartime.harness_preflight_blocked_visible',
+                game_id: gameId,
+                payload: {
+                  reason: preflightBlocked.reason,
+                  reasons: preflightBlocked.reasons,
+                  targetedSitesMissingCount: missingSites.length,
+                  targetedSitesMissing: missingSites.slice(0, 20),
+                  sessionId: preflightBlocked.snapshot?.sessionId ?? null,
+                  buildSha: preflightBlocked.snapshot?.buildSha ?? null,
+                  bundleFilename:
+                    preflightBlocked.snapshot?.bundleFilename ?? null,
+                  dealerGameId: game?.current_game_uuid ?? null,
+                } as any,
+              } as never);
               if (isSuperuser) {
                 toast({
                   title: '3-5-7 wartime preflight failed — round not started',
                   description:
-                    `reason=${startResult.reason ?? 'blocked'}` +
-                    (reasons.length ? ` · failed=${reasons.join(',')}` : '') +
-                    (missingSites.length ? ` · missingSites=${missingSites.length}` : ''),
+                    `reason=${preflightBlocked.reason}` +
+                    (preflightBlocked.reasons.length
+                      ? ` · failed=${preflightBlocked.reasons.join(',')}`
+                      : '') +
+                    (missingSites.length
+                      ? ` · missingSites=${missingSites.length}`
+                      : ''),
                   variant: 'destructive',
                 });
               }
               anteProcessingRef.current = false;
               return;
             }
-            // Round successfully created — now flip to in_progress.
+            // Preflight passed (or inapplicable). Original canonical
+            // ordering restored — status FIRST, then startRound. This is
+            // the pre-wartime production sequence and preserves the
+            // ante-charge / round-insert path unchanged.
             await supabase
               .from('games')
               .update({ status: 'in_progress' })
               .eq('id', gameId);
+            await startRound(gameId, 1);
           }
+
       // CRITICAL: Reset processing ref AFTER successful round start
       // Without this, future ante processing in the same session would be blocked!
       anteProcessingRef.current = false;
