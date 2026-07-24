@@ -120,9 +120,10 @@ export async function bootstrapWartime(): Promise<void> {
   });
   emitCoverageManifest();
   void runSinkRoundTripProbe(sessionId, BUILD_IDENTITY.buildSha).then((passed) => {
-    if (passed) {
-      markRequirementInstalled('integrity.round_trip', SRC.SINK_PROBE.id);
-    }
+    // integrity.round_trip's production owner + emitter invocation are
+    // installed at module import time (see installPhase1Site above).
+    // Runtime readiness still requires the probe to actually pass; the
+    // event below records the outcome for post-repro integrity.
     emitWartime({
       eventName: passed ? 'sink_probe_passed' : 'sink_probe_failed',
       sourceSiteId: SRC.SINK_PROBE.id,
