@@ -5,6 +5,10 @@ import "./index.css";
 // and the <meta name="app-build-sha"> tag are installed before any diagnostic fires.
 import "@/lib/buildIdentity";
 import { install357RuntimeGlobalErrorHandlers } from "@/lib/threeFiveSeven/runtimeDiag";
+// Wartime instrumentation — Phase 1 foundation. Side-effect import
+// bootstraps the session envelope, sink, and coverage manifest. Later
+// phases hook behavioral instrumentation into this scaffold.
+import "@/lib/threeFiveSeven/wartime";
 import { supabase } from "@/integrations/supabase/client";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
