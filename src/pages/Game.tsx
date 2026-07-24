@@ -10960,6 +10960,61 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinnerCards(winnerCards);
     const _357trigger = `357-win-${Date.now()}`;
     setThreeFiveSevenWinTriggerId(_357trigger);
+
+    // Slice 1 (inert): build the immutable normalized terminal descriptor
+    // ALONGSIDE the bespoke instant-win path. The new controller consumes
+    // this in Slice 3; today it is diagnostic-only. `playersAtDetection`
+    // captures pre-settlement legs (live players first, cachedLegPositionsRef
+    // fallback when realtime has already zeroed) so both terminal sources
+    // can derive hadAuthoritativeLegs from the same immutable snapshot.
+    (() => {
+      if (!game?.id) return;
+      const liveLegsAtDetection: Terminal357PlayerLegsSnapshot[] = players.map((p) => ({
+        playerId: p.id,
+        position: p.position,
+        legs: Number(p.legs ?? 0),
+      }));
+      const anyLiveLegs = liveLegsAtDetection.some((p) => p.legs > 0);
+      let playersAtDetection: Terminal357PlayerLegsSnapshot[] = liveLegsAtDetection;
+      if (!anyLiveLegs && cachedLegPositionsRef.current.length > 0) {
+        // Realtime already zeroed legs before this detection tick. Rehydrate
+        // from the pre-zero mirror so hadAuthoritativeLegs is truthful.
+        const cachedByPlayer = new Map(
+          cachedLegPositionsRef.current.map((c) => [c.playerId, c.legCount] as const),
+        );
+        playersAtDetection = liveLegsAtDetection.map((p) => ({
+          ...p,
+          legs: cachedByPlayer.get(p.playerId) ?? p.legs,
+        }));
+      }
+      const hadAuthoritativeLegs = playersAtDetection.some((p) => p.legs > 0);
+      const source: 'normal-win' | 'instant-357' = isSweepMessage ? 'instant-357' : 'normal-win';
+      const targetLegs = source === 'normal-win' ? legsToWin : null;
+      const proofCards = source === 'instant-357'
+        ? (winnerCards.length === 3 ? winnerCards : null)
+        : null;
+      const identityInput = {
+        gameId: game.id,
+        dealerGameId: game.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+        handNumber: (currentRound?.hand_number ?? null) as number | null,
+        handContextId: handContextKey ?? null,
+        terminalResultIdentity: resultMessage,
+      };
+      const descriptor: Terminal357Descriptor = {
+        ...identityInput,
+        terminalGenerationId: buildTerminal357GenerationId(identityInput),
+        source,
+        winnerId: winnerPlayer.id,
+        winnerName: winnerName || (winnerPlayer.profiles?.username ?? `Player ${winnerPlayer.position}`),
+        winnerPosition: winnerPlayer.position,
+        targetLegs,
+        proofCards,
+        playersAtDetection,
+        hadAuthoritativeLegs,
+      };
+      setTerminal357Descriptor(descriptor);
+    })();
     // Win-presentation instrumentation was removed.
   }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards, threeFiveSevenWinTriggerId]);
   
