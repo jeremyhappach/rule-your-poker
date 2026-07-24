@@ -9641,7 +9641,17 @@ export const MobileGameTable = ({
                 // match_win announcement to clear so celebration owns the
                 // foreground until its TTL elapses. Awaiter effect advances.
                 console.log('[357 WIN] Sweep path (primary): arming await-celebration gate');
-                sweepAwaitingCelebrationRef.current = build357PresentationIdentity();
+                (() => {
+                  const armId = build357PresentationIdentity();
+                  const prevArm = sweepAwaitingCelebrationRef.current;
+                  if (prevArm
+                      && prevArm.dealerGameId === armId.dealerGameId
+                      && prevArm.handContextId === armId.handContextId
+                      && prevArm.terminalResultIdentity === armId.terminalResultIdentity) {
+                    return;
+                  }
+                  sweepAwaitingCelebrationRef.current = armId;
+                })();
                 setThreeFiveSevenPotHiddenUntilReset(true);
                 // C. Sweep wait armed — primary branch.
                 emit357RuntimeDiag('sweep_wait_armed', {
