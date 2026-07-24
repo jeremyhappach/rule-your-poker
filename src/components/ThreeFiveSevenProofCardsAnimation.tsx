@@ -23,6 +23,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
+import { ThreeFiveSevenAnchoredSlot } from "@/components/ThreeFiveSevenAnchoredSlot";
 
 export interface ThreeFiveSevenProofCardsAnimationProps {
   show: boolean;
@@ -45,7 +46,8 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   generationKey,
   onComplete,
 }: ThreeFiveSevenProofCardsAnimationProps) => {
-  const [phase, setPhase] = useState<"hidden" | "entering" | "settled">("hidden");
+  const [phase, setPhase] = useState<"hidden" | "measuring" | "entering" | "settled">("hidden");
+  const [offsets, setOffsets] = useState<Array<{ x: number; y: number; scale: number }>>([]);
   const completedForKeyRef = useRef<string | null>(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -59,49 +61,96 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   useEffect(() => {
     if (!show) {
       setPhase("hidden");
+      setOffsets([]);
       return;
     }
-    // Enter next frame so CSS transition kicks in.
-    setPhase("entering");
-    const raf = requestAnimationFrame(() => setPhase("settled"));
+    // Render once at the canonical tabled-card stage with opacity 0 so
+    // the final rects are measurable, then animate overlay copies from
+    // the live dealt-card rects into that same stage.
+    setPhase("measuring");
+    let settleRaf = 0;
+    const measureRaf = requestAnimationFrame(() => {
+      const root = document.querySelector<HTMLElement>(
+        `[data-controller-357-proof-cards="${generationKey}"]`,
+      );
+      const cssEscape = (value: string) => {
+        const esc = (globalThis as { CSS?: { escape?: (s: string) => string } }).CSS?.escape;
+        return esc ? esc(value) : value.replace(/(["\\#.;:[\]()])/g, "\\$1");
+      };
+      const nextOffsets = cards.slice(0, 3).map((card, index) => {
+        const target = root?.querySelector<HTMLElement>(
+          `[data-controller-357-proof-card-index="${index}"] [data-playing-card-root]`,
+        );
+        const cardId = `${card.rank}-${card.suit}`;
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-card-id="${cssEscape(cardId)}"]`),
+        ).filter((el) => !el.closest("[data-controller-357-proof-cards]"));
+        const origin = candidates[index] ?? candidates[0] ?? null;
+        if (!target || !origin) {
+          const enterFromTop = typeof winnerPosition === "number" && winnerPosition <= 2;
+          return { x: 0, y: enterFromTop ? -window.innerHeight * 0.4 : window.innerHeight * 0.4, scale: 0.4 };
+        }
+        const tr = target.getBoundingClientRect();
+        const or = origin.getBoundingClientRect();
+        const targetCx = tr.left + tr.width / 2;
+        const targetCy = tr.top + tr.height / 2;
+        const originCx = or.left + or.width / 2;
+        const originCy = or.top + or.height / 2;
+        return {
+          x: originCx - targetCx,
+          y: originCy - targetCy,
+          scale: tr.width > 0 ? Math.max(0.35, Math.min(1.4, or.width / tr.width)) : 0.65,
+        };
+      });
+      setOffsets(nextOffsets);
+      setPhase("entering");
+      settleRaf = requestAnimationFrame(() => setPhase("settled"));
+    });
     // Fire completion once the settle transition finishes.
     const t = setTimeout(() => {
       if (completedForKeyRef.current === generationKey) return;
       completedForKeyRef.current = generationKey;
       onCompleteRef.current?.();
-    }, 1200);
+    }, 1500);
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(measureRaf);
+      cancelAnimationFrame(settleRaf);
       clearTimeout(t);
     };
-  }, [show, generationKey]);
+  }, [show, generationKey, cards, winnerPosition]);
 
   if (!show || !cards || cards.length === 0) return null;
 
-  // Bias entry from the winner's seat side. Positions 1..N — we don't
-  // have full seat geometry here, so use a coarse top/bottom bias.
-  const enterFromTop = typeof winnerPosition === 'number' && winnerPosition <= 2;
-  const startTranslateY = enterFromTop ? "-40vh" : "40vh";
-
   return (
-    <div
-      className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center"
-      data-anchor-owner="ThreeFiveSevenTerminalController.proofCards"
-      data-controller-357-proof-cards="true"
+    <ThreeFiveSevenAnchoredSlot
+      artifactId="threeFiveSeven.winnerTabledCardsStage"
+      zIndex={45}
+      innerStyle={{ pointerEvents: "none" }}
     >
-      <div className="flex gap-2 sm:gap-3">
+      <div
+        className="flex gap-2 sm:gap-3 items-center justify-center w-full h-full"
+        data-anchor-owner="ThreeFiveSevenTerminalController.proofCards"
+        data-controller-357-proof-cards={generationKey}
+      >
         {cards.slice(0, 3).map((c, i) => {
           const settled = phase === "settled";
+          const entering = phase === "entering";
+          const offset = offsets[i] ?? { x: 0, y: 0, scale: 0.4 };
           return (
             <div
               key={`${generationKey}-${i}-${c.rank}${c.suit}`}
+              data-controller-357-proof-card-index={i}
               style={{
                 transform: settled
-                  ? "translateY(0) scale(1.15)"
-                  : `translateY(${startTranslateY}) scale(0.4)`,
+                  ? "translate3d(0, 0, 0) scale(1)"
+                  : entering
+                    ? `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${offset.scale})`
+                    : "translate3d(0, 0, 0) scale(1)",
                 opacity: settled ? 1 : 0,
                 transition:
-                  "transform 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 700ms ease-out",
+                  phase === "measuring"
+                    ? "none"
+                    : "transform 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 700ms ease-out",
                 transitionDelay: settled ? `${i * 120}ms` : "0ms",
                 filter: settled ? "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" : "none",
               }}
@@ -111,6 +160,6 @@ export const ThreeFiveSevenProofCardsAnimation = ({
           );
         })}
       </div>
-    </div>
+    </ThreeFiveSevenAnchoredSlot>
   );
 };
