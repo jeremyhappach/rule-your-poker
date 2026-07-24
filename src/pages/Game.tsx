@@ -10138,7 +10138,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       game?.status === 'game_over' &&
       game?.game_type !== 'holm-game' &&
       !game?.game_over_at &&
-      (lrr357.includes('won the game') || lrr357.startsWith('357_SWEEP:'));
+      // Controller-owned instant-357 (357_SWEEP:) drives its own
+      // callback-driven progression via enterCanonical357TerminalPresentation
+      // → PotToPlayerAnimation.onAnimationEnd → handlePotToPlayerComplete357.
+      // The bespoke ~10s safety timer must not run on that path.
+      lrr357.includes('won the game');
 
 
     const clearFallbackTimers = () => {
