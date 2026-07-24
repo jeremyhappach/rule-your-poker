@@ -301,6 +301,11 @@ import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/norm
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
 import { Card as CardType, has357Hand } from "@/lib/cardUtils";
+import {
+  buildTerminal357GenerationId,
+  type Terminal357Descriptor,
+  type Terminal357PlayerLegsSnapshot,
+} from "@/lib/threeFiveSeven/terminalDescriptor";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
