@@ -7862,15 +7862,36 @@ export const MobileGameTable = ({
       phaseBefore,
       triggerId: active.triggerId,
     });
+    // Legacy sweep-release extras remain at the caller (byte-equivalent).
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'release_to_pot' });
       sweepAwaitingCelebrationRef.current = null;
-    setThreeFiveSevenWinPhase('pot-to-player');
-    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
-    setPotOutAnimationActive(true);
-    setDisplayedPot(0);
-    const releasedTid = `pot-to-player-357-${Date.now()}`;
-    activePotIdentityRef.current = active;
-    setPotToPlayerTriggerId357(releasedTid);
+
+    // Shared canonical adapter — replaces the duplicated 7-statement
+    // transition block. Legacy caller supplies `active` as its pot
+    // identity so the existing cross-DG guard in
+    // handlePotToPlayerComplete357 continues to see the same shape.
+    const winnerPositionForSweep =
+      players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null;
+    const sweepEntryResult = enterCanonical357TerminalPresentation({
+      identity: {
+        gameId: gameId ?? null,
+        dealerGameId: active.dealerGameId,
+        roundId: active.roundId,
+        handNumber: null,
+        handContextId: active.handContextId,
+        terminalResultIdentity: active.terminalResultIdentity,
+        terminalGenerationId: null,
+        winnerId: threeFiveSevenWinnerId ?? null,
+        winnerPosition: winnerPositionForSweep,
+        awardedPot: threeFiveSevenWinPotAmount ?? null,
+      },
+      legacyPotIdentity: active,
+      source: 'legacy-sweep-release',
+    });
+    if ('suppressed' in sweepEntryResult) {
+      return;
+    }
+    const releasedTid = sweepEntryResult.potTriggerId;
     emit357RuntimeDiag('sweep_wait_released', {
       gameId: gameId ?? null,
       roundId: handContextId ?? null,
@@ -7883,7 +7904,7 @@ export const MobileGameTable = ({
       phaseAfter: 'pot-to-player',
       generatedPotTriggerId: releasedTid,
     });
-  }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
+  }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, lastRoundResult, enterCanonical357TerminalPresentation]);
 
   // DEALER-GAME BOUNDARY: last-concrete-identity contract.
   // A transient null identity (settlement can briefly null dealerGameId
