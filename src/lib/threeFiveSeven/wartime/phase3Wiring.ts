@@ -757,14 +757,17 @@ export function emitAsyncOwnerFired(opts: {
 // every canonical source site listed in sourceSites.ts. Each helper is
 // imported and invoked from the corresponding real owner file — the
 // import graph is compile-time verified.
-markRequirementInstalled('deal.self_face_up.channel_settled', SRC.DEAL_SELF_FACE_UP_SETTLED.id);
-markRequirementInstalled('dom.snapshot.checkpoints', SRC.DOM_SNAPSHOT.id);
-markRequirementInstalled('dom.observer.mutation', SRC.DOM_MUTATION.id);
-markRequirementInstalled('dom.observer.resize', SRC.DOM_RESIZE.id);
-markRequirementInstalled('geometry.transition', SRC.GEOMETRY_TRANSITION.id);
-markRequirementInstalled('pot_destination.resolution', SRC.POT_DESTINATION_RESOLUTION.id);
-markRequirementInstalled('progression.advancement', SRC.PROGRESSION_ADVANCEMENT.id);
-markRequirementInstalled('global.error.origin', SRC.GLOBAL_ERROR_ORIGIN.id);
-markRequirementInstalled('db.mutation.correlation', SRC.DB_MUTATION_CORRELATION.id);
-markRequirementInstalled('realtime.causality', SRC.REALTIME_CAUSALITY.id);
-markRequirementInstalled('async.owner', SRC.ASYNC_OWNER.id);
+// Phase 3 helpers are implemented in this module. Production-owner
+// registration is NOT asserted here — the real owner files register
+// their canonical source sites via registerWartimeProductionHook.
+markHelperImplemented('deal.self_face_up.channel_settled', SRC.DEAL_SELF_FACE_UP_SETTLED.id);
+markHelperImplemented('dom.snapshot.checkpoints', SRC.DOM_SNAPSHOT.id);
+markHelperImplemented('dom.observer.mutation', SRC.DOM_MUTATION.id);
+markHelperImplemented('dom.observer.resize', SRC.DOM_RESIZE.id);
+markHelperImplemented('geometry.transition', SRC.GEOMETRY_TRANSITION.id);
+markHelperImplemented('pot_destination.resolution', SRC.POT_DESTINATION_RESOLUTION.id);
+markHelperImplemented('progression.advancement', SRC.PROGRESSION_ADVANCEMENT.id);
+markHelperImplemented('global.error.origin', SRC.GLOBAL_ERROR_ORIGIN.id);
+markHelperImplemented('db.mutation.correlation', SRC.DB_MUTATION_CORRELATION.id);
+markHelperImplemented('realtime.causality', SRC.REALTIME_CAUSALITY.id);
+markHelperImplemented('async.owner', SRC.ASYNC_OWNER.id);
