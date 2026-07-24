@@ -4448,6 +4448,30 @@ export const MobileGameTable = ({
   
   const activePotIdentityRef = useRef<Three57PresentationIdentity | null>(null);
 
+  // ── Canonical 3-5-7 terminal-entry identity (Slice 2) ────────────────
+  // Immutable identity stamped by the FIRST caller that enters the
+  // canonical downstream terminal path for a given terminal event.
+  // Compared under Option B (compare-if-populated, stamp-if-null) inside
+  // `enterCanonical357TerminalPresentation`. Cleared only on a real
+  // dealer-game / terminal-result-identity boundary — see the boundary
+  // effect below. Legacy callers may pass nulls for descriptor-only
+  // fields (terminalGenerationId, handNumber); the Slice-3 controller
+  // caller will populate every field from the immutable descriptor.
+  type CanonicalTerminal357Identity = {
+    gameId: string | null;
+    dealerGameId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+    handContextId: string | null;
+    terminalResultIdentity: string | null;
+    terminalGenerationId: string | null;
+    winnerId: string | null;
+    winnerPosition: number | null;
+    awardedPot: number | null;
+  };
+  const canonical357EntryGenerationRef = useRef<string | null>(null);
+  const canonicalTerminal357IdentityRef = useRef<CanonicalTerminal357Identity | null>(null);
+
 
   // HOLM: monotonic folded-latch for the local self hand.
   // Once `current_decision === 'fold'` is observed for a given
