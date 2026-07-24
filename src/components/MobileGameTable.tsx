@@ -2215,6 +2215,34 @@ export const MobileGameTable = ({
     identity: __wartimeMgtIdentity,
   });
 
+  // Authoritative snapshot at identity change (checkpoint).
+  const __wartimeSnapshotSigRef = useRef<string>('');
+  useEffect(() => {
+    const sig = `${__wartimeMgtIdentity.gameId}|${__wartimeMgtIdentity.dealerGameId}|${__wartimeMgtIdentity.handContextId}|${gameStatus}`;
+    if (__wartimeSnapshotSigRef.current === sig) return;
+    __wartimeSnapshotSigRef.current = sig;
+    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot }) => {
+      emitAuthoritativeSnapshot({
+        checkpoint: 'identity_change',
+        sourceSiteId: __WARTIME_SRC.AUTH_SNAPSHOT.id,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+        snapshot: {
+          gameType,
+          gameStatus,
+          instanceLabel,
+          currentRound,
+          allDecisionsIn,
+          pot,
+          lastRoundResult,
+          playerCount: Array.isArray(players) ? players.length : 0,
+        },
+      });
+    }).catch(() => {});
+  });
+
+
+
   const [debugElapsedMs, setDebugElapsedMs] = useState(0);
   
   // Update elapsed time every 100ms when not idle (for debug overlay)
