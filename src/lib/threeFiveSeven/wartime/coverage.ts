@@ -29,6 +29,9 @@ export interface WartimeRequirementCoverage {
   helperSourceSiteIds: string[];
   productionSourceSites: WartimeProductionHook[];
   actualEmitterInvocationSites: string[];
+  requiredInvocationSiteIds: string[];
+  installedInvocationSiteIds: string[];
+  missingInvocationSiteIds: string[];
   runtimeEventCount: number;
   expectedDuringRepro: boolean;
   runtimeExpectation: WartimeRuntimeExpectation;
