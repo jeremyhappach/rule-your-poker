@@ -59,7 +59,22 @@ export type ThreeFiveSevenRuntimeEventKind =
   //    identity and the descriptor-authored controller identity.
   | "canonical_entry_armed"
   | "canonical_entry_suppressed_duplicate"
-  | "canonical_entry_invariant_mismatch";
+  | "canonical_entry_invariant_mismatch"
+  // H. Instant-357 controller (Slice 3). Emitted by the terminal
+  //    controller when it takes exclusive prelude ownership for a
+  //    descriptor generation, when its state machine transitions,
+  //    and each time a legacy instant-win prelude entry point is
+  //    behaviorally suppressed because the controller owns that
+  //    generation.
+  | "controller_ownership_acquired"
+  | "controller_ownership_released"
+  | "controller_state_transition"
+  | "controller_deal_settled_signal"
+  | "controller_proof_cards_complete"
+  | "controller_sweep_legs_skipped"
+  | "controller_sweep_legs_complete"
+  | "controller_canonical_handoff"
+  | "legacy_prelude_suppressed";
 
 // ── Correlation envelope ─────────────────────────────────────────────
 // A single per-page-load correlationId groups every 357.runtime.* row

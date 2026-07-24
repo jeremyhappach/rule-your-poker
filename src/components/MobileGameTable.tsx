@@ -4472,6 +4472,15 @@ export const MobileGameTable = ({
   const canonical357EntryGenerationRef = useRef<string | null>(null);
   const canonicalTerminal357IdentityRef = useRef<CanonicalTerminal357Identity | null>(null);
 
+  // Slice 3 — Instant-357 controller ownership registry. When the
+  // ThreeFiveSevenTerminalController holds prelude ownership for an
+  // instant-357 `terminalGenerationId`, every legacy instant-win
+  // prelude arm site early-returns and emits
+  // `357.terminal.controller.legacy_prelude_suppressed`. Normal-win
+  // ownership is UNCHANGED — this ref only affects instant-357.
+  const controllerInstant357OwnedGenIdRef = useRef<string | null>(null);
+  const [controllerInstant357OwnedGenId, setControllerInstant357OwnedGenId] = useState<string | null>(null);
+
 
   // HOLM: monotonic folded-latch for the local self hand.
   // Once `current_decision === 'fold'` is observed for a given
@@ -6168,6 +6177,31 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType === 'holm-game') return;
     if (!lastRoundResult || !lastRoundResult.startsWith('357_SWEEP:')) return;
+    // Slice 3 — instant-357 controller ownership. When the controller
+    // holds prelude ownership for the active descriptor generation,
+    // SUPPRESS the legacy sentinel-detection arm entirely. The
+    // controller will drive announcement + proof cards + optional
+    // Sweep-the-Legs and then hand off to the canonical downstream
+    // path via the shared adapter.
+    const controllerGenId = controllerInstant357OwnedGenIdRef.current;
+    const descriptorGenId =
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+        ? threeFiveSevenTerminalDescriptor.terminalGenerationId
+        : null;
+    if (controllerGenId != null && controllerGenId === descriptorGenId) {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
+        terminalResultIdentity: lastRoundResult,
+      }, {
+        callerSourceAnchor: 'sentinel_detection.setShowSweepsPot',
+        terminalGenerationId: controllerGenId,
+        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+      });
+      return;
+    }
     const nextIdentity: Three57SweepDetectionIdentity = {
       dealerGameId: threeFiveSevenDealerGameScope ?? null,
       handContextId: handContextId ?? null,
@@ -6198,7 +6232,7 @@ export const MobileGameTable = ({
     setSweepCelebrationCompleted(false);
     setShowSweepTheLegs357(false);
     setShowSweepsPot(true);
-  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber]);
+  }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber, threeFiveSevenTerminalDescriptor]);
 
   // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
   // `buckTransferPresentation` event written in the same DB transaction
@@ -7283,6 +7317,29 @@ export const MobileGameTable = ({
         return;
       }
       if (isSweepResultFallback) {
+        // Slice 3 — controller ownership check. When the instant-357
+        // controller owns the active descriptor generation, do NOT arm
+        // the legacy sweep-await gate here. The controller drives the
+        // full prelude and hands off via the canonical adapter.
+        const controllerGenId = controllerInstant357OwnedGenIdRef.current;
+        const descriptorGenId =
+          threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+            ? threeFiveSevenTerminalDescriptor.terminalGenerationId
+            : null;
+        if (controllerGenId != null && controllerGenId === descriptorGenId) {
+          emit357RuntimeDiag('legacy_prelude_suppressed', {
+            gameId: gameId ?? null,
+            roundId: handContextId ?? null,
+            winnerPlayerId: threeFiveSevenWinnerId ?? null,
+            terminalResultIdentity: lastRoundResult ?? null,
+          }, {
+            callerSourceAnchor: 'fallback_arm.sweepAwaitingCelebrationRef',
+            terminalGenerationId: controllerGenId,
+            dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+            handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+          });
+          return;
+        }
         // SWEEP: authoritative legs delta is 0 — skip legs-to-player entirely.
         // Do NOT start pot-to-player yet: wait for the canonical match_win
         // announcement to clear so the celebration owns the foreground until
@@ -9533,13 +9590,49 @@ export const MobileGameTable = ({
             signal for the sweep-wait phase. If legs were present at
             detection, chain into SweepTheLegsAnimation before releasing;
             otherwise mark celebration complete immediately. */}
-        {/* Slice 1 (inert): normalized 3-5-7 terminal presentation
-            controller. Renders null until the atomic instant-win cutover
-            in Slice 3 wires the announcement + proof-card prelude and
-            shared terminal path. Mounted here — inside MobileGameTable's
-            table surface — so it can consume the same felt-relative DOM
-            anchors as existing presentation owners. */}
-        <ThreeFiveSevenTerminalController descriptor={threeFiveSevenTerminalDescriptor} />
+        {/* Slice 3: instant-357 prelude controller — ACTIVE.
+            Renders announcement + proof cards + optional Sweep-the-Legs,
+            then hands off to the unchanged canonical downstream via
+            `enterCanonical357TerminalPresentation`. Normal-win path is
+            untouched. Mounted inside the felt surface so anchors
+            resolve correctly. */}
+        <ThreeFiveSevenTerminalController
+          descriptor={threeFiveSevenTerminalDescriptor}
+          onOwnershipChange={(genId) => {
+            controllerInstant357OwnedGenIdRef.current = genId;
+            setControllerInstant357OwnedGenId(genId);
+          }}
+          onEnterCanonical={(entry) => {
+            const awardedPot = threeFiveSevenWinPotAmount ?? null;
+            // Legacy pot identity mirrors what the sweep-release site
+            // used to stamp so the downstream cross-DG guard shape is
+            // preserved. terminalGenerationId is carried from the
+            // descriptor so the identity ref is stamped with the full
+            // canonical seven-field set on this path.
+            const legacyPotIdentity: Three57PresentationIdentity =
+              build357PresentationIdentity();
+            // Legacy sweep-release extras (pot hidden flag) preserved
+            // at call site to remain byte-equivalent to the old path.
+            setThreeFiveSevenPotHiddenUntilReset(true);
+            enterCanonical357TerminalPresentation({
+              identity: {
+                gameId: entry.gameId,
+                dealerGameId: entry.dealerGameId,
+                roundId: entry.roundId,
+                handNumber: entry.handNumber,
+                handContextId: entry.handContextId,
+                terminalResultIdentity: entry.terminalResultIdentity,
+                terminalGenerationId: entry.terminalGenerationId,
+                winnerId: entry.winnerId,
+                winnerPosition: entry.winnerPosition,
+                awardedPot,
+              },
+              legacyPotIdentity,
+              source: 'controller-instant-357',
+            });
+          }}
+        />
+
 
         <SweepsPotAnimation
           show={showSweepsPot}
@@ -10163,6 +10256,28 @@ export const MobileGameTable = ({
 
               const isSweepResultPrimary = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
               if (isSweepResultPrimary) {
+                // Slice 3 — controller ownership check. Suppress the
+                // legacy primary sweep-arm when the instant-357
+                // controller owns this descriptor generation.
+                const controllerGenIdPrimary = controllerInstant357OwnedGenIdRef.current;
+                const descriptorGenIdPrimary =
+                  threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+                    ? threeFiveSevenTerminalDescriptor.terminalGenerationId
+                    : null;
+                if (controllerGenIdPrimary != null && controllerGenIdPrimary === descriptorGenIdPrimary) {
+                  emit357RuntimeDiag('legacy_prelude_suppressed', {
+                    gameId: gameId ?? null,
+                    roundId: handContextId ?? null,
+                    winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                    terminalResultIdentity: lastRoundResult ?? null,
+                  }, {
+                    callerSourceAnchor: 'primary_arm.sweepAwaitingCelebrationRef',
+                    terminalGenerationId: controllerGenIdPrimary,
+                    dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+                    handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+                  });
+                  return;
+                }
                 // SWEEP: authoritative legs delta is 0 — skip legs-to-player.
                 // Do NOT start pot-to-player yet: wait for the canonical
                 // match_win announcement to clear so celebration owns the
