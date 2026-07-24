@@ -4137,7 +4137,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       supabase.removeChannel(channel);
       showCardsChannelRef.current = null;
     };
-  }, [gameId, game?.current_game_uuid, game?.current_round, game?.status, cardStateContext?.roundId, winner357ShowCards, __wartimeGameOwner, __wartimeLiveGameIdentity]);
+  }, [gameId]);
   
   // Handler for winner to broadcast "show cards" and persist to database
   const handleWinner357ShowCards = useCallback(() => {
