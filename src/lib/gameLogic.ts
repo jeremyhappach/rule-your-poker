@@ -5,6 +5,8 @@ import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
   isWartimeReadyForHarness,
   emitWartime,
+  withDbMutationCorrelation as __withWartimeDbMutationCorrelation,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterGL,
   registerWartimeProductionHook as __wartimeRegisterHookGL,
   SRC as WARTIME_SRC,
 } from "./threeFiveSeven/wartime";
@@ -18,6 +20,7 @@ __wartimeRegisterHookGL({
   sourceFile: 'src/lib/gameLogic.ts',
   sourceFunction: 'gameLogic.dbMutations',
 });
+__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_MUTATION_CORRELATION.id);
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
