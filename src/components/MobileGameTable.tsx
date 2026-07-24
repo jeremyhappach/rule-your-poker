@@ -6183,12 +6183,15 @@ export const MobileGameTable = ({
     // controller will drive announcement + proof cards + optional
     // Sweep-the-Legs and then hand off to the canonical downstream
     // path via the shared adapter.
-    const controllerGenId = controllerInstant357OwnedGenIdRef.current;
-    const descriptorGenId =
+    // Descriptor-source is the SYNCHRONOUS authority: if the terminal
+    // is instant-357 the controller owns the prelude — never race the
+    // ref which registers after the controller's mount effect. Also
+    // gate on the sentinel itself (357_SWEEP:) as a defensive fallback
+    // in case the descriptor state hasn't been threaded yet.
+    if (
       threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-        ? threeFiveSevenTerminalDescriptor.terminalGenerationId
-        : null;
-    if (controllerGenId != null && controllerGenId === descriptorGenId) {
+      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
+    ) {
       emit357RuntimeDiag('legacy_prelude_suppressed', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -6196,9 +6199,10 @@ export const MobileGameTable = ({
         terminalResultIdentity: lastRoundResult,
       }, {
         callerSourceAnchor: 'sentinel_detection.setShowSweepsPot',
-        terminalGenerationId: controllerGenId,
+        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+        guardMode: 'descriptor_source_or_sentinel',
       });
       return;
     }
@@ -7321,12 +7325,10 @@ export const MobileGameTable = ({
         // controller owns the active descriptor generation, do NOT arm
         // the legacy sweep-await gate here. The controller drives the
         // full prelude and hands off via the canonical adapter.
-        const controllerGenId = controllerInstant357OwnedGenIdRef.current;
-        const descriptorGenId =
+        if (
           threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-            ? threeFiveSevenTerminalDescriptor.terminalGenerationId
-            : null;
-        if (controllerGenId != null && controllerGenId === descriptorGenId) {
+          || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
+        ) {
           emit357RuntimeDiag('legacy_prelude_suppressed', {
             gameId: gameId ?? null,
             roundId: handContextId ?? null,
@@ -7334,9 +7336,10 @@ export const MobileGameTable = ({
             terminalResultIdentity: lastRoundResult ?? null,
           }, {
             callerSourceAnchor: 'fallback_arm.sweepAwaitingCelebrationRef',
-            terminalGenerationId: controllerGenId,
+            terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
             dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
             handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+            guardMode: 'descriptor_source_or_sentinel',
           });
           return;
         }
@@ -9634,35 +9637,46 @@ export const MobileGameTable = ({
         />
 
 
-        <SweepsPotAnimation
-          show={showSweepsPot}
-          playerName={sweepsPlayerName}
-          onComplete={() => {
-            __capture357Checkpoint('sweeps_pot_complete', {
-              hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
-              phase: threeFiveSevenWinPhaseRef.current,
-            });
-            setShowSweepsPot(false);
-            if (hadLegsBeforeSweepRef.current) {
-              setShowSweepTheLegs357(true);
-            } else {
-              setSweepCelebrationCompleted(true);
-            }
-          }}
-        />
-        {/* Conditional Sweep-The-Legs overlay — armed only when
-            detection-time legs > 0. Its completion (or immediate skip)
-            releases the sweep-wait phase. */}
-        <SweepTheLegsAnimation
-          show={showSweepTheLegs357}
-          onComplete={() => {
-            __capture357Checkpoint('sweep_the_legs_complete', {
-              phase: threeFiveSevenWinPhaseRef.current,
-            });
-            setShowSweepTheLegs357(false);
-            setSweepCelebrationCompleted(true);
-          }}
-        />
+        {/* Legacy bespoke instant-win overlays. Behaviorally UNREACHABLE
+            for instant-357 terminals: the controller above owns the
+            prelude and hands off to the canonical downstream. Gated on
+            the immutable descriptor source AND the sweep sentinel so
+            the race between descriptor threading and controller mount
+            cannot leak either overlay onto the felt. */}
+        {(threeFiveSevenTerminalDescriptor?.source !== 'instant-357'
+          && !(typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))) && (
+          <>
+            <SweepsPotAnimation
+              show={showSweepsPot}
+              playerName={sweepsPlayerName}
+              onComplete={() => {
+                __capture357Checkpoint('sweeps_pot_complete', {
+                  hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
+                  phase: threeFiveSevenWinPhaseRef.current,
+                });
+                setShowSweepsPot(false);
+                if (hadLegsBeforeSweepRef.current) {
+                  setShowSweepTheLegs357(true);
+                } else {
+                  setSweepCelebrationCompleted(true);
+                }
+              }}
+            />
+            {/* Conditional Sweep-The-Legs overlay — armed only when
+                detection-time legs > 0. Its completion (or immediate skip)
+                releases the sweep-wait phase. */}
+            <SweepTheLegsAnimation
+              show={showSweepTheLegs357}
+              onComplete={() => {
+                __capture357Checkpoint('sweep_the_legs_complete', {
+                  phase: threeFiveSevenWinPhaseRef.current,
+                });
+                setShowSweepTheLegs357(false);
+                setSweepCelebrationCompleted(true);
+              }}
+            />
+          </>
+        )}
 
         
         {/* Ante Up Animation */}
@@ -10259,12 +10273,10 @@ export const MobileGameTable = ({
                 // Slice 3 — controller ownership check. Suppress the
                 // legacy primary sweep-arm when the instant-357
                 // controller owns this descriptor generation.
-                const controllerGenIdPrimary = controllerInstant357OwnedGenIdRef.current;
-                const descriptorGenIdPrimary =
+                if (
                   threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-                    ? threeFiveSevenTerminalDescriptor.terminalGenerationId
-                    : null;
-                if (controllerGenIdPrimary != null && controllerGenIdPrimary === descriptorGenIdPrimary) {
+                  || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
+                ) {
                   emit357RuntimeDiag('legacy_prelude_suppressed', {
                     gameId: gameId ?? null,
                     roundId: handContextId ?? null,
@@ -10272,9 +10284,10 @@ export const MobileGameTable = ({
                     terminalResultIdentity: lastRoundResult ?? null,
                   }, {
                     callerSourceAnchor: 'primary_arm.sweepAwaitingCelebrationRef',
-                    terminalGenerationId: controllerGenIdPrimary,
+                    terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
                     dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
                     handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+                    guardMode: 'descriptor_source_or_sentinel',
                   });
                   return;
                 }
