@@ -4812,7 +4812,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
       (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || holmNoRound) ? 2000 : 3000;
     
-    const intervalId = setInterval(async () => {
+    const intervalId = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_CRITICAL_POLL.id,
+      ownerLabel: 'game.criticalLifecyclePoll',
+      intervalMs: pollInterval,
+      extra: {
+        purpose: 'critical lifecycle polling',
+        guard_waitingForAnteDialog: waitingForAnteDialog,
+        guard_stuckOnGameOver: stuckOnGameOver,
+        guard_waitingForConfig: waitingForConfig,
+        guard_waitingForGameStart: waitingForGameStart,
+        guard_holmNoRound: holmNoRound,
+        guard_holmShowdownStuck: holmShowdownStuck,
+      },
+      fn: async (_asyncOwnerId, tickNumber) => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
 
       // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
@@ -4850,13 +4863,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       
       fetchGameData();
-    }, pollInterval);
+    },
+    });
     
     return () => {
       console.log('[CRITICAL POLL] Stopping polling');
+      __cancelWartimeAsyncOwner(intervalId as unknown as number, 'effect_cleanup');
       clearInterval(intervalId);
     };
-   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
@@ -4896,13 +4911,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
     
     // Poll every 3 seconds as fallback for round sync (not 750ms which hammers DB)
-    const pollInterval = setInterval(syncPoll, 3000);
+    const pollInterval = __scheduleWartimeInterval({
+      sourceSiteId: __WARTIME_SRC.ASYNC_GAME_357_SYNC_POLL.id,
+      ownerLabel: 'game.357RoundSyncPoll',
+      intervalMs: 3000,
+      extra: {
+        purpose: '3-5-7 round sync fallback',
+        guard_gameType: game?.game_type ?? null,
+        guard_status: game?.status ?? null,
+        guard_localRound: game?.current_round ?? null,
+      },
+      fn: () => syncPoll(),
+    });
     
     // Also sync immediately on mount
     syncPoll();
     
-    return () => clearInterval(pollInterval);
-  }, [gameId, game?.game_type, game?.status, game?.current_round]);
+    return () => {
+      __cancelWartimeAsyncOwner(pollInterval as unknown as number, 'effect_cleanup');
+      clearInterval(pollInterval);
+    };
+  }, [gameId, game?.game_type, game?.status, game?.current_round, __cancelWartimeAsyncOwner, __scheduleWartimeInterval]);
   
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
