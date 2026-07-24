@@ -1562,7 +1562,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
 
   const __wartimeGameMountedRef = useRef(true);
-  const __wartimeAsyncOwnersRef = useRef(new Map<number, { asyncOwnerId: string; sourceSiteId: string; identity: typeof __wartimeGameIdentity; extra?: Record<string, unknown> }>());
+  const __wartimeAsyncOwnersRef = useRef(new Map<number, { asyncOwnerId: string; sourceSiteId: string; identity: any; extra?: Record<string, unknown> }>());
   useEffect(() => {
     __wartimeGameMountedRef.current = true;
     return () => { __wartimeGameMountedRef.current = false; };
