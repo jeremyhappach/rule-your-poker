@@ -38,6 +38,7 @@ import {
   emitAsyncOwnerFired as __emitWartimeAsyncFired,
   registerActualEmitterInvocation as __wartimeRegisterEmitterPot,
   registerWartimeProductionHook as __wartimeRegisterHookPot,
+  emitPresentationLifecycle as __wartimeEmitPresentationLifecyclePot,
   SRC as __WARTIME_SRC_POT,
 } from '@/lib/threeFiveSeven/wartime';
 
