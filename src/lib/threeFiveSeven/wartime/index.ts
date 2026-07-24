@@ -27,6 +27,7 @@ export {
   markRequirementInstalled,
   markHelperImplemented,
   registerWartimeProductionHook,
+  registerActualEmitterInvocation,
   noteRuntimeEvent,
   coverageSummary,
   coverageGate,
@@ -65,6 +66,7 @@ export {
   trackAsyncOwner,
   emitAsyncOwnerFired,
 } from './phase3Wiring';
+export type { GeometryDecision } from './phase3Wiring';
 export { setWartimeTimeout, requestWartimeAnimationFrame, trackWartimePromise } from './async';
 export { withWartimeMutation } from './db';
 export { wrapWartimeRealtime } from './realtime';

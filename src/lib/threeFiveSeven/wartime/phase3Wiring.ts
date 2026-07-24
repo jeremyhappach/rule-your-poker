@@ -32,7 +32,7 @@ interface DomSnapshotEntry {
   id: string | null;
   className: string | null;
   ownership: Record<string, string | null> | null;
-  viewportRect: DOMRect | null;
+  viewportRect: Record<string, number> | null;
   computedStyle: {
     display: string | null;
     visibility: string | null;
@@ -69,9 +69,9 @@ function captureNode(spec: DomNodeSpec): DomSnapshotEntry {
       computedStyle: null, parentOwnership: null,
     };
   }
-  let rect: DOMRect | null = null;
+  let rect: Record<string, number> | null = null;
   let cs: DomSnapshotEntry['computedStyle'] = null;
-  try { rect = (el as HTMLElement).getBoundingClientRect(); } catch { /* ignore */ }
+  try { rect = rectSnapshot((el as HTMLElement).getBoundingClientRect()); } catch { /* ignore */ }
   try {
     const s = window.getComputedStyle(el);
     cs = {
@@ -92,6 +92,11 @@ function captureNode(spec: DomNodeSpec): DomSnapshotEntry {
     computedStyle: cs,
     parentOwnership: extractOwnership(el.parentElement),
   };
+}
+
+function rectSnapshot(r: DOMRect | null): Record<string, number> | null {
+  if (!r) return null;
+  return { x: r.x, y: r.y, top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
 }
 
 export interface DomSnapshotOpts {
@@ -348,7 +353,7 @@ export interface PotDestinationCandidate {
   present: boolean;
   connected: boolean | null;
   visible: boolean | null;
-  rect: DOMRect | null;
+  rect: Record<string, number> | null;
   ownership: Record<string, string | null> | null;
   semanticType: string | null;
 }
@@ -366,8 +371,8 @@ export function emitPotDestinationResolution(opts: {
   fallbackBranch?: string | null;
   startCoord?: { x: number; y: number } | null;
   endCoord?: { x: number; y: number } | null;
-  sourceRect?: DOMRect | null;
-  tableRelativeRect?: DOMRect | null;
+  sourceRect?: Record<string, number> | null;
+  tableRelativeRect?: Record<string, number> | null;
   failureReason?: string | null;
   identity: WartimeIdentity;
   owner?: WartimeOwner;

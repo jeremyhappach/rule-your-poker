@@ -17,6 +17,7 @@
  */
 
 export type WartimePhase = 1 | 2 | 3;
+export type WartimeRuntimeExpectation = 'preflight_declared' | 'expected_during_repro' | 'conditional_during_repro';
 
 export interface WartimeRequirementCoverage {
   requirementId: string;
@@ -27,8 +28,10 @@ export interface WartimeRequirementCoverage {
   runtimeExercised: boolean;
   helperSourceSiteIds: string[];
   productionSourceSites: WartimeProductionHook[];
+  actualEmitterInvocationSites: string[];
   runtimeEventCount: number;
   expectedDuringRepro: boolean;
+  runtimeExpectation: WartimeRuntimeExpectation;
 }
 
 export interface WartimeProductionHook {
@@ -44,7 +47,7 @@ function req(
   requirementId: string,
   description: string,
   phase: WartimePhase,
-  expectedDuringRepro = true,
+  runtimeExpectation: WartimeRuntimeExpectation = 'expected_during_repro',
 ): void {
   REQUIREMENTS[requirementId] = {
     requirementId,
@@ -55,8 +58,10 @@ function req(
     runtimeExercised: false,
     helperSourceSiteIds: [],
     productionSourceSites: [],
+    actualEmitterInvocationSites: [],
     runtimeEventCount: 0,
-    expectedDuringRepro,
+    expectedDuringRepro: runtimeExpectation === 'expected_during_repro',
+    runtimeExpectation,
   };
 }
 
@@ -123,6 +128,16 @@ export function registerWartimeProductionHook(hook: WartimeProductionHook): void
   r.productionOwnerRegistered = r.productionSourceSites.length > 0;
 }
 
+/** Register that a production owner contains a real runtime emitter call.
+ *  This is distinct from importing a helper or registering the owner file. */
+export function registerActualEmitterInvocation(requirementId: string, sourceSiteId: string): void {
+  const r = REQUIREMENTS[requirementId];
+  if (!r) return;
+  if (!r.actualEmitterInvocationSites.includes(sourceSiteId)) {
+    r.actualEmitterInvocationSites.push(sourceSiteId);
+  }
+}
+
 /** Bump the runtime event counter for a requirement (called by emit). */
 export function noteRuntimeEvent(requirementId: string): void {
   const r = REQUIREMENTS[requirementId];
@@ -148,6 +163,7 @@ export function markRequirementInstalled(requirementId: string, sourceSiteId: st
     sourceFile: '(legacy self-registered)',
     sourceFunction: '(legacy)',
   });
+  registerActualEmitterInvocation(requirementId, sourceSiteId);
 }
 
 // ── Readers ────────────────────────────────────────────────────
@@ -160,6 +176,7 @@ export interface CoverageGateResult {
   ready: boolean;
   missingHelpers: string[];
   missingProductionOwners: string[];
+  missingActualEmitters: string[];
 }
 
 /** Preflight gate: every required requirement (phase<=phase) must
@@ -167,15 +184,18 @@ export interface CoverageGateResult {
 export function coverageGate(phase: WartimePhase): CoverageGateResult {
   const missingHelpers: string[] = [];
   const missingProductionOwners: string[] = [];
+  const missingActualEmitters: string[] = [];
   for (const r of listRequirements()) {
     if (r.phase > phase) continue;
     if (!r.helperImplemented) missingHelpers.push(r.requirementId);
     if (!r.productionOwnerRegistered) missingProductionOwners.push(r.requirementId);
+    if (r.actualEmitterInvocationSites.length === 0) missingActualEmitters.push(r.requirementId);
   }
   return {
-    ready: missingHelpers.length === 0 && missingProductionOwners.length === 0,
+    ready: missingHelpers.length === 0 && missingProductionOwners.length === 0 && missingActualEmitters.length === 0,
     missingHelpers,
     missingProductionOwners,
+    missingActualEmitters,
   };
 }
 
@@ -188,24 +208,29 @@ export interface CoverageSummary {
   helpersImplemented: number;
   productionOwnersRegistered: number;
   missingProductionOwners: string[];
+  missingActualEmitters: string[];
   runtimeExercised: number;
-  byPhase: Record<WartimePhase, { total: number; helpers: number; owners: number; exercised: number }>;
+  actualEmitterSites: number;
+  byPhase: Record<WartimePhase, { total: number; helpers: number; owners: number; emitters: number; exercised: number }>;
 }
 
 export function coverageSummary(): CoverageSummary {
   const all = listRequirements();
   const byPhase: CoverageSummary['byPhase'] = {
-    1: { total: 0, helpers: 0, owners: 0, exercised: 0 },
-    2: { total: 0, helpers: 0, owners: 0, exercised: 0 },
-    3: { total: 0, helpers: 0, owners: 0, exercised: 0 },
+    1: { total: 0, helpers: 0, owners: 0, emitters: 0, exercised: 0 },
+    2: { total: 0, helpers: 0, owners: 0, emitters: 0, exercised: 0 },
+    3: { total: 0, helpers: 0, owners: 0, emitters: 0, exercised: 0 },
   };
-  let helpers = 0, owners = 0, exercised = 0;
+  let helpers = 0, owners = 0, emitters = 0, exercised = 0;
   const missingProductionOwners: string[] = [];
+  const missingActualEmitters: string[] = [];
   for (const r of all) {
     byPhase[r.phase].total += 1;
     if (r.helperImplemented) { helpers += 1; byPhase[r.phase].helpers += 1; }
     if (r.productionOwnerRegistered) { owners += 1; byPhase[r.phase].owners += 1; }
     else missingProductionOwners.push(r.requirementId);
+    if (r.actualEmitterInvocationSites.length > 0) { emitters += 1; byPhase[r.phase].emitters += 1; }
+    else missingActualEmitters.push(r.requirementId);
     if (r.runtimeExercised) { exercised += 1; byPhase[r.phase].exercised += 1; }
   }
   return {
@@ -213,6 +238,8 @@ export function coverageSummary(): CoverageSummary {
     helpersImplemented: helpers,
     productionOwnersRegistered: owners,
     missingProductionOwners,
+    missingActualEmitters,
+    actualEmitterSites: emitters,
     runtimeExercised: exercised,
     byPhase,
   };

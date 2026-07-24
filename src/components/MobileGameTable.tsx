@@ -6,6 +6,11 @@ import {
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
   registerWartimeProductionHook as __wartimeRegisterHookMGT,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterMGT,
+  captureCanonical357Snapshot as __captureCanonical357Snapshot,
+  emitProgressionAdvancement as __emitWartimeProgression,
+  trackAsyncOwner as __trackWartimeAsyncOwner,
+  emitAsyncOwnerFired as __emitWartimeAsyncFired,
   SRC as __WARTIME_SRC,
 } from "@/lib/threeFiveSeven/wartime";
 
@@ -19,30 +24,35 @@ __wartimeRegisterHookMGT({
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.canonical357Snapshot',
 });
+__wartimeRegisterEmitterMGT('dom.snapshot.checkpoints', __WARTIME_SRC.DOM_SNAPSHOT.id);
 __wartimeRegisterHookMGT({
   requirementId: 'dom.observer.mutation',
   sourceSiteId: __WARTIME_SRC.DOM_MUTATION.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.mutationObserver',
 });
+__wartimeRegisterEmitterMGT('dom.observer.mutation', __WARTIME_SRC.DOM_MUTATION.id);
 __wartimeRegisterHookMGT({
   requirementId: 'dom.observer.resize',
   sourceSiteId: __WARTIME_SRC.DOM_RESIZE.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.resizeObserver',
 });
+__wartimeRegisterEmitterMGT('dom.observer.resize', __WARTIME_SRC.DOM_RESIZE.id);
 __wartimeRegisterHookMGT({
   requirementId: 'progression.advancement',
   sourceSiteId: __WARTIME_SRC.PROGRESSION_ADVANCEMENT.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.progressionCallbacks',
 });
+__wartimeRegisterEmitterMGT('progression.advancement', __WARTIME_SRC.PROGRESSION_ADVANCEMENT.id);
 __wartimeRegisterHookMGT({
   requirementId: 'async.owner',
   sourceSiteId: __WARTIME_SRC.ASYNC_OWNER.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.lifecycleTimers',
 });
+__wartimeRegisterEmitterMGT('async.owner', __WARTIME_SRC.ASYNC_OWNER.id);
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
@@ -2257,7 +2267,7 @@ export const MobileGameTable = ({
     const sig = `${__wartimeMgtIdentity.gameId}|${__wartimeMgtIdentity.dealerGameId}|${__wartimeMgtIdentity.handContextId}|${gameStatus}`;
     if (__wartimeSnapshotSigRef.current === sig) return;
     __wartimeSnapshotSigRef.current = sig;
-    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot, captureCanonical357Snapshot }) => {
+    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot }) => {
       emitAuthoritativeSnapshot({
         checkpoint: 'identity_change',
         sourceSiteId: __WARTIME_SRC.AUTH_SNAPSHOT.id,
@@ -2274,13 +2284,26 @@ export const MobileGameTable = ({
           playerCount: Array.isArray(players) ? players.length : 0,
         },
       });
-      captureCanonical357Snapshot({
+    }).catch(() => {});
+    try {
+      __captureCanonical357Snapshot({
         checkpoint: `identity_change:${gameStatus ?? 'unknown'}`,
         identity: __wartimeMgtIdentity,
         owner: __wartimeMgtOwner,
       });
-    }).catch(() => {});
+    } catch { /* diagnostic-only */ }
   });
+
+  const __capture357Checkpoint = useCallback((checkpoint: string, extra?: Record<string, unknown>) => {
+    try {
+      __captureCanonical357Snapshot({
+        checkpoint,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+        extra,
+      });
+    } catch { /* diagnostic-only */ }
+  }, [__wartimeMgtIdentity, __wartimeMgtOwner]);
 
   // Install passive Mutation/Resize observers on the felt surface once.
   const __wartimeObserversInstalledRef = useRef(false);
@@ -7203,7 +7226,20 @@ export const MobileGameTable = ({
     // Then start legs-to-player animation - reduced delay for tighter transition
     // NOTE: This is a FALLBACK path - the LegEarnedAnimation onComplete callback is the primary path
     const isSweepResultFallback = !!lastRoundResult && lastRoundResult.startsWith('357_SWEEP:');
+    const fallbackAsyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: 'mgt.357.win_fallback_phase1',
+      kind: 'timeout',
+      delayMs: 1800,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
     setTimeout(() => {
+      __emitWartimeAsyncFired({
+        asyncOwnerId: fallbackAsyncOwnerId,
+        outcome: 'fired',
+        identity: __wartimeMgtIdentity,
+        liveIdentity: build357PresentationIdentity(),
+      });
       // Only proceed if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
         console.log('[357 WIN] Stale animation (ID mismatch), skipping Phase 1');
@@ -7220,6 +7256,7 @@ export const MobileGameTable = ({
         // announcement to clear so the celebration owns the foreground until
         // its TTL elapses. The awaiter effect below advances the phase.
         console.log('[357 WIN] Sweep path (fallback): arming await-celebration gate');
+        __capture357Checkpoint('sweep_wait_arm:fallback', { animationId, triggerId: threeFiveSevenWinTriggerId ?? null });
         // C. Sweep wait armed — fallback branch.
         setLastKnown357TerminalResultIdentity(lastRoundResult ?? null);
         emit357RuntimeDiag('sweep_wait_armed', {
@@ -7267,6 +7304,7 @@ export const MobileGameTable = ({
       }
 
       console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
+      __capture357Checkpoint('legs_to_player_begin:fallback', { animationId, triggerId: threeFiveSevenWinTriggerId ?? null });
       // E. Legs-phase decision — fallback non-sweep path selects legs-to-player.
       emit357RuntimeDiag('legs_phase_decision', {
         gameId: gameId ?? null,
@@ -7318,6 +7356,11 @@ export const MobileGameTable = ({
 
 
     // E. Legs-phase decision — primary non-sweep path advances to pot-to-player.
+    __capture357Checkpoint('legs_to_player_complete', {
+      animId,
+      totalLegs,
+      phase: threeFiveSevenWinPhaseRef.current,
+    });
     emit357RuntimeDiag('legs_phase_decision', {
       gameId: gameId ?? null,
       roundId: handContextId ?? null,
@@ -7343,6 +7386,10 @@ export const MobileGameTable = ({
     const potTid = `pot-to-player-357-${Date.now()}`;
     activePotIdentityRef.current = build357PresentationIdentity();
     setPotToPlayerTriggerId357(potTid);
+    __capture357Checkpoint('pot_to_player_begin:legs_complete', {
+      triggerId: potTid,
+      amount: threeFiveSevenWinPotAmount,
+    });
     // F. Pot animation begin — non-sweep (legs-complete) branch.
     emit357RuntimeDiag('pot_animation_begin', {
       gameId: gameId ?? null,
@@ -7358,11 +7405,28 @@ export const MobileGameTable = ({
       destinationSelector: `[data-chip-reaction-target="${players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null}"]`,
       triggerId: potTid,
     });
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult]);
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     const animId = currentAnimationIdRef.current;
+    const liveIdentityAtEntry = build357PresentationIdentity();
+    __emitWartimeProgression({
+      callback: 'MobileGameTable.handlePotToPlayerComplete357',
+      entry: 'entry',
+      reason: 'pot_animation_end',
+      capturedIdentity: activePotIdentityRef.current,
+      liveIdentity: liveIdentityAtEntry,
+      presentationPhase: threeFiveSevenWinPhaseRef.current,
+      winAnimationActive: true,
+      gameStatus,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
+    __capture357Checkpoint('pot_to_player_complete:entry', {
+      animationId: animId,
+      phase: threeFiveSevenWinPhaseRef.current,
+    });
 
     // CROSS-DEALER-GAME LEAKAGE GUARD. Verify the pot completion still
     // belongs to the active dealer game. Late callbacks for the SAME
@@ -7390,6 +7454,17 @@ export const MobileGameTable = ({
         activeTriggerId: activePresentationIdentity.triggerId,
       });
       activePotIdentityRef.current = null;
+      __emitWartimeProgression({
+        callback: 'MobileGameTable.handlePotToPlayerComplete357',
+        entry: 'return',
+        reason: 'cross_dealer_game_cancelled',
+        capturedIdentity: storedPotIdentity,
+        liveIdentity: activePresentationIdentity,
+        presentationPhase: threeFiveSevenWinPhaseRef.current,
+        gameStatus,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+      });
       return;
     }
 
@@ -7408,6 +7483,17 @@ export const MobileGameTable = ({
         reason: 'duplicate_animation_id',
         animationId: animId,
         phase: threeFiveSevenWinPhaseRef.current,
+      });
+      __emitWartimeProgression({
+        callback: 'MobileGameTable.handlePotToPlayerComplete357',
+        entry: 'return',
+        reason: 'duplicate_animation_id',
+        capturedIdentity: storedPotIdentity,
+        liveIdentity: activePresentationIdentity,
+        presentationPhase: threeFiveSevenWinPhaseRef.current,
+        gameStatus,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
       });
       return;
     }
@@ -7438,8 +7524,28 @@ export const MobileGameTable = ({
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
         confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
-        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
-        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
+        const confettiLeftAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_left',
+          kind: 'timeout',
+          delayMs: 220,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiLeftAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette });
+        }, 220);
+        const confettiRightAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_right',
+          kind: 'timeout',
+          delayMs: 420,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiRightAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette });
+        }, 420);
         confettiSucceeded = true;
       } catch (e) { confettiErr = e; /* noop — confetti is presentation-only */ }
     }
@@ -7468,7 +7574,20 @@ export const MobileGameTable = ({
 
     // 300ms presentation tail, then invoke the canonical completion
     // callback, then finally release the win-animation geometry.
+    const completionTailAsyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: 'mgt.357.pot_complete_tail',
+      kind: 'timeout',
+      delayMs: 300,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
     setTimeout(() => {
+      __emitWartimeAsyncFired({
+        asyncOwnerId: completionTailAsyncOwnerId,
+        outcome: 'fired',
+        identity: __wartimeMgtIdentity,
+        liveIdentity: build357PresentationIdentity(),
+      });
       void (async () => {
       emit357InstantWinTerminal('presentation_completed', {
         gameId: gameId ?? undefined,
@@ -7480,7 +7599,29 @@ export const MobileGameTable = ({
       // this callback should be swallowed. Any downstream idempotency
       // is the parent handler's responsibility.
       try {
+        __emitWartimeProgression({
+          callback: 'onThreeFiveSevenWinAnimationComplete',
+          entry: 'entry',
+          reason: 'pot_complete_tail_elapsed',
+          capturedIdentity: storedPotIdentity,
+          liveIdentity: build357PresentationIdentity(),
+          presentationPhase: threeFiveSevenWinPhaseRef.current,
+          gameStatus,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
         await Promise.resolve(onThreeFiveSevenWinAnimationComplete?.());
+        __emitWartimeProgression({
+          callback: 'onThreeFiveSevenWinAnimationComplete',
+          entry: 'return',
+          reason: 'callback_resolved',
+          capturedIdentity: storedPotIdentity,
+          liveIdentity: build357PresentationIdentity(),
+          presentationPhase: threeFiveSevenWinPhaseRef.current,
+          gameStatus,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
       } catch (err) {
         emit357GameOverCompleteDiag('pot_complete_callback_threw', {
           gameId: gameId ?? null,
@@ -7498,9 +7639,13 @@ export const MobileGameTable = ({
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       activePotIdentityRef.current = null;
+      __capture357Checkpoint('pot_to_player_complete:return', {
+        animationId: animId,
+        phase: 'idle',
+      });
       })();
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity, gameStatus, __wartimeMgtIdentity, __wartimeMgtOwner, __capture357Checkpoint]);
 
   // SURGICAL REPAIR — sweep celebration release.
   //
@@ -7539,6 +7684,10 @@ export const MobileGameTable = ({
       return;
     }
     const phaseBefore = threeFiveSevenWinPhaseRef.current;
+    __capture357Checkpoint('sweep_wait_release_to_pot', {
+      phaseBefore,
+      triggerId: active.triggerId,
+    });
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'release_to_pot' });
       sweepAwaitingCelebrationRef.current = null;
     setThreeFiveSevenWinPhase('pot-to-player');
@@ -9189,6 +9338,10 @@ export const MobileGameTable = ({
           show={showSweepsPot}
           playerName={sweepsPlayerName}
           onComplete={() => {
+            __capture357Checkpoint('sweeps_pot_complete', {
+              hadLegsBeforeSweep: hadLegsBeforeSweepRef.current,
+              phase: threeFiveSevenWinPhaseRef.current,
+            });
             setShowSweepsPot(false);
             if (hadLegsBeforeSweepRef.current) {
               setShowSweepTheLegs357(true);
@@ -9203,6 +9356,9 @@ export const MobileGameTable = ({
         <SweepTheLegsAnimation
           show={showSweepTheLegs357}
           onComplete={() => {
+            __capture357Checkpoint('sweep_the_legs_complete', {
+              phase: threeFiveSevenWinPhaseRef.current,
+            });
             setShowSweepTheLegs357(false);
             setSweepCelebrationCompleted(true);
           }}

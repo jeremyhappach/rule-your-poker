@@ -33,6 +33,8 @@ import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
 import {
   useWartimeComponentInstance as __useWartimePotInstance,
+  emitPotDestinationResolution as __emitWartimePotResolution,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterPot,
   registerWartimeProductionHook as __wartimeRegisterHookPot,
   SRC as __WARTIME_SRC_POT,
 } from '@/lib/threeFiveSeven/wartime';
@@ -47,6 +49,48 @@ __wartimeRegisterHookPot({
   sourceFile: 'src/components/PotToPlayerAnimation.tsx',
   sourceFunction: 'PotToPlayerAnimation.resolveDestination',
 });
+__wartimeRegisterEmitterPot('pot_destination.resolution', __WARTIME_SRC_POT.POT_DESTINATION_RESOLUTION.id);
+
+function __wartimeRectFromDomRect(r: DOMRect | null): Record<string, number> | null {
+  if (!r) return null;
+  return { x: r.x, y: r.y, top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+}
+
+function __wartimeOwnership(el: HTMLElement | null): Record<string, string | null> | null {
+  if (!el) return null;
+  const out: Record<string, string | null> = {};
+  for (const attr of Array.from(el.attributes)) {
+    if (attr.name.startsWith('data-') || attr.name === 'aria-label') out[attr.name] = attr.value;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function __wartimeCandidate(
+  key: string,
+  selector: string | null,
+  el: HTMLElement | null,
+  semanticType: string | null,
+) {
+  let rect: DOMRect | null = null;
+  let visible: boolean | null = null;
+  if (el) {
+    try {
+      rect = el.getBoundingClientRect();
+      const s = window.getComputedStyle(el);
+      visible = rect.width > 0 && rect.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || '1') > 0;
+    } catch { /* diagnostic-only */ }
+  }
+  return {
+    key,
+    selector,
+    present: !!el,
+    connected: el ? el.isConnected : null,
+    visible,
+    rect: __wartimeRectFromDomRect(rect),
+    ownership: __wartimeOwnership(el),
+    semanticType,
+  };
+}
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
@@ -355,6 +399,40 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
                 : null,
           });
         }).catch(() => {});
+        const chipCenterEl = freshContainer.querySelector<HTMLElement>(`[data-chip-center="${winnerPositionRef.current}"]`);
+        const seatChipEl = freshContainer.querySelector<HTMLElement>(`[data-seat-chip-position="${winnerPositionRef.current}"]`);
+        const candidates = [
+          ...(nodeList ?? []).slice(0, 8).map((el, idx) => __wartimeCandidate(`explicit_${idx}`, explicit, el, 'explicit-selector')),
+          __wartimeCandidate('data_chip_center', `[data-chip-center="${winnerPositionRef.current}"]`, chipCenterEl, 'data-chip-center'),
+          __wartimeCandidate('data_seat_chip_position', `[data-seat-chip-position="${winnerPositionRef.current}"]`, seatChipEl, 'data-seat-chip-position'),
+        ];
+        const selectedCandidate = explicitChosenElement
+          ? __wartimeCandidate('selected_explicit', explicit, explicitChosenElement, 'explicit-selector')
+          : chipCenterEl
+            ? __wartimeCandidate('selected_data_chip_center', `[data-chip-center="${winnerPositionRef.current}"]`, chipCenterEl, 'data-chip-center')
+            : seatChipEl
+              ? __wartimeCandidate('selected_data_seat_chip_position', `[data-seat-chip-position="${winnerPositionRef.current}"]`, seatChipEl, 'data-seat-chip-position')
+              : null;
+        __emitWartimePotResolution({
+          triggerId: capturedTriggerId,
+          winnerId: null,
+          winnerPosition: winnerPositionRef.current,
+          amount: amountRef.current,
+          requestedSelector: explicit ?? null,
+          candidates,
+          selected: selectedCandidate,
+          selectedSemanticType: selectedCandidate?.semanticType ?? null,
+          resolverBranch: explicit
+            ? (explicitChosenElement ? 'explicit_selector' : 'explicit_selector_failed')
+            : (chipCenterEl ? 'data_chip_center' : seatChipEl ? 'data_seat_chip_position' : 'canonical_or_slot'),
+          fallbackBranch: explicit ? null : (chipCenterEl ? 'data_chip_center' : seatChipEl ? 'data_seat_chip_position' : 'slot_or_canonical'),
+          startCoord: potCoords,
+          endCoord: winnerCoords,
+          sourceRect: __wartimeRectFromDomRect(containerRect),
+          tableRelativeRect: selectedCandidate?.rect ?? null,
+          failureReason: winnerCoords ? null : 'winner_coords_unresolved',
+          identity: { triggerId: capturedTriggerId },
+        });
       } catch { /* diagnostic-only */ }
 
 
