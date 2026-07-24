@@ -245,7 +245,7 @@ import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/normalizationDbg";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
 import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
-import { Card as CardType } from "@/lib/cardUtils";
+import { Card as CardType, has357Hand } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
