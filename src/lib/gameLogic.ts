@@ -213,7 +213,7 @@ export async function recordGameResult(
     dealerGameId
   });
   
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('game_results')
     .insert({
       game_id: gameId,
@@ -226,16 +226,14 @@ export async function recordGameResult(
       is_chopped: isChopped,
       game_type: gameType || null,
       dealer_game_id: dealerGameId || null
-    })
-    .select('id')
-    .single();
+    });
 
   if (error) {
     console.error('[GAME RESULT] Error recording game result:', error);
-    return { id: null, error };
+    return { error };
   }
-  console.log('[GAME RESULT] Successfully recorded game result:', data?.id ?? null);
-  return { id: (data?.id as string | null) ?? null, error: null };
+  console.log('[GAME RESULT] Successfully recorded game result');
+  return { error: null };
 }
 
 export async function startRound(gameId: string, roundNumber: number) {
