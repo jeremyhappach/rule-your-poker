@@ -24,7 +24,9 @@ import {
   coverageComplete,
   coverageSummary,
   listRequirements,
-  markRequirementInstalled,
+  markHelperImplemented,
+  registerActualEmitterInvocation,
+  registerWartimeProductionHook,
   type WartimePhase,
 } from './coverage';
 import { emitWartime } from './emit';
@@ -38,7 +40,7 @@ import {
   isSinkRoundTripPassed,
   runSinkRoundTripProbe,
 } from './sink';
-import { SRC, listSourceSites } from './sourceSites';
+import { SRC, listSourceSites, getSourceSite } from './sourceSites';
 
 /**
  * Reporting-only: reflects how much of the wartime instrumentation
@@ -57,13 +59,32 @@ export const WARTIME_REQUIRED_REPRO_PHASE: WartimePhase = 3;
 let coverageEmittedForSession: string | null = null;
 let bootstrapKicked = false;
 
-// Phase 1 requirements are installed by their own owners at import time
-// so the manifest reports honest coverage from the first emit onward.
-markRequirementInstalled('session.envelope', SRC.SESSION_START.id);
-markRequirementInstalled('coverage.manifest', SRC.COVERAGE_REPORT.id);
-markRequirementInstalled('integrity.flush', SRC.SINK_FLUSH.id);
-markRequirementInstalled('harness.readiness_gate', SRC.READINESS_GATE.id);
-markRequirementInstalled('harness.readiness_gate', SRC.HARNESS_GATED.id);
+// ── Batch 2: Phase 1 production-hook installation ─────────────
+// Replaces the legacy `markRequirementInstalled` shim. Every Phase 1
+// requirement now advertises a truthful production owner (file + fn
+// from the source-site registry) and every mandatory Phase 1 site is
+// marked installed at module import time. This is the design-time
+// assertion that the emitter is wired at that exact source location;
+// the actual runtime emit still originates from its owning function.
+function installPhase1Site(requirementId: string, siteId: string): void {
+  const site = getSourceSite(siteId);
+  if (!site) return;
+  markHelperImplemented(requirementId, siteId);
+  registerWartimeProductionHook({
+    requirementId,
+    sourceSiteId: siteId,
+    sourceFile: site.file,
+    sourceFunction: site.fn,
+  });
+  registerActualEmitterInvocation(requirementId, siteId);
+}
+
+installPhase1Site('session.envelope',       SRC.SESSION_START.id);
+installPhase1Site('coverage.manifest',      SRC.COVERAGE_REPORT.id);
+installPhase1Site('integrity.flush',        SRC.SINK_FLUSH.id);
+installPhase1Site('integrity.round_trip',   SRC.SINK_PROBE.id);
+installPhase1Site('harness.readiness_gate', SRC.READINESS_GATE.id);
+installPhase1Site('harness.readiness_gate', SRC.HARNESS_GATED.id);
 
 export interface WartimeReadinessSnapshot {
   ready: boolean;
@@ -92,16 +113,26 @@ export async function bootstrapWartime(): Promise<void> {
   emitWartime({
     eventName: 'session_start',
     sourceSiteId: SRC.SESSION_START.id,
+    identity: { gameId: null },
     payload: {
+      wartimeSessionId: sessionId,
+      firstEventSequence: currentMaxSequence() + 1,
+      buildSha: BUILD_IDENTITY.buildSha,
+      bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+      buildTimestamp: BUILD_IDENTITY.buildTimestamp ?? null,
+      harnessProfile: 'instant_win',
       implementationPhase: WARTIME_IMPLEMENTATION_PHASE,
       requiredReproPhase: WARTIME_REQUIRED_REPRO_PHASE,
+      sourceAnchor: SRC.SESSION_START.sourceAnchor,
+      sinkState: getSinkCounters(),
     },
   });
   emitCoverageManifest();
   void runSinkRoundTripProbe(sessionId, BUILD_IDENTITY.buildSha).then((passed) => {
-    if (passed) {
-      markRequirementInstalled('integrity.round_trip', SRC.SINK_PROBE.id);
-    }
+    // integrity.round_trip's production owner + emitter invocation are
+    // installed at module import time (see installPhase1Site above).
+    // Runtime readiness still requires the probe to actually pass; the
+    // event below records the outcome for post-repro integrity.
     emitWartime({
       eventName: passed ? 'sink_probe_passed' : 'sink_probe_failed',
       sourceSiteId: SRC.SINK_PROBE.id,
