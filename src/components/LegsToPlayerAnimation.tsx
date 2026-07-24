@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
+import { emitPresentationLifecycle as __wartimeEmitPresentationLifecycleLTP } from '@/lib/threeFiveSeven/wartime';
 
 interface LegChipAnimation {
   id: string;
