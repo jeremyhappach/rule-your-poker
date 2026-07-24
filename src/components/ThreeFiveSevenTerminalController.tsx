@@ -34,10 +34,10 @@ import type {
 } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { isSameTerminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
-import { LifecycleAnnouncement } from "@/components/LifecycleAnnouncement";
 import { SweepTheLegsAnimation } from "@/components/SweepTheLegsAnimation";
 import { ThreeFiveSevenProofCardsAnimation } from "@/components/ThreeFiveSevenProofCardsAnimation";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 export interface CanonicalTerminal357EntryInput {
   gameId: string | null;
@@ -82,13 +82,18 @@ export const ThreeFiveSevenTerminalController = ({
 }: ThreeFiveSevenTerminalControllerProps) => {
   const deal = useDealRuntime();
   const dealSettled = !!deal?.dealSettled;
+  const announcements = useAnnouncements();
 
   const activeGenIdRef = useRef<string | null>(null);
   const handedOffForGenRef = useRef<string | null>(null);
   const dealSettledEmittedForGenRef = useRef<string | null>(null);
+  const pendingCanonicalReasonRef = useRef<
+    "proof_cards_complete" | "sweep_legs_complete" | "sweep_legs_skipped" | null
+  >(null);
 
   const [phase, setPhase] = useState<ControllerPhase>("idle");
   const [phaseForGenId, setPhaseForGenId] = useState<string | null>(null);
+  const [announcementCompleteForGenId, setAnnouncementCompleteForGenId] = useState<string | null>(null);
 
   const isInstant357 =
     descriptor != null && descriptor.source === "instant-357";
@@ -119,6 +124,8 @@ export const ThreeFiveSevenTerminalController = ({
     activeGenIdRef.current = genId;
     handedOffForGenRef.current = null;
     dealSettledEmittedForGenRef.current = null;
+    pendingCanonicalReasonRef.current = null;
+    setAnnouncementCompleteForGenId(null);
     setPhaseForGenId(genId);
     setPhase("announce_wait_deal_settled");
     emit357RuntimeDiag("controller_ownership_acquired", {
@@ -138,6 +145,32 @@ export const ThreeFiveSevenTerminalController = ({
       gameId: descriptor.gameId,
       terminalResultIdentity: descriptor.terminalResultIdentity,
     }, { terminalGenerationId: genId, from: "idle", to: "announce_wait_deal_settled" });
+    const announcementId = `357-instant:${genId}`;
+    const announcementTitle = `${descriptor.winnerName} sweeps the pot and legs with 3-5-7!`;
+    announcements.emit({
+      id: announcementId,
+      type: "match_win",
+      scope: { dealerGameId: descriptor.dealerGameId, roundId: descriptor.roundId },
+      payload: {
+        text: announcementTitle,
+        source: "instant-357-terminal-controller",
+        terminalGenerationId: genId,
+      },
+      ttlMs: 2200,
+      transientScope: `357-instant:${genId}`,
+    });
+    void announcements.waitForDismiss(announcementId).then(() => {
+      if (activeGenIdRef.current !== genId) return;
+      setAnnouncementCompleteForGenId(genId);
+      emit357RuntimeDiag("controller_state_transition", {
+        gameId: descriptor.gameId,
+        terminalResultIdentity: descriptor.terminalResultIdentity,
+      }, {
+        terminalGenerationId: genId,
+        from: "announce_wait_deal_settled",
+        to: "announcement_complete",
+      });
+    });
     onOwnershipChange(genId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descriptor, isInstant357]);
@@ -207,6 +240,23 @@ export const ThreeFiveSevenTerminalController = ({
     if (!descriptor) return;
     const genId = descriptor.terminalGenerationId;
     if (handedOffForGenRef.current === genId) return;
+    if (announcementCompleteForGenId !== genId) {
+      pendingCanonicalReasonRef.current = reason;
+      if (phase !== "handoff_pending") {
+        emit357RuntimeDiag("controller_state_transition", {
+          gameId: descriptor.gameId,
+          terminalResultIdentity: descriptor.terminalResultIdentity,
+        }, {
+          terminalGenerationId: genId,
+          from: phase,
+          to: "handoff_pending",
+          reason: "awaiting_hudstack_announcement_complete",
+          pendingCanonicalReason: reason,
+        });
+        setPhase("handoff_pending");
+      }
+      return;
+    }
     handedOffForGenRef.current = genId;
     emit357RuntimeDiag("controller_canonical_handoff", {
       gameId: descriptor.gameId,
@@ -239,6 +289,16 @@ export const ThreeFiveSevenTerminalController = ({
     });
   };
 
+  useEffect(() => {
+    if (!isInstant357 || !descriptor) return;
+    if (phase !== "handoff_pending") return;
+    if (announcementCompleteForGenId !== descriptor.terminalGenerationId) return;
+    const reason = pendingCanonicalReasonRef.current ?? "sweep_legs_skipped";
+    pendingCanonicalReasonRef.current = null;
+    enterCanonicalNow(reason);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [announcementCompleteForGenId, phase, descriptor, isInstant357]);
+
   const proofCardsGenerationKey = useMemo(
     () => descriptor?.terminalGenerationId ?? "none",
     [descriptor?.terminalGenerationId],
@@ -252,8 +312,6 @@ export const ThreeFiveSevenTerminalController = ({
     return null;
   }
 
-  const announcementTitle = `${descriptor.winnerName} sweeps the pot and legs with 3-5-7!`;
-  const showAnnouncement = phase !== "idle";
   const showProofCards =
     phase === "proof_cards" ||
     phase === "sweep_legs" ||
@@ -263,14 +321,6 @@ export const ThreeFiveSevenTerminalController = ({
 
   return (
     <>
-      {showAnnouncement && (
-        <div className="absolute inset-x-0 top-4 z-40 flex justify-center pointer-events-none px-4">
-          <div className="max-w-md w-full">
-            <LifecycleAnnouncement title={announcementTitle} />
-          </div>
-        </div>
-      )}
-
       <ThreeFiveSevenProofCardsAnimation
         show={showProofCards}
         cards={descriptor.proofCards ?? []}
