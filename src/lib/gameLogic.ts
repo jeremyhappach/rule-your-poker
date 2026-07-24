@@ -585,6 +585,7 @@ export async function startRound(gameId: string, roundNumber: number) {
         });
         // Fall through to normal deal — harness is a no-op this turn.
       } else {
+        const sessionHostPlayerId = resolveSessionHostPlayerId(
         { current_host: (gameConfig as any)?.current_host ?? null },
         activePlayers.map((p) => ({
           id: p.id,
@@ -624,6 +625,7 @@ export async function startRound(gameId: string, roundNumber: number) {
           dealerPosition: dealerPos,
           activePlayerIds: activePlayers.map(p => p.id),
         });
+        }
       }
     }
   }
