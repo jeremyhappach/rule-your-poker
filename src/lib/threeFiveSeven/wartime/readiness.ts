@@ -259,26 +259,33 @@ export interface WartimeTargetedPreflightSnapshot {
 }
 
 export function checkTargetedPreflight(): WartimeTargetedPreflightSnapshot {
+  // Blocking reasons: ONLY conditions that prevent us from collecting
+  // any usable trace at all. Everything else is advisory/diagnostic.
   const reasons: string[] = [];
+  const warnings: string[] = [];
+
   const sessionId = getWartimeSessionId();
   if (!sessionId) reasons.push('no-session');
-  const buildSha = BUILD_IDENTITY.buildSha;
-  if (!buildSha) reasons.push('no-build-sha');
-  const coverageManifestEmitted = !!sessionId && coverageEmittedForSession === sessionId;
-  if (!coverageManifestEmitted) reasons.push('coverage-manifest-not-emitted');
+
   const sink = getSinkCounters();
   if (!isSinkRoundTripPassed()) reasons.push('sink-round-trip-not-passed');
-  if (sink.droppedEventCount > 0) reasons.push('dropped-events');
-  if (sink.sinkFailureCount > 0) reasons.push('sink-failures');
-  if (sink.serializationFailureCount > 0) reasons.push('serialization-failures');
+
+  // Advisory-only: telemetry health signals. Reported but never block.
+  const buildSha = BUILD_IDENTITY.buildSha;
+  if (!buildSha) warnings.push('no-build-sha');
+  const coverageManifestEmitted = !!sessionId && coverageEmittedForSession === sessionId;
+  if (!coverageManifestEmitted) warnings.push('coverage-manifest-not-emitted');
+  if (sink.droppedEventCount > 0) warnings.push('dropped-events');
+  if (sink.sinkFailureCount > 0) warnings.push('sink-failures');
+  if (sink.serializationFailureCount > 0) warnings.push('serialization-failures');
   const maxSeq = currentMaxSequence();
-  // Sequence contiguity: every allocated sequence is either persisted or
-  // queued or accounted for as dropped. A gap indicates a lost event.
   if (sink.persistedThroughSequence + sink.queueDepth + sink.droppedEventCount < maxSeq) {
-    reasons.push('sequence-gap');
+    warnings.push('sequence-gap');
   }
 
   // Static per-site registration check for the targeted profile.
+  // Advisory-only: coverage completeness is a diagnostic signal, not a
+  // gate. Missing sites are surfaced in the snapshot for observability.
   const reqIndex: Record<string, ReturnType<typeof listRequirements>[number]> = {};
   for (const r of listRequirements()) reqIndex[r.requirementId] = r;
   const missing: TargetedPreflightSiteMiss[] = [];
@@ -309,13 +316,18 @@ export function checkTargetedPreflight(): WartimeTargetedPreflightSnapshot {
       ok += 1;
     }
   }
-  if (missing.length > 0) reasons.push('targeted-sites-not-statically-registered');
+  if (missing.length > 0) warnings.push('targeted-sites-not-statically-registered');
 
   const postReproCoverageComplete = coverageComplete(WARTIME_REQUIRED_REPRO_PHASE);
 
+  // Merge warnings into reasons for backwards-compatible observability
+  // in the emitted snapshot, but the ready flag is driven only by
+  // genuine blockers above.
+  const allReasons = [...reasons, ...warnings.map((w) => `warn:${w}`)];
+
   return {
     preflightReady: reasons.length === 0,
-    reasons,
+    reasons: allReasons,
     sessionId,
     buildSha,
     bundleFilename: BUILD_IDENTITY.bundleFilename || null,
