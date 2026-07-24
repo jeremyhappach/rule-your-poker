@@ -27,6 +27,7 @@ export { markRequirementInstalled, coverageSummary, listRequirements } from './c
 export { SRC, registerSourceSite, listSourceSites } from './sourceSites';
 // Phase 2 wiring primitives (side-effect: registers Phase 2 sites).
 import './phase2Wiring';
+import './phase3Wiring';
 import './async';
 import './db';
 import './realtime';
@@ -39,6 +40,22 @@ export {
   emitOpponentCardBackChannel,
   useDealRedispatchDetector,
 } from './phase2Wiring';
+export {
+  captureDomSnapshot,
+  captureCanonical357Snapshot,
+  installTargetedMutationObserver,
+  installTargetedResizeObserver,
+  emitGeometryTransition,
+  emitPotDestinationResolution,
+  emitProgressionAdvancement,
+  emitChannelSettled,
+  installGlobalErrorListeners,
+  reportGlobalErrorOrigin,
+  withDbMutationCorrelation,
+  wrapRealtimeCausality,
+  trackAsyncOwner,
+  emitAsyncOwnerFired,
+} from './phase3Wiring';
 export { setWartimeTimeout, requestWartimeAnimationFrame, trackWartimePromise } from './async';
 export { withWartimeMutation } from './db';
 export { wrapWartimeRealtime } from './realtime';

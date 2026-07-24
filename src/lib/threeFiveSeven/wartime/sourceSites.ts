@@ -186,6 +186,85 @@ export const SRC = {
     line: 0,
     requirementIds: ['deal.redispatch_attempt'],
   }),
+
+  // ── Phase 3 (DOM / geometry / progression) sites ──────────────
+  DEAL_SELF_FACE_UP_SETTLED: reg({
+    id: 'deal.self_face_up_settled',
+    file: 'src/components/ThreeFiveSevenDealOrchestrator.tsx',
+    fn: 'emitChannelSettled',
+    line: 0,
+    requirementIds: ['deal.self_face_up.channel_settled'],
+  }),
+  DOM_SNAPSHOT: reg({
+    id: 'dom.snapshot.checkpoints',
+    file: 'src/lib/threeFiveSeven/wartime/phase3Wiring.ts',
+    fn: 'captureDomSnapshot',
+    line: 0,
+    requirementIds: ['dom.snapshot.checkpoints'],
+  }),
+  DOM_MUTATION: reg({
+    id: 'dom.observer.mutation',
+    file: 'src/lib/threeFiveSeven/wartime/phase3Wiring.ts',
+    fn: 'installTargetedMutationObserver',
+    line: 0,
+    requirementIds: ['dom.observer.mutation'],
+  }),
+  DOM_RESIZE: reg({
+    id: 'dom.observer.resize',
+    file: 'src/lib/threeFiveSeven/wartime/phase3Wiring.ts',
+    fn: 'installTargetedResizeObserver',
+    line: 0,
+    requirementIds: ['dom.observer.resize'],
+  }),
+  GEOMETRY_TRANSITION: reg({
+    id: 'geometry.transition',
+    file: 'src/hooks/useActiveHandCardRects.ts',
+    fn: 'emitGeometryTransition',
+    line: 0,
+    requirementIds: ['geometry.transition'],
+  }),
+  POT_DESTINATION_RESOLUTION: reg({
+    id: 'pot_destination.resolution',
+    file: 'src/components/PotToPlayerAnimation.tsx',
+    fn: 'emitPotDestinationResolution',
+    line: 0,
+    requirementIds: ['pot_destination.resolution'],
+  }),
+  PROGRESSION_ADVANCEMENT: reg({
+    id: 'progression.advancement',
+    file: 'src/components/MobileGameTable.tsx',
+    fn: 'emitProgressionAdvancement',
+    line: 0,
+    requirementIds: ['progression.advancement'],
+  }),
+  GLOBAL_ERROR_ORIGIN: reg({
+    id: 'global.error.origin',
+    file: 'src/lib/threeFiveSeven/wartime/phase3Wiring.ts',
+    fn: 'installGlobalErrorListeners',
+    line: 0,
+    requirementIds: ['global.error.origin'],
+  }),
+  DB_MUTATION_CORRELATION: reg({
+    id: 'db.mutation.correlation',
+    file: 'src/lib/gameLogic.ts',
+    fn: 'withDbMutationCorrelation',
+    line: 0,
+    requirementIds: ['db.mutation.correlation'],
+  }),
+  REALTIME_CAUSALITY: reg({
+    id: 'realtime.causality',
+    file: 'src/pages/Game.tsx',
+    fn: 'wrapRealtimeCausality',
+    line: 0,
+    requirementIds: ['realtime.causality'],
+  }),
+  ASYNC_OWNER: reg({
+    id: 'async.owner',
+    file: 'src/lib/threeFiveSeven/wartime/phase3Wiring.ts',
+    fn: 'trackAsyncOwner',
+    line: 0,
+    requirementIds: ['async.owner'],
+  }),
 } as const;
 
 export function getSourceSite(id: string): WartimeSourceSite | null {

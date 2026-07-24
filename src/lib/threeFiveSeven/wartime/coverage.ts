@@ -102,16 +102,40 @@ req('deal.redispatch_attempt', 'Redispatch attempts under stale/terminal identit
 ]);
 
 // ── Phase 3: DOM / geometry / presentation / progression ──────
-req('dom.attributes', 'Diagnostic-only data-357-* attributes on all owner nodes', 3);
-req('dom.snapshot', 'capture357WartimeDomSnapshot at every required checkpoint', 3);
-req('dom.mutation_observer', 'MutationObserver scoped to diagnostic nodes', 3);
-req('dom.resize_observer', 'ResizeObserver on layout-critical diagnostic nodes', 3);
-req('css.animation_events', 'animationstart/end/cancel + transition* on presentation nodes', 3);
-req('geometry.decision', 'Active-hand geometry decision inputs+outputs+branch site', 3);
-req('presentation.forensics', 'Presentation mount/begin/destination/complete/unmount', 3);
-req('presentation.destination_candidates', 'Every candidate destination node captured + selected', 3);
-req('progression.entry_return', 'Entry+return of every progression/modal callback', 3);
-req('progression.modal_owner', 'Setup modal + game-surface mount overlap tracked', 3);
+req('deal.self_face_up.channel_settled', 'Self face-up channel conclusively settled/passthrough/suppressed', 3, [
+  'deal.self_face_up_settled',
+]);
+req('dom.snapshot.checkpoints', 'Targeted DOM snapshot at every required checkpoint', 3, [
+  'dom.snapshot.checkpoints',
+]);
+req('dom.observer.mutation', 'MutationObserver scoped to diagnostic nodes only', 3, [
+  'dom.observer.mutation',
+]);
+req('dom.observer.resize', 'ResizeObserver on layout-critical diagnostic nodes only', 3, [
+  'dom.observer.resize',
+]);
+req('geometry.transition', 'Active-hand geometry decision inputs+outputs+branch site', 3, [
+  'geometry.transition',
+]);
+req('pot_destination.resolution', 'PotToPlayerAnimation destination resolution forensics', 3, [
+  'pot_destination.resolution',
+]);
+req('progression.advancement', 'Entry+return of every 3-5-7 progression/advancement callback', 3, [
+  'progression.advancement',
+]);
+req('global.error.origin', 'window.error / unhandledrejection / error-boundary origin capture', 3, [
+  'global.error.origin',
+]);
+req('db.mutation.correlation', 'DB mutation begin/complete/error with requestId at real call sites', 3, [
+  'db.mutation.correlation',
+]);
+req('realtime.causality', 'Realtime callback ownership + local receipt sequence at real subscriptions', 3, [
+  'realtime.causality',
+]);
+req('async.owner', 'Every relevant timer/rAF/promise/effect cleanup has asyncOwnerId at real sites', 3, [
+  'async.owner',
+]);
+
 
 export function markRequirementInstalled(requirementId: string, sourceSiteId: string): void {
   const r = REQUIREMENTS[requirementId];

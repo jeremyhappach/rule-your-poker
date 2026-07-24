@@ -45,7 +45,7 @@ import { SRC, listSourceSites } from './sourceSites';
  * has actually landed in this build. Bump this as each phase's
  * production hooks are wired. NEVER used to gate the harness.
  */
-export const WARTIME_IMPLEMENTATION_PHASE: WartimePhase = 2;
+export const WARTIME_IMPLEMENTATION_PHASE: WartimePhase = 3;
 
 /**
  * Gating: the coverage phase the harness reproduction REQUIRES.
