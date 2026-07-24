@@ -13528,6 +13528,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     threeFiveSevenCachedLegPositions={cachedLegPositions}
                     onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
                     onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
+                    threeFiveSevenTerminalDescriptor={terminal357Descriptor}
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}
