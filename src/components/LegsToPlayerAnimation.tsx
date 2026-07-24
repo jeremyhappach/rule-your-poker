@@ -175,6 +175,10 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
     setAnimations(newAnimations);
     setShowSweepOverlay(true);
+    __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'begin', {
+      identity: { triggerId: triggerId ?? null },
+      payload: { animationCount: newAnimations.length },
+    });
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
     // Animation duration: 3.5s + stagger delays + buffer
@@ -182,6 +186,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     
     completionTimeoutRef.current = setTimeout(() => {
       setAnimations([]);
+      __wartimeEmitPresentationLifecycleLTP('legs_to_player', 'complete', {
+        identity: { triggerId: triggerId ?? null },
+      });
       if (!completedRef.current) {
         completedRef.current = true;
         onCompleteRef.current?.();
