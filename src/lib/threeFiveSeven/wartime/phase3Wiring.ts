@@ -12,7 +12,7 @@
  */
 
 import { emitWartime, type WartimeIdentity, type WartimeOwner } from './emit';
-import { markRequirementInstalled } from './coverage';
+import { markHelperImplemented } from './coverage';
 import { SRC } from './sourceSites';
 
 // ── DOM snapshot ──────────────────────────────────────────────
