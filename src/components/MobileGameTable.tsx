@@ -7410,6 +7410,23 @@ export const MobileGameTable = ({
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     const animId = currentAnimationIdRef.current;
+    const liveIdentityAtEntry = build357PresentationIdentity();
+    __emitWartimeProgression({
+      callback: 'MobileGameTable.handlePotToPlayerComplete357',
+      entry: 'entry',
+      reason: 'pot_animation_end',
+      capturedIdentity: activePotIdentityRef.current,
+      liveIdentity: liveIdentityAtEntry,
+      presentationPhase: threeFiveSevenWinPhaseRef.current,
+      winAnimationActive: true,
+      gameStatus,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
+    __capture357Checkpoint('pot_to_player_complete:entry', {
+      animationId: animId,
+      phase: threeFiveSevenWinPhaseRef.current,
+    });
 
     // CROSS-DEALER-GAME LEAKAGE GUARD. Verify the pot completion still
     // belongs to the active dealer game. Late callbacks for the SAME
@@ -7437,6 +7454,17 @@ export const MobileGameTable = ({
         activeTriggerId: activePresentationIdentity.triggerId,
       });
       activePotIdentityRef.current = null;
+      __emitWartimeProgression({
+        callback: 'MobileGameTable.handlePotToPlayerComplete357',
+        entry: 'return',
+        reason: 'cross_dealer_game_cancelled',
+        capturedIdentity: storedPotIdentity,
+        liveIdentity: activePresentationIdentity,
+        presentationPhase: threeFiveSevenWinPhaseRef.current,
+        gameStatus,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+      });
       return;
     }
 
@@ -7455,6 +7483,17 @@ export const MobileGameTable = ({
         reason: 'duplicate_animation_id',
         animationId: animId,
         phase: threeFiveSevenWinPhaseRef.current,
+      });
+      __emitWartimeProgression({
+        callback: 'MobileGameTable.handlePotToPlayerComplete357',
+        entry: 'return',
+        reason: 'duplicate_animation_id',
+        capturedIdentity: storedPotIdentity,
+        liveIdentity: activePresentationIdentity,
+        presentationPhase: threeFiveSevenWinPhaseRef.current,
+        gameStatus,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
       });
       return;
     }
@@ -7485,8 +7524,28 @@ export const MobileGameTable = ({
       try {
         const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
         confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
-        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette }), 220);
-        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette }), 420);
+        const confettiLeftAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_left',
+          kind: 'timeout',
+          delayMs: 220,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiLeftAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette });
+        }, 220);
+        const confettiRightAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_right',
+          kind: 'timeout',
+          delayMs: 420,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiRightAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette });
+        }, 420);
         confettiSucceeded = true;
       } catch (e) { confettiErr = e; /* noop — confetti is presentation-only */ }
     }
@@ -7515,7 +7574,20 @@ export const MobileGameTable = ({
 
     // 300ms presentation tail, then invoke the canonical completion
     // callback, then finally release the win-animation geometry.
+    const completionTailAsyncOwnerId = __trackWartimeAsyncOwner({
+      ownerLabel: 'mgt.357.pot_complete_tail',
+      kind: 'timeout',
+      delayMs: 300,
+      identity: __wartimeMgtIdentity,
+      owner: __wartimeMgtOwner,
+    });
     setTimeout(() => {
+      __emitWartimeAsyncFired({
+        asyncOwnerId: completionTailAsyncOwnerId,
+        outcome: 'fired',
+        identity: __wartimeMgtIdentity,
+        liveIdentity: build357PresentationIdentity(),
+      });
       void (async () => {
       emit357InstantWinTerminal('presentation_completed', {
         gameId: gameId ?? undefined,
@@ -7527,7 +7599,29 @@ export const MobileGameTable = ({
       // this callback should be swallowed. Any downstream idempotency
       // is the parent handler's responsibility.
       try {
+        __emitWartimeProgression({
+          callback: 'onThreeFiveSevenWinAnimationComplete',
+          entry: 'entry',
+          reason: 'pot_complete_tail_elapsed',
+          capturedIdentity: storedPotIdentity,
+          liveIdentity: build357PresentationIdentity(),
+          presentationPhase: threeFiveSevenWinPhaseRef.current,
+          gameStatus,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
         await Promise.resolve(onThreeFiveSevenWinAnimationComplete?.());
+        __emitWartimeProgression({
+          callback: 'onThreeFiveSevenWinAnimationComplete',
+          entry: 'return',
+          reason: 'callback_resolved',
+          capturedIdentity: storedPotIdentity,
+          liveIdentity: build357PresentationIdentity(),
+          presentationPhase: threeFiveSevenWinPhaseRef.current,
+          gameStatus,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
       } catch (err) {
         emit357GameOverCompleteDiag('pot_complete_callback_threw', {
           gameId: gameId ?? null,
@@ -7545,9 +7639,13 @@ export const MobileGameTable = ({
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       activePotIdentityRef.current = null;
+      __capture357Checkpoint('pot_to_player_complete:return', {
+        animationId: animId,
+        phase: 'idle',
+      });
       })();
     }, 300);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357, players, gameId, handContextId, currentPlayer?.id, lastRoundResult, build357PresentationIdentity, gameStatus, __wartimeMgtIdentity, __wartimeMgtOwner, __capture357Checkpoint]);
 
   // SURGICAL REPAIR — sweep celebration release.
   //
