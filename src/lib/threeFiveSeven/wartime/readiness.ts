@@ -4,14 +4,19 @@
  * The ONLY permitted behavioral difference in this phase: the Instant
  * 3-5-7 harness cannot arm until this gate returns ready = true.
  *
+ * Two distinct concepts:
+ *   - WARTIME_IMPLEMENTATION_PHASE: reporting-only. How much of the
+ *     wartime instrumentation has actually been wired in this build.
+ *   - WARTIME_REQUIRED_REPRO_PHASE: gating. What the reproduction run
+ *     REQUIRES the coverage manifest to satisfy before the harness may
+ *     arm. This is always the FINAL required phase (3) so the gate
+ *     stays closed for every non-final build.
+ *
  * Ready requires:
  *   - a wartime session exists
  *   - the sink round-trip probe has passed
- *   - the coverage manifest for the current active phase is complete
- *
- * Phase 1 lands the plumbing but leaves phase 2/3 requirements
- * uninstalled — so the gate correctly refuses to arm even though the
- * code compiles. Later phases flip requirements on as their hooks land.
+ *   - the coverage manifest is complete AT THE REQUIRED REPRO PHASE
+ *   - no dropped events / sink failures / serialization failures
  */
 
 import { BUILD_IDENTITY } from '@/lib/buildIdentity';
@@ -36,10 +41,18 @@ import {
 import { SRC, listSourceSites } from './sourceSites';
 
 /**
- * Active phase target for the readiness gate. Bumped as later
- * instrumentation phases land. Kept at 1 until phase 2 goes in.
+ * Reporting-only: reflects how much of the wartime instrumentation
+ * has actually landed in this build. Bump this as each phase's
+ * production hooks are wired. NEVER used to gate the harness.
  */
-export const WARTIME_ACTIVE_PHASE: WartimePhase = 1;
+export const WARTIME_IMPLEMENTATION_PHASE: WartimePhase = 2;
+
+/**
+ * Gating: the coverage phase the harness reproduction REQUIRES.
+ * Fixed at the final phase so the gate is closed on every build
+ * that has not yet installed Phase 3 hooks.
+ */
+export const WARTIME_REQUIRED_REPRO_PHASE: WartimePhase = 3;
 
 let coverageEmittedForSession: string | null = null;
 let bootstrapKicked = false;
@@ -58,7 +71,8 @@ export interface WartimeReadinessSnapshot {
   sessionId: string | null;
   buildSha: string;
   bundleFilename: string | null;
-  activePhase: WartimePhase;
+  implementationPhase: WartimePhase;
+  requiredReproPhase: WartimePhase;
   coverage: ReturnType<typeof coverageSummary>;
   sink: ReturnType<typeof getSinkCounters>;
   sourceSiteCount: number;
@@ -72,10 +86,12 @@ export async function bootstrapWartime(): Promise<void> {
   emitWartime({
     eventName: 'session_start',
     sourceSiteId: SRC.SESSION_START.id,
-    payload: { activePhase: WARTIME_ACTIVE_PHASE },
+    payload: {
+      implementationPhase: WARTIME_IMPLEMENTATION_PHASE,
+      requiredReproPhase: WARTIME_REQUIRED_REPRO_PHASE,
+    },
   });
   emitCoverageManifest();
-  // Non-blocking sink round-trip probe.
   void runSinkRoundTripProbe(sessionId, BUILD_IDENTITY.buildSha).then((passed) => {
     if (passed) {
       markRequirementInstalled('integrity.round_trip', SRC.SINK_PROBE.id);
@@ -97,7 +113,8 @@ export function emitCoverageManifest(): void {
     eventName: 'coverage_manifest',
     sourceSiteId: SRC.COVERAGE_REPORT.id,
     payload: {
-      activePhase: WARTIME_ACTIVE_PHASE,
+      implementationPhase: WARTIME_IMPLEMENTATION_PHASE,
+      requiredReproPhase: WARTIME_REQUIRED_REPRO_PHASE,
       requirements: requirements.map((r) => ({
         requirementId: r.requirementId,
         description: r.description,
@@ -117,7 +134,8 @@ export function checkWartimeReady(): WartimeReadinessSnapshot {
   const sessionId = getWartimeSessionId();
   if (!sessionId) reasons.push('no-session');
   if (!isSinkRoundTripPassed()) reasons.push('sink-round-trip-not-passed');
-  if (!coverageComplete(WARTIME_ACTIVE_PHASE)) reasons.push('coverage-incomplete');
+  // GATE: always require the FINAL repro phase, never the implementation phase.
+  if (!coverageComplete(WARTIME_REQUIRED_REPRO_PHASE)) reasons.push('coverage-incomplete');
   const sinkCounters = getSinkCounters();
   if (sinkCounters.droppedEventCount > 0) reasons.push('dropped-events');
   if (sinkCounters.sinkFailureCount > 0) reasons.push('sink-failures');
@@ -130,7 +148,8 @@ export function checkWartimeReady(): WartimeReadinessSnapshot {
     sessionId,
     buildSha: BUILD_IDENTITY.buildSha,
     bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-    activePhase: WARTIME_ACTIVE_PHASE,
+    implementationPhase: WARTIME_IMPLEMENTATION_PHASE,
+    requiredReproPhase: WARTIME_REQUIRED_REPRO_PHASE,
     coverage: coverageSummary(),
     sink: sinkCounters,
     sourceSiteCount: listSourceSites().length,
@@ -139,9 +158,8 @@ export function checkWartimeReady(): WartimeReadinessSnapshot {
 }
 
 /**
- * Non-blocking readiness check for gameplay callers. Emits a
- * `not_ready` diagnostic when refusing to arm. Returns true only
- * when every gate is green.
+ * Non-blocking readiness check. Emits a `not_ready` diagnostic
+ * when refusing to arm. Returns true only when every gate is green.
  */
 export function isWartimeReadyForHarness(context: Record<string, unknown> = {}): boolean {
   const snap = checkWartimeReady();
@@ -149,7 +167,14 @@ export function isWartimeReadyForHarness(context: Record<string, unknown> = {}):
     emitWartime({
       eventName: 'not_ready',
       sourceSiteId: SRC.READINESS_GATE.id,
-      payload: { reasons: snap.reasons, coverage: snap.coverage, sink: snap.sink, context },
+      payload: {
+        reasons: snap.reasons,
+        implementationPhase: snap.implementationPhase,
+        requiredReproPhase: snap.requiredReproPhase,
+        coverage: snap.coverage,
+        sink: snap.sink,
+        context,
+      },
     });
   }
   return snap.ready;
