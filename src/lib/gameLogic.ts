@@ -21,6 +21,20 @@ __wartimeRegisterHookGL({
   sourceFunction: 'gameLogic.dbMutations',
 });
 __wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_MUTATION_CORRELATION.id);
+__wartimeRegisterHookGL({
+  requirementId: 'db.mutation.correlation',
+  sourceSiteId: WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id,
+  sourceFile: 'src/lib/gameLogic.ts',
+  sourceFunction: 'instant-win recordGameResult correlation call site',
+});
+__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_RECORD_RESULT_INSTANT_WIN.id);
+__wartimeRegisterHookGL({
+  requirementId: 'db.mutation.correlation',
+  sourceSiteId: WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id,
+  sourceFile: 'src/lib/gameLogic.ts',
+  sourceFunction: 'instant-win snapshotPlayerChips correlation call site',
+});
+__wartimeRegisterEmitterGL('db.mutation.correlation', WARTIME_SRC.DB_SNAPSHOT_CHIPS_INSTANT_WIN.id);
 
 /** Deterministic 3-5-7 instant-win forced hand (matches has357Hand contract). */
 const FORCED_357_CARDS: Card[] = [
