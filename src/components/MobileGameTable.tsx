@@ -7388,19 +7388,32 @@ export const MobileGameTable = ({
     });
   }, [sweepCelebrationCompleted, build357PresentationIdentity, gameId, handContextId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult]);
 
-  // DEALER-GAME BOUNDARY: on dealerGameId or handContextId transition,
-  // cancel every stale sweep-wait, pot trigger, and celebration state
-  // so DG1 presentation cannot leak into DG2.
+  // DEALER-GAME BOUNDARY: last-concrete-identity contract.
+  // A transient null identity (settlement can briefly null dealerGameId
+  // / handContextId) MUST NOT count as a boundary — that would wipe the
+  // armed sweep-wait and celebration state for the same terminal event.
+  // Only a transition between two DIFFERENT non-null identities is a
+  // true dealer-game boundary. `prev357BoundaryIdentityRef` therefore
+  // stores the last CONCRETE (non-null) identity ever seen.
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
-    const prev = prev357BoundaryIdentityRef.current;
     const nextDgId = three57DealerGameId;
     const nextHandCtx = handContextId ?? null;
-    prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
-    if (!prev) return;
+    const nextIsConcrete = nextDgId != null && nextHandCtx != null;
+    if (!nextIsConcrete) {
+      // Settlement may temporarily null live identity. Preserve both
+      // the active presentation and the last concrete identity.
+      return;
+    }
+    const prev = prev357BoundaryIdentityRef.current;
+    if (!prev) {
+      prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
+      return;
+    }
     const boundaryCrossed =
       prev.dealerGameId !== nextDgId ||
       prev.handContextId !== nextHandCtx;
+    prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
@@ -7410,7 +7423,7 @@ export const MobileGameTable = ({
     setShowSweepTheLegs357(false);
     setSweepCelebrationCompleted(false);
     hadLegsBeforeSweepRef.current = false;
-    lastSweepsResultRef.current = null;
+    lastSweepsIdentityRef.current = null;
     if (staleSweep || stalePot) {
       emit357RuntimeDiag('dealer_game_boundary_reset', {
         gameId: gameId ?? null,
