@@ -47,6 +47,11 @@ for (const __src of [
   __wartimeRegisterHookGame({ requirementId: 'async.owner', sourceSiteId: __src.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __src.fn });
   __wartimeRegisterEmitterGame('async.owner', __src.id);
 }
+// Progression entry/return production owners for the two Game.tsx callbacks
+// exercised by the targeted_357_root_cause profile.
+for (const __psrc of [__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY, __WARTIME_SRC.PROG_HANDLE357_WINCOMPLETE]) {
+  __wartimeRegisterHookGame({ requirementId: 'progression.advancement', sourceSiteId: __psrc.id, sourceFile: 'src/pages/Game.tsx', sourceFunction: __psrc.fn });
+}
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
