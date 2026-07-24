@@ -38,6 +38,8 @@ import {
   useDealRedispatchDetector as __useDealRedispatchDetector,
   emitSelfFaceUpChannel as __emitWartimeSelfFaceUp,
   emitOpponentCardBackChannel as __emitWartimeOpponentCardBack,
+  emitChannelSettled as __emitWartimeChannelSettled,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterOrch,
   registerWartimeProductionHook as __wartimeRegisterHookOrch,
   SRC as __WARTIME_SRC_DEAL,
 } from '@/lib/threeFiveSeven/wartime';
@@ -52,6 +54,7 @@ __wartimeRegisterHookOrch({
   sourceFile: 'src/components/ThreeFiveSevenDealOrchestrator.tsx',
   sourceFunction: 'ThreeFiveSevenDealOrchestrator.selfFaceUpChannel',
 });
+__wartimeRegisterEmitterOrch('deal.self_face_up.channel_settled', __WARTIME_SRC_DEAL.DEAL_SELF_FACE_UP_SETTLED.id);
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -227,6 +230,26 @@ export function ThreeFiveSevenDealOrchestrator({
     if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
       dispatchedWaveRef.current = waveContextId;
       emitDecision('suppress', 'refresh_rejoin_historical_wave_suppressed');
+      __emitWartimeChannelSettled({
+        identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId: selfPlayerId },
+        owner: __wartimeDealOwner,
+        orchestratorInstanceId: __wartimeDealOwner.componentInstanceId,
+        runtimeComponentInstanceId: null,
+        handContextId: waveContextId,
+        expectedCount: deal.expectedCount,
+        authoritativeCount: null,
+        visibleCount: null,
+        transportedCount: null,
+        passthroughStatus: true,
+        passthroughReason: 'refresh_rejoin_historical_wave_suppressed',
+        settledReason: 'refresh_rejoin_reconstruction',
+        runtimePhase: deal.phase,
+        completedLatch: false,
+        settledLatch: false,
+        terminalState: false,
+        advancingState: false,
+        modalMounted: false,
+      });
       return;
     }
     if (!dealTimingHydrated) { emitDecision('defer', 'deal_timing_not_hydrated'); return; }
@@ -806,6 +829,7 @@ export function Use357SelfHand<T>({
   //    (baseHandContextId + expectedCount). All fire-and-forget.
   const firstCardVisibleKeyRef = useRef<Set<string>>(new Set());
   const fullHandVisibleKeyRef = useRef<Set<string>>(new Set());
+  const channelSettledKeyRef = useRef<Set<string>>(new Set());
   const prevEffectiveLenRef = useRef<number>(0);
   useEffect(() => {
     if (!deal || !currentPlayerId) return;
@@ -883,6 +907,30 @@ export function Use357SelfHand<T>({
         identity: { handContextId: baseHandContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId },
         payload: { authoritativeCount, presentationCount: nextLen, runtimePhase: phase },
       });
+      const settledReason = isClaimOnlyRender ? 'transport_completed' : (deal?.expectedCount === 0 ? 'refresh_rejoin_reconstruction' : 'authoritative_passthrough');
+      const channelKey = `${waveIdentityKey}|${currentPlayerId}|${settledReason}`;
+      if (!channelSettledKeyRef.current.has(channelKey)) {
+        channelSettledKeyRef.current.add(channelKey);
+        __emitWartimeChannelSettled({
+          identity: { handContextId: baseHandContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId },
+          orchestratorInstanceId: null,
+          runtimeComponentInstanceId: null,
+          handContextId: baseHandContextId,
+          expectedCount,
+          authoritativeCount,
+          visibleCount: nextLen,
+          transportedCount: settled,
+          passthroughStatus: !isClaimOnlyRender,
+          passthroughReason: isClaimOnlyRender ? null : (deal?.expectedCount === 0 ? 'no_wave_ever_dispatched_self' : 'authoritative_passthrough'),
+          settledReason,
+          runtimePhase: phase,
+          completedLatch: nextLen >= authoritativeCount,
+          settledLatch: nextLen >= authoritativeCount,
+          terminalState: false,
+          advancingState: false,
+          modalMounted: false,
+        });
+      }
     }
   }, [
     deal, currentPlayerId, baseHandContextId, effectiveCards.length,
