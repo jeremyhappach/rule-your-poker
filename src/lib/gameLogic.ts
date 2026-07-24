@@ -682,20 +682,10 @@ export async function startRound(gameId: string, roundNumber: number) {
   if (roundNumber === 1) {
     const harnessId = await readDebugHarness('3-5-7');
     if (harnessId === 'instant_win') {
-      // ADMIN-HARNESS-ONLY READINESS GATE — the ONLY behavioral change
-      // permitted by the wartime-instrumentation contract. If the
-      // wartime sink is not ready, refuse to arm the instant-win
-      // forcing branch. A `not_ready` diagnostic is emitted by the gate.
-      if (!isWartimeReadyForHarness({ gameId, roundId: round.id, handNumber })) {
-        emitWartime({
-          eventName: 'harness_instant_win_refused',
-          sourceSiteId: WARTIME_SRC.HARNESS_GATED.id,
-          identity: { gameId, roundId: round.id, handNumber },
-          payload: { harnessId },
-        });
-        // Fall through to normal deal — harness is a no-op this turn.
-      } else {
-        const sessionHostPlayerId = resolveSessionHostPlayerId(
+      // Preflight already validated in pre-mutation gate above. No
+      // second readiness check here — a duplicate gate at this point
+      // (after ante charge / round insert) can only strand the game.
+      const sessionHostPlayerId = resolveSessionHostPlayerId(
         { current_host: (gameConfig as any)?.current_host ?? null },
         activePlayers.map((p) => ({
           id: p.id,
@@ -735,10 +725,10 @@ export async function startRound(gameId: string, roundNumber: number) {
           dealerPosition: dealerPos,
           activePlayerIds: activePlayers.map(p => p.id),
         });
-        }
       }
     }
   }
+
 
 
   // BATCH: Prepare all player cards for a single insert
