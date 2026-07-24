@@ -31,6 +31,10 @@ import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { SHELL_Z } from '@/lib/canonicalShell/zLayers';
+import {
+  useWartimeComponentInstance as __useWartimePotInstance,
+  SRC as __WARTIME_SRC_POT,
+} from '@/lib/threeFiveSeven/wartime';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
@@ -80,6 +84,14 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   const phaseTimersRef = useRef<number[]>([]);
   const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
+
+  // ── Wartime Phase 2 instrumentation ─────────────────────────
+  __useWartimePotInstance({
+    componentType: 'PotToPlayerAnimation',
+    sourceSiteId: __WARTIME_SRC_POT.POT_ANIM_MOUNT.id,
+    identity: { triggerId: triggerId ?? null },
+    branch: { winnerPosition, currentPlayerPosition, gameType, phase, amount },
+  });
 
   // IMPORTANT: parent often passes inline callbacks which change identity on re-render.
   // If we include callbacks in the animation effect deps, React will run cleanup on re-render
