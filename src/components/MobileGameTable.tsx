@@ -9542,13 +9542,49 @@ export const MobileGameTable = ({
             signal for the sweep-wait phase. If legs were present at
             detection, chain into SweepTheLegsAnimation before releasing;
             otherwise mark celebration complete immediately. */}
-        {/* Slice 1 (inert): normalized 3-5-7 terminal presentation
-            controller. Renders null until the atomic instant-win cutover
-            in Slice 3 wires the announcement + proof-card prelude and
-            shared terminal path. Mounted here — inside MobileGameTable's
-            table surface — so it can consume the same felt-relative DOM
-            anchors as existing presentation owners. */}
-        <ThreeFiveSevenTerminalController descriptor={threeFiveSevenTerminalDescriptor} />
+        {/* Slice 3: instant-357 prelude controller — ACTIVE.
+            Renders announcement + proof cards + optional Sweep-the-Legs,
+            then hands off to the unchanged canonical downstream via
+            `enterCanonical357TerminalPresentation`. Normal-win path is
+            untouched. Mounted inside the felt surface so anchors
+            resolve correctly. */}
+        <ThreeFiveSevenTerminalController
+          descriptor={threeFiveSevenTerminalDescriptor}
+          onOwnershipChange={(genId) => {
+            controllerInstant357OwnedGenIdRef.current = genId;
+            setControllerInstant357OwnedGenId(genId);
+          }}
+          onEnterCanonical={(entry) => {
+            const awardedPot = threeFiveSevenWinPotAmount ?? null;
+            // Legacy pot identity mirrors what the sweep-release site
+            // used to stamp so the downstream cross-DG guard shape is
+            // preserved. terminalGenerationId is carried from the
+            // descriptor so the identity ref is stamped with the full
+            // canonical seven-field set on this path.
+            const legacyPotIdentity: Three57PresentationIdentity =
+              build357PresentationIdentity();
+            // Legacy sweep-release extras (pot hidden flag) preserved
+            // at call site to remain byte-equivalent to the old path.
+            setThreeFiveSevenPotHiddenUntilReset(true);
+            enterCanonical357TerminalPresentation({
+              identity: {
+                gameId: entry.gameId,
+                dealerGameId: entry.dealerGameId,
+                roundId: entry.roundId,
+                handNumber: entry.handNumber,
+                handContextId: entry.handContextId,
+                terminalResultIdentity: entry.terminalResultIdentity,
+                terminalGenerationId: entry.terminalGenerationId,
+                winnerId: entry.winnerId,
+                winnerPosition: entry.winnerPosition,
+                awardedPot,
+              },
+              legacyPotIdentity,
+              source: 'controller-instant-357',
+            });
+          }}
+        />
+
 
         <SweepsPotAnimation
           show={showSweepsPot}
