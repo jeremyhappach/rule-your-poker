@@ -795,13 +795,25 @@ export async function startRound(gameId: string, roundNumber: number) {
 
           try {
             // Mark round completed and set sweep message.
-            await supabase
+            await __withWartimeDbMutationCorrelation({
+              label: 'instant_win.rounds_completed',
+              table: 'rounds',
+              op: 'update',
+              identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber },
+              payloadHash: `status=completed|round=${round.id}`,
+            }, async () => await supabase
               .from('rounds')
               .update({ status: 'completed' })
-              .eq('id', round.id);
+              .eq('id', round.id));
 
             // ATOMIC GUARD: win the in_progress → game_over transition once.
-            const { data: guardResult, error: guardError } = await supabase
+            const { data: guardResult, error: guardError } = await __withWartimeDbMutationCorrelation({
+              label: 'instant_win.games_game_over_guard',
+              table: 'games',
+              op: 'update',
+              identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber },
+              payloadHash: `status=game_over|result=${sweepMessage}`,
+            }, async () => await supabase
               .from('games')
               .update({
                 status: 'game_over',
@@ -815,7 +827,7 @@ export async function startRound(gameId: string, roundNumber: number) {
               .eq('id', gameId)
               .eq('status', 'in_progress')
               .select('pot, total_hands, dealer_position, leg_value, pending_session_end')
-              .single();
+              .single());
 
             if (guardError || !guardResult) {
               await trace357InstantWin('commit.guard_lost', gameId, {
@@ -847,10 +859,16 @@ export async function startRound(gameId: string, roundNumber: number) {
             const totalPrize = currentPot + totalLegValue;
 
             if (player?.id) {
-              await supabase.rpc('increment_player_chips', {
+              await __withWartimeDbMutationCorrelation({
+                label: 'instant_win.increment_player_chips',
+                table: 'rpc.increment_player_chips',
+                op: 'rpc',
+                identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber, playerId: player.id },
+                payloadHash: `player=${player.id}|amount=${totalPrize}`,
+              }, async () => await supabase.rpc('increment_player_chips', {
                 p_player_id: player.id,
                 p_amount: totalPrize,
-              });
+              }));
             }
 
             // Zero-sum accounting: winner receives totalPrize; other players
@@ -885,30 +903,54 @@ export async function startRound(gameId: string, roundNumber: number) {
             // Fire-and-forget snapshot for audit parity with handleGameOver.
             try { void snapshotPlayerChips(gameId, commitHandNumber); } catch { /* audit-only */ }
 
-            await supabase
+            await __withWartimeDbMutationCorrelation({
+              label: 'instant_win.players_reset_legs_decisions',
+              table: 'players',
+              op: 'update',
+              identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber },
+              payloadHash: 'legs=0|decision=null|locked=false',
+            }, async () => await supabase
               .from('players')
               .update({
                 legs: 0,
                 current_decision: null,
                 decision_locked: false,
               })
-              .eq('game_id', gameId);
+              .eq('game_id', gameId));
 
             // Scope ante_decision reset to eligible participants only.
-            await supabase
+            await __withWartimeDbMutationCorrelation({
+              label: 'instant_win.players_reset_ante',
+              table: 'players',
+              op: 'update',
+              identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber },
+              payloadHash: 'ante_decision=null|non_observer',
+            }, async () => await supabase
               .from('players')
               .update({ ante_decision: null })
               .eq('game_id', gameId)
-              .neq('status', 'observer');
+              .neq('status', 'observer'));
 
-            await supabase
+            await __withWartimeDbMutationCorrelation({
+              label: 'instant_win.games_zero_pot_total_hands',
+              table: 'games',
+              op: 'update',
+              identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber },
+              payloadHash: `pot=0|total_hands=${commitHandNumber}`,
+            }, async () => await supabase
               .from('games')
               .update({ pot: 0, total_hands: commitHandNumber })
-              .eq('id', gameId);
+              .eq('id', gameId));
 
             // Session end propagation (mirrors handleGameOver tail).
             if (guardResult.pending_session_end) {
-              await supabase
+              await __withWartimeDbMutationCorrelation({
+                label: 'instant_win.games_session_ended',
+                table: 'games',
+                op: 'update',
+                identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber },
+                payloadHash: 'status=session_ended|pending_session_end=false',
+              }, async () => await supabase
                 .from('games')
                 .update({
                   status: 'session_ended',
@@ -916,7 +958,7 @@ export async function startRound(gameId: string, roundNumber: number) {
                   game_over_at: new Date().toISOString(),
                   pending_session_end: false,
                 })
-                .eq('id', gameId);
+                .eq('id', gameId));
             }
 
             await trace357InstantWin('commit.game_over', gameId, {
