@@ -9271,6 +9271,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       lastRoundResult: game?.last_round_result ?? null,
     });
     emit357GameOverCompleteDiag('owner_entered', _gocId());
+    __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY.id, {
+      callback: 'handleGameOverComplete',
+      entry: 'entry',
+      reason: 'owner_entered',
+      identity: { gameId: gameId ?? null, dealerGameId: game?.current_game_uuid ?? null },
+      gameStatus: game?.status ?? null,
+    });
 
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
@@ -9278,6 +9285,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ..._gocId(),
         returnSite: 'handleGameOverComplete:no-game-id',
         returnReason: 'no-game-id',
+      });
+      __emitWartimeProgressionAt(__WARTIME_SRC.PROG_HANDLE_GAMEOVER_ENTRY.id, {
+        callback: 'handleGameOverComplete',
+        entry: 'return',
+        reason: 'no-game-id',
+        identity: { gameId: null, dealerGameId: game?.current_game_uuid ?? null },
+        gameStatus: game?.status ?? null,
       });
       return;
     }
