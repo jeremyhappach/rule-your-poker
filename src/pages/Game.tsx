@@ -14567,6 +14567,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenCachedLegPositions={cachedLegPositions}
               onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
+              threeFiveSevenTerminalDescriptor={terminal357Descriptor}
               onStay={isInProgress ? () => handleStay() : () => {}}
               onFold={isInProgress ? () => handleFold() : () => {}}
 
