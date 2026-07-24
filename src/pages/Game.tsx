@@ -1528,6 +1528,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
+  // Slice 1 (inert): immutable normalized terminal descriptor. Built at
+  // authoritative 3-5-7 terminal detection (final-leg win OR instant
+  // sweep). Consumed by the new ThreeFiveSevenTerminalController mounted
+  // inside MobileGameTable. Bespoke instant-win owners keep running until
+  // the atomic Slice 3 cutover; this state is populated ALONGSIDE them.
+  const [terminal357Descriptor, setTerminal357Descriptor] = useState<Terminal357Descriptor | null>(null);
   // Track if 357 win animation is actively playing (blocks GameOverCountdown)
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
