@@ -6,6 +6,11 @@ import {
   useWartimeStateWrite as __useWartimeStateWrite,
   emitRefWrite as __emitWartimeRefWrite,
   registerWartimeProductionHook as __wartimeRegisterHookMGT,
+  registerActualEmitterInvocation as __wartimeRegisterEmitterMGT,
+  captureCanonical357Snapshot as __captureCanonical357Snapshot,
+  emitProgressionAdvancement as __emitWartimeProgression,
+  trackAsyncOwner as __trackWartimeAsyncOwner,
+  emitAsyncOwnerFired as __emitWartimeAsyncFired,
   SRC as __WARTIME_SRC,
 } from "@/lib/threeFiveSeven/wartime";
 
@@ -19,30 +24,35 @@ __wartimeRegisterHookMGT({
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.canonical357Snapshot',
 });
+__wartimeRegisterEmitterMGT('dom.snapshot.checkpoints', __WARTIME_SRC.DOM_SNAPSHOT.id);
 __wartimeRegisterHookMGT({
   requirementId: 'dom.observer.mutation',
   sourceSiteId: __WARTIME_SRC.DOM_MUTATION.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.mutationObserver',
 });
+__wartimeRegisterEmitterMGT('dom.observer.mutation', __WARTIME_SRC.DOM_MUTATION.id);
 __wartimeRegisterHookMGT({
   requirementId: 'dom.observer.resize',
   sourceSiteId: __WARTIME_SRC.DOM_RESIZE.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.resizeObserver',
 });
+__wartimeRegisterEmitterMGT('dom.observer.resize', __WARTIME_SRC.DOM_RESIZE.id);
 __wartimeRegisterHookMGT({
   requirementId: 'progression.advancement',
   sourceSiteId: __WARTIME_SRC.PROGRESSION_ADVANCEMENT.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.progressionCallbacks',
 });
+__wartimeRegisterEmitterMGT('progression.advancement', __WARTIME_SRC.PROGRESSION_ADVANCEMENT.id);
 __wartimeRegisterHookMGT({
   requirementId: 'async.owner',
   sourceSiteId: __WARTIME_SRC.ASYNC_OWNER.id,
   sourceFile: 'src/components/MobileGameTable.tsx',
   sourceFunction: 'MobileGameTable.lifecycleTimers',
 });
+__wartimeRegisterEmitterMGT('async.owner', __WARTIME_SRC.ASYNC_OWNER.id);
 import confetti from 'canvas-confetti';
 import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
