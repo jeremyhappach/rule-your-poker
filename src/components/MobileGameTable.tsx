@@ -7360,6 +7360,126 @@ export const MobileGameTable = ({
     // to prevent dependency changes during animation from invalidating the animation sequence
   }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver, isWaitingPhase, lastRoundResult]);
 
+  // ── Canonical 3-5-7 terminal-entry adapter (Slice 2) ─────────────────
+  // Thin adapter that activates the already-canonical downstream
+  // PotToPlayerAnimation path. This helper OWNS only:
+  //
+  //   (1) A generation-scoped one-shot latch keyed on
+  //       `terminalGenerationId`. Duplicate entries for the same
+  //       generation are suppressed as diagnostics; the phase itself is
+  //       NOT used as a refusal condition (the Slice-3 controller
+  //       completes its prelude while `threeFiveSevenWinPhase` is still
+  //       `idle`, so refusing on `idle` would silently drop the handoff).
+  //
+  //   (2) Option-B identity comparison against
+  //       `canonicalTerminal357IdentityRef`. If the ref is null we stamp
+  //       the incoming identity. If it is populated we compare every
+  //       field (gameId, dealerGameId, roundId, handNumber, handContextId,
+  //       terminalResultIdentity, terminalGenerationId, winnerId,
+  //       winnerPosition, awardedPot). Equal → keep and continue. Not
+  //       equal → emit a high-signal invariant event and SUPPRESS entry
+  //       for that generation. Never overwrite a mismatched identity.
+  //
+  //   (3) The existing legacy 8-statement phase transition, byte-
+  //       equivalent to the two call sites it replaces. Caller-specific
+  //       extras (setThreeFiveSevenPotHiddenUntilReset, sweep-ref
+  //       cleanup) stay at the caller.
+  //
+  // The helper MUST NOT touch destination selection, confetti timing,
+  // bounce timing, completion semantics, advancement, safety timers, or
+  // the announcement lifecycle. Those remain owned by the unchanged
+  // canonical downstream path.
+  const enterCanonical357TerminalPresentation = useCallback((input: {
+    identity: CanonicalTerminal357Identity;
+    legacyPotIdentity: Three57PresentationIdentity;
+    source: 'legacy-legs-complete' | 'legacy-sweep-release' | 'controller-instant-357';
+  }): { potTriggerId: string } | { suppressed: 'duplicate' | 'mismatch' } => {
+    const { identity, legacyPotIdentity, source } = input;
+    const genId = identity.terminalGenerationId;
+
+    // (1) Generation-scoped one-shot latch.
+    if (genId && canonical357EntryGenerationRef.current === genId) {
+      emit357RuntimeDiag('canonical_entry_suppressed_duplicate', {
+        gameId: identity.gameId,
+        roundId: identity.roundId,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: identity.winnerId,
+        terminalResultIdentity: identity.terminalResultIdentity,
+      }, {
+        source,
+        terminalGenerationId: genId,
+      });
+      return { suppressed: 'duplicate' };
+    }
+
+    // (2) Option B — compare-if-populated, stamp-if-null.
+    const existing = canonicalTerminal357IdentityRef.current;
+    if (existing) {
+      const equal =
+        existing.gameId === identity.gameId &&
+        existing.dealerGameId === identity.dealerGameId &&
+        existing.roundId === identity.roundId &&
+        existing.handNumber === identity.handNumber &&
+        existing.handContextId === identity.handContextId &&
+        existing.terminalResultIdentity === identity.terminalResultIdentity &&
+        existing.terminalGenerationId === identity.terminalGenerationId &&
+        existing.winnerId === identity.winnerId &&
+        existing.winnerPosition === identity.winnerPosition &&
+        existing.awardedPot === identity.awardedPot;
+      if (!equal) {
+        emit357RuntimeDiag('canonical_entry_invariant_mismatch', {
+          gameId: identity.gameId,
+          roundId: identity.roundId,
+          viewerPlayerId: currentPlayer?.id ?? null,
+          winnerPlayerId: identity.winnerId,
+          terminalResultIdentity: identity.terminalResultIdentity,
+        }, {
+          source,
+          existing,
+          incoming: identity,
+        });
+        // Latch to prevent retry loops on the same mismatched generation.
+        if (genId) canonical357EntryGenerationRef.current = genId;
+        return { suppressed: 'mismatch' };
+      }
+      // Equal → keep existing, continue.
+    } else {
+      canonicalTerminal357IdentityRef.current = identity;
+    }
+    if (genId) canonical357EntryGenerationRef.current = genId;
+
+    // (3) Byte-equivalent legacy transition — the shared 7-statement
+    //     block. Caller-specific extras remain at the caller.
+    setThreeFiveSevenWinPhase('pot-to-player');
+    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+    setPotOutAnimationActive(true);
+    setDisplayedPot(0);
+    const potTid = `pot-to-player-357-${Date.now()}`;
+    activePotIdentityRef.current = legacyPotIdentity;
+    setPotToPlayerTriggerId357(potTid);
+
+    emit357RuntimeDiag('canonical_entry_armed', {
+      gameId: identity.gameId,
+      roundId: identity.roundId,
+      viewerPlayerId: currentPlayer?.id ?? null,
+      winnerPlayerId: identity.winnerId,
+      terminalResultIdentity: identity.terminalResultIdentity,
+    }, {
+      source,
+      terminalGenerationId: genId,
+      potTriggerId: potTid,
+      winnerId: identity.winnerId,
+      winnerPosition: identity.winnerPosition,
+      awardedPot: identity.awardedPot,
+      handNumber: identity.handNumber,
+      handContextId: identity.handContextId,
+      dealerGameId: identity.dealerGameId,
+    });
+
+    return { potTriggerId: potTid };
+  }, [currentPlayer?.id]);
+
+
   const handleLegsToPlayerComplete = useCallback(() => {
     const animId = currentAnimationIdRef.current;
     
