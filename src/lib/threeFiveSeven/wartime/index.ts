@@ -27,6 +27,7 @@ export {
   markRequirementInstalled,
   markHelperImplemented,
   registerWartimeProductionHook,
+  registerActualEmitterInvocation,
   noteRuntimeEvent,
   coverageSummary,
   coverageGate,
