@@ -163,6 +163,7 @@ export function markRequirementInstalled(requirementId: string, sourceSiteId: st
     sourceFile: '(legacy self-registered)',
     sourceFunction: '(legacy)',
   });
+  registerActualEmitterInvocation(requirementId, sourceSiteId);
 }
 
 // ── Readers ────────────────────────────────────────────────────
