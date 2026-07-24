@@ -7573,6 +7573,8 @@ export const MobileGameTable = ({
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
     const potTid = `pot-to-player-357-${Date.now()}`;
+    currentAnimationIdRef.current = potTid;
+    potToPlayerCompletedRef.current = null;
     activePotIdentityRef.current = legacyPotIdentity;
     setPotToPlayerTriggerId357(potTid);
 
@@ -9657,42 +9659,46 @@ export const MobileGameTable = ({
             `enterCanonical357TerminalPresentation`. Normal-win path is
             untouched. Mounted inside the felt surface so anchors
             resolve correctly. */}
-        <ThreeFiveSevenTerminalController
-          descriptor={threeFiveSevenTerminalDescriptor}
-          onOwnershipChange={(genId) => {
-            controllerInstant357OwnedGenIdRef.current = genId;
-            setControllerInstant357OwnedGenId(genId);
-          }}
-          onEnterCanonical={(entry) => {
-            const awardedPot = threeFiveSevenWinPotAmount ?? null;
-            // Legacy pot identity mirrors what the sweep-release site
-            // used to stamp so the downstream cross-DG guard shape is
-            // preserved. terminalGenerationId is carried from the
-            // descriptor so the identity ref is stamped with the full
-            // canonical seven-field set on this path.
-            const legacyPotIdentity: Three57PresentationIdentity =
-              build357PresentationIdentity();
-            // Legacy sweep-release extras (pot hidden flag) preserved
-            // at call site to remain byte-equivalent to the old path.
-            setThreeFiveSevenPotHiddenUntilReset(true);
-            enterCanonical357TerminalPresentation({
-              identity: {
-                gameId: entry.gameId,
-                dealerGameId: entry.dealerGameId,
-                roundId: entry.roundId,
-                handNumber: entry.handNumber,
-                handContextId: entry.handContextId,
-                terminalResultIdentity: entry.terminalResultIdentity,
-                terminalGenerationId: entry.terminalGenerationId,
-                winnerId: entry.winnerId,
-                winnerPosition: entry.winnerPosition,
-                awardedPot,
-              },
-              legacyPotIdentity,
-              source: 'controller-instant-357',
-            });
-          }}
-        />
+        <ThreeFiveSevenGameplayGeometryProvider
+          winnerTabledCardsVisible={threeFiveSevenTerminalDescriptor?.source === 'instant-357'}
+        >
+          <ThreeFiveSevenTerminalController
+            descriptor={threeFiveSevenTerminalDescriptor}
+            onOwnershipChange={(genId) => {
+              controllerInstant357OwnedGenIdRef.current = genId;
+              setControllerInstant357OwnedGenId(genId);
+            }}
+            onEnterCanonical={(entry) => {
+              const awardedPot = threeFiveSevenWinPotAmount ?? null;
+              // Legacy pot identity mirrors what the sweep-release site
+              // used to stamp so the downstream cross-DG guard shape is
+              // preserved. terminalGenerationId is carried from the
+              // descriptor so the identity ref is stamped with the full
+              // canonical seven-field set on this path.
+              const legacyPotIdentity: Three57PresentationIdentity =
+                build357PresentationIdentity();
+              // Legacy sweep-release extras (pot hidden flag) preserved
+              // at call site to remain byte-equivalent to the old path.
+              setThreeFiveSevenPotHiddenUntilReset(true);
+              enterCanonical357TerminalPresentation({
+                identity: {
+                  gameId: entry.gameId,
+                  dealerGameId: entry.dealerGameId,
+                  roundId: entry.roundId,
+                  handNumber: entry.handNumber,
+                  handContextId: entry.handContextId,
+                  terminalResultIdentity: entry.terminalResultIdentity,
+                  terminalGenerationId: entry.terminalGenerationId,
+                  winnerId: entry.winnerId,
+                  winnerPosition: entry.winnerPosition,
+                  awardedPot,
+                },
+                legacyPotIdentity,
+                source: 'controller-instant-357',
+              });
+            }}
+          />
+        </ThreeFiveSevenGameplayGeometryProvider>
 
 
         {/* Legacy bespoke instant-win overlays. Behaviorally UNREACHABLE
