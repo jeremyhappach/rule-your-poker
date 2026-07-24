@@ -18,9 +18,27 @@ export {
   checkWartimeReady,
   isWartimeReadyForHarness,
   emitCoverageManifest,
-  WARTIME_ACTIVE_PHASE,
+  WARTIME_IMPLEMENTATION_PHASE,
+  WARTIME_REQUIRED_REPRO_PHASE,
 } from './readiness';
 export { getSinkCounters, isSinkRoundTripPassed } from './sink';
 export { getWartimeSessionId, ensureWartimeSession, resetWartimeSession } from './session';
 export { markRequirementInstalled, coverageSummary, listRequirements } from './coverage';
 export { SRC, registerSourceSite, listSourceSites } from './sourceSites';
+// Phase 2 wiring primitives (side-effect: registers Phase 2 sites).
+import './phase2Wiring';
+import './async';
+import './db';
+import './realtime';
+export {
+  useWartimeComponentInstance,
+  useWartimeStateWrite,
+  emitRefWrite,
+  emitAuthoritativeSnapshot,
+  emitSelfFaceUpChannel,
+  emitOpponentCardBackChannel,
+  useDealRedispatchDetector,
+} from './phase2Wiring';
+export { setWartimeTimeout, requestWartimeAnimationFrame, trackWartimePromise } from './async';
+export { withWartimeMutation } from './db';
+export { wrapWartimeRealtime } from './realtime';
