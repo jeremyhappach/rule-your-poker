@@ -4472,6 +4472,15 @@ export const MobileGameTable = ({
   const canonical357EntryGenerationRef = useRef<string | null>(null);
   const canonicalTerminal357IdentityRef = useRef<CanonicalTerminal357Identity | null>(null);
 
+  // Slice 3 — Instant-357 controller ownership registry. When the
+  // ThreeFiveSevenTerminalController holds prelude ownership for an
+  // instant-357 `terminalGenerationId`, every legacy instant-win
+  // prelude arm site early-returns and emits
+  // `357.terminal.controller.legacy_prelude_suppressed`. Normal-win
+  // ownership is UNCHANGED — this ref only affects instant-357.
+  const controllerInstant357OwnedGenIdRef = useRef<string | null>(null);
+  const [controllerInstant357OwnedGenId, setControllerInstant357OwnedGenId] = useState<string | null>(null);
+
 
   // HOLM: monotonic folded-latch for the local self hand.
   // Once `current_decision === 'fold'` is observed for a given
