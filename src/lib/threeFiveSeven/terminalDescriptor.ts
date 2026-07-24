@@ -61,15 +61,22 @@ export interface Terminal357Descriptor {
    *  an instant-357 descriptor without exactly three proof cards. */
   proofCards: CardType[] | null;
 
-  /** Immutable pre-settlement legs snapshot, sourced directly from the
-   *  authoritative realtime `players` rows at detection. No cache
-   *  fallback, no reconstruction. `hadAuthoritativeLegs` below is
-   *  derived from this snapshot and consumed by BOTH terminal sources
-   *  to gate the shared SweepTheLegsAnimation step. */
-  playersAtDetection: Terminal357PlayerLegsSnapshot[];
+  /** Immutable legs snapshot captured at Round 1 hand-start and persisted
+   *  on `rounds.three_five_seven_legs_at_start`. Consumed ONLY by the
+   *  instant-357 source to gate SweepTheLegsAnimation. For `source ===
+   *  'normal-win'` this may be empty/omitted — the normal terminal
+   *  prelude has already settled the final leg, so Sweep-the-Legs
+   *  eligibility is always true and never derived from stale Round 1
+   *  opening metadata. */
+  playersAtHandStart?: Terminal357PlayerLegsSnapshot[];
 
-  /** Derived from playersAtDetection. Consumed by BOTH sources to gate
-   *  the shared SweepTheLegsAnimation step. */
+  /** Gate for the shared SweepTheLegsAnimation step.
+   *
+   *   - `source === 'instant-357'`: derived from `playersAtHandStart`
+   *     (`playersAtHandStart.some(p => Number(p.legs ?? 0) > 0)`).
+   *   - `source === 'normal-win'`:  always `true`. The normal prelude
+   *     settles the winning final leg before entering the shared path,
+   *     so the sweep must run. */
   hadAuthoritativeLegs: boolean;
 }
 
