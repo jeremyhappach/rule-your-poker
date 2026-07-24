@@ -924,9 +924,10 @@ export async function startRound(gameId: string, roundNumber: number) {
                   '357',
                   currentGameUuid,
                 );
-                // Propagate the real created row so the correlation
-                // wrapper can sample the returned game_results.id.
-                return { error: rec.error, data: rec.id ? { id: rec.id } : null } as { error: unknown; data: { id: string } | null };
+                // Behavioral purity: recordGameResult performs an
+                // insert-only mutation and does not return a row id.
+                // returnedIdSample is truthfully null.
+                return { error: rec.error, data: null } as { error: unknown; data: null };
               });
             } catch (e) {
               await trace357InstantWin('commit.record_result_failed', gameId, {
