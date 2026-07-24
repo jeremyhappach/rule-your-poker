@@ -998,6 +998,11 @@ interface MobileGameTableProps {
   threeFiveSevenCachedLegPositions?: { playerId: string; position: number; legCount: number }[];
   onThreeFiveSevenWinAnimationStarted?: () => void; // Called when animation starts to clear trigger
   onThreeFiveSevenWinAnimationComplete?: () => void;
+  /** Slice 1 (inert): immutable terminal descriptor built by Game.tsx at
+   *  authoritative 3-5-7 terminal detection. Passed through to the new
+   *  ThreeFiveSevenTerminalController mounted below. Bespoke instant-win
+   *  path remains active until Slice 3 cutover. */
+  threeFiveSevenTerminalDescriptor?: Terminal357Descriptor | null;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
