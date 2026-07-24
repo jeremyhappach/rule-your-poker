@@ -3,7 +3,7 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, forma
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
-  isTargetedWartimePreflightReadyForHarness,
+  // isTargetedWartimePreflightReadyForHarness — no longer imported here; caller owns preflight
   emitWartime,
   withDbMutationCorrelation as __withWartimeDbMutationCorrelation,
   registerActualEmitterInvocation as __wartimeRegisterEmitterGL,
