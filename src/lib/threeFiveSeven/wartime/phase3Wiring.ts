@@ -793,3 +793,67 @@ markHelperImplemented('global.error.origin', SRC.GLOBAL_ERROR_ORIGIN.id);
 markHelperImplemented('db.mutation.correlation', SRC.DB_MUTATION_CORRELATION.id);
 markHelperImplemented('realtime.causality', SRC.REALTIME_CAUSALITY.id);
 markHelperImplemented('async.owner', SRC.ASYNC_OWNER.id);
+
+// ── Presentation lifecycle (targeted profile) ─────────────────
+// Helper for the 4 presentation components' mount/begin/complete/
+// unmount emission. Each call also self-registers as an actual
+// emitter invocation for the presentation.lifecycle requirement.
+
+export interface PresentationLifecycleOpts {
+  identity?: WartimeIdentity;
+  owner?: WartimeOwner;
+  payload?: Record<string, unknown>;
+}
+
+export function emitPresentationLifecycle(
+  component: PresentationComponentKey,
+  phase: PresentationPhaseKey,
+  opts: PresentationLifecycleOpts = {},
+): void {
+  const siteId = presentationLifecycleSiteId(component, phase);
+  registerActualEmitterInvocation('presentation.lifecycle', siteId);
+  emitWartime({
+    eventName: `presentation_${phase}`,
+    sourceSiteId: siteId,
+    identity: opts.identity ?? {},
+    owner: opts.owner,
+    payload: { component, phase, ...(opts.payload ?? {}) },
+  });
+}
+
+markHelperImplemented('presentation.lifecycle', SRC.PRES_SWEEPSPOT_MOUNT.id);
+
+// ── Site-specific progression emitter ─────────────────────────
+// Twin of emitProgressionAdvancement that lets a caller aim at a
+// specific `sourceSiteId` (e.g. Game.tsx handleGameOverComplete.entry)
+// so the targeted profile can prove the exact callback boundary fired.
+
+export function emitProgressionAdvancementAt(
+  sourceSiteId: string,
+  opts: Omit<Parameters<typeof emitProgressionAdvancement>[0], never>,
+): void {
+  registerActualEmitterInvocation('progression.advancement', sourceSiteId);
+  emitWartime({
+    eventName: 'progression_advancement',
+    sourceSiteId,
+    identity: opts.identity,
+    owner: opts.owner,
+    payload: {
+      callback: opts.callback,
+      entry: opts.entry,
+      reason: opts.reason ?? null,
+      guards: opts.guards ?? null,
+      capturedIdentity: opts.capturedIdentity ?? null,
+      liveIdentity: opts.liveIdentity ?? null,
+      presentationPhase: opts.presentationPhase ?? null,
+      winAnimationActive: opts.winAnimationActive ?? null,
+      gameStatus: opts.gameStatus ?? null,
+      currentDealerGameId: opts.currentDealerGameId ?? null,
+      nextDealerGameId: opts.nextDealerGameId ?? null,
+      oldSurfaceMounted: opts.oldSurfaceMounted ?? null,
+      newSurfaceMounted: opts.newSurfaceMounted ?? null,
+      modalMounted: opts.modalMounted ?? null,
+      elapsedMsSincePrior: opts.elapsedMsSincePrior ?? null,
+    },
+  });
+}
