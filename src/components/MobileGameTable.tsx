@@ -2215,13 +2215,13 @@ export const MobileGameTable = ({
     identity: __wartimeMgtIdentity,
   });
 
-  // Authoritative snapshot at identity change (checkpoint).
+  // Authoritative snapshot + canonical DOM snapshot at identity change.
   const __wartimeSnapshotSigRef = useRef<string>('');
   useEffect(() => {
     const sig = `${__wartimeMgtIdentity.gameId}|${__wartimeMgtIdentity.dealerGameId}|${__wartimeMgtIdentity.handContextId}|${gameStatus}`;
     if (__wartimeSnapshotSigRef.current === sig) return;
     __wartimeSnapshotSigRef.current = sig;
-    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot }) => {
+    import('@/lib/threeFiveSeven/wartime').then(({ emitAuthoritativeSnapshot, captureCanonical357Snapshot }) => {
       emitAuthoritativeSnapshot({
         checkpoint: 'identity_change',
         sourceSiteId: __WARTIME_SRC.AUTH_SNAPSHOT.id,
@@ -2238,8 +2238,43 @@ export const MobileGameTable = ({
           playerCount: Array.isArray(players) ? players.length : 0,
         },
       });
+      captureCanonical357Snapshot({
+        checkpoint: `identity_change:${gameStatus ?? 'unknown'}`,
+        identity: __wartimeMgtIdentity,
+        owner: __wartimeMgtOwner,
+      });
     }).catch(() => {});
   });
+
+  // Install passive Mutation/Resize observers on the felt surface once.
+  const __wartimeObserversInstalledRef = useRef(false);
+  useEffect(() => {
+    if (__wartimeObserversInstalledRef.current) return;
+    if (typeof document === 'undefined') return;
+    const felt = document.querySelector('[data-canonical-felt-surface]');
+    if (!felt) return;
+    __wartimeObserversInstalledRef.current = true;
+    let disposeMo: (() => void) | null = null;
+    let disposeRo: (() => void) | null = null;
+    import('@/lib/threeFiveSeven/wartime').then(({ installTargetedMutationObserver, installTargetedResizeObserver }) => {
+      disposeMo = installTargetedMutationObserver({
+        root: felt,
+        category: 'table-surface',
+        identity: () => __wartimeMgtIdentity,
+        phase: () => threeFiveSevenWinPhase,
+        owner: __wartimeMgtOwner,
+      });
+      disposeRo = installTargetedResizeObserver({
+        el: felt,
+        key: 'canonical-felt-surface',
+        identity: () => __wartimeMgtIdentity,
+        phase: () => threeFiveSevenWinPhase,
+        owner: __wartimeMgtOwner,
+      });
+    }).catch(() => {});
+    return () => { disposeMo?.(); disposeRo?.(); };
+  });
+
 
 
 
