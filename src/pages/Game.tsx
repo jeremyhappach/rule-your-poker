@@ -12,7 +12,10 @@ import {
   registerActualEmitterInvocation as __wartimeRegisterEmitterGame,
   registerWartimeProductionHook as __wartimeRegisterHookGame,
   SRC as __WARTIME_SRC,
+  isTargetedWartimePreflightReadyForHarness,
 } from "@/lib/threeFiveSeven/wartime";
+import { readDebugHarness } from "@/lib/debugHarness/useDebugHarness";
+
 
 // 3-5-7 Wartime — canonical production owner for realtime.causality.
 // Game.tsx owns the games/rounds/players/player_cards/game_results
