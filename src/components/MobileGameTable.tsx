@@ -5074,6 +5074,20 @@ export const MobileGameTable = ({
     ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
+  __useWartimeStateWrite({
+    fieldName: 'selfHandHasActive357',
+    sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS.id,
+    value: selfHandHasActive357,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
+  __useWartimeStateWrite({
+    fieldName: 'threeFiveSevenDecisionBoundaryOpen',
+    sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS.id,
+    value: threeFiveSevenDecisionBoundaryOpen,
+    owner: __wartimeMgtOwner,
+    identity: __wartimeMgtIdentity,
+  });
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and
