@@ -7325,12 +7325,10 @@ export const MobileGameTable = ({
         // controller owns the active descriptor generation, do NOT arm
         // the legacy sweep-await gate here. The controller drives the
         // full prelude and hands off via the canonical adapter.
-        const controllerGenId = controllerInstant357OwnedGenIdRef.current;
-        const descriptorGenId =
+        if (
           threeFiveSevenTerminalDescriptor?.source === 'instant-357'
-            ? threeFiveSevenTerminalDescriptor.terminalGenerationId
-            : null;
-        if (controllerGenId != null && controllerGenId === descriptorGenId) {
+          || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'))
+        ) {
           emit357RuntimeDiag('legacy_prelude_suppressed', {
             gameId: gameId ?? null,
             roundId: handContextId ?? null,
@@ -7338,9 +7336,10 @@ export const MobileGameTable = ({
             terminalResultIdentity: lastRoundResult ?? null,
           }, {
             callerSourceAnchor: 'fallback_arm.sweepAwaitingCelebrationRef',
-            terminalGenerationId: controllerGenId,
+            terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
             dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
             handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+            guardMode: 'descriptor_source_or_sentinel',
           });
           return;
         }
