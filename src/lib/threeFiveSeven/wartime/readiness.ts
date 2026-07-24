@@ -113,9 +113,18 @@ export async function bootstrapWartime(): Promise<void> {
   emitWartime({
     eventName: 'session_start',
     sourceSiteId: SRC.SESSION_START.id,
+    identity: { gameId: null },
     payload: {
+      wartimeSessionId: sessionId,
+      firstEventSequence: currentMaxSequence() + 1,
+      buildSha: BUILD_IDENTITY.buildSha,
+      bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+      buildTimestamp: BUILD_IDENTITY.buildTimestamp ?? null,
+      harnessProfile: 'instant_win',
       implementationPhase: WARTIME_IMPLEMENTATION_PHASE,
       requiredReproPhase: WARTIME_REQUIRED_REPRO_PHASE,
+      sourceAnchor: SRC.SESSION_START.sourceAnchor,
+      sinkState: getSinkCounters(),
     },
   });
   emitCoverageManifest();
