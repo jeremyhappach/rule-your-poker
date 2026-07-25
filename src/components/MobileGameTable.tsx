@@ -7514,7 +7514,7 @@ export const MobileGameTable = ({
               // Scope with the session gameId — matches
               // PersistentTableShell's CanonicalAnnouncementProvider
               // scope so the rail actually paints it.
-              scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+              scope: { dealerGameId: gameId ?? null, roundId: null },
               payload: {
                 text: `${playerName} won a leg!`,
                 kind: 'leg_award',
