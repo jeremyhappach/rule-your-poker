@@ -83,6 +83,22 @@ import {
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
 
+// Suit normalizer — accepts either the symbol form (Card) or the word
+// form (CribbageCard) and returns the transport-owned canonical word
+// form used by DealRuntime's visibleFace payload.
+const SUIT_SYMBOL_TO_WORD_357: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
+  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
+  spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
+};
+function normalizeSelfFaceFor357(
+  card: { rank: string | number; suit: string } | null | undefined,
+): { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null {
+  if (!card) return null;
+  const suit = SUIT_SYMBOL_TO_WORD_357[String(card.suit)];
+  if (!suit) return null;
+  return { rank: String(card.rank), suit };
+}
+
 export interface ThreeFiveSevenSeatEntry {
   playerId: string;
   position: number;
