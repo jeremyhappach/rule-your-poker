@@ -747,6 +747,11 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     [settledCardIdsByRecipient],
   );
 
+  const getSettledCardsForPlayer = useCallback(
+    (playerId: string) => settledCardPayloadsByRecipient.get(playerId) ?? [],
+    [settledCardPayloadsByRecipient],
+  );
+
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
@@ -763,6 +768,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
       isSettled,
       getSettledCountForPlayer,
       getSettledCardIdsForPlayer,
+      getSettledCardsForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
@@ -771,7 +777,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
       beginDealForHand,
       beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, getSettledCardsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
