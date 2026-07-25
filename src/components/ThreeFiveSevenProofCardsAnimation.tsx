@@ -363,32 +363,31 @@ export const ThreeFiveSevenProofCardsAnimation = ({
           }}
         >
           {transports.map((transport) => {
-            const dx = transport.destinationRect.x - transport.originRect.x;
-            const dy = transport.destinationRect.y - transport.originRect.y;
-            const scaleX = transport.originRect.width > 0
-              ? transport.destinationRect.width / transport.originRect.width
-              : 1;
-            const scaleY = transport.originRect.height > 0
-              ? transport.destinationRect.height / transport.originRect.height
-              : 1;
-            // Lift phase: anticipation — small upward pop with a mid-flight
-            // scale-up so it feels like a reveal, not a slide. Direction
-            // biased away from the felt center (winner in seats 3/4 lift
-            // up; seats 1/2 or observers lift up too by default).
-            const liftDy = -32;
-            const liftScale = 1.18;
+            // Canonical-medium overlay box: sized to the settled destination
+            // (the felt PlayingCard size="md" tier="medium"). Rendering the
+            // overlay at the destination size from lift-off means the card
+            // face resolves through the canonical-medium tier the entire
+            // flight — no in-flight scaling, no shrunken pips/rank.
+            const boxW = transport.destinationRect.width;
+            const boxH = transport.destinationRect.height;
+            const originCx = transport.originRect.x + transport.originRect.width / 2;
+            const originCy = transport.originRect.y + transport.originRect.height / 2;
+            const destCx = transport.destinationRect.x + transport.destinationRect.width / 2;
+            const destCy = transport.destinationRect.y + transport.destinationRect.height / 2;
+            // Position overlay so its center sits on the hand card's center
+            // at rest; a single translate carries center → destination center.
+            const left = originCx - boxW / 2;
+            const top = originCy - boxH / 2;
+            const dx = destCx - originCx;
+            const dy = destCy - originCy;
             let transform: string;
             let transition: string;
             if (phase === "origin") {
-              transform = "translate3d(0, 0, 0) scale(1)";
+              transform = "translate3d(0, 0, 0)";
               transition = "none";
-            } else if (phase === "lifted") {
-              transform = `translate3d(0, ${liftDy}px, 0) scale(${liftScale})`;
-              // Bounce-out-ish curve for the anticipation lift.
-              transition = "transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)";
             } else {
-              // transporting / settled — dramatic ease-out to destination.
-              transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`;
+              // transporting / settled — one continuous ease-out to dest.
+              transform = `translate3d(${dx}px, ${dy}px, 0)`;
               transition = "transform 1050ms cubic-bezier(0.22, 1, 0.36, 1)";
             }
             return (
@@ -402,15 +401,15 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                 data-controller-357-proof-destination-rect={JSON.stringify(transport.destinationRect)}
                 style={{
                   position: "fixed",
-                  left: transport.originRect.x,
-                  top: transport.originRect.y,
-                  width: transport.originRect.width,
-                  height: transport.originRect.height,
+                  left,
+                  top,
+                  width: boxW,
+                  height: boxH,
                   transformOrigin: "center center",
                   transform,
                   transition,
                   willChange: "transform",
-                  filter: phase === "lifted" || phase === "transporting"
+                  filter: phase === "transporting"
                     ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))"
                     : "drop-shadow(0 2px 4px rgba(0,0,0,0.25))",
                   opacity: phase === "settled" ? 0 : 1,
@@ -432,7 +431,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                   size="md"
                   tier="medium"
                   style={{ width: "100%", height: "100%" }}
-                  faceFillPx={transport.destinationRect.width}
+                  faceFillPx={boxW}
                 />
               </div>
             );
