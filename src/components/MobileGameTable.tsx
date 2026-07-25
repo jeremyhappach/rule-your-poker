@@ -1228,7 +1228,7 @@ export const MobileGameTable = ({
   pussyTaxValue = 1,
   gameStatus,
   instanceLabel = 'unknown',
-  currentRoundDealerGameMismatched = false,
+  currentRoundNotReadyForPresentation = false,
   handContextId,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
