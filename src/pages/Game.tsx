@@ -7458,6 +7458,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['fresh_status_game_over'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7473,6 +7480,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // CRITICAL: Skip if game was paused after timer started
             if (freshGame?.is_paused) {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['fresh_is_paused'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7487,6 +7501,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             if (freshGame?.awaiting_next_round !== true) {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['awaiting_flag_cleared'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Awaiting flag already cleared by primary progression path, skipping fallback');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7498,6 +7519,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 extra: { freshStatus: freshGame?.status ?? null, freshAwaitingNextRound: freshGame?.awaiting_next_round ?? null },
               });
               return;
+            }
+
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_passed', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                freshGame,
+              });
             }
 
             // Horses: proceed by starting a new Horses round (not startRound)
