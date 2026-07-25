@@ -408,6 +408,40 @@ export function ThreeFiveSevenDealOrchestrator({
       payload: { intentCount: intents.length, dealerPosition, activeSeatCount: activeSeats.length },
     });
 
+    // ── H1R3 → H2R1 targeted trace: deal transport armed.
+    try {
+      const hNum = handNumberStr ? Number(handNumberStr) : null;
+      const rNum = roundStr ? Number(roundStr) : null;
+      if (hNum !== null && hNum >= 2 && rNum === 1) {
+        void (async () => {
+          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+          mod.emitH1r3ToH2r1({
+            eventName: 'h2r1.deal_transport_armed',
+            sourceSiteId: sites.SRC.H2R1_DEAL_TRANSPORT_ARMED.id,
+            identity: {
+              dealerGameId, handNumber: hNum, roundNumber: rNum,
+              handContextId: handIdentity,
+              currentPlayerId: selfPlayerId,
+              triggerId: waveContextId,
+            },
+            payload: {
+              transportIdentity: waveContextId,
+              handIdentityUsed: handIdentity,
+              cardsThisWave, intentCount: intents.length,
+              intentIds,
+              activeSeatCount: activeSeats.length,
+              dispatchBeginAt,
+              runtimePhaseBefore, expectedCountBefore,
+              sourceHandNumber: hNum, sourceRoundNumber: rNum,
+            },
+            forceEmit: true,
+          });
+        })();
+      }
+    } catch { /* fire-and-forget */ }
+
+
     let dispatchError: unknown = null;
     try {
       deal.beginWave(intents.length);
