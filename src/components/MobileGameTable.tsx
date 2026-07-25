@@ -5389,6 +5389,11 @@ export const MobileGameTable = ({
       ? `${handContextId}:${currentPlayer.id}`
       : null;
   const sawUnlockedForDecisionIdentityRef = useRef<string | null>(null);
+  // Retires the STAYED/FOLDED badge for the identity in which the local
+  // 3-5-7 winner's terminal slot rendered (Show Cards / Cards Shown). Once
+  // latched, the decision badge can never re-appear for that identity, so
+  // the slot goes empty after Cards Shown rather than reverting to STAYED.
+  const terminalBadgeRetiredIdentityRef = useRef<string | null>(null);
   const [admittedDbDecisionIdentity, setAdmittedDbDecisionIdentity] = useState<string | null>(null);
   useEffect(() => {
     // Identity rotated — reset admission for the new (dealerGame + round + player) tuple.
