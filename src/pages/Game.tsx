@@ -6025,7 +6025,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : (currentRound?.id ?? null);
   const playerCardsForPresentation = hasCurrentRoundDealerGameMismatch
     ? []
-    : cardStateContext?.roundId && presentationRoundIdForCards && cardStateContext.roundId !== presentationRoundIdForCards
+    : !presentationRoundIdForCards
+    ? []
+    : !playerCardsIdentity || playerCardsIdentity.roundId !== presentationRoundIdForCards
     ? []
     : playerCards;
   const allDecisionsInForPresentation = game?.game_type === 'holm-game' && holmView
