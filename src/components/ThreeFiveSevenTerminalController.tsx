@@ -37,7 +37,7 @@ import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { SweepTheLegsAnimation } from "@/components/SweepTheLegsAnimation";
 import { ThreeFiveSevenProofCardsAnimation } from "@/components/ThreeFiveSevenProofCardsAnimation";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
-import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+
 
 export interface CanonicalTerminal357EntryInput {
   gameId: string | null;
@@ -82,7 +82,7 @@ export const ThreeFiveSevenTerminalController = ({
 }: ThreeFiveSevenTerminalControllerProps) => {
   const deal = useDealRuntime();
   const dealSettled = !!deal?.dealSettled;
-  const announcements = useAnnouncements();
+
 
   const activeGenIdRef = useRef<string | null>(null);
   const handedOffForGenRef = useRef<string | null>(null);
@@ -145,33 +145,16 @@ export const ThreeFiveSevenTerminalController = ({
       gameId: descriptor.gameId,
       terminalResultIdentity: descriptor.terminalResultIdentity,
     }, { terminalGenerationId: genId, from: "idle", to: "announce_wait_deal_settled" });
-    const announcementId = `357-instant:${genId}`;
-    const announcementTitle = `${descriptor.winnerName} sweeps the pot and legs with 3-5-7!`;
-    announcements.emit({
-      id: announcementId,
-      type: "match_win",
-      scope: { dealerGameId: descriptor.dealerGameId, roundId: descriptor.roundId },
-      payload: {
-        text: announcementTitle,
-        source: "instant-357-terminal-controller",
-        terminalGenerationId: genId,
-      },
-      ttlMs: 2200,
-      transientScope: `357-instant:${genId}`,
-    });
-    void announcements.waitForDismiss(announcementId).then(() => {
-      if (activeGenIdRef.current !== genId) return;
-      setAnnouncementCompleteForGenId(genId);
-      emit357RuntimeDiag("controller_state_transition", {
-        gameId: descriptor.gameId,
-        terminalResultIdentity: descriptor.terminalResultIdentity,
-      }, {
-        terminalGenerationId: genId,
-        from: "announce_wait_deal_settled",
-        to: "announcement_complete",
-      });
-    });
+    // NOTE: HudStack row-1 announcement is owned by MobileGameTable's
+    // dedicated Terminal357Descriptor announcement effect (single owner
+    // for both instant-357 and normal-win variants). The controller
+    // must NOT emit here — it would compete with the descriptor owner
+    // and its shorter TTL previously caused the plate to vanish before
+    // the terminal sequence finished. Immediately mark the announcement
+    // gate satisfied so handoff proceeds through the normal prelude.
+    setAnnouncementCompleteForGenId(genId);
     onOwnershipChange(genId);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descriptor, isInstant357]);
 
