@@ -11143,12 +11143,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const expectedCardCount = game?.current_round === 1 ? 3 : game?.current_round === 2 ? 5 : 7;
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const rawWinnerCards = winnerCardsData?.cards || [];
-    
-    // CRITICAL: Validate card count matches current round to prevent cross-game contamination
-    // If cards don't match expected count (e.g., 4 cards from Holm), they're stale - don't show them
-    const winnerCards = rawWinnerCards.length === expectedCardCount ? rawWinnerCards : [];
+
+    // EXPLICIT-OPT-IN CONTRACT: Accept any non-empty authoritative winner hand.
+    // Rejecting on strict expectedCardCount previously produced an empty
+    // `threeFiveSevenWinnerCards` array whenever `playerCards` had not yet
+    // resolved for the terminal round, which then caused the Show Cards
+    // click to succeed but the felt stage predicate
+    // (`threeFiveSevenWinnerCards.length > 0`) to remain false — the button
+    // appeared to "do nothing". A cross-game-type contamination (e.g. Holm's
+    // 4 cards leaking into 3-5-7) is still surfaced via warn, but no longer
+    // silently discards the winner hand.
+    const winnerCards = rawWinnerCards;
     if (rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount) {
-      console.warn('[357 WIN] ⚠️ Winner cards count mismatch - likely stale from different game type:', {
+      console.warn('[357 WIN] ⚠️ Winner cards count mismatch (accepting anyway to preserve Show Cards):', {
         expected: expectedCardCount,
         actual: rawWinnerCards.length,
         currentRound: game?.current_round,
