@@ -9234,15 +9234,16 @@ export const MobileGameTable = ({
     const cachedLegsForThisPlayer =
       threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isInWinAnimation ? cachedLegsForThisPlayer : playerLegs;
-    const legsWereSweptThisSession =
-      lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
+    // Outside an active, identity-matched leg/sweep animation, always
+    // render authoritative `player.legs`. The prior session-wide idle
+    // latch (`lastThreeFiveSevenTriggerRef.current !== null &&
+    // threeFiveSevenWinPhase === 'idle'`) permanently forced legs to
+    // zero after any earlier trigger and is removed here.
     const displayLegs = hideLegsForWinAnimation
       ? 0
-      : legsWereSweptThisSession
-        ? 0
-        : isLegAnimatingForThisPlayer
-          ? Math.max(0, effectivePlayerLegs - 1)
-          : effectivePlayerLegs;
+      : isLegAnimatingForThisPlayer
+        ? Math.max(0, effectivePlayerLegs - 1)
+        : effectivePlayerLegs;
 
     const legIndicator = displayLegs > 0 ? (
       <div
