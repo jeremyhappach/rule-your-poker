@@ -12457,15 +12457,14 @@ export const MobileGameTable = ({
             threeFiveSevenWinPhase === 'pot-to-player' ||
             threeFiveSevenWinPhase === 'delay';
 
-          const legsWereSweptThisSession =
-            lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
-
-          if (hideLegsForWinAnimation || legsWereSweptThisSession) return null;
+          // Outside an active, identity-matched leg/sweep animation,
+          // render authoritative `player.legs`. Prior session-wide
+          // idle latch removed.
+          if (hideLegsForWinAnimation) return null;
 
           const useStableSnapshot =
             !!threeFiveSevenWinTriggerId ||
-            threeFiveSevenWinPhase !== 'idle' ||
-            lastThreeFiveSevenTriggerRef.current !== null;
+            threeFiveSevenWinPhase !== 'idle';
 
           const legsSource =
             useStableSnapshot && threeFiveSevenLegsSnapshotRef.current.length
