@@ -11480,6 +11480,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Win-presentation instrumentation was removed.
   }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId]);
   
+  // Identity-bound winner-hand resolver.
+  //
+  // Runs whenever `playerCards` or its bound identity changes. If a
+  // terminal winner expectation is outstanding and NO winner cards are
+  // yet tabled, this effect populates `threeFiveSevenWinnerCards` iff
+  // the incoming player_cards row strictly matches ALL identity fields
+  // AND the exact expected card count. Partial rows, prior-round rows,
+  // and cross-dealer-game rows are hard-rejected (they don't advance
+  // this effect). The winner's Show Cards consent latch remains set
+  // while we wait — the felt stage simply cannot mount until the
+  // identity-matched hand arrives.
+  useEffect(() => {
+    const exp = terminal357WinnerHandExpectation;
+    if (!exp) return;
+    if (threeFiveSevenWinnerCards.length === exp.expectedCardCount) return;
+    if (!playerCardsIdentity) return;
+    if (
+      playerCardsIdentity.dealerGameId !== exp.dealerGameId ||
+      playerCardsIdentity.handNumber !== exp.handNumber ||
+      playerCardsIdentity.roundId !== exp.roundId
+    ) {
+      return;
+    }
+    const row = playerCards.find(pc => pc.player_id === exp.playerId);
+    const cards = (row?.cards as CardType[] | undefined) ?? [];
+    if (cards.length !== exp.expectedCardCount) return;
+    setThreeFiveSevenWinnerCards(cards);
+  }, [terminal357WinnerHandExpectation, playerCardsIdentity, playerCards, threeFiveSevenWinnerCards.length]);
+
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
     // CRITICAL: Never clear 357 win state while the client-side win animation sequence is still playing.
