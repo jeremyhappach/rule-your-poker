@@ -13158,6 +13158,15 @@ export const MobileGameTable = ({
                           threeFiveSevenWinPhase !== 'idle' &&
                           !(lastRoundResult?.startsWith('357_SWEEP:'));
                         if (isLocalWinner357InAnim) {
+                          // Latch: once the local winner's terminal slot
+                          // has rendered for this decision identity, the
+                          // STAYED/FOLDED badge is permanently retired
+                          // for that identity — it may never return after
+                          // the terminal animation completes.
+                          if (authoritativeDecisionIdentityKey) {
+                            terminalBadgeRetiredIdentityRef.current =
+                              authoritativeDecisionIdentityKey;
+                          }
                           if (!winner357ShowCards) {
                             return (
                               <Button
@@ -13178,6 +13187,16 @@ export const MobileGameTable = ({
                               Cards Shown
                             </div>
                           );
+                        }
+                        // If this identity has already rendered a terminal
+                        // winner slot, do NOT fall through to the decision
+                        // badge — the badge is retired for this identity.
+                        if (
+                          authoritativeDecisionIdentityKey &&
+                          terminalBadgeRetiredIdentityRef.current ===
+                            authoritativeDecisionIdentityKey
+                        ) {
+                          return null;
                         }
                         // Choose the decision value to render. In 3-5-7, only trust
                         // the DB `current_decision` when admission has been proved
