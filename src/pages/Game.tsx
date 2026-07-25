@@ -7396,6 +7396,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           guard_transitionType357: tType357,
         },
         fn: async (asyncOwnerId, capturedIdentity) => {
+        // ── [ADMISSION-TRACE] timer_fired ────────────────────────
+        if (admissionShouldTrace) {
+          persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.timer_fired', {
+            effectRunId,
+            timerOwnerId: String(asyncOwnerId),
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            roundId: null,
+            handContextId: (game as any)?.hand_context_id ?? null,
+            capturedIdentity: capturedIdentity ?? null,
+          });
+        }
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
         const timerId = awaitingTimerRef.current;
         awaitingTimerRef.current = null;
