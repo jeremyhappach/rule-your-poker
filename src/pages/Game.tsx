@@ -7011,8 +7011,75 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
     const currentRound = game?.current_round || 0;
-    
+
+    // ── [ADMISSION-TRACE] effect_enter ─────────────────────────────
+    // Bounded persistent trace of AUTO_PROCEED_EFFECT admission. Emits
+    // at the *actual* top of the effect, before ANY early return.
+    const effectRunId = `apr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const admissionShouldTrace = !!gameId && (!game || game?.game_type === '3-5-7');
+    if (admissionShouldTrace) {
+      persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.effect_enter', {
+        effectRunId,
+        gameId,
+        gameUpdatedAt: (game as any)?.updated_at ?? null,
+        awaiting_next_round: game?.awaiting_next_round ?? null,
+        status: game?.status ?? null,
+        current_round: game?.current_round ?? null,
+        next_round_number: (game as any)?.next_round_number ?? null,
+        current_game_uuid: game?.current_game_uuid ?? null,
+        last_round_result: game?.last_round_result ?? null,
+        is_paused: game?.is_paused ?? null,
+        awaitingTimerPresent: awaitingTimerRef.current !== null,
+        awaitingTimerOwner: awaitingTimerRef.current ? String(awaitingTimerRef.current) : null,
+        gameStateAtTimerStart: gameStateAtTimerStart.current,
+        harness357,
+        harnessHolm,
+        debugHolmPaused,
+        currentRoundId: currentRound_?.id ?? null,
+        currentRoundStatus: currentRound_?.status ?? null,
+        handContextId: (game as any)?.hand_context_id ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        deps: {
+          awaiting: game?.awaiting_next_round ?? null,
+          gameId,
+          status: game?.status ?? null,
+          is_paused: game?.is_paused ?? null,
+          game_type: game?.game_type ?? null,
+          last_round_result: game?.last_round_result ?? null,
+        },
+      });
+    }
+
+    // ── [ADMISSION-TRACE] guard evaluation ─────────────────────────
+    const blockedReasons: string[] = [];
+    if (!game) blockedReasons.push('game_missing');
+    if (!gameId) blockedReasons.push('missing_game_id');
+    if (game?.is_paused) blockedReasons.push('paused');
+    if (!(game?.awaiting_next_round)) blockedReasons.push('awaiting_next_round_false');
+    if (game?.status === 'game_over') blockedReasons.push('status_game_over');
+    if (awaitingTimerRef.current) blockedReasons.push('timer_already_present');
+    if (admissionShouldTrace) {
+      persist357Investigation(gameId!, game?.total_hands || 1,
+        blockedReasons.length === 0
+          ? '357.awaiting_next_round.guard_passed'
+          : '357.awaiting_next_round.guard_blocked',
+        {
+          effectRunId,
+          blockedReasons,
+          predicates: {
+            game_present: !!game,
+            gameId_present: !!gameId,
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+            status: game?.status ?? null,
+            is_paused: game?.is_paused ?? null,
+            awaitingTimer_present: awaitingTimerRef.current !== null,
+          },
+        },
+      );
+    }
+
     console.log('[AUTO_PROCEED_EFFECT] Running', {
+      effectRunId,
       awaiting: currentAwaiting,
       status: game?.status,
       is_paused: game?.is_paused,
