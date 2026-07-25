@@ -436,6 +436,29 @@ export async function startRound(gameId: string, roundNumber: number) {
   });
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
 
+  // ── H1R3 → H2R1 targeted trace: authoritative round-identity selection.
+  try {
+    if (is357 && handNumber >= 2 && roundNumber === 1) {
+      __noteH2r1Selected(currentGameUuid ?? null);
+    }
+    __emitH1r3H2r1({
+      eventName: 'h2r1.round_identity_selected',
+      sourceSiteId: WARTIME_SRC.H2R1_ROUND_IDENTITY_SELECTED.id,
+      identity: {
+        gameId, dealerGameId: currentGameUuid ?? null, roundId: insertedRound.id,
+        handNumber, roundNumber, currentGameUuid: currentGameUuid ?? null,
+        currentRoundId: insertedRound.id,
+        currentRoundStatus: (insertedRound as any)?.status ?? 'betting',
+      },
+      payload: {
+        inserted: true, reused: false, expectedCardCount: cardsToDeal,
+        callerAnchor: 'gameLogic.startRound.wonRace',
+        deckShuffleAtRound: null,
+      },
+      forceEmit: is357 && handNumber >= 2 && roundNumber === 1,
+    });
+  } catch { /* fire-and-forget */ }
+
   // Reset all players to active for the new round (winner only)
   // SCOPED: must NOT revive status='left' (stood-up players are terminal until they
   // explicitly sit again) or 'observer'. sitting_out players keep their flag; only
