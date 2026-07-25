@@ -756,6 +756,36 @@ export async function startRound(gameId: string, roundNumber: number) {
       throw new Error(`Failed to deal cards: ${insertRes.error.message}`);
     }
     console.log('[START_ROUND] Batch dealt cards to', playerCardInserts.length, 'players');
+
+    // ── H1R3 → H2R1 targeted trace: authoritative server-deal commit.
+    try {
+      __emitH1r3H2r1({
+        eventName: 'h2r1.server_deal_committed',
+        sourceSiteId: WARTIME_SRC.H2R1_SERVER_DEAL_COMMITTED.id,
+        identity: {
+          gameId, dealerGameId: currentGameUuid ?? null, roundId: round.id,
+          handNumber, roundNumber, currentGameUuid: currentGameUuid ?? null,
+          currentRoundId: round.id,
+        },
+        payload: {
+          expectedCardCount: roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7,
+          dealingCaller: 'gameLogic.startRound.batchInsert',
+          roundIdUsedForWrite: round.id,
+          perPlayer: playerCardInserts.map((ins) => {
+            const arr = Array.isArray(ins.cards) ? (ins.cards as any[]) : [];
+            return {
+              playerId: ins.player_id,
+              cardCount: arr.length,
+              cardIds: arr.map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`),
+              mergedFromPrevious: (previousRoundCards.get(ins.player_id)?.length ?? 0) > 0,
+              previousRoundCardCount: previousRoundCards.get(ins.player_id)?.length ?? 0,
+            };
+          }),
+          deckRemainder: deck.length - cardIndex,
+        },
+        forceEmit: is357 && handNumber >= 2 && roundNumber === 1,
+      });
+    } catch { /* fire-and-forget */ }
   }
 
   // ============ IMMEDIATE 357 CHECK FOR ROUND 1 ============
