@@ -185,6 +185,14 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
+  // Per-recipient ordered payload ledger — captures the intent's
+  // `visibleFace` at settle time so consumers can render local cards
+  // purely from transport-owned metadata during DEALING (no authoritative
+  // read in the render path). Cleared identically to the other settled
+  // ledgers at every hand/wave boundary.
+  const [settledCardPayloadsByRecipient, setSettledCardPayloadsByRecipient] = useState<
+    Map<string, Array<{ cardId: string; visibleFace: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null }>>
+  >(() => new Map());
   // Latched READY release flag — hand-scoped (DealRuntime is keyed by
   // handContextId at the host) and idempotent. Set exactly once when
   // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
