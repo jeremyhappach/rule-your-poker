@@ -10,6 +10,10 @@ import {
   registerWartimeProductionHook as __wartimeRegisterHookGL,
   SRC as WARTIME_SRC,
 } from "./threeFiveSeven/wartime";
+import {
+  emitH1r3ToH2r1 as __emitH1r3H2r1,
+  noteH2r1RoundIdentitySelected as __noteH2r1Selected,
+} from "./threeFiveSeven/wartime/h1r3ToH2r1";
 
 // 3-5-7 Wartime — canonical production owner for db.mutation.correlation.
 // gameLogic.ts contains the 3-5-7 round/ante/deal/settlement mutations.
@@ -432,6 +436,29 @@ export async function startRound(gameId: string, roundNumber: number) {
   });
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
 
+  // ── H1R3 → H2R1 targeted trace: authoritative round-identity selection.
+  try {
+    if (is357 && handNumber >= 2 && roundNumber === 1) {
+      __noteH2r1Selected(currentGameUuid ?? null);
+    }
+    __emitH1r3H2r1({
+      eventName: 'h2r1.round_identity_selected',
+      sourceSiteId: WARTIME_SRC.H2R1_ROUND_IDENTITY_SELECTED.id,
+      identity: {
+        gameId, dealerGameId: currentGameUuid ?? null, roundId: insertedRound.id,
+        handNumber, roundNumber, currentGameUuid: currentGameUuid ?? null,
+        currentRoundId: insertedRound.id,
+        currentRoundStatus: (insertedRound as any)?.status ?? 'betting',
+      },
+      payload: {
+        inserted: true, reused: false, expectedCardCount: cardsToDeal,
+        callerAnchor: 'gameLogic.startRound.wonRace',
+        deckShuffleAtRound: null,
+      },
+      forceEmit: is357 && handNumber >= 2 && roundNumber === 1,
+    });
+  } catch { /* fire-and-forget */ }
+
   // Reset all players to active for the new round (winner only)
   // SCOPED: must NOT revive status='left' (stood-up players are terminal until they
   // explicitly sit again) or 'observer'. sitting_out players keep their flag; only
@@ -729,6 +756,36 @@ export async function startRound(gameId: string, roundNumber: number) {
       throw new Error(`Failed to deal cards: ${insertRes.error.message}`);
     }
     console.log('[START_ROUND] Batch dealt cards to', playerCardInserts.length, 'players');
+
+    // ── H1R3 → H2R1 targeted trace: authoritative server-deal commit.
+    try {
+      __emitH1r3H2r1({
+        eventName: 'h2r1.server_deal_committed',
+        sourceSiteId: WARTIME_SRC.H2R1_SERVER_DEAL_COMMITTED.id,
+        identity: {
+          gameId, dealerGameId: currentGameUuid ?? null, roundId: round.id,
+          handNumber, roundNumber, currentGameUuid: currentGameUuid ?? null,
+          currentRoundId: round.id,
+        },
+        payload: {
+          expectedCardCount: roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7,
+          dealingCaller: 'gameLogic.startRound.batchInsert',
+          roundIdUsedForWrite: round.id,
+          perPlayer: playerCardInserts.map((ins) => {
+            const arr = Array.isArray(ins.cards) ? (ins.cards as any[]) : [];
+            return {
+              playerId: ins.player_id,
+              cardCount: arr.length,
+              cardIds: arr.map((c: any) => `${c?.rank ?? '?'}${c?.suit ?? '?'}`),
+              mergedFromPrevious: (previousRoundCards.get(ins.player_id)?.length ?? 0) > 0,
+              previousRoundCardCount: previousRoundCards.get(ins.player_id)?.length ?? 0,
+            };
+          }),
+          deckRemainder: deck.length - cardIndex,
+        },
+        forceEmit: is357 && handNumber >= 2 && roundNumber === 1,
+      });
+    } catch { /* fire-and-forget */ }
   }
 
   // ============ IMMEDIATE 357 CHECK FOR ROUND 1 ============

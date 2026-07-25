@@ -245,6 +245,18 @@ export const SRC = {
   PRES_POT_BEGIN:          reg({ id: 'presentation.lifecycle.pot_to_player.begin',    file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.begin',     requirementIds: ['presentation.lifecycle'] }),
   PRES_POT_COMPLETE:       reg({ id: 'presentation.lifecycle.pot_to_player.complete', file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.complete',  requirementIds: ['presentation.lifecycle'] }),
   PRES_POT_UNMOUNT:        reg({ id: 'presentation.lifecycle.pot_to_player.unmount',  file: 'src/components/PotToPlayerAnimation.tsx',     fn: 'PotToPlayerAnimation.unmount',   requirementIds: ['presentation.lifecycle'] }),
+
+  // ── H1R3 → H2R1 targeted seam sites (diagnostic-only) ─────────
+  H1R3_COMPLETION_OBSERVED:    reg({ id: 'h1r3_h2r1.h1r3.completion_observed',           file: 'src/pages/Game.tsx',                          fn: 'rounds realtime awaiting_next_round',    requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H1R3_ADVANCE_REQUESTED:      reg({ id: 'h1r3_h2r1.h1r3_to_h2.advance_requested',      file: 'src/pages/Game.tsx',                          fn: 'handleAllAnteDecisionsIn startRound(1)', requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_ROUND_IDENTITY_SELECTED:reg({ id: 'h1r3_h2r1.h2r1.round_identity_selected',      file: 'src/lib/gameLogic.ts',                        fn: 'startRound rounds insert/reuse',         requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_SERVER_DEAL_COMMITTED:  reg({ id: 'h1r3_h2r1.h2r1.server_deal_committed',        file: 'src/lib/gameLogic.ts',                        fn: 'startRound player_cards batch insert',   requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_CLIENT_ROUND_SELECTED:  reg({ id: 'h1r3_h2r1.h2r1.client_round_selected',        file: 'src/pages/Game.tsx',                          fn: 'rounds realtime client selection',       requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_LOCAL_HAND_DERIVED:     reg({ id: 'h1r3_h2r1.h2r1.local_hand_derived',           file: 'src/components/MobileGameTable.tsx',          fn: 'currentPlayerCards memo',                requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_OPP_BACK_COUNT_DERIVED: reg({ id: 'h1r3_h2r1.h2r1.opponent_back_count_derived',  file: 'src/components/MobileGameTable.tsx',          fn: 'render357CanonicalSeat opponent back derivation', requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_DEAL_TRANSPORT_ARMED:   reg({ id: 'h1r3_h2r1.h2r1.deal_transport_armed',         file: 'src/components/ThreeFiveSevenDealOrchestrator.tsx', fn: 'wave_dispatch_begin',              requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_DEAL_TRANSPORT_SETTLED: reg({ id: 'h1r3_h2r1.h2r1.deal_transport_settled',       file: 'src/components/ThreeFiveSevenDealOrchestrator.tsx', fn: 'emitChannelSettled',              requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
+  H2R1_CARD_COUNT_INVARIANT:   reg({ id: 'h1r3_h2r1.h2r1.card_count_invariant_failed',  file: 'src/components/MobileGameTable.tsx',          fn: 'currentPlayerCards memo invariant',      requirementIds: ['h1r3_h2r1'], runtimeExpectation: 'conditional' }),
 } as const;
 
 /** Presentation-lifecycle site lookup for the targeted profile. */

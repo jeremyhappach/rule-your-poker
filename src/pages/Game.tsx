@@ -3573,6 +3573,41 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'awaiting_next_round' in newData) {
             if (newData.awaiting_next_round === true) {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
+              // ── H1R3 → H2R1 targeted trace: completion boundary.
+              try {
+                const isThreeFiveSeven = (game as any)?.game_type === '3-5-7';
+                const prevHand = (game as any)?.total_hands ?? null;
+                const prevRound = (game as any)?.current_round ?? null;
+                const nextHand = (newData as any)?.total_hands ?? prevHand;
+                const nextRoundNum = (newData as any)?.next_round_number ?? null;
+                if (isThreeFiveSeven && prevHand === 1 && prevRound === 3) {
+                  void (async () => {
+                    const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+                    const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+                    mod.noteH1r3CompletionObserved((game as any)?.current_game_uuid ?? null);
+                    mod.emitH1r3ToH2r1({
+                      eventName: 'h1r3.completion_observed',
+                      sourceSiteId: sites.SRC.H1R3_COMPLETION_OBSERVED.id,
+                      identity: {
+                        gameId: (game as any)?.id ?? null,
+                        dealerGameId: (game as any)?.current_game_uuid ?? null,
+                        handNumber: prevHand, roundNumber: prevRound,
+                        currentGameUuid: (game as any)?.current_game_uuid ?? null,
+                        currentRoundStatus: 'awaiting_next_round',
+                      },
+                      payload: {
+                        expectedNextHand: nextHand, expectedNextRoundNumber: nextRoundNum,
+                        canonicalProgressionCaller: 'Game.rounds_realtime.awaiting_next_round=true',
+                        playerHandCounts: (players ?? []).map((p: any) => ({
+                          playerId: p.id, position: p.position,
+                          cardCount: (playerCards ?? []).find((pc: any) => pc.player_id === p.id)?.cards?.length ?? 0,
+                        })),
+                      },
+                      forceEmit: true,
+                    });
+                  })();
+                }
+              } catch { /* fire-and-forget */ }
             } else {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - FETCH ONLY, DON\'T CLEAR CACHE YET! ⚡⚡⚡');
               // CRITICAL FIX: Do NOT clear cache here - clearing before fetch completes causes card disappearance
@@ -12169,6 +12204,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .from('games')
               .update({ status: 'in_progress' })
               .eq('id', gameId);
+            // ── H1R3 → H2R1 targeted trace: advancement request.
+            try {
+              void (async () => {
+                const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+                const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+                mod.emitH1r3ToH2r1({
+                  eventName: 'h1r3_to_h2.advance_requested',
+                  sourceSiteId: sites.SRC.H1R3_ADVANCE_REQUESTED.id,
+                  identity: {
+                    gameId, dealerGameId: (game as any)?.current_game_uuid ?? null,
+                    handNumber: ((game as any)?.total_hands ?? 0),
+                    roundNumber: (game as any)?.current_round ?? null,
+                    currentGameUuid: (game as any)?.current_game_uuid ?? null,
+                  },
+                  payload: {
+                    callerAnchor: 'Game.handleAllAnteDecisionsIn.startRound(1)',
+                    previousRoundIdentity: {
+                      handNumber: (game as any)?.total_hands ?? null,
+                      roundNumber: (game as any)?.current_round ?? null,
+                    },
+                    proposedNextHandNumber: ((game as any)?.total_hands ?? 0) + 1,
+                    proposedNextRoundNumber: 1,
+                    currentGameStatus: (game as any)?.status ?? null,
+                    awaitingNextRound: (game as any)?.awaiting_next_round ?? null,
+                  },
+                  forceEmit: true,
+                });
+              })();
+            } catch { /* fire-and-forget */ }
             await startRound(gameId, 1);
           }
 

@@ -4742,6 +4742,74 @@ export const MobileGameTable = ({
 
 
     __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
+
+    // ── H1R3 → H2R1 targeted trace: local hand derivation + invariant.
+    try {
+      if (
+        __is357GameType(gameType) &&
+        (horsesHandNumber ?? 0) >= 2 &&
+        (currentRound ?? 0) === 1
+      ) {
+        const fp = chosen.cards.map(c => `${c.rank}${c.suit}`).join('|');
+        const dedupKey = `local_hand:${handContextId ?? 'none'}:${currentPlayer?.id ?? 'none'}`;
+        void (async () => {
+          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+          if (!mod.shouldEmitOnFingerprintChange(dedupKey, fp)) return;
+          mod.emitH1r3ToH2r1({
+            eventName: 'h2r1.local_hand_derived',
+            sourceSiteId: sites.SRC.H2R1_LOCAL_HAND_DERIVED.id,
+            identity: {
+              gameId: gameId ?? null,
+              dealerGameId: threeFiveSevenDealerGameScope ?? null,
+              handNumber: horsesHandNumber ?? null,
+              roundNumber: currentRound ?? null,
+              handContextId: handContextId ?? null,
+              playerId: currentPlayer?.id ?? null,
+              playerPosition: currentPlayer?.position ?? null,
+              isLocalPlayer: true,
+              currentRoundId: currentRound != null ? String(currentRound) : null,
+            },
+            payload: {
+              chosenSource: chosen.source,
+              chosenCardCount: chosen.cards.length,
+              chosenCardIds: chosen.cards.map(c => `${c.rank}${c.suit}`),
+              rawCardCount: rawCurrentPlayerCards.length,
+              rawCardIds: rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`),
+              cachedCardCount: currentPlayerCardsRef.current.cards.length,
+              cachedHandContextId: currentPlayerCardsRef.current.handContextId,
+              expectedCardCount: 3,
+              isHandTransitioning,
+              holmWinPotTriggerId,
+              roundStatus,
+            },
+          });
+          if (chosen.cards.length !== 3) {
+            mod.emitH1r3ToH2r1({
+              eventName: 'h2r1.card_count_invariant_failed',
+              sourceSiteId: sites.SRC.H2R1_CARD_COUNT_INVARIANT.id,
+              identity: {
+                gameId: gameId ?? null,
+                dealerGameId: threeFiveSevenDealerGameScope ?? null,
+                handNumber: horsesHandNumber ?? null,
+                roundNumber: currentRound ?? null,
+                handContextId: handContextId ?? null,
+                playerId: currentPlayer?.id ?? null,
+                isLocalPlayer: true,
+              },
+              payload: {
+                expectedCardCount: 3,
+                derivedCardCount: chosen.cards.length,
+                chosenSource: chosen.source,
+                chosenCardIds: chosen.cards.map(c => `${c.rank}${c.suit}`),
+                rawCardIds: rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`),
+              },
+              forceEmit: true,
+            });
+          }
+        })();
+      }
+    } catch { /* fire-and-forget */ }
     if (gameType === 'holm-game') {
       const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
       const chosenFp = chosen.cards.map(c => `${c.rank}${c.suit}`).join('|');
@@ -8832,6 +8900,45 @@ export const MobileGameTable = ({
 
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
+
+    // ── H1R3 → H2R1 targeted trace: opponent card-back derivation.
+    try {
+      if (
+        !isCurrentUser &&
+        (horsesHandNumber ?? 0) >= 2 &&
+        (currentRound ?? 0) === 1 &&
+        apparentIsActivePlayer
+      ) {
+        const fp = `${cards.length}|${cardCountToShow}|${expectedCardCount}`;
+        const dedupKey = `opp_back:${handContextId ?? 'none'}:${player.id}`;
+        void (async () => {
+          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+          if (!mod.shouldEmitOnFingerprintChange(dedupKey, fp)) return;
+          mod.emitH1r3ToH2r1({
+            eventName: 'h2r1.opponent_back_count_derived',
+            sourceSiteId: sites.SRC.H2R1_OPP_BACK_COUNT_DERIVED.id,
+            identity: {
+              gameId: gameId ?? null,
+              dealerGameId: threeFiveSevenDealerGameScope ?? null,
+              handNumber: horsesHandNumber ?? null,
+              roundNumber: currentRound ?? null,
+              handContextId: handContextId ?? null,
+              playerId: player.id,
+              playerPosition: player.position,
+              isLocalPlayer: false,
+            },
+            payload: {
+              authoritativeCardCount: cards.length,
+              renderedBackCount: Math.min(cardCountToShow, 7),
+              cardCountToShow,
+              expectedCardCount,
+              selectedBranch: cards.length > 0 ? 'cards.length' : 'expectedCardCount',
+            },
+          });
+        })();
+      }
+    } catch { /* fire-and-forget */ }
 
     const isDealer = dealerPosition === player.position;
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
