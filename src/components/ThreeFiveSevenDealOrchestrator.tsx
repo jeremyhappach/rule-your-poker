@@ -106,7 +106,7 @@ export interface ThreeFiveSevenDealOrchestratorProps {
    * presentationRoundIdForCards` so stale prior-round cards can never
    * satisfy the prerequisite.
    */
-  selfHand?: Array<{ rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' }>;
+  selfHand?: ReadonlyArray<{ rank: string | number; suit: string }>;
 }
 
 export function ThreeFiveSevenDealOrchestrator({
