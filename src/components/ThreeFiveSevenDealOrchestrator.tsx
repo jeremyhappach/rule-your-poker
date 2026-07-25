@@ -723,11 +723,17 @@ export function Use357SelfHand<T>({
   currentPlayerId,
   cards,
   baseline,
+  dealerGameId = null,
+  handNumber = null,
+  roundId = null,
   render,
 }: {
   currentPlayerId: string;
   cards: T[];
   baseline: number;          // prevWaveCount
+  dealerGameId?: string | null;
+  handNumber?: number | null;
+  roundId?: string | null;
   render: (effectiveCards: T[], dealPhase: string, boundary: {
     claimedCardIds: string[];
     rawClaimedCardIds: string[];
@@ -743,22 +749,34 @@ export function Use357SelfHand<T>({
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
-  // ── Self-hand cache (refined semantics) ───────────────────────────
-  // cacheKey = baseHandContextId + playerId
-  //   baseHandContextId = deal.handContextId = `${gameId}#h${epoch}`
-  //   DOES NOT include round (r1/r2/r3). DealRuntime persists across
-  //   rounds within a base hand and remounts only at hand boundary.
+  // ── Self-hand cache (identity-complete) ───────────────────────────
+  // cacheKey carries the FULL authoritative round/hand rail so that
+  // ANY change in dealerGameId / handNumber / roundId / handContextId
+  // hard-resets retained local-hand presentation state. Prior versions
+  // tracked only `baseHandContextId::playerId`, which allowed stale
+  // H1RN cards to survive into H2R1 whenever the shrink-resistant
+  // fallback below was consulted with a shorter authoritative array.
   //
   // Contract:
-  //   - Within a single base hand: cache may refuse to shrink (sticky).
-  //   - On baseHandContextId change: HARD RESET — destroy previous cache,
-  //     start empty, rebuild exclusively from new ownership claims.
-  //   - Transient authoritative empty (e.g. 7 → [] → 7): stick at 7.
+  //   - Within a single complete identity: cache may refuse to shrink
+  //     (sticky) so transient authoritative empties don't blank the UI.
+  //   - On ANY identity change: HARD RESET — destroy previous cache
+  //     (both `cards` and `rendered`), start empty, rebuild exclusively
+  //     from the new authoritative array.
   const baseHandContextId = deal?.handContextId ?? 'no-runtime';
-  const cacheKey = `${baseHandContextId}::${currentPlayerId || 'no-player'}`;
+  const cacheKey = [
+    dealerGameId ?? 'no-dg',
+    handNumber ?? 'no-hn',
+    roundId ?? 'no-rid',
+    baseHandContextId,
+    currentPlayerId || 'no-player',
+  ].join('::');
   const cacheRef = useRef<{ cacheKey: string; cards: T[]; rendered: T[] }>({ cacheKey, cards: [], rendered: [] });
   if (cacheRef.current.cacheKey !== cacheKey) {
-    // HARD RESET at hand boundary — never carry rendered cards across hands.
+    // HARD RESET at ANY identity boundary — dealer_game, hand, round,
+    // or hand-context change. Both retained arrays (cards + rendered)
+    // are destroyed; the new authoritative `cards` becomes the sole
+    // source for the new identity.
     cacheRef.current = { cacheKey, cards: [], rendered: [] };
   }
   if (cards.length >= cacheRef.current.cards.length) {
