@@ -12889,33 +12889,24 @@ export const MobileGameTable = ({
                           </div>
                         ) : null}
 
-                        {isWinner357InAnimation && !(lastRoundResult?.startsWith('357_SWEEP:')) && !selfHandHasActive357 ? (
-                          (() => {
-                            const isFinalRound = currentRound === 3;
-                            return !winner357ShowCards ? (
-                              <Button
-                                variant="outline"
-                                size={isFinalRound ? "lg" : "default"}
-                                onClick={() => onWinner357ShowCards?.()}
-                                className={cn(
-                                  "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
-                                  isFinalRound ? "px-6 py-3 text-base" : "px-4 py-2 text-sm",
-                                )}
-                              >
-                                Show Cards
-                              </Button>
-                            ) : (
-                              <div className="text-sm text-green-400 font-medium">
-                                {isFinalRound ? 'Cards Shown' : 'Cards Tabled'}
-                              </div>
-                            );
-                          })()
-                        ) : null}
+                        {/* EXPLICIT-OPT-IN CONTRACT: The Show Cards button
+                            for a 3-5-7 winner is rendered in the STAYED-badge
+                            slot below (data-active-hand-lower-zone) — never
+                            here, above the hand. Rendering it here would
+                            add layout height and reflow the active-hand
+                            fan, violating the hand-geometry invariant. */}
 
                         {isWinner357InAnimation ? (
                           (() => {
-                            if (currentRound === 3) return null;
-                            return !winner357ShowCards && currentPlayerCards.length > 0 ? (
+                            // Winner's real hand stays in the active-player
+                            // box across the entire terminal sequence,
+                            // regardless of Show Cards state. When the
+                            // winner selects Show Cards the felt stage
+                            // renders as an overlay copy (see
+                            // threeFiveSeven.winnerTabledCardsStage) — the
+                            // real hand geometry is never repurposed.
+                            if (currentPlayerCards.length === 0) return null;
+                            return (
                               <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="" data-holm-active-hand-region="">
                                 <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                                   <PlayerHand
@@ -12926,11 +12917,10 @@ export const MobileGameTable = ({
                                     showSeparated={currentRound === 3}
                                     availableHeightPx={handAvailableHeightPx357}
                                     wrapperScale={handScaleNum}
-
                                   />
                                 </div>
                               </div>
-                            ) : null;
+                            );
                           })()
                         ) : isCurrentPlayerSoloVsChucky || (
                           // Wave 5D follow-up — current viewer's exposed
