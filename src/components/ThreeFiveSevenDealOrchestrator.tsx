@@ -333,6 +333,21 @@ export function ThreeFiveSevenDealOrchestrator({
       ? { kind: 'feltDealOrigin' }
       : { kind: 'seat', position: dealerPosition };
     const intents: CardTransportIntent[] = [];
+    // Compute the self-hand offset for this wave (index of the FIRST
+    // new self card within `selfHand`). For 3-5-7, `selfHand` is the
+    // identity-matched cumulative round hand:
+    //   r1 → 3 cards, offset 0
+    //   r2 → 5 cards, offset 3
+    //   r3 → 7 cards, offset 5
+    // We gated dispatch above on `selfHand.length >= cumulativeRequired`,
+    // so the offset always lands on the new-wave cards.
+    const roundNumForStamp = Number(waveContextId.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
+    const selfHandWaveOffset =
+      roundNumForStamp === 1 ? 0 :
+      roundNumForStamp === 2 ? 3 :
+      roundNumForStamp === 3 ? 5 :
+      Math.max(0, selfHand.length - cardsThisWave);
+    let selfWaveIntentIdx = 0;
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
       for (let off = 0; off < dealOrder.length; off++) {
@@ -341,10 +356,22 @@ export function ThreeFiveSevenDealOrchestrator({
         const isSelf = r.playerId === selfPlayerId;
         const cardId = `${waveContextId}#card-${idx}`;
         const launchDelayMs = idx * staggerMs;
+        // Immutable face metadata for self recipients. The flight stays
+        // `face: 'hidden'` — visibleFace is retained by DealRuntime and
+        // surfaced via getSettledCardsForPlayer for the DEALING render,
+        // never used to reveal the flying card face.
+        const selfFace = isSelf
+          ? selfHand[selfHandWaveOffset + selfWaveIntentIdx]
+          : null;
+        const visibleFace = selfFace
+          ? { rank: selfFace.rank, suit: selfFace.suit }
+          : undefined;
+        if (isSelf) selfWaveIntentIdx += 1;
         intents.push({
           id: cardId,
           cardId,
           face: 'hidden',
+          visibleFace,
           from: dealerOrigin,
           to: isSelf
             ? { kind: 'hand', playerId: selfPlayerId }
@@ -381,7 +408,6 @@ export function ThreeFiveSevenDealOrchestrator({
           dealLandingFallbackUsed: isSelf ? fallbackUsed : null,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
           dealerIsSelf,
-          // visibleFace intentionally omitted — all deal flights are hidden.
         });
         if (isSelf) {
           record357DealLandingTrace(cardId, {
