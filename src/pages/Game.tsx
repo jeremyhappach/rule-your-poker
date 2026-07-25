@@ -3581,29 +3581,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 const nextHand = (newData as any)?.total_hands ?? prevHand;
                 const nextRoundNum = (newData as any)?.next_round_number ?? null;
                 if (isThreeFiveSeven && prevHand === 1 && prevRound === 3) {
-                  const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
-                  const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
-                  mod.noteH1r3CompletionObserved((game as any)?.current_game_uuid ?? null);
-                  mod.emitH1r3ToH2r1({
-                    eventName: 'h1r3.completion_observed',
-                    sourceSiteId: sites.SRC.H1R3_COMPLETION_OBSERVED.id,
-                    identity: {
-                      gameId: (game as any)?.id ?? null,
-                      dealerGameId: (game as any)?.current_game_uuid ?? null,
-                      handNumber: prevHand, roundNumber: prevRound,
-                      currentGameUuid: (game as any)?.current_game_uuid ?? null,
-                      currentRoundStatus: 'awaiting_next_round',
-                    },
-                    payload: {
-                      expectedNextHand: nextHand, expectedNextRoundNumber: nextRoundNum,
-                      canonicalProgressionCaller: 'Game.rounds_realtime.awaiting_next_round=true',
-                      playerHandCounts: (players ?? []).map((p: any) => ({
-                        playerId: p.id, position: p.position,
-                        cardCount: (playerCards ?? []).find((pc: any) => pc.player_id === p.id)?.cards?.length ?? 0,
-                      })),
-                    },
-                    forceEmit: true,
-                  });
+                  void (async () => {
+                    const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+                    const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+                    mod.noteH1r3CompletionObserved((game as any)?.current_game_uuid ?? null);
+                    mod.emitH1r3ToH2r1({
+                      eventName: 'h1r3.completion_observed',
+                      sourceSiteId: sites.SRC.H1R3_COMPLETION_OBSERVED.id,
+                      identity: {
+                        gameId: (game as any)?.id ?? null,
+                        dealerGameId: (game as any)?.current_game_uuid ?? null,
+                        handNumber: prevHand, roundNumber: prevRound,
+                        currentGameUuid: (game as any)?.current_game_uuid ?? null,
+                        currentRoundStatus: 'awaiting_next_round',
+                      },
+                      payload: {
+                        expectedNextHand: nextHand, expectedNextRoundNumber: nextRoundNum,
+                        canonicalProgressionCaller: 'Game.rounds_realtime.awaiting_next_round=true',
+                        playerHandCounts: (players ?? []).map((p: any) => ({
+                          playerId: p.id, position: p.position,
+                          cardCount: (playerCards ?? []).find((pc: any) => pc.player_id === p.id)?.cards?.length ?? 0,
+                        })),
+                      },
+                      forceEmit: true,
+                    });
+                  })();
                 }
               } catch { /* fire-and-forget */ }
             } else {
