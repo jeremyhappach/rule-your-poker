@@ -13117,16 +13117,30 @@ export const MobileGameTable = ({
                     ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
                       <RejoinNextHandButton playerId={currentPlayer.id} />
                     ) : hasDecided ? (
-                      <Badge
-                        className={cn(
-                          "text-sm px-3 py-0.5 border-transparent",
-                          (pendingDecision || currentPlayer.current_decision) === "stay"
-                            ? "bg-poker-chip-green text-poker-chip-white"
-                            : "bg-poker-chip-red text-poker-chip-white",
-                        )}
-                      >
-                        ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
-                      </Badge>
+                      (() => {
+                        // Choose the decision value to render. In 3-5-7, only trust
+                        // the DB `current_decision` when admission has been proved
+                        // for the current authoritative round identity; otherwise
+                        // fall back to the local pendingDecision (identity-scoped
+                        // by Game.tsx). This prevents a prior-hand `stay`/`fold`
+                        // from bleeding into the next hand's badge.
+                        const dbDecision = dbDecisionAdmitted ? currentPlayer.current_decision : null;
+                        const decisionForBadge = pendingDecision || dbDecision;
+                        if (!decisionForBadge) return null;
+                        const stayed = decisionForBadge === "stay";
+                        return (
+                          <Badge
+                            className={cn(
+                              "text-sm px-3 py-0.5 border-transparent",
+                              stayed
+                                ? "bg-poker-chip-green text-poker-chip-white"
+                                : "bg-poker-chip-red text-poker-chip-white",
+                            )}
+                          >
+                            ✓ {stayed ? "STAYED" : "FOLDED"}
+                          </Badge>
+                        );
+                      })()
                     ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold && holmDealReady ? (
                       <div className="flex items-center justify-center gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
