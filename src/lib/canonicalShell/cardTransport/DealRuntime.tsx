@@ -565,6 +565,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
+    setSettledCardPayloadsByRecipient(new Map());
     setPhase('PRE_DEAL');
     setReadyReleased(false);
     if (ctx) {
