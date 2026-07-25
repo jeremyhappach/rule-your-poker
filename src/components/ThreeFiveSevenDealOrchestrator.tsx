@@ -377,11 +377,9 @@ export function ThreeFiveSevenDealOrchestrator({
         // surfaced via getSettledCardsForPlayer for the DEALING render,
         // never used to reveal the flying card face.
         const selfFace = isSelf
-          ? selfHand[selfHandWaveOffset + selfWaveIntentIdx]
+          ? normalizeSelfFaceFor357(selfHand[selfHandWaveOffset + selfWaveIntentIdx])
           : null;
-        const visibleFace = selfFace
-          ? { rank: selfFace.rank, suit: selfFace.suit }
-          : undefined;
+        const visibleFace = selfFace ?? undefined;
         if (isSelf) selfWaveIntentIdx += 1;
         intents.push({
           id: cardId,
