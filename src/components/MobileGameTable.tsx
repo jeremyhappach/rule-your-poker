@@ -4534,9 +4534,25 @@ export const MobileGameTable = ({
   // During hand transitions, playerCards may briefly contain stale data from the previous hand.
   // We cache the last valid cards for the current player and only update when we can confirm
   // the new cards are for the CURRENT hand (via handContextId match).
-  const currentPlayerCardsRef = useRef<{ cards: CardType[]; handContextId: string | null }>({
+  // Full-identity cache tuple. Every writer must repopulate the full
+  // tuple so cross-hand invalidation can compare identity components
+  // one-for-one. `roundId` is captured for diagnostic parity with the
+  // authoritative identity but is intentionally excluded from the
+  // invalidation predicate below (round changes within a hand keep
+  // the same handNumber/handContextId/dealerGameId, so within-hand
+  // staged-round-floor behavior is preserved unchanged).
+  const currentPlayerCardsRef = useRef<{
+    cards: CardType[];
+    handContextId: string | null;
+    dealerGameId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+  }>({
     cards: [],
     handContextId: null,
+    dealerGameId: null,
+    roundId: null,
+    handNumber: null,
   });
   // Frozen snapshot of currentPlayerCards held for the duration of a Holm
   // win-pot animation. Lifetime is bound to handContextId (NOT to the trigger
@@ -4633,6 +4649,60 @@ export const MobileGameTable = ({
     // (Terminal-latch self-hand blocker removed — shell owns
     // session-end exclusive handoff.)
 
+    // ─────────────────────────────────────────────────────────────────
+    // Cross-hand cache invalidation (H1 → H2 boundary).
+    //
+    // A cached local hand may only be reused when it matches the
+    // current authoritative identity. If ANY of handNumber,
+    // dealerGameId, or handContextId disagrees with the active
+    // identity, discard the cached cards BEFORE any read below.
+    //
+    // roundId is captured on the tuple for identity parity but is
+    // deliberately excluded from this predicate. Within-hand round
+    // progression (R1→R2→R3) keeps handNumber, dealerGameId, and
+    // handContextId fixed for 3-5-7 (handContextId = `${dg}#h${N}`),
+    // so this invalidator does not fire and the staged-round-floor
+    // path below remains reachable unchanged.
+    //
+    // This is the sole correction for the H1→H2 5-card survivor bug:
+    // the Priority-1 branch used to greedily re-cache whatever the
+    // parent's playerCards prop happened to hold when handContextId
+    // rotated, even if that array was the stale H1R2 5-card row.
+    // The invalidator below runs first and clears the tuple so no
+    // reader (Priority-1, holm-completed, staged-round-floor,
+    // same-hand fingerprint) can hand back the stale H1 array.
+    // ─────────────────────────────────────────────────────────────────
+    {
+      const cur = currentPlayerCardsRef.current;
+      const activeDealerGameId = threeFiveSevenDealerGameScope ?? null;
+      const activeHandNumber =
+        typeof horsesHandNumber === 'number' ? horsesHandNumber : null;
+      const activeHandContextId = handContextId ?? null;
+      const identityMismatch =
+        (cur.handNumber !== null && activeHandNumber !== null && cur.handNumber !== activeHandNumber) ||
+        (cur.dealerGameId !== null && activeDealerGameId !== null && cur.dealerGameId !== activeDealerGameId) ||
+        (cur.handContextId !== null && activeHandContextId !== null && cur.handContextId !== activeHandContextId);
+      if (identityMismatch) {
+        currentPlayerCardsRef.current = {
+          cards: [],
+          handContextId: null,
+          dealerGameId: null,
+          roundId: null,
+          handNumber: null,
+        };
+      }
+    }
+
+    // Snapshot of the active authoritative identity used by every
+    // writer below. Ensures whatever we cache is stamped with the
+    // identity currently on the wire, never the stale cached one.
+    const _activeIdentity = {
+      handContextId: handContextId ?? null,
+      dealerGameId: threeFiveSevenDealerGameScope ?? null,
+      roundId: horsesRoundId ?? null,
+      handNumber: typeof horsesHandNumber === 'number' ? horsesHandNumber : null,
+    };
+
     let chosen: { source: string; cards: CardType[] };
 
     // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
@@ -4670,7 +4740,7 @@ export const MobileGameTable = ({
         handContextId != null && rawCurrentPlayerCards.length > 0;
 
       if (rawBelongsToActiveHand) {
-        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId };
+        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
         chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
       } else if (
         holmWinPotFrozenCardsRef.current.triggerId !== null &&
@@ -4709,11 +4779,11 @@ export const MobileGameTable = ({
         if (__is357GameType(gameType) && (currentRound ?? 0) > 1 && cachedCards.length > 0) {
           const stagedCards = rawCurrentPlayerCards.length >= cachedCards.length ? rawCurrentPlayerCards : cachedCards;
           if (rawCurrentPlayerCards.length >= cachedCards.length) {
-            currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+            currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
           }
           chosen = { source: '357-staged-round-floor', cards: stagedCards };
         } else if (rawCurrentPlayerCards.length > 0) {
-          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
           chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
         } else {
           // P0 fix: do NOT return cached previous-hand cards across an
@@ -4729,7 +4799,7 @@ export const MobileGameTable = ({
         const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
         const cachedFp = cachedCards.map(c => `${c.rank}${c.suit}`).join('|');
         if (rawFp !== cachedFp) {
-          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, ..._activeIdentity };
         }
         chosen = { source: 'raw-same-hand', cards: rawCurrentPlayerCards };
       } else {
@@ -4738,6 +4808,7 @@ export const MobileGameTable = ({
       }
     }
     }
+
 
 
 
@@ -4835,7 +4906,7 @@ export const MobileGameTable = ({
       });
     }
     return chosen.cards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId, currentPlayer?.id, horsesHandNumber, horsesRoundId, threeFiveSevenDealerGameScope, currentRound]);
 
   // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
   // Captures every distinct flip across the dimensions most likely to
