@@ -193,13 +193,31 @@ export const CribbageMobileCardsTab = ({
       return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
     }
     if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
-    // DEALING — transport-settled card identities are the reveal driver.
-    const settledIds = deal.getSettledCardIdsForPlayer(currentPlayerId);
-    const allowed = settledIds.length;
-    const clipSource: CribbageCard[] = (authoritativeHand && authoritativeHand.length > 0)
-      ? (authoritativeHand as CribbageCard[])
-      : sourceHand;
-    return clipSource.slice(0, allowed);
+    // DEALING — transport-owned metadata is the sole visual authority.
+    // Consume the ordered `{cardId, visibleFace}` payloads recorded by
+    // DealRuntime as each intent settles. This makes the render path
+    // independent of the authoritative fetch, so the local hand cannot
+    // stay empty during opening deal and then burst-reveal when the DB
+    // row arrives.
+    const settledPayloads = deal.getSettledCardsForPlayer(currentPlayerId);
+    const rendered: CribbageCard[] = [];
+    for (let i = 0; i < settledPayloads.length; i++) {
+      const face = settledPayloads[i]?.visibleFace;
+      if (face) {
+        rendered.push({
+          rank: face.rank,
+          suit: face.suit,
+          value: face.rank === 'A' ? 1 : (Number(face.rank) || 10),
+        } as CribbageCard);
+        continue;
+      }
+      // Fallback (should not happen for self recipients — orchestrator
+      // stamps visibleFace on every self intent). Prefer the identity-
+      // matched authoritative card at the same index; otherwise skip.
+      const fallback = (authoritativeHand as CribbageCard[] | null)?.[i] ?? sourceHand[i];
+      if (fallback) rendered.push(fallback);
+    }
+    return rendered;
   })();
   // P0 SELF-HEAL: Run every rendered Cribbage self-hand through the shared
   // invariant helper. Presentation may animate card-by-card only while the

@@ -83,6 +83,22 @@ import {
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
 
+// Suit normalizer — accepts either the symbol form (Card) or the word
+// form (CribbageCard) and returns the transport-owned canonical word
+// form used by DealRuntime's visibleFace payload.
+const SUIT_SYMBOL_TO_WORD_357: Record<string, 'hearts' | 'diamonds' | 'clubs' | 'spades'> = {
+  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
+  spades: 'spades', hearts: 'hearts', diamonds: 'diamonds', clubs: 'clubs',
+};
+function normalizeSelfFaceFor357(
+  card: { rank: string | number; suit: string } | null | undefined,
+): { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null {
+  if (!card) return null;
+  const suit = SUIT_SYMBOL_TO_WORD_357[String(card.suit)];
+  if (!suit) return null;
+  return { rank: String(card.rank), suit };
+}
+
 export interface ThreeFiveSevenSeatEntry {
   playerId: string;
   position: number;
@@ -95,6 +111,18 @@ export interface ThreeFiveSevenDealOrchestratorProps {
   selfPosition?: number | null;
   activeSeats: ThreeFiveSevenSeatEntry[]; // active+not-sitting-out, any order
   cardsThisWave: number;          // 3 for r=1, 2 for r=2 & r=3
+  /**
+   * Identity-matched current-round authoritative self hand. Used to
+   * stamp immutable `visibleFace` metadata on every self-recipient
+   * transport intent so the DEALING render can be driven purely from
+   * transport-owned metadata. Required deal prerequisite: dispatch is
+   * deferred until this array contains the cumulative expected card
+   * count for the current wave (r1:3, r2:5, r3:7). The prop must
+   * already be gated upstream by `playerCardsIdentity.roundId ===
+   * presentationRoundIdForCards` so stale prior-round cards can never
+   * satisfy the prerequisite.
+   */
+  selfHand?: ReadonlyArray<{ rank: string | number; suit: string }>;
 }
 
 export function ThreeFiveSevenDealOrchestrator({
@@ -104,6 +132,7 @@ export function ThreeFiveSevenDealOrchestrator({
   selfPosition = null,
   activeSeats,
   cardsThisWave,
+  selfHand = [],
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -259,6 +288,28 @@ export function ThreeFiveSevenDealOrchestrator({
     if (!activeSeats.length) { emitDecision('defer', 'no_active_seats'); return; }
     if (typeof dealerPosition !== 'number' || dealerPosition <= 0) { emitDecision('defer', 'invalid_dealer_position'); return; }
     if (dealerIsSelf && !selfDealerFeltIsSurface) { emitDecision('defer', 'self_dealer_felt_not_surface'); return; }
+    // Required deal prerequisite (Option 1 contract): if the local
+    // viewer is an active recipient this wave, the identity-matched
+    // authoritative self hand must already contain the cumulative
+    // expected count. This lets the orchestrator stamp immutable
+    // `visibleFace` metadata onto every self intent so the DEALING
+    // render is driven purely from transport-owned data. The upstream
+    // `playerCardsIdentity.roundId === presentationRoundIdForCards`
+    // gate guarantees `selfHand` is either the current round's cards
+    // or shorter — never a stale prior-round hand.
+    const isSelfActiveSeat = activeSeats.some((s) => s.playerId === selfPlayerId);
+    if (isSelfActiveSeat) {
+      const roundNumFromCtx = Number(waveContextId.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
+      const cumulativeRequired =
+        roundNumFromCtx === 1 ? 3 :
+        roundNumFromCtx === 2 ? 5 :
+        roundNumFromCtx === 3 ? 7 :
+        Math.max(cardsThisWave, selfHand.length + cardsThisWave);
+      if (selfHand.length < cumulativeRequired) {
+        emitDecision('defer', 'self_hand_not_ready_for_wave');
+        return;
+      }
+    }
     emitDecision('dispatch', null);
 
     // Build deal order:
@@ -298,6 +349,21 @@ export function ThreeFiveSevenDealOrchestrator({
       ? { kind: 'feltDealOrigin' }
       : { kind: 'seat', position: dealerPosition };
     const intents: CardTransportIntent[] = [];
+    // Compute the self-hand offset for this wave (index of the FIRST
+    // new self card within `selfHand`). For 3-5-7, `selfHand` is the
+    // identity-matched cumulative round hand:
+    //   r1 → 3 cards, offset 0
+    //   r2 → 5 cards, offset 3
+    //   r3 → 7 cards, offset 5
+    // We gated dispatch above on `selfHand.length >= cumulativeRequired`,
+    // so the offset always lands on the new-wave cards.
+    const roundNumForStamp = Number(waveContextId.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
+    const selfHandWaveOffset =
+      roundNumForStamp === 1 ? 0 :
+      roundNumForStamp === 2 ? 3 :
+      roundNumForStamp === 3 ? 5 :
+      Math.max(0, selfHand.length - cardsThisWave);
+    let selfWaveIntentIdx = 0;
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
       for (let off = 0; off < dealOrder.length; off++) {
@@ -306,10 +372,20 @@ export function ThreeFiveSevenDealOrchestrator({
         const isSelf = r.playerId === selfPlayerId;
         const cardId = `${waveContextId}#card-${idx}`;
         const launchDelayMs = idx * staggerMs;
+        // Immutable face metadata for self recipients. The flight stays
+        // `face: 'hidden'` — visibleFace is retained by DealRuntime and
+        // surfaced via getSettledCardsForPlayer for the DEALING render,
+        // never used to reveal the flying card face.
+        const selfFace = isSelf
+          ? normalizeSelfFaceFor357(selfHand[selfHandWaveOffset + selfWaveIntentIdx])
+          : null;
+        const visibleFace = selfFace ?? undefined;
+        if (isSelf) selfWaveIntentIdx += 1;
         intents.push({
           id: cardId,
           cardId,
           face: 'hidden',
+          visibleFace,
           from: dealerOrigin,
           to: isSelf
             ? { kind: 'hand', playerId: selfPlayerId }
@@ -346,7 +422,6 @@ export function ThreeFiveSevenDealOrchestrator({
           dealLandingFallbackUsed: isSelf ? fallbackUsed : null,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
           dealerIsSelf,
-          // visibleFace intentionally omitted — all deal flights are hidden.
         });
         if (isSelf) {
           record357DealLandingTrace(cardId, {
@@ -807,23 +882,43 @@ export function Use357SelfHand<T>({
   const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
+  // Canonical two-phase reveal: during DEALING (== claim-only render for
+  // the self hand), prefer the transport-owned `visibleFace` payload for
+  // each settled card index. This makes the local hand fully derivable
+  // from transport metadata alone — the DB fetch does not gate reveal,
+  // so cards can never "burst" when authoritative arrives late.
+  const settledPayloads = deal?.getSettledCardsForPlayer(currentPlayerId) ?? [];
+  const WORD_SUIT_TO_SYMBOL_357: Record<string, '♠' | '♥' | '♦' | '♣'> = {
+    spades: '♠', hearts: '♥', diamonds: '♦', clubs: '♣',
+  };
   if (isClaimOnlyRender) {
     for (let i = 0; i < allowed; i++) {
       // Try authoritative first, then previously-rendered card for the
-      // same index within the same base hand. NEVER render a cardback —
-      // if face resolution fails, store unresolved claim and log
-      // 357_SELF_CARD_FACE_UNRESOLVED so the next render retries from
-      // authoritative once DB catches up.
+      // same index within the same base hand, then transport-owned
+      // visibleFace. NEVER render a cardback — if face resolution fails,
+      // store unresolved claim and log 357_SELF_CARD_FACE_UNRESOLVED so
+      // the next render retries once identity converges.
       const card = sourceCards[i] ?? cacheRef.current.rendered[i];
       if (card) {
         resolvedCards.push(card);
-      } else {
-        unresolvedSelfCards.push({
-          intentId: settledCardIds[i] ?? null,
-          cardId: settledCardIds[i] ?? null,
-          claimedIndex: i,
-        });
+        continue;
       }
+      const face = settledPayloads[i]?.visibleFace;
+      if (face) {
+        const symSuit = WORD_SUIT_TO_SYMBOL_357[face.suit];
+        if (symSuit) {
+          // Construct a Card-shaped object. Callers of Use357SelfHand
+          // pass Card[] (symbol suits); the cast is safe against that
+          // shape.
+          resolvedCards.push({ rank: face.rank, suit: symSuit } as unknown as T);
+          continue;
+        }
+      }
+      unresolvedSelfCards.push({
+        intentId: settledCardIds[i] ?? null,
+        cardId: settledCardIds[i] ?? null,
+        claimedIndex: i,
+      });
     }
   } else {
     resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));

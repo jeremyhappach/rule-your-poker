@@ -70,6 +70,19 @@ interface DealContextValue {
    */
   getSettledCountForPlayer: (playerId: string) => number;
   getSettledCardIdsForPlayer: (playerId: string) => string[];
+  /**
+   * Per-recipient settled card payloads in transport order. Each entry
+   * carries the immutable `visibleFace` metadata stamped by the
+   * orchestrator at dispatch time (rank/suit for the local player).
+   * `visibleFace` is `null` for intents that did not stamp it (e.g.
+   * opponent stack recipients whose face is unknown to the transport).
+   * Used by DEALING-phase consumers to render local cards purely from
+   * transport-owned metadata without reading the authoritative hand.
+   */
+  getSettledCardsForPlayer: (playerId: string) => Array<{
+    cardId: string;
+    visibleFace: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null;
+  }>;
   beginDeal: (expectedCount: number) => void;
   /**
    * Begin an additional wave of cards in the SAME hand without dropping
@@ -172,6 +185,14 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
+  // Per-recipient ordered payload ledger — captures the intent's
+  // `visibleFace` at settle time so consumers can render local cards
+  // purely from transport-owned metadata during DEALING (no authoritative
+  // read in the render path). Cleared identically to the other settled
+  // ledgers at every hand/wave boundary.
+  const [settledCardPayloadsByRecipient, setSettledCardPayloadsByRecipient] = useState<
+    Map<string, Array<{ cardId: string; visibleFace: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null }>>
+  >(() => new Map());
   // Latched READY release flag — hand-scoped (DealRuntime is keyed by
   // handContextId at the host) and idempotent. Set exactly once when
   // phase===READY, expectedCount>0, settled>=expected, activeIntents===0.
@@ -447,6 +468,18 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
           next.set(pid, list.includes(cardId) ? list : list.concat(cardId));
           return next;
         });
+        // Immutable payload ledger — append the intent's visibleFace
+        // (or null for hidden opponent flights) in transport order.
+        setSettledCardPayloadsByRecipient((prev) => {
+          const next = new Map(prev);
+          const list = next.get(pid) ?? [];
+          if (list.some((e) => e.cardId === cardId)) return prev;
+          next.set(pid, list.concat({
+            cardId,
+            visibleFace: intent.visibleFace ?? null,
+          }));
+          return next;
+        });
       }
     });
     return off;
@@ -486,6 +519,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
+    setSettledCardPayloadsByRecipient(new Map());
     setPhase('DEALING');
     setReadyReleased(false);
     dealDbgUpsert(handContextId, {
@@ -531,6 +565,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
+    setSettledCardPayloadsByRecipient(new Map());
     setPhase('PRE_DEAL');
     setReadyReleased(false);
     if (ctx) {
@@ -576,6 +611,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
     setSettledCardIdsByRecipient(new Map());
+    setSettledCardPayloadsByRecipient(new Map());
     setPhase('DEALING');
     setReadyReleased(false);
     dealDbgUpsert(handContextId, {
@@ -711,6 +747,11 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
     [settledCardIdsByRecipient],
   );
 
+  const getSettledCardsForPlayer = useCallback(
+    (playerId: string) => settledCardPayloadsByRecipient.get(playerId) ?? [],
+    [settledCardPayloadsByRecipient],
+  );
+
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
@@ -727,6 +768,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
       isSettled,
       getSettledCountForPlayer,
       getSettledCardIdsForPlayer,
+      getSettledCardsForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
@@ -735,7 +777,7 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
       beginDealForHand,
       beginWaveForHand,
     }),
-    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, dealSettledNow, readyReleased, releaseEligible, releaseBlockReason, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, getSettledCardsForPlayer, beginDeal, beginWave, enterGameplay, holmHandGeneration, resetForHand, beginDealForHand, beginWaveForHand],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;

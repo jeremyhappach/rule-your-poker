@@ -333,6 +333,11 @@ export function CribbageDealOrchestrator({
       : { kind: 'seat', position: dealerSeat.position };
 
     const intents: CardTransportIntent[] = [];
+    // Self-hand card index tracker — matches the order in which self
+    // recipient intents are created (== deal order for self). Consumed
+    // by the visibleFace stamp so each transport intent carries the
+    // exact rank/suit that the authoritative row already committed to.
+    let selfIntentIdx = 0;
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (let off = 1; off <= sorted.length; off++) {
         const r = sorted[(dealerIdx + off) % sorted.length];
@@ -343,10 +348,20 @@ export function CribbageDealOrchestrator({
         const to: CardTransportIntent['to'] = isSelf
           ? { kind: 'hand', playerId: selfPlayerId }
           : { kind: 'oppStack', position: r.position };
+        // Immutable face-metadata stamp for self recipients. The flight
+        // stays `face: 'hidden'` (opening deal is not shown face-up
+        // in-flight); `visibleFace` is retained by DealRuntime and
+        // surfaced via getSettledCardsForPlayer for the DEALING render.
+        const selfFace = isSelf ? selfHand[selfIntentIdx] : null;
+        const visibleFace = selfFace
+          ? { rank: selfFace.rank, suit: selfFace.suit }
+          : undefined;
+        if (isSelf) selfIntentIdx += 1;
         intents.push({
           id: `${handContextId}#card-${idx}`,
           cardId: `${handContextId}#card-${idx}`,
           face: 'hidden',
+          visibleFace,
           from,
           to,
           durationMs,
