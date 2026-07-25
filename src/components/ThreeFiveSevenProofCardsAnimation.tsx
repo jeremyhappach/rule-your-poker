@@ -218,6 +218,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       }
 
       const nextTransports: ProofCardTransport[] = [];
+      const nextOriginEls: HTMLElement[] = [];
       const missingOrigins: ThreeFiveSevenProofCardsInvariantFailure["missingOrigins"] = [];
       const missingDestinations: ThreeFiveSevenProofCardsInvariantFailure["missingDestinations"] = [];
       const zeroDistanceTransforms: NonNullable<ThreeFiveSevenProofCardsInvariantFailure["zeroDistanceTransforms"]> = [];
