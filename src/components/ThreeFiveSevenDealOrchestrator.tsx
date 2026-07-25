@@ -272,6 +272,28 @@ export function ThreeFiveSevenDealOrchestrator({
     if (!activeSeats.length) { emitDecision('defer', 'no_active_seats'); return; }
     if (typeof dealerPosition !== 'number' || dealerPosition <= 0) { emitDecision('defer', 'invalid_dealer_position'); return; }
     if (dealerIsSelf && !selfDealerFeltIsSurface) { emitDecision('defer', 'self_dealer_felt_not_surface'); return; }
+    // Required deal prerequisite (Option 1 contract): if the local
+    // viewer is an active recipient this wave, the identity-matched
+    // authoritative self hand must already contain the cumulative
+    // expected count. This lets the orchestrator stamp immutable
+    // `visibleFace` metadata onto every self intent so the DEALING
+    // render is driven purely from transport-owned data. The upstream
+    // `playerCardsIdentity.roundId === presentationRoundIdForCards`
+    // gate guarantees `selfHand` is either the current round's cards
+    // or shorter — never a stale prior-round hand.
+    const isSelfActiveSeat = activeSeats.some((s) => s.playerId === selfPlayerId);
+    if (isSelfActiveSeat) {
+      const roundNumFromCtx = Number(waveContextId.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
+      const cumulativeRequired =
+        roundNumFromCtx === 1 ? 3 :
+        roundNumFromCtx === 2 ? 5 :
+        roundNumFromCtx === 3 ? 7 :
+        Math.max(cardsThisWave, selfHand.length + cardsThisWave);
+      if (selfHand.length < cumulativeRequired) {
+        emitDecision('defer', 'self_hand_not_ready_for_wave');
+        return;
+      }
+    }
     emitDecision('dispatch', null);
 
     // Build deal order:
