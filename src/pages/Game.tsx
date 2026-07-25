@@ -7422,6 +7422,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .single();
           
           if (pauseCheck?.is_paused) {
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                blockedReasons: ['paused_on_fire'],
+                freshGame: { is_paused: true },
+              });
+            }
             console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
             __emitWartimeAsyncOwnerFired({
               asyncOwnerId,
