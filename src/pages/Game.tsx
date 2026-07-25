@@ -12204,6 +12204,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .from('games')
               .update({ status: 'in_progress' })
               .eq('id', gameId);
+            // ── H1R3 → H2R1 targeted trace: advancement request.
+            try {
+              void (async () => {
+                const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+                const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+                mod.emitH1r3ToH2r1({
+                  eventName: 'h1r3_to_h2.advance_requested',
+                  sourceSiteId: sites.SRC.H1R3_ADVANCE_REQUESTED.id,
+                  identity: {
+                    gameId, dealerGameId: (game as any)?.current_game_uuid ?? null,
+                    handNumber: ((game as any)?.total_hands ?? 0),
+                    roundNumber: (game as any)?.current_round ?? null,
+                    currentGameUuid: (game as any)?.current_game_uuid ?? null,
+                  },
+                  payload: {
+                    callerAnchor: 'Game.handleAllAnteDecisionsIn.startRound(1)',
+                    previousRoundIdentity: {
+                      handNumber: (game as any)?.total_hands ?? null,
+                      roundNumber: (game as any)?.current_round ?? null,
+                    },
+                    proposedNextHandNumber: ((game as any)?.total_hands ?? 0) + 1,
+                    proposedNextRoundNumber: 1,
+                    currentGameStatus: (game as any)?.status ?? null,
+                    awaitingNextRound: (game as any)?.awaiting_next_round ?? null,
+                  },
+                  forceEmit: true,
+                });
+              })();
+            } catch { /* fire-and-forget */ }
             await startRound(gameId, 1);
           }
 
