@@ -13494,7 +13494,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -13574,7 +13574,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="status-keyed"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -13748,7 +13748,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
                     currentUserId={user?.id}
@@ -14592,7 +14592,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <MobileGameTable
                 key={gameId ?? 'unknown-game'}
                 instanceLabel="cribbage-or-special"
-                currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                 gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
@@ -14748,7 +14748,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
-              currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+              currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
               gameId={gameId}
               three57EntryMode={_three57EntryMode}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
