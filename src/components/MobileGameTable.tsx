@@ -5927,8 +5927,62 @@ export const MobileGameTable = ({
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
     allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
-    currentRound, announcements,
+    currentRound, announcements, threeFiveSevenTerminalDescriptor,
   ]);
+
+  // (B.2) 3-5-7 terminal announcement owner — canonical HudStack row 1.
+  //
+  // Single source of truth for BOTH terminal variants:
+  //   • normal-win : "<Winner> won with <target> legs!"
+  //   • instant-357: "<Winner> sweeps the pot and legs with 3-5-7!"
+  //
+  // Sourced from the immutable Terminal357Descriptor identity (never
+  // from mutable post-settlement state), keyed by terminalGenerationId
+  // so it survives Run It Back and cannot be republished stale after
+  // rotation. Emitted the instant the descriptor arrives (terminal
+  // generation begins) and retired on descriptor rotation / clear at
+  // the canonical dealer-game boundary. TTL is generous — the plate
+  // must persist through proof/leg/sweep + pot/confetti settlement.
+  const lastTerminal357AnnouncementScopeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const descriptor = threeFiveSevenTerminalDescriptor;
+    const prevScope = lastTerminal357AnnouncementScopeRef.current;
+    if (!descriptor) {
+      if (prevScope) {
+        announcements.retireTransientScope(prevScope);
+        lastTerminal357AnnouncementScopeRef.current = null;
+      }
+      return;
+    }
+    const genId = descriptor.terminalGenerationId;
+    const scope = `357-terminal:${genId}`;
+    if (prevScope === scope) return;
+    // New generation — retire prior generation's plate first.
+    if (prevScope) {
+      announcements.retireTransientScope(prevScope);
+    }
+    const winnerName = descriptor.winnerName || 'Winner';
+    const text = descriptor.source === 'instant-357'
+      ? `${winnerName} sweeps the pot and legs with 3-5-7!`
+      : `${winnerName} won with ${descriptor.targetLegs ?? ''} legs!`;
+    announcements.emit({
+      id: `match_win:357-terminal:${genId}`,
+      type: 'match_win',
+      scope: { dealerGameId: descriptor.dealerGameId, roundId: descriptor.roundId },
+      payload: {
+        text,
+        source: '357-terminal-descriptor-owner',
+        terminalGenerationId: genId,
+        gameType: '3-5-7',
+      },
+      // Long TTL — plate persists through proof/sweep/pot/confetti.
+      // Retired synchronously by scope when descriptor rotates.
+      ttlMs: 60000,
+      transientScope: scope,
+    });
+    lastTerminal357AnnouncementScopeRef.current = scope;
+  }, [threeFiveSevenTerminalDescriptor, announcements]);
+
 
   // Horses / SCC game-over result → match_win.
   useEffect(() => {
