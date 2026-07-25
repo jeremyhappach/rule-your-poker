@@ -8174,6 +8174,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 cards: cd.cards as unknown as CardType[],
               }))
             );
+            // Bind the accepted cards to the exact identity that produced them.
+            // The presentation gate compares this identity to the current
+            // authoritative presentation identity; a mismatch (e.g. mid-rotation
+            // H1R3 → H2R1 gap) exposes an empty local hand rather than
+            // re-labelling stale cards under the new round's identity.
+            setPlayerCardsIdentity({
+              dealerGameId: gameData.current_game_uuid ?? null,
+              handNumber: typeof gameData.total_hands === 'number' ? gameData.total_hands : null,
+              roundId: targetRoundId,
+              handContextId: targetRoundId,
+            });
             ffRecord({
               writerId: 'Game.tsx:fetchPlayers.setPlayerCardsApply:L6230',
               source: 'HOLM_SELF_HAND_LINEAGE',
