@@ -11500,6 +11500,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerId(null);
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
+      setTerminal357WinnerHandExpectation(null);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
@@ -11520,6 +11521,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerId(null);
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
+      setTerminal357WinnerHandExpectation(null);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
@@ -11656,6 +11658,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinnerId(null);
     setThreeFiveSevenWinPotAmount(0);
     setThreeFiveSevenWinnerCards([]);
+    setTerminal357WinnerHandExpectation(null);
     cachedPotFor357WinRef.current = 0;
     setCachedLegPositions([]);
 
