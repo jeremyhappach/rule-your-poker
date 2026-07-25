@@ -468,6 +468,18 @@ export function DealRuntime({ handContextId, gameType = null, initialPhase = 'PR
           next.set(pid, list.includes(cardId) ? list : list.concat(cardId));
           return next;
         });
+        // Immutable payload ledger — append the intent's visibleFace
+        // (or null for hidden opponent flights) in transport order.
+        setSettledCardPayloadsByRecipient((prev) => {
+          const next = new Map(prev);
+          const list = next.get(pid) ?? [];
+          if (list.some((e) => e.cardId === cardId)) return prev;
+          next.set(pid, list.concat({
+            cardId,
+            visibleFace: intent.visibleFace ?? null,
+          }));
+          return next;
+        });
       }
     });
     return off;
