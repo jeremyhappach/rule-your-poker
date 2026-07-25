@@ -82,7 +82,7 @@ export const ThreeFiveSevenTerminalController = ({
 }: ThreeFiveSevenTerminalControllerProps) => {
   const deal = useDealRuntime();
   const dealSettled = !!deal?.dealSettled;
-  const announcements = useAnnouncements();
+
 
   const activeGenIdRef = useRef<string | null>(null);
   const handedOffForGenRef = useRef<string | null>(null);
