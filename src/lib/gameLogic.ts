@@ -10,6 +10,10 @@ import {
   registerWartimeProductionHook as __wartimeRegisterHookGL,
   SRC as WARTIME_SRC,
 } from "./threeFiveSeven/wartime";
+import {
+  emitH1r3ToH2r1 as __emitH1r3H2r1,
+  noteH2r1RoundIdentitySelected as __noteH2r1Selected,
+} from "./threeFiveSeven/wartime/h1r3ToH2r1";
 
 // 3-5-7 Wartime — canonical production owner for db.mutation.correlation.
 // gameLogic.ts contains the 3-5-7 round/ante/deal/settlement mutations.
