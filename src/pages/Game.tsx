@@ -6948,7 +6948,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (!allDecisionsIn) pollBlockedReasons.push('all_decisions_not_in');
       if (alreadyAwaiting) pollBlockedReasons.push('already_awaiting');
       if (awaitingPollRef.current) pollBlockedReasons.push('poll_already_active');
-      persist357Investigation(gameId!, game?.total_hands || 1, 'awaiting_flag_off_admission', {}); // no-op placeholder (silenced)
+      // (poll-enter/blocked below)
       persist357Investigation(gameId!, game?.total_hands || 1,
         shouldPoll && !awaitingPollRef.current
           ? '357.awaiting_next_round.poll_enter'
