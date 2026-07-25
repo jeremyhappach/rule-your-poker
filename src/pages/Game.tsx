@@ -5893,13 +5893,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Hand identity is stable across the WHOLE hand. It must NOT include intra-hand
   // reveal progression (communityCardsRevealed, chuckyActive, chuckyCardsRevealed),
   // otherwise downstream caches/animations reset mid-reveal and replay/batch cards.
+  // Positive lifecycle contract for 3-5-7 (and any other consumer of this
+  // readiness gate): the presentation is authoritative ONLY when a dealer
+  // game exists, a current round exists, AND that round belongs to the
+  // current dealer game. Any other state — either side null, or a real
+  // mismatch — is "not ready". This expresses the mount contract directly
+  // instead of accumulating null/mismatch exceptions.
   const currentDealerGameIdForArtifacts = game?.current_game_uuid ?? null;
   const currentRoundDealerGameIdForArtifacts = (currentRound as any)?.dealer_game_id ?? null;
-  const hasCurrentRoundDealerGameMismatch = !!(
+  const isCurrentRoundAuthoritativeForDealerGame = !!(
     currentDealerGameIdForArtifacts &&
     currentRoundDealerGameIdForArtifacts &&
-    currentRoundDealerGameIdForArtifacts !== currentDealerGameIdForArtifacts
+    currentRoundDealerGameIdForArtifacts === currentDealerGameIdForArtifacts
   );
+  const currentRoundNotReadyForPresentation = !isCurrentRoundAuthoritativeForDealerGame;
+  // Back-compat alias for existing consumers below (round-id gating, cache
+  // key nulling). Behavioral semantics unchanged for the mismatch case and
+  // strictly tightened for the transient-null case (now also treated as
+  // not-ready, matching the mount gate).
+  const hasCurrentRoundDealerGameMismatch = currentRoundNotReadyForPresentation;
 
   // Holm uses a STABLE per-hand lifecycle key: (roundId, handNumber). It MUST
   // NOT include community-card identity — those reveal progressively during
@@ -13482,7 +13494,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -13562,7 +13574,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="status-keyed"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -13736,7 +13748,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
-                    currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                    currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
                     players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
                     currentUserId={user?.id}
@@ -14580,7 +14592,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <MobileGameTable
                 key={gameId ?? 'unknown-game'}
                 instanceLabel="cribbage-or-special"
-                currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+                currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                 gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
@@ -14736,7 +14748,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
-              currentRoundDealerGameMismatched={hasCurrentRoundDealerGameMismatch}
+              currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
               gameId={gameId}
               three57EntryMode={_three57EntryMode}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}

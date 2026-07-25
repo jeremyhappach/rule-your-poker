@@ -956,8 +956,13 @@ interface MobileGameTableProps {
    * orchestrator MUST NOT mount, otherwise stale outgoing self-hand length
    * satisfies the cumulative round prerequisite of a novel waveContextId
    * and dispatches ghost offsets onto the outgoing surface.
+   *
+   * Positive lifecycle contract: presentation is authoritative iff BOTH
+   * game.current_game_uuid AND currentRound exist AND currentRound belongs
+   * to the current dealer game. Any other state (either side null, or
+   * dealer-game mismatch) is "not ready" and must suppress the mount.
    */
-  currentRoundDealerGameMismatched?: boolean;
+  currentRoundNotReadyForPresentation?: boolean;
   handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
@@ -1223,7 +1228,7 @@ export const MobileGameTable = ({
   pussyTaxValue = 1,
   gameStatus,
   instanceLabel = 'unknown',
-  currentRoundDealerGameMismatched = false,
+  currentRoundNotReadyForPresentation = false,
   handContextId,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
@@ -5968,7 +5973,14 @@ export const MobileGameTable = ({
     announcements.emit({
       id: `match_win:357-terminal:${genId}`,
       type: 'match_win',
-      scope: { dealerGameId: descriptor.dealerGameId, roundId: descriptor.roundId },
+      // Scope MUST use session gameId (games.id) to match the provider mounted
+      // in PersistentTableShell (dealerGameId={gameId}, roundId={null}).
+      // descriptor.dealerGameId is games.current_game_uuid (dealer_games.id) —
+      // a different id space; using it here trips scopeMatches and the plate
+      // is silently dropped. Generation identity is carried by transientScope
+      // (`357-terminal:${genId}`) + payload.terminalGenerationId, so scope
+      // only needs to reach the correct table surface.
+      scope: { dealerGameId: gameId ?? null, roundId: null },
       payload: {
         text,
         source: '357-terminal-descriptor-owner',
@@ -5981,7 +5993,7 @@ export const MobileGameTable = ({
       transientScope: scope,
     });
     lastTerminal357AnnouncementScopeRef.current = scope;
-  }, [threeFiveSevenTerminalDescriptor, announcements]);
+  }, [threeFiveSevenTerminalDescriptor, announcements, gameId]);
 
 
   // Horses / SCC game-over result → match_win.
@@ -9804,7 +9816,7 @@ export const MobileGameTable = ({
     >
     <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
-      {!currentRoundDealerGameMismatched && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
+      {!currentRoundNotReadyForPresentation && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
           waveContextId={threeFiveSevenWaveContextId}
           dealerPosition={threeFiveSevenDealerPosition}
