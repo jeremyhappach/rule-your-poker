@@ -84,9 +84,10 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   onComplete,
   onInvariantFailure,
 }: ThreeFiveSevenProofCardsAnimationProps) => {
-  const [phase, setPhase] = useState<"hidden" | "measuring" | "origin" | "transporting" | "settled" | "blocked">("hidden");
+  const [phase, setPhase] = useState<"hidden" | "measuring" | "origin" | "lifted" | "transporting" | "settled" | "blocked">("hidden");
   const [transports, setTransports] = useState<ProofCardTransport[]>([]);
   const [completedIndices, setCompletedIndices] = useState<ReadonlySet<number>>(() => new Set());
+  const originElsRef = useRef<HTMLElement[]>([]);
   const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
   const completedForKeyRef = useRef<string | null>(null);
   const failedForKeyRef = useRef<string | null>(null);
@@ -217,6 +218,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       }
 
       const nextTransports: ProofCardTransport[] = [];
+      const nextOriginEls: HTMLElement[] = [];
       const missingOrigins: ThreeFiveSevenProofCardsInvariantFailure["missingOrigins"] = [];
       const missingDestinations: ThreeFiveSevenProofCardsInvariantFailure["missingDestinations"] = [];
       const zeroDistanceTransforms: NonNullable<ThreeFiveSevenProofCardsInvariantFailure["zeroDistanceTransforms"]> = [];
@@ -265,6 +267,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             destinationSelector,
             distancePx,
           });
+          if (origin) nextOriginEls.push(origin);
         }
       });
 
@@ -291,11 +294,19 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       }
 
       setTransports(nextTransports);
+      originElsRef.current = nextOriginEls;
       setCompletedIndices(new Set());
       setPhase("origin");
+      // Two rAFs to paint the origin frame, then lift (dramatic anticipation),
+      // then transport. Timings: 380ms lift (bounce-out) → 1050ms transport
+      // (long cubic ease-out, feels like a settled reveal).
       raf = requestAnimationFrame(() => {
         raf = requestAnimationFrame(() => {
-          if (!cancelled) setPhase("transporting");
+          if (cancelled) return;
+          setPhase("lifted");
+          window.setTimeout(() => {
+            if (!cancelled) setPhase("transporting");
+          }, 380);
         });
       });
     };
@@ -306,6 +317,31 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       if (raf) cancelAnimationFrame(raf);
     };
   }, [show, generationKey, proofCardSignature, winnerPosition]);
+
+  // Hide the original hand cards during & after transport so there's never
+  // two visible copies. visibility:hidden preserves layout geometry.
+  useEffect(() => {
+    const hide = phase === "lifted" || phase === "transporting" || phase === "settled";
+    const els = originElsRef.current;
+    if (!els || els.length === 0) return;
+    if (hide) {
+      els.forEach((el) => {
+        if (!el.hasAttribute("data-357-proof-prev-visibility")) {
+          el.setAttribute("data-357-proof-prev-visibility", el.style.visibility || "");
+        }
+        el.style.visibility = "hidden";
+      });
+      return () => {
+        els.forEach((el) => {
+          const prev = el.getAttribute("data-357-proof-prev-visibility");
+          if (prev !== null) {
+            el.style.visibility = prev;
+            el.removeAttribute("data-357-proof-prev-visibility");
+          }
+        });
+      };
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "settled") return;
@@ -338,7 +374,26 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             const scaleY = transport.originRect.height > 0
               ? transport.destinationRect.height / transport.originRect.height
               : 1;
-            const moving = phase === "transporting" || phase === "settled";
+            // Lift phase: anticipation — small upward pop with a mid-flight
+            // scale-up so it feels like a reveal, not a slide. Direction
+            // biased away from the felt center (winner in seats 3/4 lift
+            // up; seats 1/2 or observers lift up too by default).
+            const liftDy = -32;
+            const liftScale = 1.18;
+            let transform: string;
+            let transition: string;
+            if (phase === "origin") {
+              transform = "translate3d(0, 0, 0) scale(1)";
+              transition = "none";
+            } else if (phase === "lifted") {
+              transform = `translate3d(0, ${liftDy}px, 0) scale(${liftScale})`;
+              // Bounce-out-ish curve for the anticipation lift.
+              transition = "transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+            } else {
+              // transporting / settled — dramatic ease-out to destination.
+              transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`;
+              transition = "transform 1050ms cubic-bezier(0.22, 1, 0.36, 1)";
+            }
             return (
               <div
                 key={`${generationKey}-overlay-${transport.index}-${transport.card.rank}${transport.card.suit}`}
@@ -354,14 +409,14 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                   top: transport.originRect.y,
                   width: transport.originRect.width,
                   height: transport.originRect.height,
-                  transformOrigin: "top left",
-                  transform: moving
-                    ? `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`
-                    : "translate3d(0, 0, 0) scale(1)",
-                  transition: phase === "origin"
-                    ? "none"
-                    : "transform 900ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  transformOrigin: "center center",
+                  transform,
+                  transition,
                   willChange: "transform",
+                  filter: phase === "lifted" || phase === "transporting"
+                    ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))"
+                    : "drop-shadow(0 2px 4px rgba(0,0,0,0.25))",
+                  opacity: phase === "settled" ? 0 : 1,
                 }}
                 onTransitionEnd={(event) => {
                   if (event.target !== event.currentTarget) return;
@@ -378,7 +433,9 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                 <PlayingCard
                   card={transport.card}
                   size="md"
+                  tier="medium"
                   style={{ width: "100%", height: "100%" }}
+                  faceFillPx={transport.destinationRect.width}
                 />
               </div>
             );
@@ -400,14 +457,14 @@ export const ThreeFiveSevenProofCardsAnimation = ({
           data-anchor-owner="ThreeFiveSevenTerminalController.proofCards.targets"
           data-controller-357-proof-cards={generationKey}
           data-controller-357-proof-phase={phase}
-          style={{ visibility: "hidden" }}
+          style={{ visibility: phase === "settled" ? "visible" : "hidden" }}
         >
           {cards.slice(0, 3).map((c, i) => (
             <div
               key={`${generationKey}-target-${i}-${c.rank}${c.suit}`}
               data-controller-357-proof-target-index={i}
             >
-              <PlayingCard card={c} size="md" />
+              <PlayingCard card={c} size="md" tier="medium" />
             </div>
           ))}
         </div>
