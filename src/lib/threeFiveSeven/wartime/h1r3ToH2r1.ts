@@ -20,6 +20,14 @@
 
 import { emitWartime, type WartimeIdentity } from './emit';
 
+const dedupFingerprints = new Map<string, string>();
+/** Returns true iff the fingerprint for this key changed since last call. */
+export function shouldEmitOnFingerprintChange(key: string, fingerprint: string): boolean {
+  if (dedupFingerprints.get(key) === fingerprint) return false;
+  dedupFingerprints.set(key, fingerprint);
+  return true;
+}
+
 interface SeamState {
   active: boolean;
   activatedAt: number | null;
