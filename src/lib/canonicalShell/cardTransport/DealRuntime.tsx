@@ -70,6 +70,19 @@ interface DealContextValue {
    */
   getSettledCountForPlayer: (playerId: string) => number;
   getSettledCardIdsForPlayer: (playerId: string) => string[];
+  /**
+   * Per-recipient settled card payloads in transport order. Each entry
+   * carries the immutable `visibleFace` metadata stamped by the
+   * orchestrator at dispatch time (rank/suit for the local player).
+   * `visibleFace` is `null` for intents that did not stamp it (e.g.
+   * opponent stack recipients whose face is unknown to the transport).
+   * Used by DEALING-phase consumers to render local cards purely from
+   * transport-owned metadata without reading the authoritative hand.
+   */
+  getSettledCardsForPlayer: (playerId: string) => Array<{
+    cardId: string;
+    visibleFace: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' } | null;
+  }>;
   beginDeal: (expectedCount: number) => void;
   /**
    * Begin an additional wave of cards in the SAME hand without dropping
