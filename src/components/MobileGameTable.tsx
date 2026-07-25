@@ -8901,6 +8901,45 @@ export const MobileGameTable = ({
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
+    // ── H1R3 → H2R1 targeted trace: opponent card-back derivation.
+    try {
+      if (
+        !isCurrentUser &&
+        (horsesHandNumber ?? 0) >= 2 &&
+        (currentRound ?? 0) === 1 &&
+        apparentIsActivePlayer
+      ) {
+        const fp = `${cards.length}|${cardCountToShow}|${expectedCardCount}`;
+        const dedupKey = `opp_back:${handContextId ?? 'none'}:${player.id}`;
+        void (async () => {
+          const mod = await import('@/lib/threeFiveSeven/wartime/h1r3ToH2r1');
+          const sites = await import('@/lib/threeFiveSeven/wartime/sourceSites');
+          if (!mod.shouldEmitOnFingerprintChange(dedupKey, fp)) return;
+          mod.emitH1r3ToH2r1({
+            eventName: 'h2r1.opponent_back_count_derived',
+            sourceSiteId: sites.SRC.H2R1_OPP_BACK_COUNT_DERIVED.id,
+            identity: {
+              gameId: gameId ?? null,
+              dealerGameId: threeFiveSevenDealerGameScope ?? null,
+              handNumber: horsesHandNumber ?? null,
+              roundNumber: currentRound ?? null,
+              handContextId: handContextId ?? null,
+              playerId: player.id,
+              playerPosition: player.position,
+              isLocalPlayer: false,
+            },
+            payload: {
+              authoritativeCardCount: cards.length,
+              renderedBackCount: Math.min(cardCountToShow, 7),
+              cardCountToShow,
+              expectedCardCount,
+              selectedBranch: cards.length > 0 ? 'cards.length' : 'expectedCardCount',
+            },
+          });
+        })();
+      }
+    } catch { /* fire-and-forget */ }
+
     const isDealer = dealerPosition === player.position;
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
     const isRightSideSlot = slot >= 3;
