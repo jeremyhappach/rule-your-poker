@@ -456,7 +456,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
           data-anchor-owner="ThreeFiveSevenTerminalController.proofCards.targets"
           data-controller-357-proof-cards={generationKey}
           data-controller-357-proof-phase={phase}
-          style={{ visibility: "hidden" }}
+          style={{ visibility: phase === "settled" ? "visible" : "hidden" }}
         >
           {cards.slice(0, 3).map((c, i) => (
             <div
