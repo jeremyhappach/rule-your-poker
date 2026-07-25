@@ -882,23 +882,43 @@ export function Use357SelfHand<T>({
   const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
+  // Canonical two-phase reveal: during DEALING (== claim-only render for
+  // the self hand), prefer the transport-owned `visibleFace` payload for
+  // each settled card index. This makes the local hand fully derivable
+  // from transport metadata alone — the DB fetch does not gate reveal,
+  // so cards can never "burst" when authoritative arrives late.
+  const settledPayloads = deal?.getSettledCardsForPlayer(currentPlayerId) ?? [];
+  const WORD_SUIT_TO_SYMBOL_357: Record<string, '♠' | '♥' | '♦' | '♣'> = {
+    spades: '♠', hearts: '♥', diamonds: '♦', clubs: '♣',
+  };
   if (isClaimOnlyRender) {
     for (let i = 0; i < allowed; i++) {
       // Try authoritative first, then previously-rendered card for the
-      // same index within the same base hand. NEVER render a cardback —
-      // if face resolution fails, store unresolved claim and log
-      // 357_SELF_CARD_FACE_UNRESOLVED so the next render retries from
-      // authoritative once DB catches up.
+      // same index within the same base hand, then transport-owned
+      // visibleFace. NEVER render a cardback — if face resolution fails,
+      // store unresolved claim and log 357_SELF_CARD_FACE_UNRESOLVED so
+      // the next render retries once identity converges.
       const card = sourceCards[i] ?? cacheRef.current.rendered[i];
       if (card) {
         resolvedCards.push(card);
-      } else {
-        unresolvedSelfCards.push({
-          intentId: settledCardIds[i] ?? null,
-          cardId: settledCardIds[i] ?? null,
-          claimedIndex: i,
-        });
+        continue;
       }
+      const face = settledPayloads[i]?.visibleFace;
+      if (face) {
+        const symSuit = WORD_SUIT_TO_SYMBOL_357[face.suit];
+        if (symSuit) {
+          // Construct a Card-shaped object. Callers of Use357SelfHand
+          // pass Card[] (symbol suits); the cast is safe against that
+          // shape.
+          resolvedCards.push({ rank: face.rank, suit: symSuit } as unknown as T);
+          continue;
+        }
+      }
+      unresolvedSelfCards.push({
+        intentId: settledCardIds[i] ?? null,
+        cardId: settledCardIds[i] ?? null,
+        claimedIndex: i,
+      });
     }
   } else {
     resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
