@@ -416,6 +416,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                   filter: phase === "lifted" || phase === "transporting"
                     ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))"
                     : "drop-shadow(0 2px 4px rgba(0,0,0,0.25))",
+                  opacity: phase === "settled" ? 0 : 1,
                 }}
                 onTransitionEnd={(event) => {
                   if (event.target !== event.currentTarget) return;
