@@ -9731,7 +9731,7 @@ export const MobileGameTable = ({
     >
     <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
-      {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
+      {!currentRoundDealerGameMismatched && threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
           waveContextId={threeFiveSevenWaveContextId}
           dealerPosition={threeFiveSevenDealerPosition}
