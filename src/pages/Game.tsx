@@ -7035,8 +7035,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         harness357,
         harnessHolm,
         debugHolmPaused,
-        currentRoundId: currentRound_?.id ?? null,
-        currentRoundStatus: currentRound_?.status ?? null,
+        currentRoundId: null,
+        currentRoundStatus: null,
         handContextId: (game as any)?.hand_context_id ?? null,
         dealerGameId: game?.current_game_uuid ?? null,
         deps: {
