@@ -5389,6 +5389,11 @@ export const MobileGameTable = ({
       ? `${handContextId}:${currentPlayer.id}`
       : null;
   const sawUnlockedForDecisionIdentityRef = useRef<string | null>(null);
+  // Retires the STAYED/FOLDED badge for the identity in which the local
+  // 3-5-7 winner's terminal slot rendered (Show Cards / Cards Shown). Once
+  // latched, the decision badge can never re-appear for that identity, so
+  // the slot goes empty after Cards Shown rather than reverting to STAYED.
+  const terminalBadgeRetiredIdentityRef = useRef<string | null>(null);
   const [admittedDbDecisionIdentity, setAdmittedDbDecisionIdentity] = useState<string | null>(null);
   useEffect(() => {
     // Identity rotated — reset admission for the new (dealerGame + round + player) tuple.
@@ -12896,33 +12901,20 @@ export const MobileGameTable = ({
                             add layout height and reflow the active-hand
                             fan, violating the hand-geometry invariant. */}
 
-                        {isWinner357InAnimation ? (
-                          (() => {
-                            // Winner's real hand stays in the active-player
-                            // box across the entire terminal sequence,
-                            // regardless of Show Cards state. When the
-                            // winner selects Show Cards the felt stage
-                            // renders as an overlay copy (see
-                            // threeFiveSeven.winnerTabledCardsStage) — the
-                            // real hand geometry is never repurposed.
-                            if (currentPlayerCards.length === 0) return null;
-                            return (
-                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="" data-holm-active-hand-region="">
-                                <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
-                                  <PlayerHand
-                                    cards={currentPlayerCards}
-                                    isHidden={false}
-                                    gameType={gameType}
-                                    currentRound={currentRound}
-                                    showSeparated={currentRound === 3}
-                                    availableHeightPx={handAvailableHeightPx357}
-                                    wrapperScale={handScaleNum}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })()
-                        ) : isCurrentPlayerSoloVsChucky || (
+                        {/* GEOMETRY INVARIANCE CONTRACT: The winner's
+                            active hand goes through the exact same render
+                            path as the non-terminal state. The previous
+                            `isWinner357InAnimation` early branch used a raw
+                            <PlayerHand/> without `expectedCardCount`,
+                            `dealPhase`, `claimedCardIds` and
+                            `Use357SelfHand`, which produced a different
+                            measured height than the else branch — that
+                            byte-for-byte difference is what appeared as
+                            the "shrink" the instant Show Cards mounted.
+                            Removing the special branch guarantees the
+                            hand's slot geometry is invariant across
+                            terminal presence, click, and dismissal. */}
+                        {isCurrentPlayerSoloVsChucky || (
                           // Wave 5D follow-up — current viewer's exposed
                           // cards during multiplayer showdown are owned
                           // by their CanonicalSeatCluster (allowSelfRender)
@@ -13171,6 +13163,15 @@ export const MobileGameTable = ({
                           threeFiveSevenWinPhase !== 'idle' &&
                           !(lastRoundResult?.startsWith('357_SWEEP:'));
                         if (isLocalWinner357InAnim) {
+                          // Latch: once the local winner's terminal slot
+                          // has rendered for this decision identity, the
+                          // STAYED/FOLDED badge is permanently retired
+                          // for that identity — it may never return after
+                          // the terminal animation completes.
+                          if (authoritativeDecisionIdentityKey) {
+                            terminalBadgeRetiredIdentityRef.current =
+                              authoritativeDecisionIdentityKey;
+                          }
                           if (!winner357ShowCards) {
                             return (
                               <Button
@@ -13191,6 +13192,16 @@ export const MobileGameTable = ({
                               Cards Shown
                             </div>
                           );
+                        }
+                        // If this identity has already rendered a terminal
+                        // winner slot, do NOT fall through to the decision
+                        // badge — the badge is retired for this identity.
+                        if (
+                          authoritativeDecisionIdentityKey &&
+                          terminalBadgeRetiredIdentityRef.current ===
+                            authoritativeDecisionIdentityKey
+                        ) {
+                          return null;
                         }
                         // Choose the decision value to render. In 3-5-7, only trust
                         // the DB `current_decision` when admission has been proved
