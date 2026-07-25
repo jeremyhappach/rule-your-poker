@@ -37,7 +37,7 @@ import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { SweepTheLegsAnimation } from "@/components/SweepTheLegsAnimation";
 import { ThreeFiveSevenProofCardsAnimation } from "@/components/ThreeFiveSevenProofCardsAnimation";
 import { emit357RuntimeDiag } from "@/lib/threeFiveSeven/runtimeDiag";
-import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+
 
 export interface CanonicalTerminal357EntryInput {
   gameId: string | null;
