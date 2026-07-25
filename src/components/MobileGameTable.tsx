@@ -6340,7 +6340,22 @@ export const MobileGameTable = ({
     // in the same tick as the sweep sentinel, even when proof cards
     // are pending), so legacy is disabled iff the controller is
     // guaranteed to activate.
-    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') {
+    // OWNERSHIP PREDICATE — the sweep sentinel `357_SWEEP:*` is itself
+    // the deterministic controller-ownership boundary: every sweep is by
+    // construction instant-357 and owned by ThreeFiveSevenTerminalController.
+    // We no longer race against terminal357Descriptor emission (which can
+    // lag the sentinel across dealer-game rotations while the new Round 1
+    // row propagates via realtime). Sentinel present ⇒ legacy prelude is
+    // behaviorally unreachable, regardless of descriptor state.
+    const controllerOwnsInstant357 =
+      threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+      || (typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:'));
+    if (controllerOwnsInstant357) {
+      // Clear any stale legacy truth that may have survived a prior
+      // generation (e.g. modal state that never completed because the
+      // render predicate hid it mid-flight).
+      if (showSweepsPot) setShowSweepsPot(false);
+      if (showSweepTheLegs357) setShowSweepTheLegs357(false);
       emit357RuntimeDiag('legacy_prelude_suppressed', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -6351,7 +6366,7 @@ export const MobileGameTable = ({
         terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
         dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
         handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_only',
+        guardMode: 'sentinel_or_descriptor',
       });
       return;
     }
