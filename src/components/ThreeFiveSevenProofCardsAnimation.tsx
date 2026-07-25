@@ -84,9 +84,10 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   onComplete,
   onInvariantFailure,
 }: ThreeFiveSevenProofCardsAnimationProps) => {
-  const [phase, setPhase] = useState<"hidden" | "measuring" | "origin" | "transporting" | "settled" | "blocked">("hidden");
+  const [phase, setPhase] = useState<"hidden" | "measuring" | "origin" | "lifted" | "transporting" | "settled" | "blocked">("hidden");
   const [transports, setTransports] = useState<ProofCardTransport[]>([]);
   const [completedIndices, setCompletedIndices] = useState<ReadonlySet<number>>(() => new Set());
+  const originElsRef = useRef<HTMLElement[]>([]);
   const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
   const completedForKeyRef = useRef<string | null>(null);
   const failedForKeyRef = useRef<string | null>(null);
