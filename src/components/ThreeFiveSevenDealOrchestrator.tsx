@@ -744,8 +744,14 @@ export function Use357SelfHand<T>({
 }) {
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
-  const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  // Canonical two-phase reveal driver:
+  //   DEALING → per-recipient settled cardId list (transport order) is
+  //             the visual authority. `settled` is that list's length.
+  //   READY/GAMEPLAY → authoritative `sourceCards` is the visual authority
+  //             (see `isClaimOnlyRender` below — `allowed` becomes
+  //             `sourceCards.length`, preserving handoff continuity).
   const settledCardIds = deal?.getSettledCardIdsForPlayer(currentPlayerId) ?? [];
+  const settled = settledCardIds.length;
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
