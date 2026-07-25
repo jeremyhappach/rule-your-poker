@@ -95,6 +95,18 @@ export interface ThreeFiveSevenDealOrchestratorProps {
   selfPosition?: number | null;
   activeSeats: ThreeFiveSevenSeatEntry[]; // active+not-sitting-out, any order
   cardsThisWave: number;          // 3 for r=1, 2 for r=2 & r=3
+  /**
+   * Identity-matched current-round authoritative self hand. Used to
+   * stamp immutable `visibleFace` metadata on every self-recipient
+   * transport intent so the DEALING render can be driven purely from
+   * transport-owned metadata. Required deal prerequisite: dispatch is
+   * deferred until this array contains the cumulative expected card
+   * count for the current wave (r1:3, r2:5, r3:7). The prop must
+   * already be gated upstream by `playerCardsIdentity.roundId ===
+   * presentationRoundIdForCards` so stale prior-round cards can never
+   * satisfy the prerequisite.
+   */
+  selfHand?: Array<{ rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' }>;
 }
 
 export function ThreeFiveSevenDealOrchestrator({
@@ -104,6 +116,7 @@ export function ThreeFiveSevenDealOrchestrator({
   selfPosition = null,
   activeSeats,
   cardsThisWave,
+  selfHand = [],
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
