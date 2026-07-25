@@ -7565,6 +7565,27 @@ export const MobileGameTable = ({
 
   // Stable snapshot used during the 3-5-7 win transition (prevents leg flicker if backend resets legs mid-view).
   const threeFiveSevenLegsSnapshotRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]);
+
+  // First-paint pending-leg claim: authoritative `player.legs` may increment
+  // one render before the leg-gain detector effect runs and flips
+  // `showLegEarned`. That gap paints the new leg at its static destination
+  // for a frame. Derive the pending claim synchronously during render from
+  // the same baseline the detector uses (`playerLegsRef.current`) so the
+  // static cluster withholds the newly-awarded leg immediately. Scoped by
+  // playerId + currentLegs so previously earned legs remain visible and
+  // only the newly-awarded leg is withheld. Cleared once the detector
+  // advances the baseline (which happens in the same effect that clears
+  // the animation). Suppressed in the same conditions the detector skips
+  // an animation (waiting phase, uninitialized baseline, instant-357).
+  const hasPendingLegAnimationClaim = (playerId: string, currentLegs: number): boolean => {
+    if (isWaitingPhase) return false;
+    if (!legsTrackerInitializedRef.current) return false;
+    if (threeFiveSevenTerminalDescriptor?.source === 'instant-357') return false;
+    const prev = playerLegsRef.current[playerId];
+    return prev !== undefined && currentLegs > prev;
+  };
+
+  
   
   // Legacy 3-5-7 win animation trigger from parent (kept as fallback)
   // NOTE: Primary trigger now comes from LegEarnedAnimation onComplete when isWinningLegAnimation is true
