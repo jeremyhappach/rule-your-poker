@@ -9271,21 +9271,6 @@ export const MobileGameTable = ({
     // off the same canonical disc that publishes data-chip-center.
     const playerLegs = player.legs;
     const isLegAnimatingForThisPlayer =
-      showLegEarned && legEarnedPlayerPosition === player.position;
-    const hideLegsForWinAnimation =
-      threeFiveSevenWinPhase === 'legs-to-player' ||
-      threeFiveSevenWinPhase === 'pot-to-player' ||
-      threeFiveSevenWinPhase === 'delay';
-    const isInWinAnimation = threeFiveSevenWinPhase !== 'idle';
-    const cachedLegsForThisPlayer =
-      threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
-    const effectivePlayerLegs = isInWinAnimation ? cachedLegsForThisPlayer : playerLegs;
-    // Outside an active, identity-matched leg/sweep animation, always
-    // render authoritative `player.legs`. The prior session-wide idle
-    // latch (`lastThreeFiveSevenTriggerRef.current !== null &&
-    // threeFiveSevenWinPhase === 'idle'`) permanently forced legs to
-    // zero after any earlier trigger and is removed here.
-    const isLegAnimatingForThisPlayer =
       (showLegEarned && legEarnedPlayerPosition === player.position) ||
       hasPendingLegAnimationClaim(player.id, player.legs);
     const hideLegsForWinAnimation =
@@ -9295,7 +9280,7 @@ export const MobileGameTable = ({
     const isInWinAnimation = threeFiveSevenWinPhase !== 'idle';
     const cachedLegsForThisPlayer =
       threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
-    const effectivePlayerLegs = isInWinAnimation ? cachedLegsForThisPlayer : player.legs;
+    const effectivePlayerLegs = isInWinAnimation ? cachedLegsForThisPlayer : playerLegs;
     // Outside an active, identity-matched leg/sweep animation, always
     // render authoritative `player.legs`. The prior session-wide idle
     // latch (`lastThreeFiveSevenTriggerRef.current !== null &&
