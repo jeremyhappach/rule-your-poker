@@ -1001,8 +1001,30 @@ const Game = () => {
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
+  /**
+   * Identity captured at the moment `playerCards` was written from an
+   * authoritative fetch. `playerCardsForPresentation` is gated on this
+   * identity so that a rotated `cardStateContext` cannot re-label the
+   * previous round's card array as the new round's data during the
+   * brief window before the new fetch resolves.
+   */
+  const [playerCardsIdentity, setPlayerCardsIdentity] = useState<{
+    dealerGameId: string | null;
+    handNumber: number | null;
+    roundId: string;
+    handContextId: string;
+  } | null>(null);
   const [cardStateContext, setCardStateContext] = useState<CardStateContext | null>(null); // Authoritative card count
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
+
+  // When playerCards is cleared (any writer), drop the bound identity so a
+  // stale identity can never gate an empty array as if it were authoritative.
+  useEffect(() => {
+    if (playerCards.length === 0 && playerCardsIdentity !== null) {
+      setPlayerCardsIdentity(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerCards]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   useStartupRenderTrace('Game', {
