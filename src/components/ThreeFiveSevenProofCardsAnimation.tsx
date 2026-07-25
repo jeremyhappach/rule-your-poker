@@ -318,7 +318,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
   // Hide the original hand cards during & after transport so there's never
   // two visible copies. visibility:hidden preserves layout geometry.
   useEffect(() => {
-    const hide = phase === "lifted" || phase === "transporting" || phase === "settled";
+    const hide = phase === "transporting" || phase === "settled";
     const els = originElsRef.current;
     if (!els || els.length === 0) return;
     if (hide) {
