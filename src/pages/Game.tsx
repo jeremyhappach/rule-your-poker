@@ -1549,6 +1549,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
+  /**
+   * Immutable identity-bound expectation for the terminal winner hand.
+   * Captured at authoritative 3-5-7 terminal detection. `threeFiveSevenWinnerCards`
+   * may only be populated when `playerCardsIdentity` and the winner's
+   * player_cards row strictly match ALL five identity dimensions AND the
+   * exact `expectedCardCount` for the terminal round. Cross-game / prior
+   * round / partial data is hard-rejected — the expectation persists so
+   * that a late-arriving identity-matched fetch can still fulfill it
+   * without losing the winner's explicit Show Cards consent.
+   */
+  const [terminal357WinnerHandExpectation, setTerminal357WinnerHandExpectation] = useState<{
+    dealerGameId: string | null;
+    handNumber: number | null;
+    roundId: string | null;
+    playerId: string;
+    terminalResultIdentity: string;
+    expectedCardCount: number;
+  } | null>(null);
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
   // Slice 1 (inert): immutable normalized terminal descriptor. Built at
   // authoritative 3-5-7 terminal detection (final-leg win OR instant
@@ -11144,24 +11162,59 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const rawWinnerCards = winnerCardsData?.cards || [];
 
-    // EXPLICIT-OPT-IN CONTRACT: Accept any non-empty authoritative winner hand.
-    // Rejecting on strict expectedCardCount previously produced an empty
-    // `threeFiveSevenWinnerCards` array whenever `playerCards` had not yet
-    // resolved for the terminal round, which then caused the Show Cards
-    // click to succeed but the felt stage predicate
-    // (`threeFiveSevenWinnerCards.length > 0`) to remain false — the button
-    // appeared to "do nothing". A cross-game-type contamination (e.g. Holm's
-    // 4 cards leaking into 3-5-7) is still surfaced via warn, but no longer
-    // silently discards the winner hand.
-    const winnerCards = rawWinnerCards;
-    if (rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount) {
-      console.warn('[357 WIN] ⚠️ Winner cards count mismatch (accepting anyway to preserve Show Cards):', {
+    // IDENTITY-BOUND WINNER HAND CONTRACT.
+    //
+    // Show Cards is an explicit privacy action — the wrong cards must
+    // never table on the felt. `threeFiveSevenWinnerCards` is populated
+    // ONLY when the currently-loaded `playerCards` row for the winner
+    // strictly matches ALL five identity dimensions of the terminal
+    // round AND contains the exact expected card count for that round.
+    //
+    //   identity = dealerGameId + handNumber + roundId + playerId +
+    //              terminalResultIdentity (resultMessage)
+    //
+    // Anything else — partial cards (a 3- or 5-card hand during a 7-card
+    // terminal), stale prior-round cards, a cross-dealer-game leak — is
+    // hard-rejected. The expectation persists so the resolver effect
+    // below can populate the array when the identity-matched fetch
+    // finally lands, without the winner losing their consent latch.
+    const expectedTerminalDealerGameId =
+      currentRound?.dealer_game_id ?? game?.current_game_uuid ?? null;
+    const expectedTerminalHandNumber = currentRound?.hand_number ?? null;
+    const expectedTerminalRoundId = currentRound?.id ?? null;
+
+    const identityMatchesPlayerCards =
+      !!playerCardsIdentity &&
+      playerCardsIdentity.dealerGameId === expectedTerminalDealerGameId &&
+      playerCardsIdentity.handNumber === expectedTerminalHandNumber &&
+      playerCardsIdentity.roundId === expectedTerminalRoundId;
+
+    const winnerCards: CardType[] =
+      identityMatchesPlayerCards && rawWinnerCards.length === expectedCardCount
+        ? rawWinnerCards
+        : [];
+
+    setTerminal357WinnerHandExpectation({
+      dealerGameId: expectedTerminalDealerGameId,
+      handNumber: expectedTerminalHandNumber,
+      roundId: expectedTerminalRoundId,
+      playerId: winnerPlayer.id,
+      terminalResultIdentity: resultMessage,
+      expectedCardCount,
+    });
+
+    if (rawWinnerCards.length > 0 && winnerCards.length === 0) {
+      console.warn('[357 WIN] Winner cards rejected — awaiting identity-matched fetch', {
         expected: expectedCardCount,
         actual: rawWinnerCards.length,
-        currentRound: game?.current_round,
-        dealerGameId: game?.current_game_uuid
+        identityMatchesPlayerCards,
+        expectedTerminalDealerGameId,
+        expectedTerminalHandNumber,
+        expectedTerminalRoundId,
+        playerCardsIdentity,
       });
     }
+
 
     // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
     emit357RuntimeDiag('sweep_parser_entered', {
@@ -11427,6 +11480,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Win-presentation instrumentation was removed.
   }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId]);
   
+  // Identity-bound winner-hand resolver.
+  //
+  // Runs whenever `playerCards` or its bound identity changes. If a
+  // terminal winner expectation is outstanding and NO winner cards are
+  // yet tabled, this effect populates `threeFiveSevenWinnerCards` iff
+  // the incoming player_cards row strictly matches ALL identity fields
+  // AND the exact expected card count. Partial rows, prior-round rows,
+  // and cross-dealer-game rows are hard-rejected (they don't advance
+  // this effect). The winner's Show Cards consent latch remains set
+  // while we wait — the felt stage simply cannot mount until the
+  // identity-matched hand arrives.
+  useEffect(() => {
+    const exp = terminal357WinnerHandExpectation;
+    if (!exp) return;
+    if (threeFiveSevenWinnerCards.length === exp.expectedCardCount) return;
+    if (!playerCardsIdentity) return;
+    if (
+      playerCardsIdentity.dealerGameId !== exp.dealerGameId ||
+      playerCardsIdentity.handNumber !== exp.handNumber ||
+      playerCardsIdentity.roundId !== exp.roundId
+    ) {
+      return;
+    }
+    const row = playerCards.find(pc => pc.player_id === exp.playerId);
+    const cards = (row?.cards as CardType[] | undefined) ?? [];
+    if (cards.length !== exp.expectedCardCount) return;
+    setThreeFiveSevenWinnerCards(cards);
+  }, [terminal357WinnerHandExpectation, playerCardsIdentity, playerCards, threeFiveSevenWinnerCards.length]);
+
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
     // CRITICAL: Never clear 357 win state while the client-side win animation sequence is still playing.
@@ -11447,6 +11529,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerId(null);
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
+      setTerminal357WinnerHandExpectation(null);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
@@ -11467,6 +11550,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerId(null);
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
+      setTerminal357WinnerHandExpectation(null);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
@@ -11603,6 +11687,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinnerId(null);
     setThreeFiveSevenWinPotAmount(0);
     setThreeFiveSevenWinnerCards([]);
+    setTerminal357WinnerHandExpectation(null);
     cachedPotFor357WinRef.current = 0;
     setCachedLegPositions([]);
 
