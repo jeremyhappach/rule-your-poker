@@ -9729,6 +9729,7 @@ export const MobileGameTable = ({
           selfPosition={currentPlayer?.position ?? null}
           activeSeats={threeFiveSevenActiveSeats}
           cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
+          selfHand={currentPlayerCards}
         />
       ) : null}
       
