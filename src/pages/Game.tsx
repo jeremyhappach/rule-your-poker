@@ -6937,6 +6937,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // For 3-5-7 games: poll when round is completed and all decisions are in
     const shouldPoll = !isHolmGame && gameInProgress && roundCompleted && allDecisionsIn && !alreadyAwaiting;
+    const pollTraceEnabled = !!gameId && (!game || game?.game_type === '3-5-7');
+
+    // ── [ADMISSION-TRACE] poll_enter (per useEffect run) ──────────
+    if (pollTraceEnabled) {
+      const pollBlockedReasons: string[] = [];
+      if (isHolmGame) pollBlockedReasons.push('holm_game');
+      if (!gameInProgress) pollBlockedReasons.push('game_not_in_progress');
+      if (!roundCompleted) pollBlockedReasons.push('round_not_completed');
+      if (!allDecisionsIn) pollBlockedReasons.push('all_decisions_not_in');
+      if (alreadyAwaiting) pollBlockedReasons.push('already_awaiting');
+      if (awaitingPollRef.current) pollBlockedReasons.push('poll_already_active');
+      persist357Investigation(gameId!, game?.total_hands || 1, 'awaiting_flag_off_admission', {}); // no-op placeholder (silenced)
+      persist357Investigation(gameId!, game?.total_hands || 1,
+        shouldPoll && !awaitingPollRef.current
+          ? '357.awaiting_next_round.poll_enter'
+          : '357.awaiting_next_round.poll_blocked',
+        {
+          shouldPoll,
+          pollBlockedReasons,
+          predicates: {
+            isHolmGame, roundCompleted, allDecisionsIn, alreadyAwaiting, gameInProgress,
+            pollAlreadyActive: !!awaitingPollRef.current,
+            currentRoundId: currentRound?.id ?? null,
+            currentRoundStatus: currentRound?.status ?? null,
+            gameId,
+            gameType: game?.game_type ?? null,
+            gameStatus: game?.status ?? null,
+            all_decisions_in: game?.all_decisions_in ?? null,
+            all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+          },
+        });
+    }
     
     console.log('[AWAITING_POLL] Check', {
       shouldPoll,
@@ -6973,6 +7006,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[AWAITING_POLL] Fresh data:', freshGame);
         
         if (freshGame?.awaiting_next_round) {
+          if (pollTraceEnabled) {
+            persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.poll_proceed_called', {
+              tickNumber,
+              freshGame,
+              asyncOwnerId: String(asyncOwnerId),
+            });
+          }
           console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
           if (awaitingPollRef.current) {
             __emitWartimeAsyncOwnerFired({
