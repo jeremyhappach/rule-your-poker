@@ -5968,7 +5968,14 @@ export const MobileGameTable = ({
     announcements.emit({
       id: `match_win:357-terminal:${genId}`,
       type: 'match_win',
-      scope: { dealerGameId: descriptor.dealerGameId, roundId: descriptor.roundId },
+      // Scope MUST use session gameId (games.id) to match the provider mounted
+      // in PersistentTableShell (dealerGameId={gameId}, roundId={null}).
+      // descriptor.dealerGameId is games.current_game_uuid (dealer_games.id) —
+      // a different id space; using it here trips scopeMatches and the plate
+      // is silently dropped. Generation identity is carried by transientScope
+      // (`357-terminal:${genId}`) + payload.terminalGenerationId, so scope
+      // only needs to reach the correct table surface.
+      scope: { dealerGameId: gameId ?? null, roundId: null },
       payload: {
         text,
         source: '357-terminal-descriptor-owner',
