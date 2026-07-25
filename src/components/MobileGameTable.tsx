@@ -5853,6 +5853,10 @@ export const MobileGameTable = ({
     if (isDiceGame) return; // dice games handled separately below
     if (!lastRoundResult) return;
     if (lastRoundResult.startsWith('357_SWEEP:')) return; // sweep overlay owns it
+    // 3-5-7 terminal announcement is owned by the dedicated descriptor
+    // owner effect below (both instant-357 and normal-win variants).
+    // Skip the generic emit here so text/lifecycle don't compete.
+    if (gameType === '3-5-7' && threeFiveSevenTerminalDescriptor) return;
     // 3-5-7 leg/game-win overlays own these messages — suppress rail.
     // 3-5-7 LEG win overlay (LegEarnedAnimation) owns the "won a leg" text —
     // suppress rail and retire it. GAME-WIN ("won the game") is intentionally
