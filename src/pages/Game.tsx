@@ -6937,6 +6937,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // For 3-5-7 games: poll when round is completed and all decisions are in
     const shouldPoll = !isHolmGame && gameInProgress && roundCompleted && allDecisionsIn && !alreadyAwaiting;
+    const pollTraceEnabled = !!gameId && (!game || game?.game_type === '3-5-7');
+
+    // ── [ADMISSION-TRACE] poll_enter (per useEffect run) ──────────
+    if (pollTraceEnabled) {
+      const pollBlockedReasons: string[] = [];
+      if (isHolmGame) pollBlockedReasons.push('holm_game');
+      if (!gameInProgress) pollBlockedReasons.push('game_not_in_progress');
+      if (!roundCompleted) pollBlockedReasons.push('round_not_completed');
+      if (!allDecisionsIn) pollBlockedReasons.push('all_decisions_not_in');
+      if (alreadyAwaiting) pollBlockedReasons.push('already_awaiting');
+      if (awaitingPollRef.current) pollBlockedReasons.push('poll_already_active');
+      // (poll-enter/blocked below)
+      persist357Investigation(gameId!, game?.total_hands || 1,
+        shouldPoll && !awaitingPollRef.current
+          ? '357.awaiting_next_round.poll_enter'
+          : '357.awaiting_next_round.poll_blocked',
+        {
+          shouldPoll,
+          pollBlockedReasons,
+          predicates: {
+            isHolmGame, roundCompleted, allDecisionsIn, alreadyAwaiting, gameInProgress,
+            pollAlreadyActive: !!awaitingPollRef.current,
+            currentRoundId: currentRound?.id ?? null,
+            currentRoundStatus: currentRound?.status ?? null,
+            gameId,
+            gameType: game?.game_type ?? null,
+            gameStatus: game?.status ?? null,
+            all_decisions_in: game?.all_decisions_in ?? null,
+            all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+          },
+        });
+    }
     
     console.log('[AWAITING_POLL] Check', {
       shouldPoll,
@@ -6973,6 +7006,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[AWAITING_POLL] Fresh data:', freshGame);
         
         if (freshGame?.awaiting_next_round) {
+          if (pollTraceEnabled) {
+            persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.poll_proceed_called', {
+              tickNumber,
+              freshGame,
+              asyncOwnerId: String(asyncOwnerId),
+            });
+          }
           console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
           if (awaitingPollRef.current) {
             __emitWartimeAsyncOwnerFired({
@@ -7011,8 +7051,75 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
     const currentRound = game?.current_round || 0;
-    
+
+    // ── [ADMISSION-TRACE] effect_enter ─────────────────────────────
+    // Bounded persistent trace of AUTO_PROCEED_EFFECT admission. Emits
+    // at the *actual* top of the effect, before ANY early return.
+    const effectRunId = `apr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const admissionShouldTrace = !!gameId && (!game || game?.game_type === '3-5-7');
+    if (admissionShouldTrace) {
+      persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.effect_enter', {
+        effectRunId,
+        gameId,
+        gameUpdatedAt: (game as any)?.updated_at ?? null,
+        awaiting_next_round: game?.awaiting_next_round ?? null,
+        status: game?.status ?? null,
+        current_round: game?.current_round ?? null,
+        next_round_number: (game as any)?.next_round_number ?? null,
+        current_game_uuid: game?.current_game_uuid ?? null,
+        last_round_result: game?.last_round_result ?? null,
+        is_paused: game?.is_paused ?? null,
+        awaitingTimerPresent: awaitingTimerRef.current !== null,
+        awaitingTimerOwner: awaitingTimerRef.current ? String(awaitingTimerRef.current) : null,
+        gameStateAtTimerStart: gameStateAtTimerStart.current,
+        harness357,
+        harnessHolm,
+        debugHolmPaused,
+        currentRoundId: null,
+        currentRoundStatus: null,
+        handContextId: (game as any)?.hand_context_id ?? null,
+        dealerGameId: game?.current_game_uuid ?? null,
+        deps: {
+          awaiting: game?.awaiting_next_round ?? null,
+          gameId,
+          status: game?.status ?? null,
+          is_paused: game?.is_paused ?? null,
+          game_type: game?.game_type ?? null,
+          last_round_result: game?.last_round_result ?? null,
+        },
+      });
+    }
+
+    // ── [ADMISSION-TRACE] guard evaluation ─────────────────────────
+    const blockedReasons: string[] = [];
+    if (!game) blockedReasons.push('game_missing');
+    if (!gameId) blockedReasons.push('missing_game_id');
+    if (game?.is_paused) blockedReasons.push('paused');
+    if (!(game?.awaiting_next_round)) blockedReasons.push('awaiting_next_round_false');
+    if (game?.status === 'game_over') blockedReasons.push('status_game_over');
+    if (awaitingTimerRef.current) blockedReasons.push('timer_already_present');
+    if (admissionShouldTrace) {
+      persist357Investigation(gameId!, game?.total_hands || 1,
+        blockedReasons.length === 0
+          ? '357.awaiting_next_round.guard_passed'
+          : '357.awaiting_next_round.guard_blocked',
+        {
+          effectRunId,
+          blockedReasons,
+          predicates: {
+            game_present: !!game,
+            gameId_present: !!gameId,
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+            status: game?.status ?? null,
+            is_paused: game?.is_paused ?? null,
+            awaitingTimer_present: awaitingTimerRef.current !== null,
+          },
+        },
+      );
+    }
+
     console.log('[AUTO_PROCEED_EFFECT] Running', {
+      effectRunId,
       awaiting: currentAwaiting,
       status: game?.status,
       is_paused: game?.is_paused,
@@ -7329,6 +7436,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           guard_transitionType357: tType357,
         },
         fn: async (asyncOwnerId, capturedIdentity) => {
+        // ── [ADMISSION-TRACE] timer_fired ────────────────────────
+        if (admissionShouldTrace) {
+          persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.timer_fired', {
+            effectRunId,
+            timerOwnerId: String(asyncOwnerId),
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            roundId: null,
+            handContextId: (game as any)?.hand_context_id ?? null,
+            capturedIdentity: capturedIdentity ?? null,
+          });
+        }
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
         const timerId = awaitingTimerRef.current;
         awaitingTimerRef.current = null;
@@ -7343,6 +7462,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .single();
           
           if (pauseCheck?.is_paused) {
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                blockedReasons: ['paused_on_fire'],
+                freshGame: { is_paused: true },
+              });
+            }
             console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
             __emitWartimeAsyncOwnerFired({
               asyncOwnerId,
@@ -7372,6 +7498,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['fresh_status_game_over'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7387,6 +7520,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // CRITICAL: Skip if game was paused after timer started
             if (freshGame?.is_paused) {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['fresh_is_paused'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7401,6 +7541,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             if (freshGame?.awaiting_next_round !== true) {
+              if (admissionShouldTrace) {
+                persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_blocked', {
+                  effectRunId, timerOwnerId: String(asyncOwnerId),
+                  blockedReasons: ['awaiting_flag_cleared'],
+                  freshGame,
+                });
+              }
               console.log('[AWAITING_NEXT_ROUND] Awaiting flag already cleared by primary progression path, skipping fallback');
               __emitWartimeAsyncOwnerFired({
                 asyncOwnerId,
@@ -7412,6 +7559,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 extra: { freshStatus: freshGame?.status ?? null, freshAwaitingNextRound: freshGame?.awaiting_next_round ?? null },
               });
               return;
+            }
+
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.callback_passed', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                freshGame,
+              });
             }
 
             // Horses: proceed by starting a new Horses round (not startRound)
@@ -7544,6 +7698,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             // First, clear the result and proceed to next round
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.proceed_called', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                freshGame,
+              });
+            }
             await proceedToNextRound(gameId);
             
             // THEN trigger ante animation when proceeding to round 1 (new antes collected)
@@ -7624,10 +7784,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           transitionType: tType357,
         });
       }
+      if (admissionShouldTrace) {
+        persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.timer_scheduled', {
+          effectRunId,
+          timerOwnerId: awaitingTimerRef.current ? String(awaitingTimerRef.current) : null,
+          gameId,
+          dealerGameId: game?.current_game_uuid ?? null,
+          roundId: null,
+          handContextId: (game as any)?.hand_context_id ?? null,
+          delayMs: 4000,
+          scheduledUnder: {
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+            status: game?.status ?? null,
+            current_round: game?.current_round ?? null,
+            last_round_result: game?.last_round_result ?? null,
+            transitionType357: tType357,
+          },
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
     }
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
+      if (admissionShouldTrace) {
+        persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.effect_cleanup', {
+          effectRunId,
+          timerExisted: true,
+          cleanupClearedTimer: true,
+          timerOwnerId: String(awaitingTimerRef.current),
+          scheduledSnapshot: gameStateAtTimerStart.current,
+          reason: 'awaiting_flag_false',
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] No longer awaiting, clearing timer');
       __cancelWartimeAsyncOwner(awaitingTimerRef.current as unknown as number, 'awaiting_flag_false');
       clearTimeout(awaitingTimerRef.current);
