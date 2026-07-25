@@ -10866,13 +10866,17 @@ export const MobileGameTable = ({
             height, which derives from assignedRect.height via vmin),
             so no fixed-px translates and no magic percentages. */}
         {(() => {
+          // EXPLICIT-OPT-IN CONTRACT: The winner's cards may be tabled on
+          // the felt ONLY after the winner clicks "Show Cards". No implicit
+          // tabling by round number, phase, or terminal state. Card backs
+          // must NEVER appear on the felt as a substitute for the real hand.
           const winnerStageVisible =
             gameType !== 'holm-game' &&
             threeFiveSevenTerminalDescriptor?.source !== 'instant-357' &&
             !!threeFiveSevenWinnerId &&
             threeFiveSevenWinPhase !== 'idle' &&
             threeFiveSevenWinnerCards.length > 0 &&
-            (currentRound === 3 || winner357ShowCards);
+            winner357ShowCards === true;
           if (gameType === 'holm-game') return null;
           return (
             <ThreeFiveSevenGameplayGeometryProvider
@@ -10887,15 +10891,13 @@ export const MobileGameTable = ({
                     className="flex flex-col items-center justify-center w-full h-full"
                     style={{
                       animation:
-                        currentRound !== 3 && winner357ShowCards
-                          ? 'winner357TableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
-                          : undefined,
+                        'winner357TableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
                       willChange: 'transform, opacity',
                     }}
                   >
                     <PlayerHand
                       cards={threeFiveSevenWinnerCards}
-                      isHidden={currentRound === 3 ? !winner357ShowCards : false}
+                      isHidden={false}
                       gameType={gameType}
                       currentRound={currentRound}
                       showSeparated={currentRound === 3}
