@@ -12873,8 +12873,12 @@ export const MobileGameTable = ({
                                     currentPlayerId={currentPlayer?.id ?? ''}
                                     cards={currentPlayerCards}
                                     baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                    dealerGameId={threeFiveSevenDealerGameScope ?? null}
+                                    handNumber={typeof horsesHandNumber === 'number' ? horsesHandNumber : null}
+                                    roundId={horsesRoundId ?? null}
                                     render={renderActiveSelfHand}
                                   />
+
                                 );
                               })()}
                             </div>
