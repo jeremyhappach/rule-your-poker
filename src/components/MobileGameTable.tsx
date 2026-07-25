@@ -7502,6 +7502,31 @@ export const MobileGameTable = ({
           // Mark ref SYNCHRONOUSLY to prevent race with 357 trigger fallback path
           legAnimationActiveRef.current = true;
 
+          // Ordinary (non-terminal) leg-award announcement into the
+          // canonical rail (HudStack row 1). Terminal / match-winning
+          // legs are owned by the Terminal357Descriptor announcement
+          // owner — we skip that case here to avoid double-emit.
+          if (!isWinningLeg) {
+            const legAwardTriggerId = `leg-award:${gameId ?? 'no-game'}:${handContextId ?? 'no-round'}:${player.id}:${currentLegs}`;
+            announcements.emit({
+              id: legAwardTriggerId,
+              type: 'round_win',
+              // Scope with the session gameId — matches
+              // PersistentTableShell's CanonicalAnnouncementProvider
+              // scope so the rail actually paints it.
+              scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+              payload: {
+                text: `${playerName} won a leg!`,
+                kind: 'leg_award',
+                winnerName: playerName,
+                playerId: player.id,
+                legNumber: currentLegs,
+              },
+              ttlMs: 3000,
+              transientScope: legAwardTriggerId,
+            });
+          }
+
           // Track the winning leg player for card exposure
           if (isWinningLeg) {
             console.log('[MOBILE] 🏆 FINAL LEG WON - exposing cards for:', player.id);
