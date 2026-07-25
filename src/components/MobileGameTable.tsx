@@ -5988,7 +5988,7 @@ export const MobileGameTable = ({
       transientScope: scope,
     });
     lastTerminal357AnnouncementScopeRef.current = scope;
-  }, [threeFiveSevenTerminalDescriptor, announcements]);
+  }, [threeFiveSevenTerminalDescriptor, announcements, gameId]);
 
 
   // Horses / SCC game-over result → match_win.
