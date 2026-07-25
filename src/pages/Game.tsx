@@ -7744,10 +7744,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           transitionType: tType357,
         });
       }
+      if (admissionShouldTrace) {
+        persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.timer_scheduled', {
+          effectRunId,
+          timerOwnerId: awaitingTimerRef.current ? String(awaitingTimerRef.current) : null,
+          gameId,
+          dealerGameId: game?.current_game_uuid ?? null,
+          roundId: null,
+          handContextId: (game as any)?.hand_context_id ?? null,
+          delayMs: 4000,
+          scheduledUnder: {
+            awaiting_next_round: game?.awaiting_next_round ?? null,
+            status: game?.status ?? null,
+            current_round: game?.current_round ?? null,
+            last_round_result: game?.last_round_result ?? null,
+            transitionType357: tType357,
+          },
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
     }
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
+      if (admissionShouldTrace) {
+        persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.effect_cleanup', {
+          effectRunId,
+          timerExisted: true,
+          cleanupClearedTimer: true,
+          timerOwnerId: String(awaitingTimerRef.current),
+          scheduledSnapshot: gameStateAtTimerStart.current,
+          reason: 'awaiting_flag_false',
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] No longer awaiting, clearing timer');
       __cancelWartimeAsyncOwner(awaitingTimerRef.current as unknown as number, 'awaiting_flag_false');
       clearTimeout(awaitingTimerRef.current);
