@@ -374,7 +374,26 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             const scaleY = transport.originRect.height > 0
               ? transport.destinationRect.height / transport.originRect.height
               : 1;
-            const moving = phase === "transporting" || phase === "settled";
+            // Lift phase: anticipation — small upward pop with a mid-flight
+            // scale-up so it feels like a reveal, not a slide. Direction
+            // biased away from the felt center (winner in seats 3/4 lift
+            // up; seats 1/2 or observers lift up too by default).
+            const liftDy = -32;
+            const liftScale = 1.18;
+            let transform: string;
+            let transition: string;
+            if (phase === "origin") {
+              transform = "translate3d(0, 0, 0) scale(1)";
+              transition = "none";
+            } else if (phase === "lifted") {
+              transform = `translate3d(0, ${liftDy}px, 0) scale(${liftScale})`;
+              // Bounce-out-ish curve for the anticipation lift.
+              transition = "transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+            } else {
+              // transporting / settled — dramatic ease-out to destination.
+              transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`;
+              transition = "transform 1050ms cubic-bezier(0.22, 1, 0.36, 1)";
+            }
             return (
               <div
                 key={`${generationKey}-overlay-${transport.index}-${transport.card.rank}${transport.card.suit}`}
@@ -390,14 +409,13 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                   top: transport.originRect.y,
                   width: transport.originRect.width,
                   height: transport.originRect.height,
-                  transformOrigin: "top left",
-                  transform: moving
-                    ? `translate3d(${dx}px, ${dy}px, 0) scale(${scaleX}, ${scaleY})`
-                    : "translate3d(0, 0, 0) scale(1)",
-                  transition: phase === "origin"
-                    ? "none"
-                    : "transform 900ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  transformOrigin: "center center",
+                  transform,
+                  transition,
                   willChange: "transform",
+                  filter: phase === "lifted" || phase === "transporting"
+                    ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))"
+                    : "drop-shadow(0 2px 4px rgba(0,0,0,0.25))",
                 }}
                 onTransitionEnd={(event) => {
                   if (event.target !== event.currentTarget) return;
@@ -414,7 +432,9 @@ export const ThreeFiveSevenProofCardsAnimation = ({
                 <PlayingCard
                   card={transport.card}
                   size="md"
+                  tier="medium"
                   style={{ width: "100%", height: "100%" }}
+                  faceFillPx={transport.destinationRect.width}
                 />
               </div>
             );
