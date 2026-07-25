@@ -297,16 +297,13 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       originElsRef.current = nextOriginEls;
       setCompletedIndices(new Set());
       setPhase("origin");
-      // Two rAFs to paint the origin frame, then lift (dramatic anticipation),
-      // then transport. Timings: 380ms lift (bounce-out) → 1050ms transport
-      // (long cubic ease-out, feels like a settled reveal).
+      // Two rAFs to paint the origin frame at canonical-medium size, then
+      // trigger a single continuous translate to the destination. No
+      // intermediate waypoint, no scale transition, no lift stage.
       raf = requestAnimationFrame(() => {
         raf = requestAnimationFrame(() => {
           if (cancelled) return;
-          setPhase("lifted");
-          window.setTimeout(() => {
-            if (!cancelled) setPhase("transporting");
-          }, 380);
+          setPhase("transporting");
         });
       });
     };
