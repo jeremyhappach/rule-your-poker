@@ -11162,24 +11162,59 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const rawWinnerCards = winnerCardsData?.cards || [];
 
-    // EXPLICIT-OPT-IN CONTRACT: Accept any non-empty authoritative winner hand.
-    // Rejecting on strict expectedCardCount previously produced an empty
-    // `threeFiveSevenWinnerCards` array whenever `playerCards` had not yet
-    // resolved for the terminal round, which then caused the Show Cards
-    // click to succeed but the felt stage predicate
-    // (`threeFiveSevenWinnerCards.length > 0`) to remain false — the button
-    // appeared to "do nothing". A cross-game-type contamination (e.g. Holm's
-    // 4 cards leaking into 3-5-7) is still surfaced via warn, but no longer
-    // silently discards the winner hand.
-    const winnerCards = rawWinnerCards;
-    if (rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount) {
-      console.warn('[357 WIN] ⚠️ Winner cards count mismatch (accepting anyway to preserve Show Cards):', {
+    // IDENTITY-BOUND WINNER HAND CONTRACT.
+    //
+    // Show Cards is an explicit privacy action — the wrong cards must
+    // never table on the felt. `threeFiveSevenWinnerCards` is populated
+    // ONLY when the currently-loaded `playerCards` row for the winner
+    // strictly matches ALL five identity dimensions of the terminal
+    // round AND contains the exact expected card count for that round.
+    //
+    //   identity = dealerGameId + handNumber + roundId + playerId +
+    //              terminalResultIdentity (resultMessage)
+    //
+    // Anything else — partial cards (a 3- or 5-card hand during a 7-card
+    // terminal), stale prior-round cards, a cross-dealer-game leak — is
+    // hard-rejected. The expectation persists so the resolver effect
+    // below can populate the array when the identity-matched fetch
+    // finally lands, without the winner losing their consent latch.
+    const expectedTerminalDealerGameId =
+      currentRound?.dealer_game_id ?? game?.current_game_uuid ?? null;
+    const expectedTerminalHandNumber = currentRound?.hand_number ?? null;
+    const expectedTerminalRoundId = currentRound?.id ?? null;
+
+    const identityMatchesPlayerCards =
+      !!playerCardsIdentity &&
+      playerCardsIdentity.dealerGameId === expectedTerminalDealerGameId &&
+      playerCardsIdentity.handNumber === expectedTerminalHandNumber &&
+      playerCardsIdentity.roundId === expectedTerminalRoundId;
+
+    const winnerCards: CardType[] =
+      identityMatchesPlayerCards && rawWinnerCards.length === expectedCardCount
+        ? rawWinnerCards
+        : [];
+
+    setTerminal357WinnerHandExpectation({
+      dealerGameId: expectedTerminalDealerGameId,
+      handNumber: expectedTerminalHandNumber,
+      roundId: expectedTerminalRoundId,
+      playerId: winnerPlayer.id,
+      terminalResultIdentity: resultMessage,
+      expectedCardCount,
+    });
+
+    if (rawWinnerCards.length > 0 && winnerCards.length === 0) {
+      console.warn('[357 WIN] Winner cards rejected — awaiting identity-matched fetch', {
         expected: expectedCardCount,
         actual: rawWinnerCards.length,
-        currentRound: game?.current_round,
-        dealerGameId: game?.current_game_uuid
+        identityMatchesPlayerCards,
+        expectedTerminalDealerGameId,
+        expectedTerminalHandNumber,
+        expectedTerminalRoundId,
+        playerCardsIdentity,
       });
     }
+
 
     // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
     emit357RuntimeDiag('sweep_parser_entered', {
