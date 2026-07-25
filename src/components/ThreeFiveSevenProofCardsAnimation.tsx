@@ -294,11 +294,19 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       }
 
       setTransports(nextTransports);
+      originElsRef.current = nextOriginEls;
       setCompletedIndices(new Set());
       setPhase("origin");
+      // Two rAFs to paint the origin frame, then lift (dramatic anticipation),
+      // then transport. Timings: 380ms lift (bounce-out) → 1050ms transport
+      // (long cubic ease-out, feels like a settled reveal).
       raf = requestAnimationFrame(() => {
         raf = requestAnimationFrame(() => {
-          if (!cancelled) setPhase("transporting");
+          if (cancelled) return;
+          setPhase("lifted");
+          window.setTimeout(() => {
+            if (!cancelled) setPhase("transporting");
+          }, 380);
         });
       });
     };
@@ -309,6 +317,31 @@ export const ThreeFiveSevenProofCardsAnimation = ({
       if (raf) cancelAnimationFrame(raf);
     };
   }, [show, generationKey, proofCardSignature, winnerPosition]);
+
+  // Hide the original hand cards during & after transport so there's never
+  // two visible copies. visibility:hidden preserves layout geometry.
+  useEffect(() => {
+    const hide = phase === "lifted" || phase === "transporting" || phase === "settled";
+    const els = originElsRef.current;
+    if (!els || els.length === 0) return;
+    if (hide) {
+      els.forEach((el) => {
+        if (!el.hasAttribute("data-357-proof-prev-visibility")) {
+          el.setAttribute("data-357-proof-prev-visibility", el.style.visibility || "");
+        }
+        el.style.visibility = "hidden";
+      });
+      return () => {
+        els.forEach((el) => {
+          const prev = el.getAttribute("data-357-proof-prev-visibility");
+          if (prev !== null) {
+            el.style.visibility = prev;
+            el.removeAttribute("data-357-proof-prev-visibility");
+          }
+        });
+      };
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "settled") return;
