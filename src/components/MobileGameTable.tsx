@@ -4534,9 +4534,25 @@ export const MobileGameTable = ({
   // During hand transitions, playerCards may briefly contain stale data from the previous hand.
   // We cache the last valid cards for the current player and only update when we can confirm
   // the new cards are for the CURRENT hand (via handContextId match).
-  const currentPlayerCardsRef = useRef<{ cards: CardType[]; handContextId: string | null }>({
+  // Full-identity cache tuple. Every writer must repopulate the full
+  // tuple so cross-hand invalidation can compare identity components
+  // one-for-one. `roundId` is captured for diagnostic parity with the
+  // authoritative identity but is intentionally excluded from the
+  // invalidation predicate below (round changes within a hand keep
+  // the same handNumber/handContextId/dealerGameId, so within-hand
+  // staged-round-floor behavior is preserved unchanged).
+  const currentPlayerCardsRef = useRef<{
+    cards: CardType[];
+    handContextId: string | null;
+    dealerGameId: string | null;
+    roundId: string | null;
+    handNumber: number | null;
+  }>({
     cards: [],
     handContextId: null,
+    dealerGameId: null,
+    roundId: null,
+    handNumber: null,
   });
   // Frozen snapshot of currentPlayerCards held for the duration of a Holm
   // win-pot animation. Lifetime is bound to handContextId (NOT to the trigger
