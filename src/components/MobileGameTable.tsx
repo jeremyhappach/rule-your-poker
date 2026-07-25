@@ -956,8 +956,13 @@ interface MobileGameTableProps {
    * orchestrator MUST NOT mount, otherwise stale outgoing self-hand length
    * satisfies the cumulative round prerequisite of a novel waveContextId
    * and dispatches ghost offsets onto the outgoing surface.
+   *
+   * Positive lifecycle contract: presentation is authoritative iff BOTH
+   * game.current_game_uuid AND currentRound exist AND currentRound belongs
+   * to the current dealer game. Any other state (either side null, or
+   * dealer-game mismatch) is "not ready" and must suppress the mount.
    */
-  currentRoundDealerGameMismatched?: boolean;
+  currentRoundNotReadyForPresentation?: boolean;
   handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
