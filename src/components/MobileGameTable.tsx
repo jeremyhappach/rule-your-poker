@@ -9930,7 +9930,7 @@ export const MobileGameTable = ({
             skips its proof step gracefully), we no longer need a
             sentinel-based defensive branch, which was the source of
             the "legacy-suppressed / controller-inert" black hole. */}
-        {threeFiveSevenTerminalDescriptor?.source !== 'instant-357' && (
+        {threeFiveSevenTerminalDescriptor?.source !== 'instant-357' && !(typeof lastRoundResult === 'string' && lastRoundResult.startsWith('357_SWEEP:')) && (
           <>
             <SweepsPotAnimation
               show={showSweepsPot}
