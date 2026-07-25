@@ -12528,7 +12528,8 @@ export const MobileGameTable = ({
               : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
 
           const isAnimatingCurrentPlayer =
-            showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
+            (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) ||
+            hasPendingLegAnimationClaim(currentPlayer.id, currentPlayer.legs);
 
           // While the flying leg is in the air, don't show it in the felt stack yet.
           const displayCount = Math.min(
