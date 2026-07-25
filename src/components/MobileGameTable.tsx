@@ -7720,6 +7720,47 @@ export const MobileGameTable = ({
     activePotIdentityRef.current = legacyPotIdentity;
     setPotToPlayerTriggerId357(potTid);
 
+    // Winner-only confetti — armed in the SAME commit as the pot trigger.
+    // This mirrors the canonical Holm/Cribbage shape where pot flight and
+    // celebration begin together. Uses the identity supplied to this
+    // helper (already validated above); does not read mutable live state.
+    // The +$X arrival flash remains at pot arrival in
+    // handlePotToPlayerComplete357.
+    const viewerIsWinnerAtArm = !!(identity.winnerId && currentPlayer?.id === identity.winnerId);
+    let confettiAttemptedAtArm = false;
+    let confettiSucceededAtArm = false;
+    let confettiErrAtArm: unknown = null;
+    if (viewerIsWinnerAtArm) {
+      confettiAttemptedAtArm = true;
+      try {
+        const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
+        confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
+        const confettiLeftAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_left',
+          kind: 'timeout',
+          delayMs: 220,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiLeftAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette });
+        }, 220);
+        const confettiRightAsyncOwnerId = __trackWartimeAsyncOwner({
+          ownerLabel: 'mgt.357.confetti_right',
+          kind: 'timeout',
+          delayMs: 420,
+          identity: __wartimeMgtIdentity,
+          owner: __wartimeMgtOwner,
+        });
+        setTimeout(() => {
+          __emitWartimeAsyncFired({ asyncOwnerId: confettiRightAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
+          confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette });
+        }, 420);
+        confettiSucceededAtArm = true;
+      } catch (e) { confettiErrAtArm = e; /* noop — confetti is presentation-only */ }
+    }
+
     emit357RuntimeDiag('canonical_entry_armed', {
       gameId: identity.gameId,
       roundId: identity.roundId,
@@ -7736,10 +7777,14 @@ export const MobileGameTable = ({
       handNumber: identity.handNumber,
       handContextId: identity.handContextId,
       dealerGameId: identity.dealerGameId,
+      viewerIsWinner: viewerIsWinnerAtArm,
+      confettiAttempted: confettiAttemptedAtArm,
+      confettiSucceeded: confettiSucceededAtArm,
+      confettiError: confettiErrAtArm,
     });
 
     return { potTriggerId: potTid };
-  }, [currentPlayer?.id]);
+  }, [currentPlayer?.id, build357PresentationIdentity]);
 
 
   const handleLegsToPlayerComplete = useCallback(() => {
