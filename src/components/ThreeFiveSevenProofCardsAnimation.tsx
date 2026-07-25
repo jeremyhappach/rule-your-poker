@@ -463,7 +463,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
               key={`${generationKey}-target-${i}-${c.rank}${c.suit}`}
               data-controller-357-proof-target-index={i}
             >
-              <PlayingCard card={c} size="md" />
+              <PlayingCard card={c} size="md" tier="medium" />
             </div>
           ))}
         </div>
