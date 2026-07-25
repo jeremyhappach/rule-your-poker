@@ -7991,46 +7991,14 @@ export const MobileGameTable = ({
       });
     }
 
-    // Winner-only confetti — AND identity-guarded. Confetti fires only if
-    // the pot identity still matches the active dealer game. Combined
-    // with the guard above this is defense-in-depth: DG1 confetti cannot
-    // fire during DG2.
-    const confettiIdentityValid = !storedPotIdentity || matches357PresentationIdentity(storedPotIdentity, activePresentationIdentity);
+    // Winner-only confetti was armed in the SAME commit as the pot
+    // trigger inside enterCanonical357TerminalPresentation — matching
+    // the canonical Holm/Cribbage shape. It does not fire here.
+    // The identity-guard rails (storedPotIdentity vs
+    // activePresentationIdentity) above already gate this callback for
+    // cross-DG leakage; confetti is not re-triggered at pot arrival.
     const viewerIsWinner = !!(threeFiveSevenWinnerId && currentPlayer?.id === threeFiveSevenWinnerId);
-    let confettiAttempted = false;
-    let confettiSucceeded = false;
-    let confettiErr: unknown = null;
-    if (viewerIsWinner && confettiIdentityValid) {
-      confettiAttempted = true;
-      try {
-        const palette = ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'];
-        confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
-        const confettiLeftAsyncOwnerId = __trackWartimeAsyncOwner({
-          ownerLabel: 'mgt.357.confetti_left',
-          kind: 'timeout',
-          delayMs: 220,
-          identity: __wartimeMgtIdentity,
-          owner: __wartimeMgtOwner,
-        });
-        setTimeout(() => {
-          __emitWartimeAsyncFired({ asyncOwnerId: confettiLeftAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
-          confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.55 }, colors: palette });
-        }, 220);
-        const confettiRightAsyncOwnerId = __trackWartimeAsyncOwner({
-          ownerLabel: 'mgt.357.confetti_right',
-          kind: 'timeout',
-          delayMs: 420,
-          identity: __wartimeMgtIdentity,
-          owner: __wartimeMgtOwner,
-        });
-        setTimeout(() => {
-          __emitWartimeAsyncFired({ asyncOwnerId: confettiRightAsyncOwnerId, outcome: 'fired', identity: __wartimeMgtIdentity, liveIdentity: build357PresentationIdentity() });
-          confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.55 }, colors: palette });
-        }, 420);
-        confettiSucceeded = true;
-      } catch (e) { confettiErr = e; /* noop — confetti is presentation-only */ }
-    }
-    // G. Pot animation complete + confetti attempt/result.
+    // G. Pot animation complete.
     emit357RuntimeDiag('pot_animation_complete', {
       gameId: gameId ?? null,
       roundId: handContextId ?? null,
@@ -8040,9 +8008,6 @@ export const MobileGameTable = ({
     }, {
       viewerIsWinner,
       destinationBounceCompleted: true,
-      confettiAttempted,
-      confettiSucceeded,
-      error: confettiErr,
     });
 
     // Hold the win-animation geometry owner in the terminal 'delay'
