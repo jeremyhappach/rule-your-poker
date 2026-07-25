@@ -1549,6 +1549,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
+  /**
+   * Immutable identity-bound expectation for the terminal winner hand.
+   * Captured at authoritative 3-5-7 terminal detection. `threeFiveSevenWinnerCards`
+   * may only be populated when `playerCardsIdentity` and the winner's
+   * player_cards row strictly match ALL five identity dimensions AND the
+   * exact `expectedCardCount` for the terminal round. Cross-game / prior
+   * round / partial data is hard-rejected — the expectation persists so
+   * that a late-arriving identity-matched fetch can still fulfill it
+   * without losing the winner's explicit Show Cards consent.
+   */
+  const [terminal357WinnerHandExpectation, setTerminal357WinnerHandExpectation] = useState<{
+    dealerGameId: string | null;
+    handNumber: number | null;
+    roundId: string | null;
+    playerId: string;
+    terminalResultIdentity: string;
+    expectedCardCount: number;
+  } | null>(null);
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
   // Slice 1 (inert): immutable normalized terminal descriptor. Built at
   // authoritative 3-5-7 terminal detection (final-leg win OR instant
