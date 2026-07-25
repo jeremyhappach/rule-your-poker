@@ -13158,6 +13158,40 @@ export const MobileGameTable = ({
                       <RejoinNextHandButton playerId={currentPlayer.id} />
                     ) : hasDecided ? (
                       (() => {
+                        // EXPLICIT-OPT-IN CONTRACT: The Show Cards button
+                        // occupies the STAYED-badge slot for the local
+                        // 3-5-7 winner during the terminal animation
+                        // window. Rendering it here (not above the hand)
+                        // guarantees hand geometry is invariant across
+                        // the button's presence, click, and disappearance.
+                        const isLocalWinner357InAnim =
+                          gameType !== 'holm-game' &&
+                          threeFiveSevenTerminalDescriptor?.source !== 'instant-357' &&
+                          threeFiveSevenWinnerId === currentPlayer?.id &&
+                          threeFiveSevenWinPhase !== 'idle' &&
+                          !(lastRoundResult?.startsWith('357_SWEEP:'));
+                        if (isLocalWinner357InAnim) {
+                          if (!winner357ShowCards) {
+                            return (
+                              <Button
+                                variant="outline"
+                                size="default"
+                                onClick={() => onWinner357ShowCards?.()}
+                                className={cn(
+                                  "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
+                                  isTablet ? "px-6 py-3 text-base h-14" : "px-4 py-2 text-sm h-9",
+                                )}
+                              >
+                                Show Cards
+                              </Button>
+                            );
+                          }
+                          return (
+                            <div className="text-sm text-green-400 font-medium">
+                              Cards Shown
+                            </div>
+                          );
+                        }
                         // Choose the decision value to render. In 3-5-7, only trust
                         // the DB `current_decision` when admission has been proved
                         // for the current authoritative round identity; otherwise
