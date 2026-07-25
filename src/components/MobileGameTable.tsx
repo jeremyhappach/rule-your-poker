@@ -5360,8 +5360,60 @@ export const MobileGameTable = ({
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
 
-  // Check if current player can decide
-  const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
+  // Check if current player can decide.
+  //
+  // 3-5-7 identity-bound decision admission
+  // ---------------------------------------
+  // `players.current_decision` / `players.decision_locked` have no round
+  // identity of their own. If the server has not yet cleared the row at a
+  // hand/round boundary, a prior-hand `stay`/`fold` value would render as
+  // a fresh "STAYED / FOLDED" badge in the next hand.
+  //
+  // For 3-5-7 we therefore require an admission proof that the current
+  // DB decision belongs to the CURRENT authoritative round identity
+  // (handContextId + player.id — handContextId is derived from the
+  // current dealer_game / round scope one layer up). Admission is
+  // granted when either:
+  //   (a) the local client witnessed `decision_locked === false` at
+  //       least once within the current identity (a real reset), OR
+  //   (b) the client submitted its own decision (pendingDecision is
+  //       present).
+  // Until admitted, a stale `decision_locked === true` from the prior
+  // hand is treated as not-current and the badge is suppressed.
+  //
+  // Non-3-5-7 games keep prior semantics — Holm/Cribbage already scope
+  // via their own boundary resets and would regress on cold hydration
+  // if we required admission there.
+  const authoritativeDecisionIdentityKey =
+    handContextId && currentPlayer?.id
+      ? `${handContextId}:${currentPlayer.id}`
+      : null;
+  const sawUnlockedForDecisionIdentityRef = useRef<string | null>(null);
+  const [admittedDbDecisionIdentity, setAdmittedDbDecisionIdentity] = useState<string | null>(null);
+  useEffect(() => {
+    // Identity rotated — reset admission for the new (dealerGame + round + player) tuple.
+    setAdmittedDbDecisionIdentity(null);
+    sawUnlockedForDecisionIdentityRef.current = null;
+  }, [authoritativeDecisionIdentityKey]);
+  useEffect(() => {
+    const id = authoritativeDecisionIdentityKey;
+    if (!id) return;
+    if (currentPlayer?.decision_locked === false) {
+      sawUnlockedForDecisionIdentityRef.current = id;
+    } else if (currentPlayer?.decision_locked === true) {
+      if (sawUnlockedForDecisionIdentityRef.current === id || !!pendingDecision) {
+        setAdmittedDbDecisionIdentity(prev => (prev === id ? prev : id));
+      }
+    }
+  }, [authoritativeDecisionIdentityKey, currentPlayer?.decision_locked, pendingDecision]);
+  const require357DecisionAdmission = __is357GameType(gameType);
+  const dbDecisionIsForCurrentIdentity =
+    admittedDbDecisionIdentity !== null &&
+    admittedDbDecisionIdentity === authoritativeDecisionIdentityKey;
+  const dbDecisionAdmitted = require357DecisionAdmission
+    ? (currentPlayer?.decision_locked === true && dbDecisionIsForCurrentIdentity)
+    : !!currentPlayer?.decision_locked;
+  const hasDecided = dbDecisionAdmitted || !!pendingDecision;
   const buckIsAssigned = buckPosition !== null && buckPosition !== undefined;
   const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
   const roundIsActive = roundStatus === 'betting' || roundStatus === 'active';
