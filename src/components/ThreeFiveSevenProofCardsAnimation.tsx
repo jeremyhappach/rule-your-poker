@@ -267,6 +267,7 @@ export const ThreeFiveSevenProofCardsAnimation = ({
             destinationSelector,
             distancePx,
           });
+          if (origin) nextOriginEls.push(origin);
         }
       });
 
