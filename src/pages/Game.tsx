@@ -7658,6 +7658,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             // First, clear the result and proceed to next round
+            if (admissionShouldTrace) {
+              persist357Investigation(gameId!, game?.total_hands || 1, '357.awaiting_next_round.proceed_called', {
+                effectRunId, timerOwnerId: String(asyncOwnerId),
+                freshGame,
+              });
+            }
             await proceedToNextRound(gameId);
             
             // THEN trigger ante animation when proceeding to round 1 (new antes collected)
