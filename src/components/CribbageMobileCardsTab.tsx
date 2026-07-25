@@ -166,32 +166,36 @@ export const CribbageMobileCardsTab = ({
   );
   const parentSuppressed = !!renderTrace && renderTrace.interactionsAllowed === false;
   const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch || parentSuppressed);
-  // Wave 1 deal-runtime gating: during DEALING, clip the self hand to
-  // the per-recipient settled count so cards appear one at a time as
-  // each transport arrives. PRE_DEAL → 0. READY/GAMEPLAY / no runtime
-  // → full hand (legacy path).
+  // Canonical two-phase reveal:
+  //   DEALING → transport-settled card identities drive reveal count
+  //             (per-recipient settled cardId list, in transport order).
+  //   READY/GAMEPLAY → identity-matched authoritative hand.
+  //
+  // DealRuntime is host-keyed by handContextId (mounted above the
+  // orchestrator with key={handContextId}), so getSettledCardIdsForPlayer
+  // inherently returns current-hand settles only, in the exact order
+  // transport arrivals landed. The `interactionsAllowed` gate is
+  // action-legality (may the user click?), not render-legality; during
+  // opening deal it can transiently be false while presentation catches
+  // up to authoritative identity, which would mask each settled card and
+  // then batch-reveal all of them at once. We therefore ignore
+  // `activeHandBlocked` inside DEALING and take the reveal count from
+  // the transport-settled id list.
   const deal = useDealRuntime();
   const authoritativeHand = renderTrace?.authoritativeHand ?? null;
   const isPostDealPhase = isCribbagePostDealPhase(cribbageState.phase);
   const clippedHand = (() => {
-    // DEALING branch: canonical transport ownership. DealRuntime is
-    // host-keyed by handContextId (mounted above the orchestrator with
-    // key={handContextId}), so getSettledCountForPlayer inherently
-    // counts current-hand settles only. The parent's `interactionsAllowed`
-    // gate is action-legality (may the user click?), NOT render-legality
-    // — during opening deal it can transiently be false while presentation
-    // catches up to authoritative identity, causing every settled card
-    // to be masked and then batch-revealed. We therefore ignore
-    // `activeHandBlocked` inside DEALING and clip from authoritativeHand
-    // (which is drawn from the same authoritative state that produced
-    // the current handContextId), falling back to sourceHand when no
-    // authoritative snapshot is threaded through.
     if (!deal) return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
+    // READY / GAMEPLAY — authoritative hand is the sole visual authority.
+    // Handoff preserves continuity: same cards, same order, same array
+    // reference chain (no remount, no flicker, no duplicates).
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') {
       return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
     }
     if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
-    const allowed = deal.getSettledCountForPlayer(currentPlayerId);
+    // DEALING — transport-settled card identities are the reveal driver.
+    const settledIds = deal.getSettledCardIdsForPlayer(currentPlayerId);
+    const allowed = settledIds.length;
     const clipSource: CribbageCard[] = (authoritativeHand && authoritativeHand.length > 0)
       ? (authoritativeHand as CribbageCard[])
       : sourceHand;
