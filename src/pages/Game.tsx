@@ -1859,6 +1859,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
   }, [players, threeFiveSevenView, is357GameType]);
 
+  // (357 refresh soft-lock probe is installed further below, after
+  // `currentRound` is declared — see softLockProbeKeyRef effect.)
+
+
+
+
+
   // ── 3-5-7 stuck-old-round detection (render-phase invariant) ──
   // ── 357: Post-render presentation hydration check (fires AFTER React commit) ──
   useEffect(() => {
@@ -5883,6 +5890,91 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     ginPhaseTracePrevAuthRef.current = current;
   }, [game, players, currentRound, mobileActiveTab, gameId, previousGameConfig]);
+
+  // ── 357: Refresh soft-lock diagnostic ─────────────────────────────
+  // Captures the exact runtime values feeding `allDecisionsIn` when the
+  // local player is UNDECIDED but the derivation still evaluates true —
+  // the precise condition that suppresses the Stay/Fold action row on
+  // a mid-round refresh. Fires once per unique presentation snapshot.
+  const softLockProbeKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!is357GameType) return;
+    if (!threeFiveSevenView || !currentRound || !gameId) return;
+    const localPlayer = players.find(p => p.user_id === user?.id);
+    if (!localPlayer) return;
+    const localUndecided =
+      localPlayer.status === 'active' &&
+      !localPlayer.decision_locked &&
+      !localPlayer.sitting_out;
+    if (!localUndecided) return;
+    const allDecidedComputed = threeFiveSevenView.players.every(p =>
+      p.decisionLocked || p.sittingOut || p.autoFold,
+    );
+    if (!allDecidedComputed) return;
+    const key = `${currentRound.id}|${threeFiveSevenView.roundId}|${threeFiveSevenView.players.map(p => `${p.playerId}:${p.decisionLocked ? 1 : 0}`).join(',')}`;
+    if (softLockProbeKeyRef.current === key) return;
+    softLockProbeKeyRef.current = key;
+    persistSyncDebugEvent({
+      gameId,
+      gameType: '3-5-7',
+      handNumber: currentRound.hand_number ?? 0,
+      roundId: currentRound.id,
+      eventType: 'invariant',
+      severity: 'warn',
+      eventName: '357.refresh.softlock_probe',
+      payload: {
+        authoritative: {
+          roundId: currentRound.id,
+          roundNumber: currentRound.round_number,
+          handNumber: currentRound.hand_number,
+          dealerGameId: (currentRound as any).dealer_game_id ?? null,
+          status: currentRound.status,
+        },
+        presentation: {
+          roundId: threeFiveSevenView.roundId,
+          roundNumber: threeFiveSevenView.roundNumber,
+          handNumber: threeFiveSevenView.handNumber,
+          roundStatus: threeFiveSevenView.roundStatus,
+        },
+        roundIdMatch: currentRound.id === threeFiveSevenView.roundId,
+        roundNumberMatch: currentRound.round_number === threeFiveSevenView.roundNumber,
+        presentationPlayers: threeFiveSevenView.players.map(p => ({
+          playerId: p.playerId,
+          position: p.position,
+          decisionLocked: p.decisionLocked,
+          decision: p.decision,
+          sittingOut: p.sittingOut,
+          autoFold: p.autoFold,
+          status: (p as any).status ?? null,
+        })),
+        rawPlayers: players.map(p => ({
+          playerId: p.id,
+          position: p.position,
+          decisionLocked: p.decision_locked,
+          decision: p.current_decision,
+          sittingOut: p.sitting_out,
+          autoFold: p.auto_fold,
+          status: p.status,
+          isLocal: p.user_id === user?.id,
+        })),
+        localPlayerId: localPlayer.id,
+        allDecidedComputed,
+        syncFrozen: threeFiveSevenSync.isFrozen,
+        syncOptimistic: threeFiveSevenSync.isOptimistic,
+      },
+    });
+  }, [
+    is357GameType,
+    threeFiveSevenView,
+    currentRound,
+    players,
+    user?.id,
+    gameId,
+    threeFiveSevenSync.isFrozen,
+    threeFiveSevenSync.isOptimistic,
+  ]);
+
+
 
   useEffect(() => {
     recordStartupValue('STATUS TIMELINE', 'Game.status', game?.status ?? null, {
