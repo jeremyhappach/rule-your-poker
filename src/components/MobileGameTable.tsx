@@ -4490,8 +4490,8 @@ export const MobileGameTable = ({
         threeFiveSevenWinPhase,
         legacyPhasePredicateWouldBlock: threeFiveSevenWinPhase === 'idle',
         winnerCardCount: threeFiveSevenWinnerCards.length,
-        winnerStageVisible,
-        winnerStageSuppressionReason,
+        winnerStageVisible: winner357StageVisible,
+        winnerStageSuppressionReason: winner357StageSuppressionReason,
         predicate: {
           hasNormalTerminalDescriptor: normal357TerminalDescriptor !== null,
           descriptorWinnerId: normal357TerminalDescriptor?.winnerId ?? null,
