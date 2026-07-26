@@ -4301,10 +4301,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'game_over' && game?.status !== 'in_progress') {
       if (winner357ShowCards) {
         console.log('[RESET] Clearing winner357ShowCards on game status change');
+        try {
+          emit357RuntimeDiag('show_cards_consent_reset', {
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            viewerPlayerId: user?.id ?? null,
+          }, { reason: 'game_status_change', gameStatus: game?.status ?? null });
+        } catch { /* noop */ }
         setWinner357ShowCards(false);
       }
     }
-  }, [game?.status, winner357ShowCards]);
+  }, [game?.status, winner357ShowCards, gameId, game?.current_game_uuid, user?.id]);
   
   // Reset winner357ShowCards when a new hand starts (awaiting_next_round transitions to false = hand is starting)
   const prevAwaitingNextRoundRef = useRef<boolean | null>(null);
@@ -4317,10 +4324,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (wasAwaiting === true && isAwaiting === false) {
       if (winner357ShowCards) {
         console.log('[RESET] Clearing winner357ShowCards on new hand start');
+        try {
+          emit357RuntimeDiag('show_cards_consent_reset', {
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            viewerPlayerId: user?.id ?? null,
+          }, { reason: 'awaiting_next_round_transition' });
+        } catch { /* noop */ }
         setWinner357ShowCards(false);
       }
     }
-  }, [game?.awaiting_next_round, winner357ShowCards]);
+  }, [game?.awaiting_next_round, winner357ShowCards, gameId, game?.current_game_uuid, user?.id]);
 
   // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
   // This catches cases where realtime subscription misses the status update
