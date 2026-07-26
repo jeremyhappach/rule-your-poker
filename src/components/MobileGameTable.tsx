@@ -13297,26 +13297,44 @@ export const MobileGameTable = ({
                                       const rect = el.getBoundingClientRect();
                                       const cx = rect.left + rect.width / 2;
                                       const cy = rect.top + rect.height / 2;
-                                      const hitEl = document.elementFromPoint(cx, cy);
-                                      const hitIsButton = hitEl === el || (hitEl != null && el.contains(hitEl));
-                                      void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
-                                        emit357RuntimeDiag('show_cards_stage_trace', {
-                                          gameId: gameId ?? null,
-                                          viewerPlayerId: currentPlayer?.id ?? null,
-                                          winnerPlayerId: threeFiveSevenWinnerId ?? null,
-                                          terminalResultIdentity: lastRoundResult ?? null,
-                                        }, {
-                                          probe: 'show_cards_button_mounted',
-                                          rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
-                                          isVisible: rect.width > 0 && rect.height > 0,
-                                          hitIsButton,
-                                          hitElTag: hitEl?.tagName ?? null,
-                                          hitElId: (hitEl as HTMLElement | null)?.id ?? null,
-                                          hitElClass: (hitEl as HTMLElement | null)?.className?.toString().slice(0, 200) ?? null,
-                                          winner357ShowCards,
-                                          threeFiveSevenWinPhase,
-                                        });
-                                      }).catch(() => {});
+                                       const hitEl = document.elementFromPoint(cx, cy) as HTMLElement | null;
+                                       const hitIsButton = hitEl === el || (hitEl != null && el.contains(hitEl));
+                                       // Walk up 6 ancestors of the covering element to identify it.
+                                       const ancestors: Array<{ tag: string; id: string; cls: string; dataAttrs: string; pe: string; z: string }> = [];
+                                       let cur: HTMLElement | null = hitEl;
+                                       for (let i = 0; i < 6 && cur; i++) {
+                                         const cs = window.getComputedStyle(cur);
+                                         const dataAttrs = Array.from(cur.attributes)
+                                           .filter((a) => a.name.startsWith('data-') || a.name === 'role')
+                                           .map((a) => `${a.name}=${a.value}`).join(' ').slice(0, 200);
+                                         ancestors.push({
+                                           tag: cur.tagName,
+                                           id: cur.id || '',
+                                           cls: (cur.className?.toString() || '').slice(0, 120),
+                                           dataAttrs,
+                                           pe: cs.pointerEvents,
+                                           z: cs.zIndex,
+                                         });
+                                         cur = cur.parentElement;
+                                       }
+                                       void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+                                         emit357RuntimeDiag('show_cards_stage_trace', {
+                                           gameId: gameId ?? null,
+                                           viewerPlayerId: currentPlayer?.id ?? null,
+                                           winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                                           terminalResultIdentity: lastRoundResult ?? null,
+                                         }, {
+                                           probe: 'show_cards_button_mounted',
+                                           rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
+                                           isVisible: rect.width > 0 && rect.height > 0,
+                                           hitIsButton,
+                                           hitElTag: hitEl?.tagName ?? null,
+                                           hitElOuter: (hitEl?.outerHTML ?? '').slice(0, 300),
+                                           coveringAncestors: ancestors,
+                                           winner357ShowCards,
+                                           threeFiveSevenWinPhase,
+                                         });
+                                       }).catch(() => {});
                                     });
                                   } catch { /* noop */ }
                                 }}
