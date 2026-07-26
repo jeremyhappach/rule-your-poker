@@ -5707,6 +5707,17 @@ export const MobileGameTable = ({
       gameStatus: gameStatus ?? null,
       roundStatus: roundStatus ?? null,
       currentRoundNumber: typeof currentRound === 'number' ? currentRound : null,
+      // Wrapper-gate terms — the outer conditional at MobileGameTable.tsx
+      // line ~13057 gates the button block on: !isWaitingPhase &&
+      // activeTab === 'cards' && currentPlayer && !isDealerConfigPhase.
+      // If canDecide is true but buttons don't render, the failure is
+      // here, not in canDecide.
+      wrapper_isWaitingPhase: !!isWaitingPhase,
+      wrapper_isDealerConfigPhase: !!isDealerConfigPhase,
+      wrapper_activeTab: activeTab ?? null,
+      wrapper_currentPlayerExists: !!currentPlayer,
+      wrapper_terminalDescriptorSource: threeFiveSevenTerminalDescriptor?.source ?? null,
+      wrapper_threeFiveSevenWinPhase: threeFiveSevenWinPhase ?? null,
       players: players.map(p => ({
         id: p.id?.slice?.(0, 8) ?? null,
         position: p.position,
