@@ -43,6 +43,10 @@ export type ThreeFiveSevenRuntimeEventKind =
   // B. Show Cards eligibility (superset of show_cards_decision — emits
   //    every time the eligibility inputs change, incl. pre-deal flash).
   | "show_cards_eligibility_changed"
+  // B2. Bounded Show Cards click-to-stage trace. Emitted once per terminal
+  //     generation after consent reaches MobileGameTable, including the
+  //     post-RAF anchored-slot DOM checkpoint.
+  | "show_cards_stage_trace"
   // C. Active-hand geometry transitions
   | "active_hand_geometry_changed"
   // D. Pot destination resolution

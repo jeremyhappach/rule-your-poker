@@ -4360,6 +4360,30 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const normal357TerminalDescriptor =
+    gameType !== 'holm-game' && threeFiveSevenTerminalDescriptor?.source === 'normal-win'
+      ? threeFiveSevenTerminalDescriptor
+      : null;
+  const winner357StageVisible =
+    normal357TerminalDescriptor !== null &&
+    !!normal357TerminalDescriptor.winnerId &&
+    threeFiveSevenWinnerCards.length > 0 &&
+    winner357ShowCards === true;
+  const winner357StageSuppressionReason = winner357StageVisible
+    ? null
+    : gameType === 'holm-game'
+      ? 'holm-game'
+      : threeFiveSevenTerminalDescriptor?.source === 'instant-357'
+        ? 'instant-357-uses-proof-controller'
+        : normal357TerminalDescriptor === null
+          ? 'missing-normal-terminal-descriptor'
+          : !normal357TerminalDescriptor.winnerId
+            ? 'missing-descriptor-winner'
+            : threeFiveSevenWinnerCards.length <= 0
+              ? 'missing-winner-card-snapshot'
+              : winner357ShowCards !== true
+                ? 'waiting-for-explicit-consent'
+                : 'unknown';
 
   // B. Show Cards eligibility diagnostic — mirrors the exact render
   //    expression at L~11478. Fire-and-forget, no behavior change.
@@ -4418,6 +4442,102 @@ export const MobileGameTable = ({
     threeFiveSevenWinnerId, threeFiveSevenWinPhase,
     is357MultiPlayerShowdown, winner357ShowCards, currentPlayer?.id, playerCards,
     threeFiveSevenTerminalDescriptor?.source,
+  ]);
+
+  // Bounded Show Cards trace — one event per terminal generation after the
+  // explicit consent state reaches the table. It checkpoints the exact
+  // predicate that mounts the Wave 5D anchored stage plus the post-RAF DOM
+  // existence/stacking of the portal target and slot. Diagnostic-only.
+  const showCardsStageTraceSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    if (winner357ShowCards !== true) return;
+    const terminalGenerationId =
+      normal357TerminalDescriptor?.terminalGenerationId ??
+      threeFiveSevenTerminalDescriptor?.terminalGenerationId ??
+      'missing-terminal-generation';
+    const sig = [
+      terminalGenerationId,
+      winner357StageVisible ? 'visible' : 'blocked',
+      winner357StageSuppressionReason ?? 'none',
+      threeFiveSevenWinnerCards.length,
+      threeFiveSevenWinPhase,
+    ].join('|');
+    if (showCardsStageTraceSigRef.current === sig) return;
+    showCardsStageTraceSigRef.current = sig;
+    if (typeof window === 'undefined') return;
+
+    const raf = window.requestAnimationFrame(() => {
+      const slot = document.querySelector<HTMLElement>(
+        '[data-wave5-three-five-seven-slot="threeFiveSeven.winnerTabledCardsStage"]',
+      );
+      const coordFrame = document.querySelector<HTMLElement>('[data-canonical-felt-coord-frame]');
+      const surface = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
+      const slotRect = slot?.getBoundingClientRect();
+      const surfaceRect = surface?.getBoundingClientRect();
+      emit357RuntimeDiag('show_cards_stage_trace', {
+        gameId: gameId ?? null,
+        dealerGameId: normal357TerminalDescriptor?.dealerGameId ?? null,
+        roundId: normal357TerminalDescriptor?.roundId ?? null,
+        handNumber: normal357TerminalDescriptor?.handNumber ?? null,
+        viewerPlayerId: currentPlayer?.id ?? null,
+        winnerPlayerId: normal357TerminalDescriptor?.winnerId ?? threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: normal357TerminalDescriptor?.terminalResultIdentity ?? lastRoundResult ?? null,
+      }, {
+        terminalGenerationId,
+        descriptorSource: threeFiveSevenTerminalDescriptor?.source ?? null,
+        winner357ShowCards,
+        threeFiveSevenWinPhase,
+        legacyPhasePredicateWouldBlock: threeFiveSevenWinPhase === 'idle',
+        winnerCardCount: threeFiveSevenWinnerCards.length,
+        winnerStageVisible,
+        winnerStageSuppressionReason,
+        predicate: {
+          hasNormalTerminalDescriptor: normal357TerminalDescriptor !== null,
+          descriptorWinnerId: normal357TerminalDescriptor?.winnerId ?? null,
+          consent: winner357ShowCards === true,
+          cardSnapshotComplete: threeFiveSevenWinnerCards.length > 0,
+          phaseRequired: false,
+        },
+        dom: {
+          coordFramePresent: !!coordFrame,
+          surfacePresent: !!surface,
+          slotMounted: !!slot,
+          slotZIndex: slot ? window.getComputedStyle(slot).zIndex : null,
+          slotRect: slotRect
+            ? {
+                left: slotRect.left,
+                top: slotRect.top,
+                width: slotRect.width,
+                height: slotRect.height,
+              }
+            : null,
+          surfaceRect: surfaceRect
+            ? {
+                left: surfaceRect.left,
+                top: surfaceRect.top,
+                width: surfaceRect.width,
+                height: surfaceRect.height,
+              }
+            : null,
+        },
+      });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [
+    gameType,
+    gameId,
+    currentPlayer?.id,
+    lastRoundResult,
+    normal357TerminalDescriptor,
+    threeFiveSevenTerminalDescriptor?.source,
+    threeFiveSevenTerminalDescriptor?.terminalGenerationId,
+    threeFiveSevenWinnerId,
+    threeFiveSevenWinnerCards.length,
+    threeFiveSevenWinPhase,
+    winner357ShowCards,
+    winner357StageVisible,
+    winner357StageSuppressionReason,
   ]);
 
   // 3-5-7 sweep pot release gate: canonical match-win announcement must
@@ -10875,13 +10995,7 @@ export const MobileGameTable = ({
           // the felt ONLY after the winner clicks "Show Cards". No implicit
           // tabling by round number, phase, or terminal state. Card backs
           // must NEVER appear on the felt as a substitute for the real hand.
-          const winnerStageVisible =
-            gameType !== 'holm-game' &&
-            threeFiveSevenTerminalDescriptor?.source !== 'instant-357' &&
-            !!threeFiveSevenWinnerId &&
-            threeFiveSevenWinPhase !== 'idle' &&
-            threeFiveSevenWinnerCards.length > 0 &&
-            winner357ShowCards === true;
+          const winnerStageVisible = winner357StageVisible;
           if (gameType === 'holm-game') return null;
           return (
             <ThreeFiveSevenGameplayGeometryProvider
