@@ -11078,7 +11078,7 @@ export const MobileGameTable = ({
                     }}
                   >
                     <PlayerHand
-                      cards={threeFiveSevenWinnerCards}
+                      cards={effectiveWinnerCards}
                       isHidden={false}
                       gameType={gameType}
                       currentRound={currentRound}
