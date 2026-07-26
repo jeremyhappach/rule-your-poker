@@ -4650,7 +4650,7 @@ export const MobileGameTable = ({
     terminalResultIdentity: string | null;
     triggerId: string | null;
   };
-  const threeFiveSevenDealerGameScope = threeFiveSevenDealerGameScope;
+  // (three57DealerGameId consolidated into threeFiveSevenDealerGameScope)
   const build357PresentationIdentity =
     useCallback((): Three57PresentationIdentity => ({
       dealerGameId: threeFiveSevenDealerGameScope,
