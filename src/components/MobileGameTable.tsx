@@ -4380,35 +4380,52 @@ export const MobileGameTable = ({
   // DIFFERENT non-null value (a subsequent terminal event). Not by
   // phase changes, awaiting_next_round transitions, animation
   // completion, or the descriptor briefly becoming null.
+  //
+  // BOUNDARY: latch is keyed on `three57DealerGameId` — the real
+  // outgoing-surface identity — NOT on the descriptor's transient
+  // `terminalGenerationId`. During pot-to-player the parent may
+  // recompute a descriptor whose generationId shifts (e.g. currentRound
+  // rotates to null → generation string changes) even though the same
+  // terminal event is still in progress. Keying on dealerGameId is the
+  // only identity guaranteed stable across the entire terminal
+  // sequence and only rotated when the outgoing surface is actually
+  // torn down.
   const [showCardsLatch, setShowCardsLatch] = useState<{
+    dealerGameId: string;
     generationId: string;
     descriptor: Terminal357Descriptor;
     cards: CardType[];
+    winnerId: string;
   } | null>(null);
   const activeNormalGenerationId =
     normal357TerminalDescriptor?.terminalGenerationId ?? null;
   useEffect(() => {
-    // Capture at first (consent && descriptor && cards) for a generation.
+    // Capture at first (consent && descriptor && cards && dealerGameId).
     if (
       winner357ShowCards === true &&
       normal357TerminalDescriptor?.terminalGenerationId &&
-      threeFiveSevenWinnerCards.length > 0
+      normal357TerminalDescriptor.winnerId &&
+      threeFiveSevenWinnerCards.length > 0 &&
+      three57DealerGameId
     ) {
-      const genId = normal357TerminalDescriptor.terminalGenerationId;
-      if (!showCardsLatch || showCardsLatch.generationId !== genId) {
+      if (!showCardsLatch || showCardsLatch.dealerGameId !== three57DealerGameId) {
         setShowCardsLatch({
-          generationId: genId,
+          dealerGameId: three57DealerGameId,
+          generationId: normal357TerminalDescriptor.terminalGenerationId,
           descriptor: normal357TerminalDescriptor,
           cards: threeFiveSevenWinnerCards.slice(),
+          winnerId: normal357TerminalDescriptor.winnerId,
         });
         return;
       }
     }
-    // Clear only on true identity rotation (different non-null genId).
+    // Clear ONLY at the real dealer-game boundary rotation. Do NOT
+    // clear when descriptor becomes null, phase rotates, or
+    // generationId shifts within the same dealer game.
     if (
       showCardsLatch &&
-      activeNormalGenerationId &&
-      activeNormalGenerationId !== showCardsLatch.generationId
+      three57DealerGameId &&
+      three57DealerGameId !== showCardsLatch.dealerGameId
     ) {
       setShowCardsLatch(null);
     }
@@ -4417,21 +4434,31 @@ export const MobileGameTable = ({
     normal357TerminalDescriptor,
     threeFiveSevenWinnerCards,
     showCardsLatch,
-    activeNormalGenerationId,
+    three57DealerGameId,
   ]);
+
+  // SINGLE TABLED-OWNERSHIP PREDICATE — shared by BOTH the felt stage
+  // and the active-hand helper-text branch. Independent of live
+  // descriptor, win phase, awaiting_next_round, live consent prop,
+  // live winner cards, announcement lifecycle, and current-round.
+  const normalWinnerCardsTabled =
+    showCardsLatch !== null && showCardsLatch.cards.length > 0;
 
   const effectiveNormalDescriptor =
     showCardsLatch?.descriptor ?? normal357TerminalDescriptor;
   const effectiveWinnerCards =
     showCardsLatch?.cards ?? threeFiveSevenWinnerCards;
   const winner357ConsentActive =
-    winner357ShowCards === true || showCardsLatch !== null;
+    normalWinnerCardsTabled || winner357ShowCards === true;
 
   const winner357StageVisible =
-    effectiveNormalDescriptor !== null &&
-    !!effectiveNormalDescriptor.winnerId &&
-    effectiveWinnerCards.length > 0 &&
-    winner357ConsentActive;
+    normalWinnerCardsTabled ||
+    (
+      effectiveNormalDescriptor !== null &&
+      !!effectiveNormalDescriptor.winnerId &&
+      effectiveWinnerCards.length > 0 &&
+      winner357ConsentActive
+    );
   const winner357StageSuppressionReason = winner357StageVisible
     ? null
     : gameType === 'holm-game'
