@@ -109,7 +109,13 @@ export function CanonicalCelebrationLayer() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        pointerEvents: 'auto',
+        // Wrapper is a full-viewport flex container spanning the entire
+        // shell root. Making it pointer-events:auto swallowed clicks on
+        // any UI beneath it (e.g. the 3-5-7 winner "Show Cards" button
+        // at y≈560), even when the actual celebration content was a
+        // centered small node. Keep the wrapper transparent to pointer
+        // events; celebration content opts in on its own root.
+        pointerEvents: 'none',
         zIndex: 90, // above shell overlay root (80), below modal/toast layers.
       }}
     >
