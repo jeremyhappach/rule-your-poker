@@ -47,6 +47,8 @@ export type ThreeFiveSevenRuntimeEventKind =
   //     generation after consent reaches MobileGameTable, including the
   //     post-RAF anchored-slot DOM checkpoint.
   | "show_cards_stage_trace"
+  | "show_cards_click_received"
+  | "show_cards_consent_reset"
   // C. Active-hand geometry transitions
   | "active_hand_geometry_changed"
   // D. Pot destination resolution
