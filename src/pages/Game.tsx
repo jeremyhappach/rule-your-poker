@@ -4238,6 +4238,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleWinner357ShowCards = useCallback(() => {
     const currentGameUuid = game?.current_game_uuid;
     console.log('[BROADCAST] Sending show-cards event for game', currentGameUuid);
+    try {
+      emit357RuntimeDiag('show_cards_click_received', {
+        gameId,
+        dealerGameId: currentGameUuid ?? null,
+        roundId: null,
+        viewerPlayerId: user?.id ?? null,
+      }, {
+        previousConsent: winner357ShowCards,
+        gameStatus: game?.status ?? null,
+        awaitingNextRound: game?.awaiting_next_round ?? null,
+        currentRound: game?.current_round ?? null,
+        hasWinnerCards: (threeFiveSevenWinnerCards?.length ?? 0) > 0,
+        winnerCardCount: threeFiveSevenWinnerCards?.length ?? 0,
+      });
+    } catch { /* noop */ }
     setWinner357ShowCards(true); // Update local state immediately
     
     // Broadcast to all other clients - include current_game_uuid to prevent stale events
@@ -4286,10 +4301,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'game_over' && game?.status !== 'in_progress') {
       if (winner357ShowCards) {
         console.log('[RESET] Clearing winner357ShowCards on game status change');
+        try {
+          emit357RuntimeDiag('show_cards_consent_reset', {
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            viewerPlayerId: user?.id ?? null,
+          }, { reason: 'game_status_change', gameStatus: game?.status ?? null });
+        } catch { /* noop */ }
         setWinner357ShowCards(false);
       }
     }
-  }, [game?.status, winner357ShowCards]);
+  }, [game?.status, winner357ShowCards, gameId, game?.current_game_uuid, user?.id]);
   
   // Reset winner357ShowCards when a new hand starts (awaiting_next_round transitions to false = hand is starting)
   const prevAwaitingNextRoundRef = useRef<boolean | null>(null);
@@ -4302,10 +4324,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (wasAwaiting === true && isAwaiting === false) {
       if (winner357ShowCards) {
         console.log('[RESET] Clearing winner357ShowCards on new hand start');
+        try {
+          emit357RuntimeDiag('show_cards_consent_reset', {
+            gameId,
+            dealerGameId: game?.current_game_uuid ?? null,
+            viewerPlayerId: user?.id ?? null,
+          }, { reason: 'awaiting_next_round_transition' });
+        } catch { /* noop */ }
         setWinner357ShowCards(false);
       }
     }
-  }, [game?.awaiting_next_round, winner357ShowCards]);
+  }, [game?.awaiting_next_round, winner357ShowCards, gameId, game?.current_game_uuid, user?.id]);
 
   // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
   // This catches cases where realtime subscription misses the status update
