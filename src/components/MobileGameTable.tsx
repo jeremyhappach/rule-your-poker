@@ -4380,35 +4380,52 @@ export const MobileGameTable = ({
   // DIFFERENT non-null value (a subsequent terminal event). Not by
   // phase changes, awaiting_next_round transitions, animation
   // completion, or the descriptor briefly becoming null.
+  //
+  // BOUNDARY: latch is keyed on `threeFiveSevenDealerGameScope` — the real
+  // outgoing-surface identity — NOT on the descriptor's transient
+  // `terminalGenerationId`. During pot-to-player the parent may
+  // recompute a descriptor whose generationId shifts (e.g. currentRound
+  // rotates to null → generation string changes) even though the same
+  // terminal event is still in progress. Keying on dealerGameId is the
+  // only identity guaranteed stable across the entire terminal
+  // sequence and only rotated when the outgoing surface is actually
+  // torn down.
   const [showCardsLatch, setShowCardsLatch] = useState<{
+    dealerGameId: string;
     generationId: string;
     descriptor: Terminal357Descriptor;
     cards: CardType[];
+    winnerId: string;
   } | null>(null);
   const activeNormalGenerationId =
     normal357TerminalDescriptor?.terminalGenerationId ?? null;
   useEffect(() => {
-    // Capture at first (consent && descriptor && cards) for a generation.
+    // Capture at first (consent && descriptor && cards && dealerGameId).
     if (
       winner357ShowCards === true &&
       normal357TerminalDescriptor?.terminalGenerationId &&
-      threeFiveSevenWinnerCards.length > 0
+      normal357TerminalDescriptor.winnerId &&
+      threeFiveSevenWinnerCards.length > 0 &&
+      threeFiveSevenDealerGameScope
     ) {
-      const genId = normal357TerminalDescriptor.terminalGenerationId;
-      if (!showCardsLatch || showCardsLatch.generationId !== genId) {
+      if (!showCardsLatch || showCardsLatch.dealerGameId !== threeFiveSevenDealerGameScope) {
         setShowCardsLatch({
-          generationId: genId,
+          dealerGameId: threeFiveSevenDealerGameScope,
+          generationId: normal357TerminalDescriptor.terminalGenerationId,
           descriptor: normal357TerminalDescriptor,
           cards: threeFiveSevenWinnerCards.slice(),
+          winnerId: normal357TerminalDescriptor.winnerId,
         });
         return;
       }
     }
-    // Clear only on true identity rotation (different non-null genId).
+    // Clear ONLY at the real dealer-game boundary rotation. Do NOT
+    // clear when descriptor becomes null, phase rotates, or
+    // generationId shifts within the same dealer game.
     if (
       showCardsLatch &&
-      activeNormalGenerationId &&
-      activeNormalGenerationId !== showCardsLatch.generationId
+      threeFiveSevenDealerGameScope &&
+      threeFiveSevenDealerGameScope !== showCardsLatch.dealerGameId
     ) {
       setShowCardsLatch(null);
     }
@@ -4417,21 +4434,31 @@ export const MobileGameTable = ({
     normal357TerminalDescriptor,
     threeFiveSevenWinnerCards,
     showCardsLatch,
-    activeNormalGenerationId,
+    threeFiveSevenDealerGameScope,
   ]);
+
+  // SINGLE TABLED-OWNERSHIP PREDICATE — shared by BOTH the felt stage
+  // and the active-hand helper-text branch. Independent of live
+  // descriptor, win phase, awaiting_next_round, live consent prop,
+  // live winner cards, announcement lifecycle, and current-round.
+  const normalWinnerCardsTabled =
+    showCardsLatch !== null && showCardsLatch.cards.length > 0;
 
   const effectiveNormalDescriptor =
     showCardsLatch?.descriptor ?? normal357TerminalDescriptor;
   const effectiveWinnerCards =
     showCardsLatch?.cards ?? threeFiveSevenWinnerCards;
   const winner357ConsentActive =
-    winner357ShowCards === true || showCardsLatch !== null;
+    normalWinnerCardsTabled || winner357ShowCards === true;
 
   const winner357StageVisible =
-    effectiveNormalDescriptor !== null &&
-    !!effectiveNormalDescriptor.winnerId &&
-    effectiveWinnerCards.length > 0 &&
-    winner357ConsentActive;
+    normalWinnerCardsTabled ||
+    (
+      effectiveNormalDescriptor !== null &&
+      !!effectiveNormalDescriptor.winnerId &&
+      effectiveWinnerCards.length > 0 &&
+      winner357ConsentActive
+    );
   const winner357StageSuppressionReason = winner357StageVisible
     ? null
     : gameType === 'holm-game'
@@ -4623,15 +4650,15 @@ export const MobileGameTable = ({
     terminalResultIdentity: string | null;
     triggerId: string | null;
   };
-  const three57DealerGameId = threeFiveSevenDealerGameScope;
+  // (three57DealerGameId consolidated into threeFiveSevenDealerGameScope)
   const build357PresentationIdentity =
     useCallback((): Three57PresentationIdentity => ({
-      dealerGameId: three57DealerGameId,
+      dealerGameId: threeFiveSevenDealerGameScope,
       roundId: horsesRoundId ?? null,
       handContextId: handContextId ?? null,
       terminalResultIdentity: lastRoundResult ?? null,
       triggerId: threeFiveSevenWinTriggerId ?? null,
-    }), [three57DealerGameId, horsesRoundId, handContextId, lastRoundResult, threeFiveSevenWinTriggerId]);
+    }), [threeFiveSevenDealerGameScope, horsesRoundId, handContextId, lastRoundResult, threeFiveSevenWinTriggerId]);
   const matches357PresentationIdentity = (
     stored: Three57PresentationIdentity | null,
     active: Three57PresentationIdentity,
@@ -8568,7 +8595,7 @@ export const MobileGameTable = ({
   // stores the last CONCRETE (non-null) identity ever seen.
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
-    const nextDgId = three57DealerGameId;
+    const nextDgId = threeFiveSevenDealerGameScope;
     const nextHandCtx = handContextId ?? null;
     const nextIsConcrete = nextDgId != null && nextHandCtx != null;
     if (!nextIsConcrete) {
@@ -8622,7 +8649,7 @@ export const MobileGameTable = ({
         hadActivePot: !!stalePot,
       });
     }
-  }, [three57DealerGameId, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
+  }, [threeFiveSevenDealerGameScope, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
 
 
 
