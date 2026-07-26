@@ -5676,6 +5676,85 @@ export const MobileGameTable = ({
     identity: __wartimeMgtIdentity,
   });
 
+  // ── 357: canDecide hydration transition trace ──────────────────
+  // Bounded per-mount probe that emits ONLY when a term feeding
+  // `canDecide` changes value. Purpose: prove which term flips from
+  // enabling → suppressing after a mid-round refresh (the "buttons
+  // flash then never return" symptom).
+  const __canDecideTraceSeqRef = useRef(0);
+  const __canDecideLastRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!__is357GameType(gameType)) return;
+    if (!gameId) return;
+    if (__canDecideTraceSeqRef.current >= 40) return;
+    const snapshot = {
+      canDecide: !!canDecide,
+      hasDecided: !!hasDecided,
+      allDecisionsIn: !!allDecisionsIn,
+      currentPlayerStatus: currentPlayer?.status ?? null,
+      currentPlayerDecisionLocked: !!currentPlayer?.decision_locked,
+      pendingDecision: pendingDecision ?? null,
+      isPlayerTurn: !!isPlayerTurn,
+      isPaused: !!isPaused,
+      currentPlayerCardsLen: currentPlayerCards?.length ?? 0,
+      rawCurrentPlayerCardsLen: Array.isArray(rawCurrentPlayerCards) ? rawCurrentPlayerCards.length : -1,
+      selfHandHasActive357: !!selfHandHasActive357,
+      threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
+      dbDecisionAdmitted: !!dbDecisionAdmitted,
+      admittedDbDecisionIdentity: admittedDbDecisionIdentity ?? null,
+      authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
+      handContextId: handContextId ?? null,
+      gameStatus: gameStatus ?? null,
+      roundStatus: roundStatus ?? null,
+      currentRoundNumber: typeof currentRound === 'number' ? currentRound : null,
+      players: players.map(p => ({
+        id: p.id?.slice?.(0, 8) ?? null,
+        position: p.position,
+        status: p.status,
+        decisionLocked: !!p.decision_locked,
+        sittingOut: !!p.sitting_out,
+        autoFold: !!p.auto_fold,
+        isSelf: p.user_id === currentUserId,
+      })),
+    };
+    const key = JSON.stringify(snapshot);
+    if (__canDecideLastRef.current === key) return;
+    const prevKey = __canDecideLastRef.current;
+    const prev = prevKey ? JSON.parse(prevKey) as typeof snapshot : null;
+    const changedTerms: string[] = [];
+    if (prev) {
+      for (const k of Object.keys(snapshot) as (keyof typeof snapshot)[]) {
+        if (k === 'players') {
+          if (JSON.stringify(prev.players) !== JSON.stringify(snapshot.players)) changedTerms.push('players');
+        } else if (prev[k] !== snapshot[k]) {
+          changedTerms.push(k);
+        }
+      }
+    }
+    __canDecideLastRef.current = key;
+    __canDecideTraceSeqRef.current += 1;
+    const evaluationId = __canDecideTraceSeqRef.current;
+    import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: '3-5-7',
+        handNumber: 0,
+        roundId: null,
+        eventType: 'invariant',
+        severity: 'info',
+        eventName: '357.hydration.canDecide_trace',
+        payload: {
+          evaluationId,
+          changedTerms,
+          previous: prev,
+          current: snapshot,
+        },
+      });
+    }).catch(() => { /* noop */ });
+  });
+
+
+
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
   // and geometry; this surface provides only the icon choice and
   // gameplay-derived indicator state (cards-tab flash on turn, chat
