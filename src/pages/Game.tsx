@@ -11158,62 +11158,64 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Get winner's cards - but VERIFY they belong to current game by checking card count
     // 3-5-7 card counts: Round 1 = 3, Round 2 = 5, Round 3 = 7
-    const expectedCardCount = game?.current_round === 1 ? 3 : game?.current_round === 2 ? 5 : 7;
+    const expectedCardCountFromCurrentRound =
+      game?.current_round === 1 ? 3 : game?.current_round === 2 ? 5 : 7;
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const rawWinnerCards = winnerCardsData?.cards || [];
 
     // IDENTITY-BOUND WINNER HAND CONTRACT.
     //
     // Show Cards is an explicit privacy action — the wrong cards must
-    // never table on the felt. `threeFiveSevenWinnerCards` is populated
-    // ONLY when the currently-loaded `playerCards` row for the winner
-    // strictly matches ALL five identity dimensions of the terminal
-    // round AND contains the exact expected card count for that round.
+    // never table on the felt. The captured snapshot's identity is
+    // sourced from `playerCardsIdentity` (the immutable identity bound
+    // to the currently-loaded `playerCards` fetch) — NOT from
+    // `currentRound`, which may already have rotated to null during
+    // terminal settlement. Using `currentRound` here would store
+    // `roundId: null` in the expectation, and the resolver would then
+    // permanently fail to match the winning round's real
+    // `playerCardsIdentity.roundId`.
     //
-    //   identity = dealerGameId + handNumber + roundId + playerId +
-    //              terminalResultIdentity (resultMessage)
-    //
-    // Anything else — partial cards (a 3- or 5-card hand during a 7-card
-    // terminal), stale prior-round cards, a cross-dealer-game leak — is
-    // hard-rejected. The expectation persists so the resolver effect
-    // below can populate the array when the identity-matched fetch
-    // finally lands, without the winner losing their consent latch.
-    const expectedTerminalDealerGameId =
-      currentRound?.dealer_game_id ?? game?.current_game_uuid ?? null;
-    const expectedTerminalHandNumber = currentRound?.hand_number ?? null;
-    const expectedTerminalRoundId = currentRound?.id ?? null;
+    // The winner's row on `playerCards` is authoritative for its own
+    // round — a fully-loaded 3-5-7 hand contains exactly 3, 5, or 7
+    // cards. We treat any of those counts as a "complete" round hand.
+    // Partial or empty rows leave the expectation pending; the
+    // resolver below awaits an identity-matched fetch and populates
+    // the snapshot then. Consent (`winner357ShowCards`) is untouched.
+    const snapshotDealerGameId = playerCardsIdentity?.dealerGameId ?? null;
+    const snapshotHandNumber = playerCardsIdentity?.handNumber ?? null;
+    const snapshotRoundId = playerCardsIdentity?.roundId ?? null;
 
-    const identityMatchesPlayerCards =
-      !!playerCardsIdentity &&
-      playerCardsIdentity.dealerGameId === expectedTerminalDealerGameId &&
-      playerCardsIdentity.handNumber === expectedTerminalHandNumber &&
-      playerCardsIdentity.roundId === expectedTerminalRoundId;
+    const rawCount = rawWinnerCards.length;
+    const rawCountIsCompleteHand = rawCount === 3 || rawCount === 5 || rawCount === 7;
+    const canCaptureSnapshotNow = !!playerCardsIdentity && rawCountIsCompleteHand;
 
-    const winnerCards: CardType[] =
-      identityMatchesPlayerCards && rawWinnerCards.length === expectedCardCount
-        ? rawWinnerCards
-        : [];
+    const expectedCardCount = canCaptureSnapshotNow
+      ? rawCount
+      : expectedCardCountFromCurrentRound;
+
+    const winnerCards: CardType[] = canCaptureSnapshotNow ? rawWinnerCards : [];
 
     setTerminal357WinnerHandExpectation({
-      dealerGameId: expectedTerminalDealerGameId,
-      handNumber: expectedTerminalHandNumber,
-      roundId: expectedTerminalRoundId,
+      dealerGameId: snapshotDealerGameId,
+      handNumber: snapshotHandNumber,
+      roundId: snapshotRoundId,
       playerId: winnerPlayer.id,
       terminalResultIdentity: resultMessage,
       expectedCardCount,
     });
 
-    if (rawWinnerCards.length > 0 && winnerCards.length === 0) {
+    if (rawCount > 0 && winnerCards.length === 0) {
       console.warn('[357 WIN] Winner cards rejected — awaiting identity-matched fetch', {
         expected: expectedCardCount,
-        actual: rawWinnerCards.length,
-        identityMatchesPlayerCards,
-        expectedTerminalDealerGameId,
-        expectedTerminalHandNumber,
-        expectedTerminalRoundId,
+        actual: rawCount,
+        canCaptureSnapshotNow,
+        snapshotDealerGameId,
+        snapshotHandNumber,
+        snapshotRoundId,
         playerCardsIdentity,
       });
     }
+
 
 
     // A. Sweep parser diagnostic — emits for every 357 win-detection pass.
