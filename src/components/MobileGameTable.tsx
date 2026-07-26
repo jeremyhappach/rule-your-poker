@@ -13104,6 +13104,21 @@ export const MobileGameTable = ({
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
                         ) : (
+                          // SHOW-CARDS SINGLE-LOCATION CONTRACT: once the
+                          // local winner has tabled their hand on the
+                          // felt (winner357StageVisible), the active
+                          // player box must NOT also render the cards.
+                          // Show helper text; the felt stage remains the
+                          // only card-rendering owner for this terminal
+                          // generation. Geometry is preserved by the
+                          // outer reserved-height wrapper.
+                          winner357StageVisible &&
+                          effectiveNormalDescriptor?.winnerId === currentPlayer?.id
+                        ) ? (
+                          <div className="flex items-center justify-center py-4">
+                            <span className="text-sm text-muted-foreground italic">Your cards are on the felt</span>
+                          </div>
+                        ) : (
                           // UNIFIED stable subtree — outer wrapper, inner
                           // transform, and PlayerHand element identity must
                           // be stable across the empty→populated transition
