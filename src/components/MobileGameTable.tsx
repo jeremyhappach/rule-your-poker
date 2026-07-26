@@ -4381,7 +4381,7 @@ export const MobileGameTable = ({
   // phase changes, awaiting_next_round transitions, animation
   // completion, or the descriptor briefly becoming null.
   //
-  // BOUNDARY: latch is keyed on `three57DealerGameId` — the real
+  // BOUNDARY: latch is keyed on `threeFiveSevenDealerGameScope` — the real
   // outgoing-surface identity — NOT on the descriptor's transient
   // `terminalGenerationId`. During pot-to-player the parent may
   // recompute a descriptor whose generationId shifts (e.g. currentRound
@@ -4406,11 +4406,11 @@ export const MobileGameTable = ({
       normal357TerminalDescriptor?.terminalGenerationId &&
       normal357TerminalDescriptor.winnerId &&
       threeFiveSevenWinnerCards.length > 0 &&
-      three57DealerGameId
+      threeFiveSevenDealerGameScope
     ) {
-      if (!showCardsLatch || showCardsLatch.dealerGameId !== three57DealerGameId) {
+      if (!showCardsLatch || showCardsLatch.dealerGameId !== threeFiveSevenDealerGameScope) {
         setShowCardsLatch({
-          dealerGameId: three57DealerGameId,
+          dealerGameId: threeFiveSevenDealerGameScope,
           generationId: normal357TerminalDescriptor.terminalGenerationId,
           descriptor: normal357TerminalDescriptor,
           cards: threeFiveSevenWinnerCards.slice(),
@@ -4424,8 +4424,8 @@ export const MobileGameTable = ({
     // generationId shifts within the same dealer game.
     if (
       showCardsLatch &&
-      three57DealerGameId &&
-      three57DealerGameId !== showCardsLatch.dealerGameId
+      threeFiveSevenDealerGameScope &&
+      threeFiveSevenDealerGameScope !== showCardsLatch.dealerGameId
     ) {
       setShowCardsLatch(null);
     }
@@ -4434,7 +4434,7 @@ export const MobileGameTable = ({
     normal357TerminalDescriptor,
     threeFiveSevenWinnerCards,
     showCardsLatch,
-    three57DealerGameId,
+    threeFiveSevenDealerGameScope,
   ]);
 
   // SINGLE TABLED-OWNERSHIP PREDICATE — shared by BOTH the felt stage
@@ -4650,15 +4650,15 @@ export const MobileGameTable = ({
     terminalResultIdentity: string | null;
     triggerId: string | null;
   };
-  const three57DealerGameId = threeFiveSevenDealerGameScope;
+  const threeFiveSevenDealerGameScope = threeFiveSevenDealerGameScope;
   const build357PresentationIdentity =
     useCallback((): Three57PresentationIdentity => ({
-      dealerGameId: three57DealerGameId,
+      dealerGameId: threeFiveSevenDealerGameScope,
       roundId: horsesRoundId ?? null,
       handContextId: handContextId ?? null,
       terminalResultIdentity: lastRoundResult ?? null,
       triggerId: threeFiveSevenWinTriggerId ?? null,
-    }), [three57DealerGameId, horsesRoundId, handContextId, lastRoundResult, threeFiveSevenWinTriggerId]);
+    }), [threeFiveSevenDealerGameScope, horsesRoundId, handContextId, lastRoundResult, threeFiveSevenWinTriggerId]);
   const matches357PresentationIdentity = (
     stored: Three57PresentationIdentity | null,
     active: Three57PresentationIdentity,
@@ -8595,7 +8595,7 @@ export const MobileGameTable = ({
   // stores the last CONCRETE (non-null) identity ever seen.
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
-    const nextDgId = three57DealerGameId;
+    const nextDgId = threeFiveSevenDealerGameScope;
     const nextHandCtx = handContextId ?? null;
     const nextIsConcrete = nextDgId != null && nextHandCtx != null;
     if (!nextIsConcrete) {
@@ -8649,7 +8649,7 @@ export const MobileGameTable = ({
         hadActivePot: !!stalePot,
       });
     }
-  }, [three57DealerGameId, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
+  }, [threeFiveSevenDealerGameScope, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
 
 
 
