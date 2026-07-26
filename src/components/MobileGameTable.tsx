@@ -943,6 +943,14 @@ interface MobileGameTableProps {
   holmDealerGameId?: string | null;
   /** Authoritative hand_number of the current round (drives progress vector). */
   horsesHandNumber?: number | null;
+  /** 3-5-7 lower-zone trace: authoritative DB current round id from Game.tsx. */
+  threeFiveSevenAuthoritativeRoundId?: string | null;
+  /** 3-5-7 lower-zone trace: authoritative DB current round number from Game.tsx. */
+  threeFiveSevenAuthoritativeRoundNumber?: number | null;
+  /** 3-5-7 lower-zone trace: presentation view round id from Game.tsx. */
+  threeFiveSevenViewRoundId?: string | null;
+  /** 3-5-7 lower-zone trace: presentation view round number from Game.tsx. */
+  threeFiveSevenViewRoundNumber?: number | null;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -1222,6 +1230,10 @@ export const MobileGameTable = ({
   horsesDealerGameId,
   holmDealerGameId,
   horsesHandNumber,
+  threeFiveSevenAuthoritativeRoundId,
+  threeFiveSevenAuthoritativeRoundNumber,
+  threeFiveSevenViewRoundId,
+  threeFiveSevenViewRoundNumber,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -5661,6 +5673,131 @@ export const MobileGameTable = ({
     ? gameStatus !== 'game_over' && typeof currentRound === 'number' && currentRound >= 1 && !selfHandHasActive357
     : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0 && holmDecisionGate && threeFiveSevenDecisionBoundaryOpen;
+  type LowerZoneRenderedOwner =
+    | 'stay_fold_buttons'
+    | 'stayed_badge'
+    | 'show_cards_button'
+    | 'cards_on_the_felt_helper'
+    | 'empty'
+    | 'unknown';
+  const lowerZoneRenderSeqRef = useRef(0);
+  const lowerZoneTraceRoundId = threeFiveSevenAuthoritativeRoundId ?? horsesRoundId ?? null;
+  const lowerZoneTraceRoundNumber = threeFiveSevenAuthoritativeRoundNumber ?? currentRound ?? null;
+  const lowerZoneTraceViewRoundId = threeFiveSevenViewRoundId ?? null;
+  const lowerZoneTraceViewRoundNumber = threeFiveSevenViewRoundNumber ?? (__is357GameType(gameType) ? currentRound : null);
+  const getLowerZoneSuppressReason = (): string => {
+    if (!currentPlayer) return 'no_currentPlayer';
+    if (currentPlayer.auto_fold && !currentPlayer.sitting_out) return 'currentPlayer.auto_fold';
+    if (hasDecided) return 'hasDecided';
+    if (currentPlayer.status !== 'active') return 'currentPlayer.status';
+    if (allDecisionsIn && !holmPlayerCanDecide) return 'allDecisionsIn';
+    if (!isPlayerTurn) return 'isPlayerTurn';
+    if (isPaused) return 'isPaused';
+    if (currentPlayerCards.length <= 0) return 'currentPlayerCards.length';
+    if (!holmDecisionGate) return 'holmDecisionGate';
+    if (!threeFiveSevenDecisionBoundaryOpen) return 'threeFiveSevenDecisionBoundaryOpen';
+    return 'no_matching_branch';
+  };
+  const evaluateLowerZoneOwner = (): { renderedOwner: LowerZoneRenderedOwner; reason: string | null } => {
+    if (!currentPlayer) {
+      return { renderedOwner: 'empty', reason: 'no_currentPlayer' };
+    }
+    if (currentPlayer.auto_fold && !currentPlayer.sitting_out) {
+      return { renderedOwner: 'unknown', reason: 'currentPlayer.auto_fold' };
+    }
+    if (canDecide && !currentPlayer.auto_fold) {
+      return { renderedOwner: 'stay_fold_buttons', reason: null };
+    }
+    if (currentPlayer.sitting_out && !currentPlayer.waiting) {
+      return { renderedOwner: 'unknown', reason: 'currentPlayer.sitting_out' };
+    }
+    if (hasDecided) {
+      const isLocalWinner357InAnim =
+        gameType !== 'holm-game' &&
+        threeFiveSevenTerminalDescriptor?.source !== 'instant-357' &&
+        threeFiveSevenWinnerId === currentPlayer.id &&
+        threeFiveSevenWinPhase !== 'idle' &&
+        !(lastRoundResult?.startsWith('357_SWEEP:'));
+      if (isLocalWinner357InAnim) {
+        if (winner357ConsentActive) {
+          return {
+            renderedOwner: normalWinnerCardsTabled ? 'cards_on_the_felt_helper' : 'empty',
+            reason: showCardsLatch ? 'showCardsLatch' : 'winner357ConsentActive',
+          };
+        }
+        return { renderedOwner: 'show_cards_button', reason: 'hasDecided' };
+      }
+      if (
+        authoritativeDecisionIdentityKey &&
+        terminalBadgeRetiredIdentityRef.current === authoritativeDecisionIdentityKey
+      ) {
+        return { renderedOwner: 'empty', reason: 'terminalBadgeRetiredIdentity' };
+      }
+      const dbDecision = dbDecisionAdmitted ? currentPlayer.current_decision : null;
+      const decisionForBadge = pendingDecision || dbDecision;
+      if (decisionForBadge) {
+        return { renderedOwner: 'stayed_badge', reason: 'hasDecided' };
+      }
+      return { renderedOwner: 'empty', reason: 'hasDecided_no_decisionForBadge' };
+    }
+    if (gameType === 'holm-game' && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer.auto_fold && holmDealReady) {
+      return { renderedOwner: 'unknown', reason: 'holm_predecision' };
+    }
+    if (currentPlayerCards.length === 0 && roundStatus === 'betting') {
+      return { renderedOwner: 'empty', reason: 'currentPlayerCards.length' };
+    }
+    return { renderedOwner: 'empty', reason: getLowerZoneSuppressReason() };
+  };
+  const emitLowerZoneRenderTrace = (renderedOwner: LowerZoneRenderedOwner, reason: string | null): void => {
+    if (!__is357GameType(gameType)) return;
+    if (!gameId) return;
+    if (lowerZoneRenderSeqRef.current >= 30) return;
+    const renderSeq = lowerZoneRenderSeqRef.current + 1;
+    lowerZoneRenderSeqRef.current = renderSeq;
+    const payload = {
+      renderSeq,
+      renderedOwner,
+      reason: renderedOwner === 'stay_fold_buttons' ? null : (reason ?? 'no_matching_branch'),
+      canDecide: !!canDecide,
+      hasDecided: !!hasDecided,
+      allDecisionsIn: !!allDecisionsIn,
+      'currentPlayer.status': currentPlayer?.status ?? null,
+      'currentPlayer.currentDecision': currentPlayer?.current_decision ?? null,
+      'currentPlayer.decisionLocked': currentPlayer?.decision_locked ?? null,
+      isPlayerTurn: !!isPlayerTurn,
+      'currentPlayerCards.length': currentPlayerCards.length,
+      threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
+      winner357ConsentActive: !!winner357ConsentActive,
+      normalWinnerCardsTabled: !!normalWinnerCardsTabled,
+      showCardsLatch: showCardsLatch
+        ? {
+            dealerGameId: showCardsLatch.dealerGameId,
+            generationId: showCardsLatch.generationId,
+            winnerId: showCardsLatch.winnerId,
+            cardCount: showCardsLatch.cards.length,
+          }
+        : null,
+      'currentRound.id': lowerZoneTraceRoundId,
+      'currentRound.roundNumber': lowerZoneTraceRoundNumber,
+      'threeFiveSevenView.roundId': lowerZoneTraceViewRoundId,
+      'threeFiveSevenView.roundNumber': lowerZoneTraceViewRoundNumber,
+      authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
+    };
+    Promise.resolve().then(() => {
+      void __mgtSupabase
+        .from('debug_sync_events' as any)
+        .insert({
+          game_id: gameId,
+          game_type: '3-5-7',
+          hand_number: horsesHandNumber ?? 0,
+          round_id: lowerZoneTraceRoundId,
+          event_type: 'invariant',
+          severity: 'info',
+          event_name: '357.lower_zone_render',
+          payload,
+        } as any);
+    });
+  };
   __useWartimeStateWrite({
     fieldName: 'selfHandHasActive357',
     sourceSiteId: __WARTIME_SRC.STATE_SHOW_CARDS.id,
@@ -13520,7 +13657,10 @@ export const MobileGameTable = ({
                     isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
 
-                    {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
+                    {(() => {
+                      const lowerZoneTrace = evaluateLowerZoneOwner();
+                      emitLowerZoneRenderTrace(lowerZoneTrace.renderedOwner, lowerZoneTrace.reason);
+                      return currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                       <label className={cn(
                         "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
                         isTablet ? "px-6 py-3" : "px-4 py-2"
@@ -13752,7 +13892,8 @@ export const MobileGameTable = ({
                           Stay
                         </Button>
                       </div>
-                    ) : null}
+                    ) : null;
+                    })()}
                   </div>
 
                   <style>{`
