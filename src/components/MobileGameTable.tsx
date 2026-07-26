@@ -13364,9 +13364,18 @@ export const MobileGameTable = ({
                             terminalBadgeRetiredIdentityRef.current =
                               authoritativeDecisionIdentityKey;
                           }
-                          if (!winner357ShowCards) {
-                            return (
-                              <Button
+                          // TERMINAL-GENERATION CONSUMPTION: once consent
+                          // has been latched for the active terminal
+                          // generation, the button is permanently retired
+                          // and the lower slot stays empty — phase changes
+                          // (pot-to-player, delay, idle) may never restore
+                          // it. Consent latch is cleared only on a
+                          // different-generation identity rotation.
+                          if (winner357ConsentActive) {
+                            return null;
+                          }
+                          return (
+                            <Button
                                 ref={(el) => {
                                   if (!el) return;
                                   // Fire-and-forget: DOM lifecycle + coverage probe.
@@ -13444,12 +13453,6 @@ export const MobileGameTable = ({
                               >
                                 Show Cards
                               </Button>
-                            );
-                          }
-                          return (
-                            <div className="text-sm text-green-400 font-medium">
-                              Cards Shown
-                            </div>
                           );
                         }
                         // If this identity has already rendered a terminal
