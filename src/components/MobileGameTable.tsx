@@ -5764,6 +5764,118 @@ export const MobileGameTable = ({
     }).catch(() => { /* noop */ });
   });
 
+  // ── 357: button DOM-visibility probe ──────────────────────────
+  // Fires when canDecide flips to true (and no auto-fold). Measures
+  // whether the Stay button is actually in the DOM and, if so, whether
+  // it's visible + hittable. Persists to debug_sync_events as
+  // `357.hydration.button_dom_probe`.
+  const __buttonDomProbeSeqRef = useRef(0);
+  const __buttonDomProbeLastKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!__is357GameType(gameType)) return;
+    if (!gameId) return;
+    if (__buttonDomProbeSeqRef.current >= 20) return;
+    const enabled = !!canDecide && !!currentPlayer && !currentPlayer.auto_fold;
+    const key = `${enabled}:${canDecide ? '1' : '0'}:${currentPlayer?.auto_fold ? '1' : '0'}:${authoritativeDecisionIdentityKey ?? 'none'}`;
+    if (__buttonDomProbeLastKeyRef.current === key) return;
+    __buttonDomProbeLastKeyRef.current = key;
+    if (!enabled) return;
+
+    const seq = ++__buttonDomProbeSeqRef.current;
+    // Defer two frames so React commit + layout has flushed.
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        try {
+          const btn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
+          const wrapper = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
+          const inDom = !!btn;
+          const rect = btn?.getBoundingClientRect();
+          const cs = btn ? window.getComputedStyle(btn) : null;
+          const wrapperRect = wrapper?.getBoundingClientRect();
+          const wrapperCs = wrapper ? window.getComputedStyle(wrapper) : null;
+          let hitEl: HTMLElement | null = null;
+          let hitIsButton = false;
+          const ancestors: Array<{ tag: string; cls: string; da: string; pe: string; disp: string; vis: string; op: string; z: string }> = [];
+          if (btn && rect && rect.width > 0 && rect.height > 0) {
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            hitEl = document.elementFromPoint(cx, cy) as HTMLElement | null;
+            hitIsButton = hitEl === btn || (hitEl != null && btn.contains(hitEl));
+            let cur: HTMLElement | null = hitEl;
+            for (let i = 0; i < 8 && cur; i++) {
+              const c = window.getComputedStyle(cur);
+              const da = Array.from(cur.attributes)
+                .filter(a => a.name.startsWith('data-') || a.name === 'role')
+                .map(a => `${a.name}=${a.value}`).join(' ').slice(0, 160);
+              ancestors.push({
+                tag: cur.tagName,
+                cls: (cur.className?.toString() || '').slice(0, 100),
+                da,
+                pe: c.pointerEvents,
+                disp: c.display,
+                vis: c.visibility,
+                op: c.opacity,
+                z: c.zIndex,
+              });
+              cur = cur.parentElement;
+            }
+          }
+          // Walk the button's own ancestor chain (independent of hit test)
+          const btnAncestors: Array<{ tag: string; cls: string; da: string; disp: string; vis: string; op: string; h: number; w: number }> = [];
+          let cur2: HTMLElement | null = btn;
+          for (let i = 0; i < 10 && cur2; i++) {
+            const c = window.getComputedStyle(cur2);
+            const r = cur2.getBoundingClientRect();
+            const da = Array.from(cur2.attributes)
+              .filter(a => a.name.startsWith('data-') || a.name === 'role')
+              .map(a => `${a.name}=${a.value}`).join(' ').slice(0, 160);
+            btnAncestors.push({
+              tag: cur2.tagName,
+              cls: (cur2.className?.toString() || '').slice(0, 100),
+              da,
+              disp: c.display,
+              vis: c.visibility,
+              op: c.opacity,
+              h: Math.round(r.height),
+              w: Math.round(r.width),
+            });
+            cur2 = cur2.parentElement;
+          }
+          void import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+            persistSyncDebugEvent({
+              gameId,
+              gameType: '3-5-7',
+              handNumber: 0,
+              roundId: null,
+              eventType: 'invariant',
+              severity: 'info',
+              eventName: '357.hydration.button_dom_probe',
+              payload: {
+                seq,
+                inDom,
+                btnRect: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) } : null,
+                btnStyles: cs ? { disp: cs.display, vis: cs.visibility, op: cs.opacity, pe: cs.pointerEvents, z: cs.zIndex } : null,
+                wrapperExists: !!wrapper,
+                wrapperRect: wrapperRect ? { x: Math.round(wrapperRect.x), y: Math.round(wrapperRect.y), w: Math.round(wrapperRect.width), h: Math.round(wrapperRect.height) } : null,
+                wrapperStyles: wrapperCs ? { disp: wrapperCs.display, vis: wrapperCs.visibility, op: wrapperCs.opacity, oflow: wrapperCs.overflow } : null,
+                hitIsButton,
+                hitElTag: hitEl?.tagName ?? null,
+                hitAncestors: ancestors,
+                btnAncestors,
+                canDecideAtProbe: !!canDecide,
+                autoFoldAtProbe: !!currentPlayer?.auto_fold,
+                authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
+              },
+            });
+          }).catch(() => {});
+        } catch { /* noop */ }
+      });
+      return () => cancelAnimationFrame(raf2);
+    });
+    return () => cancelAnimationFrame(raf1);
+  });
+
+
 
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
