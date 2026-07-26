@@ -13445,6 +13445,7 @@ export const MobileGameTable = ({
                           {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                         </Button>
                         <Button
+                          data-357-stay-decision-btn=""
                           size="default"
                           onClick={onStay}
                           className={cn(
