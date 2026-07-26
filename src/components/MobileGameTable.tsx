@@ -4364,24 +4364,87 @@ export const MobileGameTable = ({
     gameType !== 'holm-game' && threeFiveSevenTerminalDescriptor?.source === 'normal-win'
       ? threeFiveSevenTerminalDescriptor
       : null;
+
+  // SHOW CARDS TERMINAL-GENERATION LATCH.
+  //
+  // Contract: once the local winner clicks Show Cards for a specific
+  // normal-terminal generation, that consent + descriptor + captured
+  // winner hand must persist through the ENTIRE terminal sequence
+  // (proof/prelude → sweep-the-legs → pot-to-player → confetti →
+  // completion callback → dealer-game rotation), regardless of any
+  // transient churn in the parent's `winner357ShowCards`,
+  // `threeFiveSevenWinnerCards`, or `threeFiveSevenTerminalDescriptor`
+  // props during pot transfer.
+  //
+  // Cleared ONLY when the terminal generation identity rotates to a
+  // DIFFERENT non-null value (a subsequent terminal event). Not by
+  // phase changes, awaiting_next_round transitions, animation
+  // completion, or the descriptor briefly becoming null.
+  const [showCardsLatch, setShowCardsLatch] = useState<{
+    generationId: string;
+    descriptor: Terminal357Descriptor;
+    cards: CardType[];
+  } | null>(null);
+  const activeNormalGenerationId =
+    normal357TerminalDescriptor?.terminalGenerationId ?? null;
+  useEffect(() => {
+    // Capture at first (consent && descriptor && cards) for a generation.
+    if (
+      winner357ShowCards === true &&
+      normal357TerminalDescriptor?.terminalGenerationId &&
+      threeFiveSevenWinnerCards.length > 0
+    ) {
+      const genId = normal357TerminalDescriptor.terminalGenerationId;
+      if (!showCardsLatch || showCardsLatch.generationId !== genId) {
+        setShowCardsLatch({
+          generationId: genId,
+          descriptor: normal357TerminalDescriptor,
+          cards: threeFiveSevenWinnerCards.slice(),
+        });
+        return;
+      }
+    }
+    // Clear only on true identity rotation (different non-null genId).
+    if (
+      showCardsLatch &&
+      activeNormalGenerationId &&
+      activeNormalGenerationId !== showCardsLatch.generationId
+    ) {
+      setShowCardsLatch(null);
+    }
+  }, [
+    winner357ShowCards,
+    normal357TerminalDescriptor,
+    threeFiveSevenWinnerCards,
+    showCardsLatch,
+    activeNormalGenerationId,
+  ]);
+
+  const effectiveNormalDescriptor =
+    showCardsLatch?.descriptor ?? normal357TerminalDescriptor;
+  const effectiveWinnerCards =
+    showCardsLatch?.cards ?? threeFiveSevenWinnerCards;
+  const winner357ConsentActive =
+    winner357ShowCards === true || showCardsLatch !== null;
+
   const winner357StageVisible =
-    normal357TerminalDescriptor !== null &&
-    !!normal357TerminalDescriptor.winnerId &&
-    threeFiveSevenWinnerCards.length > 0 &&
-    winner357ShowCards === true;
+    effectiveNormalDescriptor !== null &&
+    !!effectiveNormalDescriptor.winnerId &&
+    effectiveWinnerCards.length > 0 &&
+    winner357ConsentActive;
   const winner357StageSuppressionReason = winner357StageVisible
     ? null
     : gameType === 'holm-game'
       ? 'holm-game'
       : threeFiveSevenTerminalDescriptor?.source === 'instant-357'
         ? 'instant-357-uses-proof-controller'
-        : normal357TerminalDescriptor === null
+        : effectiveNormalDescriptor === null
           ? 'missing-normal-terminal-descriptor'
-          : !normal357TerminalDescriptor.winnerId
+          : !effectiveNormalDescriptor.winnerId
             ? 'missing-descriptor-winner'
-            : threeFiveSevenWinnerCards.length <= 0
+            : effectiveWinnerCards.length <= 0
               ? 'missing-winner-card-snapshot'
-              : winner357ShowCards !== true
+              : !winner357ConsentActive
                 ? 'waiting-for-explicit-consent'
                 : 'unknown';
 
