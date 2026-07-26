@@ -13289,9 +13289,58 @@ export const MobileGameTable = ({
                           if (!winner357ShowCards) {
                             return (
                               <Button
+                                ref={(el) => {
+                                  if (!el) return;
+                                  // Fire-and-forget: DOM lifecycle + coverage probe.
+                                  try {
+                                    requestAnimationFrame(() => {
+                                      const rect = el.getBoundingClientRect();
+                                      const cx = rect.left + rect.width / 2;
+                                      const cy = rect.top + rect.height / 2;
+                                      const hitEl = document.elementFromPoint(cx, cy);
+                                      const hitIsButton = hitEl === el || (hitEl != null && el.contains(hitEl));
+                                      void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+                                        emit357RuntimeDiag('show_cards_stage_trace', {
+                                          gameId: gameId ?? null,
+                                          viewerPlayerId: currentPlayer?.id ?? null,
+                                          winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                                          terminalResultIdentity: lastRoundResult ?? null,
+                                        }, {
+                                          probe: 'show_cards_button_mounted',
+                                          rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
+                                          isVisible: rect.width > 0 && rect.height > 0,
+                                          hitIsButton,
+                                          hitElTag: hitEl?.tagName ?? null,
+                                          hitElId: (hitEl as HTMLElement | null)?.id ?? null,
+                                          hitElClass: (hitEl as HTMLElement | null)?.className?.toString().slice(0, 200) ?? null,
+                                          winner357ShowCards,
+                                          threeFiveSevenWinPhase,
+                                        });
+                                      }).catch(() => {});
+                                    });
+                                  } catch { /* noop */ }
+                                }}
                                 variant="outline"
                                 size="default"
-                                onClick={() => onWinner357ShowCards?.()}
+                                onPointerDown={() => {
+                                  void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+                                    emit357RuntimeDiag('show_cards_click_received', {
+                                      gameId: gameId ?? null,
+                                      viewerPlayerId: currentPlayer?.id ?? null,
+                                      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                                    }, { source: 'pointerdown-dom', winner357ShowCards, threeFiveSevenWinPhase });
+                                  }).catch(() => {});
+                                }}
+                                onClick={() => {
+                                  void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
+                                    emit357RuntimeDiag('show_cards_click_received', {
+                                      gameId: gameId ?? null,
+                                      viewerPlayerId: currentPlayer?.id ?? null,
+                                      winnerPlayerId: threeFiveSevenWinnerId ?? null,
+                                    }, { source: 'react-onclick', winner357ShowCards, threeFiveSevenWinPhase });
+                                  }).catch(() => {});
+                                  onWinner357ShowCards?.();
+                                }}
                                 className={cn(
                                   "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
                                   isTablet ? "px-6 py-3 text-base h-14" : "px-4 py-2 text-sm h-9",
