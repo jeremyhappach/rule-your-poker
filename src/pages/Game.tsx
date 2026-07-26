@@ -4238,6 +4238,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleWinner357ShowCards = useCallback(() => {
     const currentGameUuid = game?.current_game_uuid;
     console.log('[BROADCAST] Sending show-cards event for game', currentGameUuid);
+    try {
+      emit357RuntimeDiag('show_cards_click_received', {
+        gameId,
+        dealerGameId: currentGameUuid ?? null,
+        roundId: null,
+        viewerPlayerId: user?.id ?? null,
+      }, {
+        previousConsent: winner357ShowCards,
+        gameStatus: game?.status ?? null,
+        awaitingNextRound: game?.awaiting_next_round ?? null,
+        currentRound: game?.current_round ?? null,
+        hasWinnerCards: (threeFiveSevenWinnerCards?.length ?? 0) > 0,
+        winnerCardCount: threeFiveSevenWinnerCards?.length ?? 0,
+        hasNormalDescriptor: !!normal357TerminalDescriptor,
+        descriptorWinnerId: normal357TerminalDescriptor?.winnerId ?? null,
+        terminalResultIdentity: normal357TerminalDescriptor?.terminalResultIdentity ?? null,
+      });
+    } catch { /* noop */ }
     setWinner357ShowCards(true); // Update local state immediately
     
     // Broadcast to all other clients - include current_game_uuid to prevent stale events
