@@ -4251,8 +4251,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRound: game?.current_round ?? null,
         hasWinnerCards: (threeFiveSevenWinnerCards?.length ?? 0) > 0,
         winnerCardCount: threeFiveSevenWinnerCards?.length ?? 0,
-        hasWinnerCards: (threeFiveSevenWinnerCards?.length ?? 0) > 0,
-        winnerCardCount: threeFiveSevenWinnerCards?.length ?? 0,
       });
     } catch { /* noop */ }
     setWinner357ShowCards(true); // Update local state immediately
