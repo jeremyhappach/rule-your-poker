@@ -259,7 +259,22 @@ export function PersistentTableShell({
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
-      className="min-h-screen bg-background"
+      // Shell root height must track the SAME viewport unit as its
+      // interior geometry tokens (`--shell-header-h`, `--shell-flex-h`,
+      // `--shell-hud-*`) — every one of those is expressed against
+      // `100dvh`. Tailwind's `min-h-screen` resolves to `100vh`, which
+      // on iOS Safari is the *large* viewport (URL-bar-hidden). When
+      // the URL bar becomes visible post-refresh, the shell root stays
+      // pinned to the pre-refresh 100vh while the interior tokens
+      // shrink to the smaller `100dvh` — the delta pushes HUD row 4
+      // (active pane) and row 5 (identity) below the visible viewport,
+      // clipping the 3-5-7 Drop/Stay row until sleep/wake fires
+      // `visualViewport.resize` and the browser reflows both units.
+      // Using `100dvh` here makes the shell root track the same
+      // browser-native reconciliation owner the interior already uses,
+      // eliminating the post-refresh softlock without adding any JS
+      // observer, timeout, or shell rewrite.
+      className="bg-background min-h-[100dvh]"
       style={{ position: 'relative', overflow: 'hidden' }}
     >
       {/* CSHELL provenance badge removed — canonical shell migration validated. */}
