@@ -13551,12 +13551,21 @@ export const MobileGameTable = ({
                           // but the same PlayerHand instance persists.
                           <div
                             className={cn(
-                              "flex items-start justify-center",
-                              currentPlayerHandReserveClass,
+                              // FIXED-HEIGHT CONTRACT: no min-h reserve.
+                              // Take the region's remaining height as a
+                              // flex child with min-h:0 so the resolver
+                              // (which reads `handAvailableHeightPx357`
+                              // derived from the measured region height)
+                              // controls card sizing. This lets 3-card,
+                              // 5-card, and 7-card fans all fit inside
+                              // the same pane budget without pushing the
+                              // action strip off-viewport.
+                              "flex items-start justify-center flex-1 min-h-0",
                               gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
                           >
+
                             <div
                               className={cn(
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
