@@ -26,7 +26,7 @@
  *     (gameplay surfaces wrap their own render site).
  */
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
@@ -178,6 +178,7 @@ export function PersistentTableShell({
   const geometry = useGeometryTokensOptional();
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
+  const [visualViewportHeightPx, setVisualViewportHeightPx] = useState<number | null>(null);
   useLifecycleMount('PersistentTableShell', { gameType });
   useStartupMountTrace('PersistentTableShell', { gameId: gameId ?? null, gameType: gameType ?? null });
   useStartupRenderTrace('PersistentTableShell', {
@@ -253,6 +254,41 @@ export function PersistentTableShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let frame = 0;
+    const measure = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const nextHeight = Math.round(viewportHeight);
+        setVisualViewportHeightPx((prev) => (prev === nextHeight ? prev : nextHeight));
+      });
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('scroll', measure);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('scroll', measure);
+    };
+  }, []);
+
+  const shellViewportHeight = visualViewportHeightPx != null ? `${visualViewportHeightPx}px` : '100dvh';
+  const shellRootStyle: CSSProperties & { '--shell-viewport-h': string } = {
+    position: 'relative',
+    height: shellViewportHeight,
+    overflow: 'hidden',
+    '--shell-viewport-h': shellViewportHeight,
+  };
+
 
   const body = (
     <div
@@ -261,7 +297,7 @@ export function PersistentTableShell({
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
       className="min-h-screen bg-background"
-      style={{ position: 'relative', height: '100dvh', overflow: 'hidden' }}
+      style={shellRootStyle}
     >
       {/* CSHELL provenance badge removed — canonical shell migration validated. */}
       <div
