@@ -9719,6 +9719,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setLoading(false);
     }
     fetchSpan.end({ status: gameData?.status, round: gameData?.current_round });
+    finishFetchTrace(
+      fetchTraceTerminalOutcome ?? 'completed_other',
+      fetchTraceTerminalExitStage ?? 'normal_completion',
+    );
+    } catch (error) {
+      finishFetchTrace('threw_exception', 'catch:fetchGameData_exception', {
+        gameErrorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      if (!fetchTraceFinished) {
+        finishFetchTrace('completed_other', 'finally:missing_terminal_outcome');
+      }
+    }
   };
 
   const recordStartGameNormalizationDbg = async (
