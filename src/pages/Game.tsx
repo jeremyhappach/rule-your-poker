@@ -8804,6 +8804,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (roundData) {
           const prevPlayerCardsRoundId = cardStateContext?.roundId ?? null;
           const targetRoundId = roundData.id;
+          patchFetchTraceState({ resolvedRoundId: targetRoundId });
 
           // FIX 3: Mint a fetch token BEFORE the async fetch
           const fetchToken = ++cardFetchTokenRef.current;
@@ -8858,6 +8859,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const localPlayerIdForTrace: string | null =
             (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
           const playerCardsLengthBefore357 = playerCards.length;
+          patchFetchTraceState({
+            playerCardsLengthBefore: playerCardsLengthBefore357,
+            resolvedRoundId: targetRoundId,
+          });
           if (is357FetchTrace) {
             persistSyncDebugEvent({
               gameId: gameId!,
@@ -8895,6 +8900,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .from('player_cards')
               .select('player_id, cards')
               .eq('round_id', targetRoundId));
+          const localPlayerIdForOutcome: string | null =
+            (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
+          const localSeatRowForOutcome = localPlayerIdForOutcome
+            ? (cardsData ?? []).find((r: any) => r.player_id === localPlayerIdForOutcome) ?? null
+            : null;
+          patchFetchTraceState({
+            playerCardsQueryExecuted: true,
+            playerCardsRowsReturned: cardsData?.length ?? 0,
+            localSeatRowPresent: !!localSeatRowForOutcome,
+          });
 
 
 
@@ -8948,6 +8963,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload: { fetchToken, reason: 'isStale-fetchSeq-advanced', rowCount: cardsData?.length ?? 0 },
             });
             acceptance357 = 'superseded_by_generation';
+            setFetchTraceTerminal('player_cards_superseded', 'player_cards_response:isStale');
           } else if (fetchToken !== cardFetchTokenRef.current) {
             // A newer fetch was dispatched while we were awaiting — drop this one
             console.warn('[FETCH] ⚠️ Dropping card fetch — fetchToken superseded', {
@@ -8979,6 +8995,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               },
             });
             acceptance357 = 'superseded_by_generation';
+            setFetchTraceTerminal('player_cards_superseded', 'player_cards_response:fetchToken_superseded');
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
             persistSyncDebugEvent({
@@ -9020,6 +9037,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             acceptance357 = 'accepted';
             setPlayerCardsCalled357 = true;
             playerCardsLengthAfter357 = cardsData.length;
+            setFetchTraceTerminal('player_cards_accepted', 'player_cards_response:rows_accepted', {
+              setPlayerCardsCalled: true,
+              playerCardsLengthAfter: cardsData.length,
+            });
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
             ffRecord({
@@ -9030,6 +9051,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload: { fetchToken, errorMessage: cardsError.message },
             });
             acceptance357 = 'rejected_error';
+            setFetchTraceTerminal('player_cards_error', 'player_cards_response:error');
           } else {
             // If the round id changed but the new round has no cards yet,
             // clear local cards to avoid rendering previous hand.
@@ -9055,6 +9077,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               acceptance357 = 'accepted';
               setPlayerCardsCalled357 = true;
               playerCardsLengthAfter357 = 0;
+              setFetchTraceTerminal('player_cards_empty_accepted', 'player_cards_response:empty_new_round_cleared', {
+                setPlayerCardsCalled: true,
+                playerCardsLengthAfter: 0,
+              });
             } else {
               console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
               ffRecord({
@@ -9070,8 +9096,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 },
               });
               acceptance357 = 'not_written_other';
+              setFetchTraceTerminal('player_cards_empty_not_written', 'player_cards_response:empty_same_round_not_written', {
+                setPlayerCardsCalled: false,
+                playerCardsLengthAfter: playerCardsLengthBefore357,
+              });
             }
           }
+
+          patchFetchTraceState({
+            setPlayerCardsCalled: setPlayerCardsCalled357,
+            playerCardsLengthAfter: playerCardsLengthAfter357,
+          });
 
           // ── 3-5-7 fetch hydration trace: RESULT ──────────────────────
           if (is357FetchTrace) {
@@ -9116,18 +9151,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               },
             });
           }
+        } else if (shouldFetchCards && (keepCards || keepCardsForResults)) {
+          setFetchTraceTerminal('round_not_resolved', 'round_resolution:no_roundData', {
+            resolvedRoundId: null,
+            playerCardsQueryExecuted: false,
+            playerCardsRowsReturned: null,
+          });
         }
 
       } else if (isHolmGame && gameData.awaiting_next_round && !gameData.last_round_result) {
         // Clear cards only for Holm games when awaiting next round AND results have been cleared
         console.log('[FETCH] Clearing player cards (Holm game transitioning to next round)');
         setPlayerCards([]);
+        patchFetchTraceState({ setPlayerCardsCalled: true, playerCardsLengthAfter: 0 });
       }
     } else if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') {
       // Only clear cards when explicitly NOT in active play states
       console.log('[FETCH] Clearing player cards (status:', gameData.status, ')');
       if (!isStale()) {
         setPlayerCards([]);
+        patchFetchTraceState({ setPlayerCardsCalled: true, playerCardsLengthAfter: 0 });
       }
     }
 
@@ -9139,6 +9182,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
+      finishFetchTrace('superseded_after_parallel_fetch', 'stale_before_game_state_apply');
       return;
     }
 
