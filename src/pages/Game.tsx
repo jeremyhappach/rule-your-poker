@@ -8219,17 +8219,131 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Users join as observers - they must select a seat to become a player
 
+    // ── 3-5-7 wartime unconditional trace: EVENT 1 (entry) ────────────
+    const is357Trace =
+      gameData.game_type === '3-5-7' ||
+      gameData.game_type === '357' ||
+      gameData.game_type === '3-5-7-game';
+    const localPlayerIdEntry357: string | null =
+      (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
+    if (is357Trace) {
+      persistSyncDebugEvent({
+        gameId: gameId!,
+        gameType: gameData.game_type ?? 'unknown',
+        handNumber: gameData.total_hands ?? 0,
+        roundId: null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: '357.fetch.entry',
+        dedupKey: `357.fetch.entry:${gameId}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          fetchStartedAt,
+          gameId: gameId ?? null,
+          localPlayerId: localPlayerIdEntry357,
+          gameDataStatus: gameData.status ?? null,
+          gameDataGameType: gameData.game_type ?? null,
+          gameDataCurrentRound: gameData.current_round ?? null,
+          gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
+          gameDataTotalHands: gameData.total_hands ?? null,
+          gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
+          playerCardsLengthAtEntry: playerCards.length,
+          cardFetchTokenAtEntry: cardFetchTokenRef.current ?? 0,
+        },
+      });
+    }
+
     // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
     const shouldFetchCards = gameData.status === 'in_progress' || gameData.status === 'game_over';
-    
+    const shouldFetchCardsReason357 = `status=${gameData.status ?? 'null'}`;
+
+    // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
+    const isHolmGame = gameData.game_type === 'holm-game';
+    const keepCards = shouldFetchCards
+      ? (gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round)
+      : false;
+
+    // Keep cards visible during results announcement (last_round_result exists)
+    const keepCardsForResults = shouldFetchCards
+      ? Boolean(isHolmGame && gameData.awaiting_next_round && gameData.last_round_result)
+      : false;
+
+    const keepCardsDecision357 = shouldFetchCards ? (keepCards || keepCardsForResults) : false;
+    const keepCardsReason357 = shouldFetchCards
+      ? `status=${gameData.status ?? 'null'};isHolmGame=${isHolmGame};awaitingNextRound=${!!gameData.awaiting_next_round};hasLastRoundResult=${!!gameData.last_round_result}`
+      : 'shouldFetchCards=false';
+
+    const branchTaken357: 'skipped_should_fetch_cards' | 'skipped_keep_cards' | 'proceed_to_round_resolution' =
+      !shouldFetchCards
+        ? 'skipped_should_fetch_cards'
+        : !keepCardsDecision357
+          ? 'skipped_keep_cards'
+          : 'proceed_to_round_resolution';
+
+    // ── 3-5-7 wartime unconditional trace: EVENT 2 (card gate) ────────
+    if (is357Trace) {
+      persistSyncDebugEvent({
+        gameId: gameId!,
+        gameType: gameData.game_type ?? 'unknown',
+        handNumber: gameData.total_hands ?? 0,
+        roundId: null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: '357.fetch.card_gate',
+        dedupKey: `357.fetch.card_gate:${gameId}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          shouldFetchCards,
+          shouldFetchCardsReason: shouldFetchCardsReason357,
+          keepCards,
+          keepCardsForResults,
+          keepCardsDecision: keepCardsDecision357,
+          keepCardsReason: keepCardsReason357,
+          branchTaken: branchTaken357,
+        },
+      });
+      // If either gate skips, emit round_resolution now (skipped variant) so
+      // every generation records all three events.
+      if (branchTaken357 !== 'proceed_to_round_resolution') {
+        persistSyncDebugEvent({
+          gameId: gameId!,
+          gameType: gameData.game_type ?? 'unknown',
+          handNumber: gameData.total_hands ?? 0,
+          roundId: null,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: '357.fetch.round_resolution',
+          dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
+          payload: {
+            fetchGenerationId,
+            fetchTrigger,
+            roundSelectionBranch: branchTaken357, // 'skipped_should_fetch_cards' | 'skipped_keep_cards'
+            roundSelectGameId: gameId ?? null,
+            roundSelectDealerGameId: gameData.current_game_uuid ?? null,
+            roundSelectHandNumber: gameData.total_hands ?? null,
+            roundSelectRoundNumber: gameData.current_round ?? null,
+            fallbackCurrentRoundId: currentRound?.id ?? null,
+            roundQueryExecuted: false,
+            roundQueryRowsReturned: 0,
+            roundQueryErrorCode: null,
+            roundQueryErrorMessage: null,
+            roundDataResolved: false,
+            resolvedRoundId: null,
+            resolvedDealerGameId: null,
+            resolvedHandNumber: null,
+            resolvedRoundNumber: null,
+            resolvedCardsDealt: null,
+            resolutionDecision: 'skipped',
+          },
+        });
+      }
+    }
+
     if (shouldFetchCards) {
-      // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
-      const isHolmGame = gameData.game_type === 'holm-game';
-      const keepCards = gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round;
-      
-      // Keep cards visible during results announcement (last_round_result exists)
-      const keepCardsForResults = isHolmGame && gameData.awaiting_next_round && gameData.last_round_result;
+      // (isHolmGame/keepCards/keepCardsForResults lifted above for card_gate)
       
       if (keepCards || keepCardsForResults) {
         // CRITICAL: For Holm games, ALWAYS fetch the most recent round by round_number DESC
