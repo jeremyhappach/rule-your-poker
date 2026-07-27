@@ -1183,6 +1183,7 @@ export const PlayerHand = ({
   return (
     <div
       className="flex"
+      {...(is357Game ? { 'data-357-player-hand-root': 'true' } : {})}
       ref={(node) => {
         if (is357Game) measureRef.current = node;
         if (isHolmActiveSelf) holmActiveSelfRef.current = node;

@@ -6059,17 +6059,73 @@ export const MobileGameTable = ({
         const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
         const renderSnap = document.querySelector<HTMLElement>('[data-357-render-snap]');
         const firstCard = region?.querySelector<HTMLElement>('[data-playing-card-root]');
+        const playerHandRoot = region?.querySelector<HTMLElement>('[data-357-player-hand-root]') ?? null;
         const hudPane = document.querySelector<HTMLElement>('[data-hud-row="pane"]');
+        const hudGrid = document.querySelector<HTMLElement>('[data-canonical-shell-hud-grid]');
+        const identityRow = document.querySelector<HTMLElement>('[data-hud-row="identity"]');
+        const shellRoot = document.querySelector<HTMLElement>('[data-canonical-shell-root]');
+        const shellColumn = document.querySelector<HTMLElement>('[data-canonical-shell-column]');
+        const shellChildren = document.querySelector<HTMLElement>('[data-canonical-shell-children]');
+        const shellSlotContent = document.querySelector<HTMLElement>('[data-canonical-shell-slot-content]');
+        const appRoot = document.getElementById('root');
         if (!region) return;
+        const roundCssNum = (value: string) => {
+          const parsed = Number.parseFloat(value);
+          return Number.isFinite(parsed) ? Math.round(parsed) : value;
+        };
         const box = (n: HTMLElement | null | undefined) => {
           if (!n) return null;
           const r = n.getBoundingClientRect();
           return {
             x: Math.round(r.x), y: Math.round(r.y),
+            top: Math.round(r.top), bottom: Math.round(r.bottom),
+            left: Math.round(r.left), right: Math.round(r.right),
             w: Math.round(r.width), h: Math.round(r.height),
             cw: n.clientWidth, ch: n.clientHeight,
           };
         };
+        const styleBox = (n: HTMLElement | null | undefined) => {
+          if (!n) return null;
+          const c = window.getComputedStyle(n);
+          return {
+            height: roundCssNum(c.height),
+            minHeight: roundCssNum(c.minHeight),
+            maxHeight: c.maxHeight === 'none' ? 'none' : roundCssNum(c.maxHeight),
+            display: c.display,
+            flexGrow: c.flexGrow,
+            flexShrink: c.flexShrink,
+            overflow: c.overflow,
+            overflowX: c.overflowX,
+            overflowY: c.overflowY,
+            position: c.position,
+            transform: c.transform === 'none' ? 'none' : c.transform,
+          };
+        };
+        const identify = (n: HTMLElement) => {
+          if (n.id) return `#${n.id}`;
+          const dataName = Array.from(n.attributes).find((a) => a.name.startsWith('data-'))?.name;
+          if (dataName) return `[${dataName}]`;
+          return n.tagName.toLowerCase();
+        };
+        const ancestorChain: Array<{
+          identifier: string;
+          rect: ReturnType<typeof box>;
+          styles: ReturnType<typeof styleBox>;
+          className: string;
+          inlineStyle: string;
+        }> = [];
+        let ancestorCursor: HTMLElement | null = lowerZone;
+        for (let i = 0; i < 24 && ancestorCursor; i += 1) {
+          ancestorChain.push({
+            identifier: identify(ancestorCursor),
+            rect: box(ancestorCursor),
+            styles: styleBox(ancestorCursor),
+            className: (ancestorCursor.className?.toString() || '').slice(0, 240),
+            inlineStyle: ancestorCursor.getAttribute('style') ?? '',
+          });
+          if (ancestorCursor === shellRoot || ancestorCursor === document.body) break;
+          ancestorCursor = ancestorCursor.parentElement;
+        }
         const attr = (n: HTMLElement | null | undefined, name: string) => n?.getAttribute(name) ?? null;
         const upstream = {
           currentRound: attr(region, 'data-357-snap-current-round'),
@@ -6087,12 +6143,16 @@ export const MobileGameTable = ({
           baseHandContext: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
           isStaged: attr(renderSnap, 'data-357-render-snap-is-staged'),
         };
+        const visualViewport = window.visualViewport ?? null;
+        const visualViewportBottom = (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight);
         const sig = JSON.stringify({
           upstream,
           regionH: box(region)?.h,
           lowerZoneH: box(lowerZone)?.h,
+          lowerZoneBottom: box(lowerZone)?.bottom,
           firstCardH: box(firstCard)?.h,
           stayY: box(stayBtn)?.y,
+          visualViewportBottom: Math.round(visualViewportBottom),
         });
         if (__paneGeomLastSigRef.current === sig) return;
         __paneGeomLastSigRef.current = sig;
@@ -6105,19 +6165,35 @@ export const MobileGameTable = ({
           viewport: {
             innerWidth: window.innerWidth,
             innerHeight: window.innerHeight,
-            visualViewportH: (window as unknown as { visualViewport?: { height?: number } }).visualViewport?.height ?? null,
+            documentElementClientHeight: document.documentElement.clientHeight,
+            visualViewportHeight: visualViewport?.height ?? null,
+            visualViewportOffsetTop: visualViewport?.offsetTop ?? null,
+            visualViewportScale: visualViewport?.scale ?? null,
+            visualViewportBottom,
+            scrollY: window.scrollY,
+            bodyScrollHeight: document.body.scrollHeight,
+            documentElementScrollHeight: document.documentElement.scrollHeight,
             dpr: window.devicePixelRatio,
           },
           upstream,
           rects: {
+            appRoot: box(appRoot),
+            shellRoot: box(shellRoot),
+            shellColumn: box(shellColumn),
+            shellChildren: box(shellChildren),
+            shellSlotContent: box(shellSlotContent),
+            hudGrid: box(hudGrid),
             region: box(region),
             paneContent: box(paneContent),
             hudPane: box(hudPane),
+            identityRow: box(identityRow),
             lowerZone: box(lowerZone),
+            playerHandRoot: box(playerHandRoot),
             firstCard: box(firstCard),
             stayBtn: box(stayBtn),
             dropBtn: box(dropBtn),
           },
+          ancestorChain,
           firstCardTag: firstCard?.tagName ?? null,
           firstCardClass: (firstCard?.className?.toString() || '').slice(0, 200),
           firstCardStyle: firstCard
@@ -6128,7 +6204,11 @@ export const MobileGameTable = ({
               }
             : null,
           regionClass: (region?.className?.toString() || '').slice(0, 200),
+          regionStyle: region?.getAttribute('style') ?? '',
+          playerHandRootClass: (playerHandRoot?.className?.toString() || '').slice(0, 200),
+          playerHandRootStyle: playerHandRoot?.getAttribute('style') ?? '',
           lowerZoneClass: (lowerZone?.className?.toString() || '').slice(0, 200),
+          lowerZoneStyle: lowerZone?.getAttribute('style') ?? '',
           authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
           canDecide: !!canDecide,
           hasDecided: !!hasDecided,
