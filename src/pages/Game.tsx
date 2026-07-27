@@ -3291,7 +3291,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         delayMs: 300,
         extra: { purpose: 'batch realtime fetchGameData', gameStatus: game?.status ?? null },
         fn: () => {
-        fetchGameData();
+        fetchGameData('realtime_update');
         },
       }); // 300ms balances responsiveness and batching
     };
