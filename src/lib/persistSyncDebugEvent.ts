@@ -74,6 +74,13 @@ export interface SyncDebugEvent {
   eventName: string;
   payload?: Record<string, unknown>;
   dedupKey?: string;
+  /**
+   * Optional callback invoked when the DB write resolves. Called with
+   * `ok=true` on successful insert, `ok=false` if the insert errored or
+   * the event was suppressed by the flag/dedup gate. Non-breaking:
+   * existing callers that don't pass this see no behavior change.
+   */
+  onResult?: (ok: boolean, reason?: string) => void;
 }
 
 // ── Writer ────────────────────────────────────────────────────
@@ -88,11 +95,17 @@ export function persistSyncDebugEvent(event: SyncDebugEvent): void {
   const isInvariant = event.eventType === 'invariant';
 
   // Gate: invariants always persist; others only when enabled
-  if (!isInvariant && !isSyncDebugEnabled()) return;
+  if (!isInvariant && !isSyncDebugEnabled()) {
+    event.onResult?.(false, 'gated');
+    return;
+  }
 
   // Lightweight dedup
   const dedupKey = event.dedupKey ?? `${event.gameId}:${event.eventType}:${event.eventName}:${event.handNumber}`;
-  if (isDuplicate(dedupKey)) return;
+  if (isDuplicate(dedupKey)) {
+    event.onResult?.(false, 'duplicate');
+    return;
+  }
 
   supabase
     .from('debug_sync_events' as any)
@@ -107,7 +120,12 @@ export function persistSyncDebugEvent(event: SyncDebugEvent): void {
       payload: event.payload ?? {},
     } as any)
     .then(({ error }) => {
-      if (error) console.warn('[sync-debug] write failed:', error.message);
+      if (error) {
+        console.warn('[sync-debug] write failed:', error.message);
+        event.onResult?.(false, error.message);
+      } else {
+        event.onResult?.(true);
+      }
     });
 }
 
