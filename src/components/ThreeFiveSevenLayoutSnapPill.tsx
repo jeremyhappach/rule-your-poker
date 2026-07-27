@@ -242,10 +242,13 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
         activeTab: rs.activeTab,
         isWaitingPhase: rs.isWaitingPhase,
         isDealerConfigPhase: rs.isDealerConfigPhase,
-        currentPlayerHandReserveClass: rs.currentPlayerHandReserveClass,
-        handScaleNum: rs.handScaleNum,
-        handReserveNum: rs.handReserveNum,
-        handAvailableHeightPx357: rs.handAvailableHeightPx357,
+        gameStatus: rs.gameStatus ?? null,
+        gameType: rs.gameType ?? null,
+        // Reserve/scale reflected via data-attributes on the hand region.
+        currentPlayerHandReserveClass: handRegion?.getAttribute('data-357-snap-reserve-class') ?? null,
+        handScaleAttr: handRegion?.getAttribute('data-357-snap-hand-scale') ?? null,
+        handReserveAttr: handRegion?.getAttribute('data-357-snap-hand-reserve') ?? null,
+        handAvailableHeightAttr: handRegion?.getAttribute('data-357-snap-hand-avail-h') ?? null,
 
         // DOM existence
         activePaneExists: !!activePane,
