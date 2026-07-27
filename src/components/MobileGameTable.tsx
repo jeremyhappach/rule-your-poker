@@ -158,6 +158,7 @@ import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
+import { ThreeFiveSevenLayoutSnapPill } from "./ThreeFiveSevenLayoutSnapPill";
 import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
