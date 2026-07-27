@@ -6146,12 +6146,12 @@ export const MobileGameTable = ({
             ? (roundNumberVal === 1 ? 3 : roundNumberVal === 2 ? 5 : roundNumberVal === 3 ? 7 : null)
             : null,
           currentPlayerCardsCount: currentPlayerCards.length,
-          effectiveCardsCount: num(attr(renderSnap, 'data-357-render-snap-effective-cards')),
+          effectiveCardsCount: snap?.effectiveCardsCount ?? null,
           dealPhase: dealPhaseAttr,
-          is357Staged: attr(renderSnap, 'data-357-render-snap-is-staged') === '1',
-          claimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-claimed-count')),
-          rawClaimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-raw-claimed-count')),
-          baseHandContextId: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
+          is357Staged: snap?.is357Staged ?? null,
+          claimedCardIdsCount: snap?.claimedCardIdsCount ?? null,
+          rawClaimedCardIdsCount: snap?.rawClaimedCardIdsCount ?? null,
+          baseHandContextId: snap?.baseHandContextId ?? null,
 
           handScaleNum: num(attr(region, 'data-357-snap-hand-scale')),
           handReserveNum: num(attr(region, 'data-357-snap-hand-reserve')),
