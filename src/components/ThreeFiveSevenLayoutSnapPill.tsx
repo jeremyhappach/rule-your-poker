@@ -17,9 +17,17 @@
  * pill flashes "SAVED" only after the DB write resolves cleanly.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
-import { buildIdentityEnvelope } from '@/lib/buildIdentity';
+import { buildIdentityEnvelope, BUILD_IDENTITY } from '@/lib/buildIdentity';
+import {
+  getFetchTraceStatus,
+  getFetchTraceFailureReason,
+  subscribeFetchTraceStatus,
+  FETCH_INSTRUMENTATION_VERSION,
+  type FetchTraceStatus,
+} from '@/lib/fetchTraceStatus';
+
 
 type PlainRect = {
   x: number | null; y: number | null; width: number | null; height: number | null;
