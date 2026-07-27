@@ -6,13 +6,15 @@
  * a single `357.manual_layout_snapshot` event via `persistSyncDebugEvent`.
  *
  * Strict behavior:
- *   - Fixed to bottom-right corner. Escapes HUD/flex/grid.
+ *   - Fixed to bottom-LEFT corner. Escapes HUD/flex/grid.
  *   - Does not focus/blur, dispatch events, mutate classes, or add
  *     children inside the active pane.
  *   - Reads only. No timers/polling. No lifecycle listeners.
  *
  * Payload values are all plain primitives / plain objects — verified
- * with `JSON.stringify` before persistence.
+ * with `JSON.stringify` before persistence. Persistence subscription
+ * uses the new `onResult` callback on persistSyncDebugEvent, and the
+ * pill flashes "SAVED" only after the DB write resolves cleanly.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -20,26 +22,35 @@ import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { buildIdentityEnvelope } from '@/lib/buildIdentity';
 
 type PlainRect = {
-  x: number; y: number; width: number; height: number;
-  top: number; right: number; bottom: number; left: number;
-} | null;
+  x: number | null; y: number | null; width: number | null; height: number | null;
+  top: number | null; right: number | null; bottom: number | null; left: number | null;
+};
 
-type PlainStyle = Record<
-  | 'display' | 'visibility' | 'opacity' | 'overflow' | 'overflowX' | 'overflowY'
-  | 'position' | 'transform' | 'translate' | 'clipPath' | 'contain'
-  | 'contentVisibility' | 'pointerEvents' | 'zIndex' | 'flexGrow' | 'flexShrink'
-  | 'minHeight' | 'height' | 'maxHeight' | 'marginTop' | 'marginBottom',
-  string
-> | null;
+const NULL_RECT: PlainRect = {
+  x: null, y: null, width: null, height: null,
+  top: null, right: null, bottom: null, left: null,
+};
+
+const STYLE_KEYS = [
+  'display', 'visibility', 'opacity', 'overflow', 'overflowX', 'overflowY',
+  'position', 'transform', 'translate', 'clipPath', 'contain',
+  'contentVisibility', 'pointerEvents', 'zIndex', 'flexGrow', 'flexShrink',
+  'minHeight', 'height', 'maxHeight', 'marginTop', 'marginBottom',
+] as const;
+type StyleKey = typeof STYLE_KEYS[number];
+type PlainStyle = Record<StyleKey, string | null>;
+
+const NULL_STYLE: PlainStyle = STYLE_KEYS.reduce((acc, k) => {
+  acc[k] = null;
+  return acc;
+}, {} as PlainStyle);
 
 export interface ThreeFiveSevenReactStateSnapshot {
-  // Correlation (required)
   gameId: string | null;
   dealerGameId: string | null;
   roundId: string | null;
   roundNumber: number | null;
   handNumber: number | null;
-  // React/game state (optional — provide whatever's reachable from the mount site)
   canDecide?: boolean;
   renderedLowerZoneOwner?: string | null;
   hasDecided?: boolean;
@@ -62,15 +73,8 @@ export interface ThreeFiveSevenLayoutSnapPillProps {
   getReactState: () => ThreeFiveSevenReactStateSnapshot;
 }
 
-const STYLE_KEYS: Array<keyof NonNullable<PlainStyle>> = [
-  'display', 'visibility', 'opacity', 'overflow', 'overflowX', 'overflowY',
-  'position', 'transform', 'translate', 'clipPath', 'contain',
-  'contentVisibility', 'pointerEvents', 'zIndex', 'flexGrow', 'flexShrink',
-  'minHeight', 'height', 'maxHeight', 'marginTop', 'marginBottom',
-];
-
 function readRect(el: Element | null): PlainRect {
-  if (!el) return null;
+  if (!el) return { ...NULL_RECT };
   const r = el.getBoundingClientRect();
   return {
     x: r.x, y: r.y, width: r.width, height: r.height,
@@ -79,19 +83,18 @@ function readRect(el: Element | null): PlainRect {
 }
 
 function readStyle(el: Element | null): PlainStyle {
-  if (!el) return null;
+  if (!el) return { ...NULL_STYLE };
   const cs = window.getComputedStyle(el as HTMLElement);
-  const out: Record<string, string> = {};
+  const out = { ...NULL_STYLE };
   for (const k of STYLE_KEYS) {
-    // getPropertyValue uses css-case; index also works for camelCase
-    out[k] = (cs as unknown as Record<string, string>)[k] ?? '';
+    const v = (cs as unknown as Record<string, string>)[k];
+    out[k] = (typeof v === 'string' && v.length > 0) ? v : null;
   }
-  return out as PlainStyle;
+  return out;
 }
 
-function firstVisibleCard(handRegion: Element | null): Element | null {
+function findFirstCard(handRegion: Element | null): Element | null {
   if (!handRegion) return null;
-  // Prefer a canonical card marker; fall back to any child with data-card- or img
   return (
     handRegion.querySelector('[data-card-anchor]') ||
     handRegion.querySelector('[data-playing-card]') ||
@@ -126,7 +129,13 @@ function findButtonByText(texts: string[]): HTMLElement | null {
   return null;
 }
 
-function ancestorChain(fromEl: Element | null, maxDepth = 12): Array<Record<string, unknown>> {
+function toNumOrNull(v: string | null | undefined): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function ancestorChain(fromEl: Element | null, stopEl: Element | null, maxDepth = 12): Array<Record<string, unknown>> {
   const out: Array<Record<string, unknown>> = [];
   if (!fromEl) return out;
   let el: Element | null = fromEl;
@@ -141,22 +150,24 @@ function ancestorChain(fromEl: Element | null, maxDepth = 12): Array<Record<stri
       id: (el as HTMLElement).id || null,
       className: typeof (el as HTMLElement).className === 'string' ? (el as HTMLElement).className : null,
       dataHudRow: (dataset as Record<string, string>)['hudRow'] ?? null,
-      dataActivePane: (dataset as Record<string, string>)['activePane'] ?? null,
-      rectTop: rect?.top ?? null,
-      rectBottom: rect?.bottom ?? null,
-      rectHeight: rect?.height ?? null,
-      display: cs?.display ?? null,
-      overflow: cs?.overflow ?? null,
-      position: cs?.position ?? null,
-      transform: cs?.transform ?? null,
-      contain: cs?.contain ?? null,
-      contentVisibility: cs?.contentVisibility ?? null,
-      flexGrow: cs?.flexGrow ?? null,
-      flexShrink: cs?.flexShrink ?? null,
-      minHeight: cs?.minHeight ?? null,
-      height: cs?.height ?? null,
-      maxHeight: cs?.maxHeight ?? null,
+      rectTop: rect.top,
+      rectBottom: rect.bottom,
+      rectHeight: rect.height,
+      display: cs.display,
+      overflow: cs.overflow,
+      overflowX: cs.overflowX,
+      overflowY: cs.overflowY,
+      position: cs.position,
+      transform: cs.transform,
+      contain: cs.contain,
+      contentVisibility: cs.contentVisibility,
+      flexGrow: cs.flexGrow,
+      flexShrink: cs.flexShrink,
+      minHeight: cs.minHeight,
+      height: cs.height,
+      maxHeight: cs.maxHeight,
     });
+    if (stopEl && el === stopEl) break;
     el = el.parentElement;
     i += 1;
   }
@@ -165,125 +176,86 @@ function ancestorChain(fromEl: Element | null, maxDepth = 12): Array<Record<stri
 
 export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFiveSevenLayoutSnapPillProps) {
   const seqRef = useRef(0);
+  const busyRef = useRef(false);
   const [flash, setFlash] = useState<string>('');
 
   const onTap = useCallback(() => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     try {
       const seq = seqRef.current + 1;
       seqRef.current = seq;
 
       const rs = getReactState();
 
-      // Elements
+      // ── Selector map (verified against source) ────────────
+      const SELECTORS = {
+        canonicalShell: '[data-canonical-felt-surface], [data-persistent-table-shell]',
+        hudRow4: '[data-hud-row="4"]',
+        activePane: '[data-active-pane], [data-357-active-hand-region]',
+        handRegion: '[data-357-active-hand-region]',
+        firstCard: '[data-card-anchor], [data-playing-card]',
+        lowerZone: '[data-active-hand-lower-zone]',
+        stayButton: '[data-357-stay-button] | [data-action="stay"] | text=STAY',
+        dropButton: '[data-357-drop-button] | [data-action="drop"] | text=DROP',
+        identityRow: '[data-hud-row="5"], [data-hud-identity-row]',
+      } as const;
+
+      // ── Resolve elements ──────────────────────────────────
       const shell = document.querySelector('[data-canonical-felt-surface]')
         || document.querySelector('[data-persistent-table-shell]');
-      const hudRow4 = document.querySelector('[data-hud-row="4"]')
-        || document.querySelector('[data-hud-grid-row="4"]');
-      const activePane = document.querySelector('[data-active-pane]')
-        || document.querySelector('[data-357-active-hand-region]')?.closest('[data-hud-row="4"]')
-        || null;
+      const hudRow4 = document.querySelector('[data-hud-row="4"]');
       const handRegion = document.querySelector('[data-357-active-hand-region]');
-      const handContainer = handRegion?.querySelector('.transform') || handRegion?.firstElementChild || null;
-      const firstCard = firstVisibleCard(handRegion);
+      const activePane = (document.querySelector('[data-active-pane]')
+        || handRegion?.closest('[data-hud-row="4"]')
+        || handRegion) as Element | null;
+      const handContainer = (handRegion?.querySelector('.transform') || handRegion?.firstElementChild || null) as Element | null;
+      const firstCard = findFirstCard(handRegion);
       const lowerZone = document.querySelector('[data-active-hand-lower-zone]');
       const stayBtn = findStayButton();
       const dropBtn = findDropButton();
       const identityRow = document.querySelector('[data-hud-row="5"]')
         || document.querySelector('[data-hud-identity-row]');
 
+      const unresolvedSelectors: string[] = [];
+      if (!shell) unresolvedSelectors.push('canonicalShell');
+      if (!hudRow4) unresolvedSelectors.push('hudRow4');
+      if (!activePane) unresolvedSelectors.push('activePane');
+      if (!handRegion) unresolvedSelectors.push('handRegion');
+      if (!handContainer) unresolvedSelectors.push('handContainer');
+      if (!firstCard) unresolvedSelectors.push('firstCard');
+      if (!lowerZone) unresolvedSelectors.push('lowerZone');
+      if (!stayBtn) unresolvedSelectors.push('stayButton');
+      if (!dropBtn) unresolvedSelectors.push('dropButton');
+      if (!identityRow) unresolvedSelectors.push('identityRow');
+
+      // ── Hit test ──────────────────────────────────────────
       const stayRect = readRect(stayBtn);
       const lowerRect = readRect(lowerZone);
-      const hitCenter = stayRect
-        ? { x: stayRect.left + stayRect.width / 2, y: stayRect.top + stayRect.height / 2 }
-        : lowerRect
-          ? { x: lowerRect.left + lowerRect.width / 2, y: lowerRect.top + lowerRect.height / 2 }
-          : null;
+      const center =
+        (stayRect.left != null && stayRect.width != null)
+          ? { x: stayRect.left + stayRect.width / 2, y: (stayRect.top ?? 0) + (stayRect.height ?? 0) / 2 }
+          : (lowerRect.left != null && lowerRect.width != null)
+            ? { x: lowerRect.left + lowerRect.width / 2, y: (lowerRect.top ?? 0) + (lowerRect.height ?? 0) / 2 }
+            : null;
 
       let hit: Element | null = null;
-      if (hitCenter && Number.isFinite(hitCenter.x) && Number.isFinite(hitCenter.y)) {
-        try { hit = document.elementFromPoint(hitCenter.x, hitCenter.y); } catch { /* noop */ }
+      if (center && Number.isFinite(center.x) && Number.isFinite(center.y)) {
+        try { hit = document.elementFromPoint(center.x, center.y); } catch { /* noop */ }
       }
-      const hitTag = hit ? hit.tagName.toLowerCase() : null;
-      const hitTestId = hit ? ((hit as HTMLElement).dataset?.['testid'] || null) : null;
-      const hitClassName = hit ? (typeof (hit as HTMLElement).className === 'string' ? (hit as HTMLElement).className : null) : null;
-      const hitIsStay = !!(hit && stayBtn && (hit === stayBtn || stayBtn.contains(hit)));
+      const hitTest = {
+        x: center?.x ?? null,
+        y: center?.y ?? null,
+        elementTag: hit ? hit.tagName.toLowerCase() : null,
+        elementId: hit ? ((hit as HTMLElement).id || null) : null,
+        elementClassName: hit ? (typeof (hit as HTMLElement).className === 'string' ? (hit as HTMLElement).className : null) : null,
+        elementTestId: hit ? ((hit as HTMLElement).dataset?.['testid'] || null) : null,
+        hitIsStayButton: !!(hit && stayBtn && (hit === stayBtn || stayBtn.contains(hit))),
+      };
 
+      // ── Viewport ──────────────────────────────────────────
       const vv = window.visualViewport;
-      const be = buildIdentityEnvelope();
-
-      const payload: Record<string, unknown> = {
-        // Correlation
-        snapshotVersion: 1,
-        snapshotSeq: seq,
-        capturedAt: new Date().toISOString(),
-        gameId: rs.gameId,
-        dealerGameId: rs.dealerGameId,
-        roundId: rs.roundId,
-        roundNumber: rs.roundNumber,
-        handNumber: rs.handNumber,
-        clientBuildId: be.buildSha,
-        buildTimestamp: be.buildTimestamp,
-        deploymentId: be.deploymentId,
-        bundleFilename: be.bundleFilename,
-        documentVisibilityState: document.visibilityState,
-        documentHasFocus: (() => { try { return document.hasFocus(); } catch { return null; } })(),
-
-        // React/game-state
-        canDecide: rs.canDecide,
-        renderedLowerZoneOwner: rs.renderedLowerZoneOwner,
-        hasDecided: rs.hasDecided,
-        allDecisionsIn: rs.allDecisionsIn,
-        threeFiveSevenDecisionBoundaryOpen: rs.threeFiveSevenDecisionBoundaryOpen,
-        currentPlayerId: rs.currentPlayerId,
-        currentPlayerStatus: rs.currentPlayerStatus,
-        currentPlayerDecision: rs.currentPlayerDecision,
-        currentPlayerDecisionLocked: rs.currentPlayerDecisionLocked,
-        currentPlayerCardsCount: rs.currentPlayerCardsCount,
-        activeTab: rs.activeTab,
-        isWaitingPhase: rs.isWaitingPhase,
-        isDealerConfigPhase: rs.isDealerConfigPhase,
-        gameStatus: rs.gameStatus ?? null,
-        gameType: rs.gameType ?? null,
-        // Reserve/scale reflected via data-attributes on the hand region.
-        currentPlayerHandReserveClass: handRegion?.getAttribute('data-357-snap-reserve-class') ?? null,
-        handScaleAttr: handRegion?.getAttribute('data-357-snap-hand-scale') ?? null,
-        handReserveAttr: handRegion?.getAttribute('data-357-snap-hand-reserve') ?? null,
-        handAvailableHeightAttr: handRegion?.getAttribute('data-357-snap-hand-avail-h') ?? null,
-
-        // DOM existence
-        activePaneExists: !!activePane,
-        handRegionExists: !!handRegion,
-        lowerZoneExists: !!lowerZone,
-        stayButtonExists: !!stayBtn,
-        dropButtonExists: !!dropBtn,
-        identityRowExists: !!identityRow,
-        stayButtonConnected: !!(stayBtn && stayBtn.isConnected),
-        dropButtonConnected: !!(dropBtn && dropBtn.isConnected),
-
-        // Rects
-        rects: {
-          canonicalShell: readRect(shell),
-          hudRow4: readRect(hudRow4),
-          activePane: readRect(activePane),
-          handRegion: readRect(handRegion),
-          handContainer: readRect(handContainer),
-          firstVisibleCard: readRect(firstCard),
-          lowerZone: readRect(lowerZone),
-          stayButton: readRect(stayBtn),
-          dropButton: readRect(dropBtn),
-          identityRow: readRect(identityRow),
-        },
-
-        // Computed styles
-        styles: {
-          activePane: readStyle(activePane),
-          handRegion: readStyle(handRegion),
-          lowerZone: readStyle(lowerZone),
-          stayButton: readStyle(stayBtn),
-          dropButton: readStyle(dropBtn),
-        },
-
-        // Viewport / document
+      const viewport = {
         windowInnerWidth: window.innerWidth,
         windowInnerHeight: window.innerHeight,
         documentClientWidth: document.documentElement.clientWidth,
@@ -299,53 +271,133 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
         windowScrollY: window.scrollY,
         screenWidth: window.screen?.width ?? null,
         screenHeight: window.screen?.height ?? null,
-        devicePixelRatio: window.devicePixelRatio,
+        devicePixelRatio: window.devicePixelRatio ?? null,
+      };
 
-        // Hit-test
-        stayCenterX: hitCenter?.x ?? null,
-        stayCenterY: hitCenter?.y ?? null,
-        elementFromPointTag: hitTag,
-        elementFromPointTestId: hitTestId,
-        elementFromPointClassName: hitClassName,
-        hitIsStayButton: hitIsStay,
+      // ── React state (nested) ──────────────────────────────
+      let renderedLowerZoneOwner: string | null = rs.renderedLowerZoneOwner ?? null;
+      if (renderedLowerZoneOwner == null && lowerZone) {
+        renderedLowerZoneOwner = lowerZone.getAttribute('data-lower-zone-owner')
+          || lowerZone.getAttribute('data-owner')
+          || null;
+      }
+      const reactState = {
+        canDecide: rs.canDecide ?? null,
+        renderedLowerZoneOwner,
+        hasDecided: rs.hasDecided ?? null,
+        allDecisionsIn: rs.allDecisionsIn ?? null,
+        threeFiveSevenDecisionBoundaryOpen: rs.threeFiveSevenDecisionBoundaryOpen ?? null,
+        currentPlayerId: rs.currentPlayerId ?? null,
+        currentPlayerStatus: rs.currentPlayerStatus ?? null,
+        currentPlayerDecision: rs.currentPlayerDecision ?? null,
+        currentPlayerDecisionLocked: rs.currentPlayerDecisionLocked ?? null,
+        currentPlayerCardsCount: rs.currentPlayerCardsCount ?? null,
+        activeTab: rs.activeTab ?? null,
+        isWaitingPhase: rs.isWaitingPhase ?? null,
+        isDealerConfigPhase: rs.isDealerConfigPhase ?? null,
+        currentPlayerHandReserveClass: handRegion?.getAttribute('data-357-snap-reserve-class') ?? null,
+        handScaleNum: toNumOrNull(handRegion?.getAttribute('data-357-snap-hand-scale') ?? null),
+        handReserveNum: toNumOrNull(handRegion?.getAttribute('data-357-snap-hand-reserve') ?? null),
+        handAvailableHeightPx357: toNumOrNull(handRegion?.getAttribute('data-357-snap-hand-avail-h') ?? null),
+      };
 
-        // Ancestor chain: lower zone → up
-        ancestorChainFromLowerZone: ancestorChain(lowerZone, 12),
+      // ── Rects (nested) ────────────────────────────────────
+      const rects = {
+        canonicalShell: readRect(shell),
+        hudRow4: readRect(hudRow4),
+        activePane: readRect(activePane),
+        handRegion: readRect(handRegion),
+        handContainer: readRect(handContainer),
+        firstCard: readRect(firstCard),
+        lowerZone: readRect(lowerZone),
+        stayButton: readRect(stayBtn),
+        dropButton: readRect(dropBtn),
+        identityRow: readRect(identityRow),
+      };
+
+      // ── Computed styles (nested) ──────────────────────────
+      const computedStyles = {
+        activePane: readStyle(activePane),
+        handRegion: readStyle(handRegion),
+        lowerZone: readStyle(lowerZone),
+        stayButton: readStyle(stayBtn),
+        dropButton: readStyle(dropBtn),
+      };
+
+      // ── Ancestor chain ────────────────────────────────────
+      const chain = ancestorChain(lowerZone, shell, 12);
+
+      const be = buildIdentityEnvelope();
+
+      const payload = {
+        // Correlation
+        snapshotVersion: 2,
+        snapshotSeq: seq,
+        capturedAt: new Date().toISOString(),
+        gameId: rs.gameId,
+        clientBuildId: be.buildSha,
+        buildTimestamp: be.buildTimestamp,
+        deploymentId: be.deploymentId,
+        bundleFilename: be.bundleFilename,
+        dealerGameId: rs.dealerGameId,
+        roundId: rs.roundId,
+        roundNumber: rs.roundNumber,
+        handNumber: rs.handNumber,
+        documentVisibilityState: document.visibilityState,
+        documentHasFocus: (() => { try { return document.hasFocus(); } catch { return null; } })(),
+        gameStatus: rs.gameStatus ?? null,
+        gameType: rs.gameType ?? null,
+        selectorMap: SELECTORS,
+        unresolvedSelectors,
+        reactState,
+        viewport,
+        rects,
+        computedStyles,
+        hitTest,
+        ancestorChain: chain,
       };
 
       // Serialization gate
-      try { JSON.stringify(payload); } catch (e) {
-        console.warn('[357.manual_layout_snapshot] serialization failed', e);
-        setFlash('SNAP ERR');
-        setTimeout(() => setFlash(''), 1200);
-        return;
-      }
-
+      let bytes = 0;
       try {
-        persistSyncDebugEvent({
-          gameId: rs.gameId ?? 'unknown',
-          gameType: '3-5-7',
-          handNumber: rs.handNumber ?? 0,
-          roundId: rs.roundId ?? null,
-          eventType: 'invariant', // always-persist during wartime
-          severity: 'info',
-          eventName: '357.manual_layout_snapshot',
-          payload,
-          dedupKey: `357.manual_layout_snapshot:${rs.gameId ?? 'x'}:${seq}`,
-        });
+        bytes = JSON.stringify(payload).length;
       } catch (e) {
-        console.warn('[357.manual_layout_snapshot] persist failed', e);
-        setFlash('SNAP ERR');
-        setTimeout(() => setFlash(''), 1200);
+        console.warn('[357.manual_layout_snapshot] serialization failed', e);
+        setFlash('SNAP FAILED');
+        window.setTimeout(() => setFlash(''), 2000);
+        busyRef.current = false;
         return;
       }
 
-      setFlash(`SNAP ${seq} SAVED`);
-      setTimeout(() => setFlash(''), 1500);
+      setFlash(`SNAP ${seq}…`);
+
+      persistSyncDebugEvent({
+        gameId: rs.gameId ?? 'unknown',
+        gameType: '3-5-7',
+        handNumber: rs.handNumber ?? 0,
+        roundId: rs.roundId ?? null,
+        eventType: 'invariant',
+        severity: 'info',
+        eventName: '357.manual_layout_snapshot',
+        payload: { ...payload, serializedBytes: bytes },
+        dedupKey: `357.manual_layout_snapshot:${rs.gameId ?? 'x'}:${seq}:${Date.now()}`,
+        onResult: (ok, reason) => {
+          if (ok) {
+            setFlash(`SNAP ${seq} SAVED (${bytes}b)`);
+            window.setTimeout(() => setFlash(''), 2500);
+          } else {
+            console.warn('[357.manual_layout_snapshot] persist failed', reason);
+            setFlash(`SNAP FAILED${reason ? ` (${reason})` : ''}`);
+            window.setTimeout(() => setFlash(''), 2500);
+          }
+          busyRef.current = false;
+        },
+      });
     } catch (e) {
       console.warn('[357.manual_layout_snapshot] failed', e);
-      setFlash('SNAP ERR');
-      setTimeout(() => setFlash(''), 1200);
+      setFlash('SNAP FAILED');
+      window.setTimeout(() => setFlash(''), 2000);
+      busyRef.current = false;
     }
   }, [getReactState]);
 
@@ -359,8 +411,8 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
       aria-label="Capture 3-5-7 layout snapshot"
       style={{
         position: 'fixed',
-        right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        left: 'calc(env(safe-area-inset-left, 0px) + 8px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
         zIndex: 2147483000,
         padding: '4px 8px',
         background: '#5a1e1e',
@@ -373,6 +425,10 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
         boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
         pointerEvents: 'auto',
         letterSpacing: 0.5,
+        maxWidth: '60vw',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       }}
     >
       {flash || 'SNAP 357'}
