@@ -409,37 +409,108 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
     }
   }, [getReactState]);
 
+  // Subscribe to fetch-trace instrumentation status so the pill can
+  // visibly prove whether the deployed bundle contains — and has
+  // successfully persisted — the 357.fetch.* code path.
+  const [traceStatus, setTraceStatus] = useState<FetchTraceStatus>(getFetchTraceStatus());
+  const [traceFailReason, setTraceFailReason] = useState<string | null>(getFetchTraceFailureReason());
+  useEffect(() => {
+    return subscribeFetchTraceStatus(() => {
+      setTraceStatus(getFetchTraceStatus());
+      setTraceFailReason(getFetchTraceFailureReason());
+    });
+  }, []);
+
   if (!enabled) return null;
 
+  const buildShort = BUILD_IDENTITY.buildShaShort || BUILD_IDENTITY.buildSha.slice(0, 12) || 'unknown';
+  const traceLabel =
+    traceStatus === 'ready' ? 'FETCH TRACE READY'
+    : traceStatus === 'failed' ? `FETCH TRACE FAILED${traceFailReason ? ` (${traceFailReason})` : ''}`
+    : `FETCH TRACE ${FETCH_INSTRUMENTATION_VERSION}`;
+  const traceColor =
+    traceStatus === 'ready' ? '#7ee787'
+    : traceStatus === 'failed' ? '#ffb454'
+    : '#e6d3a3';
+
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      data-pill="357-manual-layout-snap"
-      aria-label="Capture 3-5-7 layout snapshot"
+    <div
+      data-pill="357-manual-layout-snap-wrap"
       style={{
         position: 'fixed',
         left: 'calc(env(safe-area-inset-left, 0px) + 8px)',
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
         zIndex: 2147483000,
-        padding: '4px 8px',
-        background: '#5a1e1e',
-        border: '1px solid #ff6a6a',
-        borderRadius: 4,
-        color: '#fff',
-        fontFamily: 'ui-monospace, monospace',
-        fontSize: 10,
-        fontWeight: 700,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-        pointerEvents: 'auto',
-        letterSpacing: 0.5,
-        maxWidth: '60vw',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 2,
+        pointerEvents: 'none',
       }}
     >
-      {flash || 'SNAP 357'}
-    </button>
+      <div
+        data-pill="357-build-identity"
+        style={{
+          padding: '2px 6px',
+          background: 'rgba(0,0,0,0.7)',
+          border: '1px solid #444',
+          borderRadius: 3,
+          color: '#cfe2ff',
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'auto',
+        }}
+      >
+        BUILD {buildShort}
+      </div>
+      <div
+        data-pill="357-fetch-trace-status"
+        data-fetch-trace-status={traceStatus}
+        style={{
+          padding: '2px 6px',
+          background: 'rgba(0,0,0,0.7)',
+          border: `1px solid ${traceColor}`,
+          borderRadius: 3,
+          color: traceColor,
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'auto',
+        }}
+      >
+        {traceLabel}
+      </div>
+      <button
+        type="button"
+        onClick={onTap}
+        data-pill="357-manual-layout-snap"
+        aria-label="Capture 3-5-7 layout snapshot"
+        style={{
+          padding: '4px 8px',
+          background: '#5a1e1e',
+          border: '1px solid #ff6a6a',
+          borderRadius: 4,
+          color: '#fff',
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 10,
+          fontWeight: 700,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+          pointerEvents: 'auto',
+          letterSpacing: 0.5,
+          maxWidth: '60vw',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {flash || 'SNAP 357'}
+      </button>
+    </div>
   );
 }
+
