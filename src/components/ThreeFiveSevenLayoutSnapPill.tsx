@@ -27,6 +27,7 @@ import {
   FETCH_INSTRUMENTATION_VERSION,
   type FetchTraceStatus,
 } from '@/lib/fetchTraceStatus';
+import { useBuildFreshnessStatus } from '@/components/StalePublicationWarning';
 
 
 type PlainRect = {
@@ -421,9 +422,21 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
     });
   }, []);
 
+  const freshness = useBuildFreshnessStatus();
+
   if (!enabled) return null;
 
   const buildShort = BUILD_IDENTITY.buildShaShort || BUILD_IDENTITY.buildSha.slice(0, 12) || 'unknown';
+  const latestShort = freshness.latestBuildId ? freshness.latestBuildId.slice(0, 12) : null;
+  const latestLabel =
+    freshness.status === 'current' ? `LATEST ${latestShort} ✓`
+    : freshness.status === 'stale' ? `LATEST ${latestShort} ✗`
+    : freshness.status === 'checking' ? 'LATEST checking…'
+    : 'BUILD STATUS UNKNOWN';
+  const latestColor =
+    freshness.status === 'current' ? '#7ee787'
+    : freshness.status === 'stale' ? '#ff6a6a'
+    : '#e6d3a3';
   const traceLabel =
     traceStatus === 'ready' ? 'FETCH TRACE READY'
     : traceStatus === 'failed' ? `FETCH TRACE FAILED${traceFailReason ? ` (${traceFailReason})` : ''}`
@@ -464,7 +477,26 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
           pointerEvents: 'auto',
         }}
       >
-        BUILD {buildShort}
+        RUNNING {buildShort}
+      </div>
+      <div
+        data-pill="357-latest-build-status"
+        data-latest-build-status={freshness.status}
+        style={{
+          padding: '2px 6px',
+          background: 'rgba(0,0,0,0.7)',
+          border: `1px solid ${latestColor}`,
+          borderRadius: 3,
+          color: latestColor,
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'auto',
+        }}
+      >
+        {latestLabel}
       </div>
       <div
         data-pill="357-fetch-trace-status"

@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
@@ -76,7 +76,39 @@ export default defineConfig(({ mode }) => {
       // NOT set here so its existing rollback behavior remains intact.
       "import.meta.env.VITE_CANONICAL_SLOT_NEUTRAL": JSON.stringify("on"),
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+      {
+        // Emits /build-manifest.json alongside the bundle so an already-open
+        // client can independently detect a newer publication. Generated at
+        // build time; served fresh (no-store fetch) — a stale cached bundle
+        // cannot mask a newer manifest value.
+        name: "emit-build-manifest",
+        apply: "build",
+        generateBundle(_options, bundle) {
+          let entryBundleFilename = "";
+          for (const [fileName, chunk] of Object.entries(bundle)) {
+            const c = chunk as { type?: string; isEntry?: boolean };
+            if (c.type === "chunk" && c.isEntry) {
+              entryBundleFilename = fileName;
+              break;
+            }
+          }
+          const manifest = {
+            buildId: effectiveFullSha,
+            publishedAt: buildTimestamp,
+            bundleFilename: entryBundleFilename,
+            deploymentId,
+          };
+          this.emitFile({
+            type: "asset",
+            fileName: "build-manifest.json",
+            source: JSON.stringify(manifest, null, 2),
+          });
+        },
+      } satisfies Plugin,
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

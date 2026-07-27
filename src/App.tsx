@@ -69,6 +69,7 @@ __wartimeRegisterEmitterApp('global.error.origin', __WARTIME_SRC_APP.GLOBAL_ERRO
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { HolmCommunityLandingPill } from "@/lib/canonicalShell/cardTransport/HolmCommunityLandingPill";
 import { IncidentExportPill } from "@/components/IncidentExportPill";
+import { StalePublicationWarning } from "@/components/StalePublicationWarning";
 
 
 
@@ -188,6 +189,7 @@ const App = () => {
           <GeometryOverridesLoader />
           <GeometryLabDefaultsLoader />
           <SeatClusterInvariantMonitor />
+          <StalePublicationWarning />
           <Toaster />
           <Sonner />
           <BrowserRouter>
