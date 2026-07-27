@@ -8416,12 +8416,53 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             eventName: 'card-fetch-start',
             payload: { fetchToken, fetchRoundId },
           });
-          
+
+          // ── 3-5-7 fetch hydration trace: REQUEST ─────────────────────
+          const is357FetchTrace =
+            gameData.game_type === '3-5-7' ||
+            gameData.game_type === '357' ||
+            gameData.game_type === '3-5-7-game';
+          const localPlayerIdForTrace: string | null =
+            (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
+          const playerCardsLengthBefore357 = playerCards.length;
+          if (is357FetchTrace) {
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: gameData.game_type ?? 'unknown',
+              handNumber: gameData.total_hands ?? 0,
+              roundId: targetRoundId,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: '357.fetch.players_request',
+              payload: {
+                fetchGenerationId,
+                fetchTrigger,
+                fetchStartedAt,
+                gameId: gameId ?? null,
+                localPlayerId: localPlayerIdForTrace,
+                gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
+                gameDataCurrentRound: gameData.current_round ?? null,
+                gameDataTotalHands: gameData.total_hands ?? null,
+                gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
+                gameDataStatus: gameData.status ?? null,
+                resolvedTargetRoundId: targetRoundId,
+                resolvedTargetDealerGameId: gameData.current_game_uuid ?? null,
+                resolvedTargetHandNumber: gameData.total_hands ?? null,
+                resolvedTargetRoundNumber: roundData.round_number ?? null,
+                resolvedTargetRoundStatus: null,
+                queryTable: 'player_cards',
+                queryRoundId: targetRoundId,
+                queryPlayerIdFilter: null,
+              },
+            });
+          }
+
           const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
             supabase
               .from('player_cards')
               .select('player_id, cards')
               .eq('round_id', targetRoundId));
+
 
 
           console.log('[FETCH] 🃏 Cards fetch result:', {
