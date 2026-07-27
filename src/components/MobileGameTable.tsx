@@ -13431,21 +13431,11 @@ export const MobileGameTable = ({
                     const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
 
                     return (
-                      <div
-                        ref={activeHandRegionRef}
-                        className={cn(
-                        // FIXED-HEIGHT ACTIVE-PANE CONTRACT — this region
-                        // is the flex-1 min-h-0 sibling of the lower
-                        // action zone. It takes the remaining pane
-                        // budget and never expands the pane. Its
-                        // measured height feeds the hand resolver
-                        // (`handAvailableHeightPx357`) so cards scale
-                        // down to fit — the action strip is always
-                        // visible because it is `flex-shrink-0` with
-                        // a fixed reserved height below.
-                        "flex flex-col items-center flex-1 w-full min-h-0 overflow-hidden",
+                      <div className={cn(
+                        "flex flex-col items-center w-full",
                         gameType !== "holm-game" ? "gap-0" : "gap-0",
                       )}>
+
 
                         {showDealerSelectionCards ? (
                           <div className="flex flex-col items-center gap-2 py-4">
