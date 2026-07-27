@@ -4096,7 +4096,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // Force full refetch (rehydrates games row + rounds → currentRound).
-          await fetchGameData();
+          await fetchGameData(
+            source === 'realtime-reconnect' ? 'realtime_reconnect' : source
+          );
         }
       } finally {
         resyncInFlightRef.current = false;
