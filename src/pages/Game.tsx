@@ -8194,6 +8194,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     };
 
+    const setFetchTraceTerminal = (
+      outcome: FetchTraceOutcome,
+      exitStage: string,
+      patch: Partial<FetchTraceState> = {},
+    ) => {
+      if (fetchTraceTerminalOutcome !== null) {
+        patchFetchTraceState(patch);
+        return;
+      }
+      fetchTraceTerminalOutcome = outcome;
+      fetchTraceTerminalExitStage = exitStage;
+      patchFetchTraceState(patch);
+    };
+
     try {
 
     // ── Per-query waterfall instrumentation ──────────────────────────
@@ -8277,6 +8291,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         skipReason: 'no gameId',
       });
       fetchSpan.end({ skipped: 'no gameId' });
+      finishFetchTrace('returned_no_game_id', 'guard:no_game_id');
       return;
     }
 
@@ -8306,6 +8321,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const { data: gameData, error: gameError } = gameResult;
     const { data: playersData, error: playersError } = playersResult;
     const { data: gameDefaults } = defaultsResult;
+    patchFetchTraceState({
+      gameDataStatus: (gameData as any)?.status ?? null,
+      gameDataGameType: (gameData as any)?.game_type ?? null,
+      gameDataCurrentRound: (gameData as any)?.current_round ?? null,
+      gameDataCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+      gameDataTotalHands: (gameData as any)?.total_hands ?? null,
+      gameDataAwaitingNextRound: (gameData as any)?.awaiting_next_round ?? null,
+      gameErrorCode: (gameError as any)?.code ?? null,
+      gameErrorMessage: gameError?.message ?? null,
+      gameDataPresent: !!gameData,
+      playersErrorCode: (playersError as any)?.code ?? null,
+      playersErrorMessage: playersError?.message ?? null,
+      playersDataPresent: !!playersData,
+    });
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData parallel queries complete', {
       file: 'src/pages/Game.tsx',
       function: 'fetchGameData',
@@ -8334,6 +8363,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
+      finishFetchTrace('superseded_after_parallel_fetch', 'stale_after_parallel_fetch');
       return;
     }
 
@@ -8344,16 +8374,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // post-write replica race. Defer to the polling checkGameExists effect, which
         // requires repeated strikes + a fresh confirm before navigating.
         console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
+        finishFetchTrace('returned_game_error', 'game_query_missing_deferred');
         return;
       }
 
       console.error('Failed to fetch game:', gameError);
+      finishFetchTrace('returned_game_error', 'game_query_error');
       return;
     }
 
     if (!gameData) {
       // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
+      finishFetchTrace('returned_no_game_data', 'game_query_no_data');
       return;
     }
 
@@ -8405,6 +8438,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (gameData?.game_type && prevGameType !== gameData?.game_type) {
       console.log('[FETCH] 🎯🎯🎯 GAME TYPE CHANGE DETECTED IN FETCH:', prevGameType, '->', gameData.game_type, '- CLEARING CARDS!');
       setPlayerCards([]);
+      patchFetchTraceState({ setPlayerCardsCalled: true, playerCardsLengthAfter: 0 });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       maxRevealedRef.current = 0;
@@ -8412,6 +8446,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (playersError) {
       console.error('Failed to fetch players:', playersError);
+      finishFetchTrace('returned_players_error', 'players_query_error');
       return;
     }
 
@@ -8477,6 +8512,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       : false;
 
     const keepCardsDecision357 = shouldFetchCards ? (keepCards || keepCardsForResults) : false;
+    patchFetchTraceState({
+      shouldFetchCards,
+      keepCards,
+      keepCardsForResults,
+    });
     const keepCardsReason357 = shouldFetchCards
       ? `status=${gameData.status ?? 'null'};isHolmGame=${isHolmGame};awaitingNextRound=${!!gameData.awaiting_next_round};hasLastRoundResult=${!!gameData.last_round_result}`
       : 'shouldFetchCards=false';
@@ -8487,6 +8527,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         : !keepCardsDecision357
           ? 'skipped_keep_cards'
           : 'proceed_to_round_resolution';
+    if (branchTaken357 === 'skipped_should_fetch_cards') {
+      setFetchTraceTerminal('skipped_card_fetch', 'card_gate:shouldFetchCards_false');
+    } else if (branchTaken357 === 'skipped_keep_cards') {
+      setFetchTraceTerminal('skipped_keep_cards', 'card_gate:keepCards_false');
+    }
 
     // ── 3-5-7 wartime unconditional trace: EVENT 2 (card gate) ────────
     if (is357Trace) {
