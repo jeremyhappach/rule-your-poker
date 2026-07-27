@@ -13735,6 +13735,18 @@ export const MobileGameTable = ({
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
                                   const isHolmStaged = gameType === 'holm-game' && dealPhase !== 'GAMEPLAY';
+                                  // Diagnostic-only: capture render-time values
+                                  // into a ref so the pane-geometry effect can
+                                  // read them without a DOM node. This does
+                                  // not alter layout/hierarchy/refs.
+                                  __renderSnapRef.current = {
+                                    dealPhase,
+                                    effectiveCardsCount: effectiveCards.length,
+                                    is357Staged,
+                                    claimedCardIdsCount: boundary.claimedCardIds.length,
+                                    rawClaimedCardIdsCount: boundary.rawClaimedCardIds.length,
+                                    baseHandContextId: boundary.baseHandContextId,
+                                  };
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
