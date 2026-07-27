@@ -3276,7 +3276,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       channel: `game-${gameId}`,
       gameId,
     });
-    fetchGameData();
+    fetchGameData('cold_mount');
 
     // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
