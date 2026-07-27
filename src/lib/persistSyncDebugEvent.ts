@@ -73,6 +73,7 @@ export interface SyncDebugEvent {
   severity: 'info' | 'warn' | 'error';
   eventName: string;
   payload?: Record<string, unknown>;
+  dedupKey?: string;
 }
 
 // ── Writer ────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ export function persistSyncDebugEvent(event: SyncDebugEvent): void {
   if (!isInvariant && !isSyncDebugEnabled()) return;
 
   // Lightweight dedup
-  const dedupKey = `${event.gameId}:${event.eventType}:${event.eventName}:${event.handNumber}`;
+  const dedupKey = event.dedupKey ?? `${event.gameId}:${event.eventType}:${event.eventName}:${event.handNumber}`;
   if (isDuplicate(dedupKey)) return;
 
   supabase
