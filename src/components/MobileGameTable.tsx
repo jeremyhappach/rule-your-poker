@@ -2051,6 +2051,43 @@ export const MobileGameTable = ({
   // Dice debug overlay state tracking
   const [feltBlockMounted, setFeltBlockMounted] = useState(false);
 
+  // FIXED-HEIGHT ACTIVE-PANE CONTRACT (3-5-7 / Holm active self).
+  //
+  // The active pane owns one vertical budget (row 4 of ShellHudGrid,
+  // fixed height `--hud-h-pane`, overflow:hidden). Inside that budget:
+  //   • The lower action zone (`data-active-hand-lower-zone`) has a
+  //     fixed reserved height and is `flex-shrink-0` — always visible.
+  //   • The active-hand region takes the REMAINING height as a flex-1
+  //     child with `min-h-0` so it shrinks instead of expanding the
+  //     pane.
+  //   • The hand's card sizing is derived from that remaining height
+  //     (measured live via ResizeObserver) so cards scale down to fit
+  //     — animated arrival and hydrated refresh consume the same
+  //     vertical contract and produce the same rendered geometry.
+  //
+  // No viewport-specific numbers, no magic min-h reservations: the
+  // pane's own layout is the source of the budget.
+  const activeHandRegionRef = useRef<HTMLDivElement | null>(null);
+  const [activeHandRegionHeightPx, setActiveHandRegionHeightPx] =
+    useState<number | null>(null);
+  useEffect(() => {
+    const el = activeHandRegionRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.getBoundingClientRect().height;
+      if (Number.isFinite(h) && h > 0) {
+        setActiveHandRegionHeightPx((prev) =>
+          prev !== null && Math.abs(prev - h) < 0.5 ? prev : h,
+        );
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // CRITICAL FIX: Freeze Beat badge at turn start - never update during player's turn
   // This prevents the badge from flickering/updating when the player's roll takes the lead
   // The cache is snapshotted ONCE when isMyTurn transitions from false to true,
