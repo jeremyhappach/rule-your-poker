@@ -7979,11 +7979,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Removed failsafe - countdown component now handles completion reliably
 
-  const fetchGameData = async () => {
+  const fetchGameData = async (
+    fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
+  ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
+    const fetchGenerationId = fetchSeq;
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
