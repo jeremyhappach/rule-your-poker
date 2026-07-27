@@ -189,6 +189,7 @@ const App = () => {
           <GeometryOverridesLoader />
           <GeometryLabDefaultsLoader />
           <SeatClusterInvariantMonitor />
+          <StalePublicationWarning />
           <Toaster />
           <Sonner />
           <BrowserRouter>
