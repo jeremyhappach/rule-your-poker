@@ -6068,9 +6068,9 @@ export const MobileGameTable = ({
         const lowerZone = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
         const stayBtn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
         const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
-        const renderSnap = document.querySelector<HTMLElement>('[data-357-render-snap]');
         const playerHandRoot = region.querySelector<HTMLElement>('[data-357-player-hand-root]');
         const firstCard = region.querySelector<HTMLElement>('[data-playing-card-root]');
+        const snap = __renderSnapRef.current;
 
         const attr = (n: HTMLElement | null | undefined, name: string): string | null =>
           n?.getAttribute(name) ?? null;
@@ -6107,7 +6107,7 @@ export const MobileGameTable = ({
         const lowerZoneRect = lowerZone?.getBoundingClientRect() ?? null;
         const stayRect = stayBtn?.getBoundingClientRect() ?? null;
         const cardsLenAttr = attr(region, 'data-357-snap-cards-length');
-        const dealPhaseAttr = attr(renderSnap, 'data-357-render-snap-deal-phase');
+        const dealPhaseAttr = snap?.dealPhase ?? null;
         const availAttr = attr(region, 'data-357-snap-hand-avail-h');
         const sig = [
           cardsLenAttr ?? '',
