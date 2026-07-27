@@ -86,10 +86,10 @@ export default defineConfig(({ mode }) => {
         // fetch on the client) — old cached bundles cannot mask a new value.
         name: "emit-build-manifest",
         apply: "build" as const,
-        generateBundle(_options, bundle) {
+        generateBundle(this: unknown, _options: unknown, bundle: Record<string, { type?: string; isEntry?: boolean }>) {
           let entryBundleFilename = "";
           for (const [fileName, chunk] of Object.entries(bundle)) {
-            if ((chunk as { type?: string }).type === "chunk" && (chunk as { isEntry?: boolean }).isEntry) {
+            if (chunk.type === "chunk" && chunk.isEntry) {
               entryBundleFilename = fileName;
               break;
             }
