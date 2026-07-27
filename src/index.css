@@ -74,12 +74,6 @@ All colors MUST be HSL.
     /* Header pixel floor — guarantees session name + controls fit. */
     --shell-min-header: 44px;
 
-    /* Canonical shell viewport budget. Default to the browser dynamic
-       viewport; PersistentTableShell narrows this to visualViewport.height
-       on mobile when browser chrome leaves the visible viewport shorter
-       than 100dvh after a cold refresh. */
-    --shell-viewport-h: 100dvh;
-
     /* Bottom slack reservation. The previous calc filled exactly 100dvh
        with header+play+hud, which left the identity row landing on the
        very last pixel of the viewport — any browser chrome (URL bar,
@@ -90,8 +84,8 @@ All colors MUST be HSL.
     --shell-bottom-slack: max(env(safe-area-inset-bottom, 0px), 16px);
 
     /* Derived shell heights. */
-    --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * var(--shell-viewport-h)));
-    --shell-flex-h:   calc(var(--shell-viewport-h) - var(--shell-header-h) - var(--shell-bottom-slack));
+    --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * 100dvh));
+    --shell-flex-h:   calc(100dvh - var(--shell-header-h) - var(--shell-bottom-slack));
     --shell-play-sum: calc(var(--shell-r-play) + var(--shell-r-hud));
 
     /* ─────────────────────────────────────────────────────────────
