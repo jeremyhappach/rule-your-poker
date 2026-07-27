@@ -8030,10 +8030,171 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
-    const isStale = () => fetchSeq !== fetchSeqRef.current;
-    const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
     const fetchGenerationId = fetchSeq;
+    const fetchTraceKnownGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? null;
+    const fetchTraceGameIdForPersist = gameId ?? '00000000-0000-0000-0000-000000000000';
+    const is357FetchTraceType = (value: unknown): boolean =>
+      value === '3-5-7' || value === '357' || value === '3-5-7-game';
+    const shouldPersist357FetchTrace = !fetchTraceKnownGameType || is357FetchTraceType(fetchTraceKnownGameType);
+
+    if (shouldPersist357FetchTrace) {
+      persistSyncDebugEvent({
+        gameId: fetchTraceGameIdForPersist,
+        gameType: fetchTraceKnownGameType ?? 'unknown',
+        handNumber: game?.total_hands ?? 0,
+        roundId: null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: '357.fetch.invocation',
+        dedupKey: `357.fetch.invocation:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          fetchStartedAt,
+          gameId: gameId ?? null,
+          gameIdPresent: !!gameId,
+          knownGameType: fetchTraceKnownGameType,
+          playerCardsLengthAtInvocation: playerCards.length,
+          fetchTokenAtInvocation: cardFetchTokenRef.current ?? 0,
+        },
+      });
+    }
+
+    const isStale = () => fetchSeq !== fetchSeqRef.current;
+    const fetchSpan = startSpan('fetchGameData');
+
+    type FetchTraceOutcome =
+      | 'returned_no_game_id'
+      | 'superseded_after_parallel_fetch'
+      | 'returned_game_error'
+      | 'returned_no_game_data'
+      | 'returned_players_error'
+      | 'skipped_card_fetch'
+      | 'skipped_keep_cards'
+      | 'round_not_resolved'
+      | 'player_cards_error'
+      | 'player_cards_superseded'
+      | 'player_cards_empty_accepted'
+      | 'player_cards_empty_not_written'
+      | 'player_cards_accepted'
+      | 'completed_other'
+      | 'threw_exception';
+
+    type FetchTraceState = {
+      gameDataStatus: string | null;
+      gameDataGameType: string | null;
+      gameDataCurrentRound: number | null;
+      gameDataCurrentGameUuid: string | null;
+      gameDataTotalHands: number | null;
+      gameDataAwaitingNextRound: boolean | null;
+      gameErrorCode: string | null;
+      gameErrorMessage: string | null;
+      gameDataPresent: boolean | null;
+      playersErrorCode: string | null;
+      playersErrorMessage: string | null;
+      playersDataPresent: boolean | null;
+      shouldFetchCards: boolean | null;
+      keepCards: boolean | null;
+      keepCardsForResults: boolean | null;
+      resolvedRoundId: string | null;
+      playerCardsQueryExecuted: boolean | null;
+      playerCardsRowsReturned: number | null;
+      localSeatRowPresent: boolean | null;
+      setPlayerCardsCalled: boolean | null;
+      playerCardsLengthBefore: number | null;
+      playerCardsLengthAfter: number | null;
+    };
+
+    const fetchTraceState: FetchTraceState = {
+      gameDataStatus: null,
+      gameDataGameType: null,
+      gameDataCurrentRound: null,
+      gameDataCurrentGameUuid: null,
+      gameDataTotalHands: null,
+      gameDataAwaitingNextRound: null,
+      gameErrorCode: null,
+      gameErrorMessage: null,
+      gameDataPresent: null,
+      playersErrorCode: null,
+      playersErrorMessage: null,
+      playersDataPresent: null,
+      shouldFetchCards: null,
+      keepCards: null,
+      keepCardsForResults: null,
+      resolvedRoundId: null,
+      playerCardsQueryExecuted: null,
+      playerCardsRowsReturned: null,
+      localSeatRowPresent: null,
+      setPlayerCardsCalled: null,
+      playerCardsLengthBefore: null,
+      playerCardsLengthAfter: null,
+    };
+    let fetchTraceFinished = false;
+    let fetchTraceTerminalOutcome: FetchTraceOutcome | null = null;
+    let fetchTraceTerminalExitStage: string | null = null;
+
+    const patchFetchTraceState = (patch: Partial<FetchTraceState>) => {
+      Object.assign(fetchTraceState, patch);
+    };
+
+    const finishFetchTrace = (
+      outcome: FetchTraceOutcome,
+      exitStage: string,
+      patch: Partial<FetchTraceState> = {},
+    ) => {
+      if (!shouldPersist357FetchTrace || fetchTraceFinished) return;
+      patchFetchTraceState(patch);
+      fetchTraceFinished = true;
+      const fetchCompletedAt = Date.now();
+      persistSyncDebugEvent({
+        gameId: fetchTraceGameIdForPersist,
+        gameType: fetchTraceState.gameDataGameType ?? fetchTraceKnownGameType ?? 'unknown',
+        handNumber: fetchTraceState.gameDataTotalHands ?? game?.total_hands ?? 0,
+        roundId: fetchTraceState.resolvedRoundId,
+        eventType: 'transition',
+        severity: outcome === 'threw_exception' || outcome === 'player_cards_error' || outcome === 'returned_game_error' || outcome === 'returned_players_error'
+          ? 'warn'
+          : 'info',
+        eventName: '357.fetch.outcome',
+        dedupKey: `357.fetch.outcome:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          fetchStartedAt,
+          fetchCompletedAt,
+          elapsedMs: fetchCompletedAt - fetchStartedAt,
+          outcome,
+          exitStage,
+          gameId: gameId ?? null,
+          gameDataStatus: fetchTraceState.gameDataStatus,
+          gameDataGameType: fetchTraceState.gameDataGameType,
+          gameDataCurrentRound: fetchTraceState.gameDataCurrentRound,
+          gameDataCurrentGameUuid: fetchTraceState.gameDataCurrentGameUuid,
+          gameDataTotalHands: fetchTraceState.gameDataTotalHands,
+          gameDataAwaitingNextRound: fetchTraceState.gameDataAwaitingNextRound,
+          isStaleAtExit: isStale(),
+          gameErrorCode: fetchTraceState.gameErrorCode,
+          gameErrorMessage: fetchTraceState.gameErrorMessage,
+          gameDataPresent: fetchTraceState.gameDataPresent,
+          playersErrorCode: fetchTraceState.playersErrorCode,
+          playersErrorMessage: fetchTraceState.playersErrorMessage,
+          playersDataPresent: fetchTraceState.playersDataPresent,
+          shouldFetchCards: fetchTraceState.shouldFetchCards,
+          keepCards: fetchTraceState.keepCards,
+          keepCardsForResults: fetchTraceState.keepCardsForResults,
+          resolvedRoundId: fetchTraceState.resolvedRoundId,
+          playerCardsQueryExecuted: fetchTraceState.playerCardsQueryExecuted,
+          playerCardsRowsReturned: fetchTraceState.playerCardsRowsReturned,
+          localSeatRowPresent: fetchTraceState.localSeatRowPresent,
+          setPlayerCardsCalled: fetchTraceState.setPlayerCardsCalled,
+          playerCardsLengthBefore: fetchTraceState.playerCardsLengthBefore,
+          playerCardsLengthAfter: fetchTraceState.playerCardsLengthAfter,
+        },
+      });
+    };
+
+    try {
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
