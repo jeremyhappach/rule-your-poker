@@ -13514,6 +13514,14 @@ export const MobileGameTable = ({
                               gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
+                            data-357-snap-current-round={currentRound ?? ''}
+                            data-357-snap-hand-scale={handScaleNum}
+                            data-357-snap-hand-reserve={handReserveNum}
+                            data-357-snap-hand-avail-h={handAvailableHeightPx357 ?? ''}
+                            data-357-snap-reserve-class={currentPlayerHandReserveClass}
+                            data-357-snap-cards-length={currentPlayerCards.length}
+                            data-357-snap-is-tablet={isTablet ? '1' : '0'}
+                            data-357-snap-is-desktop={isDesktop ? '1' : '0'}
                           >
 
 
