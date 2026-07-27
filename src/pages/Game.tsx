@@ -8219,23 +8219,148 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Users join as observers - they must select a seat to become a player
 
+    // ── 3-5-7 wartime unconditional trace: EVENT 1 (entry) ────────────
+    const is357Trace =
+      gameData.game_type === '3-5-7' ||
+      gameData.game_type === '357' ||
+      gameData.game_type === '3-5-7-game';
+    const localPlayerIdEntry357: string | null =
+      (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
+    if (is357Trace) {
+      persistSyncDebugEvent({
+        gameId: gameId!,
+        gameType: gameData.game_type ?? 'unknown',
+        handNumber: gameData.total_hands ?? 0,
+        roundId: null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: '357.fetch.entry',
+        dedupKey: `357.fetch.entry:${gameId}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          fetchStartedAt,
+          gameId: gameId ?? null,
+          localPlayerId: localPlayerIdEntry357,
+          gameDataStatus: gameData.status ?? null,
+          gameDataGameType: gameData.game_type ?? null,
+          gameDataCurrentRound: gameData.current_round ?? null,
+          gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
+          gameDataTotalHands: gameData.total_hands ?? null,
+          gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
+          playerCardsLengthAtEntry: playerCards.length,
+          cardFetchTokenAtEntry: cardFetchTokenRef.current ?? 0,
+        },
+      });
+    }
+
     // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
     const shouldFetchCards = gameData.status === 'in_progress' || gameData.status === 'game_over';
-    
+    const shouldFetchCardsReason357 = `status=${gameData.status ?? 'null'}`;
+
+    // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
+    const isHolmGame = gameData.game_type === 'holm-game';
+    const keepCards = shouldFetchCards
+      ? (gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round)
+      : false;
+
+    // Keep cards visible during results announcement (last_round_result exists)
+    const keepCardsForResults = shouldFetchCards
+      ? Boolean(isHolmGame && gameData.awaiting_next_round && gameData.last_round_result)
+      : false;
+
+    const keepCardsDecision357 = shouldFetchCards ? (keepCards || keepCardsForResults) : false;
+    const keepCardsReason357 = shouldFetchCards
+      ? `status=${gameData.status ?? 'null'};isHolmGame=${isHolmGame};awaitingNextRound=${!!gameData.awaiting_next_round};hasLastRoundResult=${!!gameData.last_round_result}`
+      : 'shouldFetchCards=false';
+
+    const branchTaken357: 'skipped_should_fetch_cards' | 'skipped_keep_cards' | 'proceed_to_round_resolution' =
+      !shouldFetchCards
+        ? 'skipped_should_fetch_cards'
+        : !keepCardsDecision357
+          ? 'skipped_keep_cards'
+          : 'proceed_to_round_resolution';
+
+    // ── 3-5-7 wartime unconditional trace: EVENT 2 (card gate) ────────
+    if (is357Trace) {
+      persistSyncDebugEvent({
+        gameId: gameId!,
+        gameType: gameData.game_type ?? 'unknown',
+        handNumber: gameData.total_hands ?? 0,
+        roundId: null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: '357.fetch.card_gate',
+        dedupKey: `357.fetch.card_gate:${gameId}:${fetchGenerationId}`,
+        payload: {
+          fetchGenerationId,
+          fetchTrigger,
+          shouldFetchCards,
+          shouldFetchCardsReason: shouldFetchCardsReason357,
+          keepCards,
+          keepCardsForResults,
+          keepCardsDecision: keepCardsDecision357,
+          keepCardsReason: keepCardsReason357,
+          branchTaken: branchTaken357,
+        },
+      });
+      // If either gate skips, emit round_resolution now (skipped variant) so
+      // every generation records all three events.
+      if (branchTaken357 !== 'proceed_to_round_resolution') {
+        persistSyncDebugEvent({
+          gameId: gameId!,
+          gameType: gameData.game_type ?? 'unknown',
+          handNumber: gameData.total_hands ?? 0,
+          roundId: null,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: '357.fetch.round_resolution',
+          dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
+          payload: {
+            fetchGenerationId,
+            fetchTrigger,
+            roundSelectionBranch: branchTaken357, // 'skipped_should_fetch_cards' | 'skipped_keep_cards'
+            roundSelectGameId: gameId ?? null,
+            roundSelectDealerGameId: gameData.current_game_uuid ?? null,
+            roundSelectHandNumber: gameData.total_hands ?? null,
+            roundSelectRoundNumber: gameData.current_round ?? null,
+            fallbackCurrentRoundId: currentRound?.id ?? null,
+            roundQueryExecuted: false,
+            roundQueryRowsReturned: 0,
+            roundQueryErrorCode: null,
+            roundQueryErrorMessage: null,
+            roundDataResolved: false,
+            resolvedRoundId: null,
+            resolvedDealerGameId: null,
+            resolvedHandNumber: null,
+            resolvedRoundNumber: null,
+            resolvedCardsDealt: null,
+            resolutionDecision: 'skipped',
+          },
+        });
+      }
+    }
+
     if (shouldFetchCards) {
-      // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
-      const isHolmGame = gameData.game_type === 'holm-game';
-      const keepCards = gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round;
-      
-      // Keep cards visible during results announcement (last_round_result exists)
-      const keepCardsForResults = isHolmGame && gameData.awaiting_next_round && gameData.last_round_result;
+      // (isHolmGame/keepCards/keepCardsForResults lifted above for card_gate)
       
       if (keepCards || keepCardsForResults) {
         // CRITICAL: For Holm games, ALWAYS fetch the most recent round by round_number DESC
         // This prevents stale game.current_round from causing mismatched cards during evaluation
         // The backend evaluation also uses round_number DESC, so frontend must match
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
+
+        // 3-5-7 wartime unconditional trace: which round-selection branch ran
+        let roundSelectionBranch357:
+          | '357_authoritative_lookup'
+          | 'fallback_current_round'
+          | 'ultimate_fallback'
+          | 'holm_branch'
+          | 'holm_branch_skipped_no_dealer_game'
+          | 'unknown' = 'unknown';
+        let roundQueryError357: { code: string | null; message: string | null } = { code: null, message: null };
+        let roundQueryRowsReturned357 = 0;
         
         if (isHolmGame) {
           // HOLM HARD GATE: round selection is scoped to the active
@@ -8243,6 +8368,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // cross-session "latest historical round" fallback — that
           // is exactly the dealer-game boundary leak.
           if (!gameData.current_game_uuid) {
+            roundSelectionBranch357 = 'holm_branch_skipped_no_dealer_game';
             // Invalidate any in-flight card request and clear stale cards
             // so an old response cannot repopulate raw card state when the
             // active dealer game has cleared.
@@ -8270,7 +8396,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               },
             });
           } else {
-            const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
+            roundSelectionBranch357 = 'holm_branch';
+            const { data, error } = await timedQuery('rounds.holm-latest', 'rounds', () =>
               supabase
                 .from('rounds')
                 .select('id, round_number, cards_dealt')
@@ -8282,6 +8409,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 .maybeSingle());
 
             roundData = data;
+            roundQueryError357 = { code: (error as any)?.code ?? null, message: (error as any)?.message ?? null };
+            roundQueryRowsReturned357 = data ? 1 : 0;
             ffRecord({
               writerId: 'Game.tsx:fetchHolmLatestRound:L6052',
               source: 'HOLM_SELF_HAND_LINEAGE',
@@ -8309,7 +8438,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
-          const { data } = await timedQuery('rounds.357-current', 'rounds', () =>
+          roundSelectionBranch357 = '357_authoritative_lookup';
+          const { data, error } = await timedQuery('rounds.357-current', 'rounds', () =>
             supabase
               .from('rounds')
               .select('id, round_number, cards_dealt')
@@ -8320,9 +8450,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .maybeSingle());
 
           roundData = data;
+          roundQueryError357 = { code: (error as any)?.code ?? null, message: (error as any)?.message ?? null };
+          roundQueryRowsReturned357 = data ? 1 : 0;
         } else if (gameData.current_round) {
           // Fallback with current_round but missing some data - STILL scope by dealer_game_id when available
           // CRITICAL: Always scope by dealer_game_id to prevent cross-game contamination
+          roundSelectionBranch357 = 'fallback_current_round';
           let fallbackQuery = supabase
             .from('rounds')
             .select('id, round_number, cards_dealt, dealer_game_id')
@@ -8336,7 +8469,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', () =>
+          const { data, error } = await timedQuery('rounds.fallback-by-round', 'rounds', () =>
             fallbackQuery
               .order('hand_number', { ascending: false })
               .order('created_at', { ascending: false })
@@ -8344,9 +8477,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .maybeSingle());
 
           roundData = data;
+          roundQueryError357 = { code: (error as any)?.code ?? null, message: (error as any)?.message ?? null };
+          roundQueryRowsReturned357 = data ? 1 : 0;
         } else {
           // Ultimate fallback: get the most recent round - STILL scope by dealer_game_id when available
           // CRITICAL: Always scope by dealer_game_id to prevent cross-game contamination
+          roundSelectionBranch357 = 'ultimate_fallback';
           let ultimateFallbackQuery = supabase
             .from('rounds')
             .select('id, round_number, cards_dealt, dealer_game_id')
@@ -8359,7 +8495,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id in ultimate fallback - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', () =>
+          const { data, error } = await timedQuery('rounds.ultimate-fallback', 'rounds', () =>
             ultimateFallbackQuery
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
@@ -8367,8 +8503,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .maybeSingle());
 
           roundData = data;
+          roundQueryError357 = { code: (error as any)?.code ?? null, message: (error as any)?.message ?? null };
+          roundQueryRowsReturned357 = data ? 1 : 0;
           console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
         }
+
+        // ── 3-5-7 wartime unconditional trace: EVENT 3 (round resolution) ──
+        if (is357Trace) {
+          const resolvedDecision357: 'resolved' | 'no_round_row' | 'query_error' | 'skipped' =
+            roundQueryError357.code || roundQueryError357.message
+              ? 'query_error'
+              : roundData
+                ? 'resolved'
+                : 'no_round_row';
+          persistSyncDebugEvent({
+            gameId: gameId!,
+            gameType: gameData.game_type ?? 'unknown',
+            handNumber: gameData.total_hands ?? 0,
+            roundId: roundData?.id ?? null,
+            eventType: 'transition',
+            severity: 'info',
+            eventName: '357.fetch.round_resolution',
+            dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
+            payload: {
+              fetchGenerationId,
+              fetchTrigger,
+              roundSelectionBranch: roundSelectionBranch357,
+              roundSelectGameId: gameId ?? null,
+              roundSelectDealerGameId: gameData.current_game_uuid ?? null,
+              roundSelectHandNumber: gameData.total_hands ?? null,
+              roundSelectRoundNumber: gameData.current_round ?? null,
+              fallbackCurrentRoundId: currentRound?.id ?? null,
+              roundQueryExecuted: true,
+              roundQueryRowsReturned: roundQueryRowsReturned357,
+              roundQueryErrorCode: roundQueryError357.code,
+              roundQueryErrorMessage: roundQueryError357.message,
+              roundDataResolved: !!roundData,
+              resolvedRoundId: roundData?.id ?? null,
+              resolvedDealerGameId: gameData.current_game_uuid ?? null,
+              resolvedHandNumber: gameData.total_hands ?? null,
+              resolvedRoundNumber: roundData?.round_number ?? null,
+              resolvedCardsDealt: roundData?.cards_dealt ?? null,
+              resolutionDecision: resolvedDecision357,
+            },
+          });
+        }
+
 
         if (roundData) {
           const prevPlayerCardsRoundId = cardStateContext?.roundId ?? null;
