@@ -8350,6 +8350,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // This prevents stale game.current_round from causing mismatched cards during evaluation
         // The backend evaluation also uses round_number DESC, so frontend must match
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
+
+        // 3-5-7 wartime unconditional trace: which round-selection branch ran
+        let roundSelectionBranch357:
+          | '357_authoritative_lookup'
+          | 'fallback_current_round'
+          | 'ultimate_fallback'
+          | 'holm_branch'
+          | 'holm_branch_skipped_no_dealer_game'
+          | 'unknown' = 'unknown';
+        let roundQueryError357: { code: string | null; message: string | null } = { code: null, message: null };
+        let roundQueryRowsReturned357 = 0;
         
         if (isHolmGame) {
           // HOLM HARD GATE: round selection is scoped to the active
