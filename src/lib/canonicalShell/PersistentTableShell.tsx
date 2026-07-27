@@ -285,6 +285,7 @@ export function PersistentTableShell({
   const shellRootStyle: CSSProperties & { '--shell-viewport-h': string } = {
     position: 'relative',
     height: shellViewportHeight,
+    minHeight: 0,
     overflow: 'hidden',
     '--shell-viewport-h': shellViewportHeight,
   };
@@ -296,7 +297,7 @@ export function PersistentTableShell({
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
-      className="min-h-screen bg-background"
+      className="bg-background"
       style={shellRootStyle}
     >
       {/* CSHELL provenance badge removed — canonical shell migration validated. */}
