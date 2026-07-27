@@ -3276,7 +3276,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       channel: `game-${gameId}`,
       gameId,
     });
-    fetchGameData();
+    fetchGameData('cold_mount');
 
     // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -3291,7 +3291,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         delayMs: 300,
         extra: { purpose: 'batch realtime fetchGameData', gameStatus: game?.status ?? null },
         fn: () => {
-        fetchGameData();
+        fetchGameData('realtime_update');
         },
       }); // 300ms balances responsiveness and batching
     };
@@ -4096,7 +4096,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // Force full refetch (rehydrates games row + rounds → currentRound).
-          await fetchGameData();
+          await fetchGameData(
+            source === 'realtime-reconnect' ? 'realtime_reconnect' : source
+          );
         }
       } finally {
         resyncInFlightRef.current = false;
@@ -7979,11 +7981,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Removed failsafe - countdown component now handles completion reliably
 
-  const fetchGameData = async () => {
+  const fetchGameData = async (
+    fetchTrigger: 'cold_mount' | 'visibility' | 'focus' | 'pageshow' | 'realtime_reconnect' | 'realtime_update' | 'manual' | 'unknown' = 'unknown'
+  ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
+    const fetchGenerationId = fetchSeq;
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
@@ -8413,12 +8418,53 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             eventName: 'card-fetch-start',
             payload: { fetchToken, fetchRoundId },
           });
-          
+
+          // ── 3-5-7 fetch hydration trace: REQUEST ─────────────────────
+          const is357FetchTrace =
+            gameData.game_type === '3-5-7' ||
+            gameData.game_type === '357' ||
+            gameData.game_type === '3-5-7-game';
+          const localPlayerIdForTrace: string | null =
+            (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
+          const playerCardsLengthBefore357 = playerCards.length;
+          if (is357FetchTrace) {
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: gameData.game_type ?? 'unknown',
+              handNumber: gameData.total_hands ?? 0,
+              roundId: targetRoundId,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: '357.fetch.players_request',
+              payload: {
+                fetchGenerationId,
+                fetchTrigger,
+                fetchStartedAt,
+                gameId: gameId ?? null,
+                localPlayerId: localPlayerIdForTrace,
+                gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
+                gameDataCurrentRound: gameData.current_round ?? null,
+                gameDataTotalHands: gameData.total_hands ?? null,
+                gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
+                gameDataStatus: gameData.status ?? null,
+                resolvedTargetRoundId: targetRoundId,
+                resolvedTargetDealerGameId: gameData.current_game_uuid ?? null,
+                resolvedTargetHandNumber: gameData.total_hands ?? null,
+                resolvedTargetRoundNumber: roundData.round_number ?? null,
+                resolvedTargetRoundStatus: null,
+                queryTable: 'player_cards',
+                queryRoundId: targetRoundId,
+                queryPlayerIdFilter: null,
+              },
+            });
+          }
+
           const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
             supabase
               .from('player_cards')
               .select('player_id, cards')
               .eq('round_id', targetRoundId));
+
 
 
           console.log('[FETCH] 🃏 Cards fetch result:', {
@@ -8458,6 +8504,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // FIX 1: REMOVED broken roundIdStillCurrent guard.
           // FIX 3: Use ONLY fetchToken + isStale() for staleness.
+          let acceptance357: 'accepted' | 'superseded_by_generation' | 'rejected_stale_round' | 'rejected_no_rows' | 'rejected_error' | 'not_written_other' = 'not_written_other';
+          let setPlayerCardsCalled357 = false;
+          let playerCardsLengthAfter357 = playerCardsLengthBefore357;
           if (isStale()) {
             console.log('[FETCH] Ignoring stale card fetch (fetchSeq advanced)', { targetRoundId });
             ffRecord({
@@ -8467,6 +8516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               identity: { gameId, roundId: targetRoundId },
               payload: { fetchToken, reason: 'isStale-fetchSeq-advanced', rowCount: cardsData?.length ?? 0 },
             });
+            acceptance357 = 'superseded_by_generation';
           } else if (fetchToken !== cardFetchTokenRef.current) {
             // A newer fetch was dispatched while we were awaiting — drop this one
             console.warn('[FETCH] ⚠️ Dropping card fetch — fetchToken superseded', {
@@ -8497,6 +8547,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 rowSummaries,
               },
             });
+            acceptance357 = 'superseded_by_generation';
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
             persistSyncDebugEvent({
@@ -8516,10 +8567,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               }))
             );
             // Bind the accepted cards to the exact identity that produced them.
-            // The presentation gate compares this identity to the current
-            // authoritative presentation identity; a mismatch (e.g. mid-rotation
-            // H1R3 → H2R1 gap) exposes an empty local hand rather than
-            // re-labelling stale cards under the new round's identity.
             setPlayerCardsIdentity({
               dealerGameId: gameData.current_game_uuid ?? null,
               handNumber: typeof gameData.total_hands === 'number' ? gameData.total_hands : null,
@@ -8539,6 +8586,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 action: 'setPlayerCards(rows)',
               },
             });
+            acceptance357 = 'accepted';
+            setPlayerCardsCalled357 = true;
+            playerCardsLengthAfter357 = cardsData.length;
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
             ffRecord({
@@ -8548,6 +8598,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               identity: { gameId, roundId: targetRoundId },
               payload: { fetchToken, errorMessage: cardsError.message },
             });
+            acceptance357 = 'rejected_error';
           } else {
             // If the round id changed but the new round has no cards yet,
             // clear local cards to avoid rendering previous hand.
@@ -8570,6 +8621,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   action: 'setPlayerCards([])',
                 },
               });
+              acceptance357 = 'accepted';
+              setPlayerCardsCalled357 = true;
+              playerCardsLengthAfter357 = 0;
             } else {
               console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
               ffRecord({
@@ -8584,9 +8638,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   reason: 'same-round-no-cards-keeping-existing',
                 },
               });
+              acceptance357 = 'not_written_other';
             }
           }
+
+          // ── 3-5-7 fetch hydration trace: RESULT ──────────────────────
+          if (is357FetchTrace) {
+            const fetchCompletedAt357 = Date.now();
+            const rowsReturned357 = cardsData?.length ?? 0;
+            const localSeatRow357 = localPlayerIdForTrace
+              ? (cardsData ?? []).find((r: any) => r.player_id === localPlayerIdForTrace) ?? null
+              : null;
+            const localSeatCardsCount357 = Array.isArray(localSeatRow357?.cards)
+              ? (localSeatRow357!.cards as unknown[]).length
+              : 0;
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: gameData.game_type ?? 'unknown',
+              handNumber: gameData.total_hands ?? 0,
+              roundId: targetRoundId,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: '357.fetch.players_result',
+              payload: {
+                fetchGenerationId,
+                fetchTrigger,
+                fetchStartedAt,
+                fetchCompletedAt: fetchCompletedAt357,
+                elapsedMs: fetchCompletedAt357 - fetchStartedAt,
+                gameId: gameId ?? null,
+                localPlayerId: localPlayerIdForTrace,
+                queryRoundId: targetRoundId,
+                rowsReturned: rowsReturned357,
+                localSeatRowPresent: !!localSeatRow357,
+                localSeatCardsCount: localSeatCardsCount357,
+                acceptanceDecision: acceptance357,
+                queryErrorCode: (cardsError as any)?.code ?? null,
+                queryErrorMessage: cardsError?.message ?? null,
+                playerCardsLengthBefore: playerCardsLengthBefore357,
+                playerCardsLengthAfter: playerCardsLengthAfter357,
+                setPlayerCardsCalled: setPlayerCardsCalled357,
+                currentTokenAtResponse: cardFetchTokenRef.current,
+                fetchToken,
+                tokenSuperseded: fetchToken !== cardFetchTokenRef.current,
+                isStaleAtResponse: isStale(),
+              },
+            });
+          }
         }
+
       } else if (isHolmGame && gameData.awaiting_next_round && !gameData.last_round_result) {
         // Clear cards only for Holm games when awaiting next round AND results have been cleared
         console.log('[FETCH] Clearing player cards (Holm game transitioning to next round)');
