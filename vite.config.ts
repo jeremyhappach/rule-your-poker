@@ -79,14 +79,14 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       mode === "development" && componentTagger(),
-      {
+      ((): unknown => ({
         // Emits /build-manifest.json alongside the bundle so an already-open
-        // client can independently detect a newer publication.
-        // The manifest is generated at build time and served fresh (no-store
-        // fetch on the client) — old cached bundles cannot mask a new value.
+        // client can independently detect a newer publication. Generated at
+        // build time; served fresh (no-store fetch) — a stale cached bundle
+        // cannot mask a newer manifest value.
         name: "emit-build-manifest",
-        apply: "build" as const,
-        generateBundle(this: unknown, _options: unknown, bundle: Record<string, { type?: string; isEntry?: boolean }>) {
+        apply: "build",
+        generateBundle(_options: unknown, bundle: Record<string, { type?: string; isEntry?: boolean }>) {
           let entryBundleFilename = "";
           for (const [fileName, chunk] of Object.entries(bundle)) {
             if (chunk.type === "chunk" && chunk.isEntry) {
@@ -100,13 +100,14 @@ export default defineConfig(({ mode }) => {
             bundleFilename: entryBundleFilename,
             deploymentId,
           };
-          (this as { emitFile: (opts: unknown) => void }).emitFile({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (this as any).emitFile({
             type: "asset",
             fileName: "build-manifest.json",
             source: JSON.stringify(manifest, null, 2),
           });
         },
-      },
+      }))(),
     ].filter(Boolean),
     resolve: {
       alias: {
