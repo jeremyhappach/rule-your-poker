@@ -13892,9 +13892,28 @@ export const MobileGameTable = ({
                     // fan's stageRect.bottom is derived from that same
                     // reservation, guaranteeing cards never overlap the
                     // action controls.
-                    "flex items-center justify-center flex-shrink-0",
-                    isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
+                    // `mt-auto` pins the action strip to the bottom of
+                    // the pane column (ShellHudGrid row 4, height
+                    // `--hud-h-pane`, overflow:hidden). This is the same
+                    // "last sibling of a flex flex-col pane" pattern
+                    // Horses uses for its ActionStripSlot. Anchoring to
+                    // the bottom:
+                    //   • removes the "buttons hug the card fan / sit
+                    //     too high" overlap pre-refresh — the strip now
+                    //     sits at the bottom of the pane row, directly
+                    //     above the identity row;
+                    //   • survives cold hydration — when the hand
+                    //     reserve class transiently flips to a taller
+                    //     round-1 value, the strip's bottom-anchored
+                    //     position stays inside `--hud-h-pane` instead
+                    //     of being pushed past the row's overflow clip.
+                    // Nothing here touches PlayerHand, availableHeightPx,
+                    // handScale, handReserve, canDecide, or the identity
+                    // row.
+                    "flex items-center justify-center flex-shrink-0 mt-auto",
+                    isTablet ? "h-[64px] mb-1" : "h-[52px] mb-1"
                   )}>
+
 
                     {(() => {
                       const lowerZoneTrace = evaluateLowerZoneOwner();
