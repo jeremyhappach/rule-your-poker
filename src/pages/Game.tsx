@@ -321,6 +321,9 @@ import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
+import { BUILD_IDENTITY } from "@/lib/buildIdentity";
+import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION } from "@/lib/fetchTraceStatus";
+
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
@@ -1845,6 +1848,48 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
   }
+
+  // ── 3-5-7 fetch-trace mount heartbeat ─────────────────────────
+  // Emits ONE 357.fetch.instrumentation_loaded event per mounted
+  // 3-5-7 Game instance from this exact module (same source file
+  // that owns 357.fetch.entry / .card_gate / .round_resolution).
+  // If this event lands, the deployed bundle physically contains
+  // the fetch-trace code. If it does not land, the SNAP pill will
+  // show FETCH TRACE FAILED — proving the runtime is not on the
+  // instrumented build BEFORE another repro is requested.
+  const fetchTraceHeartbeatKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!is357GameType || !gameId) return;
+    const key = `${gameId}:${BUILD_IDENTITY.buildSha}`;
+    if (fetchTraceHeartbeatKeyRef.current === key) return;
+    fetchTraceHeartbeatKeyRef.current = key;
+    setFetchTraceStatus('pending');
+    persistSyncDebugEvent({
+      gameId,
+      gameType: '3-5-7',
+      handNumber: 0,
+      roundId: null,
+      eventType: 'invariant',
+      severity: 'info',
+      eventName: '357.fetch.instrumentation_loaded',
+      dedupKey: `357.fetch.instrumentation_loaded:${key}`,
+      payload: {
+        clientBuildId: BUILD_IDENTITY.buildSha,
+        clientBuildIdShort: BUILD_IDENTITY.buildShaShort,
+        buildTimestamp: BUILD_IDENTITY.buildTimestamp,
+        deploymentId: BUILD_IDENTITY.deploymentId || null,
+        bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+        fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+        gameId,
+        gameType: game?.game_type ?? null,
+        mountedAt: new Date().toISOString(),
+      },
+      onResult: (ok, reason) => {
+        setFetchTraceStatus(ok ? 'ready' : 'failed', ok ? null : (reason ?? 'unknown'));
+      },
+    });
+  }, [is357GameType, gameId, game?.game_type]);
+
 
   const threeFiveSevenPlayers = useMemo(() => {
     if (!threeFiveSevenView || !is357GameType) return players;
