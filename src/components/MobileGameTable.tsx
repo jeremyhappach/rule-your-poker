@@ -2051,6 +2051,43 @@ export const MobileGameTable = ({
   // Dice debug overlay state tracking
   const [feltBlockMounted, setFeltBlockMounted] = useState(false);
 
+  // FIXED-HEIGHT ACTIVE-PANE CONTRACT (3-5-7 / Holm active self).
+  //
+  // The active pane owns one vertical budget (row 4 of ShellHudGrid,
+  // fixed height `--hud-h-pane`, overflow:hidden). Inside that budget:
+  //   • The lower action zone (`data-active-hand-lower-zone`) has a
+  //     fixed reserved height and is `flex-shrink-0` — always visible.
+  //   • The active-hand region takes the REMAINING height as a flex-1
+  //     child with `min-h-0` so it shrinks instead of expanding the
+  //     pane.
+  //   • The hand's card sizing is derived from that remaining height
+  //     (measured live via ResizeObserver) so cards scale down to fit
+  //     — animated arrival and hydrated refresh consume the same
+  //     vertical contract and produce the same rendered geometry.
+  //
+  // No viewport-specific numbers, no magic min-h reservations: the
+  // pane's own layout is the source of the budget.
+  const activeHandRegionRef = useRef<HTMLDivElement | null>(null);
+  const [activeHandRegionHeightPx, setActiveHandRegionHeightPx] =
+    useState<number | null>(null);
+  useEffect(() => {
+    const el = activeHandRegionRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.getBoundingClientRect().height;
+      if (Number.isFinite(h) && h > 0) {
+        setActiveHandRegionHeightPx((prev) =>
+          prev !== null && Math.abs(prev - h) < 0.5 ? prev : h,
+        );
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // CRITICAL FIX: Freeze Beat badge at turn start - never update during player's turn
   // This prevents the badge from flickering/updating when the player's roll takes the lead
   // The cache is snapshotted ONCE when isMyTurn transitions from false to true,
@@ -13377,12 +13414,31 @@ export const MobileGameTable = ({
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
-                    // Unscaled vertical budget for the resolver. Reserve box
-                    // height divided by the wrapper scale, minus ~4px slack
-                    // for the ±2° rotation each card applies.
+                    // FIXED-HEIGHT ACTIVE-PANE CONTRACT.
+                    //
+                    // The unscaled vertical budget for the resolver is
+                    // derived from the LIVE-MEASURED height of the
+                    // active-hand region (a flex-1 min-h-0 child of the
+                    // pane content root). This means:
+                    //   • On animated arrival the same measured budget
+                    //     drives sizing.
+                    //   • On hydrated refresh the same measured budget
+                    //     drives sizing.
+                    //   • The action-strip sibling below is
+                    //     flex-shrink-0 with a fixed reserved height,
+                    //     so it can never be pushed off-viewport.
+                    //
+                    // The prior authored `handReserveNum` values are
+                    // retained ONLY as an initial-mount fallback until
+                    // the ResizeObserver publishes the first real
+                    // measurement.
+                    const measuredRegionHeightPx = activeHandRegionHeightPx;
                     const handAvailableHeightPx357 =
                       gameType !== 'holm-game'
-                        ? Math.max(20, handReserveNum / handScaleNum - 4)
+                        ? Math.max(
+                            20,
+                            (measuredRegionHeightPx ?? handReserveNum) / handScaleNum - 4,
+                          )
                         : undefined;
 
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
@@ -13391,21 +13447,22 @@ export const MobileGameTable = ({
                     const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
 
                     return (
-                      <div className={cn(
-                        // Composition contract: the active-hand region must
-                        // grow to fill the pane so the action strip below
-                        // is anchored to the pane bottom (sibling of this
-                        // wrapper). Combined with the
-                        // `data-active-hand-lower-zone` tag on the action
-                        // strip, the shared resolver escalates its
-                        // reservation to `max(authored, measured + safe)`
-                        // and the portaled fan's `stageRect.bottom` lands
-                        // above the action strip by the authored
-                        // inter-zone clearance — cards can no longer
-                        // overlap Drop/Stay.
-                        "flex flex-col items-center flex-1 w-full min-h-0",
+                      <div
+                        ref={activeHandRegionRef}
+                        className={cn(
+                        // FIXED-HEIGHT ACTIVE-PANE CONTRACT — this region
+                        // is the flex-1 min-h-0 sibling of the lower
+                        // action zone. It takes the remaining pane
+                        // budget and never expands the pane. Its
+                        // measured height feeds the hand resolver
+                        // (`handAvailableHeightPx357`) so cards scale
+                        // down to fit — the action strip is always
+                        // visible because it is `flex-shrink-0` with
+                        // a fixed reserved height below.
+                        "flex flex-col items-center flex-1 w-full min-h-0 overflow-hidden",
                         gameType !== "holm-game" ? "gap-0" : "gap-0",
                       )}>
+
                         {showDealerSelectionCards ? (
                           <div className="flex flex-col items-center gap-2 py-4">
                             <div className="flex gap-2">
@@ -13494,12 +13551,21 @@ export const MobileGameTable = ({
                           // but the same PlayerHand instance persists.
                           <div
                             className={cn(
-                              "flex items-start justify-center",
-                              currentPlayerHandReserveClass,
+                              // FIXED-HEIGHT CONTRACT: no min-h reserve.
+                              // Take the region's remaining height as a
+                              // flex child with min-h:0 so the resolver
+                              // (which reads `handAvailableHeightPx357`
+                              // derived from the measured region height)
+                              // controls card sizing. This lets 3-card,
+                              // 5-card, and 7-card fans all fit inside
+                              // the same pane budget without pushing the
+                              // action strip off-viewport.
+                              "flex items-start justify-center flex-1 min-h-0",
                               gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
                           >
+
                             <div
                               className={cn(
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
