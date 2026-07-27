@@ -33,29 +33,28 @@ type PlainStyle = Record<
 > | null;
 
 export interface ThreeFiveSevenReactStateSnapshot {
-  canDecide: boolean;
-  renderedLowerZoneOwner: string | null;
-  hasDecided: boolean;
-  allDecisionsIn: boolean;
-  threeFiveSevenDecisionBoundaryOpen: boolean;
-  currentPlayerId: string | null;
-  currentPlayerStatus: string | null;
-  currentPlayerDecision: string | null;
-  currentPlayerDecisionLocked: boolean | null;
-  currentPlayerCardsCount: number;
-  activeTab: string | null;
-  isWaitingPhase: boolean;
-  isDealerConfigPhase: boolean;
-  currentPlayerHandReserveClass: string | null;
-  handScaleNum: number | null;
-  handReserveNum: number | null;
-  handAvailableHeightPx357: number | null;
-  // Correlation
+  // Correlation (required)
   gameId: string | null;
   dealerGameId: string | null;
   roundId: string | null;
   roundNumber: number | null;
   handNumber: number | null;
+  // React/game state (optional — provide whatever's reachable from the mount site)
+  canDecide?: boolean;
+  renderedLowerZoneOwner?: string | null;
+  hasDecided?: boolean;
+  allDecisionsIn?: boolean;
+  threeFiveSevenDecisionBoundaryOpen?: boolean;
+  currentPlayerId?: string | null;
+  currentPlayerStatus?: string | null;
+  currentPlayerDecision?: string | null;
+  currentPlayerDecisionLocked?: boolean | null;
+  currentPlayerCardsCount?: number;
+  activeTab?: string | null;
+  isWaitingPhase?: boolean;
+  isDealerConfigPhase?: boolean;
+  gameStatus?: string | null;
+  gameType?: string | null;
 }
 
 export interface ThreeFiveSevenLayoutSnapPillProps {
