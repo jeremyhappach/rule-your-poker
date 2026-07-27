@@ -6046,6 +6046,17 @@ export const MobileGameTable = ({
   }
   const __paneGeomSeqRef = useRef(0);
   const __paneGeomLastSigRef = useRef<string | null>(null);
+  // Diagnostic-only snapshot of last renderActiveSelfHand values. Written
+  // during render inside renderActiveSelfHand; read by the pane-geometry
+  // effect. No DOM node, no layout participation.
+  const __renderSnapRef = useRef<{
+    dealPhase: string;
+    effectiveCardsCount: number;
+    is357Staged: boolean;
+    claimedCardIdsCount: number;
+    rawClaimedCardIdsCount: number;
+    baseHandContextId: string;
+  } | null>(null);
   useEffect(() => {
     if (!__is357GameType(gameType)) return;
     if (!gameId) return;
@@ -6057,9 +6068,9 @@ export const MobileGameTable = ({
         const lowerZone = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
         const stayBtn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
         const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
-        const renderSnap = document.querySelector<HTMLElement>('[data-357-render-snap]');
         const playerHandRoot = region.querySelector<HTMLElement>('[data-357-player-hand-root]');
         const firstCard = region.querySelector<HTMLElement>('[data-playing-card-root]');
+        const snap = __renderSnapRef.current;
 
         const attr = (n: HTMLElement | null | undefined, name: string): string | null =>
           n?.getAttribute(name) ?? null;
@@ -6096,7 +6107,7 @@ export const MobileGameTable = ({
         const lowerZoneRect = lowerZone?.getBoundingClientRect() ?? null;
         const stayRect = stayBtn?.getBoundingClientRect() ?? null;
         const cardsLenAttr = attr(region, 'data-357-snap-cards-length');
-        const dealPhaseAttr = attr(renderSnap, 'data-357-render-snap-deal-phase');
+        const dealPhaseAttr = snap?.dealPhase ?? null;
         const availAttr = attr(region, 'data-357-snap-hand-avail-h');
         const sig = [
           cardsLenAttr ?? '',
@@ -6135,12 +6146,12 @@ export const MobileGameTable = ({
             ? (roundNumberVal === 1 ? 3 : roundNumberVal === 2 ? 5 : roundNumberVal === 3 ? 7 : null)
             : null,
           currentPlayerCardsCount: currentPlayerCards.length,
-          effectiveCardsCount: num(attr(renderSnap, 'data-357-render-snap-effective-cards')),
+          effectiveCardsCount: snap?.effectiveCardsCount ?? null,
           dealPhase: dealPhaseAttr,
-          is357Staged: attr(renderSnap, 'data-357-render-snap-is-staged') === '1',
-          claimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-claimed-count')),
-          rawClaimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-raw-claimed-count')),
-          baseHandContextId: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
+          is357Staged: snap?.is357Staged ?? null,
+          claimedCardIdsCount: snap?.claimedCardIdsCount ?? null,
+          rawClaimedCardIdsCount: snap?.rawClaimedCardIdsCount ?? null,
+          baseHandContextId: snap?.baseHandContextId ?? null,
 
           handScaleNum: num(attr(region, 'data-357-snap-hand-scale')),
           handReserveNum: num(attr(region, 'data-357-snap-hand-reserve')),
@@ -13735,6 +13746,18 @@ export const MobileGameTable = ({
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
                                   const isHolmStaged = gameType === 'holm-game' && dealPhase !== 'GAMEPLAY';
+                                  // Diagnostic-only: capture render-time values
+                                  // into a ref so the pane-geometry effect can
+                                  // read them without a DOM node. This does
+                                  // not alter layout/hierarchy/refs.
+                                  __renderSnapRef.current = {
+                                    dealPhase,
+                                    effectiveCardsCount: effectiveCards.length,
+                                    is357Staged,
+                                    claimedCardIdsCount: boundary.claimedCardIds.length,
+                                    rawClaimedCardIdsCount: boundary.rawClaimedCardIds.length,
+                                    baseHandContextId: boundary.baseHandContextId,
+                                  };
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
@@ -13792,16 +13815,6 @@ export const MobileGameTable = ({
                                           *     Use357SelfHand / UseHolmSelfHand wrapper via
                                           *     boundary.baseHandContextId re-keying.
                                           */}
-                                         <span
-                                           data-357-render-snap=""
-                                           data-357-render-snap-deal-phase={dealPhase}
-                                           data-357-render-snap-claimed-count={boundary.claimedCardIds.length}
-                                           data-357-render-snap-raw-claimed-count={boundary.rawClaimedCardIds.length}
-                                           data-357-render-snap-effective-cards={effectiveCards.length}
-                                           data-357-render-snap-base-hand-context={boundary.baseHandContextId}
-                                           data-357-render-snap-is-staged={is357Staged ? '1' : '0'}
-                                           style={{ display: 'none' }}
-                                         />
                                          <PlayerHand
                                            cards={effectiveCards}
                                            isHidden={is357 || is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
