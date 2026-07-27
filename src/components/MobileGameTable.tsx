@@ -6033,7 +6033,125 @@ export const MobileGameTable = ({
     return () => cancelAnimationFrame(raf1);
   });
 
-
+  // ── 357: paired pre-refresh / post-refresh pane geometry snapshot ──
+  // Captures every upstream input that feeds the active-hand vertical
+  // contract PLUS measured DOM rects for the region, lower zone, first
+  // card, and STAY/DROP buttons. Persists to `debug_sync_events` as
+  // `357.pane_geometry_snapshot` with a mount marker so the first
+  // post-refresh sample is trivially identifiable and can be compared
+  // 1:1 against the last pre-refresh sample for the same game.
+  const __paneGeomMountIdRef = useRef<string>('');
+  if (!__paneGeomMountIdRef.current) {
+    __paneGeomMountIdRef.current = `mnt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  const __paneGeomSeqRef = useRef(0);
+  const __paneGeomLastSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!__is357GameType(gameType)) return;
+    if (!gameId) return;
+    if (__paneGeomSeqRef.current >= 40) return;
+    const raf = requestAnimationFrame(() => {
+      try {
+        const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
+        const paneContent = document.querySelector<HTMLElement>('[data-357-active-pane-content]');
+        const lowerZone = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
+        const stayBtn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
+        const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
+        const renderSnap = document.querySelector<HTMLElement>('[data-357-render-snap]');
+        const firstCard = region?.querySelector<HTMLElement>('[data-playing-card-root]');
+        const hudPane = document.querySelector<HTMLElement>('[data-hud-row="pane"]');
+        if (!region) return;
+        const box = (n: HTMLElement | null | undefined) => {
+          if (!n) return null;
+          const r = n.getBoundingClientRect();
+          return {
+            x: Math.round(r.x), y: Math.round(r.y),
+            w: Math.round(r.width), h: Math.round(r.height),
+            cw: n.clientWidth, ch: n.clientHeight,
+          };
+        };
+        const attr = (n: HTMLElement | null | undefined, name: string) => n?.getAttribute(name) ?? null;
+        const upstream = {
+          currentRound: attr(region, 'data-357-snap-current-round'),
+          handScaleNum: attr(region, 'data-357-snap-hand-scale'),
+          handReserveNum: attr(region, 'data-357-snap-hand-reserve'),
+          handAvailableHeightPx357: attr(region, 'data-357-snap-hand-avail-h'),
+          reserveClass: attr(region, 'data-357-snap-reserve-class'),
+          cardsLengthOuter: attr(region, 'data-357-snap-cards-length'),
+          isTablet: attr(region, 'data-357-snap-is-tablet'),
+          isDesktop: attr(region, 'data-357-snap-is-desktop'),
+          dealPhase: attr(renderSnap, 'data-357-render-snap-deal-phase'),
+          claimedCount: attr(renderSnap, 'data-357-render-snap-claimed-count'),
+          rawClaimedCount: attr(renderSnap, 'data-357-render-snap-raw-claimed-count'),
+          effectiveCardsCount: attr(renderSnap, 'data-357-render-snap-effective-cards'),
+          baseHandContext: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
+          isStaged: attr(renderSnap, 'data-357-render-snap-is-staged'),
+        };
+        const sig = JSON.stringify({
+          upstream,
+          regionH: box(region)?.h,
+          lowerZoneH: box(lowerZone)?.h,
+          firstCardH: box(firstCard)?.h,
+          stayY: box(stayBtn)?.y,
+        });
+        if (__paneGeomLastSigRef.current === sig) return;
+        __paneGeomLastSigRef.current = sig;
+        const seq = ++__paneGeomSeqRef.current;
+        const payload = {
+          seq,
+          mountId: __paneGeomMountIdRef.current,
+          isFirstAfterMount: seq === 1,
+          tSinceMountMs: Math.round(performance.now()),
+          viewport: {
+            innerWidth: window.innerWidth,
+            innerHeight: window.innerHeight,
+            visualViewportH: (window as unknown as { visualViewport?: { height?: number } }).visualViewport?.height ?? null,
+            dpr: window.devicePixelRatio,
+          },
+          upstream,
+          rects: {
+            region: box(region),
+            paneContent: box(paneContent),
+            hudPane: box(hudPane),
+            lowerZone: box(lowerZone),
+            firstCard: box(firstCard),
+            stayBtn: box(stayBtn),
+            dropBtn: box(dropBtn),
+          },
+          firstCardTag: firstCard?.tagName ?? null,
+          firstCardClass: (firstCard?.className?.toString() || '').slice(0, 200),
+          firstCardStyle: firstCard
+            ? {
+                w: window.getComputedStyle(firstCard).width,
+                h: window.getComputedStyle(firstCard).height,
+                ml: window.getComputedStyle(firstCard).marginLeft,
+              }
+            : null,
+          regionClass: (region?.className?.toString() || '').slice(0, 200),
+          lowerZoneClass: (lowerZone?.className?.toString() || '').slice(0, 200),
+          authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
+          canDecide: !!canDecide,
+          hasDecided: !!hasDecided,
+          horsesHandNumber: horsesHandNumber ?? null,
+          horsesRoundId: horsesRoundId ?? null,
+        };
+        void import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+          persistSyncDebugEvent({
+            gameId,
+            gameType: '3-5-7',
+            handNumber: horsesHandNumber ?? 0,
+            roundId: horsesRoundId ?? null,
+            eventType: 'invariant',
+            severity: 'info',
+            eventName: '357.pane_geometry_snapshot',
+            payload,
+            dedupKey: `${gameId}:invariant:357.pane_geometry_snapshot:${__paneGeomMountIdRef.current}:${seq}`,
+          });
+        }).catch(() => {});
+      } catch { /* diagnostic-only */ }
+    });
+    return () => cancelAnimationFrame(raf);
+  });
 
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
