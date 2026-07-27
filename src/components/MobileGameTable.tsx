@@ -13792,16 +13792,6 @@ export const MobileGameTable = ({
                                           *     Use357SelfHand / UseHolmSelfHand wrapper via
                                           *     boundary.baseHandContextId re-keying.
                                           */}
-                                         <span
-                                           data-357-render-snap=""
-                                           data-357-render-snap-deal-phase={dealPhase}
-                                           data-357-render-snap-claimed-count={boundary.claimedCardIds.length}
-                                           data-357-render-snap-raw-claimed-count={boundary.rawClaimedCardIds.length}
-                                           data-357-render-snap-effective-cards={effectiveCards.length}
-                                           data-357-render-snap-base-hand-context={boundary.baseHandContextId}
-                                           data-357-render-snap-is-staged={is357Staged ? '1' : '0'}
-                                           style={{ display: 'none' }}
-                                         />
                                          <PlayerHand
                                            cards={effectiveCards}
                                            isHidden={is357 || is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
