@@ -27,6 +27,7 @@ import {
   FETCH_INSTRUMENTATION_VERSION,
   type FetchTraceStatus,
 } from '@/lib/fetchTraceStatus';
+import { useBuildFreshnessStatus } from '@/components/StalePublicationWarning';
 
 
 type PlainRect = {
