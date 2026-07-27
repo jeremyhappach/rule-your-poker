@@ -76,7 +76,38 @@ export default defineConfig(({ mode }) => {
       // NOT set here so its existing rollback behavior remains intact.
       "import.meta.env.VITE_CANONICAL_SLOT_NEUTRAL": JSON.stringify("on"),
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+      {
+        // Emits /build-manifest.json alongside the bundle so an already-open
+        // client can independently detect a newer publication.
+        // The manifest is generated at build time and served fresh (no-store
+        // fetch on the client) — old cached bundles cannot mask a new value.
+        name: "emit-build-manifest",
+        apply: "build" as const,
+        generateBundle(_options, bundle) {
+          let entryBundleFilename = "";
+          for (const [fileName, chunk] of Object.entries(bundle)) {
+            if ((chunk as { type?: string }).type === "chunk" && (chunk as { isEntry?: boolean }).isEntry) {
+              entryBundleFilename = fileName;
+              break;
+            }
+          }
+          const manifest = {
+            buildId: effectiveFullSha,
+            publishedAt: buildTimestamp,
+            bundleFilename: entryBundleFilename,
+            deploymentId,
+          };
+          (this as { emitFile: (opts: unknown) => void }).emitFile({
+            type: "asset",
+            fileName: "build-manifest.json",
+            source: JSON.stringify(manifest, null, 2),
+          });
+        },
+      },
+    ].filter(Boolean),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
