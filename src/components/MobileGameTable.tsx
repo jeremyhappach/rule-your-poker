@@ -13414,12 +13414,31 @@ export const MobileGameTable = ({
                             : currentRound === 2
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
-                    // Unscaled vertical budget for the resolver. Reserve box
-                    // height divided by the wrapper scale, minus ~4px slack
-                    // for the ±2° rotation each card applies.
+                    // FIXED-HEIGHT ACTIVE-PANE CONTRACT.
+                    //
+                    // The unscaled vertical budget for the resolver is
+                    // derived from the LIVE-MEASURED height of the
+                    // active-hand region (a flex-1 min-h-0 child of the
+                    // pane content root). This means:
+                    //   • On animated arrival the same measured budget
+                    //     drives sizing.
+                    //   • On hydrated refresh the same measured budget
+                    //     drives sizing.
+                    //   • The action-strip sibling below is
+                    //     flex-shrink-0 with a fixed reserved height,
+                    //     so it can never be pushed off-viewport.
+                    //
+                    // The prior authored `handReserveNum` values are
+                    // retained ONLY as an initial-mount fallback until
+                    // the ResizeObserver publishes the first real
+                    // measurement.
+                    const measuredRegionHeightPx = activeHandRegionHeightPx;
                     const handAvailableHeightPx357 =
                       gameType !== 'holm-game'
-                        ? Math.max(20, handReserveNum / handScaleNum - 4)
+                        ? Math.max(
+                            20,
+                            (measuredRegionHeightPx ?? handReserveNum) / handScaleNum - 4,
+                          )
                         : undefined;
 
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
