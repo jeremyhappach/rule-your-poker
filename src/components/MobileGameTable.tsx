@@ -158,6 +158,7 @@ import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
+import { ThreeFiveSevenLayoutSnapPill } from "./ThreeFiveSevenLayoutSnapPill";
 import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
@@ -14433,6 +14434,33 @@ export const MobileGameTable = ({
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
+    {/* WARTIME: 3-5-7 manual layout snapshot pill (temporary) */}
+    {__is357GameType(gameType) && (
+      <ThreeFiveSevenLayoutSnapPill
+        enabled={true}
+        getReactState={() => ({
+          gameId: gameId ?? null,
+          dealerGameId: (holmDealerGameId ?? horsesDealerGameId ?? null) as string | null,
+          roundId: (threeFiveSevenAuthoritativeRoundId ?? null) as string | null,
+          roundNumber: (threeFiveSevenAuthoritativeRoundNumber ?? null) as number | null,
+          handNumber: (horsesHandNumber ?? null) as number | null,
+          canDecide: !!canDecide,
+          hasDecided: !!hasDecided,
+          allDecisionsIn: !!allDecisionsIn,
+          threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
+          currentPlayerId: currentPlayer?.id ?? null,
+          currentPlayerStatus: (currentPlayer as any)?.status ?? null,
+          currentPlayerDecision: (currentPlayer as any)?.current_decision ?? null,
+          currentPlayerDecisionLocked: (currentPlayer as any)?.decision_locked ?? null,
+          currentPlayerCardsCount: currentPlayerCards?.length ?? 0,
+          activeTab: activeTab ?? null,
+          isWaitingPhase: !!isWaitingPhase,
+          isDealerConfigPhase: !!isDealerConfigPhase,
+          gameStatus: gameStatus ?? null,
+          gameType: gameType ?? null,
+        })}
+      />
+    )}
     </div>
   </ThreeFiveSevenDealRuntimeMaybe>
   </HolmDealRuntimeMaybe>;
