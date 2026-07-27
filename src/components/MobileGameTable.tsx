@@ -6034,12 +6034,12 @@ export const MobileGameTable = ({
   });
 
   // ── 357: paired pre-refresh / post-refresh pane geometry snapshot ──
-  // Captures every upstream input that feeds the active-hand vertical
-  // contract PLUS measured DOM rects for the region, lower zone, first
-  // card, and STAY/DROP buttons. Persists to `debug_sync_events` as
-  // `357.pane_geometry_snapshot` with a mount marker so the first
-  // post-refresh sample is trivially identifiable and can be compared
-  // 1:1 against the last pre-refresh sample for the same game.
+  // v2: two flat, primitive-only events emitted together per snapshot:
+  //   357.pane_geometry_inputs — upstream render/branch values
+  //   357.pane_geometry_dom    — flat DOM rect numbers
+  // Both share mountId + snapshotSeq for 1:1 pairing. Routed through
+  // persistSyncDebugEvent only; no nested objects, no CSSStyleDeclaration,
+  // no DOMRect, no refs.
   const __paneGeomMountIdRef = useRef<string>('');
   if (!__paneGeomMountIdRef.current) {
     __paneGeomMountIdRef.current = `mnt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -6053,181 +6053,174 @@ export const MobileGameTable = ({
     const raf = requestAnimationFrame(() => {
       try {
         const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
-        const paneContent = document.querySelector<HTMLElement>('[data-357-active-pane-content]');
+        if (!region) return;
         const lowerZone = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
         const stayBtn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
         const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
         const renderSnap = document.querySelector<HTMLElement>('[data-357-render-snap]');
-        const firstCard = region?.querySelector<HTMLElement>('[data-playing-card-root]');
-        const playerHandRoot = region?.querySelector<HTMLElement>('[data-357-player-hand-root]') ?? null;
-        const hudPane = document.querySelector<HTMLElement>('[data-hud-row="pane"]');
-        const hudGrid = document.querySelector<HTMLElement>('[data-canonical-shell-hud-grid]');
-        const identityRow = document.querySelector<HTMLElement>('[data-hud-row="identity"]');
-        const shellRoot = document.querySelector<HTMLElement>('[data-canonical-shell-root]');
-        const shellColumn = document.querySelector<HTMLElement>('[data-canonical-shell-column]');
-        const shellChildren = document.querySelector<HTMLElement>('[data-canonical-shell-children]');
-        const shellSlotContent = document.querySelector<HTMLElement>('[data-canonical-shell-slot-content]');
-        const appRoot = document.getElementById('root');
-        if (!region) return;
-        const roundCssNum = (value: string) => {
-          const parsed = Number.parseFloat(value);
-          return Number.isFinite(parsed) ? Math.round(parsed) : value;
+        const playerHandRoot = region.querySelector<HTMLElement>('[data-357-player-hand-root]');
+        const firstCard = region.querySelector<HTMLElement>('[data-playing-card-root]');
+
+        const attr = (n: HTMLElement | null | undefined, name: string): string | null =>
+          n?.getAttribute(name) ?? null;
+        const num = (v: string | null): number | null => {
+          if (v == null || v === '') return null;
+          const n = Number.parseFloat(v);
+          return Number.isFinite(n) ? n : null;
         };
-        const box = (n: HTMLElement | null | undefined) => {
-          if (!n) return null;
+        const rectFields = (
+          n: HTMLElement | null | undefined,
+          prefix: string,
+        ): Record<string, number | null> => {
+          if (!n) {
+            return {
+              [`${prefix}X`]: null,
+              [`${prefix}Y`]: null,
+              [`${prefix}Width`]: null,
+              [`${prefix}Height`]: null,
+              [`${prefix}Bottom`]: null,
+            };
+          }
           const r = n.getBoundingClientRect();
           return {
-            x: Math.round(r.x), y: Math.round(r.y),
-            top: Math.round(r.top), bottom: Math.round(r.bottom),
-            left: Math.round(r.left), right: Math.round(r.right),
-            w: Math.round(r.width), h: Math.round(r.height),
-            cw: n.clientWidth, ch: n.clientHeight,
+            [`${prefix}X`]: Math.round(r.x),
+            [`${prefix}Y`]: Math.round(r.y),
+            [`${prefix}Width`]: Math.round(r.width),
+            [`${prefix}Height`]: Math.round(r.height),
+            [`${prefix}Bottom`]: Math.round(r.bottom),
           };
         };
-        const styleBox = (n: HTMLElement | null | undefined) => {
-          if (!n) return null;
-          const c = window.getComputedStyle(n);
-          return {
-            height: roundCssNum(c.height),
-            minHeight: roundCssNum(c.minHeight),
-            maxHeight: c.maxHeight === 'none' ? 'none' : roundCssNum(c.maxHeight),
-            display: c.display,
-            flexGrow: c.flexGrow,
-            flexShrink: c.flexShrink,
-            overflow: c.overflow,
-            overflowX: c.overflowX,
-            overflowY: c.overflowY,
-            position: c.position,
-            transform: c.transform === 'none' ? 'none' : c.transform,
-          };
-        };
-        const identify = (n: HTMLElement) => {
-          if (n.id) return `#${n.id}`;
-          const dataName = Array.from(n.attributes).find((a) => a.name.startsWith('data-'))?.name;
-          if (dataName) return `[${dataName}]`;
-          return n.tagName.toLowerCase();
-        };
-        const ancestorChain: Array<{
-          identifier: string;
-          rect: ReturnType<typeof box>;
-          styles: ReturnType<typeof styleBox>;
-          className: string;
-          inlineStyle: string;
-        }> = [];
-        let ancestorCursor: HTMLElement | null = lowerZone;
-        for (let i = 0; i < 24 && ancestorCursor; i += 1) {
-          ancestorChain.push({
-            identifier: identify(ancestorCursor),
-            rect: box(ancestorCursor),
-            styles: styleBox(ancestorCursor),
-            className: (ancestorCursor.className?.toString() || '').slice(0, 240),
-            inlineStyle: ancestorCursor.getAttribute('style') ?? '',
-          });
-          if (ancestorCursor === shellRoot || ancestorCursor === document.body) break;
-          ancestorCursor = ancestorCursor.parentElement;
-        }
-        const attr = (n: HTMLElement | null | undefined, name: string) => n?.getAttribute(name) ?? null;
-        const upstream = {
-          currentRound: attr(region, 'data-357-snap-current-round'),
-          handScaleNum: attr(region, 'data-357-snap-hand-scale'),
-          handReserveNum: attr(region, 'data-357-snap-hand-reserve'),
-          handAvailableHeightPx357: attr(region, 'data-357-snap-hand-avail-h'),
-          reserveClass: attr(region, 'data-357-snap-reserve-class'),
-          cardsLengthOuter: attr(region, 'data-357-snap-cards-length'),
-          isTablet: attr(region, 'data-357-snap-is-tablet'),
-          isDesktop: attr(region, 'data-357-snap-is-desktop'),
-          dealPhase: attr(renderSnap, 'data-357-render-snap-deal-phase'),
-          claimedCount: attr(renderSnap, 'data-357-render-snap-claimed-count'),
-          rawClaimedCount: attr(renderSnap, 'data-357-render-snap-raw-claimed-count'),
-          effectiveCardsCount: attr(renderSnap, 'data-357-render-snap-effective-cards'),
-          baseHandContext: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
-          isStaged: attr(renderSnap, 'data-357-render-snap-is-staged'),
-        };
-        const visualViewport = window.visualViewport ?? null;
-        const visualViewportBottom = (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight);
-        const sig = JSON.stringify({
-          upstream,
-          regionH: box(region)?.h,
-          lowerZoneH: box(lowerZone)?.h,
-          lowerZoneBottom: box(lowerZone)?.bottom,
-          firstCardH: box(firstCard)?.h,
-          stayY: box(stayBtn)?.y,
-          visualViewportBottom: Math.round(visualViewportBottom),
-        });
+
+        // Signature — only primitives.
+        const firstCardRect = firstCard?.getBoundingClientRect() ?? null;
+        const lowerZoneRect = lowerZone?.getBoundingClientRect() ?? null;
+        const stayRect = stayBtn?.getBoundingClientRect() ?? null;
+        const cardsLenAttr = attr(region, 'data-357-snap-cards-length');
+        const dealPhaseAttr = attr(renderSnap, 'data-357-render-snap-deal-phase');
+        const availAttr = attr(region, 'data-357-snap-hand-avail-h');
+        const sig = [
+          cardsLenAttr ?? '',
+          dealPhaseAttr ?? '',
+          availAttr ?? '',
+          firstCardRect ? `${Math.round(firstCardRect.x)}x${Math.round(firstCardRect.y)}x${Math.round(firstCardRect.width)}x${Math.round(firstCardRect.height)}` : '-',
+          lowerZoneRect ? `${Math.round(lowerZoneRect.x)}x${Math.round(lowerZoneRect.y)}x${Math.round(lowerZoneRect.width)}x${Math.round(lowerZoneRect.height)}` : '-',
+          stayRect ? `${Math.round(stayRect.x)}x${Math.round(stayRect.y)}x${Math.round(stayRect.width)}x${Math.round(stayRect.height)}` : '-',
+        ].join('|');
         if (__paneGeomLastSigRef.current === sig) return;
         __paneGeomLastSigRef.current = sig;
         const seq = ++__paneGeomSeqRef.current;
-        const payload = {
-          seq,
-          mountId: __paneGeomMountIdRef.current,
+
+        const mountId = __paneGeomMountIdRef.current;
+        const capturedAt = Date.now();
+        const roundIdVal = horsesRoundId ?? null;
+        const roundNumberVal = num(attr(region, 'data-357-snap-current-round'));
+        const dealerGameIdVal = horsesDealerGameId ?? null;
+
+        const owner = evaluateLowerZoneOwner();
+
+        // Event 1 — upstream inputs (flat primitives only).
+        const inputsPayload: Record<string, string | number | boolean | null> = {
+          snapshotVersion: 2,
+          mountId,
+          snapshotSeq: seq,
           isFirstAfterMount: seq === 1,
-          tSinceMountMs: Math.round(performance.now()),
-          viewport: {
-            innerWidth: window.innerWidth,
-            innerHeight: window.innerHeight,
-            documentElementClientHeight: document.documentElement.clientHeight,
-            visualViewportHeight: visualViewport?.height ?? null,
-            visualViewportOffsetTop: visualViewport?.offsetTop ?? null,
-            visualViewportScale: visualViewport?.scale ?? null,
-            visualViewportBottom,
-            scrollY: window.scrollY,
-            bodyScrollHeight: document.body.scrollHeight,
-            documentElementScrollHeight: document.documentElement.scrollHeight,
-            dpr: window.devicePixelRatio,
-          },
-          upstream,
-          rects: {
-            appRoot: box(appRoot),
-            shellRoot: box(shellRoot),
-            shellColumn: box(shellColumn),
-            shellChildren: box(shellChildren),
-            shellSlotContent: box(shellSlotContent),
-            hudGrid: box(hudGrid),
-            region: box(region),
-            paneContent: box(paneContent),
-            hudPane: box(hudPane),
-            identityRow: box(identityRow),
-            lowerZone: box(lowerZone),
-            playerHandRoot: box(playerHandRoot),
-            firstCard: box(firstCard),
-            stayBtn: box(stayBtn),
-            dropBtn: box(dropBtn),
-          },
-          ancestorChain,
-          firstCardTag: firstCard?.tagName ?? null,
-          firstCardClass: (firstCard?.className?.toString() || '').slice(0, 200),
-          firstCardStyle: firstCard
-            ? {
-                w: window.getComputedStyle(firstCard).width,
-                h: window.getComputedStyle(firstCard).height,
-                ml: window.getComputedStyle(firstCard).marginLeft,
-              }
+          capturedAt,
+          gameId,
+          dealerGameId: dealerGameIdVal,
+          roundId: roundIdVal,
+          roundNumber: roundNumberVal,
+
+          currentPlayerId: currentPlayer?.id ?? null,
+          expectedCardCount: roundNumberVal != null
+            ? (roundNumberVal === 1 ? 3 : roundNumberVal === 2 ? 5 : roundNumberVal === 3 ? 7 : null)
             : null,
-          regionClass: (region?.className?.toString() || '').slice(0, 200),
-          regionStyle: region?.getAttribute('style') ?? '',
-          playerHandRootClass: (playerHandRoot?.className?.toString() || '').slice(0, 200),
-          playerHandRootStyle: playerHandRoot?.getAttribute('style') ?? '',
-          lowerZoneClass: (lowerZone?.className?.toString() || '').slice(0, 200),
-          lowerZoneStyle: lowerZone?.getAttribute('style') ?? '',
-          authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
+          currentPlayerCardsCount: currentPlayerCards.length,
+          effectiveCardsCount: num(attr(renderSnap, 'data-357-render-snap-effective-cards')),
+          dealPhase: dealPhaseAttr,
+          is357Staged: attr(renderSnap, 'data-357-render-snap-is-staged') === '1',
+          claimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-claimed-count')),
+          rawClaimedCardIdsCount: num(attr(renderSnap, 'data-357-render-snap-raw-claimed-count')),
+          baseHandContextId: attr(renderSnap, 'data-357-render-snap-base-hand-context'),
+
+          handScaleNum: num(attr(region, 'data-357-snap-hand-scale')),
+          handReserveNum: num(attr(region, 'data-357-snap-hand-reserve')),
+          handAvailableHeightPx357: num(availAttr),
+          availableHeightPxPassedToPlayerHand: num(availAttr),
+          currentPlayerHandReserveClass: attr(region, 'data-357-snap-reserve-class'),
+
+          // Explicit branch/path fields — nullable when not tracked at source.
+          use357SelfHandPath: null,
+          renderActiveSelfHandPath: null,
+          playerHandResolverPath: null,
+          playerHandSizeVariant: null,
+
           canDecide: !!canDecide,
           hasDecided: !!hasDecided,
-          horsesHandNumber: horsesHandNumber ?? null,
-          horsesRoundId: horsesRoundId ?? null,
+          renderedLowerZoneOwner: owner.renderedOwner,
+          renderedLowerZoneReason: owner.reason,
+
+          isTablet: attr(region, 'data-357-snap-is-tablet') === '1',
+          isDesktop: attr(region, 'data-357-snap-is-desktop') === '1',
         };
-        void import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
-          persistSyncDebugEvent({
-            gameId,
-            gameType: '3-5-7',
-            handNumber: horsesHandNumber ?? 0,
-            roundId: horsesRoundId ?? null,
-            eventType: 'invariant',
-            severity: 'info',
-            eventName: '357.pane_geometry_snapshot',
-            payload,
-            dedupKey: `${gameId}:invariant:357.pane_geometry_snapshot:${__paneGeomMountIdRef.current}:${seq}`,
-          });
-        }).catch(() => {});
+
+        // Event 2 — DOM measurements (flat number/string primitives only).
+        const vv = window.visualViewport ?? null;
+        const firstCardComputed = firstCard ? window.getComputedStyle(firstCard) : null;
+        const domPayload: Record<string, string | number | boolean | null> = {
+          snapshotVersion: 2,
+          mountId,
+          snapshotSeq: seq,
+          isFirstAfterMount: seq === 1,
+          capturedAt,
+          gameId,
+          dealerGameId: dealerGameIdVal,
+          roundId: roundIdVal,
+          roundNumber: roundNumberVal,
+
+          windowInnerWidth: window.innerWidth,
+          windowInnerHeight: window.innerHeight,
+          documentClientWidth: document.documentElement.clientWidth,
+          documentClientHeight: document.documentElement.clientHeight,
+          visualViewportWidth: vv ? Math.round(vv.width) : null,
+          visualViewportHeight: vv ? Math.round(vv.height) : null,
+          visualViewportOffsetTop: vv ? Math.round(vv.offsetTop) : null,
+          visualViewportScale: vv ? vv.scale : null,
+          windowScrollY: Math.round(window.scrollY),
+
+          ...rectFields(document.querySelector<HTMLElement>('[data-357-active-pane-content]'), 'activePane'),
+          ...rectFields(region, 'activeHandRegion'),
+          ...rectFields(playerHandRoot, 'handContainer'),
+          ...rectFields(firstCard, 'firstCard'),
+          firstCardMarginLeft: firstCardComputed ? firstCardComputed.marginLeft : null,
+          firstCardTransform: firstCardComputed ? (firstCardComputed.transform === 'none' ? 'none' : firstCardComputed.transform) : null,
+          ...rectFields(lowerZone, 'lowerZone'),
+          ...rectFields(stayBtn, 'stayButton'),
+          ...rectFields(dropBtn, 'dropButton'),
+        };
+
+        // Route both through persistSyncDebugEvent — no direct supabase writes.
+        persistSyncDebugEvent({
+          gameId,
+          gameType: '3-5-7',
+          handNumber: horsesHandNumber ?? 0,
+          roundId: roundIdVal,
+          eventType: 'invariant',
+          severity: 'info',
+          eventName: '357.pane_geometry_inputs',
+          payload: inputsPayload,
+          dedupKey: `${gameId}:357.pane_geometry_inputs:${mountId}:${seq}`,
+        });
+        persistSyncDebugEvent({
+          gameId,
+          gameType: '3-5-7',
+          handNumber: horsesHandNumber ?? 0,
+          roundId: roundIdVal,
+          eventType: 'invariant',
+          severity: 'info',
+          eventName: '357.pane_geometry_dom',
+          payload: domPayload,
+          dedupKey: `${gameId}:357.pane_geometry_dom:${mountId}:${seq}`,
+        });
       } catch { /* diagnostic-only */ }
     });
     return () => cancelAnimationFrame(raf);
