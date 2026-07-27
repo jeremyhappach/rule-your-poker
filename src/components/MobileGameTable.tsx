@@ -13618,9 +13618,16 @@ export const MobileGameTable = ({
 
                     return (
                       <div className={cn(
-                        "flex flex-col items-center w-full",
+                        // `flex-1 min-h-0` lets this column occupy the full
+                        // pane-content height (parent `data-357-active-pane-content`
+                        // is `flex flex-col h-full`) so the child hand-region
+                        // has a real height to expand into and the
+                        // bottom-anchored `data-active-hand-lower-zone` stays
+                        // inside pane overflow after cold hydration.
+                        "flex flex-col items-center w-full flex-1 min-h-0",
                         gameType !== "holm-game" ? "gap-0" : "gap-0",
                       )}>
+
 
 
                         {showDealerSelectionCards ? (
