@@ -6046,6 +6046,17 @@ export const MobileGameTable = ({
   }
   const __paneGeomSeqRef = useRef(0);
   const __paneGeomLastSigRef = useRef<string | null>(null);
+  // Diagnostic-only snapshot of last renderActiveSelfHand values. Written
+  // during render inside renderActiveSelfHand; read by the pane-geometry
+  // effect. No DOM node, no layout participation.
+  const __renderSnapRef = useRef<{
+    dealPhase: string;
+    effectiveCardsCount: number;
+    is357Staged: boolean;
+    claimedCardIdsCount: number;
+    rawClaimedCardIdsCount: number;
+    baseHandContextId: string;
+  } | null>(null);
   useEffect(() => {
     if (!__is357GameType(gameType)) return;
     if (!gameId) return;
