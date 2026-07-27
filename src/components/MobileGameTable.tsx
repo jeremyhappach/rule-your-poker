@@ -13718,9 +13718,27 @@ export const MobileGameTable = ({
                           // but the same PlayerHand instance persists.
                           <div
                             className={cn(
-                              "flex items-center justify-center",
-                              currentPlayerHandReserveClass,
-                              gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
+                              // GEO-LAB ALIGNMENT CONTRACT:
+                              // The hand-region fills the pane column
+                              // MINUS the bottom-anchored action row
+                              // (data-active-hand-lower-zone, `mt-auto
+                              // flex-shrink-0`). `flex-1 min-h-0` gives
+                              // us a real hand-only region whose height
+                              // = pane-h − action-row-h. `items-center`
+                              // then centers the un-scaled card layout
+                              // box inside that region — matching the
+                              // Geo Lab "Active Player Area: vertical
+                              // center" setting for 3, 5, and 7 cards.
+                              // The former `min-h-[NNN]` floor is
+                              // preserved only as a diagnostic data
+                              // attribute; applying it as CSS caused
+                              // R1's 3-card fan to push the action row
+                              // past the pane's overflow clip after
+                              // cold hydration (short viewport), which
+                              // is why sleep/wake — a
+                              // visualViewport/dvh recompute — was the
+                              // only event that restored the buttons.
+                              "flex items-center justify-center flex-1 min-h-0 w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
                             data-357-snap-current-round={currentRound ?? ''}
@@ -13736,11 +13754,24 @@ export const MobileGameTable = ({
 
                             <div
                               className={cn(
-                                `transform ${currentPlayerHandScaleClass} origin-top`,
+                                // origin-center: the transform scales the
+                                // un-scaled card layout box AROUND its
+                                // vertical center — combined with
+                                // `items-center` on the hand-region, the
+                                // visually scaled fan is symmetric
+                                // around the hand-only region's midline.
+                                // Previously `origin-top` scaled downward
+                                // from the layout-box top, so the scaled
+                                // visual bottom (≈ 2.4× card height for
+                                // R1) extended past the region floor and
+                                // overlapped the action row despite
+                                // ample unused space above.
+                                `transform ${currentPlayerHandScaleClass} origin-center`,
                                 isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
                                 (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' || holmSelfFoldedLatched ? 'opacity-40 grayscale-[30%]' : '',
                                 currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
+
                             >
                               {(() => {
                                 const renderActiveSelfHand = (effectiveCards: CardType[], dealPhase: string, boundary: {
