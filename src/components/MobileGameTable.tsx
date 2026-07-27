@@ -105,6 +105,7 @@ import {
 } from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import {
   recordShellMount,
   recordShellUnmount,
@@ -5784,18 +5785,17 @@ export const MobileGameTable = ({
       authoritativeDecisionIdentityKey: authoritativeDecisionIdentityKey ?? null,
     };
     Promise.resolve().then(() => {
-      void __mgtSupabase
-        .from('debug_sync_events' as any)
-        .insert({
-          game_id: gameId,
-          game_type: '3-5-7',
-          hand_number: horsesHandNumber ?? 0,
-          round_id: lowerZoneTraceRoundId,
-          event_type: 'invariant',
-          severity: 'info',
-          event_name: '357.lower_zone_render',
-          payload,
-        } as any);
+      persistSyncDebugEvent({
+        gameId,
+        gameType: '3-5-7',
+        handNumber: horsesHandNumber ?? 0,
+        roundId: lowerZoneTraceRoundId,
+        eventType: 'invariant',
+        severity: 'info',
+        eventName: '357.lower_zone_render',
+        payload,
+        dedupKey: `${gameId}:invariant:357.lower_zone_render:${horsesHandNumber ?? 0}:${renderSeq}`,
+      });
     });
   };
   __useWartimeStateWrite({
