@@ -5928,6 +5928,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
+  // Feed the 357-clear-instrumentation snapshot ref with the latest
+  // render-scope values. Read by emit357ClearEvent(...) — see helper above.
+  clearSnapshotRef.current = {
+    game,
+    currentRound,
+    playerCards,
+    playerCardsIdentity,
+    cardStateContext,
+    userId: user?.id ?? null,
+  };
+
   // Populate the late refs read by the mobile-active-tab observer above
   // (declared at the top of Game for stable-hook order).
   useEffect(() => {
