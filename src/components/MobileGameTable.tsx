@@ -13588,14 +13588,8 @@ export const MobileGameTable = ({
                                   // into a ref so the pane-geometry effect can
                                   // read them without a DOM node. This does
                                   // not alter layout/hierarchy/refs.
-                                  __renderSnapRef.current = {
-                                    dealPhase,
-                                    effectiveCardsCount: effectiveCards.length,
-                                    is357Staged,
-                                    claimedCardIdsCount: boundary.claimedCardIds.length,
-                                    rawClaimedCardIdsCount: boundary.rawClaimedCardIds.length,
-                                    baseHandContextId: boundary.baseHandContextId,
-                                  };
+                                  // (diagnostic __renderSnapRef write removed)
+
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
