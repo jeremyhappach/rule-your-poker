@@ -125,9 +125,26 @@ describe('cribbage pegging — Hap/bot dead-end Go repro (2 players)', () => {
     expect(s.pegging.goCalledBy).toEqual([]);
     expect(s.pegging.lastToPlay).toBeNull();
 
+    // IMMEDIATE-GO PRESENTATION LATCH: pendingGoBubblePlayerIds must
+    // include the blocked opponent (bot) even though goCalledBy has
+    // been cleared by beginNewPeggingRun in the same reducer.
+    expect(s.pegging.pendingGoBubblePlayerIds).toEqual(['bot']);
+
     expect(s.playerStates.hap.hand.map(c => c.rank)).toEqual(['K', 'J']);
     expect(s.playerStates.bot.hand.map(c => c.rank)).toEqual(['Q', 'K', 'J']);
   });
+
+  it('immediate-Go bubble latch clears when the new run leader plays a card', () => {
+    // Reproduce the terminal Hap/bot Go from the prior test, then bot
+    // (new leader) plays their first card. The latch must clear.
+    let s = setup();
+    s = playPeggingCard(s, 'hap', 0); // Q → 28
+    s = playPeggingCard(s, 'hap', 0); // A → 29 → immediate Go
+    expect(s.pegging.pendingGoBubblePlayerIds).toEqual(['bot']);
+
+    // Bot leads the new run — play the Q (index 0).
+    s = playPeggingCard(s, 'bot', 0);
+    expect(s.pegging.pendingGoBubblePlayerIds).toBeUndefined();
 
   it('manual callGo remains callable if the current turn player has no playable card', () => {
     // Bootstrap the same 28-count situation but leave bot as
