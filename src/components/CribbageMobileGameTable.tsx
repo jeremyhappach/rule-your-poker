@@ -44,6 +44,7 @@ import { traceCribbageScoring } from '@/lib/cribbage/cribbageScoringTrace';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
+import { CribbagePeggingGoBubble } from './CribbagePeggingGoBubble';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from '@/lib/cribbageDealerDrawTrace';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
