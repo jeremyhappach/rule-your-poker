@@ -8027,51 +8027,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const fetchStartedAt = Date.now();
-    const fetchGenerationId = fetchSeq;
-    const fetchTraceKnownGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? null;
-    const fetchTraceGameIdForPersist = gameId ?? '00000000-0000-0000-0000-000000000000';
-    const is357FetchTraceType = (value: unknown): boolean =>
-      value === '3-5-7' || value === '357' || value === '3-5-7-game';
-    const shouldPersist357FetchTrace = !fetchTraceKnownGameType || is357FetchTraceType(fetchTraceKnownGameType);
-    const fetchTraceSessionKey = `${fetchTraceGameIdForPersist}:${BUILD_IDENTITY.buildSha}`;
-    if (shouldPersist357FetchTrace) {
-      // Idempotent per key — ensures ack accounting is scoped to THIS
-      // Game mount even if the cold_mount fetch fires before the
-      // heartbeat useEffect (which is gated on is357GameType).
-      beginFetchTraceSession(fetchTraceSessionKey);
-    }
-
-    if (shouldPersist357FetchTrace) {
-      persistSyncDebugEvent({
-        gameId: fetchTraceGameIdForPersist,
-        gameType: fetchTraceKnownGameType ?? 'unknown',
-        handNumber: game?.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.invocation',
-        dedupKey: `357.fetch.invocation:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          fetchStartedAt,
-          gameId: gameId ?? null,
-          gameIdPresent: !!gameId,
-          knownGameType: fetchTraceKnownGameType,
-          playerCardsLengthAtInvocation: playerCards.length,
-          fetchTokenAtInvocation: cardFetchTokenRef.current ?? 0,
-          clientBuildId: BUILD_IDENTITY.buildSha,
-          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-        },
-        onResult: (ok, reason) => {
-          markInvocationAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
-        },
-      });
-    }
-
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
+
 
     type FetchTraceOutcome =
       | 'returned_no_game_id'
