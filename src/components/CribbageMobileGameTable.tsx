@@ -119,10 +119,9 @@ import {
   hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
 } from '@/lib/cribbage/cribbageRenderGuards';
-
+import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
 
 import {
-import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
   checkCribbageResultRenderMismatch,
