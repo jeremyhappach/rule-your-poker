@@ -73,6 +73,14 @@ export interface ActiveHandFanRenderContext {
   tier: CardFrontTierKey;
   /** Convenience: `PlayingCard` node with the shared physical shell applied. */
   card_node: ReactNode;
+  /**
+   * Builder that produces the same canonical `<PlayingCard/>` node as
+   * `card_node`, optionally with a face-level highlight (see
+   * PlayingCard's `highlight` prop). Prefer this over wrapping
+   * `card_node` in an external ring: the highlight renders inside the
+   * card face so its corners always match the true card silhouette.
+   */
+  buildCardNode: (opts?: { highlight?: 'gold' | null }) => ReactNode;
 }
 
 export interface ActiveHandFanProps {
@@ -498,18 +506,20 @@ export function ActiveHandFan({
           const wrapperTransform = applyFan
             ? `rotate(${rotationDeg.toFixed(3)}deg)`
             : undefined;
-          const cardNode = (
+          const buildCardNode = (opts?: { highlight?: 'gold' | null }) => (
             <PlayingCard
               card={card}
               tier={tier}
               activeHandShell
               faceFillPx={effectiveLayout.cardWidth}
+              highlight={opts?.highlight ?? null}
               style={{
                 width: effectiveLayout.cardWidth,
                 height: effectiveLayout.cardHeight,
               }}
             />
           );
+          const cardNode = buildCardNode();
           const traceCardId = cardIds?.[index] ?? null;
           const renderedActiveCardRenderKey = traceCardId
             ? `${activeHandFanRenderKey ?? 'ActiveHandFan'}|card:${traceCardId}|idx:${index}`
@@ -536,6 +546,7 @@ export function ActiveHandFan({
                   overlapPx: effectiveLayout.overlapPx,
                   tier,
                   card_node: cardNode,
+                  buildCardNode,
                 })}
               </div>
             );
