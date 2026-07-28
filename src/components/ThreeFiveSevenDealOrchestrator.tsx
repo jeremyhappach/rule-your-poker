@@ -161,18 +161,6 @@ export function ThreeFiveSevenDealOrchestrator({
     isTerminalOrStale: false,
   });
   const dispatchedWaveRef = useRef<string | null>(null);
-  // Contract A one-shot latch. On refresh/rejoin, DealRuntime mounts
-  // directly into GAMEPLAY with expectedCount===0. The FIRST wave the
-  // orchestrator observes in that state is a historical (already-dealt)
-  // wave and must be suppressed to prevent replay. But expectedCount
-  // stays 0 for the whole hand under suppression, so a naive gate on
-  // `expectedCount === 0` misclassifies the LIVE R2/R3 waves as
-  // historical too — they never dispatch, cards 4-5/6-7 pop in with
-  // no transport. This latch scopes Contract A to the first wave only;
-  // subsequent waves within the same orchestrator (== same hand) fall
-  // through to the normal dispatch path.
-  const contractAAppliedRef = useRef(false);
-  const contractAHydratedWaveContextRef = useRef<string | null>(null);
   // Tracks per-wave dispatch begin time (used for first_card_visible /
   // full_hand_visible elapsed-time computation). Fire-and-forget only.
   const waveDispatchBeginAtRef = useRef<Map<string, number>>(new Map());
@@ -263,42 +251,15 @@ export function ThreeFiveSevenDealOrchestrator({
         suppressionReason,
       });
     };
-    // Contract A (refresh/rejoin) — Durable canonical gate, ONE-SHOT.
-    // If the host initialized DealRuntime to a non-PRE_DEAL phase AND
-    // no wave has yet accumulated expected cards on this runtime AND
-    // this orchestrator has not yet applied Contract A, the current
-    // wave was already dealt on the server before mount — suppress
-    // dispatch to prevent historical replay. The one-shot latch keeps
-    // subsequent R2/R3 live waves eligible for dispatch even though
-    // `expectedCount` stays 0 after the suppressed R1 (beginWave was
-    // never called for R1, so expectedCount can't grow to distinguish
-    // hydration from a still-untouched runtime).
-    if (
-      deal.phase !== 'PRE_DEAL' &&
-      deal.expectedCount === 0 &&
-      !contractAAppliedRef.current
-    ) {
-      contractAAppliedRef.current = true;
-      contractAHydratedWaveContextRef.current = waveContextId;
+    // Contract A (refresh/rejoin) — Durable canonical gate. If the host
+    // initialized DealRuntime to a non-PRE_DEAL phase AND no wave has
+    // yet accumulated expected cards on this runtime, the current wave
+    // was already dealt on the server before mount — suppress dispatch
+    // to prevent historical replay. `expectedCount === 0` distinguishes
+    // this from live mid-hand wave transitions (r2/r3) where prior
+    // waves have already grown expectedCount > 0.
+    if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
       dispatchedWaveRef.current = waveContextId;
-      // 357.self_deal.refresh_baseline — record hydration baseline
-      // captured from the authoritative selfHand at the moment Contract
-      // A suppressed the first observed wave. Downstream Use357SelfHand
-      // consults this to keep pre-existing hydrated cards visible while
-      // later R2/R3 delta waves transport in.
-      emit357RuntimeDiag('wave_dispatch_decision', {
-        dealerGameId,
-        roundId: roundStr,
-        viewerPlayerId: selfPlayerId,
-      }, {
-        eventTag: '357.self_deal.refresh_baseline',
-        waveContextId,
-        handIdentity,
-        runtimePhase: deal.phase,
-        runtimeExpectedCount: deal.expectedCount,
-        hydratedSelfHandCount: selfHand.length,
-        contractAAppliedForWaveContext: waveContextId,
-      });
       emitDecision('suppress', 'refresh_rejoin_historical_wave_suppressed');
       __emitWartimeChannelSettled({
         identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId: selfPlayerId },
@@ -916,31 +877,9 @@ export function Use357SelfHand<T>({
   // `settled` will never grow. Without this bypass `sourceCards.length > settled`
   // permanently traps the self hand at 0 cards, hiding authoritative
   // playable cards behind the claim-only gate.
-  // ── Hydration baseline (refresh continuity) ──────────────────────
-  // While rendering in passthrough mode (isClaimOnlyRender=false), the
-  // authoritative `sourceCards.length` becomes the visible baseline. If
-  // a later wave (R2 or R3) enters DEALING within the SAME hand, the
-  // baseline lets us preserve the pre-existing cards while cards 4-5 /
-  // 6-7 transport in. Reset on cacheKey (identity boundary) change.
-  const hydrationBaselineRef = useRef<{ cacheKey: string; baseline: number }>({ cacheKey, baseline: 0 });
-  if (hydrationBaselineRef.current.cacheKey !== cacheKey) {
-    hydrationBaselineRef.current = { cacheKey, baseline: 0 };
-  }
   const noWaveEverDispatchedSelf = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
   const isClaimOnlyRender = !!deal && !noWaveEverDispatchedSelf && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
-  // Update baseline whenever the passthrough path is authoritative —
-  // covers both fresh GAMEPLAY handoff after a normal wave AND the
-  // Contract-A refresh window where the runtime mounted directly into
-  // GAMEPLAY with expectedCount===0.
-  if (!isClaimOnlyRender && sourceCards.length > hydrationBaselineRef.current.baseline) {
-    hydrationBaselineRef.current.baseline = sourceCards.length;
-  }
-  const hydrationBaseline = hydrationBaselineRef.current.baseline;
-  // During claim-only render, guarantee already-hydrated indices remain
-  // visible AND new indices reveal as transport settles.
-  const allowed = isClaimOnlyRender
-    ? Math.min(sourceCards.length, hydrationBaseline + settled)
-    : sourceCards.length;
+  const allowed = isClaimOnlyRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   // Canonical two-phase reveal: during DEALING (== claim-only render for
