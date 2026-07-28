@@ -1028,6 +1028,71 @@ const Game = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerCards]);
+
+  // ── 357 non-fetch player-cards clear instrumentation ──────────────────
+  // Ref snapshot updated during render (see later assignment near currentRound
+  // derivation). Every non-fetch `setPlayerCards([])` call in Game.tsx calls
+  // `emit357ClearEvent(...)` immediately before mutation so the runtime can
+  // attribute which owner cleared 3-5-7 self-hand state during hydration.
+  const clearSeqRef = useRef(0);
+  const clearSnapshotRef = useRef<{
+    game: any; currentRound: any; playerCards: PlayerCards[]; playerCardsIdentity: any;
+    cardStateContext: any; userId: string | null;
+  }>({ game: null, currentRound: null, playerCards: [], playerCardsIdentity: null, cardStateContext: null, userId: null });
+  const emit357ClearEvent = (clearSourceId: string, clearReason: string, clearSourceLine: number) => {
+    try {
+      const snap = clearSnapshotRef.current;
+      const cr: any = snap.currentRound ?? null;
+      const g: any = snap.game ?? null;
+      const uid = snap.userId ?? null;
+      const pcArr = snap.playerCards ?? [];
+      const localSeatCount = uid ? pcArr.filter((c: any) => c && c.user_id === uid).length : 0;
+      const clearSeq = ++clearSeqRef.current;
+      persistSyncDebugEvent({
+        gameId: gameId ?? 'unknown',
+        gameType: '3-5-7',
+        handNumber: g?.total_hands ?? 0,
+        roundId: cr?.id ?? null,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: '357.player_cards.clear',
+        dedupKey: `${gameId ?? 'unknown'}:${clearSourceId}:${clearSeq}:${Date.now()}`,
+        payload: {
+          clearSeq,
+          clearSourceId,
+          clearSourceLine,
+          clearReason,
+          gameId: gameId ?? null,
+          clientBuildId: BUILD_IDENTITY.buildSha,
+          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+          currentPlayerCardsStateLength: pcArr.length,
+          currentPlayerCardsLocalSeatCount: localSeatCount,
+          currentPlayerId: uid,
+          gameStatus: g?.status ?? null,
+          gameCurrentGameUuid: g?.current_game_uuid ?? null,
+          gameCurrentRound: g?.current_round ?? null,
+          gameTotalHands: g?.total_hands ?? null,
+          gameAwaitingNextRound: g?.awaiting_next_round ?? null,
+          currentRoundId: cr?.id ?? null,
+          currentRoundDealerGameId: cr?.dealer_game_id ?? null,
+          currentRoundHandNumber: cr?.hand_number ?? null,
+          currentRoundNumber: cr?.round_number ?? null,
+          currentRoundStatus: cr?.status ?? null,
+          playerCardsIdentityDealerGameId: snap.playerCardsIdentity?.dealerGameId ?? null,
+          playerCardsIdentityHandNumber: snap.playerCardsIdentity?.handNumber ?? null,
+          playerCardsIdentityRoundId: snap.playerCardsIdentity?.roundId ?? null,
+          authoritativeDecisionIdentityKey: null,
+          handContextId:
+            snap.playerCardsIdentity?.handContextId ??
+            g?.hand_context_id ??
+            null,
+          documentVisibilityState: typeof document !== 'undefined' ? document.visibilityState : null,
+          documentHasFocus: typeof document !== 'undefined' ? document.hasFocus() : null,
+          capturedAt: new Date().toISOString(),
+        },
+      });
+    } catch { /* fire-and-forget */ }
+  };
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   useStartupRenderTrace('Game', {
