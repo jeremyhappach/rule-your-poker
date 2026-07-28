@@ -6,7 +6,10 @@ import {
   type EligiblePlayer,
 } from "./threeFiveSeven/advanceRound";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
-import { detectAndSettleInstantWin357 } from "./threeFiveSeven/detectAndSettleInstantWin";
+// detectAndSettleInstantWin357 was retired from the R1 seam path — the
+// instant-357 sweep is now settled inside the `advance_357_round` RPC
+// transaction. The helper remains available for the legacy bootstrap
+// deal path in `startRound`, imported lazily there if needed.
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
   // isTargetedWartimePreflightReadyForHarness — no longer imported here; caller owns preflight
