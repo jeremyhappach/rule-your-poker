@@ -8196,6 +8196,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           setPlayerCardsCalled: fetchTraceState.setPlayerCardsCalled,
           playerCardsLengthBefore: fetchTraceState.playerCardsLengthBefore,
           playerCardsLengthAfter: fetchTraceState.playerCardsLengthAfter,
+          clientBuildId: BUILD_IDENTITY.buildSha,
+          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+        },
+        onResult: (ok, reason) => {
+          markOutcomeAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     };
