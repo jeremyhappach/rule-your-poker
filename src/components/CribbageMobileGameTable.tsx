@@ -8366,7 +8366,7 @@ export const CribbageMobileGameTable = ({
                                 className={cn(
                                   idx > 0 ? 'absolute' : '',
                                   isFinalWinner && idx === stack.length - 1
-                                    ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                                    ? CRIBBAGE_CARD_HIGHLIGHT_GOLD
                                     : ''
                                 )}
                                 style={idx > 0 ? {
@@ -8518,16 +8518,17 @@ export const CribbageMobileGameTable = ({
                     new Map(activeSeatPlayers.map(p => [p.id, p.position]))
                   }
                   localPlayerId={currentPlayerId}
-                  // Only suppress when the counting overlay has replaced
-                  // the pegging fan. thirtyOneDelayActive is NOT a
-                  // suppressor: on a 31 the authoritative reducer clears
-                  // goCalledBy (no bubble anyway); during an immediate-Go
-                  // award neither delay is active — the bubble must render.
+                  // Local-player Go bubble presentation was removed by
+                  // contract; `localPlayerId` is still passed so the
+                  // component can filter out the local id from the
+                  // remote render set. Suppression logic below is
+                  // unchanged: only counting overlay replaces pegging.
                   isPeggingPresentation={
                     gameplayRenderState.phase === 'pegging' &&
                     !(countingStateSnapshot && !countingDelayActive)
                   }
                 />
+
 
 
 

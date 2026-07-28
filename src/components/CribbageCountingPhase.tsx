@@ -1623,7 +1623,7 @@ export const CribbageCountingPhase = ({
                       data-combo-member={comboIds.has(cardId) ? 'true' : 'false'}
                       className={`transition-all duration-300 ${
                         highlighted
-                          ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                          ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
                           : ''
                       }`}
                       style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
@@ -1663,7 +1663,7 @@ export const CribbageCountingPhase = ({
                   }
                   className={`transition-all duration-300 ${
                     isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring'
-                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                      ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
                       : ''
                   }`}
                 >
