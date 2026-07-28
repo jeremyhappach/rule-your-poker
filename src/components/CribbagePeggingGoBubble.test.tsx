@@ -104,7 +104,7 @@ describe('CribbagePeggingGoBubble presentation', () => {
     await new Promise(r => requestAnimationFrame(() => r(null)));
     const bubbles = await screen.findAllByText('Go');
     expect(bubbles.length).toBe(1);
-    expect(document.querySelector('[data-chip-center="2"] [data-cribbage-go-bubble]')).not.toBeNull();
+    expect(document.querySelector('[data-cribbage-go-bubble="2"]')).not.toBeNull();
   });
 
   it('renders bubble during the IMMEDIATE-Go resolution (pendingGoBubblePlayerIds latch)', async () => {
