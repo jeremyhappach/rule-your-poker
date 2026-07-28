@@ -3024,40 +3024,11 @@ async function advance357RoundAtomic(
   }
   const result = (rpcData ?? { status: 'unknown' }) as { status: string; round_id?: string };
 
-  // R1 seam post-processing: ante audit trail + instant-357 detection.
-  // Both are gated on a fresh advance so retries do not double-record.
-  if (nextRoundNumber === 1 && result.status === 'advanced' && result.round_id) {
-    try {
-      const { data: eligible } = await supabase
-        .from('players')
-        .select('id, user_id, is_bot, profiles(username), created_at')
-        .eq('game_id', gameId)
-        .neq('status', 'left')
-        .neq('status', 'observer')
-        .eq('sitting_out', false);
-      const anteChipChanges: Record<string, number> = {};
-      for (const p of eligible ?? []) anteChipChanges[p.id] = -anteAmount;
-      if (anteAmount > 0 && Object.keys(anteChipChanges).length > 0) {
-        await recordGameResult(
-          gameId, handNumberForRpc, null, 'Ante',
-          `${Object.keys(anteChipChanges).length} players anted $${anteAmount}`,
-          0, anteChipChanges, false, '357', dealerGameId,
-        );
-      }
-    } catch (e) {
-      console.error('[ADVANCE_357] ante audit record failed:', e);
-    }
-
-    try {
-      await detectAndSettleInstantWin357({
-        gameId, roundId: result.round_id,
-        handNumber: handNumberForRpc, dealerGameId,
-      });
-    } catch (e) {
-      console.error('[ADVANCE_357] instant-win detection failed:', e);
-    }
-  }
-
+  // R1 seam consequences (ante audit game_results row AND instant-357
+  // detection + full sweep settlement) are now committed inside the
+  // `advance_357_round` RPC transaction. No browser callback is required
+  // after the RPC returns — if the client disconnects immediately, the
+  // authoritative state is still complete.
   return result;
 }
 
