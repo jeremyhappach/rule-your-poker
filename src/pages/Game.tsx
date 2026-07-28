@@ -1853,52 +1853,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }
 
-  // ── 3-5-7 fetch-trace mount heartbeat ─────────────────────────
-  // Emits ONE 357.fetch.instrumentation_loaded event per mounted
-  // 3-5-7 Game instance from this exact module (same source file
-  // that owns 357.fetch.entry / .card_gate / .round_resolution).
-  // If this event lands, the deployed bundle physically contains
-  // the fetch-trace code. If it does not land, the SNAP pill will
-  // show FETCH TRACE FAILED — proving the runtime is not on the
-  // instrumented build BEFORE another repro is requested.
-  const fetchTraceHeartbeatKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!is357GameType || !gameId) return;
-    const key = `${gameId}:${BUILD_IDENTITY.buildSha}`;
-    if (fetchTraceHeartbeatKeyRef.current === key) return;
-    fetchTraceHeartbeatKeyRef.current = key;
-    // Begin a per-mount fetch-trace session so ack accounting reflects
-    // THIS Game instance only. Idempotent per key. Invocation/outcome
-    // acks that arrive tagged with a stale sessionKey are ignored by
-    // the module, so a natural cold_mount fetch always promotes READY
-    // for the current mount without needing a page refresh.
-    beginFetchTraceSession(key);
-    persistSyncDebugEvent({
-      gameId,
-      gameType: '3-5-7',
-      handNumber: 0,
-      roundId: null,
-      eventType: 'invariant',
-      severity: 'info',
-      eventName: '357.fetch.instrumentation_loaded',
-      dedupKey: `357.fetch.instrumentation_loaded:${key}`,
-      payload: {
-        clientBuildId: BUILD_IDENTITY.buildSha,
-        clientBuildIdShort: BUILD_IDENTITY.buildShaShort,
-        buildTimestamp: BUILD_IDENTITY.buildTimestamp,
-        deploymentId: BUILD_IDENTITY.deploymentId || null,
-        bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-        fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-        gameId,
-        gameType: game?.game_type ?? null,
-        mountedAt: new Date().toISOString(),
-        sessionKey: key,
-      },
-      onResult: (ok, reason) => {
-        markHeartbeatResult(key, ok, ok ? null : (reason ?? 'unknown'));
-      },
-    });
-  }, [is357GameType, gameId, game?.game_type]);
+  // 3-5-7 fetch-trace mount heartbeat removed.
+
 
 
   const threeFiveSevenPlayers = useMemo(() => {
