@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
+import {
+  buildAdvance357CardAssignments,
+  cardsDealtForRound,
+  type EligiblePlayer,
+} from "./threeFiveSeven/advanceRound";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
@@ -2906,7 +2911,150 @@ export async function proceedToNextRound(gameId: string) {
     return;
   }
 
-  // Start the next round
+  // ATOMIC ROUND-TRANSITION PATH
+  // ----------------------------
+  // R2 and R3 destinations flow through `advance_357_round` (server-side
+  // atomic RPC). Round-only fold semantics: the destination roster is
+  // every non-left / non-observer / non-sitting_out player, regardless of
+  // prior-round decision. Round row, player reset, and player_cards
+  // commit together — no partial shells can survive a disconnect.
+  //
+  // The R3 → next-hand-R1 seam is NOT yet routed through the RPC because
+  // it still relies on the legacy `startRound` path for harness override
+  // and instant-357 detection. That path already deals to every eligible
+  // player (a fold in the prior R3 does not exclude the player) so the
+  // fold-semantics rule is preserved; the remaining work there is pure
+  // atomicity, to be delivered in a follow-up wedge.
+  const nextRoundNumber = game.next_round_number;
+  if (nextRoundNumber === 2 || nextRoundNumber === 3) {
+    try {
+      const advanced = await advance357RoundAtomic(gameId, nextRoundNumber);
+      console.log('[PROCEED_NEXT_ROUND] Atomic advance result:', advanced);
+      return;
+    } catch (err) {
+      console.error('[PROCEED_NEXT_ROUND] Atomic advance FAILED, falling back to legacy startRound:', err);
+      // Fall through to legacy path only as a defense-in-depth escape hatch.
+    }
+  }
+
+  // Legacy path (R3 → next-hand R1 today; error fallback for R2/R3).
   await startRound(gameId, game.next_round_number);
   console.log('[PROCEED_NEXT_ROUND] Successfully started round', game.next_round_number);
+}
+
+/**
+ * Atomic 3-5-7 round-transition orchestrator. Builds authoritative card
+ * assignments client-side and commits them via `advance_357_round`.
+ *
+ * Roster rule (round-only fold semantics): every player where
+ *   game_id matches AND status NOT IN ('left','observer') AND sitting_out = false
+ * is included, regardless of prior-round `current_decision`.
+ */
+async function advance357RoundAtomic(
+  gameId: string,
+  nextRoundNumber: 2 | 3,
+): Promise<{ status: string; round_id?: string }> {
+  const { data: game, error: gameErr } = await supabase
+    .from('games')
+    .select('id, current_game_uuid, total_hands, ante_amount, game_type, pot')
+    .eq('id', gameId)
+    .single();
+  if (gameErr || !game) {
+    throw new Error(`advance357:game_fetch_failed: ${gameErr?.message ?? 'no row'}`);
+  }
+  const dealerGameId = game.current_game_uuid;
+  if (!dealerGameId) throw new Error('advance357:no_dealer_game_uuid');
+  const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+
+  // Eligible roster. Round-only fold semantics: decision from previous round
+  // is intentionally NOT read.
+  const { data: rawPlayers, error: playersErr } = await supabase
+    .from('players')
+    .select('id, position, status, sitting_out')
+    .eq('game_id', gameId)
+    .order('position');
+  if (playersErr || !rawPlayers) {
+    throw new Error(`advance357:players_fetch_failed: ${playersErr?.message ?? 'no rows'}`);
+  }
+  const eligible: EligiblePlayer[] = rawPlayers
+    .filter((p) => (p as any).status !== 'left' && (p as any).status !== 'observer' && !p.sitting_out)
+    .map((p) => ({ id: p.id, position: p.position ?? 0 }));
+
+  if (eligible.length < 1) {
+    throw new Error('advance357:no_eligible_players');
+  }
+
+  // Previous-round cards (R1 for R2 destination, R2 for R3 destination).
+  const previousRoundNumber = nextRoundNumber - 1;
+  const { data: prevRound, error: prevRoundErr } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('dealer_game_id', dealerGameId)
+    .eq('hand_number', handNumber)
+    .eq('round_number', previousRoundNumber)
+    .maybeSingle();
+  if (prevRoundErr || !prevRound) {
+    throw new Error(`advance357:prev_round_missing: ${prevRoundErr?.message ?? 'no row'}`);
+  }
+  const { data: prevCards, error: prevCardsErr } = await supabase
+    .from('player_cards')
+    .select('player_id, cards')
+    .eq('round_id', prevRound.id);
+  if (prevCardsErr) {
+    throw new Error(`advance357:prev_cards_fetch_failed: ${prevCardsErr.message}`);
+  }
+  const previousRoundCards = new Map<string, Card[]>();
+  const dealtSoFar: Card[] = [];
+  for (const row of prevCards ?? []) {
+    const cards = row.cards as unknown as Card[];
+    previousRoundCards.set(row.player_id, cards);
+    dealtSoFar.push(...cards);
+  }
+
+  // Every eligible player MUST have prior cards for an R2/R3 destination.
+  // This holds because prior-round card rows are only inserted at that
+  // hand's R1 for the same eligible cohort. If somehow missing, the
+  // pure helper will throw a defensive error and we bail.
+  for (const p of eligible) {
+    if (!previousRoundCards.has(p.id)) {
+      throw new Error(`advance357:no_prev_cards_for_eligible_player:${p.id}`);
+    }
+  }
+
+  // Build a fresh deck excluding cards already in play this hand.
+  let deck = shuffleDeck(createDeck()).filter(
+    (c) => !dealtSoFar.some((d) => d.rank === c.rank && d.suit === c.suit),
+  );
+
+  const assignments = buildAdvance357CardAssignments({
+    nextRoundNumber,
+    eligiblePlayers: eligible,
+    previousRoundCards,
+    deck,
+  });
+
+  // Timer for destination round.
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('decision_timer_seconds')
+    .eq('game_type', '3-5-7')
+    .maybeSingle();
+  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
+  const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000).toISOString();
+
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('advance_357_round', {
+    _game_id: gameId,
+    _dealer_game_id: dealerGameId,
+    _next_round_number: nextRoundNumber,
+    _next_hand_number: handNumber,
+    _cards_dealt: cardsDealtForRound(nextRoundNumber),
+    _decision_deadline: deadline,
+    _player_card_assignments: assignments as any,
+    _ante_amount: 0, // R2/R3 charge no ante
+    _three_five_seven_legs_at_start: null,
+  });
+  if (rpcErr) {
+    throw new Error(`advance357:rpc_failed: ${rpcErr.message}`);
+  }
+  return (rpcData ?? { status: 'unknown' }) as { status: string; round_id?: string };
 }

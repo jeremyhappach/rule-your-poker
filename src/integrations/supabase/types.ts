@@ -3016,6 +3016,20 @@ export type Database = {
         Returns: Json
       }
       admin_delete_fake_money_games: { Args: never; Returns: number }
+      advance_357_round: {
+        Args: {
+          _ante_amount: number
+          _cards_dealt: number
+          _dealer_game_id: string
+          _decision_deadline: string
+          _game_id: string
+          _next_hand_number: number
+          _next_round_number: number
+          _player_card_assignments: Json
+          _three_five_seven_legs_at_start: Json
+        }
+        Returns: Json
+      }
       chat_operation_append_boundary_event: {
         Args: {
           _metadata?: Json
