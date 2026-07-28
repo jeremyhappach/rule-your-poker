@@ -8517,6 +8517,7 @@ export const CribbageMobileGameTable = ({
                   playerPositionById={
                     new Map(activeSeatPlayers.map(p => [p.id, p.position]))
                   }
+                  localPlayerId={currentPlayerId}
                   // Only suppress when the counting overlay has replaced
                   // the pegging fan. thirtyOneDelayActive is NOT a
                   // suppressor: on a 31 the authoritative reducer clears
