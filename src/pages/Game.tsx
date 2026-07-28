@@ -8075,7 +8075,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
         },
         onResult: (ok, reason) => {
-          markInvocationAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
+          markInvocationAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     }
