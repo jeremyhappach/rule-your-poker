@@ -90,56 +90,68 @@ describe('cribbage pegging — Hap/bot dead-end Go repro (2 players)', () => {
     });
   };
 
-  it('runs the full sequence and awards Hap +1 for Go with correct event + reset + leader', () => {
+  it('auto-skips the blocked player and holds spotlight on hap; then awards +1 Go when hap is also blocked', () => {
     let s = setup();
 
-    // 1) Hap plays Q (index 0) → count 28
+    // 1) Hap plays Q (index 0) → count 28. Bot has no legal play at 28
+    //    (all 10s), so advanceToNextPeggingTurn auto-adds bot to
+    //    goCalledBy and keeps the spotlight on hap (who can still play
+    //    the Ace). Spotlight never transiently moves to bot.
     s = playPeggingCard(s, 'hap', 0);
     expect(s.pegging.currentCount).toBe(28);
     expect(s.pegging.lastToPlay).toBe('hap');
-    expect(s.pegging.currentTurnPlayerId).toBe('bot');
-
-    // 2) Bot has no playable card at 28 (all 10s) → callGo
-    s = callGo(s, 'bot');
     expect(s.pegging.goCalledBy).toEqual(['bot']);
-    // callGo's allCalledGo branch should NOT have fired (hap still has cards, not in goCalledBy).
-    // Turn must return to Hap so he can play his Ace.
     expect(s.pegging.currentTurnPlayerId).toBe('hap');
-    // No Go point yet — Hap can still play.
+    // No Go point yet — hap still has playable cards.
     expect(s.playerStates.hap.pegScore).toBe(0);
     expect(s.lastEvent).toBeNull();
 
-    // 3) Hap plays A (now index 0 in remaining hand [A, K, J]) → count 29
+    // 2) Hap plays A (index 0 in remaining [A, K, J]) → count 29. Now
+    //    hap has [K, J] — no legal play; bot already in goCalledBy →
+    //    fallback fires: +1 Go to lastToPlay (hap), event go_point,
+    //    count reset, bot leads next run.
     s = playPeggingCard(s, 'hap', 0);
-    expect(s.pegging.currentCount).toBe(29);
-    expect(s.pegging.lastToPlay).toBe('hap');
-    // Per advanceToNextPeggingTurn loop, bot is in goCalledBy → skipped,
-    // hap (still has K, J) is not in goCalledBy → selected.
-    expect(s.pegging.currentTurnPlayerId).toBe('hap');
 
-    // 4) Hap has no playable card at 29 (K, J both 10) → callGo (auto-go)
-    s = callGo(s, 'hap');
-
-    // ── Assertions on Go resolution ──────────────────────────────
-    // +1 awarded to last-to-play (Hap), exactly once.
     expect(s.playerStates.hap.pegScore).toBe(1);
     expect(s.playerStates.bot.pegScore).toBe(0);
 
-    // lastEvent emitted as go_point.
     expect(s.lastEvent?.type).toBe('go_point');
     expect(s.lastEvent?.playerId).toBe('hap');
     expect(s.lastEvent?.points).toBe(1);
     expect(s.lastEvent?.label).toBe('Go');
 
-    // Count reset and bot leads next run (opponent of lastToPlay).
     expect(s.pegging.currentCount).toBe(0);
     expect(s.pegging.currentTurnPlayerId).toBe('bot');
     expect(s.pegging.goCalledBy).toEqual([]);
     expect(s.pegging.lastToPlay).toBeNull();
 
-    // Hap's remaining hand intact (K, J); bot still has Q, K, J.
     expect(s.playerStates.hap.hand.map(c => c.rank)).toEqual(['K', 'J']);
     expect(s.playerStates.bot.hand.map(c => c.rank)).toEqual(['Q', 'K', 'J']);
+  });
+
+  it('manual callGo remains callable if the current turn player has no playable card', () => {
+    // Bootstrap the same 28-count situation but leave bot as
+    // currentTurnPlayerId (i.e., simulate a pre-auto-skip snapshot).
+    // This proves callGo still works for legacy call sites.
+    const s0 = baseState({
+      turnOrder: ['hap', 'bot'],
+      playerStates: {
+        hap: makePlayer('hap', [card('A'), card('K'), card('J')]),
+        bot: makePlayer('bot', [card('Q', 'hearts'), card('K', 'diamonds'), card('J', 'diamonds')]),
+      },
+      pegging: {
+        playedCards: [],
+        currentCount: 28,
+        currentTurnPlayerId: 'bot',
+        lastToPlay: 'hap',
+        goCalledBy: [],
+        sequenceStartIndex: 0,
+      },
+    });
+    const s = callGo(s0, 'bot');
+    expect(s.pegging.goCalledBy).toContain('bot');
+    // advance loop after callGo lands on hap (playable at 28).
+    expect(s.pegging.currentTurnPlayerId).toBe('hap');
   });
 });
 
