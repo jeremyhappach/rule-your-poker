@@ -8569,37 +8569,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerCardsLengthBefore: playerCardsLengthBefore357,
             resolvedRoundId: targetRoundId,
           });
-          if (is357FetchTrace) {
-            persistSyncDebugEvent({
-              gameId: gameId!,
-              gameType: gameData.game_type ?? 'unknown',
-              handNumber: gameData.total_hands ?? 0,
-              roundId: targetRoundId,
-              eventType: 'invariant',
-              severity: 'info',
-              eventName: '357.fetch.players_request',
-              payload: {
-                fetchGenerationId,
-                fetchTrigger,
-                fetchStartedAt,
-                gameId: gameId ?? null,
-                localPlayerId: localPlayerIdForTrace,
-                gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
-                gameDataCurrentRound: gameData.current_round ?? null,
-                gameDataTotalHands: gameData.total_hands ?? null,
-                gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
-                gameDataStatus: gameData.status ?? null,
-                resolvedTargetRoundId: targetRoundId,
-                resolvedTargetDealerGameId: gameData.current_game_uuid ?? null,
-                resolvedTargetHandNumber: gameData.total_hands ?? null,
-                resolvedTargetRoundNumber: roundData.round_number ?? null,
-                resolvedTargetRoundStatus: null,
-                queryTable: 'player_cards',
-                queryRoundId: targetRoundId,
-                queryPlayerIdFilter: null,
-              },
-            });
-          }
+          // (357.fetch.players_request diagnostic removed)
+
 
           const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
             supabase
