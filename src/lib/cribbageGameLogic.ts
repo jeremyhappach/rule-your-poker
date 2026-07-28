@@ -652,25 +652,45 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     return advanceToCounting(state);
   }
   
-  // Find next player who can play or hasn't called go
+  // Find next player who can legally play at the current count. Candidates
+  // that still hold cards but have no legal play are auto-added to
+  // goCalledBy so the spotlight NEVER transiently moves to a blocked
+  // player. This is the authoritative "forced-Go" decision — the
+  // presentation layer derives the Go bubble from goCalledBy.
   const currentId = state.pegging.currentTurnPlayerId;
   const currentIndex = currentId ? state.turnOrder.indexOf(currentId) : -1;
-  
+
+  let goCalledBy = state.pegging.goCalledBy;
   for (let i = 1; i <= state.turnOrder.length; i++) {
     const nextIndex = (currentIndex + i) % state.turnOrder.length;
     const nextPlayerId = state.turnOrder[nextIndex];
     const nextPlayer = state.playerStates[nextPlayerId];
-    
-    if (nextPlayer.hand.length > 0 && !state.pegging.goCalledBy.includes(nextPlayerId)) {
-      return {
-        ...state,
-        pegging: {
-          ...state.pegging,
-          currentTurnPlayerId: nextPlayerId,
-        },
-      };
+
+    if (!nextPlayer || nextPlayer.hand.length === 0) continue;
+    if (goCalledBy.includes(nextPlayerId)) continue;
+
+    if (!hasPlayableCard(nextPlayer.hand, state.pegging.currentCount)) {
+      // Auto-Go: blocked player never receives the spotlight.
+      goCalledBy = [...goCalledBy, nextPlayerId];
+      continue;
     }
+
+    return {
+      ...state,
+      pegging: {
+        ...state.pegging,
+        currentTurnPlayerId: nextPlayerId,
+        goCalledBy,
+      },
+    };
   }
+
+  // No playable next player exists — fall through to the +1 Go / reset
+  // branch below, carrying the auto-Go bookkeeping through so the bubble
+  // remains derivable up to the authoritative reset boundary.
+  const state0 = state;
+  state = { ...state, pegging: { ...state.pegging, goCalledBy } };
+  void state0;
   
   // If everyone else with cards has already called go, the current player (lastToPlay)
   // is entitled to the +1 Go point before the run resets. This is the standard cribbage
