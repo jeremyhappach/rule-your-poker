@@ -3092,6 +3092,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Related state that can keep old cards visible briefly
       setCachedRoundData(null);
       cachedRoundRef.current = null;
+      emit357ClearEvent('game_id_route_change', 'route :gameId changed — reset lifted card caches', 3095);
       setPlayerCards([]);
       setCardStateContext(null);
 
@@ -3121,6 +3122,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearLiftedCardCaches('ENTERED NEW HAND FLOW', { prev, next });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
+      emit357ClearEvent('dealer_config_or_ante_status_reset', 'status transitioned into dealer config screen or ante_decision', 3124);
       setPlayerCards([]);
       setCardStateContext(null);
       maxRevealedRef.current = 0;
@@ -3152,6 +3154,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     clearLiftedCardCaches('IN_PROGRESS WITHOUT ROUND', { status, roundsCount, gameType: game?.game_type });
     setCachedRoundData(null);
     cachedRoundRef.current = null;
+    emit357ClearEvent('in_progress_no_rounds_guard', 'game status=in_progress but zero rounds — anti-stale guard', 3155);
     setPlayerCards([]);
     setCardStateContext(null);
     maxRevealedRef.current = 0;
@@ -3171,6 +3174,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearLiftedCardCaches('GAME TYPE CHANGED', { prevType, currentType });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
+      emit357ClearEvent('game_type_change_layout', 'game_type changed (useLayoutEffect prev != current)', 3174);
       setPlayerCards([]);
       setCardStateContext(null);
       maxRevealedRef.current = 0;
@@ -3237,6 +3241,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearLiftedCardCaches('FORCED CLEAR (dealer config guard)', { status });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
+      emit357ClearEvent('dealer_config_forced_clear', 'dealer config phase had cached card artifacts — forced clear', 3240);
       setPlayerCards([]);
       setCardStateContext(null);
       maxRevealedRef.current = 0;
@@ -3291,6 +3296,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearLiftedCardCaches('DEALER_GAME_ID_CHANGED', { prevDealerGameId, currentDealerGameId });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
+      emit357ClearEvent('dealer_game_id_change', 'games.current_dealer_game_id rotated — cross-dealer-game contamination guard', 3294);
       setPlayerCards([]);
       setCardStateContext(null);
       maxRevealedRef.current = 0;
@@ -3527,6 +3533,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             } : null);
             
             // Clear all card state for this client
+            emit357ClearEvent('realtime_game_type_change', 'realtime games UPDATE payload changed game_type', 3530);
             setPlayerCards([]);
             setCardStateContext(null);
             setCachedRoundData(null);
@@ -3569,6 +3576,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             lastKnownRoundRef.current = incomingRound;
             
             // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
+            emit357ClearEvent('realtime_round_change', 'realtime games UPDATE current_round differs from local — hand boundary hard clear', 3572);
             setPlayerCards([]);
             setCardStateContext(null);
             persistSyncDebugEvent({
@@ -3647,6 +3655,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               if (shouldClearCardState) {
                 console.log('[REALTIME] 🧹 NEW GAME SETUP DETECTED - CLEARING ALL CARD STATE!');
+                emit357ClearEvent('realtime_new_game_setup', 'realtime detected fresh setup status (game_selection/configuring/ante_decision/dealer_selection)', 3650);
                 setPlayerCards([]);
                 setCardStateContext(null);
                 setCachedRoundData(null);
@@ -4203,6 +4212,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
             setCachedRoundData(null);
             cachedRoundRef.current = null;
+            emit357ClearEvent('auto_resync_backend_setup', 'AUTO-RESYNC found backend in waiting/config while UI showed in_progress', 4141);
             setPlayerCards([]);
             setCardStateContext(null);
             maxRevealedRef.current = 0;
@@ -5153,6 +5163,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING SYNC!');
         lastKnownRoundRef.current = dbRound;
         // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
+        emit357ClearEvent('sync_poll_desync', '3-second 357 sync poll detected DB round != local round', 5091);
         setPlayerCards([]);
         setCardStateContext(null);
         fetchGameData();
@@ -5836,6 +5847,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       prevRoundStateRef.current = { communityCardsHash: '', status: undefined };
+      emit357ClearEvent('cache_effect_dealer_config', 'cache derivation effect saw game.status in dealer-config family', 5774);
       setPlayerCards([]);
       showdownCardsCacheRef.current = new Map();
       showdownRoundNumberRef.current = null;
@@ -10314,6 +10326,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // IMMEDIATELY clear all card-related state for the dealer
     // This prevents stale card rendering while waiting for database update
+    emit357ClearEvent('dealer_gametype_switch', 'dealer optimistically switched game_type via handleGameTypeSelected', 10241);
     setPlayerCards([]);
     setCachedRoundData(null);
     cachedRoundRef.current = null;
