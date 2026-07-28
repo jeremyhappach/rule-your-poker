@@ -8507,6 +8507,22 @@ export const CribbageMobileGameTable = ({
                   );
                 })()}
 
+                {/* Forced-Go bubble. Anchored to blocked players' canonical
+                    chipstacks. Truth derives from authoritative
+                    pegging.goCalledBy (populated by advanceToNextPeggingTurn
+                    BEFORE spotlight reassignment) — no timer, no latch. */}
+                <CribbagePeggingGoBubble
+                  cribbageState={gameplayRenderState}
+                  playerPositionById={
+                    new Map(activeSeatPlayers.map(p => [p.id, p.position]))
+                  }
+                  isPeggingPresentation={
+                    gameplayRenderState.phase === 'pegging' &&
+                    !countingDelayActive &&
+                    !thirtyOneDelayActive
+                  }
+                />
+
 
 
 
