@@ -261,10 +261,12 @@ describe('CribbagePeggingGoBubble presentation', () => {
     // Light-green fill (#a7f3d0) and dark-green border (#047857). jsdom
     // may normalize colors; assert on the raw inline style string so we
     // read the hex the component actually wrote.
-    const styleText = body!.getAttribute('style') ?? '';
-    expect(styleText).toContain('#a7f3d0');
-    expect(styleText).toContain('#047857');
-    expect(styleText.toLowerCase()).toContain('color: rgb(0, 0, 0)');
+    const styleText = (body!.getAttribute('style') ?? '').toLowerCase();
+    // Light-green fill (#a7f3d0 → rgb(167, 243, 208)) and dark-green
+    // border (#047857 → rgb(4, 120, 87)).
+    expect(styleText).toContain('rgb(167, 243, 208)');
+    expect(styleText).toContain('rgb(4, 120, 87)');
+    expect(styleText).toContain('color: rgb(0, 0, 0)');
   });
 
   it('skips render entirely when the remote chip anchor is missing (no fallback)', async () => {
