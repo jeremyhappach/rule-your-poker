@@ -6,6 +6,7 @@ import {
   type EligiblePlayer,
 } from "./threeFiveSeven/advanceRound";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
+import { detectAndSettleInstantWin357 } from "./threeFiveSeven/detectAndSettleInstantWin";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
   // isTargetedWartimePreflightReadyForHarness — no longer imported here; caller owns preflight
