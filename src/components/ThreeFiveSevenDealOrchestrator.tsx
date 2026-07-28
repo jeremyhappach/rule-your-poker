@@ -916,9 +916,31 @@ export function Use357SelfHand<T>({
   // `settled` will never grow. Without this bypass `sourceCards.length > settled`
   // permanently traps the self hand at 0 cards, hiding authoritative
   // playable cards behind the claim-only gate.
+  // ── Hydration baseline (refresh continuity) ──────────────────────
+  // While rendering in passthrough mode (isClaimOnlyRender=false), the
+  // authoritative `sourceCards.length` becomes the visible baseline. If
+  // a later wave (R2 or R3) enters DEALING within the SAME hand, the
+  // baseline lets us preserve the pre-existing cards while cards 4-5 /
+  // 6-7 transport in. Reset on cacheKey (identity boundary) change.
+  const hydrationBaselineRef = useRef<{ cacheKey: string; baseline: number }>({ cacheKey, baseline: 0 });
+  if (hydrationBaselineRef.current.cacheKey !== cacheKey) {
+    hydrationBaselineRef.current = { cacheKey, baseline: 0 };
+  }
   const noWaveEverDispatchedSelf = !!deal && deal.phase === 'GAMEPLAY' && deal.expectedCount === 0;
   const isClaimOnlyRender = !!deal && !noWaveEverDispatchedSelf && (deal.phase !== 'GAMEPLAY' || sourceCards.length > settled);
-  const allowed = isClaimOnlyRender ? settled : sourceCards.length;
+  // Update baseline whenever the passthrough path is authoritative —
+  // covers both fresh GAMEPLAY handoff after a normal wave AND the
+  // Contract-A refresh window where the runtime mounted directly into
+  // GAMEPLAY with expectedCount===0.
+  if (!isClaimOnlyRender && sourceCards.length > hydrationBaselineRef.current.baseline) {
+    hydrationBaselineRef.current.baseline = sourceCards.length;
+  }
+  const hydrationBaseline = hydrationBaselineRef.current.baseline;
+  // During claim-only render, guarantee already-hydrated indices remain
+  // visible AND new indices reveal as transport settles.
+  const allowed = isClaimOnlyRender
+    ? Math.min(sourceCards.length, hydrationBaseline + settled)
+    : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   // Canonical two-phase reveal: during DEALING (== claim-only render for
