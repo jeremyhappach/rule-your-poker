@@ -704,9 +704,9 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     if (lastPlayer) {
       const newScore = lastPlayer.pegScore + 1;
       stateForReset = {
-        ...state,
+        ...stateAfterAutoGo,
         playerStates: {
-          ...state.playerStates,
+          ...stateAfterAutoGo.playerStates,
           [lastToPlayId]: { ...lastPlayer, pegScore: newScore },
         },
         lastEvent: {
@@ -716,7 +716,7 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
           points: 1,
           label: 'Go',
           createdAt: new Date().toISOString(),
-          count: state.pegging.currentCount,
+          count: stateAfterAutoGo.pegging.currentCount,
         },
       };
       if (newScore >= stateForReset.pointsToWin) {
