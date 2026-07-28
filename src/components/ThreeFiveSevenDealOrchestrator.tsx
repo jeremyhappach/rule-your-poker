@@ -161,6 +161,18 @@ export function ThreeFiveSevenDealOrchestrator({
     isTerminalOrStale: false,
   });
   const dispatchedWaveRef = useRef<string | null>(null);
+  // Contract A one-shot latch. On refresh/rejoin, DealRuntime mounts
+  // directly into GAMEPLAY with expectedCount===0. The FIRST wave the
+  // orchestrator observes in that state is a historical (already-dealt)
+  // wave and must be suppressed to prevent replay. But expectedCount
+  // stays 0 for the whole hand under suppression, so a naive gate on
+  // `expectedCount === 0` misclassifies the LIVE R2/R3 waves as
+  // historical too — they never dispatch, cards 4-5/6-7 pop in with
+  // no transport. This latch scopes Contract A to the first wave only;
+  // subsequent waves within the same orchestrator (== same hand) fall
+  // through to the normal dispatch path.
+  const contractAAppliedRef = useRef(false);
+  const contractAHydratedWaveContextRef = useRef<string | null>(null);
   // Tracks per-wave dispatch begin time (used for first_card_visible /
   // full_hand_visible elapsed-time computation). Fire-and-forget only.
   const waveDispatchBeginAtRef = useRef<Map<string, number>>(new Map());
