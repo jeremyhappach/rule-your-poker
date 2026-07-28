@@ -40,6 +40,13 @@ interface CribbagePlayingCardProps {
   widthPx?: number;
   /** Face-density tier — see Card Front Design. Defaults to 'medium'. */
   tier?: CardFrontTierKey;
+  /**
+   * Canonical face-level highlight (see PlayingCard). The highlight
+   * renders INSIDE the card face and inherits its border-radius, so
+   * the gold edge follows the exact visible card silhouette. Prefer
+   * this over any external ring/wrapper class.
+   */
+  highlight?: 'gold' | null;
 }
 
 // Discrete size → (canonical size token, baseline px). Widths match
@@ -58,6 +65,7 @@ export const CribbagePlayingCard = ({
   faceDown = false,
   widthPx,
   tier = 'medium',
+  highlight = null,
 }: CribbagePlayingCardProps) => {
   const entry = SIZE_TABLE[size];
   const useOverride = typeof widthPx === 'number' && Number.isFinite(widthPx) && widthPx > 0;
@@ -91,6 +99,7 @@ export const CribbagePlayingCard = ({
       tier={tier}
       style={{ width, height }}
       faceFillPx={width}
+      highlight={highlight}
     />
   );
 };

@@ -79,6 +79,23 @@ interface PlayingCardProps {
    * (`small`/`medium`/`large`) is unaffected.
    */
   activeHandShell?: boolean;
+  /**
+   * Canonical face-level highlight. The highlight is rendered as an
+   * absolute inset layer INSIDE the card-face element (the shadcn
+   * `<Card>` that owns the visible white background). The layer uses
+   * `border-radius: inherit` so its corners always match the card
+   * face's own radius (`rounded-lg` by default, `rounded-[10%]` when
+   * `activeHandShell`) — regardless of any external wrapper's box.
+   *
+   * Semantic tokens:
+   *   - 'gold' — selected/scored/winning treatment (crisp gold edge +
+   *     soft outer glow). Used by Cribbage discard selection, scoring
+   *     hand/crib/cut highlights, and the high-card winner rail.
+   *
+   * Do NOT approximate this with a Tailwind `ring` on an outer wrapper
+   * — those never match the true face corner curve.
+   */
+  highlight?: 'gold' | null;
 }
 
 /** Extra classes applied when `activeHandShell` is true. */
@@ -150,7 +167,27 @@ export const PlayingCard = ({
   tier = 'medium',
   faceFillPx,
   activeHandShell = false,
+  highlight = null,
 }: PlayingCardProps) => {
+  // Canonical face-level highlight overlay. Rendered as an absolute
+  // child of the card-face element so it inherits the face's real
+  // border-radius exactly — no wrapper approximation, no ring class.
+  const highlightOverlay = highlight === 'gold' ? (
+    <span
+      aria-hidden="true"
+      data-playing-card-highlight="gold"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        borderRadius: 'inherit',
+        pointerEvents: 'none',
+        boxSizing: 'border-box',
+        boxShadow: 'inset 0 0 0 2px hsl(var(--poker-gold))',
+      }}
+    />
+  ) : null;
+  const highlightOuterGlowClass =
+    highlight === 'gold' ? 'shadow-[0_0_10px_2px_hsl(var(--poker-gold)/0.55)]' : '';
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const { isTablet } = useDeviceSize();
   const cardBackColors = getCardBackColors();
@@ -261,7 +298,7 @@ export const PlayingCard = ({
 
         {/* Card Front */}
         <Card
-          className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg`}
+          className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg ${highlightOuterGlowClass}`}
           style={{
             backgroundColor: cardFaceStyle.backgroundColor,
             backfaceVisibility: 'hidden',
@@ -278,6 +315,7 @@ export const PlayingCard = ({
           {face.renderSuit && !isFourColor && face.suitStyle && (
             <span style={face.suitStyle}>{normalizedSuit}</span>
           )}
+          {highlightOverlay}
         </Card>
       </div>
     );
@@ -312,7 +350,7 @@ export const PlayingCard = ({
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-id={`${card.rank}-${card.suit}`}
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${className} transition-transform duration-200 overflow-hidden`}
+      className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
@@ -325,6 +363,7 @@ export const PlayingCard = ({
       {face.renderSuit && !isFourColor && face.suitStyle && (
         <span style={face.suitStyle}>{normalizedSuit}</span>
       )}
+      {highlightOverlay}
     </Card>
   );
 };

@@ -16,7 +16,8 @@ import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
-import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
+// cardHighlight tokens retired — highlight is now a first-class
+// PlayingCard prop that renders inside the card face itself.
 
 /** No-op — temporary Cribbage active-hand wartime instrumentation removed. */
 function recordCribbageWartime(
@@ -965,7 +966,7 @@ export const CribbageMobileCardsTab = ({
           capacity={phaseCapacity}
           stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
           applyFan
-          renderCard={({ index, card_node }) => {
+          renderCard={({ index, card_node, buildCardNode }) => {
             const card = renderedHand[index];
             if (!card) return null;
 
@@ -974,26 +975,31 @@ export const CribbageMobileCardsTab = ({
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
 
+            // Selected treatment lives INSIDE the card face via the
+            // canonical `highlight` prop — the gold edge follows the
+            // exact card silhouette. The button wrapper only handles
+            // lift / z-index / hover affordance.
+            const cardNode = isSelected
+              ? buildCardNode({ highlight: 'gold' })
+              : card_node;
+
             return (
               <button
                 onClick={() => handleCardClick(index)}
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${index}`}
-
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(
-                  "transition-all duration-200 rounded-[10%] relative",
-                  isSelected
-                    ? `-translate-y-3 z-10 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
-                    : "translate-y-0",
+                  "transition-all duration-200 relative",
+                  isSelected ? "-translate-y-3 z-10" : "translate-y-0",
                   isMyTurn && isPlayable && !isSelected &&
-                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
+                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
                   cribbageState.phase === 'discarding' && !haveDiscarded && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
                 style={{ zIndex: isSelected ? 10 : index }}
               >
-                {card_node}
+                {cardNode}
               </button>
             );
           }}
