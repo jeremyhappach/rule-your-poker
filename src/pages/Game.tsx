@@ -322,7 +322,7 @@ import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
-import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck, beginFetchTraceSession } from "@/lib/fetchTraceStatus";
+
 
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
@@ -1029,70 +1029,9 @@ const Game = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerCards]);
 
-  // ── 357 non-fetch player-cards clear instrumentation ──────────────────
-  // Ref snapshot updated during render (see later assignment near currentRound
-  // derivation). Every non-fetch `setPlayerCards([])` call in Game.tsx calls
-  // `emit357ClearEvent(...)` immediately before mutation so the runtime can
-  // attribute which owner cleared 3-5-7 self-hand state during hydration.
-  const clearSeqRef = useRef(0);
-  const clearSnapshotRef = useRef<{
-    game: any; currentRound: any; playerCards: PlayerCards[]; playerCardsIdentity: any;
-    cardStateContext: any; userId: string | null;
-  }>({ game: null, currentRound: null, playerCards: [], playerCardsIdentity: null, cardStateContext: null, userId: null });
-  const emit357ClearEvent = (clearSourceId: string, clearReason: string, clearSourceLine: number) => {
-    try {
-      const snap = clearSnapshotRef.current;
-      const cr: any = snap.currentRound ?? null;
-      const g: any = snap.game ?? null;
-      const uid = snap.userId ?? null;
-      const pcArr = snap.playerCards ?? [];
-      const localSeatCount = uid ? pcArr.filter((c: any) => c && c.user_id === uid).length : 0;
-      const clearSeq = ++clearSeqRef.current;
-      persistSyncDebugEvent({
-        gameId: gameId ?? 'unknown',
-        gameType: '3-5-7',
-        handNumber: g?.total_hands ?? 0,
-        roundId: cr?.id ?? null,
-        eventType: 'invariant',
-        severity: 'warn',
-        eventName: '357.player_cards.clear',
-        dedupKey: `${gameId ?? 'unknown'}:${clearSourceId}:${clearSeq}:${Date.now()}`,
-        payload: {
-          clearSeq,
-          clearSourceId,
-          clearSourceLine,
-          clearReason,
-          gameId: gameId ?? null,
-          clientBuildId: BUILD_IDENTITY.buildSha,
-          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-          currentPlayerCardsStateLength: pcArr.length,
-          currentPlayerCardsLocalSeatCount: localSeatCount,
-          currentPlayerId: uid,
-          gameStatus: g?.status ?? null,
-          gameCurrentGameUuid: g?.current_game_uuid ?? null,
-          gameCurrentRound: g?.current_round ?? null,
-          gameTotalHands: g?.total_hands ?? null,
-          gameAwaitingNextRound: g?.awaiting_next_round ?? null,
-          currentRoundId: cr?.id ?? null,
-          currentRoundDealerGameId: cr?.dealer_game_id ?? null,
-          currentRoundHandNumber: cr?.hand_number ?? null,
-          currentRoundNumber: cr?.round_number ?? null,
-          currentRoundStatus: cr?.status ?? null,
-          playerCardsIdentityDealerGameId: snap.playerCardsIdentity?.dealerGameId ?? null,
-          playerCardsIdentityHandNumber: snap.playerCardsIdentity?.handNumber ?? null,
-          playerCardsIdentityRoundId: snap.playerCardsIdentity?.roundId ?? null,
-          authoritativeDecisionIdentityKey: null,
-          handContextId:
-            snap.playerCardsIdentity?.handContextId ??
-            g?.hand_context_id ??
-            null,
-          documentVisibilityState: typeof document !== 'undefined' ? document.visibilityState : null,
-          documentHasFocus: typeof document !== 'undefined' ? document.hasFocus() : null,
-          capturedAt: new Date().toISOString(),
-        },
-      });
-    } catch { /* fire-and-forget */ }
-  };
+  // 357 fetch/clear diagnostic helpers removed — call sites retained as no-ops.
+  const emit357ClearEvent = (_id: string, _reason: string, _line: number) => { /* noop */ };
+
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   useStartupRenderTrace('Game', {
@@ -1914,52 +1853,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }
 
-  // ── 3-5-7 fetch-trace mount heartbeat ─────────────────────────
-  // Emits ONE 357.fetch.instrumentation_loaded event per mounted
-  // 3-5-7 Game instance from this exact module (same source file
-  // that owns 357.fetch.entry / .card_gate / .round_resolution).
-  // If this event lands, the deployed bundle physically contains
-  // the fetch-trace code. If it does not land, the SNAP pill will
-  // show FETCH TRACE FAILED — proving the runtime is not on the
-  // instrumented build BEFORE another repro is requested.
-  const fetchTraceHeartbeatKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!is357GameType || !gameId) return;
-    const key = `${gameId}:${BUILD_IDENTITY.buildSha}`;
-    if (fetchTraceHeartbeatKeyRef.current === key) return;
-    fetchTraceHeartbeatKeyRef.current = key;
-    // Begin a per-mount fetch-trace session so ack accounting reflects
-    // THIS Game instance only. Idempotent per key. Invocation/outcome
-    // acks that arrive tagged with a stale sessionKey are ignored by
-    // the module, so a natural cold_mount fetch always promotes READY
-    // for the current mount without needing a page refresh.
-    beginFetchTraceSession(key);
-    persistSyncDebugEvent({
-      gameId,
-      gameType: '3-5-7',
-      handNumber: 0,
-      roundId: null,
-      eventType: 'invariant',
-      severity: 'info',
-      eventName: '357.fetch.instrumentation_loaded',
-      dedupKey: `357.fetch.instrumentation_loaded:${key}`,
-      payload: {
-        clientBuildId: BUILD_IDENTITY.buildSha,
-        clientBuildIdShort: BUILD_IDENTITY.buildShaShort,
-        buildTimestamp: BUILD_IDENTITY.buildTimestamp,
-        deploymentId: BUILD_IDENTITY.deploymentId || null,
-        bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-        fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-        gameId,
-        gameType: game?.game_type ?? null,
-        mountedAt: new Date().toISOString(),
-        sessionKey: key,
-      },
-      onResult: (ok, reason) => {
-        markHeartbeatResult(key, ok, ok ? null : (reason ?? 'unknown'));
-      },
-    });
-  }, [is357GameType, gameId, game?.game_type]);
+  // 3-5-7 fetch-trace mount heartbeat removed.
+
 
 
   const threeFiveSevenPlayers = useMemo(() => {
@@ -5955,16 +5850,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
-  // Feed the 357-clear-instrumentation snapshot ref with the latest
-  // render-scope values. Read by emit357ClearEvent(...) — see helper above.
-  clearSnapshotRef.current = {
-    game,
-    currentRound,
-    playerCards,
-    playerCardsIdentity,
-    cardStateContext,
-    userId: user?.id ?? null,
-  };
+
+
 
   // Populate the late refs read by the mobile-active-tab observer above
   // (declared at the top of Game for stable-hook order).
@@ -8140,201 +8027,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ) => {
     const fetchSeq = ++fetchSeqRef.current;
     const fetchStartedAt = Date.now();
-    const fetchGenerationId = fetchSeq;
-    const fetchTraceKnownGameType = game?.game_type ?? lastKnownGameTypeRef.current ?? null;
-    const fetchTraceGameIdForPersist = gameId ?? '00000000-0000-0000-0000-000000000000';
-    const is357FetchTraceType = (value: unknown): boolean =>
-      value === '3-5-7' || value === '357' || value === '3-5-7-game';
-    const shouldPersist357FetchTrace = !fetchTraceKnownGameType || is357FetchTraceType(fetchTraceKnownGameType);
-    const fetchTraceSessionKey = `${fetchTraceGameIdForPersist}:${BUILD_IDENTITY.buildSha}`;
-    if (shouldPersist357FetchTrace) {
-      // Idempotent per key — ensures ack accounting is scoped to THIS
-      // Game mount even if the cold_mount fetch fires before the
-      // heartbeat useEffect (which is gated on is357GameType).
-      beginFetchTraceSession(fetchTraceSessionKey);
-    }
-
-    if (shouldPersist357FetchTrace) {
-      persistSyncDebugEvent({
-        gameId: fetchTraceGameIdForPersist,
-        gameType: fetchTraceKnownGameType ?? 'unknown',
-        handNumber: game?.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.invocation',
-        dedupKey: `357.fetch.invocation:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          fetchStartedAt,
-          gameId: gameId ?? null,
-          gameIdPresent: !!gameId,
-          knownGameType: fetchTraceKnownGameType,
-          playerCardsLengthAtInvocation: playerCards.length,
-          fetchTokenAtInvocation: cardFetchTokenRef.current ?? 0,
-          clientBuildId: BUILD_IDENTITY.buildSha,
-          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-        },
-        onResult: (ok, reason) => {
-          markInvocationAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
-        },
-      });
-    }
-
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
 
-    type FetchTraceOutcome =
-      | 'returned_no_game_id'
-      | 'superseded_after_parallel_fetch'
-      | 'returned_game_error'
-      | 'returned_no_game_data'
-      | 'returned_players_error'
-      | 'skipped_card_fetch'
-      | 'skipped_keep_cards'
-      | 'round_not_resolved'
-      | 'player_cards_error'
-      | 'player_cards_superseded'
-      | 'player_cards_empty_accepted'
-      | 'player_cards_empty_not_written'
-      | 'player_cards_accepted'
-      | 'completed_other'
-      | 'threw_exception';
 
-    type FetchTraceState = {
-      gameDataStatus: string | null;
-      gameDataGameType: string | null;
-      gameDataCurrentRound: number | null;
-      gameDataCurrentGameUuid: string | null;
-      gameDataTotalHands: number | null;
-      gameDataAwaitingNextRound: boolean | null;
-      gameErrorCode: string | null;
-      gameErrorMessage: string | null;
-      gameDataPresent: boolean | null;
-      playersErrorCode: string | null;
-      playersErrorMessage: string | null;
-      playersDataPresent: boolean | null;
-      shouldFetchCards: boolean | null;
-      keepCards: boolean | null;
-      keepCardsForResults: boolean | null;
-      resolvedRoundId: string | null;
-      playerCardsQueryExecuted: boolean | null;
-      playerCardsRowsReturned: number | null;
-      localSeatRowPresent: boolean | null;
-      setPlayerCardsCalled: boolean | null;
-      playerCardsLengthBefore: number | null;
-      playerCardsLengthAfter: number | null;
-    };
+    // 3-5-7 fetch-trace bookkeeping removed. No-op stubs preserve legacy call sites.
+    const patchFetchTraceState = (_patch?: unknown) => { /* noop */ };
+    const setFetchTraceTerminal = (_outcome?: unknown, _exitStage?: unknown, _patch?: unknown) => { /* noop */ };
+    const finishFetchTrace = (_outcome?: unknown, _exitStage?: unknown, _patch?: unknown) => { /* noop */ };
+    const fetchTraceFinished = false;
+    const fetchTraceTerminalOutcome: string | null = null;
+    const fetchTraceTerminalExitStage: string | null = null;
 
-    const fetchTraceState: FetchTraceState = {
-      gameDataStatus: null,
-      gameDataGameType: null,
-      gameDataCurrentRound: null,
-      gameDataCurrentGameUuid: null,
-      gameDataTotalHands: null,
-      gameDataAwaitingNextRound: null,
-      gameErrorCode: null,
-      gameErrorMessage: null,
-      gameDataPresent: null,
-      playersErrorCode: null,
-      playersErrorMessage: null,
-      playersDataPresent: null,
-      shouldFetchCards: null,
-      keepCards: null,
-      keepCardsForResults: null,
-      resolvedRoundId: null,
-      playerCardsQueryExecuted: null,
-      playerCardsRowsReturned: null,
-      localSeatRowPresent: null,
-      setPlayerCardsCalled: null,
-      playerCardsLengthBefore: null,
-      playerCardsLengthAfter: null,
-    };
-    let fetchTraceFinished = false;
-    let fetchTraceTerminalOutcome: FetchTraceOutcome | null = null;
-    let fetchTraceTerminalExitStage: string | null = null;
-
-    const patchFetchTraceState = (patch: Partial<FetchTraceState>) => {
-      Object.assign(fetchTraceState, patch);
-    };
-
-    const finishFetchTrace = (
-      outcome: FetchTraceOutcome,
-      exitStage: string,
-      patch: Partial<FetchTraceState> = {},
-    ) => {
-      if (!shouldPersist357FetchTrace || fetchTraceFinished) return;
-      patchFetchTraceState(patch);
-      fetchTraceFinished = true;
-      const fetchCompletedAt = Date.now();
-      persistSyncDebugEvent({
-        gameId: fetchTraceGameIdForPersist,
-        gameType: fetchTraceState.gameDataGameType ?? fetchTraceKnownGameType ?? 'unknown',
-        handNumber: fetchTraceState.gameDataTotalHands ?? game?.total_hands ?? 0,
-        roundId: fetchTraceState.resolvedRoundId,
-        eventType: 'invariant',
-        severity: outcome === 'threw_exception' || outcome === 'player_cards_error' || outcome === 'returned_game_error' || outcome === 'returned_players_error'
-          ? 'warn'
-          : 'info',
-        eventName: '357.fetch.outcome',
-        dedupKey: `357.fetch.outcome:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          fetchStartedAt,
-          fetchCompletedAt,
-          elapsedMs: fetchCompletedAt - fetchStartedAt,
-          outcome,
-          exitStage,
-          gameId: gameId ?? null,
-          gameDataStatus: fetchTraceState.gameDataStatus,
-          gameDataGameType: fetchTraceState.gameDataGameType,
-          gameDataCurrentRound: fetchTraceState.gameDataCurrentRound,
-          gameDataCurrentGameUuid: fetchTraceState.gameDataCurrentGameUuid,
-          gameDataTotalHands: fetchTraceState.gameDataTotalHands,
-          gameDataAwaitingNextRound: fetchTraceState.gameDataAwaitingNextRound,
-          isStaleAtExit: isStale(),
-          gameErrorCode: fetchTraceState.gameErrorCode,
-          gameErrorMessage: fetchTraceState.gameErrorMessage,
-          gameDataPresent: fetchTraceState.gameDataPresent,
-          playersErrorCode: fetchTraceState.playersErrorCode,
-          playersErrorMessage: fetchTraceState.playersErrorMessage,
-          playersDataPresent: fetchTraceState.playersDataPresent,
-          shouldFetchCards: fetchTraceState.shouldFetchCards,
-          keepCards: fetchTraceState.keepCards,
-          keepCardsForResults: fetchTraceState.keepCardsForResults,
-          resolvedRoundId: fetchTraceState.resolvedRoundId,
-          playerCardsQueryExecuted: fetchTraceState.playerCardsQueryExecuted,
-          playerCardsRowsReturned: fetchTraceState.playerCardsRowsReturned,
-          localSeatRowPresent: fetchTraceState.localSeatRowPresent,
-          setPlayerCardsCalled: fetchTraceState.setPlayerCardsCalled,
-          playerCardsLengthBefore: fetchTraceState.playerCardsLengthBefore,
-          playerCardsLengthAfter: fetchTraceState.playerCardsLengthAfter,
-          clientBuildId: BUILD_IDENTITY.buildSha,
-          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
-          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
-        },
-        onResult: (ok, reason) => {
-          markOutcomeAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
-        },
-      });
-    };
-
-    const setFetchTraceTerminal = (
-      outcome: FetchTraceOutcome,
-      exitStage: string,
-      patch: Partial<FetchTraceState> = {},
-    ) => {
-      if (fetchTraceTerminalOutcome !== null) {
-        patchFetchTraceState(patch);
-        return;
-      }
-      fetchTraceTerminalOutcome = outcome;
-      fetchTraceTerminalExitStage = exitStage;
-      patchFetchTraceState(patch);
-    };
 
     try {
 
@@ -8588,40 +8292,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Users join as observers - they must select a seat to become a player
 
-    // ── 3-5-7 wartime unconditional trace: EVENT 1 (entry) ────────────
-    const is357Trace =
-      gameData.game_type === '3-5-7' ||
-      gameData.game_type === '357' ||
-      gameData.game_type === '3-5-7-game';
-    const localPlayerIdEntry357: string | null =
-      (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
-    if (is357Trace) {
-      persistSyncDebugEvent({
-        gameId: gameId!,
-        gameType: gameData.game_type ?? 'unknown',
-        handNumber: gameData.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.entry',
-        dedupKey: `357.fetch.entry:${gameId}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          fetchStartedAt,
-          gameId: gameId ?? null,
-          localPlayerId: localPlayerIdEntry357,
-          gameDataStatus: gameData.status ?? null,
-          gameDataGameType: gameData.game_type ?? null,
-          gameDataCurrentRound: gameData.current_round ?? null,
-          gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
-          gameDataTotalHands: gameData.total_hands ?? null,
-          gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
-          playerCardsLengthAtEntry: playerCards.length,
-          cardFetchTokenAtEntry: cardFetchTokenRef.current ?? 0,
-        },
-      });
-    }
+    // (357.fetch.entry diagnostic removed)
+    const is357Trace = false;
+
 
     // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
@@ -8661,65 +8334,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setFetchTraceTerminal('skipped_keep_cards', 'card_gate:keepCards_false');
     }
 
-    // ── 3-5-7 wartime unconditional trace: EVENT 2 (card gate) ────────
-    if (is357Trace) {
-      persistSyncDebugEvent({
-        gameId: gameId!,
-        gameType: gameData.game_type ?? 'unknown',
-        handNumber: gameData.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.card_gate',
-        dedupKey: `357.fetch.card_gate:${gameId}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          shouldFetchCards,
-          shouldFetchCardsReason: shouldFetchCardsReason357,
-          keepCards,
-          keepCardsForResults,
-          keepCardsDecision: keepCardsDecision357,
-          keepCardsReason: keepCardsReason357,
-          branchTaken: branchTaken357,
-        },
-      });
-      // If either gate skips, emit round_resolution now (skipped variant) so
-      // every generation records all three events.
-      if (branchTaken357 !== 'proceed_to_round_resolution') {
-        persistSyncDebugEvent({
-          gameId: gameId!,
-          gameType: gameData.game_type ?? 'unknown',
-          handNumber: gameData.total_hands ?? 0,
-          roundId: null,
-          eventType: 'invariant',
-          severity: 'info',
-          eventName: '357.fetch.round_resolution',
-          dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
-          payload: {
-            fetchGenerationId,
-            fetchTrigger,
-            roundSelectionBranch: branchTaken357, // 'skipped_should_fetch_cards' | 'skipped_keep_cards'
-            roundSelectGameId: gameId ?? null,
-            roundSelectDealerGameId: gameData.current_game_uuid ?? null,
-            roundSelectHandNumber: gameData.total_hands ?? null,
-            roundSelectRoundNumber: gameData.current_round ?? null,
-            fallbackCurrentRoundId: currentRound?.id ?? null,
-            roundQueryExecuted: false,
-            roundQueryRowsReturned: 0,
-            roundQueryErrorCode: null,
-            roundQueryErrorMessage: null,
-            roundDataResolved: false,
-            resolvedRoundId: null,
-            resolvedDealerGameId: null,
-            resolvedHandNumber: null,
-            resolvedRoundNumber: null,
-            resolvedCardsDealt: null,
-            resolutionDecision: 'skipped',
-          },
-        });
-      }
-    }
+    // (357.fetch.card_gate + skipped-round_resolution diagnostics removed)
+
 
     if (shouldFetchCards) {
       // (isHolmGame/keepCards/keepCardsForResults lifted above for card_gate)
@@ -8887,46 +8503,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
         }
 
-        // ── 3-5-7 wartime unconditional trace: EVENT 3 (round resolution) ──
-        if (is357Trace) {
-          const resolvedDecision357: 'resolved' | 'no_round_row' | 'query_error' | 'skipped' =
-            roundQueryError357.code || roundQueryError357.message
-              ? 'query_error'
-              : roundData
-                ? 'resolved'
-                : 'no_round_row';
-          persistSyncDebugEvent({
-            gameId: gameId!,
-            gameType: gameData.game_type ?? 'unknown',
-            handNumber: gameData.total_hands ?? 0,
-            roundId: roundData?.id ?? null,
-            eventType: 'invariant',
-            severity: 'info',
-            eventName: '357.fetch.round_resolution',
-            dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
-            payload: {
-              fetchGenerationId,
-              fetchTrigger,
-              roundSelectionBranch: roundSelectionBranch357,
-              roundSelectGameId: gameId ?? null,
-              roundSelectDealerGameId: gameData.current_game_uuid ?? null,
-              roundSelectHandNumber: gameData.total_hands ?? null,
-              roundSelectRoundNumber: gameData.current_round ?? null,
-              fallbackCurrentRoundId: currentRound?.id ?? null,
-              roundQueryExecuted: true,
-              roundQueryRowsReturned: roundQueryRowsReturned357,
-              roundQueryErrorCode: roundQueryError357.code,
-              roundQueryErrorMessage: roundQueryError357.message,
-              roundDataResolved: !!roundData,
-              resolvedRoundId: roundData?.id ?? null,
-              resolvedDealerGameId: gameData.current_game_uuid ?? null,
-              resolvedHandNumber: gameData.total_hands ?? null,
-              resolvedRoundNumber: roundData?.round_number ?? null,
-              resolvedCardsDealt: roundData?.cards_dealt ?? null,
-              resolutionDecision: resolvedDecision357,
-            },
-          });
-        }
+        // (357.fetch.round_resolution diagnostic removed)
+
 
 
         if (roundData) {
@@ -8991,37 +8569,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerCardsLengthBefore: playerCardsLengthBefore357,
             resolvedRoundId: targetRoundId,
           });
-          if (is357FetchTrace) {
-            persistSyncDebugEvent({
-              gameId: gameId!,
-              gameType: gameData.game_type ?? 'unknown',
-              handNumber: gameData.total_hands ?? 0,
-              roundId: targetRoundId,
-              eventType: 'invariant',
-              severity: 'info',
-              eventName: '357.fetch.players_request',
-              payload: {
-                fetchGenerationId,
-                fetchTrigger,
-                fetchStartedAt,
-                gameId: gameId ?? null,
-                localPlayerId: localPlayerIdForTrace,
-                gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
-                gameDataCurrentRound: gameData.current_round ?? null,
-                gameDataTotalHands: gameData.total_hands ?? null,
-                gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
-                gameDataStatus: gameData.status ?? null,
-                resolvedTargetRoundId: targetRoundId,
-                resolvedTargetDealerGameId: gameData.current_game_uuid ?? null,
-                resolvedTargetHandNumber: gameData.total_hands ?? null,
-                resolvedTargetRoundNumber: roundData.round_number ?? null,
-                resolvedTargetRoundStatus: null,
-                queryTable: 'player_cards',
-                queryRoundId: targetRoundId,
-                queryPlayerIdFilter: null,
-              },
-            });
-          }
+          // (357.fetch.players_request diagnostic removed)
+
 
           const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
             supabase
@@ -9236,49 +8785,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerCardsLengthAfter: playerCardsLengthAfter357,
           });
 
-          // ── 3-5-7 fetch hydration trace: RESULT ──────────────────────
-          if (is357FetchTrace) {
-            const fetchCompletedAt357 = Date.now();
-            const rowsReturned357 = cardsData?.length ?? 0;
-            const localSeatRow357 = localPlayerIdForTrace
-              ? (cardsData ?? []).find((r: any) => r.player_id === localPlayerIdForTrace) ?? null
-              : null;
-            const localSeatCardsCount357 = Array.isArray(localSeatRow357?.cards)
-              ? (localSeatRow357!.cards as unknown[]).length
-              : 0;
-            persistSyncDebugEvent({
-              gameId: gameId!,
-              gameType: gameData.game_type ?? 'unknown',
-              handNumber: gameData.total_hands ?? 0,
-              roundId: targetRoundId,
-              eventType: 'invariant',
-              severity: 'info',
-              eventName: '357.fetch.players_result',
-              payload: {
-                fetchGenerationId,
-                fetchTrigger,
-                fetchStartedAt,
-                fetchCompletedAt: fetchCompletedAt357,
-                elapsedMs: fetchCompletedAt357 - fetchStartedAt,
-                gameId: gameId ?? null,
-                localPlayerId: localPlayerIdForTrace,
-                queryRoundId: targetRoundId,
-                rowsReturned: rowsReturned357,
-                localSeatRowPresent: !!localSeatRow357,
-                localSeatCardsCount: localSeatCardsCount357,
-                acceptanceDecision: acceptance357,
-                queryErrorCode: (cardsError as any)?.code ?? null,
-                queryErrorMessage: cardsError?.message ?? null,
-                playerCardsLengthBefore: playerCardsLengthBefore357,
-                playerCardsLengthAfter: playerCardsLengthAfter357,
-                setPlayerCardsCalled: setPlayerCardsCalled357,
-                currentTokenAtResponse: cardFetchTokenRef.current,
-                fetchToken,
-                tokenSuperseded: fetchToken !== cardFetchTokenRef.current,
-                isStaleAtResponse: isStale(),
-              },
-            });
-          }
+          // (357.fetch.players_result diagnostic removed)
+
         } else if (shouldFetchCards && (keepCards || keepCardsForResults)) {
           setFetchTraceTerminal('round_not_resolved', 'round_resolution:no_roundData', {
             resolvedRoundId: null,

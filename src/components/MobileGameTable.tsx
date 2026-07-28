@@ -158,7 +158,7 @@ import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ThreeFiveSevenTerminalController } from "./ThreeFiveSevenTerminalController";
-import { ThreeFiveSevenLayoutSnapPill } from "./ThreeFiveSevenLayoutSnapPill";
+
 import type { Terminal357Descriptor } from "@/lib/threeFiveSeven/terminalDescriptor";
 import { SweepTheLegsAnimation } from "./SweepTheLegsAnimation";
 import {
@@ -6034,209 +6034,8 @@ export const MobileGameTable = ({
     return () => cancelAnimationFrame(raf1);
   });
 
-  // ── 357: paired pre-refresh / post-refresh pane geometry snapshot ──
-  // v2: two flat, primitive-only events emitted together per snapshot:
-  //   357.pane_geometry_inputs — upstream render/branch values
-  //   357.pane_geometry_dom    — flat DOM rect numbers
-  // Both share mountId + snapshotSeq for 1:1 pairing. Routed through
-  // persistSyncDebugEvent only; no nested objects, no CSSStyleDeclaration,
-  // no DOMRect, no refs.
-  const __paneGeomMountIdRef = useRef<string>('');
-  if (!__paneGeomMountIdRef.current) {
-    __paneGeomMountIdRef.current = `mnt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  }
-  const __paneGeomSeqRef = useRef(0);
-  const __paneGeomLastSigRef = useRef<string | null>(null);
-  // Diagnostic-only snapshot of last renderActiveSelfHand values. Written
-  // during render inside renderActiveSelfHand; read by the pane-geometry
-  // effect. No DOM node, no layout participation.
-  const __renderSnapRef = useRef<{
-    dealPhase: string;
-    effectiveCardsCount: number;
-    is357Staged: boolean;
-    claimedCardIdsCount: number;
-    rawClaimedCardIdsCount: number;
-    baseHandContextId: string;
-  } | null>(null);
-  useEffect(() => {
-    if (!__is357GameType(gameType)) return;
-    if (!gameId) return;
-    if (__paneGeomSeqRef.current >= 40) return;
-    const raf = requestAnimationFrame(() => {
-      try {
-        const region = document.querySelector<HTMLElement>('[data-357-active-hand-region]');
-        if (!region) return;
-        const lowerZone = document.querySelector<HTMLElement>('[data-active-hand-lower-zone]');
-        const stayBtn = document.querySelector<HTMLElement>('[data-357-stay-decision-btn]');
-        const dropBtn = document.querySelector<HTMLElement>('[data-357-drop-decision-btn]');
-        const playerHandRoot = region.querySelector<HTMLElement>('[data-357-player-hand-root]');
-        const firstCard = region.querySelector<HTMLElement>('[data-playing-card-root]');
-        const snap = __renderSnapRef.current;
+  // (357 pane-geometry paired diagnostic snapshot removed.)
 
-        const attr = (n: HTMLElement | null | undefined, name: string): string | null =>
-          n?.getAttribute(name) ?? null;
-        const num = (v: string | null): number | null => {
-          if (v == null || v === '') return null;
-          const n = Number.parseFloat(v);
-          return Number.isFinite(n) ? n : null;
-        };
-        const rectFields = (
-          n: HTMLElement | null | undefined,
-          prefix: string,
-        ): Record<string, number | null> => {
-          if (!n) {
-            return {
-              [`${prefix}X`]: null,
-              [`${prefix}Y`]: null,
-              [`${prefix}Width`]: null,
-              [`${prefix}Height`]: null,
-              [`${prefix}Bottom`]: null,
-            };
-          }
-          const r = n.getBoundingClientRect();
-          return {
-            [`${prefix}X`]: Math.round(r.x),
-            [`${prefix}Y`]: Math.round(r.y),
-            [`${prefix}Width`]: Math.round(r.width),
-            [`${prefix}Height`]: Math.round(r.height),
-            [`${prefix}Bottom`]: Math.round(r.bottom),
-          };
-        };
-
-        // Signature — only primitives.
-        const firstCardRect = firstCard?.getBoundingClientRect() ?? null;
-        const lowerZoneRect = lowerZone?.getBoundingClientRect() ?? null;
-        const stayRect = stayBtn?.getBoundingClientRect() ?? null;
-        const cardsLenAttr = attr(region, 'data-357-snap-cards-length');
-        const dealPhaseAttr = snap?.dealPhase ?? null;
-        const availAttr = attr(region, 'data-357-snap-hand-avail-h');
-        const sig = [
-          cardsLenAttr ?? '',
-          dealPhaseAttr ?? '',
-          availAttr ?? '',
-          firstCardRect ? `${Math.round(firstCardRect.x)}x${Math.round(firstCardRect.y)}x${Math.round(firstCardRect.width)}x${Math.round(firstCardRect.height)}` : '-',
-          lowerZoneRect ? `${Math.round(lowerZoneRect.x)}x${Math.round(lowerZoneRect.y)}x${Math.round(lowerZoneRect.width)}x${Math.round(lowerZoneRect.height)}` : '-',
-          stayRect ? `${Math.round(stayRect.x)}x${Math.round(stayRect.y)}x${Math.round(stayRect.width)}x${Math.round(stayRect.height)}` : '-',
-        ].join('|');
-        if (__paneGeomLastSigRef.current === sig) return;
-        __paneGeomLastSigRef.current = sig;
-        const seq = ++__paneGeomSeqRef.current;
-
-        const mountId = __paneGeomMountIdRef.current;
-        const capturedAt = Date.now();
-        const roundIdVal = horsesRoundId ?? null;
-        const roundNumberVal = num(attr(region, 'data-357-snap-current-round'));
-        const dealerGameIdVal = horsesDealerGameId ?? null;
-
-        const owner = evaluateLowerZoneOwner();
-
-        // Event 1 — upstream inputs (flat primitives only).
-        const inputsPayload: Record<string, string | number | boolean | null> = {
-          snapshotVersion: 2,
-          mountId,
-          snapshotSeq: seq,
-          isFirstAfterMount: seq === 1,
-          capturedAt,
-          gameId,
-          dealerGameId: dealerGameIdVal,
-          roundId: roundIdVal,
-          roundNumber: roundNumberVal,
-
-          currentPlayerId: currentPlayer?.id ?? null,
-          expectedCardCount: roundNumberVal != null
-            ? (roundNumberVal === 1 ? 3 : roundNumberVal === 2 ? 5 : roundNumberVal === 3 ? 7 : null)
-            : null,
-          currentPlayerCardsCount: currentPlayerCards.length,
-          effectiveCardsCount: snap?.effectiveCardsCount ?? null,
-          dealPhase: dealPhaseAttr,
-          is357Staged: snap?.is357Staged ?? null,
-          claimedCardIdsCount: snap?.claimedCardIdsCount ?? null,
-          rawClaimedCardIdsCount: snap?.rawClaimedCardIdsCount ?? null,
-          baseHandContextId: snap?.baseHandContextId ?? null,
-
-          handScaleNum: num(attr(region, 'data-357-snap-hand-scale')),
-          handReserveNum: num(attr(region, 'data-357-snap-hand-reserve')),
-          handAvailableHeightPx357: num(availAttr),
-          availableHeightPxPassedToPlayerHand: num(availAttr),
-          currentPlayerHandReserveClass: attr(region, 'data-357-snap-reserve-class'),
-
-          // Explicit branch/path fields — nullable when not tracked at source.
-          use357SelfHandPath: null,
-          renderActiveSelfHandPath: null,
-          playerHandResolverPath: null,
-          playerHandSizeVariant: null,
-
-          canDecide: !!canDecide,
-          hasDecided: !!hasDecided,
-          renderedLowerZoneOwner: owner.renderedOwner,
-          renderedLowerZoneReason: owner.reason,
-
-          isTablet: attr(region, 'data-357-snap-is-tablet') === '1',
-          isDesktop: attr(region, 'data-357-snap-is-desktop') === '1',
-        };
-
-        // Event 2 — DOM measurements (flat number/string primitives only).
-        const vv = window.visualViewport ?? null;
-        const firstCardComputed = firstCard ? window.getComputedStyle(firstCard) : null;
-        const domPayload: Record<string, string | number | boolean | null> = {
-          snapshotVersion: 2,
-          mountId,
-          snapshotSeq: seq,
-          isFirstAfterMount: seq === 1,
-          capturedAt,
-          gameId,
-          dealerGameId: dealerGameIdVal,
-          roundId: roundIdVal,
-          roundNumber: roundNumberVal,
-
-          windowInnerWidth: window.innerWidth,
-          windowInnerHeight: window.innerHeight,
-          documentClientWidth: document.documentElement.clientWidth,
-          documentClientHeight: document.documentElement.clientHeight,
-          visualViewportWidth: vv ? Math.round(vv.width) : null,
-          visualViewportHeight: vv ? Math.round(vv.height) : null,
-          visualViewportOffsetTop: vv ? Math.round(vv.offsetTop) : null,
-          visualViewportScale: vv ? vv.scale : null,
-          windowScrollY: Math.round(window.scrollY),
-
-          ...rectFields(document.querySelector<HTMLElement>('[data-357-active-pane-content]'), 'activePane'),
-          ...rectFields(region, 'activeHandRegion'),
-          ...rectFields(playerHandRoot, 'handContainer'),
-          ...rectFields(firstCard, 'firstCard'),
-          firstCardMarginLeft: firstCardComputed ? firstCardComputed.marginLeft : null,
-          firstCardTransform: firstCardComputed ? (firstCardComputed.transform === 'none' ? 'none' : firstCardComputed.transform) : null,
-          ...rectFields(lowerZone, 'lowerZone'),
-          ...rectFields(stayBtn, 'stayButton'),
-          ...rectFields(dropBtn, 'dropButton'),
-        };
-
-        // Route both through persistSyncDebugEvent — no direct supabase writes.
-        persistSyncDebugEvent({
-          gameId,
-          gameType: '3-5-7',
-          handNumber: horsesHandNumber ?? 0,
-          roundId: roundIdVal,
-          eventType: 'invariant',
-          severity: 'info',
-          eventName: '357.pane_geometry_inputs',
-          payload: inputsPayload,
-          dedupKey: `${gameId}:357.pane_geometry_inputs:${mountId}:${seq}`,
-        });
-        persistSyncDebugEvent({
-          gameId,
-          gameType: '3-5-7',
-          handNumber: horsesHandNumber ?? 0,
-          roundId: roundIdVal,
-          eventType: 'invariant',
-          severity: 'info',
-          eventName: '357.pane_geometry_dom',
-          payload: domPayload,
-          dedupKey: `${gameId}:357.pane_geometry_dom:${mountId}:${seq}`,
-        });
-      } catch { /* diagnostic-only */ }
-    });
-    return () => cancelAnimationFrame(raf);
-  });
 
 
   // Publish tab metadata to the shell-owned tab bar. Shell owns layout
@@ -13789,14 +13588,8 @@ export const MobileGameTable = ({
                                   // into a ref so the pane-geometry effect can
                                   // read them without a DOM node. This does
                                   // not alter layout/hierarchy/refs.
-                                  __renderSnapRef.current = {
-                                    dealPhase,
-                                    effectiveCardsCount: effectiveCards.length,
-                                    is357Staged,
-                                    claimedCardIdsCount: boundary.claimedCardIds.length,
-                                    rawClaimedCardIdsCount: boundary.rawClaimedCardIds.length,
-                                    baseHandContextId: boundary.baseHandContextId,
-                                  };
+                                  // (diagnostic __renderSnapRef write removed)
+
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
@@ -14434,33 +14227,6 @@ export const MobileGameTable = ({
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
-    {/* WARTIME: 3-5-7 manual layout snapshot pill (temporary) */}
-    {__is357GameType(gameType) && (
-      <ThreeFiveSevenLayoutSnapPill
-        enabled={true}
-        getReactState={() => ({
-          gameId: gameId ?? null,
-          dealerGameId: (holmDealerGameId ?? horsesDealerGameId ?? null) as string | null,
-          roundId: (threeFiveSevenAuthoritativeRoundId ?? null) as string | null,
-          roundNumber: (threeFiveSevenAuthoritativeRoundNumber ?? null) as number | null,
-          handNumber: (horsesHandNumber ?? null) as number | null,
-          canDecide: !!canDecide,
-          hasDecided: !!hasDecided,
-          allDecisionsIn: !!allDecisionsIn,
-          threeFiveSevenDecisionBoundaryOpen: !!threeFiveSevenDecisionBoundaryOpen,
-          currentPlayerId: currentPlayer?.id ?? null,
-          currentPlayerStatus: (currentPlayer as any)?.status ?? null,
-          currentPlayerDecision: (currentPlayer as any)?.current_decision ?? null,
-          currentPlayerDecisionLocked: (currentPlayer as any)?.decision_locked ?? null,
-          currentPlayerCardsCount: currentPlayerCards?.length ?? 0,
-          activeTab: activeTab ?? null,
-          isWaitingPhase: !!isWaitingPhase,
-          isDealerConfigPhase: !!isDealerConfigPhase,
-          gameStatus: gameStatus ?? null,
-          gameType: gameType ?? null,
-        })}
-      />
-    )}
     </div>
   </ThreeFiveSevenDealRuntimeMaybe>
   </HolmDealRuntimeMaybe>;
