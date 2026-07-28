@@ -8057,6 +8057,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           knownGameType: fetchTraceKnownGameType,
           playerCardsLengthAtInvocation: playerCards.length,
           fetchTokenAtInvocation: cardFetchTokenRef.current ?? 0,
+          clientBuildId: BUILD_IDENTITY.buildSha,
+          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+        },
+        onResult: (ok, reason) => {
+          markInvocationAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     }
