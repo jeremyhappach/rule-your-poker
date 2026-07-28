@@ -672,8 +672,12 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     if (goCalledBy.includes(nextPlayerId)) continue;
 
     if (!hasPlayableCard(nextPlayer.hand, state.pegging.currentCount)) {
-      // Auto-Go: blocked player never receives the spotlight.
-      goCalledBy = [...goCalledBy, nextPlayerId];
+      // Auto-Go: blocked player never receives the spotlight. Skip the
+      // holder (lastToPlay) — they're claiming the Go point, not calling
+      // Go on themselves.
+      if (nextPlayerId !== state.pegging.lastToPlay) {
+        goCalledBy = [...goCalledBy, nextPlayerId];
+      }
       continue;
     }
 
