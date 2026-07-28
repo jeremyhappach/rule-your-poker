@@ -1,21 +1,25 @@
 /**
  * CribbagePeggingGoBubble
  *
- * Renders a compact "Go" speech bubble anchored to each blocked player's
- * canonical chipstack ([data-chip-center="${position}"]) whenever that
- * player is in `pegging.goCalledBy` and still holds cards.
+ * Renders a clearly-visible white speech bubble ("Go") anchored to each
+ * blocked player's canonical chipstack ([data-chip-center="${position}"]).
+ * The bubble body sits INWARD from the chipstack (toward felt center),
+ * with a tail pointing OUTWARD back at the chip cluster.
+ *
+ * Geometry contract:
+ *   - Anchor: [data-chip-center="${position}"] (canonical chip cluster).
+ *   - Inward direction: unit vector from chipstack center → felt-surface
+ *     center ([data-canonical-felt-surface]). No per-seat magic offsets;
+ *     mirrors automatically through canonical seat geometry.
+ *   - Portal root: document.body. Positioned via fixed coords so the
+ *     bubble is not clipped by the circular felt overflow.
  *
  * Ownership contract:
- *   - Bubble truth is derived purely from authoritative cribbage state
- *     (`goCalledBy` + `playerStates[*].hand`). No local latch, no timer.
- *   - The bubble persists automatically for the pegging run because
- *     `goCalledBy` is reset by `beginNewPeggingRun` / `resetPeggingCount`
- *     on: 31, go/last-card award, and phase transitions.
- *   - Presentation ONLY. Legality is decided by the authoritative
- *     `advanceToNextPeggingTurn` in cribbageGameLogic.ts, which auto-adds
- *     blocked candidates to `goCalledBy` before spotlight reassignment.
+ *   - Bubble truth derives purely from authoritative cribbage state
+ *     (`goCalledBy` ∪ `pendingGoBubblePlayerIds`). No local latch, no
+ *     timer. See CribbagePeggingGoBubble.test.tsx.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CribbageState } from '@/lib/cribbageTypes';
 
@@ -28,11 +32,21 @@ interface CribbagePeggingGoBubbleProps {
   isPeggingPresentation: boolean;
 }
 
-interface AnchorEntry {
+interface Placement {
   playerId: string;
   position: number;
-  el: HTMLElement;
+  /** Bubble body center (viewport px). */
+  bubbleX: number;
+  bubbleY: number;
+  /** Tail tip pointing back to the chipstack (viewport px). */
+  tailX: number;
+  tailY: number;
+  /** Tail rotation in degrees (0 = tail points right / east). */
+  tailAngleDeg: number;
 }
+
+const BUBBLE_OFFSET_PX = 44; // distance from chip center to bubble center (inward)
+const TAIL_LENGTH_PX = 10;
 
 export const CribbagePeggingGoBubble = ({
   cribbageState,
@@ -44,25 +58,15 @@ export const CribbagePeggingGoBubble = ({
   const playerStates = cribbageState?.playerStates ?? {};
   const phase = cribbageState?.phase;
 
-  // Compute the target list of {playerId, position} pairs.
-  // Union of authoritative goCalledBy (continuing-holder path) and the
-  // pendingGoBubblePlayerIds latch (immediate-Go resolution path — this
-  // survives the same-frame reset performed by beginNewPeggingRun so the
-  // bubble renders during the go_point award).
   const targets: { playerId: string; position: number }[] = [];
   if (isPeggingPresentation && phase === 'pegging') {
     const seen = new Set<string>();
-    const candidateIds = [...goCalledBy, ...pendingBubbleIds];
-    for (const pid of candidateIds) {
+    for (const pid of [...goCalledBy, ...pendingBubbleIds]) {
       if (seen.has(pid)) continue;
       seen.add(pid);
       const ps = playerStates[pid];
-      // For pendingBubbleIds we permit hand.length===0 (immediate Go
-      // resolution can leave the blocked player with no cards). For
-      // continuing goCalledBy we still require hand>0 to avoid stale
-      // bubbles once a player is out.
-      const isPending = pendingBubbleIds.includes(pid);
       if (!ps) continue;
+      const isPending = pendingBubbleIds.includes(pid);
       if (!isPending && ps.hand.length === 0) continue;
       const pos = playerPositionById.get(pid);
       if (pos == null) continue;
@@ -70,76 +74,150 @@ export const CribbagePeggingGoBubble = ({
     }
   }
 
-  // Resolve DOM anchors. We poll once per targets-signature change until
-  // each anchor is present; there is no timer that controls truth or
-  // lifetime — the effect is purely a DOM-availability probe.
-  const [anchors, setAnchors] = useState<AnchorEntry[]>([]);
   const signature = targets.map(t => `${t.playerId}:${t.position}`).join('|');
+  const [placements, setPlacements] = useState<Placement[]>([]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (targets.length === 0) {
-      setAnchors([]);
+      setPlacements([]);
       return;
     }
+    let raf = 0;
     let cancelled = false;
-    const resolve = () => {
-      const next: AnchorEntry[] = [];
-      for (const t of targets) {
-        const el = document.querySelector(
-          `[data-chip-center="${t.position}"]`,
-        ) as HTMLElement | null;
-        if (el) next.push({ playerId: t.playerId, position: t.position, el });
-      }
+
+    const measure = () => {
       if (cancelled) return;
-      setAnchors(prev => {
+      const felt = document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
+      const feltRect = felt?.getBoundingClientRect() ?? null;
+      // Fallback to viewport center if felt not yet mounted.
+      const feltCx = feltRect
+        ? feltRect.left + feltRect.width / 2
+        : window.innerWidth / 2;
+      const feltCy = feltRect
+        ? feltRect.top + feltRect.height / 2
+        : window.innerHeight / 2;
+
+      const next: Placement[] = [];
+      let missing = false;
+      for (const t of targets) {
+        const chip = document.querySelector<HTMLElement>(
+          `[data-chip-center="${t.position}"]`,
+        );
+        if (!chip) {
+          missing = true;
+          continue;
+        }
+        const r = chip.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = feltCx - cx;
+        const dy = feltCy - cy;
+        const dist = Math.hypot(dx, dy) || 1;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        // Bubble body sits inward from chip center.
+        const bubbleX = cx + ux * BUBBLE_OFFSET_PX;
+        const bubbleY = cy + uy * BUBBLE_OFFSET_PX;
+        // Tail root emerges from the outward (chip-facing) side of the
+        // bubble; angle points OUTWARD toward the chip (opposite of ux/uy).
+        const tailAngleDeg = (Math.atan2(-uy, -ux) * 180) / Math.PI;
+        next.push({
+          playerId: t.playerId,
+          position: t.position,
+          bubbleX,
+          bubbleY,
+          tailX: cx,
+          tailY: cy,
+          tailAngleDeg,
+        });
+      }
+      setPlacements(prev => {
         if (
           prev.length === next.length &&
-          prev.every((p, i) => p.el === next[i].el && p.playerId === next[i].playerId)
+          prev.every((p, i) => {
+            const n = next[i];
+            return (
+              p.playerId === n.playerId &&
+              Math.abs(p.bubbleX - n.bubbleX) < 0.5 &&
+              Math.abs(p.bubbleY - n.bubbleY) < 0.5 &&
+              Math.abs(p.tailAngleDeg - n.tailAngleDeg) < 0.5
+            );
+          })
         ) {
           return prev;
         }
         return next;
       });
-      if (next.length < targets.length) {
-        raf = requestAnimationFrame(resolve);
+      if (missing) {
+        raf = requestAnimationFrame(measure);
       }
     };
-    let raf = requestAnimationFrame(resolve);
+
+    raf = requestAnimationFrame(measure);
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
-  if (anchors.length === 0) return null;
+  if (placements.length === 0) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <>
-      {anchors.map(a =>
-        createPortal(
+      {placements.map(p => (
+        <div
+          key={`${p.playerId}:${p.position}`}
+          data-cribbage-go-bubble={p.position}
+          className="pointer-events-none fixed z-50 animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            left: p.bubbleX,
+            top: p.bubbleY,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
           <div
-            key={`${a.playerId}:${a.position}`}
-            data-cribbage-go-bubble={a.position}
-            className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 z-40"
+            className="relative rounded-full bg-white text-black font-bold uppercase tracking-wide shadow-lg ring-1 ring-black/10"
+            style={{
+              fontSize: 15,
+              lineHeight: 1,
+              padding: '6px 12px',
+              minWidth: 40,
+              textAlign: 'center',
+            }}
           >
-            <div className="relative flex items-center justify-center rounded-full bg-black/85 text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 shadow-md animate-in fade-in zoom-in-95 duration-200">
-              Go
-              {/* Speech tail pointing down toward the chipstack */}
-              <span
-                aria-hidden
-                className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0"
-                style={{
-                  borderLeft: '4px solid transparent',
-                  borderRight: '4px solid transparent',
-                  borderTop: '4px solid rgba(0,0,0,0.85)',
-                }}
-              />
-            </div>
-          </div>,
-          a.el,
-        ),
-      )}
-    </>
+            Go
+            {/* Tail — rotated triangle pointing outward toward chipstack. */}
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2"
+              style={{
+                width: 0,
+                height: 0,
+                borderLeft: `${TAIL_LENGTH_PX}px solid white`,
+                borderTop: `${TAIL_LENGTH_PX * 0.7}px solid transparent`,
+                borderBottom: `${TAIL_LENGTH_PX * 0.7}px solid transparent`,
+                transform: `translate(-50%, -50%) rotate(${p.tailAngleDeg}deg) translate(${BUBBLE_OFFSET_PX * 0.4}px, 0)`,
+                transformOrigin: 'center',
+                filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))',
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </>,
+    document.body,
   );
 };
+
+// Retain unused import guard for tree-shaking cleanliness.
+void useEffect;
