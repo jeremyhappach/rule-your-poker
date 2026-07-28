@@ -5,7 +5,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
-import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
+// Highlight now flows through `<CribbagePlayingCard highlight="gold"/>`.
 // Instrumentation ledgers removed post-wartime cleanup. Local no-op stubs
 // preserve call-site shape while eliminating all diagnostic side effects.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1623,13 +1623,11 @@ export const CribbageCountingPhase = ({
                       data-scoring-owner-match="true"
                       data-combo-member={comboIds.has(cardId) ? 'true' : 'false'}
                       className={`transition-all duration-300 ${
-                        highlighted
-                          ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
-                          : ''
+                        highlighted ? 'transform -translate-y-2' : ''
                       }`}
                       style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
                     >
-                      <CribbagePlayingCard card={card} size="md" />
+                      <CribbagePlayingCard card={card} size="md" highlight={highlighted ? 'gold' : null} />
                     </div>
                   );
                 })}
