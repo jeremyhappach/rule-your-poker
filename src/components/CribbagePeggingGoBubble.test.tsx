@@ -52,13 +52,13 @@ const baseState = (o: Partial<CribbageState> = {}): CribbageState => ({
 
 describe('CribbagePeggingGoBubble presentation', () => {
   beforeEach(() => {
+    cleanup();
     // Provide the [data-chip-center] chip anchors AND the canonical felt
     // surface so the remote bubble can derive an inward direction.
     document.body.innerHTML = `
       <div data-canonical-felt-surface style="position:absolute;left:100px;top:100px;width:400px;height:400px"></div>
       <div data-chip-center="1" data-testid="chip-1" style="position:absolute;left:50px;top:150px;width:20px;height:20px"></div>
       <div data-chip-center="2" data-testid="chip-2" style="position:absolute;left:550px;top:150px;width:20px;height:20px"></div>
-      <div data-active-hand-lower-zone style="position:absolute;left:200px;top:600px;width:200px;height:40px"></div>
     `;
   });
 
