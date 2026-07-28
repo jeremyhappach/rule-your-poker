@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
+import {
+  buildAdvance357CardAssignments,
+  cardsDealtForRound,
+  type EligiblePlayer,
+} from "./threeFiveSeven/advanceRound";
 import { readDebugHarness } from "./debugHarness/useDebugHarness";
 import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 import {
