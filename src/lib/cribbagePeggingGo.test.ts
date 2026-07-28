@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Targeted unit tests for cribbage pegging Go / last-card scoring.
  *
