@@ -16,7 +16,8 @@ import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
-import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
+// cardHighlight tokens retired — highlight is now a first-class
+// PlayingCard prop that renders inside the card face itself.
 
 /** No-op — temporary Cribbage active-hand wartime instrumentation removed. */
 function recordCribbageWartime(
