@@ -171,4 +171,85 @@ describe('CribbagePeggingGoBubble presentation', () => {
     expect(sAfter.pegging.pendingGoBubblePlayerIds).toBeUndefined();
     expect(sAfter.pegging.goCalledBy).toEqual([]);
   });
+
+  it('routes the local blocked player to the active-pane anchor (no felt tail)', async () => {
+    const s = baseState({
+      turnOrder: ['hap', 'bot'],
+      playerStates: {
+        hap: {
+          playerId: 'hap',
+          hand: [card('A')],
+          pegScore: 0,
+          hasCalledGo: false,
+          discardedToCrib: [],
+        },
+        bot: {
+          playerId: 'bot',
+          hand: [card('Q', 'hearts')],
+          pegScore: 0,
+          hasCalledGo: false,
+          discardedToCrib: [],
+        },
+      },
+      pegging: {
+        playedCards: [],
+        currentCount: 28,
+        currentTurnPlayerId: 'bot',
+        lastToPlay: 'bot',
+        goCalledBy: ['hap'],
+        sequenceStartIndex: 0,
+      },
+    });
+
+    render(
+      <CribbagePeggingGoBubble
+        cribbageState={s}
+        playerPositionById={positions}
+        localPlayerId="hap"
+        isPeggingPresentation
+      />,
+    );
+    await new Promise(r => requestAnimationFrame(() => r(null)));
+    const bubbles = await screen.findAllByText('Go');
+    expect(bubbles.length).toBe(1);
+    const el = document.querySelector('[data-cribbage-go-bubble="local:hap"]');
+    expect(el).not.toBeNull();
+    expect(el?.getAttribute('data-cribbage-go-orientation')).toBe('local');
+    // Remote-oriented anchor for the same player must not exist.
+    expect(document.querySelector('[data-cribbage-go-bubble="1"]')).toBeNull();
+  });
+
+  it('skips render entirely when the required local anchor is missing (no felt fallback)', async () => {
+    // Strip the active-pane anchor.
+    document.body.innerHTML = `
+      <div data-canonical-felt-surface style="position:absolute;left:100px;top:100px;width:400px;height:400px"></div>
+      <div data-chip-center="1"></div>
+      <div data-chip-center="2"></div>
+    `;
+    const s = baseState({
+      turnOrder: ['hap', 'bot'],
+      playerStates: {
+        hap: { playerId: 'hap', hand: [card('A')], pegScore: 0, hasCalledGo: false, discardedToCrib: [] },
+        bot: { playerId: 'bot', hand: [card('Q', 'hearts')], pegScore: 0, hasCalledGo: false, discardedToCrib: [] },
+      },
+      pegging: {
+        playedCards: [],
+        currentCount: 28,
+        currentTurnPlayerId: 'bot',
+        lastToPlay: 'bot',
+        goCalledBy: ['hap'],
+        sequenceStartIndex: 0,
+      },
+    });
+    render(
+      <CribbagePeggingGoBubble
+        cribbageState={s}
+        playerPositionById={positions}
+        localPlayerId="hap"
+        isPeggingPresentation
+      />,
+    );
+    await new Promise(r => requestAnimationFrame(() => r(null)));
+    expect(screen.queryByText('Go')).toBeNull();
+  });
 });
