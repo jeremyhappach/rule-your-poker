@@ -3284,15 +3284,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // If dealer game ID changed (including null→non-null first-dealer-game start), clear all caches
-    if (currentDealerGameId !== null && prevDealerGameId !== currentDealerGameId) {
+    // Hydration-only observation: null → first non-null dealerGameId is NOT a
+    // rotation. Cold refresh first learns the current dealer-game id AFTER
+    // player_cards have already been hydrated by the fetch path; clearing
+    // here would wipe freshly-accepted cards. Only a genuine non-null → different
+    // non-null rotation is a true dealer-game boundary.
+    const isHydrationObservation = prevDealerGameId === null;
+    const isGenuineRotation =
+      prevDealerGameId !== null &&
+      currentDealerGameId !== null &&
+      prevDealerGameId !== currentDealerGameId;
+
+    if (isGenuineRotation) {
       console.log('[CACHE_GUARD] 🔄 dealer_game_id changed - CLEARING ALL CACHES to prevent cross-game contamination', {
         prevDealerGameId,
         currentDealerGameId,
         gameType: game?.game_type,
         status: game?.status,
       });
-      
+
       clearLiftedCardCaches('DEALER_GAME_ID_CHANGED', { prevDealerGameId, currentDealerGameId });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
@@ -3301,10 +3311,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setCardStateContext(null);
       maxRevealedRef.current = 0;
       cardIdentityRef.current = '';
-      
+
       // Also reset turn tracking to prevent spotlight flicker
       setLastTurnPosition(null);
       setTimerTurnPosition(null);
+    } else if (isHydrationObservation && currentDealerGameId !== null) {
+      // Cold-hydration first observation of dealer-game id — record only.
+      console.log('[CACHE_GUARD] hydration observation (null → first non-null) — no clear', {
+        currentDealerGameId,
+      });
     }
 
     prevDealerGameIdRef.current = currentDealerGameId;
