@@ -494,6 +494,8 @@ export function playPeggingCard(
       currentCount: newCount,
       lastToPlay: playerId,
       goCalledBy: newCount === 31 ? [] : state.pegging.goCalledBy, // reset on 31
+      // Fresh play consumes any pending Go bubble from the prior run.
+      pendingGoBubblePlayerIds: undefined,
     },
     lastEvent: pointsEarned > 0 ? {
       id: generateUUID(),
@@ -670,8 +672,12 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     if (goCalledBy.includes(nextPlayerId)) continue;
 
     if (!hasPlayableCard(nextPlayer.hand, state.pegging.currentCount)) {
-      // Auto-Go: blocked player never receives the spotlight.
-      goCalledBy = [...goCalledBy, nextPlayerId];
+      // Auto-Go: blocked player never receives the spotlight. Skip the
+      // holder (lastToPlay) — they're claiming the Go point, not calling
+      // Go on themselves.
+      if (nextPlayerId !== state.pegging.lastToPlay) {
+        goCalledBy = [...goCalledBy, nextPlayerId];
+      }
       continue;
     }
 
@@ -688,6 +694,13 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   // No playable next player exists — fall through to the +1 Go / reset
   // branch below, carrying the auto-Go bookkeeping through so the bubble
   // remains derivable up to the authoritative reset boundary.
+  const priorGoCalledBy = state.pegging.goCalledBy;
+  const autoAddedBlockedIds = goCalledBy.filter(id => !priorGoCalledBy.includes(id));
+  // Presentation latch: union of prior goCalledBy (still-blocked) and the
+  // auto-added blocked players. This survives the reset that
+  // `beginNewPeggingRun` performs below, so the Go bubble renders
+  // during the same-frame go_point award.
+  const pendingBubbleIds = Array.from(new Set([...priorGoCalledBy, ...autoAddedBlockedIds]));
   const stateAfterAutoGo: CribbageState =
     goCalledBy === state.pegging.goCalledBy
       ? state
@@ -724,14 +737,20 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
       }
     }
   }
-  
+
   const resetState = beginNewPeggingRun(stateForReset, lastToPlayId);
-  if (resetState.pegging.currentTurnPlayerId) {
-    return resetState;
+  // Stamp the presentation latch AFTER reset so it survives goCalledBy=[]
+  const withPendingBubble: CribbageState =
+    pendingBubbleIds.length > 0
+      ? { ...resetState, pegging: { ...resetState.pegging, pendingGoBubblePlayerIds: pendingBubbleIds } }
+      : resetState;
+  if (withPendingBubble.pegging.currentTurnPlayerId) {
+    return withPendingBubble;
   }
-  
+
   // All cards played - advance to counting
   return advanceToCounting(stateForReset);
+
 
 
 

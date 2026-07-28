@@ -8517,10 +8517,14 @@ export const CribbageMobileGameTable = ({
                   playerPositionById={
                     new Map(activeSeatPlayers.map(p => [p.id, p.position]))
                   }
+                  // Only suppress when the counting overlay has replaced
+                  // the pegging fan. thirtyOneDelayActive is NOT a
+                  // suppressor: on a 31 the authoritative reducer clears
+                  // goCalledBy (no bubble anyway); during an immediate-Go
+                  // award neither delay is active — the bubble must render.
                   isPeggingPresentation={
                     gameplayRenderState.phase === 'pegging' &&
-                    !countingDelayActive &&
-                    !thirtyOneDelayActive
+                    !(countingStateSnapshot && !countingDelayActive)
                   }
                 />
 

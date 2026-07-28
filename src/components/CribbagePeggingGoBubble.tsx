@@ -40,15 +40,30 @@ export const CribbagePeggingGoBubble = ({
   isPeggingPresentation,
 }: CribbagePeggingGoBubbleProps) => {
   const goCalledBy = cribbageState?.pegging.goCalledBy ?? [];
+  const pendingBubbleIds = cribbageState?.pegging.pendingGoBubblePlayerIds ?? [];
   const playerStates = cribbageState?.playerStates ?? {};
   const phase = cribbageState?.phase;
 
   // Compute the target list of {playerId, position} pairs.
+  // Union of authoritative goCalledBy (continuing-holder path) and the
+  // pendingGoBubblePlayerIds latch (immediate-Go resolution path — this
+  // survives the same-frame reset performed by beginNewPeggingRun so the
+  // bubble renders during the go_point award).
   const targets: { playerId: string; position: number }[] = [];
   if (isPeggingPresentation && phase === 'pegging') {
-    for (const pid of goCalledBy) {
+    const seen = new Set<string>();
+    const candidateIds = [...goCalledBy, ...pendingBubbleIds];
+    for (const pid of candidateIds) {
+      if (seen.has(pid)) continue;
+      seen.add(pid);
       const ps = playerStates[pid];
-      if (!ps || ps.hand.length === 0) continue;
+      // For pendingBubbleIds we permit hand.length===0 (immediate Go
+      // resolution can leave the blocked player with no cards). For
+      // continuing goCalledBy we still require hand>0 to avoid stale
+      // bubbles once a player is out.
+      const isPending = pendingBubbleIds.includes(pid);
+      if (!ps) continue;
+      if (!isPending && ps.hand.length === 0) continue;
       const pos = playerPositionById.get(pid);
       if (pos == null) continue;
       targets.push({ playerId: pid, position: pos });
