@@ -8292,40 +8292,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Users join as observers - they must select a seat to become a player
 
-    // ── 3-5-7 wartime unconditional trace: EVENT 1 (entry) ────────────
-    const is357Trace =
-      gameData.game_type === '3-5-7' ||
-      gameData.game_type === '357' ||
-      gameData.game_type === '3-5-7-game';
-    const localPlayerIdEntry357: string | null =
-      (playersData ?? []).find((p: any) => p.user_id === user?.id)?.id ?? null;
-    if (is357Trace) {
-      persistSyncDebugEvent({
-        gameId: gameId!,
-        gameType: gameData.game_type ?? 'unknown',
-        handNumber: gameData.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.entry',
-        dedupKey: `357.fetch.entry:${gameId}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          fetchStartedAt,
-          gameId: gameId ?? null,
-          localPlayerId: localPlayerIdEntry357,
-          gameDataStatus: gameData.status ?? null,
-          gameDataGameType: gameData.game_type ?? null,
-          gameDataCurrentRound: gameData.current_round ?? null,
-          gameDataCurrentGameUuid: gameData.current_game_uuid ?? null,
-          gameDataTotalHands: gameData.total_hands ?? null,
-          gameDataAwaitingNextRound: gameData.awaiting_next_round ?? null,
-          playerCardsLengthAtEntry: playerCards.length,
-          cardFetchTokenAtEntry: cardFetchTokenRef.current ?? 0,
-        },
-      });
-    }
+    // (357.fetch.entry diagnostic removed)
+    const is357Trace = false;
+
 
     // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
