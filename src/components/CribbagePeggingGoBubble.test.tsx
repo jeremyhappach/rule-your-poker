@@ -253,6 +253,7 @@ describe('CribbagePeggingGoBubble presentation', () => {
       />,
     );
     await new Promise(r => requestAnimationFrame(() => r(null)));
+    await new Promise(r => setTimeout(r, 0));
     const bubble = document.querySelector<HTMLElement>('[data-cribbage-go-bubble="2"]');
     expect(bubble).not.toBeNull();
     const body = bubble!.querySelector<HTMLElement>(':scope > div');
