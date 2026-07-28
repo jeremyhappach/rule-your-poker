@@ -1863,12 +1863,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const key = `${gameId}:${BUILD_IDENTITY.buildSha}`;
     if (fetchTraceHeartbeatKeyRef.current === key) return;
     fetchTraceHeartbeatKeyRef.current = key;
-    // NOTE: do NOT reset fetchTraceStatus here. The invocation/outcome
-    // pair can (and often does) resolve BEFORE this mount effect runs
-    // — the module state may already be 'ready'. Resetting to 'pending'
-    // clobbers that promotion and, because matchedPairSeen latches true
-    // after the first pair, no later pair can re-promote → the pill is
-    // pinned at 'loaded' for the rest of the session.
+    // Begin a per-mount fetch-trace session so ack accounting reflects
+    // THIS Game instance only. Idempotent per key. Invocation/outcome
+    // acks that arrive tagged with a stale sessionKey are ignored by
+    // the module, so a natural cold_mount fetch always promotes READY
+    // for the current mount without needing a page refresh.
+    beginFetchTraceSession(key);
     persistSyncDebugEvent({
       gameId,
       gameType: '3-5-7',
@@ -1888,9 +1888,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameId,
         gameType: game?.game_type ?? null,
         mountedAt: new Date().toISOString(),
+        sessionKey: key,
       },
       onResult: (ok, reason) => {
-        markHeartbeatResult(ok, ok ? null : (reason ?? 'unknown'));
+        markHeartbeatResult(key, ok, ok ? null : (reason ?? 'unknown'));
       },
     });
   }, [is357GameType, gameId, game?.game_type]);
