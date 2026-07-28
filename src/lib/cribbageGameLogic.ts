@@ -494,6 +494,8 @@ export function playPeggingCard(
       currentCount: newCount,
       lastToPlay: playerId,
       goCalledBy: newCount === 31 ? [] : state.pegging.goCalledBy, // reset on 31
+      // Fresh play consumes any pending Go bubble from the prior run.
+      pendingGoBubblePlayerIds: undefined,
     },
     lastEvent: pointsEarned > 0 ? {
       id: generateUUID(),
