@@ -1,32 +1,32 @@
 /**
  * Runtime status of the 3-5-7 fetch-trace instrumentation.
  *
- * Two-stage readiness contract:
+ * Two-stage readiness contract, scoped **per mounted Game instance**:
  *
- *   'pending' → initial
- *   'loaded'  → 357.fetch.instrumentation_loaded heartbeat write resolved OK
- *   'ready'   → at least one 357.fetch.invocation AND its matching
- *               357.fetch.outcome (same fetchGenerationId) both had
- *               their persistence callbacks resolve OK in this session
- *   'failed'  → any persistence callback resolved with an error
+ *   'pending' → session just began, no heartbeat yet
+ *   'loaded'  → heartbeat write for THIS session resolved OK
+ *   'ready'   → THIS session has persisted at least one matched
+ *               invocation/outcome pair (same fetchGenerationId, both
+ *               onResult callbacks resolved OK)
+ *   'failed'  → a persistence callback for THIS session resolved with
+ *               an error
  *
- * READY is *never* set purely from the heartbeat. That was the
- * previous false-positive: the heartbeat is 'invariant' and always
- * writes, but the fetch lifecycle events were gated in production.
- * With the gate fixed we still require a proven matched pair.
+ * A "session" is a Game mount. Game.tsx calls `beginFetchTraceSession`
+ * with the current gameId (or any stable per-mount key) as soon as it
+ * renders. That clears the previous mount's ack accounting so the
+ * pill accurately reflects THIS mount, not a stale historical latch.
  */
 
 export type FetchTraceStatus = 'pending' | 'loaded' | 'ready' | 'failed';
 
-export const FETCH_INSTRUMENTATION_VERSION = 'v2';
+export const FETCH_INSTRUMENTATION_VERSION = 'v3';
 
 let current: FetchTraceStatus = 'pending';
 let failureReason: string | null = null;
 const listeners = new Set<() => void>();
 
-// Per-generation write acknowledgements, so we only flip to 'ready'
-// when the SAME fetchGenerationId has both an invocation-write and
-// an outcome-write confirmed by the persistence layer.
+// Per-session ack accounting. Cleared on every beginFetchTraceSession.
+let currentSessionKey: string | null = null;
 const invocationAcks = new Set<number>();
 const outcomeAcks = new Set<number>();
 let matchedPairSeen = false;
@@ -45,6 +45,26 @@ export function getFetchTraceFailureReason(): string | null {
   return failureReason;
 }
 
+export function getFetchTraceSessionKey(): string | null {
+  return currentSessionKey;
+}
+
+/**
+ * Called by Game.tsx once per mounted instance (idempotent per key).
+ * Resets ack accounting so READY reflects only THIS mount's pair.
+ * Acks that arrive tagged with a different sessionKey are ignored.
+ */
+export function beginFetchTraceSession(sessionKey: string): void {
+  if (currentSessionKey === sessionKey) return;
+  currentSessionKey = sessionKey;
+  invocationAcks.clear();
+  outcomeAcks.clear();
+  matchedPairSeen = false;
+  current = 'pending';
+  failureReason = null;
+  notify();
+}
+
 export function setFetchTraceStatus(next: FetchTraceStatus, reason?: string | null): void {
   current = next;
   failureReason = reason ?? null;
@@ -52,14 +72,18 @@ export function setFetchTraceStatus(next: FetchTraceStatus, reason?: string | nu
 }
 
 /** Called by Game.tsx when the heartbeat write callback resolves. */
-export function markHeartbeatResult(ok: boolean, reason?: string | null): void {
+export function markHeartbeatResult(
+  sessionKey: string | null,
+  ok: boolean,
+  reason?: string | null,
+): void {
+  if (sessionKey !== null && sessionKey !== currentSessionKey) return; // stale mount
   if (!ok) {
     current = 'failed';
     failureReason = reason ?? 'heartbeat_failed';
     notify();
     return;
   }
-  // Only advance to 'loaded' if we haven't already reached 'ready'.
   if (current !== 'ready') {
     current = 'loaded';
     failureReason = null;
@@ -68,7 +92,13 @@ export function markHeartbeatResult(ok: boolean, reason?: string | null): void {
 }
 
 /** Called by Game.tsx when the 357.fetch.invocation write callback resolves. */
-export function markInvocationAck(fetchGenerationId: number, ok: boolean, reason?: string | null): void {
+export function markInvocationAck(
+  sessionKey: string | null,
+  fetchGenerationId: number,
+  ok: boolean,
+  reason?: string | null,
+): void {
+  if (sessionKey !== null && sessionKey !== currentSessionKey) return; // stale mount
   if (!ok) {
     current = 'failed';
     failureReason = reason ?? 'invocation_write_failed';
@@ -80,7 +110,13 @@ export function markInvocationAck(fetchGenerationId: number, ok: boolean, reason
 }
 
 /** Called by Game.tsx when the 357.fetch.outcome write callback resolves. */
-export function markOutcomeAck(fetchGenerationId: number, ok: boolean, reason?: string | null): void {
+export function markOutcomeAck(
+  sessionKey: string | null,
+  fetchGenerationId: number,
+  ok: boolean,
+  reason?: string | null,
+): void {
+  if (sessionKey !== null && sessionKey !== currentSessionKey) return; // stale mount
   if (!ok) {
     current = 'failed';
     failureReason = reason ?? 'outcome_write_failed';

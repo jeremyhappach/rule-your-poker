@@ -322,7 +322,7 @@ import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
-import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck } from "@/lib/fetchTraceStatus";
+import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck, beginFetchTraceSession } from "@/lib/fetchTraceStatus";
 
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
@@ -1863,12 +1863,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const key = `${gameId}:${BUILD_IDENTITY.buildSha}`;
     if (fetchTraceHeartbeatKeyRef.current === key) return;
     fetchTraceHeartbeatKeyRef.current = key;
-    // NOTE: do NOT reset fetchTraceStatus here. The invocation/outcome
-    // pair can (and often does) resolve BEFORE this mount effect runs
-    // — the module state may already be 'ready'. Resetting to 'pending'
-    // clobbers that promotion and, because matchedPairSeen latches true
-    // after the first pair, no later pair can re-promote → the pill is
-    // pinned at 'loaded' for the rest of the session.
+    // Begin a per-mount fetch-trace session so ack accounting reflects
+    // THIS Game instance only. Idempotent per key. Invocation/outcome
+    // acks that arrive tagged with a stale sessionKey are ignored by
+    // the module, so a natural cold_mount fetch always promotes READY
+    // for the current mount without needing a page refresh.
+    beginFetchTraceSession(key);
     persistSyncDebugEvent({
       gameId,
       gameType: '3-5-7',
@@ -1888,9 +1888,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameId,
         gameType: game?.game_type ?? null,
         mountedAt: new Date().toISOString(),
+        sessionKey: key,
       },
       onResult: (ok, reason) => {
-        markHeartbeatResult(ok, ok ? null : (reason ?? 'unknown'));
+        markHeartbeatResult(key, ok, ok ? null : (reason ?? 'unknown'));
       },
     });
   }, [is357GameType, gameId, game?.game_type]);
@@ -8042,6 +8043,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const is357FetchTraceType = (value: unknown): boolean =>
       value === '3-5-7' || value === '357' || value === '3-5-7-game';
     const shouldPersist357FetchTrace = !fetchTraceKnownGameType || is357FetchTraceType(fetchTraceKnownGameType);
+    const fetchTraceSessionKey = `${fetchTraceGameIdForPersist}:${BUILD_IDENTITY.buildSha}`;
+    if (shouldPersist357FetchTrace) {
+      // Idempotent per key — ensures ack accounting is scoped to THIS
+      // Game mount even if the cold_mount fetch fires before the
+      // heartbeat useEffect (which is gated on is357GameType).
+      beginFetchTraceSession(fetchTraceSessionKey);
+    }
 
     if (shouldPersist357FetchTrace) {
       persistSyncDebugEvent({
@@ -8067,7 +8075,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
         },
         onResult: (ok, reason) => {
-          markInvocationAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
+          markInvocationAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     }
@@ -8206,7 +8214,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
         },
         onResult: (ok, reason) => {
-          markOutcomeAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
+          markOutcomeAck(fetchTraceSessionKey, fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     };
