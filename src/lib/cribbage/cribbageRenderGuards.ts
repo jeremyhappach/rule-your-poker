@@ -144,8 +144,14 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
   const transportInFlight = dealPhase === 'DEALING' && activeIntents > 0;
 
   // Phase past opening-deal window: opening is complete by contract.
+  // Once opening deal is over authoritative is the sole truth. When the
+  // rendered count differs in either direction (fewer OR more cards
+  // than authoritative), force authoritative — presentation may still
+  // hold the pre-discard 6-card ledger while authoritative holds the
+  // pruned 4-card set, and rendering that ledger would double the
+  // discarded card IDs in both the hand and the crib destination.
   if (isPost && !isOpeningPhase) {
-    if (authCount > 0 && presCount < authCount) {
+    if (authCount > 0 && presCount !== authCount) {
       return {
         hand: authoritative as readonly CribbageCard[],
         decision: 'render-authoritative-self-heal',
@@ -159,18 +165,16 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
     };
   }
 
-  // Contract B — refresh/rejoin reconstruction during 'discarding' after
-  // this player has already discarded. Provably safe: `selfHasDiscarded`
-  // is set only by a committed authoritative discard, which cannot happen
-  // until the opening deal fully completed, and no transport path modifies
-  // authoritative hand cards during `discarding`. Does not fire during
-  // the live opening deal (selfHasDiscarded=false) nor during settled-
-  // prefix reveal (same).
-  if (args.phase === 'discarding' && selfHasDiscarded && authCount > 0 && presCount < authCount) {
+  // Contract B — self-discard committed while phase is still
+  // 'discarding'. Presentation still holds the pre-discard settled
+  // ledger; authoritative is the pruned post-discard hand. Force
+  // authoritative regardless of count comparison so discarded IDs
+  // cannot render simultaneously in the active hand and the crib.
+  if (args.phase === 'discarding' && selfHasDiscarded && authoritative) {
     return {
       hand: authoritative as readonly CribbageCard[],
       decision: 'render-authoritative-self-heal',
-      reason: 'Contract B: self already discarded; authoritative post-discard hand is settled',
+      reason: 'Contract B: self already discarded; authoritative post-discard hand wins',
     };
   }
 
