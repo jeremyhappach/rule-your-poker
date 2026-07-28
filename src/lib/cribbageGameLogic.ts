@@ -688,6 +688,13 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   // No playable next player exists — fall through to the +1 Go / reset
   // branch below, carrying the auto-Go bookkeeping through so the bubble
   // remains derivable up to the authoritative reset boundary.
+  const priorGoCalledBy = state.pegging.goCalledBy;
+  const autoAddedBlockedIds = goCalledBy.filter(id => !priorGoCalledBy.includes(id));
+  // Presentation latch: union of prior goCalledBy (still-blocked) and the
+  // auto-added blocked players. This survives the reset that
+  // `beginNewPeggingRun` performs below, so the Go bubble renders
+  // during the same-frame go_point award.
+  const pendingBubbleIds = Array.from(new Set([...priorGoCalledBy, ...autoAddedBlockedIds]));
   const stateAfterAutoGo: CribbageState =
     goCalledBy === state.pegging.goCalledBy
       ? state
@@ -724,14 +731,20 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
       }
     }
   }
-  
+
   const resetState = beginNewPeggingRun(stateForReset, lastToPlayId);
-  if (resetState.pegging.currentTurnPlayerId) {
-    return resetState;
+  // Stamp the presentation latch AFTER reset so it survives goCalledBy=[]
+  const withPendingBubble: CribbageState =
+    pendingBubbleIds.length > 0
+      ? { ...resetState, pegging: { ...resetState.pegging, pendingGoBubblePlayerIds: pendingBubbleIds } }
+      : resetState;
+  if (withPendingBubble.pegging.currentTurnPlayerId) {
+    return withPendingBubble;
   }
-  
+
   // All cards played - advance to counting
   return advanceToCounting(stateForReset);
+
 
 
 
