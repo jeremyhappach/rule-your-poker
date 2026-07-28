@@ -298,7 +298,7 @@ export const PlayingCard = ({
 
         {/* Card Front */}
         <Card
-          className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg`}
+          className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg ${highlightOuterGlowClass}`}
           style={{
             backgroundColor: cardFaceStyle.backgroundColor,
             backfaceVisibility: 'hidden',
@@ -315,6 +315,7 @@ export const PlayingCard = ({
           {face.renderSuit && !isFourColor && face.suitStyle && (
             <span style={face.suitStyle}>{normalizedSuit}</span>
           )}
+          {highlightOverlay}
         </Card>
       </div>
     );
@@ -349,7 +350,7 @@ export const PlayingCard = ({
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-id={`${card.rank}-${card.suit}`}
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${className} transition-transform duration-200 overflow-hidden`}
+      className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
@@ -362,6 +363,7 @@ export const PlayingCard = ({
       {face.renderSuit && !isFourColor && face.suitStyle && (
         <span style={face.suitStyle}>{normalizedSuit}</span>
       )}
+      {highlightOverlay}
     </Card>
   );
 };
