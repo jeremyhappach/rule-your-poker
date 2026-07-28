@@ -652,40 +652,61 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     return advanceToCounting(state);
   }
   
-  // Find next player who can play or hasn't called go
+  // Find next player who can legally play at the current count. Candidates
+  // that still hold cards but have no legal play are auto-added to
+  // goCalledBy so the spotlight NEVER transiently moves to a blocked
+  // player. This is the authoritative "forced-Go" decision — the
+  // presentation layer derives the Go bubble from goCalledBy.
   const currentId = state.pegging.currentTurnPlayerId;
   const currentIndex = currentId ? state.turnOrder.indexOf(currentId) : -1;
-  
+
+  let goCalledBy = state.pegging.goCalledBy;
   for (let i = 1; i <= state.turnOrder.length; i++) {
     const nextIndex = (currentIndex + i) % state.turnOrder.length;
     const nextPlayerId = state.turnOrder[nextIndex];
     const nextPlayer = state.playerStates[nextPlayerId];
-    
-    if (nextPlayer.hand.length > 0 && !state.pegging.goCalledBy.includes(nextPlayerId)) {
-      return {
-        ...state,
-        pegging: {
-          ...state.pegging,
-          currentTurnPlayerId: nextPlayerId,
-        },
-      };
+
+    if (!nextPlayer || nextPlayer.hand.length === 0) continue;
+    if (goCalledBy.includes(nextPlayerId)) continue;
+
+    if (!hasPlayableCard(nextPlayer.hand, state.pegging.currentCount)) {
+      // Auto-Go: blocked player never receives the spotlight.
+      goCalledBy = [...goCalledBy, nextPlayerId];
+      continue;
     }
+
+    return {
+      ...state,
+      pegging: {
+        ...state.pegging,
+        currentTurnPlayerId: nextPlayerId,
+        goCalledBy,
+      },
+    };
   }
-  
+
+  // No playable next player exists — fall through to the +1 Go / reset
+  // branch below, carrying the auto-Go bookkeeping through so the bubble
+  // remains derivable up to the authoritative reset boundary.
+  const stateAfterAutoGo: CribbageState =
+    goCalledBy === state.pegging.goCalledBy
+      ? state
+      : { ...state, pegging: { ...state.pegging, goCalledBy } };
+
   // If everyone else with cards has already called go, the current player (lastToPlay)
   // is entitled to the +1 Go point before the run resets. This is the standard cribbage
   // "go" resolution: opponent says Go, you play any remaining playable cards, then
   // collect 1 for Go (or 2 if you hit 31 — handled separately in playPeggingCard).
-  const lastToPlayId = state.pegging.lastToPlay;
-  let stateForReset: CribbageState = state;
-  if (lastToPlayId && state.pegging.currentCount !== 31 && state.pegging.currentCount > 0) {
-    const lastPlayer = state.playerStates[lastToPlayId];
+  const lastToPlayId = stateAfterAutoGo.pegging.lastToPlay;
+  let stateForReset: CribbageState = stateAfterAutoGo;
+  if (lastToPlayId && stateAfterAutoGo.pegging.currentCount !== 31 && stateAfterAutoGo.pegging.currentCount > 0) {
+    const lastPlayer = stateAfterAutoGo.playerStates[lastToPlayId];
     if (lastPlayer) {
       const newScore = lastPlayer.pegScore + 1;
       stateForReset = {
-        ...state,
+        ...stateAfterAutoGo,
         playerStates: {
-          ...state.playerStates,
+          ...stateAfterAutoGo.playerStates,
           [lastToPlayId]: { ...lastPlayer, pegScore: newScore },
         },
         lastEvent: {
@@ -695,7 +716,7 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
           points: 1,
           label: 'Go',
           createdAt: new Date().toISOString(),
-          count: state.pegging.currentCount,
+          count: stateAfterAutoGo.pegging.currentCount,
         },
       };
       if (newScore >= stateForReset.pointsToWin) {

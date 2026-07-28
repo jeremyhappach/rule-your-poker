@@ -44,6 +44,7 @@ import { traceCribbageScoring } from '@/lib/cribbage/cribbageScoringTrace';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
+import { CribbagePeggingGoBubble } from './CribbagePeggingGoBubble';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { recordCribDealerDraw, useCribDealerDrawSurfaceTrace } from '@/lib/cribbageDealerDrawTrace';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
@@ -8506,6 +8507,22 @@ export const CribbageMobileGameTable = ({
                     />
                   );
                 })()}
+
+                {/* Forced-Go bubble. Anchored to blocked players' canonical
+                    chipstacks. Truth derives from authoritative
+                    pegging.goCalledBy (populated by advanceToNextPeggingTurn
+                    BEFORE spotlight reassignment) — no timer, no latch. */}
+                <CribbagePeggingGoBubble
+                  cribbageState={gameplayRenderState}
+                  playerPositionById={
+                    new Map(activeSeatPlayers.map(p => [p.id, p.position]))
+                  }
+                  isPeggingPresentation={
+                    gameplayRenderState.phase === 'pegging' &&
+                    !countingDelayActive &&
+                    !thirtyOneDelayActive
+                  }
+                />
 
 
 
