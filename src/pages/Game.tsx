@@ -8503,46 +8503,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
         }
 
-        // ── 3-5-7 wartime unconditional trace: EVENT 3 (round resolution) ──
-        if (is357Trace) {
-          const resolvedDecision357: 'resolved' | 'no_round_row' | 'query_error' | 'skipped' =
-            roundQueryError357.code || roundQueryError357.message
-              ? 'query_error'
-              : roundData
-                ? 'resolved'
-                : 'no_round_row';
-          persistSyncDebugEvent({
-            gameId: gameId!,
-            gameType: gameData.game_type ?? 'unknown',
-            handNumber: gameData.total_hands ?? 0,
-            roundId: roundData?.id ?? null,
-            eventType: 'invariant',
-            severity: 'info',
-            eventName: '357.fetch.round_resolution',
-            dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
-            payload: {
-              fetchGenerationId,
-              fetchTrigger,
-              roundSelectionBranch: roundSelectionBranch357,
-              roundSelectGameId: gameId ?? null,
-              roundSelectDealerGameId: gameData.current_game_uuid ?? null,
-              roundSelectHandNumber: gameData.total_hands ?? null,
-              roundSelectRoundNumber: gameData.current_round ?? null,
-              fallbackCurrentRoundId: currentRound?.id ?? null,
-              roundQueryExecuted: true,
-              roundQueryRowsReturned: roundQueryRowsReturned357,
-              roundQueryErrorCode: roundQueryError357.code,
-              roundQueryErrorMessage: roundQueryError357.message,
-              roundDataResolved: !!roundData,
-              resolvedRoundId: roundData?.id ?? null,
-              resolvedDealerGameId: gameData.current_game_uuid ?? null,
-              resolvedHandNumber: gameData.total_hands ?? null,
-              resolvedRoundNumber: roundData?.round_number ?? null,
-              resolvedCardsDealt: roundData?.cards_dealt ?? null,
-              resolutionDecision: resolvedDecision357,
-            },
-          });
-        }
+        // (357.fetch.round_resolution diagnostic removed)
+
 
 
         if (roundData) {
