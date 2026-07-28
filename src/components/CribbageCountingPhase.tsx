@@ -1662,11 +1662,15 @@ export const CribbageCountingPhase = ({
                   }
                   className={`transition-all duration-300 ${
                     isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring'
-                      ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
+                      ? 'transform -translate-y-2'
                       : ''
                   }`}
                 >
-                  <CribbagePlayingCard card={cribbageState.cutCard} size="md" />
+                  <CribbagePlayingCard
+                    card={cribbageState.cutCard}
+                    size="md"
+                    highlight={isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring' ? 'gold' : null}
+                  />
                 </div>
               </div>
             )}

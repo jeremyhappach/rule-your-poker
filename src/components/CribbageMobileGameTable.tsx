@@ -119,7 +119,7 @@ import {
   hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
 } from '@/lib/cribbage/cribbageRenderGuards';
-import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
+// Highlight flows through `<CribbagePlayingCard highlight="gold"/>`.
 
 import {
   checkStaleDealerGameRender,
@@ -8356,19 +8356,16 @@ export const CribbageMobileGameTable = ({
                           )}
                         >
                           <div className="relative">
-                            {stack.map((c, idx) => (
+                            {stack.map((c, idx) => {
+                              const isWinnerCard = isFinalWinner && idx === stack.length - 1;
+                              return (
                               <div
                                 key={`${c.playerId}-${c.roundNumber}`}
                                 data-wartime-high-card="card"
                                 data-card-key={`${c.playerId}-${c.roundNumber}`}
                                 data-card-id={`p${c.position}:${c.card?.rank ?? '?'}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`}
                                 data-player-position={c.position}
-                                className={cn(
-                                  idx > 0 ? 'absolute' : '',
-                                  isFinalWinner && idx === stack.length - 1
-                                    ? CRIBBAGE_CARD_HIGHLIGHT_GOLD
-                                    : ''
-                                )}
+                                className={idx > 0 ? 'absolute' : ''}
                                 style={idx > 0 ? {
                                   top: `${idx * 50}%`,
                                   left: 0,
@@ -8389,9 +8386,14 @@ export const CribbageMobileGameTable = ({
                                     surface: 'CribbageMobileGameTable',
                                   }}
                                 />
-                                <CribbagePlayingCard card={toCribbageCard(c.card as any)} size="md" />
+                                <CribbagePlayingCard
+                                  card={toCribbageCard(c.card as any)}
+                                  size="md"
+                                  highlight={isWinnerCard ? 'gold' : null}
+                                />
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                           <span
                             className={cn('text-xs mt-1', isFinalWinner ? 'text-poker-gold font-bold' : 'text-white/70')}
