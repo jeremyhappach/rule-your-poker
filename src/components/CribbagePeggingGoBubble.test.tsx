@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Presentation-level tests for CribbagePeggingGoBubble.
  *
