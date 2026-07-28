@@ -8785,49 +8785,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerCardsLengthAfter: playerCardsLengthAfter357,
           });
 
-          // ── 3-5-7 fetch hydration trace: RESULT ──────────────────────
-          if (is357FetchTrace) {
-            const fetchCompletedAt357 = Date.now();
-            const rowsReturned357 = cardsData?.length ?? 0;
-            const localSeatRow357 = localPlayerIdForTrace
-              ? (cardsData ?? []).find((r: any) => r.player_id === localPlayerIdForTrace) ?? null
-              : null;
-            const localSeatCardsCount357 = Array.isArray(localSeatRow357?.cards)
-              ? (localSeatRow357!.cards as unknown[]).length
-              : 0;
-            persistSyncDebugEvent({
-              gameId: gameId!,
-              gameType: gameData.game_type ?? 'unknown',
-              handNumber: gameData.total_hands ?? 0,
-              roundId: targetRoundId,
-              eventType: 'invariant',
-              severity: 'info',
-              eventName: '357.fetch.players_result',
-              payload: {
-                fetchGenerationId,
-                fetchTrigger,
-                fetchStartedAt,
-                fetchCompletedAt: fetchCompletedAt357,
-                elapsedMs: fetchCompletedAt357 - fetchStartedAt,
-                gameId: gameId ?? null,
-                localPlayerId: localPlayerIdForTrace,
-                queryRoundId: targetRoundId,
-                rowsReturned: rowsReturned357,
-                localSeatRowPresent: !!localSeatRow357,
-                localSeatCardsCount: localSeatCardsCount357,
-                acceptanceDecision: acceptance357,
-                queryErrorCode: (cardsError as any)?.code ?? null,
-                queryErrorMessage: cardsError?.message ?? null,
-                playerCardsLengthBefore: playerCardsLengthBefore357,
-                playerCardsLengthAfter: playerCardsLengthAfter357,
-                setPlayerCardsCalled: setPlayerCardsCalled357,
-                currentTokenAtResponse: cardFetchTokenRef.current,
-                fetchToken,
-                tokenSuperseded: fetchToken !== cardFetchTokenRef.current,
-                isStaleAtResponse: isStale(),
-              },
-            });
-          }
+          // (357.fetch.players_result diagnostic removed)
+
         } else if (shouldFetchCards && (keepCards || keepCardsForResults)) {
           setFetchTraceTerminal('round_not_resolved', 'round_resolution:no_roundData', {
             resolvedRoundId: null,
