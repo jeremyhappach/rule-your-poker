@@ -263,15 +263,42 @@ export function ThreeFiveSevenDealOrchestrator({
         suppressionReason,
       });
     };
-    // Contract A (refresh/rejoin) — Durable canonical gate. If the host
-    // initialized DealRuntime to a non-PRE_DEAL phase AND no wave has
-    // yet accumulated expected cards on this runtime, the current wave
-    // was already dealt on the server before mount — suppress dispatch
-    // to prevent historical replay. `expectedCount === 0` distinguishes
-    // this from live mid-hand wave transitions (r2/r3) where prior
-    // waves have already grown expectedCount > 0.
-    if (deal.phase !== 'PRE_DEAL' && deal.expectedCount === 0) {
+    // Contract A (refresh/rejoin) — Durable canonical gate, ONE-SHOT.
+    // If the host initialized DealRuntime to a non-PRE_DEAL phase AND
+    // no wave has yet accumulated expected cards on this runtime AND
+    // this orchestrator has not yet applied Contract A, the current
+    // wave was already dealt on the server before mount — suppress
+    // dispatch to prevent historical replay. The one-shot latch keeps
+    // subsequent R2/R3 live waves eligible for dispatch even though
+    // `expectedCount` stays 0 after the suppressed R1 (beginWave was
+    // never called for R1, so expectedCount can't grow to distinguish
+    // hydration from a still-untouched runtime).
+    if (
+      deal.phase !== 'PRE_DEAL' &&
+      deal.expectedCount === 0 &&
+      !contractAAppliedRef.current
+    ) {
+      contractAAppliedRef.current = true;
+      contractAHydratedWaveContextRef.current = waveContextId;
       dispatchedWaveRef.current = waveContextId;
+      // 357.self_deal.refresh_baseline — record hydration baseline
+      // captured from the authoritative selfHand at the moment Contract
+      // A suppressed the first observed wave. Downstream Use357SelfHand
+      // consults this to keep pre-existing hydrated cards visible while
+      // later R2/R3 delta waves transport in.
+      emit357RuntimeDiag('wave_dispatch_decision', {
+        dealerGameId,
+        roundId: roundStr,
+        viewerPlayerId: selfPlayerId,
+      }, {
+        eventTag: '357.self_deal.refresh_baseline',
+        waveContextId,
+        handIdentity,
+        runtimePhase: deal.phase,
+        runtimeExpectedCount: deal.expectedCount,
+        hydratedSelfHandCount: selfHand.length,
+        contractAAppliedForWaveContext: waveContextId,
+      });
       emitDecision('suppress', 'refresh_rejoin_historical_wave_suppressed');
       __emitWartimeChannelSettled({
         identity: { handContextId: waveContextId, dealerGameId, handNumber: handNumberStr ? Number(handNumberStr) : null, currentPlayerId: selfPlayerId },
