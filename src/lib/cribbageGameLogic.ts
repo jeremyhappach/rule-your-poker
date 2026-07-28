@@ -688,18 +688,19 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   // No playable next player exists — fall through to the +1 Go / reset
   // branch below, carrying the auto-Go bookkeeping through so the bubble
   // remains derivable up to the authoritative reset boundary.
-  const state0 = state;
-  state = { ...state, pegging: { ...state.pegging, goCalledBy } };
-  void state0;
-  
+  const stateAfterAutoGo: CribbageState =
+    goCalledBy === state.pegging.goCalledBy
+      ? state
+      : { ...state, pegging: { ...state.pegging, goCalledBy } };
+
   // If everyone else with cards has already called go, the current player (lastToPlay)
   // is entitled to the +1 Go point before the run resets. This is the standard cribbage
   // "go" resolution: opponent says Go, you play any remaining playable cards, then
   // collect 1 for Go (or 2 if you hit 31 — handled separately in playPeggingCard).
-  const lastToPlayId = state.pegging.lastToPlay;
-  let stateForReset: CribbageState = state;
-  if (lastToPlayId && state.pegging.currentCount !== 31 && state.pegging.currentCount > 0) {
-    const lastPlayer = state.playerStates[lastToPlayId];
+  const lastToPlayId = stateAfterAutoGo.pegging.lastToPlay;
+  let stateForReset: CribbageState = stateAfterAutoGo;
+  if (lastToPlayId && stateAfterAutoGo.pegging.currentCount !== 31 && stateAfterAutoGo.pegging.currentCount > 0) {
+    const lastPlayer = stateAfterAutoGo.playerStates[lastToPlayId];
     if (lastPlayer) {
       const newScore = lastPlayer.pegScore + 1;
       stateForReset = {
