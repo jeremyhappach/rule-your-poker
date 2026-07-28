@@ -143,25 +143,43 @@ export function resolveCribbageVisibleHand(args: ResolveCribbageVisibleHandArgs)
   const transportTerminal = dealPhase === 'READY' || dealPhase === 'GAMEPLAY';
   const transportInFlight = dealPhase === 'DEALING' && activeIntents > 0;
 
-  // Phase past opening-deal window: opening is complete by contract.
-  // Once opening deal is over authoritative is the sole truth. When the
-  // rendered count differs in either direction (fewer OR more cards
-  // than authoritative), force authoritative — presentation may still
-  // hold the pre-discard 6-card ledger while authoritative holds the
-  // pruned 4-card set, and rendering that ledger would double the
-  // discarded card IDs in both the hand and the crib destination.
+  // Phase past opening-deal window: authoritative is the sole visual
+  // authority. Presentation may only match authoritative — never
+  // exceed it, never diverge from it. Any mismatch (fewer OR more
+  // cards) forces authoritative.
+  //
+  // The longer-than-authoritative case is the pegging-terminal flash:
+  // after the local player plays their final pegging card the
+  // authoritative hand is empty, but a stale sync-view snapshot may
+  // still hold the pre-discard 6-card ledger (including the two crib
+  // cards). Rendering that presentation for even one frame reprints
+  // discarded and played card identities in the active pane. Forbidden
+  // by contract.
   if (isPost && !isOpeningPhase) {
-    if (authCount > 0 && presCount !== authCount) {
+    if (authoritative) {
+      if (presCount !== authCount) {
+        return {
+          hand: authoritative as readonly CribbageCard[],
+          decision: 'render-authoritative-self-heal',
+          reason:
+            presCount > authCount
+              ? 'phase past opening-deal window; presentation exceeds authoritative (stale pre-discard/pre-play ledger)'
+              : 'phase past opening-deal window; presentation stale',
+        };
+      }
       return {
-        hand: authoritative as readonly CribbageCard[],
-        decision: 'render-authoritative-self-heal',
-        reason: 'phase past opening-deal window; presentation stale',
+        hand: presentation,
+        decision: 'render-presentation',
+        reason: 'phase past opening-deal window; presentation matches authoritative',
       };
     }
+    // No authoritative reference in post-deal window — refuse to
+    // render stale presentation. Discarded/played card IDs are only
+    // safe to admit when authoritative confirms them.
     return {
-      hand: presentation,
-      decision: 'render-presentation',
-      reason: 'phase past opening-deal window; presentation matches',
+      hand: [],
+      decision: 'render-empty-no-authoritative',
+      reason: 'phase past opening-deal window; no authoritative hand',
     };
   }
 
