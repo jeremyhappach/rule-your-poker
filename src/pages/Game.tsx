@@ -322,7 +322,7 @@ import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
-import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck } from "@/lib/fetchTraceStatus";
+import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck, beginFetchTraceSession } from "@/lib/fetchTraceStatus";
 
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
