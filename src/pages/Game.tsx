@@ -8043,6 +8043,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const is357FetchTraceType = (value: unknown): boolean =>
       value === '3-5-7' || value === '357' || value === '3-5-7-game';
     const shouldPersist357FetchTrace = !fetchTraceKnownGameType || is357FetchTraceType(fetchTraceKnownGameType);
+    const fetchTraceSessionKey = `${fetchTraceGameIdForPersist}:${BUILD_IDENTITY.buildSha}`;
+    if (shouldPersist357FetchTrace) {
+      // Idempotent per key — ensures ack accounting is scoped to THIS
+      // Game mount even if the cold_mount fetch fires before the
+      // heartbeat useEffect (which is gated on is357GameType).
+      beginFetchTraceSession(fetchTraceSessionKey);
+    }
 
     if (shouldPersist357FetchTrace) {
       persistSyncDebugEvent({
