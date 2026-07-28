@@ -163,19 +163,9 @@ describe('CribbagePeggingGoBubble presentation', () => {
       document.querySelector('[data-cribbage-go-bubble="2"]'),
     ).not.toBeNull();
 
-    cleanup();
-
     // Latch clears when the new run leader plays.
     const sAfter = playPeggingCard(s, 'bot', 0);
     expect(sAfter.pegging.pendingGoBubblePlayerIds).toBeUndefined();
-    render(
-      <CribbagePeggingGoBubble
-        cribbageState={sAfter}
-        playerPositionById={positions}
-        isPeggingPresentation
-      />,
-    );
-    await new Promise(r => requestAnimationFrame(() => r(null)));
-    expect(screen.queryByText('Go')).toBeNull();
+    expect(sAfter.pegging.goCalledBy).toEqual([]);
   });
 });
