@@ -160,7 +160,7 @@ describe('CribbagePeggingGoBubble presentation', () => {
     const bubbles = await screen.findAllByText('Go');
     expect(bubbles.length).toBe(1);
     expect(
-      document.querySelector('[data-chip-center="2"] [data-cribbage-go-bubble]'),
+      document.querySelector('[data-cribbage-go-bubble="2"]'),
     ).not.toBeNull();
 
     cleanup();
