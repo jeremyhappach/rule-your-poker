@@ -21,6 +21,18 @@ export interface PeggingState {
   lastToPlay: string | null; // For awarding "go" and "last card" points
   goCalledBy: string[]; // Players who have called "go" this count
   sequenceStartIndex: number; // Index into playedCards where current sequence starts (for UI clearing)
+  /**
+   * Presentation latch for the immediate-Go resolution case: when the
+   * spotlight holder plays a card that leaves NO player with a legal
+   * play at the new count, `advanceToNextPeggingTurn` awards the +1 Go
+   * point and calls `beginNewPeggingRun` in the same reducer, which
+   * clears `goCalledBy`. Without this latch the Go bubble would never
+   * be rendered for the blocked opponent(s). Populated with the
+   * auto-added blocked players in that branch and preserved across
+   * the run reset. Cleared on the next `playPeggingCard` (fresh run
+   * begins), on a new hand, or when phase leaves 'pegging'.
+   */
+  pendingGoBubblePlayerIds?: string[];
 }
 
 export type CribbageEventType =
