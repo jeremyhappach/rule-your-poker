@@ -1885,7 +1885,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         mountedAt: new Date().toISOString(),
       },
       onResult: (ok, reason) => {
-        setFetchTraceStatus(ok ? 'ready' : 'failed', ok ? null : (reason ?? 'unknown'));
+        markHeartbeatResult(ok, ok ? null : (reason ?? 'unknown'));
       },
     });
   }, [is357GameType, gameId, game?.game_type]);
