@@ -145,6 +145,9 @@ describe('cribbage pegging — Hap/bot dead-end Go repro (2 players)', () => {
     // Bot leads the new run — play the Q (index 0).
     s = playPeggingCard(s, 'bot', 0);
     expect(s.pegging.pendingGoBubblePlayerIds).toBeUndefined();
+  });
+
+
 
   it('manual callGo remains callable if the current turn player has no playable card', () => {
     // Bootstrap the same 28-count situation but leave bot as
