@@ -16,6 +16,7 @@ import { ActiveHandFan } from './activeHand/ActiveHandFan';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
+import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
 
 /** No-op — temporary Cribbage active-hand wartime instrumentation removed. */
 function recordCribbageWartime(
@@ -981,9 +982,9 @@ export const CribbageMobileCardsTab = ({
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(
-                  "transition-all duration-200 rounded relative",
+                  "transition-all duration-200 rounded-[10%] relative",
                   isSelected
-                    ? "-translate-y-3 ring-2 ring-poker-gold z-10"
+                    ? `-translate-y-3 z-10 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
                     : "translate-y-0",
                   isMyTurn && isPlayable && !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",

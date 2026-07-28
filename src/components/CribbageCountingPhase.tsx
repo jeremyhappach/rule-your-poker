@@ -5,6 +5,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { useCardOverlap } from '@/lib/geometryLab/cardArtifactOverlap';
+import { CRIBBAGE_CARD_HIGHLIGHT_GOLD } from '@/lib/cribbage/cardHighlight';
 // Instrumentation ledgers removed post-wartime cleanup. Local no-op stubs
 // preserve call-site shape while eliminating all diagnostic side effects.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1623,7 +1624,7 @@ export const CribbageCountingPhase = ({
                       data-combo-member={comboIds.has(cardId) ? 'true' : 'false'}
                       className={`transition-all duration-300 ${
                         highlighted
-                          ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                          ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
                           : ''
                       }`}
                       style={{ marginLeft: i === 0 ? 0 : `${scoringHandMarginPx}px` }}
@@ -1663,7 +1664,7 @@ export const CribbageCountingPhase = ({
                   }
                   className={`transition-all duration-300 ${
                     isCardHighlighted(cribbageState.cutCard) && transitionPhase === 'scoring'
-                      ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                      ? `transform -translate-y-2 ${CRIBBAGE_CARD_HIGHLIGHT_GOLD}`
                       : ''
                   }`}
                 >
