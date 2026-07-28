@@ -8334,65 +8334,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setFetchTraceTerminal('skipped_keep_cards', 'card_gate:keepCards_false');
     }
 
-    // ── 3-5-7 wartime unconditional trace: EVENT 2 (card gate) ────────
-    if (is357Trace) {
-      persistSyncDebugEvent({
-        gameId: gameId!,
-        gameType: gameData.game_type ?? 'unknown',
-        handNumber: gameData.total_hands ?? 0,
-        roundId: null,
-        eventType: 'invariant',
-        severity: 'info',
-        eventName: '357.fetch.card_gate',
-        dedupKey: `357.fetch.card_gate:${gameId}:${fetchGenerationId}`,
-        payload: {
-          fetchGenerationId,
-          fetchTrigger,
-          shouldFetchCards,
-          shouldFetchCardsReason: shouldFetchCardsReason357,
-          keepCards,
-          keepCardsForResults,
-          keepCardsDecision: keepCardsDecision357,
-          keepCardsReason: keepCardsReason357,
-          branchTaken: branchTaken357,
-        },
-      });
-      // If either gate skips, emit round_resolution now (skipped variant) so
-      // every generation records all three events.
-      if (branchTaken357 !== 'proceed_to_round_resolution') {
-        persistSyncDebugEvent({
-          gameId: gameId!,
-          gameType: gameData.game_type ?? 'unknown',
-          handNumber: gameData.total_hands ?? 0,
-          roundId: null,
-          eventType: 'invariant',
-          severity: 'info',
-          eventName: '357.fetch.round_resolution',
-          dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
-          payload: {
-            fetchGenerationId,
-            fetchTrigger,
-            roundSelectionBranch: branchTaken357, // 'skipped_should_fetch_cards' | 'skipped_keep_cards'
-            roundSelectGameId: gameId ?? null,
-            roundSelectDealerGameId: gameData.current_game_uuid ?? null,
-            roundSelectHandNumber: gameData.total_hands ?? null,
-            roundSelectRoundNumber: gameData.current_round ?? null,
-            fallbackCurrentRoundId: currentRound?.id ?? null,
-            roundQueryExecuted: false,
-            roundQueryRowsReturned: 0,
-            roundQueryErrorCode: null,
-            roundQueryErrorMessage: null,
-            roundDataResolved: false,
-            resolvedRoundId: null,
-            resolvedDealerGameId: null,
-            resolvedHandNumber: null,
-            resolvedRoundNumber: null,
-            resolvedCardsDealt: null,
-            resolutionDecision: 'skipped',
-          },
-        });
-      }
-    }
+    // (357.fetch.card_gate + skipped-round_resolution diagnostics removed)
+
 
     if (shouldFetchCards) {
       // (isHolmGame/keepCards/keepCardsForResults lifted above for card_gate)
