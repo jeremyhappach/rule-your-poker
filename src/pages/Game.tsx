@@ -322,7 +322,7 @@ import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { BUILD_IDENTITY } from "@/lib/buildIdentity";
-import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION } from "@/lib/fetchTraceStatus";
+import { setFetchTraceStatus, FETCH_INSTRUMENTATION_VERSION, markHeartbeatResult, markInvocationAck, markOutcomeAck } from "@/lib/fetchTraceStatus";
 
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
@@ -1885,7 +1885,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         mountedAt: new Date().toISOString(),
       },
       onResult: (ok, reason) => {
-        setFetchTraceStatus(ok ? 'ready' : 'failed', ok ? null : (reason ?? 'unknown'));
+        markHeartbeatResult(ok, ok ? null : (reason ?? 'unknown'));
       },
     });
   }, [is357GameType, gameId, game?.game_type]);
@@ -8044,7 +8044,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameType: fetchTraceKnownGameType ?? 'unknown',
         handNumber: game?.total_hands ?? 0,
         roundId: null,
-        eventType: 'transition',
+        eventType: 'invariant',
         severity: 'info',
         eventName: '357.fetch.invocation',
         dedupKey: `357.fetch.invocation:${fetchTraceGameIdForPersist}:${fetchGenerationId}`,
@@ -8057,6 +8057,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           knownGameType: fetchTraceKnownGameType,
           playerCardsLengthAtInvocation: playerCards.length,
           fetchTokenAtInvocation: cardFetchTokenRef.current ?? 0,
+          clientBuildId: BUILD_IDENTITY.buildSha,
+          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+        },
+        onResult: (ok, reason) => {
+          markInvocationAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     }
@@ -8152,7 +8158,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameType: fetchTraceState.gameDataGameType ?? fetchTraceKnownGameType ?? 'unknown',
         handNumber: fetchTraceState.gameDataTotalHands ?? game?.total_hands ?? 0,
         roundId: fetchTraceState.resolvedRoundId,
-        eventType: 'transition',
+        eventType: 'invariant',
         severity: outcome === 'threw_exception' || outcome === 'player_cards_error' || outcome === 'returned_game_error' || outcome === 'returned_players_error'
           ? 'warn'
           : 'info',
@@ -8190,6 +8196,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           setPlayerCardsCalled: fetchTraceState.setPlayerCardsCalled,
           playerCardsLengthBefore: fetchTraceState.playerCardsLengthBefore,
           playerCardsLengthAfter: fetchTraceState.playerCardsLengthAfter,
+          clientBuildId: BUILD_IDENTITY.buildSha,
+          bundleFilename: BUILD_IDENTITY.bundleFilename || null,
+          fetchInstrumentationVersion: FETCH_INSTRUMENTATION_VERSION,
+        },
+        onResult: (ok, reason) => {
+          markOutcomeAck(fetchGenerationId, ok, ok ? null : (reason ?? 'unknown'));
         },
       });
     };
@@ -8473,7 +8485,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameType: gameData.game_type ?? 'unknown',
         handNumber: gameData.total_hands ?? 0,
         roundId: null,
-        eventType: 'transition',
+        eventType: 'invariant',
         severity: 'info',
         eventName: '357.fetch.entry',
         dedupKey: `357.fetch.entry:${gameId}:${fetchGenerationId}`,
@@ -8540,7 +8552,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameType: gameData.game_type ?? 'unknown',
         handNumber: gameData.total_hands ?? 0,
         roundId: null,
-        eventType: 'transition',
+        eventType: 'invariant',
         severity: 'info',
         eventName: '357.fetch.card_gate',
         dedupKey: `357.fetch.card_gate:${gameId}:${fetchGenerationId}`,
@@ -8564,7 +8576,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           gameType: gameData.game_type ?? 'unknown',
           handNumber: gameData.total_hands ?? 0,
           roundId: null,
-          eventType: 'transition',
+          eventType: 'invariant',
           severity: 'info',
           eventName: '357.fetch.round_resolution',
           dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
@@ -8772,7 +8784,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameType: gameData.game_type ?? 'unknown',
             handNumber: gameData.total_hands ?? 0,
             roundId: roundData?.id ?? null,
-            eventType: 'transition',
+            eventType: 'invariant',
             severity: 'info',
             eventName: '357.fetch.round_resolution',
             dedupKey: `357.fetch.round_resolution:${gameId}:${fetchGenerationId}`,
@@ -8869,7 +8881,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType: gameData.game_type ?? 'unknown',
               handNumber: gameData.total_hands ?? 0,
               roundId: targetRoundId,
-              eventType: 'transition',
+              eventType: 'invariant',
               severity: 'info',
               eventName: '357.fetch.players_request',
               payload: {
@@ -9123,7 +9135,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType: gameData.game_type ?? 'unknown',
               handNumber: gameData.total_hands ?? 0,
               roundId: targetRoundId,
-              eventType: 'transition',
+              eventType: 'invariant',
               severity: 'info',
               eventName: '357.fetch.players_result',
               payload: {

@@ -439,10 +439,12 @@ export function ThreeFiveSevenLayoutSnapPill({ enabled, getReactState }: ThreeFi
     : '#e6d3a3';
   const traceLabel =
     traceStatus === 'ready' ? 'FETCH TRACE READY'
+    : traceStatus === 'loaded' ? 'FETCH TRACE LOADED'
     : traceStatus === 'failed' ? `FETCH TRACE FAILED${traceFailReason ? ` (${traceFailReason})` : ''}`
     : `FETCH TRACE ${FETCH_INSTRUMENTATION_VERSION}`;
   const traceColor =
     traceStatus === 'ready' ? '#7ee787'
+    : traceStatus === 'loaded' ? '#8ab4ff'
     : traceStatus === 'failed' ? '#ffb454'
     : '#e6d3a3';
 
