@@ -66,6 +66,7 @@ import {
   type ActiveActionLayout,
 } from '@/lib/activeHand/activeActionReservation';
 import { publishActiveActionReservationReport } from '@/lib/activeHand/activeActionReservationReport';
+import { readSafeAreaBottomPx } from '@/lib/activeHand/safeAreaBottom';
 import {
   recordHolmLedger,
   recordHolmLedgerViolation,
@@ -82,27 +83,6 @@ export interface MeasuredActiveHandFanCommit {
 }
 
 const LOWER_ZONE_SELECTOR = '[data-active-hand-lower-zone]';
-
-let cachedSafeAreaBottomPx: number | null = null;
-function readSafeAreaBottomPx(): number {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-  if (cachedSafeAreaBottomPx !== null) return cachedSafeAreaBottomPx;
-  try {
-    const probe = document.createElement('div');
-    probe.style.position = 'absolute';
-    probe.style.visibility = 'hidden';
-    probe.style.pointerEvents = 'none';
-    probe.style.width = '0';
-    probe.style.height = 'env(safe-area-inset-bottom, 0px)';
-    document.body.appendChild(probe);
-    const h = probe.getBoundingClientRect().height;
-    document.body.removeChild(probe);
-    cachedSafeAreaBottomPx = Number.isFinite(h) ? h : 0;
-  } catch {
-    cachedSafeAreaBottomPx = 0;
-  }
-  return cachedSafeAreaBottomPx;
-}
 
 export interface MeasuredActiveHandFanProps {
   game: GameKey;
