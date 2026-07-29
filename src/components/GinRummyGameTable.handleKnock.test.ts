@@ -1,4 +1,5 @@
 // @ts-nocheck
+// @vitest-environment jsdom
 /**
  * Regression: gin knock/scoring control flow in GinRummyGameTable.handleKnock.
  *
