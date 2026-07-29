@@ -1403,6 +1403,102 @@ export const MobileGameTable = ({
     _ttPlay.height,
   ]);
 
+  // ── Holm canonical active-action reservation (Phase 2) ────────────
+  // Holm declares ONE reserved action row through the shared contract
+  // in `@/lib/activeHand/activeActionReservation`. The pane content and
+  // the rendered lower-zone CONTENT (the strip's child, not the strip
+  // envelope itself — measuring the envelope would feed its own height
+  // back into the reservation) are measured here; the shared resolver
+  // produces the effective reservation and the remaining card region.
+  // 3-5-7 shares this JSX subtree and is explicitly excluded: every
+  // consumer below is gated on `gameType === 'holm-game'`.
+  const isHolmGameType = gameType === 'holm-game';
+  const [holmPaneHeightPx, setHolmPaneHeightPx] = useState(0);
+  const [holmMeasuredLowerZonePx, setHolmMeasuredLowerZonePx] = useState(0);
+  const [holmSafeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
+
+  const holmPaneObserverRef = useRef<ResizeObserver | null>(null);
+  const holmLowerZoneObserverRef = useRef<ResizeObserver | null>(null);
+  const holmLowerZoneMutationRef = useRef<MutationObserver | null>(null);
+
+  const holmActivePaneRefCallback = useCallback((node: HTMLDivElement | null) => {
+    holmPaneObserverRef.current?.disconnect();
+    holmPaneObserverRef.current = null;
+    if (!node) return;
+    const read = () => {
+      const h = node.getBoundingClientRect().height;
+      setHolmPaneHeightPx(Number.isFinite(h) ? h : 0);
+    };
+    read();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(read);
+      ro.observe(node);
+      holmPaneObserverRef.current = ro;
+    }
+  }, []);
+
+  const holmLowerZoneRefCallback = useCallback((node: HTMLDivElement | null) => {
+    holmLowerZoneObserverRef.current?.disconnect();
+    holmLowerZoneObserverRef.current = null;
+    holmLowerZoneMutationRef.current?.disconnect();
+    holmLowerZoneMutationRef.current = null;
+    if (!node) return;
+    const read = () => {
+      const child = node.firstElementChild as HTMLElement | null;
+      const h = child ? child.getBoundingClientRect().height : 0;
+      setHolmMeasuredLowerZonePx(Number.isFinite(h) ? h : 0);
+    };
+    read();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(read);
+      ro.observe(node);
+      const child = node.firstElementChild;
+      if (child) ro.observe(child);
+      holmLowerZoneObserverRef.current = ro;
+    }
+    if (typeof MutationObserver !== 'undefined') {
+      const mo = new MutationObserver(() => {
+        read();
+        const ro = holmLowerZoneObserverRef.current;
+        const child = node.firstElementChild;
+        if (ro && child) ro.observe(child);
+      });
+      mo.observe(node, { childList: true });
+      holmLowerZoneMutationRef.current = mo;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    holmPaneObserverRef.current?.disconnect();
+    holmLowerZoneObserverRef.current?.disconnect();
+    holmLowerZoneMutationRef.current?.disconnect();
+  }, []);
+
+  const holmActionReservation = useMemo(
+    () =>
+      resolveActiveActionReservation({
+        layout: resolveActiveActionLayout('holm'),
+        measuredLowerZonePx: holmMeasuredLowerZonePx,
+        safeAreaBottomPx: holmSafeAreaBottomPx,
+      }),
+    [holmMeasuredLowerZonePx, holmSafeAreaBottomPx],
+  );
+  const holmCardRegionHeightPx = resolveCardRegionHeightPx(
+    holmPaneHeightPx,
+    holmActionReservation,
+  );
+
+  useEffect(() => {
+    if (!isHolmGameType) return;
+    if (holmPaneHeightPx <= 0) return;
+    publishActiveActionReservationReport({
+      ...holmActionReservation,
+      game: 'holm',
+      paneHeightPx: holmPaneHeightPx,
+      cardRegionHeightPx: holmCardRegionHeightPx,
+    });
+  }, [isHolmGameType, holmActionReservation, holmPaneHeightPx, holmCardRegionHeightPx]);
+
 
   // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
   // single shared placement object resolves to felt-relative pixels
