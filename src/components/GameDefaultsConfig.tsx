@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Settings, Bot, DollarSign, Timer, Spade, Dice5, Anchor, Crown, FlaskConical } from 'lucide-react';
 import { getHarnessProfiles } from '@/lib/debugHarness/profiles';
 import { setHarnessCacheValue } from '@/lib/debugHarness/runtimeCache';
+import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 
@@ -60,6 +61,7 @@ const GAME_TYPES = [
 ];
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
+  const { enabled: harnessesModeEnabled, loading: harnessesModeLoading, toggle: toggleHarnessesMode } = useHarnessesMode();
   const [defaults, setDefaults] = useState<GameDefaults[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -891,6 +893,30 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <FlaskConical className="h-4 w-4" />
           Debug Harness
         </div>
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+          <div className="space-y-0.5">
+            <Label htmlFor="harnesses-mode-gate">Harnesses Mode (master gate)</Label>
+            <p className="text-xs text-muted-foreground">
+              Harness profiles only execute while this is on.
+            </p>
+          </div>
+          <Switch
+            id="harnesses-mode-gate"
+            checked={harnessesModeEnabled}
+            disabled={harnessesModeLoading}
+            onCheckedChange={async (next) => {
+              const ok = await toggleHarnessesMode(next);
+              toast[ok ? 'success' : 'error'](
+                ok ? `Harnesses Mode ${next ? 'enabled' : 'disabled'}` : 'Failed to update Harnesses Mode',
+              );
+            }}
+          />
+        </div>
+        {!harnessesModeLoading && !harnessesModeEnabled && current !== 'none' && (
+          <p className="text-xs text-destructive">
+            "{currentProfile.label}" is selected but Harnesses Mode is OFF — it will not run. Turn the gate on above.
+          </p>
+        )}
         <div className="space-y-2">
           <Label htmlFor={`${gameType}-harness`}>Harness Profile</Label>
           <Select
