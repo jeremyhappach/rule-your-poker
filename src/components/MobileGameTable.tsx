@@ -13845,15 +13845,24 @@ export const MobileGameTable = ({
 
                   <div
                     data-active-hand-lower-zone=""
+                    ref={isHolmGameType ? holmLowerZoneRefCallback : undefined}
                     className={cn(
                     // Stable allocation: this strip swaps between buttons,
                     // badges, auto-fold label, and pre-decision checkboxes
                     // across the hand lifecycle. The geometry contract
                     // requires the gameplay artifact above (the hand) not
-                    // to shift when this sibling's content changes. We
-                    // reserve the height of the *tallest* variant
-                    // (auto-fold label ≈ 52px mobile, ≈ 64px tablet) so
-                    // every transition centers content inside a fixed box.
+                    // to shift when this sibling's content changes.
+                    //
+                    // HOLM PHASE 2: Holm no longer uses the hardcoded
+                    // `h-[52px]` / `h-[64px]` envelope. Its height is the
+                    // shared effective reservation
+                    //   max(declared 1-row reservation,
+                    //       measured lower-zone content + safe area)
+                    // resolved by `activeActionReservation`. Only the
+                    // strip CONTENT is measured, so the envelope height
+                    // can never feed back into its own measurement.
+                    // 3-5-7 keeps the authored tallest-variant reserve
+                    // unchanged.
                     // Tagged `data-active-hand-lower-zone` so the shared
                     // active-hand resolver measures its rendered height
                     // and escalates the pane reservation — the portaled
@@ -13878,9 +13887,16 @@ export const MobileGameTable = ({
                     // Nothing here touches PlayerHand, availableHeightPx,
                     // handScale, handReserve, canDecide, or the identity
                     // row.
-                    "flex items-center justify-center flex-shrink-0 mt-auto",
-                    isTablet ? "h-[64px] mb-1" : "h-[52px] mb-1"
-                  )}>
+                    "flex items-center justify-center flex-shrink-0 mt-auto mb-1",
+                    isHolmGameType ? "" : (isTablet ? "h-[64px]" : "h-[52px]")
+                  )}
+                    style={
+                      isHolmGameType
+                        ? { height: holmActionReservation.effectiveReservationPx }
+                        : undefined
+                    }
+                  >
+
 
 
                     {(() => {
