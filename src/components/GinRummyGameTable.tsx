@@ -2200,6 +2200,11 @@ export const GinRummyGameTable = ({
                 .eq('id', roundId);
               setGinState(knockSnapshot);
               await new Promise(resolve => setTimeout(resolve, 2800));
+              // RETURN for the same reason as the draw-branch knock above:
+              // no state advance happens after the knock snapshot, so the
+              // generic trailing write can only clobber newer authoritative
+              // settlement written by the opponent during the hold.
+              return;
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
