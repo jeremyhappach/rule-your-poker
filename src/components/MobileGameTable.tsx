@@ -1452,28 +1452,33 @@ export const MobileGameTable = ({
     holmLowerZoneMutationRef.current = null;
     if (!node) return;
     const read = () => {
-      const child = node.firstElementChild as HTMLElement | null;
-      const h = child ? child.getBoundingClientRect().height : 0;
-      setHolmMeasuredLowerZonePx(Number.isFinite(h) ? h : 0);
+      let h = 0;
+      for (const child of Array.from(node.children)) {
+        const r = (child as HTMLElement).getBoundingClientRect().height;
+        if (Number.isFinite(r) && r > h) h = r;
+      }
+      setHolmMeasuredLowerZonePx(h);
+    };
+    const observeChildren = () => {
+      const ro = holmLowerZoneObserverRef.current;
+      if (!ro) return;
+      for (const child of Array.from(node.children)) ro.observe(child);
     };
     read();
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(read);
-      ro.observe(node);
-      const child = node.firstElementChild;
-      if (child) ro.observe(child);
       holmLowerZoneObserverRef.current = ro;
+      observeChildren();
     }
     if (typeof MutationObserver !== 'undefined') {
       const mo = new MutationObserver(() => {
         read();
-        const ro = holmLowerZoneObserverRef.current;
-        const child = node.firstElementChild;
-        if (ro && child) ro.observe(child);
+        observeChildren();
       });
       mo.observe(node, { childList: true });
       holmLowerZoneMutationRef.current = mo;
     }
+
   }, []);
 
   useEffect(() => () => {
