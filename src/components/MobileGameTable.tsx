@@ -66,6 +66,14 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { MeasuredActiveHandFan, type MeasuredActiveHandFanCommit } from "./activeHand/MeasuredActiveHandFan";
 import { HolmActivePaneGeometryPill } from "./HolmActivePaneGeometryPill";
+import {
+  resolveActiveActionLayout,
+  resolveActiveActionReservation,
+  resolveCardRegionHeightPx,
+} from "@/lib/activeHand/activeActionReservation";
+import { publishActiveActionReservationReport } from "@/lib/activeHand/activeActionReservationReport";
+import { readSafeAreaBottomPx } from "@/lib/activeHand/safeAreaBottom";
+
 
 import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
