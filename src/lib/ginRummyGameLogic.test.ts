@@ -138,7 +138,7 @@ describe('Gin Rummy Game Logic', () => {
   });
 
   describe('knock / gin', () => {
-    it('getNextDealer returns loser as next dealer', () => {
+    it('getNextDealer alternates dealer regardless of who won', () => {
       const state = freshState();
       const withResult = {
         ...state,
@@ -154,7 +154,10 @@ describe('Gin Rummy Game Logic', () => {
           winnerId: P2,
         },
       };
-      expect(getNextDealer(withResult)).toBe(P1); // Loser deals
+      // Server-authoritative pure alternation: the non-dealer of this hand
+      // deals the next one.
+      expect(getNextDealer(withResult)).toBe(state.nonDealerPlayerId);
     });
+
   });
 });
