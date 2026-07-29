@@ -13456,7 +13456,12 @@ export const MobileGameTable = ({
                     pendingAutoRollOff={pendingAutoRollOff}
                   />
                 ) : (
-                  <div className="px-2 flex flex-col h-full" data-357-active-pane-content="" data-holm-active-pane-content="">
+                  <div
+                    className="px-2 flex flex-col h-full"
+                    data-357-active-pane-content=""
+                    data-holm-active-pane-content=""
+                    ref={isHolmGameType ? holmActivePaneRefCallback : undefined}
+                  >
                   {gameType === 'holm-game' && <HolmActivePaneGeometryPill />}
 
                   {(() => {
