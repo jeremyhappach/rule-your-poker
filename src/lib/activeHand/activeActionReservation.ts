@@ -25,10 +25,13 @@
  *
  * Measured escalation (bounded — reuses the lower-zone measurement
  * already proven in Gin Rummy):
- *   effective = max(
- *     declaredReservation,
- *     measuredLowerZonePx + CARDS_TO_ACTIONS_GAP + safeAreaBottomPx,
- *   )
+ *   effective = max(declaredReservation, measuredLowerZonePx + safeAreaBottomPx)
+ *
+ * The cards→actions gap is NOT re-added to the measured term: a
+ * rendered lower zone already carries its own top spacing in its box
+ * (this is exactly how the proven Gin path behaves), so adding the
+ * token again would double-count the clearance and silently shrink
+ * Gin's card stage.
  *
  * The declared row count remains the canonical capacity contract;
  * measurement is an ESCALATION only (longer labels, font scaling,
@@ -121,10 +124,7 @@ export function resolveActiveActionReservation(
 
   const declaredRowsHeightPx = resolveDeclaredRowsHeightPx(layout);
   const declaredReservationPx = resolveDeclaredReservationPx(layout);
-  const measuredReservationPx =
-    measuredLowerZonePx > 0
-      ? measuredLowerZonePx + CARDS_TO_ACTIONS_GAP_PX + safeAreaBottomPx
-      : safeAreaBottomPx;
+  const measuredReservationPx = measuredLowerZonePx + safeAreaBottomPx;
   const effectiveReservationPx = Math.max(declaredReservationPx, measuredReservationPx);
 
   return {

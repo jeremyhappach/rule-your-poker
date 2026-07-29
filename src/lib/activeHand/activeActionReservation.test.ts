@@ -51,7 +51,9 @@ describe('shared reserved-strip tokens and formula', () => {
       measuredLowerZonePx: 60,
       safeAreaBottomPx: 12,
     });
-    expect(big.effectiveReservationPx).toBe(60 + CARDS_TO_ACTIONS_GAP_PX + 12);
+    // Measured DOM height already carries its own spacing — the
+    // cards→actions token must NOT be re-added on top of it.
+    expect(big.effectiveReservationPx).toBe(60 + 12);
     expect(big.escalated).toBe(true);
   });
 
