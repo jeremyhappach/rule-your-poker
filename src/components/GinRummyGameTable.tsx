@@ -25,6 +25,7 @@ import {
   logGinResultDisplay,
 } from '@/lib/ginRummySyncDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
+import { isGinNonDealerNearKnockHarnessEnabled } from '@/lib/debugFlags';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
@@ -2048,10 +2049,17 @@ export const GinRummyGameTable = ({
         const botState = state.playerStates[botId];
         if (!botState) return;
 
+        // Non-Dealer Near Knock harness: when the bot is the authoritative
+        // NON-DEALER of this hand, it must take the upcard and knock at the
+        // first legal opportunity. Role comes from the persisted state's
+        // dealer identity — never from the viewing client.
+        const harnessForcesNonDealerKnock =
+          isGinNonDealerNearKnockHarnessEnabled() && state.nonDealerPlayerId === botId;
+
         // Phase: first_draw
         if (state.phase === 'first_draw' && state.firstDrawOfferedTo === botId) {
           const upCard = state.discardPile[state.discardPile.length - 1];
-          if (upCard && shouldBotTakeFirstDraw(botState.hand, upCard)) {
+          if (upCard && (harnessForcesNonDealerKnock || shouldBotTakeFirstDraw(botState.hand, upCard))) {
             state = takeFirstDrawCard(state, botId);
             // Write intermediate "draw" state so the opponent-draw animation fires
             const drawSnapshot = JSON.parse(JSON.stringify(state));
@@ -2106,7 +2114,7 @@ export const GinRummyGameTable = ({
             ? state.lastAction.card
             : null;
 
-          const knockDecision = botShouldKnock(updatedBotState.hand, drawnFromDiscard);
+          const knockDecision = botShouldKnock(updatedBotState.hand, drawnFromDiscard, harnessForcesNonDealerKnock);
 
           if (knockDecision.shouldKnock) {
             const discardCardVal = updatedBotState.hand[knockDecision.discardIndex];
@@ -2151,10 +2159,13 @@ export const GinRummyGameTable = ({
             ? state.lastAction.card
             : null;
 
-          const knockDecision = botShouldKnock(botState.hand, drawnFromDiscard);
+          // Read the CURRENT hand from state — `botState` was captured before
+          // the first-draw take above and would be the stale 10-card hand.
+          const discardPhaseBotState = state.playerStates[botId];
+          const knockDecision = botShouldKnock(discardPhaseBotState.hand, drawnFromDiscard, harnessForcesNonDealerKnock);
 
           if (knockDecision.shouldKnock) {
-            const discardCardVal = botState.hand[knockDecision.discardIndex];
+            const discardCardVal = discardPhaseBotState.hand[knockDecision.discardIndex];
             state = declareKnock(state, botId, discardCardVal);
             if (state.phase === 'scoring') {
               // Gin! Write state first so gin overlay plays, then wait before scoring
@@ -2185,9 +2196,10 @@ export const GinRummyGameTable = ({
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
-            const card = botState.hand[discardIdx];
+            const card = discardPhaseBotState.hand[discardIdx];
             state = discardCard(state, botId, card);
           }
+
         }
         // Phase: knocking/laying_off - bot is the non-knocker
         else if ((state.phase === 'knocking' || state.phase === 'laying_off')) {

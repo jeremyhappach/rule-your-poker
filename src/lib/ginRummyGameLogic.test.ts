@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+// (ginRummyGameLogic → debugFlags → debug-harness runtime cache → supabase
+//  client, which touches localStorage at import time.)
 import { describe, it, expect } from 'vitest';
 import {
   createInitialGinRummyState,

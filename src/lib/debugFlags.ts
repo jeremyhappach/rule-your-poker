@@ -13,6 +13,8 @@
  */
 
 import { getActiveHarnessCached } from '@/lib/debugHarness/runtimeCache';
+import { canonicalizeHarnessId } from '@/lib/debugHarness/profiles';
+
 
 
 function hasQueryFlag(name: string): boolean {
@@ -96,22 +98,31 @@ export function isGinTwoActionHarnessEnabled(): boolean {
 }
 
 /**
- * Gin Rummy "Opponent Instant Knock" harness — first-hand deterministic
- * deal that hands the opponent bot a hand 1 pip away from gin, with the
- * exposed upcard (4♣) completing a run. Ordinary bot decision logic then
- * naturally takes the upcard → discards K♥ → knocks with A♠ deadwood = 1,
- * exercising the real reveal / layoff / scoring / next-hand lifecycle.
+ * Gin Rummy "Non-Dealer Near Knock" harness (formerly "Opponent Instant
+ * Knock" — `opponent_instant_knock` is still honored as a read-only
+ * legacy alias).
  *
  * Contract:
- *  - Only fires on the initial deal (startGinRummyRound). createNextHand
- *    does NOT consult this flag → hand 2+ is ordinary Gin.
- *  - Fails closed unless the session host is also the dealer AND the
- *    opponent (non-dealer) is not the host.
- *  - Match target and all other rules unchanged.
+ *  - Enablement is authoritative and dealer-game shared: it lives in
+ *    `game_defaults.debug_harness` (+ the `harnesses_mode` master gate),
+ *    which every client hydrates and subscribes to over realtime. No
+ *    localStorage, no query param, no component-local state.
+ *  - Applies to EVERY hand while enabled — hand 1, 2, 3, … — because
+ *    `dealHand` consults it directly and both `startGinRummyRound` and
+ *    `startNextGinRummyHand` deal through `dealHand`.
+ *  - Role assignment is derived from the authoritative dealer identity
+ *    of the hand being created (`state.dealerPlayerId` /
+ *    `state.nonDealerPlayerId`), never from the viewing client, the
+ *    host, a bot flag or a seat index. Dealer rotation is therefore
+ *    honored automatically.
  */
-export function isGinOpponentInstantKnockHarnessEnabled(): boolean {
-  return getActiveHarnessCached('gin-rummy') === 'opponent_instant_knock';
+export function isGinNonDealerNearKnockHarnessEnabled(): boolean {
+  return (
+    canonicalizeHarnessId(getActiveHarnessCached('gin-rummy')) ===
+    'non_dealer_near_knock'
+  );
 }
+
 
 /**
  * Forces Yahtzee bot to always pursue a large straight (1-2-3-4-5 or 2-3-4-5-6).

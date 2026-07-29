@@ -159,7 +159,15 @@ export function botChooseDiscard(
  */
 export function botShouldKnock(
   hand: GinRummyCard[],
-  drawnFromDiscard: GinRummyCard | null
+  drawnFromDiscard: GinRummyCard | null,
+  /**
+   * Harness override (Non-Dealer Near Knock): when true the bot MUST
+   * knock at the first legal opportunity, bypassing the normal
+   * deadwood-threshold strategy. Knock legality itself is unchanged —
+   * if no discard yields deadwood ≤ KNOCK_DEADWOOD_LIMIT the bot still
+   * cannot knock.
+   */
+  forceKnockIfLegal = false,
 ): { shouldKnock: boolean; discardIndex: number } {
   // Try each possible discard and check if we can knock
   let bestKnockIdx = -1;
@@ -189,6 +197,10 @@ export function botShouldKnock(
     return { shouldKnock: true, discardIndex: bestKnockIdx };
   }
 
+  if (forceKnockIfLegal) {
+    return { shouldKnock: true, discardIndex: bestKnockIdx };
+  }
+
   // Knock if deadwood is low enough (aggressive: ≤ 6, conservative: ≤ 3)
   // Use moderate threshold
   const shouldKnock = bestDeadwood <= 7;
@@ -198,6 +210,7 @@ export function botShouldKnock(
     discardIndex: shouldKnock ? bestKnockIdx : botChooseDiscard(hand, drawnFromDiscard),
   };
 }
+
 
 // ─── Lay Off Decision ───────────────────────────────────────────
 
