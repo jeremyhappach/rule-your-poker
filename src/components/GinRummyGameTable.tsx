@@ -2145,7 +2145,14 @@ export const GinRummyGameTable = ({
                 .eq('id', roundId);
               setGinState(knockSnapshot);
               await new Promise(resolve => setTimeout(resolve, 2800));
-              // Don't return — fall through to generic write which tables the cards
+              // RETURN — the knock snapshot above already tabled the cards and
+              // `state` has not advanced since. The opponent now owns
+              // layoff → scoring → complete. Falling through to the generic
+              // trailing write would re-publish this stale 'knocking' snapshot
+              // (matchScores pre-settlement) over any newer authoritative
+              // 'complete' state written during the 2.8s presentation hold,
+              // resetting the settled score rail back to 0.
+              return;
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
@@ -2193,6 +2200,11 @@ export const GinRummyGameTable = ({
                 .eq('id', roundId);
               setGinState(knockSnapshot);
               await new Promise(resolve => setTimeout(resolve, 2800));
+              // RETURN for the same reason as the draw-branch knock above:
+              // no state advance happens after the knock snapshot, so the
+              // generic trailing write can only clobber newer authoritative
+              // settlement written by the opponent during the hold.
+              return;
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
