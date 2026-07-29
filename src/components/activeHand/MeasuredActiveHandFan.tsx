@@ -538,14 +538,37 @@ export function MeasuredActiveHandFan({
     return Math.max(0, paneRect.height * policy.stageTopInsetPctOfPane);
   }, [paneRect, policy.stageTopInsetPctOfPane]);
 
+  // Single source of truth: the render path consumes the SAME
+  // reservation the measurement path resolved.
+  const renderOverrides = useMemo(
+    () => reservationOverridesFor(lowerZoneMinPx),
+    [reservationOverridesFor, lowerZoneMinPx],
+  );
+
+  // Geo Lab readout — publishes the production reservation verbatim.
+  useEffect(() => {
+    if (!paneRect) return;
+    const reservation = resolveActiveActionReservation({
+      layout: actionLayout,
+      measuredLowerZonePx: lowerZoneMinPx,
+      safeAreaBottomPx,
+    });
+    publishActiveActionReservationReport({
+      ...reservation,
+      game,
+      paneHeightPx: paneRect.height,
+      cardRegionHeightPx: resolveCardRegionHeightPx(paneRect.height, reservation),
+    });
+  }, [actionLayout, game, lowerZoneMinPx, paneRect, safeAreaBottomPx]);
+
   const fan = (
     <ActiveHandFan
       game={game}
       cards={cards}
       capacity={capacity}
       paneRect={paneRect}
-      lowerZoneMinPx={lowerZoneMinPx}
-      safeAreaBottomPx={safeAreaBottomPx}
+      lowerZoneMinPx={renderOverrides.measuredLowerZoneMinPx}
+      safeAreaBottomPx={renderOverrides.safeAreaBottomPx}
       applyFan={applyFan}
       renderCard={renderCard}
       dataAttribute={dataAttribute}
