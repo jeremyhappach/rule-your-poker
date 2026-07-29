@@ -125,6 +125,10 @@ export function ActiveHandLayoutAdminSection({ game }: { game: GameKey }) {
         pane and the card composition inside the stage. Locked per phase.
       </p>
 
+      <ActiveActionReservationReadout game={game} />
+
+
+
       <fieldset className="space-y-3 border-t border-border/40 pt-3">
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Pane-relative sizing
