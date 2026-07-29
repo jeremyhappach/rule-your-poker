@@ -31,6 +31,56 @@ import {
   type ActiveHandLayoutPolicy,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import type { GameKey } from '@/lib/geometryLab/descriptorIndex';
+import { resolveActiveActionLayout, resolveDeclaredReservationPx } from '@/lib/activeHand/activeActionReservation';
+import { useActiveActionReservationReport } from '@/lib/activeHand/activeActionReservationReport';
+
+/**
+ * Canonical active-action reservation readout. Renders the SAME
+ * resolver output production geometry consumed — there is no second
+ * diagnostic formula and no per-game percentage control here.
+ */
+function ActiveActionReservationReadout({ game }: { game: GameKey }) {
+  const declared = resolveActiveActionLayout(game);
+  const report = useActiveActionReservationReport(game);
+  const rows = declared.mode === 'reserved-strip' ? declared.rows : 0;
+  const px = (n: number | undefined) =>
+    typeof n === 'number' && Number.isFinite(n) ? `${Math.round(n)}px` : '—';
+
+  const fields: Array<[string, string]> = [
+    ['Layout mode', declared.mode],
+    ['Declared rows', String(rows)],
+    ['Shared row height', px(report?.rowHeightPx ?? 36)],
+    ['Shared inter-row gap', px(report?.rowGapPx ?? 8)],
+    ['Shared cards→actions gap', px(report?.cardsToActionsGapPx ?? 8)],
+    ['Declared reservation', px(resolveDeclaredReservationPx(declared))],
+    ['Measured lower zone', px(report?.measuredLowerZonePx)],
+    ['Safe-area contribution', px(report?.safeAreaBottomPx)],
+    ['Effective reservation', px(report?.effectiveReservationPx)],
+    ['Pane height', px(report?.paneHeightPx)],
+    ['Available card region', px(report?.cardRegionHeightPx)],
+  ];
+
+  return (
+    <fieldset className="space-y-1 border-t border-border/40 pt-3">
+      <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Active action reservation (shared contract)
+      </legend>
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        {fields.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-2">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="font-mono">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {!report && (
+        <p className="text-[11px] text-muted-foreground">
+          No live measurement published yet for this game.
+        </p>
+      )}
+    </fieldset>
+  );
+}
 
 interface RatioFieldProps {
   label: string;
