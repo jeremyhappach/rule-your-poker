@@ -66,6 +66,14 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { MeasuredActiveHandFan, type MeasuredActiveHandFanCommit } from "./activeHand/MeasuredActiveHandFan";
 import { HolmActivePaneGeometryPill } from "./HolmActivePaneGeometryPill";
+import {
+  resolveActiveActionLayout,
+  resolveActiveActionReservation,
+  resolveCardRegionHeightPx,
+} from "@/lib/activeHand/activeActionReservation";
+import { publishActiveActionReservationReport } from "@/lib/activeHand/activeActionReservationReport";
+import { readSafeAreaBottomPx } from "@/lib/activeHand/safeAreaBottom";
+
 
 import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
@@ -1402,6 +1410,107 @@ export const MobileGameTable = ({
     _ttPlay.width,
     _ttPlay.height,
   ]);
+
+  // ── Holm canonical active-action reservation (Phase 2) ────────────
+  // Holm declares ONE reserved action row through the shared contract
+  // in `@/lib/activeHand/activeActionReservation`. The pane content and
+  // the rendered lower-zone CONTENT (the strip's child, not the strip
+  // envelope itself — measuring the envelope would feed its own height
+  // back into the reservation) are measured here; the shared resolver
+  // produces the effective reservation and the remaining card region.
+  // 3-5-7 shares this JSX subtree and is explicitly excluded: every
+  // consumer below is gated on `gameType === 'holm-game'`.
+  const isHolmGameType = gameType === 'holm-game';
+  const [holmPaneHeightPx, setHolmPaneHeightPx] = useState(0);
+  const [holmMeasuredLowerZonePx, setHolmMeasuredLowerZonePx] = useState(0);
+  const [holmSafeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
+
+  const holmPaneObserverRef = useRef<ResizeObserver | null>(null);
+  const holmLowerZoneObserverRef = useRef<ResizeObserver | null>(null);
+  const holmLowerZoneMutationRef = useRef<MutationObserver | null>(null);
+
+  const holmActivePaneRefCallback = useCallback((node: HTMLDivElement | null) => {
+    holmPaneObserverRef.current?.disconnect();
+    holmPaneObserverRef.current = null;
+    if (!node) return;
+    const read = () => {
+      const h = node.getBoundingClientRect().height;
+      setHolmPaneHeightPx(Number.isFinite(h) ? h : 0);
+    };
+    read();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(read);
+      ro.observe(node);
+      holmPaneObserverRef.current = ro;
+    }
+  }, []);
+
+  const holmLowerZoneRefCallback = useCallback((node: HTMLDivElement | null) => {
+    holmLowerZoneObserverRef.current?.disconnect();
+    holmLowerZoneObserverRef.current = null;
+    holmLowerZoneMutationRef.current?.disconnect();
+    holmLowerZoneMutationRef.current = null;
+    if (!node) return;
+    const read = () => {
+      let h = 0;
+      for (const child of Array.from(node.children)) {
+        const r = (child as HTMLElement).getBoundingClientRect().height;
+        if (Number.isFinite(r) && r > h) h = r;
+      }
+      setHolmMeasuredLowerZonePx(h);
+    };
+    const observeChildren = () => {
+      const ro = holmLowerZoneObserverRef.current;
+      if (!ro) return;
+      for (const child of Array.from(node.children)) ro.observe(child);
+    };
+    read();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(read);
+      holmLowerZoneObserverRef.current = ro;
+      observeChildren();
+    }
+    if (typeof MutationObserver !== 'undefined') {
+      const mo = new MutationObserver(() => {
+        read();
+        observeChildren();
+      });
+      mo.observe(node, { childList: true });
+      holmLowerZoneMutationRef.current = mo;
+    }
+
+  }, []);
+
+  useEffect(() => () => {
+    holmPaneObserverRef.current?.disconnect();
+    holmLowerZoneObserverRef.current?.disconnect();
+    holmLowerZoneMutationRef.current?.disconnect();
+  }, []);
+
+  const holmActionReservation = useMemo(
+    () =>
+      resolveActiveActionReservation({
+        layout: resolveActiveActionLayout('holm'),
+        measuredLowerZonePx: holmMeasuredLowerZonePx,
+        safeAreaBottomPx: holmSafeAreaBottomPx,
+      }),
+    [holmMeasuredLowerZonePx, holmSafeAreaBottomPx],
+  );
+  const holmCardRegionHeightPx = resolveCardRegionHeightPx(
+    holmPaneHeightPx,
+    holmActionReservation,
+  );
+
+  useEffect(() => {
+    if (!isHolmGameType) return;
+    if (holmPaneHeightPx <= 0) return;
+    publishActiveActionReservationReport({
+      ...holmActionReservation,
+      game: 'holm',
+      paneHeightPx: holmPaneHeightPx,
+      cardRegionHeightPx: holmCardRegionHeightPx,
+    });
+  }, [isHolmGameType, holmActionReservation, holmPaneHeightPx, holmCardRegionHeightPx]);
 
 
   // Holm clean-baseline showdown placement (mirrors 3-5-7 substrate;
@@ -13352,7 +13461,12 @@ export const MobileGameTable = ({
                     pendingAutoRollOff={pendingAutoRollOff}
                   />
                 ) : (
-                  <div className="px-2 flex flex-col h-full" data-357-active-pane-content="" data-holm-active-pane-content="">
+                  <div
+                    className="px-2 flex flex-col h-full"
+                    data-357-active-pane-content=""
+                    data-holm-active-pane-content=""
+                    ref={isHolmGameType ? holmActivePaneRefCallback : undefined}
+                  >
                   {gameType === 'holm-game' && <HolmActivePaneGeometryPill />}
 
                   {(() => {
@@ -13405,10 +13519,27 @@ export const MobileGameTable = ({
                     // the authored `handReserveNum`-driven budget so
                     // animated arrival and hydrated refresh share the
                     // same fixed vertical contract.
+                    //
+                    // HOLM PHASE 2: Holm's budget now comes from the shared
+                    // reserved-action-row card region
+                    // (pane − effective reservation), converted out of the
+                    // wrapper scale. It is clamped by the authored Holm
+                    // reserve so card dimensions never grow beyond today's
+                    // values — the region only ever constrains them.
+                    const holmCardRegionBudgetPx =
+                      gameType === 'holm-game' && holmCardRegionHeightPx > 0
+                        ? Math.max(20, holmCardRegionHeightPx / handScaleNum - 4)
+                        : null;
                     const handAvailableHeightPx357 =
                       gameType !== 'holm-game'
                         ? Math.max(20, handReserveNum / handScaleNum - 4)
-                        : undefined;
+                        : holmCardRegionBudgetPx !== null
+                          ? Math.min(
+                              holmCardRegionBudgetPx,
+                              Math.max(20, handReserveNum / handScaleNum - 4),
+                            )
+                          : undefined;
+
 
 
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
@@ -13541,6 +13672,13 @@ export const MobileGameTable = ({
                               "flex items-center justify-center flex-1 min-h-0 w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
+
+                            style={
+                              gameType === 'holm-game' && holmCardRegionHeightPx > 0
+                                ? { maxHeight: holmCardRegionHeightPx }
+                                : undefined
+                            }
+
                             data-357-snap-current-round={currentRound ?? ''}
                             data-357-snap-hand-scale={handScaleNum}
                             data-357-snap-hand-reserve={handReserveNum}
@@ -13709,15 +13847,24 @@ export const MobileGameTable = ({
 
                   <div
                     data-active-hand-lower-zone=""
+                    ref={isHolmGameType ? holmLowerZoneRefCallback : undefined}
                     className={cn(
                     // Stable allocation: this strip swaps between buttons,
                     // badges, auto-fold label, and pre-decision checkboxes
                     // across the hand lifecycle. The geometry contract
                     // requires the gameplay artifact above (the hand) not
-                    // to shift when this sibling's content changes. We
-                    // reserve the height of the *tallest* variant
-                    // (auto-fold label ≈ 52px mobile, ≈ 64px tablet) so
-                    // every transition centers content inside a fixed box.
+                    // to shift when this sibling's content changes.
+                    //
+                    // HOLM PHASE 2: Holm no longer uses the hardcoded
+                    // `h-[52px]` / `h-[64px]` envelope. Its height is the
+                    // shared effective reservation
+                    //   max(declared 1-row reservation,
+                    //       measured lower-zone content + safe area)
+                    // resolved by `activeActionReservation`. Only the
+                    // strip CONTENT is measured, so the envelope height
+                    // can never feed back into its own measurement.
+                    // 3-5-7 keeps the authored tallest-variant reserve
+                    // unchanged.
                     // Tagged `data-active-hand-lower-zone` so the shared
                     // active-hand resolver measures its rendered height
                     // and escalates the pane reservation — the portaled
@@ -13742,9 +13889,16 @@ export const MobileGameTable = ({
                     // Nothing here touches PlayerHand, availableHeightPx,
                     // handScale, handReserve, canDecide, or the identity
                     // row.
-                    "flex items-center justify-center flex-shrink-0 mt-auto",
-                    isTablet ? "h-[64px] mb-1" : "h-[52px] mb-1"
-                  )}>
+                    "flex items-center justify-center flex-shrink-0 mt-auto mb-1",
+                    isHolmGameType ? "" : (isTablet ? "h-[64px]" : "h-[52px]")
+                  )}
+                    style={
+                      isHolmGameType
+                        ? { height: holmActionReservation.effectiveReservationPx }
+                        : undefined
+                    }
+                  >
+
 
 
                     {(() => {

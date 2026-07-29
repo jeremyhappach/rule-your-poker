@@ -58,7 +58,7 @@ describe('shared reserved-strip tokens and formula', () => {
   });
 
   it('content-following subtracts nothing from the card region', () => {
-    for (const game of ['yahtzee', 'horses', 'shipCaptainCrew', 'holm', 'threeFiveSeven']) {
+    for (const game of ['yahtzee', 'horses', 'shipCaptainCrew', 'threeFiveSeven']) {
       const layout = resolveActiveActionLayout(game);
       expect(layout.mode).toBe('content-following');
       const r = resolveActiveActionReservation({ layout, measuredLowerZonePx: 90 });
@@ -67,9 +67,11 @@ describe('shared reserved-strip tokens and formula', () => {
     }
   });
 
-  it('cribbage and gin both declare a single reserved row', () => {
+  it('cribbage, gin and holm each declare a single reserved row', () => {
     expect(resolveActiveActionLayout('cribbage')).toEqual({ mode: 'reserved-strip', rows: 1 });
     expect(resolveActiveActionLayout('ginRummy')).toEqual({ mode: 'reserved-strip', rows: 1 });
+    expect(resolveActiveActionLayout('holm')).toEqual({ mode: 'reserved-strip', rows: 1 });
+
   });
 });
 
