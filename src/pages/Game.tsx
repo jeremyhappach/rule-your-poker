@@ -1533,6 +1533,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownWinnerId, setHolmShowdownWinnerId] = useState<string | null>(null);
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
+  // ONE SETTLEMENT = ONE PLAN. The awaiting_next_round effect can re-enter
+  // (its 4s timer clears awaitingTimerRef while awaiting_next_round is still
+  // true, so any subsequent games/players realtime update re-runs the block).
+  // Without an identity latch, re-entry re-dispatched phase 1 (a SECOND
+  // pot-to-winner) and clobbered phase 2 back to 'pot-to-winner', so the
+  // losers-to-pot transfer never rendered. Latch on the settlement identity.
+  const holmShowdownSettlementKeyRef = useRef<string | null>(null);
   
   // Holm win pot animation state (when player beats Chucky - dramatic pot to winner)
   const [holmWinPotTriggerId, setHolmWinPotTriggerId] = useState<string | null>(null);
@@ -7586,21 +7593,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const loserIds = holmShowdownMatch[2].split(',').filter(Boolean);
           const potAmount = parseInt(holmShowdownMatch[3], 10);
           const matchAmount = parseInt(holmShowdownMatch[4], 10);
-          
-          console.log('[HOLM_SHOWDOWN_ANIMATION] Detected multi-player showdown', {
+
+          // Settlement identity: dealer game | round | winner | losers | pot | match.
+          const settlementKey = [
+            game?.current_game_uuid ?? 'no-dealer-game',
+            currentRound ?? 'no-round',
             winnerId,
-            loserIds,
+            loserIds.join(','),
             potAmount,
-            matchAmount
-          });
-          
-          // Trigger phase 1: pot-to-winner
-          setHolmShowdownPotAmount(potAmount);
-          setHolmShowdownMatchAmount(matchAmount);
-          setHolmShowdownWinnerId(winnerId);
-          setHolmShowdownLoserIds(loserIds);
-          setHolmShowdownPhase('pot-to-winner');
-          setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`);
+            matchAmount,
+          ].join('|');
+
+          if (holmShowdownSettlementKeyRef.current === settlementKey) {
+            console.log('[HOLM_SHOWDOWN_ANIMATION] Duplicate dispatch suppressed', { settlementKey });
+          } else {
+            holmShowdownSettlementKeyRef.current = settlementKey;
+
+            console.log('[HOLM_SHOWDOWN_ANIMATION] Detected multi-player showdown', {
+              settlementKey,
+              winnerId,
+              loserIds,
+              potAmount,
+              matchAmount
+            });
+
+            // Trigger phase 1: pot-to-winner (phase 2 losers-to-pot is
+            // advanced by onHolmShowdownPotToWinnerEnded and must never be
+            // reset by a re-entry of this effect).
+            setHolmShowdownPotAmount(potAmount);
+            setHolmShowdownMatchAmount(matchAmount);
+            setHolmShowdownWinnerId(winnerId);
+            setHolmShowdownLoserIds(loserIds);
+            setHolmShowdownPhase('pot-to-winner');
+            setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`);
+          }
         }
       }
       
