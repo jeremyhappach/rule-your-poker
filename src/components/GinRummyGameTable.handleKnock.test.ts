@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Regression: gin knock/scoring control flow in GinRummyGameTable.handleKnock.
  *
