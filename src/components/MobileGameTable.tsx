@@ -13514,10 +13514,27 @@ export const MobileGameTable = ({
                     // the authored `handReserveNum`-driven budget so
                     // animated arrival and hydrated refresh share the
                     // same fixed vertical contract.
+                    //
+                    // HOLM PHASE 2: Holm's budget now comes from the shared
+                    // reserved-action-row card region
+                    // (pane − effective reservation), converted out of the
+                    // wrapper scale. It is clamped by the authored Holm
+                    // reserve so card dimensions never grow beyond today's
+                    // values — the region only ever constrains them.
+                    const holmCardRegionBudgetPx =
+                      gameType === 'holm-game' && holmCardRegionHeightPx > 0
+                        ? Math.max(20, holmCardRegionHeightPx / handScaleNum - 4)
+                        : null;
                     const handAvailableHeightPx357 =
                       gameType !== 'holm-game'
                         ? Math.max(20, handReserveNum / handScaleNum - 4)
-                        : undefined;
+                        : holmCardRegionBudgetPx !== null
+                          ? Math.min(
+                              holmCardRegionBudgetPx,
+                              Math.max(20, handReserveNum / handScaleNum - 4),
+                            )
+                          : undefined;
+
 
 
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
