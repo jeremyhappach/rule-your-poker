@@ -38,6 +38,7 @@
  */
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -59,10 +60,18 @@ import {
   type ActiveHandStageRect,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import {
+  resolveActiveActionLayout,
+  resolveActiveActionReservation,
+  resolveCardRegionHeightPx,
+  type ActiveActionLayout,
+} from '@/lib/activeHand/activeActionReservation';
+import { publishActiveActionReservationReport } from '@/lib/activeHand/activeActionReservationReport';
+import {
   recordHolmLedger,
   recordHolmLedgerViolation,
 } from '@/lib/holm/holmPresentationLedger';
 // 3-5-7 presentation ledger removed (temporary tracking).
+
 
 type PaneRect = ActiveHandStageRect;
 
