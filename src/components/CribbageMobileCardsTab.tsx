@@ -12,6 +12,15 @@ import {
   type ResolvedActiveHandRow,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import { ActiveHandFan } from './activeHand/ActiveHandFan';
+import {
+  ACTION_ROW_HEIGHT_PX,
+  CARDS_TO_ACTIONS_GAP_PX,
+  resolveActiveActionLayout,
+  resolveActiveActionReservation,
+  resolveCardRegionHeightPx,
+} from '@/lib/activeHand/activeActionReservation';
+import { publishActiveActionReservationReport } from '@/lib/activeHand/activeActionReservationReport';
+import { readSafeAreaBottomPx } from '@/lib/activeHand/safeAreaBottom';
 // (CribbageLayoutStatusPill removed — replaced by CribbageWartimeTruthPill mounted in CribbageMobileGameTable.)
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
@@ -687,17 +696,98 @@ export const CribbageMobileCardsTab = ({
   // Card width is resolved against this capacity and locked once per
   // phase boundary. The measured hand-stage already excludes the tab
   // rail, action/instruction row, identity row, and horizontal safe inset.
+  // ── Canonical active-action reservation (Phase 1 migration) ──────
+  // Cribbage no longer derives its bottom clearance from an authored
+  // percentage (`stageBottomInsetPctOfPane`). The active pane is
+  // measured, the shared reserved-strip contract resolves the strip
+  // height (1 declared row, measured-escalated), and the card stage
+  // receives ONLY the remaining region.
+  const activePaneNodeRef = useRef<HTMLDivElement | null>(null);
+  const lowerZoneNodeRef = useRef<HTMLDivElement | null>(null);
+  const [activePaneHeightPx, setActivePaneHeightPx] = useState(0);
+  const [measuredLowerZonePx, setMeasuredLowerZonePx] = useState(0);
+  const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
+
+  const observeHeight = useMemo(
+    () =>
+      (
+        ref: React.MutableRefObject<HTMLDivElement | null>,
+        set: (n: number) => void,
+        store: React.MutableRefObject<ResizeObserver | null>,
+      ) =>
+      (node: HTMLDivElement | null) => {
+        store.current?.disconnect();
+        store.current = null;
+        ref.current = node;
+        if (!node) return;
+        const read = () => {
+          const h = node.getBoundingClientRect().height;
+          set(Number.isFinite(h) ? h : 0);
+        };
+        read();
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(read);
+          ro.observe(node);
+          store.current = ro;
+        }
+      },
+    [],
+  );
+  const activePaneObserverRef = useRef<ResizeObserver | null>(null);
+  const lowerZoneObserverRef = useRef<ResizeObserver | null>(null);
+  const activePaneRefCallback = useMemo(
+    () => observeHeight(activePaneNodeRef, setActivePaneHeightPx, activePaneObserverRef),
+    [observeHeight],
+  );
+  const lowerZoneRefCallback = useMemo(
+    () => observeHeight(lowerZoneNodeRef, setMeasuredLowerZonePx, lowerZoneObserverRef),
+    [observeHeight],
+  );
+
+  const actionReservation = useMemo(
+    () =>
+      resolveActiveActionReservation({
+        layout: resolveActiveActionLayout('cribbage'),
+        measuredLowerZonePx,
+        safeAreaBottomPx,
+      }),
+    [measuredLowerZonePx, safeAreaBottomPx],
+  );
+  const cardRegionHeightPx = resolveCardRegionHeightPx(activePaneHeightPx, actionReservation);
+
+  useEffect(() => {
+    if (activePaneHeightPx <= 0) return;
+    publishActiveActionReservationReport({
+      ...actionReservation,
+      game: 'cribbage',
+      paneHeightPx: activePaneHeightPx,
+      cardRegionHeightPx,
+    });
+  }, [actionReservation, activePaneHeightPx, cardRegionHeightPx]);
+
+  // Stage rect handed to the resolver = measured stage row, hard-capped
+  // by the calculated card region so cards can never expand into the
+  // reserved action/status strip.
+  const cardRegionStageRect = useMemo<CribActiveHandStageRect | null>(() => {
+    if (!handStageRectPx) return null;
+    if (cardRegionHeightPx <= 0) return handStageRectPx;
+    const height = Math.min(handStageRectPx.height, cardRegionHeightPx);
+    return Math.abs(height - handStageRectPx.height) < 0.5
+      ? handStageRectPx
+      : { width: handStageRectPx.width, height };
+  }, [handStageRectPx, cardRegionHeightPx]);
+
   const phaseCapacity = isPreDiscard ? 6 : 4;
   const activeHandPolicy = useActiveHandLayoutPolicy('cribbage');
   const handLayout = useMemo(
     () =>
       resolveActiveHandLayout(
-        handStageRectPx,
+        cardRegionStageRect,
         phaseCapacity,
         activeHandPolicy,
         CRIB_ACTIVE_HAND_ASPECT,
       ),
-    [handStageRectPx, phaseCapacity, activeHandPolicy],
+    [cardRegionStageRect, phaseCapacity, activeHandPolicy],
   );
   const phaseLayoutKey = `${roundId ?? expectedRoundId ?? 'unknown-round'}:${isPreDiscard ? 'pre-discard' : 'post-discard'}`;
   const [lockedHandLayout, setLockedHandLayout] = useState<{ key: string; layout: ResolvedActiveHandRow } | null>(null);
@@ -942,14 +1032,20 @@ export const CribbageMobileCardsTab = ({
     return (
       <div className="h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
         <div data-crib-active-hand-stage="" className="overflow-hidden" />
-        <div className="flex items-center justify-center min-h-[28px] overflow-hidden" />
+        <div
+          className="flex items-center justify-center overflow-hidden"
+          style={{ minHeight: ACTION_ROW_HEIGHT_PX, marginTop: CARDS_TO_ACTIONS_GAP_PX }}
+        />
       </div>
     );
   }
 
 
   return (
-    <div className="relative h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden">
+    <div
+      ref={activePaneRefCallback}
+      className="relative h-full px-2 grid grid-rows-[minmax(0,1fr)_max-content] overflow-hidden"
+    >
       {/* CribbageLayoutStatusPill removed — see CribbageWartimeTruthPill. */}
       {/* Cards display — Wave 2C geometry consumer.
           Width/height budget = hand stage ([data-crib-active-hand-stage]).
@@ -964,7 +1060,7 @@ export const CribbageMobileCardsTab = ({
           game="cribbage"
           cards={renderedHand.map(toDisplayCard)}
           capacity={phaseCapacity}
-          stageRect={activeHandLayout?.stageRect ?? handStageRectPx}
+          stageRect={activeHandLayout?.stageRect ?? cardRegionStageRect}
           applyFan
           renderCard={({ index, card_node, buildCardNode }) => {
             const card = renderedHand[index];
@@ -1008,7 +1104,15 @@ export const CribbageMobileCardsTab = ({
 
 
       {/* Action area - tighter to cards */}
-      <div data-active-hand-lower-zone="" className="flex items-center justify-center min-h-[28px] overflow-hidden">
+      {/* Canonical reserved strip: exactly ONE shared action row for
+          every active-hand phase (discard / pegging / counting). Height
+          and the cards→actions gap come from the shared tokens only. */}
+      <div
+        ref={lowerZoneRefCallback}
+        data-active-hand-lower-zone=""
+        className="flex items-center justify-center overflow-hidden"
+        style={{ minHeight: ACTION_ROW_HEIGHT_PX, marginTop: CARDS_TO_ACTIONS_GAP_PX }}
+      >
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
