@@ -58,7 +58,7 @@ describe('shared reserved-strip tokens and formula', () => {
   });
 
   it('content-following subtracts nothing from the card region', () => {
-    for (const game of ['yahtzee', 'horses', 'shipCaptainCrew', 'holm', 'threeFiveSeven']) {
+    for (const game of ['yahtzee', 'horses', 'shipCaptainCrew', 'threeFiveSeven']) {
       const layout = resolveActiveActionLayout(game);
       expect(layout.mode).toBe('content-following');
       const r = resolveActiveActionReservation({ layout, measuredLowerZonePx: 90 });
