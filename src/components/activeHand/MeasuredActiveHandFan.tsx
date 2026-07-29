@@ -393,7 +393,7 @@ export function MeasuredActiveHandFan({
             Math.max(1, capacity),
             policy,
             2 / 3,
-            { measuredLowerZoneMinPx: totalLowerZonePx, safeAreaBottomPx },
+            reservationOverridesFor(totalLowerZonePx),
           )
         : null;
       const candidateValid = !!candidateLayout;
@@ -409,7 +409,7 @@ export function MeasuredActiveHandFan({
             Math.max(1, capacity),
             policy,
             2 / 3,
-            { measuredLowerZoneMinPx: committed.lowerZoneMinPx, safeAreaBottomPx },
+            reservationOverridesFor(committed.lowerZoneMinPx),
           )
         : null;
       const committedInvalid = !!(
@@ -518,6 +518,7 @@ export function MeasuredActiveHandFan({
     capacity,
     policy,
     safeAreaBottomPx,
+    reservationOverridesFor,
   ]);
 
   const paneRect = useMemo(() => {
