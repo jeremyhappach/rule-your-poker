@@ -186,7 +186,17 @@ export function resolveActiveActionLayout(
       return ONE_ROW;
     case 'ginRummy':
       return ONE_ROW;
+    // Holm (Phase 2). The active-hand lower zone always renders exactly
+    // one canonical row of content — Fold/Bet, the auto-fold checkbox,
+    // STAYED/FOLDED presentation, Show Cards, rejoin, or waiting status.
+    // The row is deliberately NOT collapsed to zero between transient
+    // phases: every one of those states occupies the same strip, and
+    // collapsing would produce a visible vertical jump of the fan on
+    // each decision → showdown → terminal boundary.
+    case 'holm':
+      return ONE_ROW;
     default:
       return CONTENT_FOLLOWING;
   }
 }
+
