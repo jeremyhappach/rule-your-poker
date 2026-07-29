@@ -38,6 +38,7 @@
  */
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -59,10 +60,19 @@ import {
   type ActiveHandStageRect,
 } from '@/lib/activeHand/activeHandLayoutSettings';
 import {
+  resolveActiveActionLayout,
+  resolveActiveActionReservation,
+  resolveCardRegionHeightPx,
+  type ActiveActionLayout,
+} from '@/lib/activeHand/activeActionReservation';
+import { publishActiveActionReservationReport } from '@/lib/activeHand/activeActionReservationReport';
+import { readSafeAreaBottomPx } from '@/lib/activeHand/safeAreaBottom';
+import {
   recordHolmLedger,
   recordHolmLedgerViolation,
 } from '@/lib/holm/holmPresentationLedger';
 // 3-5-7 presentation ledger removed (temporary tracking).
+
 
 type PaneRect = ActiveHandStageRect;
 
@@ -73,27 +83,6 @@ export interface MeasuredActiveHandFanCommit {
 }
 
 const LOWER_ZONE_SELECTOR = '[data-active-hand-lower-zone]';
-
-let cachedSafeAreaBottomPx: number | null = null;
-function readSafeAreaBottomPx(): number {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-  if (cachedSafeAreaBottomPx !== null) return cachedSafeAreaBottomPx;
-  try {
-    const probe = document.createElement('div');
-    probe.style.position = 'absolute';
-    probe.style.visibility = 'hidden';
-    probe.style.pointerEvents = 'none';
-    probe.style.width = '0';
-    probe.style.height = 'env(safe-area-inset-bottom, 0px)';
-    document.body.appendChild(probe);
-    const h = probe.getBoundingClientRect().height;
-    document.body.removeChild(probe);
-    cachedSafeAreaBottomPx = Number.isFinite(h) ? h : 0;
-  } catch {
-    cachedSafeAreaBottomPx = 0;
-  }
-  return cachedSafeAreaBottomPx;
-}
 
 export interface MeasuredActiveHandFanProps {
   game: GameKey;
@@ -148,6 +137,12 @@ export interface MeasuredActiveHandFanProps {
   three57LedgerIdentity?: unknown;
   /** Optional persistent owner storage; preserves the committed layout across same-hand remounts. */
   externalCommitRef?: MutableRefObject<MeasuredActiveHandFanCommit>;
+  /**
+   * Canonical active-action layout declaration. Defaults to the shared
+   * per-game registry. `content-following` games keep the legacy
+   * measured-lower-zone path untouched (zero geometry change).
+   */
+  actionLayout?: ActiveActionLayout;
 }
 
 export function MeasuredActiveHandFan({
@@ -169,6 +164,7 @@ export function MeasuredActiveHandFan({
   holmLedgerIdentity,
   three57LedgerIdentity,
   externalCommitRef,
+  actionLayout: actionLayoutProp,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const activeLockKey = phaseLockKey ?? null;
@@ -181,6 +177,35 @@ export function MeasuredActiveHandFan({
   const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const policy = useActiveHandLayoutPolicy(game);
+
+  // Canonical action-reservation contract for this game.
+  const actionLayout = useMemo<ActiveActionLayout>(
+    () => actionLayoutProp ?? resolveActiveActionLayout(game),
+    [actionLayoutProp, game],
+  );
+
+  /**
+   * Translate a measured lower-zone height into the reservation
+   * overrides consumed by the shared stage resolver.
+   *   reserved-strip     → shared declared/measured-escalated value.
+   *   content-following  → legacy behaviour, byte-for-byte unchanged.
+   */
+  const reservationOverridesFor = useCallback(
+    (measuredLowerZonePx: number) => {
+      if (actionLayout.mode !== 'reserved-strip') {
+        return { measuredLowerZoneMinPx: measuredLowerZonePx, safeAreaBottomPx };
+      }
+      const reservation = resolveActiveActionReservation({
+        layout: actionLayout,
+        measuredLowerZonePx,
+        safeAreaBottomPx,
+      });
+      // Safe area is already folded into the effective reservation.
+      return { measuredLowerZoneMinPx: reservation.effectiveReservationPx, safeAreaBottomPx: 0 };
+    },
+    [actionLayout, safeAreaBottomPx],
+  );
+
 
   // Phase-lock commit ledger — persists across effect re-runs.
   const localCommittedRef = useRef<MeasuredActiveHandFanCommit>({
@@ -348,7 +373,7 @@ export function MeasuredActiveHandFan({
             Math.max(1, capacity),
             policy,
             2 / 3,
-            { measuredLowerZoneMinPx: totalLowerZonePx, safeAreaBottomPx },
+            reservationOverridesFor(totalLowerZonePx),
           )
         : null;
       const candidateValid = !!candidateLayout;
@@ -364,7 +389,7 @@ export function MeasuredActiveHandFan({
             Math.max(1, capacity),
             policy,
             2 / 3,
-            { measuredLowerZoneMinPx: committed.lowerZoneMinPx, safeAreaBottomPx },
+            reservationOverridesFor(committed.lowerZoneMinPx),
           )
         : null;
       const committedInvalid = !!(
@@ -473,6 +498,7 @@ export function MeasuredActiveHandFan({
     capacity,
     policy,
     safeAreaBottomPx,
+    reservationOverridesFor,
   ]);
 
   const paneRect = useMemo(() => {
@@ -492,14 +518,37 @@ export function MeasuredActiveHandFan({
     return Math.max(0, paneRect.height * policy.stageTopInsetPctOfPane);
   }, [paneRect, policy.stageTopInsetPctOfPane]);
 
+  // Single source of truth: the render path consumes the SAME
+  // reservation the measurement path resolved.
+  const renderOverrides = useMemo(
+    () => reservationOverridesFor(lowerZoneMinPx),
+    [reservationOverridesFor, lowerZoneMinPx],
+  );
+
+  // Geo Lab readout — publishes the production reservation verbatim.
+  useEffect(() => {
+    if (!paneRect) return;
+    const reservation = resolveActiveActionReservation({
+      layout: actionLayout,
+      measuredLowerZonePx: lowerZoneMinPx,
+      safeAreaBottomPx,
+    });
+    publishActiveActionReservationReport({
+      ...reservation,
+      game,
+      paneHeightPx: paneRect.height,
+      cardRegionHeightPx: resolveCardRegionHeightPx(paneRect.height, reservation),
+    });
+  }, [actionLayout, game, lowerZoneMinPx, paneRect, safeAreaBottomPx]);
+
   const fan = (
     <ActiveHandFan
       game={game}
       cards={cards}
       capacity={capacity}
       paneRect={paneRect}
-      lowerZoneMinPx={lowerZoneMinPx}
-      safeAreaBottomPx={safeAreaBottomPx}
+      lowerZoneMinPx={renderOverrides.measuredLowerZoneMinPx}
+      safeAreaBottomPx={renderOverrides.safeAreaBottomPx}
       applyFan={applyFan}
       renderCard={renderCard}
       dataAttribute={dataAttribute}

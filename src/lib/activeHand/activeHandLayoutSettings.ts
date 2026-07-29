@@ -140,7 +140,12 @@ const CRIB_DEFAULTS: ActiveHandLayoutPolicy = {
   baselineOverlapPct: 0.07,
   maxAdaptiveOverlapPct: 0.35,
   stageTopInsetPctOfPane: 0,
-  stageBottomInsetPctOfPane: 0.28,
+  // Superseded by the canonical action-reservation model
+  // (`activeActionReservation.ts`): Cribbage now derives its bottom
+  // clearance from the shared reserved-strip contract (1 row, measured
+  // escalation), not from an authored pane percentage.
+  stageBottomInsetPctOfPane: 0,
+
   stageVerticalAlignment: 'bottom',
   contentYOffsetPctOfStage: 0,
 };
