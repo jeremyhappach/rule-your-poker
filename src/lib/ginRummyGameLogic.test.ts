@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+// (ginRummyGameLogic → debugFlags → debug-harness runtime cache → supabase
+//  client, which touches localStorage at import time.)
 import { describe, it, expect } from 'vitest';
 import {
   createInitialGinRummyState,
@@ -135,7 +138,7 @@ describe('Gin Rummy Game Logic', () => {
   });
 
   describe('knock / gin', () => {
-    it('getNextDealer returns loser as next dealer', () => {
+    it('getNextDealer alternates dealer regardless of who won', () => {
       const state = freshState();
       const withResult = {
         ...state,
@@ -151,7 +154,10 @@ describe('Gin Rummy Game Logic', () => {
           winnerId: P2,
         },
       };
-      expect(getNextDealer(withResult)).toBe(P1); // Loser deals
+      // Server-authoritative pure alternation: the non-dealer of this hand
+      // deals the next one.
+      expect(getNextDealer(withResult)).toBe(state.nonDealerPlayerId);
     });
+
   });
 });

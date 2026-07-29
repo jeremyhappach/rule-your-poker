@@ -21,7 +21,7 @@ import {
   sumDeadwood,
   canDrawFromStock,
 } from './ginRummyScoring';
-import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled, isGinOpponentInstantKnockHarnessEnabled } from './debugFlags';
+import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled, isGinNonDealerNearKnockHarnessEnabled } from './debugFlags';
 
 /** Bump the monotonic action counter used by the anti-regression framework. */
 function bumpAction(state: GinRummyState): number {
@@ -96,16 +96,15 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 export function dealHand(
   state: GinRummyState,
   harnessTargetPlayerId?: string | null,
-  opponentInstantKnockOpponentId?: string | null,
 ): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
 
-  // Debug: Opponent Instant Knock harness (first-hand only, gated by
-  // caller passing opponentInstantKnockOpponentId — createNextHand never
-  // passes it, so hand 2+ falls through to the normal deal).
-  if (isGinOpponentInstantKnockHarnessEnabled() && opponentInstantKnockOpponentId) {
-    return dealOpponentInstantKnockHand(state, opponentInstantKnockOpponentId);
+  // Debug: Non-Dealer Near Knock harness. Purely role-based — it needs
+  // no caller-resolved id, so it applies identically on every hand of
+  // the dealer game and automatically follows dealer rotation.
+  if (isGinNonDealerNearKnockHarnessEnabled()) {
+    return dealNonDealerNearKnockHand(state);
   }
 
   // Debug: two-action harness (deterministic gin-on-upcard). Only run
@@ -114,6 +113,7 @@ export function dealHand(
   if (isGinTwoActionHarnessEnabled() && harnessTargetPlayerId) {
     return dealTwoActionHarnessHand(state, harnessTargetPlayerId);
   }
+
 
   // Debug: rigged hands for testing knock/lay-off flow
   if (isGinRiggedDealEnabled()) {
@@ -295,67 +295,81 @@ function dealTwoActionHarnessHand(
   };
 }
 
-// ─── Debug: Opponent Instant Knock Harness Deal ─────────────────
-// Opponent (non-dealer, non-host bot) hand:
-//   3♦ 4♦ 5♦   (run)      → meld
-//   9♠ 9♥ 9♦   (set)      → meld
-//   2♣ 3♣                 (needs 4♣ to complete run)
-//   A♠                    (1 deadwood)
-//   K♥                    (10 deadwood — will be discarded after taking 4♣)
-// Upcard: 4♣  (completes 2♣3♣4♣ run → opponent's deadwood drops to A♠ = 1 → auto-knock)
+// ─── Debug: Non-Dealer Near Knock Harness Deal ──────────────────
 //
-// Local (dealer, host) hand contains 2♦, A♣, 9♣ per spec; remaining
-// filler cards are isolated (no accidental melds), scattered suits.
-function dealOpponentInstantKnockHand(
-  state: GinRummyState,
-  opponentPlayerId: string,
-): GinRummyState {
+// Layoff test geometry (fixed, role-based — assignment follows the
+// authoritative dealer identity of THIS hand, so dealer rotation is
+// honored automatically and both clients compute the same result):
+//
+//   NON-DEALER (the knocker) — near-knock hand:
+//     3♦ 4♦ 5♦   run meld
+//     9♠ 9♥ 9♦   set meld
+//     2♣ 3♣      needs 4♣ to complete a run
+//     A♠         1 deadwood (the knock deadwood)
+//     K♥         10 deadwood — discarded on the knock
+//   Upcard: 4♣   completes 2♣3♣4♣ → deadwood drops to A♠ = 1
+//
+//   → non-dealer takes the upcard on the first draw, discards K♥ and
+//     knocks with expected deadwood = 1.
+//
+//   DEALER — layoff-test hand. Every one of these three lays off onto
+//   a knocker meld:
+//     2♦   → extends 3♦4♦5♦   (2♦3♦4♦5♦)
+//     A♣   → extends 2♣3♣4♣   (A♣2♣3♣4♣)
+//     9♣   → extends 9♠9♥9♦   (four 9s)
+//   Remaining dealer cards are isolated fillers (no accidental meld,
+//   no accidental gin): 7♥ 8♥ J♠ Q♦ 6♣ 10♥ K♦.
+export const NON_DEALER_NEAR_KNOCK_EXPECTED_KNOCK_DEADWOOD = 1;
+
+function ginCard(rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard {
+  let value: number;
+  if (rank === 'A') value = 1;
+  else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+  else value = parseInt(rank, 10);
+  return { rank, suit, value };
+}
+
+/** Near-knock hand dealt to the authoritative NON-DEALER. */
+export function nonDealerNearKnockHand(): GinRummyCard[] {
+  return [
+    ginCard('3', '♦'), ginCard('4', '♦'), ginCard('5', '♦'),
+    ginCard('9', '♠'), ginCard('9', '♥'), ginCard('9', '♦'),
+    ginCard('2', '♣'), ginCard('3', '♣'),
+    ginCard('A', '♠'),
+    ginCard('K', '♥'),
+  ];
+}
+
+/** Layoff-test hand dealt to the authoritative DEALER. */
+export function dealerLayoffTestHand(): GinRummyCard[] {
+  return [
+    ginCard('2', '♦'), ginCard('A', '♣'), ginCard('9', '♣'),
+    ginCard('7', '♥'), ginCard('8', '♥'),
+    ginCard('J', '♠'), ginCard('Q', '♦'),
+    ginCard('6', '♣'), ginCard('10', '♥'), ginCard('K', '♦'),
+  ];
+}
+
+/** Upcard that completes the non-dealer's third run. */
+export function nonDealerNearKnockUpCard(): GinRummyCard {
+  return ginCard('4', '♣');
+}
+
+export function dealNonDealerNearKnockHand(state: GinRummyState): GinRummyState {
   const { dealerPlayerId, nonDealerPlayerId } = state;
-  const c = (rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard => {
-    let value: number;
-    if (rank === 'A') value = 1;
-    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
-    else value = parseInt(rank, 10);
-    return { rank, suit, value };
-  };
 
-  const opponentHand: GinRummyCard[] = [
-    c('3', '♦'), c('4', '♦'), c('5', '♦'),
-    c('9', '♠'), c('9', '♥'), c('9', '♦'),
-    c('2', '♣'), c('3', '♣'),
-    c('A', '♠'),
-    c('K', '♥'),
-  ];
-
-  const upCard: GinRummyCard = c('4', '♣');
-
-  // Local hand (10 cards, includes 2♦ + A♣ + 9♣ per spec).
-  // Fillers are isolated: no set (all unique ranks except intentional pair),
-  // no 3-in-a-row same-suit run.
-  const localHand: GinRummyCard[] = [
-    c('2', '♦'), c('A', '♣'), c('9', '♣'),
-    c('7', '♥'), c('8', '♥'),
-    c('J', '♠'), c('Q', '♦'),
-    c('6', '♣'), c('10', '♥'), c('K', '♦'),
-  ];
+  const nonDealerHand = nonDealerNearKnockHand();
+  const dealerHand = dealerLayoffTestHand();
+  const upCard = nonDealerNearKnockUpCard();
 
   const fullDeck = createGinRummyDeck();
   const usedKeys = new Set(
-    [...opponentHand, ...localHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
+    [...nonDealerHand, ...dealerHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
   );
   const stockPile = fullDeck.filter(cd => !usedKeys.has(`${cd.rank}-${cd.suit}`));
 
-  // Opponent is the non-dealer (first actor); local user is the dealer.
-  // If the caller mis-identified opponent (i.e. opponent === dealer),
-  // fall back to assigning by matching id to seat rather than silently
-  // swapping identities.
-  const opponentIsNonDealer = opponentPlayerId === nonDealerPlayerId;
-  const opponentIsDealer = opponentPlayerId === dealerPlayerId;
-  const dealerHand = opponentIsDealer ? opponentHand : localHand;
-  const nonDealerHand = opponentIsNonDealer ? opponentHand : localHand;
-
   console.log(
-    `[GIN-RUMMY DEBUG] Opponent Instant Knock harness active — opponent=${opponentIsNonDealer ? 'non-dealer' : opponentIsDealer ? 'dealer' : 'NOT-SEATED'}, upcard=4♣`,
+    '[GIN-RUMMY DEBUG] Non-Dealer Near Knock harness active — non-dealer=near-knock, dealer=layoff-test, upcard=4♣',
   );
 
   return {
@@ -380,6 +394,7 @@ function dealOpponentInstantKnockHand(
     firstDrawPassed: [],
   };
 }
+
 
 // Non-dealer may take the face-up card or pass.
 // If non-dealer passes, dealer may take it or pass.

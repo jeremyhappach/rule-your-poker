@@ -74,11 +74,13 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'Deterministic two-action gin-on-upcard with match target lowered to 50.',
     },
     {
-      id: 'opponent_instant_knock',
-      label: 'Opponent Instant Knock',
-      description: 'Hand 1 only: deterministic deal where opponent bot (non-host, non-dealer) takes exposed 4♣, discards K♥, knocks with A♠ = 1 deadwood — exercises real reveal/layoff/scoring flow. Ordinary Gin resumes on hand 2.',
+      id: 'non_dealer_near_knock',
+      label: 'Non-Dealer Near Knock',
+      description:
+        'EVERY hand of the dealer game: the authoritative NON-DEALER is dealt a near-knock hand (3♦4♦5♦ / 9♠9♥9♦ / 2♣3♣ / A♠ / K♥ with 4♣ upcard) and knocks at the first legal opportunity; the authoritative DEALER is dealt the layoff-test hand (2♦, A♣, 9♣ + isolated fillers). Roles are resolved from dealer identity per hand, never from the viewing client.',
     },
   ],
+
   yahtzee: [
     NONE_HARNESS,
     {
@@ -153,6 +155,26 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
+/**
+ * Legacy persisted harness ids → canonical id.
+ *
+ * Read-only compatibility: nothing writes these keys any more, but a
+ * `game_defaults.debug_harness` row persisted before the rename must
+ * still resolve to the canonical profile instead of silently
+ * degrading to 'none'.
+ */
+export const LEGACY_HARNESS_ALIASES: Record<string, DebugHarnessId> = {
+  opponent_instant_knock: 'non_dealer_near_knock',
+};
+
+/** Map a possibly-legacy persisted id to its canonical id. */
+export function canonicalizeHarnessId(
+  id: DebugHarnessId | null | undefined,
+): DebugHarnessId {
+  if (!id) return 'none';
+  return LEGACY_HARNESS_ALIASES[id] ?? id;
+}
+
 export function getHarnessProfiles(gameType: string): DebugHarnessProfile[] {
   return DEBUG_HARNESS_REGISTRY[gameType] ?? [NONE_HARNESS];
 }
@@ -162,8 +184,10 @@ export function getHarnessProfile(
   id: DebugHarnessId | null | undefined,
 ): DebugHarnessProfile {
   const list = getHarnessProfiles(gameType);
-  return list.find((p) => p.id === id) ?? NONE_HARNESS;
+  const canonical = canonicalizeHarnessId(id);
+  return list.find((p) => p.id === canonical) ?? NONE_HARNESS;
 }
+
 
 export function isHarnessActive(id: DebugHarnessId | null | undefined): boolean {
   return !!id && id !== 'none';
