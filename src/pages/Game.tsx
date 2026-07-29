@@ -1533,6 +1533,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownWinnerId, setHolmShowdownWinnerId] = useState<string | null>(null);
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
+  // ONE SETTLEMENT = ONE PLAN. The awaiting_next_round effect can re-enter
+  // (its 4s timer clears awaitingTimerRef while awaiting_next_round is still
+  // true, so any subsequent games/players realtime update re-runs the block).
+  // Without an identity latch, re-entry re-dispatched phase 1 (a SECOND
+  // pot-to-winner) and clobbered phase 2 back to 'pot-to-winner', so the
+  // losers-to-pot transfer never rendered. Latch on the settlement identity.
+  const holmShowdownSettlementKeyRef = useRef<string | null>(null);
   
   // Holm win pot animation state (when player beats Chucky - dramatic pot to winner)
   const [holmWinPotTriggerId, setHolmWinPotTriggerId] = useState<string | null>(null);
