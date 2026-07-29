@@ -26,10 +26,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { readFileSync } = require('node:fs') as typeof import('node:fs');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { join } = require('node:path') as typeof import('node:path');
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { scoreHand } from '@/lib/ginRummyGameLogic';
 import type { GinRummyState } from '@/lib/ginRummyTypes';
 
