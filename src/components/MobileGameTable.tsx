@@ -13667,10 +13667,6 @@ export const MobileGameTable = ({
                               "flex items-center justify-center flex-1 min-h-0 w-full",
                             )}
                             data-357-active-hand-region="" data-holm-active-hand-region=""
-                            {/* HOLM PHASE 2: hard-cap the hand region at the
-                                shared calculated card region (pane −
-                                effective reservation). 3-5-7 keeps its
-                                flex-only behaviour (no style applied). */}
 
                             style={
                               gameType === 'holm-game' && holmCardRegionHeightPx > 0
