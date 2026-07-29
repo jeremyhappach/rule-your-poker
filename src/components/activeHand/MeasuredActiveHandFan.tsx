@@ -157,6 +157,12 @@ export interface MeasuredActiveHandFanProps {
   three57LedgerIdentity?: unknown;
   /** Optional persistent owner storage; preserves the committed layout across same-hand remounts. */
   externalCommitRef?: MutableRefObject<MeasuredActiveHandFanCommit>;
+  /**
+   * Canonical active-action layout declaration. Defaults to the shared
+   * per-game registry. `content-following` games keep the legacy
+   * measured-lower-zone path untouched (zero geometry change).
+   */
+  actionLayout?: ActiveActionLayout;
 }
 
 export function MeasuredActiveHandFan({
@@ -178,6 +184,7 @@ export function MeasuredActiveHandFan({
   holmLedgerIdentity,
   three57LedgerIdentity,
   externalCommitRef,
+  actionLayout: actionLayoutProp,
 }: MeasuredActiveHandFanProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const activeLockKey = phaseLockKey ?? null;
@@ -190,6 +197,35 @@ export function MeasuredActiveHandFan({
   const [safeAreaBottomPx] = useState<number>(() => readSafeAreaBottomPx());
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const policy = useActiveHandLayoutPolicy(game);
+
+  // Canonical action-reservation contract for this game.
+  const actionLayout = useMemo<ActiveActionLayout>(
+    () => actionLayoutProp ?? resolveActiveActionLayout(game),
+    [actionLayoutProp, game],
+  );
+
+  /**
+   * Translate a measured lower-zone height into the reservation
+   * overrides consumed by the shared stage resolver.
+   *   reserved-strip     → shared declared/measured-escalated value.
+   *   content-following  → legacy behaviour, byte-for-byte unchanged.
+   */
+  const reservationOverridesFor = useCallback(
+    (measuredLowerZonePx: number) => {
+      if (actionLayout.mode !== 'reserved-strip') {
+        return { measuredLowerZoneMinPx: measuredLowerZonePx, safeAreaBottomPx };
+      }
+      const reservation = resolveActiveActionReservation({
+        layout: actionLayout,
+        measuredLowerZonePx,
+        safeAreaBottomPx,
+      });
+      // Safe area is already folded into the effective reservation.
+      return { measuredLowerZoneMinPx: reservation.effectiveReservationPx, safeAreaBottomPx: 0 };
+    },
+    [actionLayout, safeAreaBottomPx],
+  );
+
 
   // Phase-lock commit ledger — persists across effect re-runs.
   const localCommittedRef = useRef<MeasuredActiveHandFanCommit>({
