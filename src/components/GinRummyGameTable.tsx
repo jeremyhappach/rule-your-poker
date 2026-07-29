@@ -2803,6 +2803,8 @@ export const GinRummyGameTable = ({
         await new Promise(resolve => setTimeout(resolve, 3500));
         // Transition scoring → complete in one shot (no redundant scoring write)
         newState = scoreHand(newState);
+        // Gin branch authors a genuinely newer 'complete' state — write it once here.
+        await updateState(newState);
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         traceGinAnnouncement('overlay:trigger:local-action', {
@@ -2827,9 +2829,10 @@ export const GinRummyGameTable = ({
         ginSync.applyOptimistic(newState);
         setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
+        // NO trailing updateState here. The opponent now owns layoff → scoring → complete
+        // progression; a delayed write of the stale 'knocking' snapshot would clobber any
+        // newer authoritative state (e.g. 'complete') the opponent has already written.
       }
-      // Single authoritative DB write of the final state (complete or post-knock tabling)
-      await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
     }
