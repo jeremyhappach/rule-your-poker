@@ -15872,8 +15872,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isPreSessionPhase =
     (game.status != null &&
       _PRE_SESSION_STATUSES.has(game.status) &&
-      !(game.status === 'session_ended' && terminalPresentationActive)) ||
+      !_terminalPresentationHold) ||
     _isFreshWaitingNoFamily;
+
   // shellMode === 'lobby' — drives both seat ownership AND
   // presentation (title, stakes) regardless of stale gameplay state
   // lingering in game.name / game.game_type / instanceLabel.
