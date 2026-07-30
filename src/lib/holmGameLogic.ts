@@ -2059,13 +2059,7 @@ async function handleMultiPlayerShowdown(
     const winnerNames: string[] = [];
     
     for (const winner of winners) {
-      const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
-      winnerNames.push(winnerUsername);
-      
-      await supabase.rpc('increment_player_chips', {
-        p_player_id: winner.player.id,
-        p_amount: splitAmount
-      });
+      winnerNames.push(getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id));
     }
     
     console.log('[HOLM PARTIAL TIE] Winners each get:', splitAmount);
@@ -2077,28 +2071,14 @@ async function handleMultiPlayerShowdown(
     
     console.log('[HOLM PARTIAL TIE] Losers pay potMatchAmount:', potMatchAmount, '(becomes new pot)');
     
-    // Use atomic decrement to prevent race conditions / stale chip values
-    const loserPlayerIds = losers.map(l => l.player.id);
-    const { error: loserChipError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: loserPlayerIds,
-      amount: potMatchAmount
-    });
-    
-    if (loserChipError) {
-      console.error('[HOLM PARTIAL TIE] ERROR deducting loser chips:', loserChipError);
-    } else {
-      console.log('[HOLM PARTIAL TIE] Loser chips deducted atomically, amount:', potMatchAmount);
-    }
-    
-    let newPot = losers.length * potMatchAmount;
+    const newPot = losers.length * potMatchAmount;
     console.log('[HOLM PARTIAL TIE] New pot from losers match:', newPot);
     
     // Get detailed hand description for winners
     const winnerAllCards = [...winners[0].cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
-    // CRITICAL: Record this round's chip transactions in game_results
-    // Winners split pot, losers pay pot match - all must be logged
+    // Winners split pot, losers pay pot match - one signed delta map, one txn.
     const chipChanges: Record<string, number> = {};
     for (const winner of winners) {
       chipChanges[winner.player.id] = splitAmount; // Each winner gains split
@@ -2106,21 +2086,6 @@ async function handleMultiPlayerShowdown(
     for (const loser of losers) {
       chipChanges[loser.player.id] = -potMatchAmount; // Losers pay pot match
     }
-    
-    // Fire-and-forget: Record partial tie result (audit trail only)
-    recordGameResult(
-      gameId,
-      currentRoundNumber,
-      null, // multiple winners - no single winner
-      winnerNames.join(' and '),
-      `Tied and split pot (continues vs Chucky)`,
-      roundPot,
-      chipChanges,
-      true, // is_chopped = true for partial tie
-      'holm',
-      game.current_game_uuid || null
-    );
-    console.log('[HOLM PARTIAL TIE] Recorded chip changes in game_results:', chipChanges);
     
     // Build debug data object to embed in result message
     const debugData = {
@@ -2138,27 +2103,30 @@ async function handleMultiPlayerShowdown(
     const loserIds = losers.map(l => l.player.id).join(',');
     const winnerIds = winners.map(w => w.player.id).join(',');
     const resultWithDebug = `${winnerNames.join(' and ')} tied and split the pot with ${winnerHandDesc}|||WINNERS:${winnerIds}|||LOSERS:${loserIds}|||POT:${roundPot}|||MATCH:${potMatchAmount}|||DEBUG:${JSON.stringify(debugData)}`;
-    
-    const { error: updateError } = await supabase
-      .from('games')
-      .update({
-        last_round_result: resultWithDebug,
-        awaiting_next_round: true,
-        pot: newPot
-      })
-      .eq('id', gameId);
-    
-    if (updateError) {
-      console.error('[HOLM PARTIAL TIE] ERROR updating game:', updateError);
-    } else {
-      console.log('[HOLM PARTIAL TIE] Successfully set awaiting_next_round=true, pot=', newPot);
+
+    // ── AUTHORITATIVE SETTLEMENT (server-owned) ──────────────────────────
+    const tieIdentity = await resolveHolmSettlementIdentity(roundId, game);
+    try {
+      await settleHolmHand({
+        gameId,
+        dealerGameId: tieIdentity.dealerGameId,
+        handNumber: tieIdentity.handNumber,
+        eventKind: 'partial_tie_final_award',
+        potFinal: newPot,
+        awaitingNextRound: true,
+        lastRoundResult: resultWithDebug,
+        chipDeltas: chipChanges,
+        winningHandDescription: `Tied and split pot (continues vs Chucky)`,
+        winnerPlayerId: null, // multiple winners - no single winner
+        winnerUsername: winnerNames.join(' and '),
+        isChopped: true, // is_chopped = true for partial tie
+        potWon: roundPot,
+        markRoundCompleted: true, // hides the timer, as before
+      });
+      console.log('[HOLM PARTIAL TIE] Settled authoritatively, pot=', newPot);
+    } catch (err) {
+      console.error('[HOLM PARTIAL TIE] Partial-tie settlement RPC failed:', err);
     }
-  
-    // Mark round as completed to hide timer
-    await supabase
-      .from('rounds')
-      .update({ status: 'completed' })
-      .eq('id', roundId);
   } else {
     // FULL TIE: ALL players tied - they must all face Chucky
     console.log('[HOLM TIE] Full tie detected (all players tied). Tied players must face Chucky.');
