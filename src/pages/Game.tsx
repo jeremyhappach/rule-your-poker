@@ -14668,7 +14668,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     getPositionForUserId={getPositionForUserId}
                     onLeaveGameNow={handleLeaveGameNow}
                     holmWinPotTriggerId={holmWinPotTriggerId}
-                    onTerminalPresentationActiveChange={setTerminalPresentationActive}
+                    onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     holmWinWinnerPositions={holmWinWinnerPositions}
@@ -15405,7 +15405,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={cribbagePot}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
-                onTerminalPresentationActiveChange={setTerminalPresentationActive}
+                onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                 dealerChatMessages={cribbageDealerChatMessages}
                 onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
@@ -15762,7 +15762,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownLoserIds([]);
               } : undefined}
               holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}
-              onTerminalPresentationActiveChange={setTerminalPresentationActive}
+              onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
               holmWinPotAmount={renderRoundContext ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={renderRoundContext ? holmWinWinnerPosition : undefined}
               holmWinWinnerPositions={renderRoundContext ? holmWinWinnerPositions : undefined}
