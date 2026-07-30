@@ -572,24 +572,11 @@ export async function endCribbageGame(
       const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
       const resultDescription = `${winnerDisplayName} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
-      const { data: priorGame } = await supabase
-        .from('games')
-        .select('game_over_at')
-        .eq('id', gameId)
-        .maybeSingle();
-
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          pot: 0,
-          last_round_result: resultDescription,
-          // Idempotent re-entry must not re-stamp the original terminal time.
-          game_over_at: priorGame?.game_over_at ?? new Date().toISOString(),
-        })
-        .eq('id', gameId);
-
-      await consumePendingSessionEnd(gameId);
+      // Idempotent re-entry: same shared terminal-disposition owner.
+      // Never re-stamps game_over_at, closes a pending session end, and
+      // reconciles balances before the session becomes complete.
+      const priorHandNumber = existingRound?.hand_number ?? 1;
+      await applyCribbageTerminalDisposition(gameId, priorHandNumber, resultDescription);
 
       return true;
     }
