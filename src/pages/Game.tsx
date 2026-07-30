@@ -13674,8 +13674,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'waiting', 'waiting_for_players',
     'configuring', 'game_selection', 'session_ended',
   ]);
+  // Terminal-presentation hold: while the canonical win sequence is still
+  // presenting locally, a `session_ended` status must NOT flip the shell into
+  // lobby mode — that swaps branding and releases the gameplay surface out
+  // from under the running celebration.
   const _isShellLobbyMode =
-    game.status != null && _shellLobbyStatuses.has(game.status);
+    game.status != null &&
+    _shellLobbyStatuses.has(game.status) &&
+    !(game.status === 'session_ended' && terminalPresentationActive);
   // Header chrome title contract: ALWAYS show session name, across every
   // lifecycle phase. The "P-Town Poker" lobby override applies only to
   // the felt plate (see feltGameName). Header chrome and felt plate are
@@ -14786,11 +14792,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
-          const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
+          // LAST-HAND terminal presentation hold: on a final-hand win the
+          // authoritative status goes straight to `session_ended` (never
+          // through `game_over`), which previously dropped the cribbage
+          // render branch mid-celebration. While the win sequence is still
+          // presenting locally, admit the SAME cribbage branch so the table,
+          // seat ring, HUD stacks and chip-transfer destination stay mounted.
+          // Purely a render-admission widening — no status rewrite, no timer.
+          const isCribbageGameOver =
+            game.game_type === 'cribbage' &&
+            (game.status === 'game_over' ||
+              ((game.status as string) === 'session_ended' && terminalPresentationActive));
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const isTerminalSlotPresentation =
             game.status === 'game_over' ||
             !!game.game_over_at ||
+            terminalPresentationActive ||
             (is357WinAnimationActive && game.game_type !== 'holm-game') ||
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
@@ -15824,8 +15841,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'game_over',
     'session_ended',
   ]);
+  // Terminal-presentation hold: `session_ended` must not hand seat/HUD
+  // ownership to PreSessionSeatLayer while the canonical win sequence is
+  // still running on this client — that is what tore the HUD stacks and
+  // chip-transfer destination out mid-celebration on a LAST HAND win.
   const _isPreSessionPhase =
-    (game.status != null && _PRE_SESSION_STATUSES.has(game.status)) ||
+    (game.status != null &&
+      _PRE_SESSION_STATUSES.has(game.status) &&
+      !(game.status === 'session_ended' && terminalPresentationActive)) ||
     _isFreshWaitingNoFamily;
   // shellMode === 'lobby' — drives both seat ownership AND
   // presentation (title, stakes) regardless of stale gameplay state
