@@ -40,6 +40,22 @@ export interface HolmSettleHandParams {
   winnerUsername: string | null;
   isChopped: boolean;
   potWon: number;
+  /**
+   * Whether the RPC should mark the hand's round `completed` (and clear
+   * decision_deadline / current_turn_position). Mirrors each legacy branch's
+   * own round write exactly. Defaults to true.
+   */
+  markRoundCompleted?: boolean;
+  /** Running pot to persist onto `rounds.pot`; null/undefined leaves it alone. */
+  roundPot?: number | null;
+  /** Hide Chucky by clearing `rounds.chucky_active`. */
+  clearChuckyActive?: boolean;
+  /**
+   * Terminal branches only: reset transient player gameplay state
+   * (status/current_decision/decision_locked/ante_decision) inside the same
+   * transaction. Never revives 'left' / 'observer' rows.
+   */
+  resetPlayerStates?: boolean;
 }
 
 export interface HolmSettleHandResult {
@@ -47,6 +63,11 @@ export interface HolmSettleHandResult {
   resultId: string | null;
   handNumber: number;
   dealerGameEnded: boolean;
+  /**
+   * Server-chosen terminal disposition for a dealer-game-ending settlement:
+   * 'game_over' (ordinary) | 'session_ended' (LAST HAND) | null (non-terminal).
+   */
+  terminalDisposition: 'game_over' | 'session_ended' | null;
 }
 
 export async function settleHolmHand(
@@ -69,6 +90,10 @@ export async function settleHolmHand(
     p_winner_username: params.winnerUsername,
     p_is_chopped: params.isChopped,
     p_pot_won: params.potWon,
+    p_mark_round_completed: params.markRoundCompleted ?? true,
+    p_round_pot: params.roundPot ?? null,
+    p_clear_chucky_active: params.clearChuckyActive ?? false,
+    p_reset_player_states: params.resetPlayerStates ?? false,
   });
 
   const dur =
@@ -95,6 +120,9 @@ export async function settleHolmHand(
     handNumber:
       (payload.hand_number as number | undefined) ?? params.handNumber,
     dealerGameEnded: Boolean(payload.dealer_game_ended),
+    terminalDisposition:
+      (payload.terminal_disposition as HolmSettleHandResult['terminalDisposition']) ??
+      null,
   };
 
   console.log("[HOLM SETTLE] RPC ok", {

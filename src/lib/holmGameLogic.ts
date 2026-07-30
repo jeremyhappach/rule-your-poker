@@ -7,12 +7,79 @@ import {
 } from "./holmRevealInstrumentation";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
-import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
 import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
 import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
 import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugOverrides";
+// `recordGameResult` remains imported for the NON-terminal ante audit row only
+// (event_kind 'ante', which the settlement RPC explicitly rejects). No terminal
+// Holm outcome uses it any more.
+import { recordGameResult } from "./gameLogic";
+import { settleHolmHand } from "./holmSettleHand";
+
+/**
+ * AUTHORITATIVE HOLM SETTLEMENT SEAM
+ * ==================================
+ * Every Holm terminal hand outcome — pussy-tax carryforward, Chucky pot match,
+ * showdown award, partial-tie split, tie-break pot match and the dealer-game
+ * ending Chucky final award — is settled by ONE server operation:
+ * `public.holm_settle_hand` (see src/lib/holmSettleHand.ts).
+ *
+ * That RPC is the only owner of:
+ *   - the stable settlement claim (partial unique index on
+ *     game_results (dealer_game_id, hand_number) for holm terminal event kinds)
+ *   - player chip mutations (signed delta map)
+ *   - game_results rows
+ *   - games.last_round_result / pot / awaiting_next_round / status
+ *   - the post-payout session_player_snapshots row set
+ *   - pending_session_end consumption, session_ended + session_ended_at
+ *   - rounds completion / pot / chucky_active
+ *
+ * This module therefore contains NO increment_player_chips /
+ * decrement_player_chips / recordGameResult / snapshotPlayerChips /
+ * status='game_over' / status='session_ended' write on any terminal path. The
+ * client computes business inputs and renders the outcome; it never authors
+ * money or terminal status. There is deliberately NO client-side fallback —
+ * a fallback is exactly what could double-settle.
+ */
+
+/**
+ * The settlement claim is keyed on (dealer_game_id, hand_number). The RPC
+ * locates the hand's round by that pair, so the dealer game id handed to it
+ * must be the round's own — `games.current_game_uuid` is only a fallback for
+ * rows written before dealer_game_id was populated on rounds.
+ */
+/**
+ * Resolves the RPC settlement identity from the round row itself. The claim is
+ * (dealer_game_id, hand_number); deriving hand_number from `games.total_hands`
+ * (as the legacy writers did) can drift from `rounds.hand_number`, which would
+ * both miss the claim index and mis-file the accounting row.
+ */
+async function resolveHolmSettlementIdentity(
+  roundId: string,
+  game: { current_game_uuid?: string | null; total_hands?: number | null },
+): Promise<{ handNumber: number; dealerGameId: string }> {
+  const { data } = await supabase
+    .from('rounds')
+    .select('hand_number, dealer_game_id')
+    .eq('id', roundId)
+    .maybeSingle();
+  return {
+    handNumber: data?.hand_number ?? game?.total_hands ?? 1,
+    dealerGameId: resolveHolmDealerGameId(data ?? null, game),
+  };
+}
+
+function resolveHolmDealerGameId(
+  round: { dealer_game_id?: string | null } | null | undefined,
+  game: { current_game_uuid?: string | null } | null | undefined,
+): string {
+  const id = round?.dealer_game_id ?? game?.current_game_uuid ?? null;
+  if (!id) throw new Error('holm:settlement_missing_dealer_game_id');
+  return id;
+}
+
 
 /**
  * Check if all players have decided in a Holm game round
@@ -1050,37 +1117,14 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] PUSSY TAX DEBUG - Enabled:', pussyTaxEnabled, 'Amount:', pussyTaxAmount);
     console.log('[HOLM END] PUSSY TAX DEBUG - Active players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips: p.chips })));
     
-    let totalTaxCollected = 0;
-    if (pussyTaxAmount > 0) {
-      // Use atomic relative decrement to prevent race conditions / double charges
-      const playerIds = activePlayers.map(p => p.id);
-      console.log('[HOLM END] PUSSY TAX DEBUG - About to call RPC decrement_player_chips with playerIds:', playerIds, 'amount:', pussyTaxAmount);
-      
-      const { error: taxError } = await supabase.rpc('decrement_player_chips', {
-        player_ids: playerIds,
-        amount: pussyTaxAmount
-      });
-      
-      console.log('[HOLM END] PUSSY TAX DEBUG - RPC result error:', taxError);
-      
-      if (taxError) {
-        console.error('[HOLM END] Pussy tax decrement error:', taxError);
-        console.log('[HOLM END] PUSSY TAX DEBUG - Running FALLBACK individual updates');
-        // Fallback to individual updates if RPC doesn't exist
-        for (const player of activePlayers) {
-          await supabase
-            .from('players')
-            .update({ chips: player.chips - pussyTaxAmount })
-            .eq('id', player.id);
-        }
-      } else {
-        console.log('[HOLM END] PUSSY TAX DEBUG - RPC SUCCESS, NO fallback');
-      }
-      totalTaxCollected = pussyTaxAmount * activePlayers.length;
-    }
-
-    const newPot = game.pot + totalTaxCollected;
-    const resultMessage = pussyTaxAmount > 0 
+    // ── AUTHORITATIVE SETTLEMENT (server-owned) ───────────────────────────
+    // `holm_settle_hand` applies the pussy-tax chip deltas, records the hand
+    // result under the stable claim identity (dealer_game_id, hand_number),
+    // carries the pot forward and completes the round — atomically. No client
+    // chip / result / pot / status write remains on this path.
+    const totalTaxCollected = pussyTaxAmount * activePlayers.length;
+    const newPot = (game.pot || 0) + totalTaxCollected;
+    const resultMessage = pussyTaxAmount > 0
       ? `Pussy Tax!`
       : 'Everyone folded! No penalty.';
 
@@ -1095,59 +1139,31 @@ export async function endHolmRound(gameId: string) {
         .eq('id', capturedRoundId);
     }
 
-    // Update both games and rounds with the new pot
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({
-        last_round_result: resultMessage,
-        awaiting_next_round: true,
-        pot: newPot
-      })
-      .eq('id', gameId);
-    
-    console.log('[HOLM END] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS');
-
-    const { error: roundUpdateError } = await supabase
-      .from('rounds')
-      .update({ 
-        status: 'completed',
-        pot: newPot  // Also update round pot
-      })
-      .eq('id', capturedRoundId);
-    
-    console.log('[HOLM END] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS');
-
-    // RECORD GAME RESULT for "everyone folded" case
-    // This tracks that a hand happened even though there was no winner
-    // The pot is carried forward, but we record the chip changes (pussy tax deductions)
-    // CRITICAL: Use player.id as key for consistent accounting
-    const playerChipChanges: Record<string, number> = {};
+    const pussyTaxDeltas: Record<string, number> = {};
     if (pussyTaxAmount > 0) {
-      for (const player of activePlayers) {
-        playerChipChanges[player.id] = -pussyTaxAmount;
-      }
+      for (const p of activePlayers) pussyTaxDeltas[p.id] = -pussyTaxAmount;
     }
-    
-    console.log('[HOLM END] Recording game_result for everyone-folded case');
-    const { error: resultError } = await supabase
-      .from('game_results')
-      .insert({
-        game_id: gameId,
-        hand_number: capturedHandNumber, // CRITICAL: Use hand_number, not round_number (round_number is always 1 in Holm)
-        winner_player_id: null,
-        winner_username: 'Pussy Tax',
-        pot_won: 0, // No pot won - carried forward
-        winning_hand_description: 'Everyone folded - Pussy Tax applied',
-        is_chopped: false,
-        player_chip_changes: playerChipChanges,
-        game_type: 'holm',
-        dealer_game_id: game.current_game_uuid || null,
+
+    try {
+      await settleHolmHand({
+        gameId,
+        dealerGameId: resolveHolmDealerGameId(round, game),
+        handNumber: capturedHandNumber,
+        eventKind: 'pussy_tax_carryforward',
+        potFinal: newPot,
+        awaitingNextRound: true,
+        lastRoundResult: resultMessage,
+        chipDeltas: pussyTaxDeltas,
+        winningHandDescription: 'Everyone folded - Pussy Tax applied',
+        winnerPlayerId: null,
+        winnerUsername: 'Pussy Tax',
+        isChopped: false,
+        potWon: 0,
+        markRoundCompleted: true,
+        roundPot: newPot,
       });
-    
-    if (resultError) {
-      console.error('[HOLM END] Failed to record everyone-folded result:', resultError);
-    } else {
-      console.log('[HOLM END] Successfully recorded everyone-folded game_result');
+    } catch (err) {
+      console.error('[HOLM END] Pussy tax settlement RPC failed:', err);
     }
 
     console.log('[HOLM END] Pussy tax case completed with new pot:', newPot);
@@ -1619,87 +1635,53 @@ async function handleChuckyShowdown(
     // Player beats Chucky - award pot, GAME OVER (Holm game ends when you beat Chucky)
     // Note: Holm game doesn't use legs system
     
-    // Record game result for hand history
+    // ── AUTHORITATIVE TERMINAL SETTLEMENT (server-owned) ─────────────────
+    // Chucky final award: the dealer game ends here. The RPC claims the
+    // settlement, awards the pot, records the result, resets transient player
+    // state, captures the POST-PAYOUT chip snapshot, then chooses game_over vs
+    // session_ended from pending_session_end (stamping session_ended_at and
+    // clearing the flag) — all in one transaction. If every browser vanishes
+    // the instant this call is made, terminal truth is still complete.
     const playerChipChanges: Record<string, number> = {};
     playerChipChanges[player.id] = roundPot;
-    
-    // Award chips FIRST (critical path)
-    await supabase.rpc('increment_player_chips', {
-      p_player_id: player.id,
-      p_amount: roundPot
-    });
 
-    // Fire-and-forget: Record game result (audit trail only)
-    recordGameResult(
-      gameId,
-      game.total_hands || 1,
-      player.id,
-      playerUsername,
-      playerHandDesc,
-      roundPot,
-      playerChipChanges,
-      false,
-      'holm-game',
-      game.current_game_uuid
-    );
-    
-    // Fire-and-forget: Snapshot player chips (audit trail only)
-    snapshotPlayerChips(gameId, game.total_hands || 1);
+    const identity = await resolveHolmSettlementIdentity(roundId, game);
 
-    // Reset all players for new game (keep chips, clear ante decisions)
-    // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
-    console.log('[HOLM SHOWDOWN] Resetting player states for new game');
-    // SCOPED: do not revive stood-up ('left') or observer rows. Standing up must
-    // remain terminal for dealer-game eligibility across dealer-game boundaries.
-    await supabase
-      .from('players')
-      .update({ 
-        status: 'active',
-        current_decision: null,
-        decision_locked: false,
-        ante_decision: null
-      })
-      .eq('game_id', gameId)
-      .neq('status', 'left')
-      .neq('status', 'observer');
+    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Settling authoritatively. ***');
+    try {
+      const settled = await settleHolmHand({
+        gameId,
+        dealerGameId: identity.dealerGameId,
+        handNumber: identity.handNumber,
+        eventKind: 'chucky_final_award',
+        potFinal: 0,
+        awaitingNextRound: false,
+        // Pot amount stays embedded for the celebration component to parse.
+        lastRoundResult: `${playerUsername} beat Chucky with ${playerHandDesc}!|||POT:${roundPot}`,
+        chipDeltas: playerChipChanges,
+        winningHandDescription: playerHandDesc,
+        winnerPlayerId: player.id,
+        winnerUsername: playerUsername,
+        isChopped: false,
+        potWon: roundPot,
+        // Keep Chucky's cards visible during the result announcement.
+        markRoundCompleted: true,
+        clearChuckyActive: false,
+        resetPlayerStates: true,
+      });
+      console.log('[HOLM SHOWDOWN] Terminal settlement disposition:', settled.terminalDisposition);
+    } catch (err) {
+      console.error('[HOLM SHOWDOWN] Terminal settlement RPC failed:', err);
+      return;
+    }
 
-    // In Holm game, beating Chucky ends the game - show result announcement first
-    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Showing announcement. ***');
-    
-    // First show the result announcement (round stays completed, game stays in_progress)
-    // Include pot amount in message for the celebration component to parse
-    await supabase
-      .from('games')
-      .update({
-        last_round_result: `${playerUsername} beat Chucky with ${playerHandDesc}!|||POT:${roundPot}`
-      })
-      .eq('id', gameId);
-    
     // NOTE: Dealer rotation is NOT done here - it's done in handleGameOverComplete
     // AFTER evaluating player states (waiting → active, sit_out_next_hand → sitting_out, etc.)
-    // This ensures the new dealer is selected based on post-evaluation player states
+    // game_over_at is deliberately left NULL by the RPC on the ordinary
+    // game_over path: it remains the existing auto-proceed handshake stamped
+    // once the local celebration finishes (or by the cron backstop).
     console.log('[HOLM SHOWDOWN] NOT rotating dealer here - will be done in handleGameOverComplete after player state evaluation');
-    
-    // Set game_over status WITHOUT game_over_at - frontend will show celebration first
-    // Then set game_over_at after celebration completes to auto-proceed
-    // NOTE: dealer_position is NOT changed here - rotation happens in handleGameOverComplete
-    const { error: gameOverError } = await supabase
-      .from('games')
-      .update({
-        status: 'game_over',
-        game_over_at: null, // NULL - frontend celebration will set this after completing
-        pot: 0,
-        awaiting_next_round: false,
-        // dealer_position is NOT updated here - rotation happens after player state evaluation
-        buck_position: null
-      })
-      .eq('id', gameId);
-    
-    if (gameOverError) {
-      console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
-    } else {
-      console.log('[HOLM SHOWDOWN] Successfully set game_over status (dealer rotation deferred to handleGameOverComplete)');
-    }
+    return;
   } else {
     // Check if it's a tie (player equals Chucky) vs Chucky actually winning
     const isTie = playerEval.value === chuckyEval.value;
