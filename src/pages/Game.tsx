@@ -13674,8 +13674,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'waiting', 'waiting_for_players',
     'configuring', 'game_selection', 'session_ended',
   ]);
+  // Terminal-presentation hold: while the canonical win sequence is still
+  // presenting locally, a `session_ended` status must NOT flip the shell into
+  // lobby mode — that swaps branding and releases the gameplay surface out
+  // from under the running celebration.
   const _isShellLobbyMode =
-    game.status != null && _shellLobbyStatuses.has(game.status);
+    game.status != null &&
+    _shellLobbyStatuses.has(game.status) &&
+    !(game.status === 'session_ended' && terminalPresentationActive);
   // Header chrome title contract: ALWAYS show session name, across every
   // lifecycle phase. The "P-Town Poker" lobby override applies only to
   // the felt plate (see feltGameName). Header chrome and felt plate are
