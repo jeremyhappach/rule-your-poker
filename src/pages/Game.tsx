@@ -11996,6 +11996,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
+    // LAST HAND terminal path: the authoritative settlement already committed
+    // `session_ended`, so there is no next game to proceed to. Release the
+    // presentation hold (clearing the trigger drops
+    // `holmTerminalPresentationActive`), which lets the shared
+    // session-ended navigation effect resume. No status write, no timer.
+    if (game?.status === 'session_ended' && game?.game_type === 'holm-game') {
+      recordHolmLifecycle('winpot.complete.terminal-release', {
+        gameStatus: game?.status ?? null,
+        lastRoundResult: game?.last_round_result ?? null,
+      });
+      setHolmWinPotTriggerId(null);
+      setHolmWinWinnerPositions([]);
+      return;
+    }
     // Guard: Only proceed if we're actually in game_over with a valid Holm win
     if (game?.status !== 'game_over' || game?.game_type !== 'holm-game') {
       recordHolmLifecycle('winpot.complete.ignored', {
