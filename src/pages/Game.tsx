@@ -76,6 +76,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
+import { SessionEndedTablePanel } from "@/components/canonicalShell/SessionEndedTablePanel";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
@@ -1159,6 +1160,52 @@ const Game = () => {
   // Used to hold the session_ended lobby redirect (settlement may close the
   // session before the local celebration finishes).
   const [terminalPresentationActive, setTerminalPresentationActive] = useState(false);
+
+  // ── SHARED TRANSIENT "SESSION ENDED" TABLE ADMISSION ───────────────
+  // Client-local, never persisted, never written to the database. It is
+  // set ONLY by a terminal-presentation completion boundary observed live
+  // on this mount (Cribbage: the child's active→inactive publication;
+  // Holm: the route-owned win-pot completion callback). A fresh mount or a
+  // reconnect on an already-`session_ended` game can therefore never enter
+  // this state — it goes straight to lobby as before.
+  const [sessionEndedTableAdmitted, setSessionEndedTableAdmitted] = useState(false);
+  // Proof that THIS mount observed the live terminal presentation running.
+  const liveTerminalPresentationObservedRef = useRef(false);
+  // Latest authoritative terminal facts, readable from completion callbacks
+  // (which are not re-created on every snapshot).
+  const terminalStatusFactsRef = useRef<{ status: string | null; pendingSessionEnd: boolean }>({
+    status: null,
+    pendingSessionEnd: false,
+  });
+
+  /**
+   * Shared terminal-presentation activity channel. Gameplay surfaces publish
+   * `true` while their canonical win sequence runs and `false` at its
+   * completion boundary. The false edge — and only after a true edge on this
+   * mount — admits the transient Session Ended table when the authoritative
+   * session is (or is about to be) closed.
+   *
+   * FUTURE-GAME CONTRACT: any game that routes its terminal presentation
+   * through `onTerminalPresentationActiveChange` gets Session Ended mode for
+   * free. Games with a route-owned completion callback (Holm) call
+   * `admitSessionEndedTable()` in that callback instead.
+   */
+  const admitSessionEndedTable = useCallback(() => {
+    if (!liveTerminalPresentationObservedRef.current) return;
+    const facts = terminalStatusFactsRef.current;
+    if (facts.status !== 'session_ended' && !facts.pendingSessionEnd) return;
+    setSessionEndedTableAdmitted(true);
+  }, []);
+
+  const handleTerminalPresentationActiveChange = useCallback((active: boolean) => {
+    if (active) {
+      liveTerminalPresentationObservedRef.current = true;
+    } else if (liveTerminalPresentationObservedRef.current) {
+      admitSessionEndedTable();
+    }
+    setTerminalPresentationActive(active);
+  }, [admitSessionEndedTable]);
+
   
   // Track previous game config for "Running it Back" detection
   interface PreviousGameConfig {
@@ -1615,6 +1662,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       holmShowdownPhase !== 'idle'
     );
 
+  // Mirror authoritative terminal facts into a ref so completion callbacks
+  // can consult them without re-creating on every snapshot. Read-only.
+  terminalStatusFactsRef.current = {
+    status: (game?.status as string) ?? null,
+    pendingSessionEnd: (game as any)?.pending_session_end === true,
+  };
+
+  
 
   
   // Horses win pot animation state (when player wins the round)
@@ -5527,6 +5582,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // holmLastHandPresentationPending) precisely because the gameplay subtree
     // that used to publish it is removed by the same `session_ended` snapshot.
     if (terminalPresentationActive || holmLastHandPresentationPending) return;
+    // Transient Session Ended table: this client stayed through the live
+    // terminal presentation, so navigation is now user-owned (Back to Lobby).
+    // Non-admitted clients (fresh mount / reconnect) keep direct-to-lobby.
+    if (sessionEndedTableAdmitted) return;
+
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
@@ -5551,7 +5611,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, sessionEndedTableAdmitted]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -12084,6 +12144,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastRoundResult: game?.last_round_result ?? null,
       });
       if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
+      // Terminal presentation completion boundary (Holm LAST HAND). Admit
+      // the transient Session Ended table BEFORE the hold releases so the
+      // shell hands off gameplay → ended-table with no lobby frame between.
+      liveTerminalPresentationObservedRef.current = true;
+      admitSessionEndedTable();
+
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
@@ -12135,7 +12201,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
-  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey]);
+  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey, admitSessionEndedTable]);
 
   // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
@@ -13813,8 +13879,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `session_ended` consults it. No status rewrite, no timer, no
   // duplicate surface.
   const _terminalPresentationHold =
-    (terminalPresentationActive || holmLastHandPresentationPending) &&
+    (terminalPresentationActive || holmLastHandPresentationPending || sessionEndedTableAdmitted) &&
     (game.status as string) === 'session_ended';
+  // Transient Session Ended table (client-local). Same mounted table shell,
+  // gameplay content replaced by the read-only results panel.
+  const _sessionEndedTableActive =
+    sessionEndedTableAdmitted && (game.status as string) === 'session_ended';
+
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
   // lobby mode — that swaps branding and releases the gameplay surface out
@@ -14598,7 +14669,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     getPositionForUserId={getPositionForUserId}
                     onLeaveGameNow={handleLeaveGameNow}
                     holmWinPotTriggerId={holmWinPotTriggerId}
-                    onTerminalPresentationActiveChange={setTerminalPresentationActive}
+                    onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     holmWinWinnerPositions={holmWinWinnerPositions}
@@ -15335,7 +15406,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={cribbagePot}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
-                onTerminalPresentationActiveChange={setTerminalPresentationActive}
+                onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
                 dealerChatMessages={cribbageDealerChatMessages}
                 onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
@@ -15692,7 +15763,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownLoserIds([]);
               } : undefined}
               holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}
-              onTerminalPresentationActiveChange={setTerminalPresentationActive}
+              onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
               holmWinPotAmount={renderRoundContext ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={renderRoundContext ? holmWinWinnerPosition : undefined}
               holmWinWinnerPositions={renderRoundContext ? holmWinWinnerPositions : undefined}
@@ -16295,6 +16366,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
+            {/* Shared transient Session Ended table. Same shell, same felt,
+                same seat ring — gameplay content and every affordance are
+                replaced by the read-only results panel. Client-local. */}
+            {_sessionEndedTableActive ? (
+              <SessionEndedTablePanel
+                gameId={gameId!}
+                sessionName={game.name ?? null}
+                currentUserId={user?.id ?? null}
+                onBackToLobby={() => {
+                  setSessionEndedTableAdmitted(false);
+                  navigate('/');
+                }}
+              />
+            ) : null}
+
           </PersistentTableShell>
           
           {/* Gin-only readiness probe (capability-driven, not shell branching).
