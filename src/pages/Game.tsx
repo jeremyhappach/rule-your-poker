@@ -12143,6 +12143,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastRoundResult: game?.last_round_result ?? null,
       });
       if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
+      // Terminal presentation completion boundary (Holm LAST HAND). Admit
+      // the transient Session Ended table BEFORE the hold releases so the
+      // shell hands off gameplay → ended-table with no lobby frame between.
+      liveTerminalPresentationObservedRef.current = true;
+      admitSessionEndedTable();
+
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
