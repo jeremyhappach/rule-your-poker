@@ -12083,6 +12083,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStatus: game?.status ?? null,
         lastRoundResult: game?.last_round_result ?? null,
       });
+      if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
@@ -12112,10 +12113,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     recordHolmLifecycle('winpot.complete.start', {
       delayMs: 3000,
       lastRoundResult: game?.last_round_result ?? null,
+      presentationKey: holmWinPotPresentationKey,
     });
     console.log('[HOLM WIN POT] Animation complete, waiting 3 seconds before proceeding');
+    // ORDINARY ROLLOVER — presentation idempotency.
+    // Mark this stable terminal-result identity consumed and retire the active
+    // descriptor in the same commit. The authoritative result stays
+    // observable through the whole `game_over` → next-dealer-game gap, so
+    // without this the animation owner could be re-mounted (or re-admitted)
+    // and replay the same pot/confetti sequence. Table retention is unaffected:
+    // `isTerminalSlotPresentation` still holds via `game_over` / `game_over_at`.
+    if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
+    setHolmWinPotTriggerId(null);
+    setHolmWinWinnerPositions([]);
     // Wait 3 seconds after animation to let players see the final state (tabled cards stay visible)
     await new Promise(resolve => setTimeout(resolve, 3000));
+
     
     recordHolmLifecycle('winpot.complete.proceed', {
       lastRoundResult: game?.last_round_result ?? null,
