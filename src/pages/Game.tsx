@@ -5450,6 +5450,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
   useEffect(() => {
     if (game?.status !== 'session_ended') return;
+    // Cribbage last-hand settlement now closes the session inside the
+    // settlement owner (disconnect-safe), which can land BEFORE this client
+    // finishes its terminal win presentation. Hold the redirect while the
+    // celebration is still running locally.
+    if (terminalPresentationActive) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
