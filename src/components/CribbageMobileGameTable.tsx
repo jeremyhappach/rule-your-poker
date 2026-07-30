@@ -220,6 +220,13 @@ interface CribbageMobileGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  /**
+   * True while a terminal win presentation is in flight on THIS client.
+   * The settlement owner now closes last-hand sessions immediately (see
+   * cribbageRoundLogic.applyCribbageTerminalDisposition), so the lobby
+   * redirect must not fire out from under an active celebration.
+   */
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
   // Dealer selection props (optional - used during cribbage_dealer_selection phase).
