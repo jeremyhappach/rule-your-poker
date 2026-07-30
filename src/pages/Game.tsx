@@ -1593,6 +1593,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     !game.last_round_result.includes('Chucky beat')
       ? game.last_round_result
       : null;
+  // Stable presentation identity for the Chucky win-pot terminal result.
+  // Deliberately excludes `current_round` (it blips to null across the
+  // dealer-game rollover, which would mint a "new" identity and re-admit the
+  // same result) and any timestamp. A genuinely later hand carries a
+  // different dealerGameId and/or hand number, so it still presents normally.
+  const holmWinPotPresentationKey = holmChuckyWinResult
+    ? `holm|winpot|${game?.current_game_uuid ?? 'nodg'}|${game?.total_hands ?? 'nh'}|${holmChuckyWinResult}`
+    : null;
+
   // True from the very first render that carries `session_ended` (same
   // snapshot as the durable result) until the celebration completes or the
   // trigger owner proves it cannot resolve a winner.
