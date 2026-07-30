@@ -591,6 +591,7 @@ export const CribbageMobileGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  onTerminalPresentationActiveChange,
   // Game configuration with defaults
   gameConfig = {
     pointsToWin: 121,
