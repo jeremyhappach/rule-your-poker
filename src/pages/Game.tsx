@@ -14469,6 +14469,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     getPositionForUserId={getPositionForUserId}
                     onLeaveGameNow={handleLeaveGameNow}
                     holmWinPotTriggerId={holmWinPotTriggerId}
+                    onTerminalPresentationActiveChange={setTerminalPresentationActive}
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     holmWinWinnerPositions={holmWinWinnerPositions}
@@ -15546,6 +15547,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownLoserIds([]);
               } : undefined}
               holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}
+              onTerminalPresentationActiveChange={setTerminalPresentationActive}
               holmWinPotAmount={renderRoundContext ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={renderRoundContext ? holmWinWinnerPosition : undefined}
               holmWinWinnerPositions={renderRoundContext ? holmWinWinnerPositions : undefined}

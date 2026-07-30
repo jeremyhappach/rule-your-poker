@@ -3313,14 +3313,18 @@ export type Database = {
         Args: {
           p_awaiting_next_round: boolean
           p_chip_deltas: Json
+          p_clear_chucky_active?: boolean
           p_dealer_game_id: string
           p_event_kind: Database["public"]["Enums"]["holm_event_kind"]
           p_game_id: string
           p_hand_number: number
           p_is_chopped: boolean
           p_last_round_result: string
+          p_mark_round_completed?: boolean
           p_pot_final: number
           p_pot_won: number
+          p_reset_player_states?: boolean
+          p_round_pot?: number
           p_winner_player_id: string
           p_winner_username: string
           p_winning_hand_description: string
