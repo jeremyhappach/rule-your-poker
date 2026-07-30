@@ -14825,8 +14825,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Purely a render-admission widening — no status rewrite, no timer.
           const isCribbageGameOver =
             game.game_type === 'cribbage' &&
-            (game.status === 'game_over' ||
-              ((game.status as string) === 'session_ended' && terminalPresentationActive));
+            (game.status === 'game_over' || _terminalPresentationHold);
+
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const isTerminalSlotPresentation =
             game.status === 'game_over' ||
