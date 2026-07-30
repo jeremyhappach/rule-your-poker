@@ -343,6 +343,7 @@ async function consumePendingSessionEnd(gameId: string): Promise<boolean> {
       .maybeSingle();
 
     if (!g?.pending_session_end) return false;
+    if (g.status !== 'game_over' && g.status !== 'session_ended') return false;
     if (g.status === 'session_ended') return true;
 
     const { error } = await supabase
