@@ -12042,14 +12042,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
     // LAST HAND terminal path: the authoritative settlement already committed
     // `session_ended`, so there is no next game to proceed to. Release the
-    // presentation hold (clearing the trigger drops
-    // `holmTerminalPresentationActive`), which lets the shared
-    // session-ended navigation effect resume. No status write, no timer.
+    // route-owned presentation hold (`holmTerminalPresentationDone`), which
+    // lets the shared session-ended navigation effect resume. The trigger is
+    // cleared in the same commit so the animation cannot re-arm.
+    // No status write, no timer.
     if (game?.status === 'session_ended' && game?.game_type === 'holm-game') {
       recordHolmLifecycle('winpot.complete.terminal-release', {
         gameStatus: game?.status ?? null,
         lastRoundResult: game?.last_round_result ?? null,
       });
+      setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
       return;
