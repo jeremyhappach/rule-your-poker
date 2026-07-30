@@ -15148,6 +15148,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={cribbagePot}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
+                onTerminalPresentationActiveChange={setTerminalPresentationActive}
                 dealerChatMessages={cribbageDealerChatMessages}
                 onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
