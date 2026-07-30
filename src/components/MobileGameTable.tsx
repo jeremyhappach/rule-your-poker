@@ -3846,8 +3846,11 @@ export const MobileGameTable = ({
   // Publishing the hold keeps Game.tsx's render admission (and the lobby
   // redirect) from tearing the surface out from under the pot animation. This is
   // presentation-only: the DB is already settled either way.
+  // NOTE: the canonical Holm game_type is 'holm-game'. A prior 'holm'
+  // comparison here never matched, so the hold was never published and the
+  // LAST HAND surface unmounted the instant `session_ended` arrived.
   const holmTerminalPresentationActive =
-    gameType === 'holm' &&
+    gameType === 'holm-game' &&
     (!!holmWinPotTriggerIdGated || !!chuckyLossTriggerIdGated || holmShowdownPhase !== 'idle');
 
   useEffect(() => {
