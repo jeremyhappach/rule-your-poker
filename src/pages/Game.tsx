@@ -11076,7 +11076,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
   useEffect(() => {
-    if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
+    // Track live-session ownership for the LAST HAND terminal path below.
+    if (game?.game_type === 'holm-game' && game?.status != null && game.status !== 'session_ended') {
+      holmSawLiveSessionRef.current = true;
+    }
+    // Terminal statuses that can carry a Holm win result:
+    //   `game_over`      — ordinary win (unchanged).
+    //   `session_ended`  — LAST HAND win: the authoritative settlement RPC
+    //                      commits the terminal disposition in the same
+    //                      transaction, so this client never observes
+    //                      `game_over`. Admitted ONLY when this mount owned
+    //                      the live session (no replay on refresh).
+    const _holmTerminalStatus =
+      game?.status === 'game_over' ||
+      (game?.status === 'session_ended' && holmSawLiveSessionRef.current);
+    if (_holmTerminalStatus && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
 
       // Check if this is a player beating Chucky (not Chucky beating a player)
