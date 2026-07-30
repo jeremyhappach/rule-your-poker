@@ -14928,6 +14928,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             game.status === 'game_over' ||
             !!game.game_over_at ||
             terminalPresentationActive ||
+            // Route-owned Holm LAST HAND hold: keeps the round context (and
+            // therefore cards / pot / result props) alive from the first
+            // `session_ended` render — before the trigger effect commits —
+            // so the surface never blanks under the celebration.
+            _terminalPresentationHold ||
             (is357WinAnimationActive && game.game_type !== 'holm-game') ||
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
