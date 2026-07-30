@@ -1699,41 +1699,9 @@ async function handleChuckyShowdown(
       potMatchAmount
     });
 
-    // Use atomic decrement to prevent race conditions / stale chip values
-    const { error: chipError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: [player.id],
-      amount: potMatchAmount
-    });
-    
-    if (chipError) {
-      console.error('[HOLM SHOWDOWN] ERROR deducting chips:', chipError);
-    } else {
-      console.log('[HOLM SHOWDOWN] Player chips deducted atomically by:', potMatchAmount);
-    }
-
     const newPot = roundPot + potMatchAmount;
 
     console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
-
-    // CRITICAL: Record pot match event in game_results
-    // Even though the game continues, this is a player-to-pot transaction that must be logged
-    const potMatchChipChanges: Record<string, number> = {};
-    potMatchChipChanges[player.id] = -potMatchAmount;
-    
-    // Fire-and-forget: Record pot match event (audit trail only)
-    recordGameResult(
-      gameId,
-      game.total_hands || 1, // Use current hand number from game
-      null, // no winner - this is a pot match
-      'Chucky Win', // Description
-      isTie ? 'Tie - player matches pot' : `Chucky beat player with ${chuckyHandDesc}`,
-      0, // pot_won is 0 - this is money going INTO the pot
-      potMatchChipChanges,
-      false,
-      'holm',
-      game.current_game_uuid || null
-    );
-    console.log('[HOLM SHOWDOWN] Recorded pot match chip change in game_results:', potMatchChipChanges);
 
     // Always include `. -$amount` suffix so the frontend player→pot
     // transport producer (Game.tsx singleLossMatch regex) fires for both
@@ -1742,26 +1710,39 @@ async function handleChuckyShowdown(
       ? `Ya tie but ya lose! Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`
       : `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`;
 
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({
-        last_round_result: resultMessage,
-        pot: newPot,
-        awaiting_next_round: true  // Let frontend detect and animate
-      })
-      .eq('id', gameId);
-    
-    console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
-    
-    // Mark round complete and hide Chucky
-    await supabase
-      .from('rounds')
-      .update({ 
-        status: 'completed',
-        chucky_active: false
-      })
-      .eq('id', roundId);
-    
+    // ── AUTHORITATIVE SETTLEMENT (server-owned) ──────────────────────────
+    // Chucky beat the lone stayer: the hand terminates but the dealer game
+    // continues. One transaction applies the pot match, records the accounting
+    // row under the stable claim, carries the new pot and completes the round
+    // (hiding Chucky), exactly as the legacy writes did.
+    const potMatchChipChanges: Record<string, number> = {};
+    potMatchChipChanges[player.id] = -potMatchAmount;
+
+    const lossIdentity = await resolveHolmSettlementIdentity(roundId, game);
+    try {
+      await settleHolmHand({
+        gameId,
+        dealerGameId: lossIdentity.dealerGameId,
+        handNumber: lossIdentity.handNumber,
+        eventKind: 'chucky_loss_pot_match',
+        potFinal: newPot,
+        awaitingNextRound: true, // Let frontend detect and animate
+        lastRoundResult: resultMessage,
+        chipDeltas: potMatchChipChanges,
+        winningHandDescription: isTie
+          ? 'Tie - player matches pot'
+          : `Chucky beat player with ${chuckyHandDesc}`,
+        winnerPlayerId: null, // no winner - this is a pot match
+        winnerUsername: 'Chucky Win',
+        isChopped: false,
+        potWon: 0, // money going INTO the pot
+        markRoundCompleted: true,
+        clearChuckyActive: true,
+      });
+    } catch (err) {
+      console.error('[HOLM SHOWDOWN] Chucky pot-match settlement RPC failed:', err);
+    }
+
     // Frontend will handle the animation and transition via awaiting_next_round
     console.log('[HOLM SHOWDOWN] Chucky won - awaiting_next_round set, frontend will handle transition');
     return;
