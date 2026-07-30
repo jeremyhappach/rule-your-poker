@@ -1902,6 +1902,18 @@ export const CribbageMobileGameTable = ({
   // ── Win sequence state (declared early so instrumentation can reference it) ─
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
   const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
+
+  // Publish terminal-presentation liveness so the session-ended lobby redirect
+  // can hold while this client is still celebrating. 'complete' is treated as
+  // finished (onGameComplete fires from that transition).
+  useEffect(() => {
+    const active = winSequencePhase !== 'idle' && winSequencePhase !== 'complete';
+    onTerminalPresentationActiveChange?.(active);
+    return () => {
+      if (active) onTerminalPresentationActiveChange?.(false);
+    };
+  }, [winSequencePhase, onTerminalPresentationActiveChange]);
+
   const [winSequenceData, setWinSequenceData] = useState<{
     winnerId: string;
     winnerName: string;
