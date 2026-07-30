@@ -1551,6 +1551,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const [holmWinWinnerPositions, setHolmWinWinnerPositions] = useState<number[]>([]); // For multi-player wins
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
+  // LAST-HAND terminal presentation ownership. On a final-hand Holm win the
+  // authoritative settlement commits `session_ended` directly (never through
+  // `game_over`), so the win-pot trigger must also admit that status. This ref
+  // records that THIS mount observed the live (pre-terminal) session, so a
+  // later remount / refresh on an already-ended session never replays the
+  // celebration or holds navigation.
+  const holmSawLiveSessionRef = useRef(false);
   
   // Horses win pot animation state (when player wins the round)
   const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
@@ -11069,7 +11076,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
   useEffect(() => {
-    if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
+    // Track live-session ownership for the LAST HAND terminal path below.
+    if (game?.game_type === 'holm-game' && game?.status != null && game.status !== 'session_ended') {
+      holmSawLiveSessionRef.current = true;
+    }
+    // Terminal statuses that can carry a Holm win result:
+    //   `game_over`      — ordinary win (unchanged).
+    //   `session_ended`  — LAST HAND win: the authoritative settlement RPC
+    //                      commits the terminal disposition in the same
+    //                      transaction, so this client never observes
+    //                      `game_over`. Admitted ONLY when this mount owned
+    //                      the live session (no replay on refresh).
+    const _holmTerminalStatus =
+      game?.status === 'game_over' ||
+      (game?.status === 'session_ended' && holmSawLiveSessionRef.current);
+    if (_holmTerminalStatus && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
 
       // Check if this is a player beating Chucky (not Chucky beating a player)
@@ -11212,12 +11233,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // Reset when game status changes away from game_over
-    if (game?.status !== 'game_over') {
+    // Reset when the game leaves the terminal window. `session_ended` on a
+    // LAST HAND win is part of that window (the descriptor must survive the
+    // authoritative snapshot), so it must NOT clear the trigger here.
+    if (!_holmTerminalStatus) {
       holmWinProcessedRef.current = null;
       // CRITICAL: Clear the trigger ID so animation doesn't re-fire in new game
       recordHolmLifecycle('winpot.clear', {
-        reason: 'game.status !== game_over',
+        reason: 'game.status left terminal window',
         gameStatus: game?.status ?? null,
       });
       setHolmWinPotTriggerId(null);
@@ -11973,6 +11996,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
+    // LAST HAND terminal path: the authoritative settlement already committed
+    // `session_ended`, so there is no next game to proceed to. Release the
+    // presentation hold (clearing the trigger drops
+    // `holmTerminalPresentationActive`), which lets the shared
+    // session-ended navigation effect resume. No status write, no timer.
+    if (game?.status === 'session_ended' && game?.game_type === 'holm-game') {
+      recordHolmLifecycle('winpot.complete.terminal-release', {
+        gameStatus: game?.status ?? null,
+        lastRoundResult: game?.last_round_result ?? null,
+      });
+      setHolmWinPotTriggerId(null);
+      setHolmWinWinnerPositions([]);
+      return;
+    }
     // Guard: Only proceed if we're actually in game_over with a valid Holm win
     if (game?.status !== 'game_over' || game?.game_type !== 'holm-game') {
       recordHolmLifecycle('winpot.complete.ignored', {
