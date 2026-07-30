@@ -14796,7 +14796,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isCribbageGameOver =
             game.game_type === 'cribbage' &&
             (game.status === 'game_over' ||
-              (game.status === 'session_ended' && terminalPresentationActive));
+              ((game.status as string) === 'session_ended' && terminalPresentationActive));
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const isTerminalSlotPresentation =
             game.status === 'game_over' ||
