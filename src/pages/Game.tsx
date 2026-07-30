@@ -13674,6 +13674,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'waiting', 'waiting_for_players',
     'configuring', 'game_selection', 'session_ended',
   ]);
+  // ── SHARED TERMINAL-PRESENTATION HOLD SEAM ─────────────────────────
+  // Cross-game invariant (recorded for the later cross-game terminal
+  // audit): authoritative `session_ended` may land BEFORE the local
+  // terminal presentation finishes. While it is still presenting, the
+  // full gameplay presentation shell — felt, seat ring, HUD stacks, pot
+  // anchors — must stay admitted with the SAME mounted instances. This
+  // single predicate is the only owner of that widening; every render
+  // gate that would otherwise release the gameplay surface at
+  // `session_ended` consults it. No status rewrite, no timer, no
+  // duplicate surface.
+  const _terminalPresentationHold =
+    terminalPresentationActive && (game.status as string) === 'session_ended';
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
   // lobby mode — that swaps branding and releases the gameplay surface out
@@ -13681,7 +13693,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellLobbyMode =
     game.status != null &&
     _shellLobbyStatuses.has(game.status) &&
-    !(game.status === 'session_ended' && terminalPresentationActive);
+    !_terminalPresentationHold;
+
   // Header chrome title contract: ALWAYS show session name, across every
   // lifecycle phase. The "P-Town Poker" lobby override applies only to
   // the felt plate (see feltGameName). Header chrome and felt plate are
