@@ -13760,7 +13760,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `session_ended` consults it. No status rewrite, no timer, no
   // duplicate surface.
   const _terminalPresentationHold =
-    terminalPresentationActive && (game.status as string) === 'session_ended';
+    (terminalPresentationActive || holmLastHandPresentationPending) &&
+    (game.status as string) === 'session_ended';
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
   // lobby mode — that swaps branding and releases the gameplay surface out
