@@ -17,6 +17,22 @@ import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugO
 // Holm outcome uses it any more.
 import { recordGameResult } from "./gameLogic";
 import { settleHolmHand } from "./holmSettleHand";
+import { toast } from "sonner";
+
+/**
+ * Visible, actionable surface for an authoritative settlement rejection.
+ * The RPC is the only settlement owner: on rejection we perform NO client
+ * financial fallback and NO status rewrite — authoritative state is left
+ * untouched and the same idempotent call remains safe to retry.
+ */
+const reportHolmSettlementFailure = (branch: string, err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[HOLM SETTLE] ${branch} settlement RPC failed:`, err);
+  toast.error('Hand settlement failed', {
+    description: `${branch}: ${message}. No chips moved — the hand is unchanged. Retry the action or reload.`,
+    duration: 15000,
+  });
+};
 
 /**
  * AUTHORITATIVE HOLM SETTLEMENT SEAM
@@ -1671,7 +1687,7 @@ async function handleChuckyShowdown(
       });
       console.log('[HOLM SHOWDOWN] Terminal settlement disposition:', settled.terminalDisposition);
     } catch (err) {
-      console.error('[HOLM SHOWDOWN] Terminal settlement RPC failed:', err);
+      reportHolmSettlementFailure('Chucky final award', err);
       return;
     }
 
@@ -1740,7 +1756,8 @@ async function handleChuckyShowdown(
         clearChuckyActive: true,
       });
     } catch (err) {
-      console.error('[HOLM SHOWDOWN] Chucky pot-match settlement RPC failed:', err);
+      reportHolmSettlementFailure('Chucky pot match', err);
+      return;
     }
 
     // Frontend will handle the animation and transition via awaiting_next_round
@@ -2285,7 +2302,8 @@ async function handleMultiPlayerShowdown(
         });
         console.log('[HOLM TIE] Settled tie-break pot match authoritatively, pot=', newPot);
       } catch (err) {
-        console.error('[HOLM TIE] Tie-break pot-match settlement RPC failed:', err);
+        reportHolmSettlementFailure('Chucky tie-break pot match', err);
+        return;
       }
     } else {
       // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
@@ -2350,7 +2368,7 @@ async function handleMultiPlayerShowdown(
         });
         console.log('[HOLM TIE] Terminal settlement disposition:', settled.terminalDisposition);
       } catch (err) {
-        console.error('[HOLM TIE] Terminal tie-break settlement RPC failed:', err);
+        reportHolmSettlementFailure('Chucky final award (tie-break)', err);
         return;
       }
       
