@@ -11233,12 +11233,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // Reset when game status changes away from game_over
-    if (game?.status !== 'game_over') {
+    // Reset when the game leaves the terminal window. `session_ended` on a
+    // LAST HAND win is part of that window (the descriptor must survive the
+    // authoritative snapshot), so it must NOT clear the trigger here.
+    if (!_holmTerminalStatus) {
       holmWinProcessedRef.current = null;
       // CRITICAL: Clear the trigger ID so animation doesn't re-fire in new game
       recordHolmLifecycle('winpot.clear', {
-        reason: 'game.status !== game_over',
+        reason: 'game.status left terminal window',
         gameStatus: game?.status ?? null,
       });
       setHolmWinPotTriggerId(null);
