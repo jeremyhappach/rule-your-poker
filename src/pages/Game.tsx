@@ -12200,7 +12200,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
-  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey]);
+  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey, admitSessionEndedTable]);
 
   // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
