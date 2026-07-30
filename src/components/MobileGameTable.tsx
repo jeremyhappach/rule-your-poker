@@ -3837,6 +3837,25 @@ export const MobileGameTable = ({
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
+  // ── TERMINAL PRESENTATION HOLD (Holm) ────────────────────────────────────
+  // Authoritative settlement now lands in ONE transaction, so `status` can flip
+  // to game_over / session_ended while this client is still mid-celebration.
+  // Publishing the hold keeps Game.tsx's render admission (and the lobby
+  // redirect) from tearing the surface out from under the pot animation. This is
+  // presentation-only: the DB is already settled either way.
+  const holmTerminalPresentationActive =
+    gameType === 'holm' &&
+    (!!holmWinPotTriggerIdGated || !!chuckyLossTriggerIdGated || holmShowdownPhase !== 'idle');
+
+  useEffect(() => {
+    onTerminalPresentationActiveChange?.(holmTerminalPresentationActive);
+    return () => {
+      if (holmTerminalPresentationActive) onTerminalPresentationActiveChange?.(false);
+    };
+  }, [holmTerminalPresentationActive, onTerminalPresentationActiveChange]);
+
+
+
 
 
 
