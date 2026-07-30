@@ -927,12 +927,20 @@ export const CribbageCountingPhase = ({
       completedRef.current = true;
       setIsComplete(true);
       setAnnouncementData(null);
-      // Fire completion callback after a brief frame to let state settle
+      // Fire completion callback after a brief frame to let state settle.
+      // A hand resolved authoritatively reports winDetected=true so the
+      // parent routes into the terminal owner instead of next-hand setup.
       completeTimerRef.current = setTimeout(() => {
-        if (!winFrozenRef.current) onCountingComplete(false);
+        if (authoritativeHandResolved) {
+          onCountingComplete(true);
+        } else if (!winFrozenRef.current) {
+          onCountingComplete(false);
+        }
       }, 100);
       return;
     }
+
+
 
     // Apply skip-ahead state if we're past the start
     if (skipTargetIndex > 0 || skipComboIndex > -1) {
