@@ -2239,48 +2239,20 @@ async function handleMultiPlayerShowdown(
       
       console.log('[HOLM TIE] Each loser pays potMatchAmount:', potMatchAmount);
       
-      // Use atomic decrement to prevent race conditions / stale chip values
       const loserIds = playersLoseToChucky.map(l => l.player.id);
       const loserNames = playersLoseToChucky.map(l => getDisplayName(playersList, l.player, l.player.profiles?.username || l.player.user_id));
       
-      const { error: tieLoserChipError } = await supabase.rpc('decrement_player_chips', {
-        player_ids: loserIds,
-        amount: potMatchAmount
-      });
-      
-      if (tieLoserChipError) {
-        console.error('[HOLM TIE] ERROR deducting loser chips:', tieLoserChipError);
-      } else {
-        console.log('[HOLM TIE] Loser chips deducted atomically, amount:', potMatchAmount);
-      }
-      
-      let totalMatched = playersLoseToChucky.length * potMatchAmount;
+      const totalMatched = playersLoseToChucky.length * potMatchAmount;
       
       console.log('[HOLM TIE] Total matched from all losers:', totalMatched, '(', playersLoseToChucky.length, 'players)');
       
       const newPot = roundPot + totalMatched;
       
-      // CRITICAL: Record pot match event in game_results
-      // Even though the game continues, this is a player-to-pot transaction that must be logged
+      // Player-to-pot transaction: one signed delta map, settled atomically.
       const chipChanges: Record<string, number> = {};
       for (const loser of playersLoseToChucky) {
         chipChanges[loser.player.id] = -potMatchAmount;
       }
-      
-      // Fire-and-forget: Record Chucky win (audit trail only)
-      recordGameResult(
-        gameId,
-        currentRoundNumber,
-        null, // no winner - Chucky won
-        'Chucky Win (Tie Breaker)',
-        allTiedWithChucky ? 'Tie - all match pot' : `Chucky beat tied players with ${chuckyHandDesc}`,
-        0, // pot_won is 0 - this is money going INTO the pot
-        chipChanges,
-        false,
-        'holm',
-        game.current_game_uuid || null
-      );
-      console.log('[HOLM TIE] Recorded pot match chip changes in game_results:', chipChanges);
       
       // Always include `$X added to pot` so the frontend player→pot transport
       // producer (Game.tsx tieBreakMatch regex) fires for both branches.
@@ -2288,40 +2260,45 @@ async function handleMultiPlayerShowdown(
         ? `Ya tie but ya lose! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`
         : `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`;
       
-      await supabase
-        .from('games')
-        .update({
-          last_round_result: resultMessage,
-          awaiting_next_round: true,
-          pot: newPot
-        })
-        .eq('id', gameId);
-      
-      // CRITICAL: Update the ACTIVE round ONLY.
-      // Never update by round_number alone (multiple game types share the same session/game_id,
-      // and 3-5-7 round_number cycles). Round ID is the authoritative key.
-      await supabase
-        .from('rounds')
-        .update({ pot: newPot })
-        .eq('id', roundId);
+      // ── AUTHORITATIVE SETTLEMENT (server-owned) ────────────────────────
+      // p_round_pot carries the pot onto the ACTIVE round row by id — never by
+      // round_number, which is shared across game types and cycles in 3-5-7.
+      const tbIdentity = await resolveHolmSettlementIdentity(roundId, game);
+      try {
+        await settleHolmHand({
+          gameId,
+          dealerGameId: tbIdentity.dealerGameId,
+          handNumber: tbIdentity.handNumber,
+          eventKind: 'chucky_tiebreak_pot_match',
+          potFinal: newPot,
+          roundPot: newPot,
+          awaitingNextRound: true,
+          lastRoundResult: resultMessage,
+          chipDeltas: chipChanges,
+          winningHandDescription: allTiedWithChucky
+            ? 'Tie - all match pot'
+            : `Chucky beat tied players with ${chuckyHandDesc}`,
+          winnerPlayerId: null, // no winner - Chucky won
+          winnerUsername: 'Chucky Win (Tie Breaker)',
+          isChopped: false,
+          potWon: 0, // money going INTO the pot
+        });
+        console.log('[HOLM TIE] Settled tie-break pot match authoritatively, pot=', newPot);
+      } catch (err) {
+        console.error('[HOLM TIE] Tie-break pot-match settlement RPC failed:', err);
+      }
     } else {
       // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
       console.log('[HOLM TIE] Players beat Chucky - GAME OVER');
       
       // Winners split the pot
       const splitAmount = Math.floor(roundPot / playersBeatChucky.length);
-      let winnerNames: string[] = [];
-      let winnerIds: string[] = [];
+      const winnerNames: string[] = [];
+      const winnerIds: string[] = [];
       
       for (const winner of playersBeatChucky) {
-        const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
-        winnerNames.push(winnerUsername);
+        winnerNames.push(getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id));
         winnerIds.push(winner.player.id);
-        
-        await supabase.rpc('increment_player_chips', {
-          p_player_id: winner.player.id,
-          p_amount: splitAmount
-        });
       }
       
       // If there are losers to Chucky, they still pay - but game ends regardless
@@ -2329,108 +2306,56 @@ async function handleMultiPlayerShowdown(
         ? Math.min(roundPot, game.pot_max_value) 
         : roundPot;
       
-      // Use atomic decrement for losers to Chucky
-      const loserToChuckyIds = playersLoseToChucky.map(l => l.player.id);
-      if (loserToChuckyIds.length > 0) {
-        await supabase.rpc('decrement_player_chips', {
-          player_ids: loserToChuckyIds,
-          amount: potMatchAmount
-        });
-      }
-      
-      // Record game result for hand history - ACCOUNTING FIX: include both winners AND losers
       const winnerAllCards = [...playersBeatChucky[0].cards, ...communityCards];
       const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
-      const playerChipChanges: Record<string, number> = {};
       
-      // Include winner gains
+      // ACCOUNTING: winners AND losers in one signed map, so the settlement
+      // sums to zero inside a single transaction.
+      const playerChipChanges: Record<string, number> = {};
       for (const winner of playersBeatChucky) {
         playerChipChanges[winner.player.id] = splitAmount;
       }
-      
-      // Include loser deductions (so accounting sums to zero)
       for (const loser of playersLoseToChucky) {
         playerChipChanges[loser.player.id] = -potMatchAmount;
       }
       
-      console.log('[HOLM TIE] Recording game result with balanced chip changes:', playerChipChanges);
+      console.log('[HOLM TIE] Settling terminal tie-break with balanced chip changes:', playerChipChanges);
       
-      // Fire-and-forget: Record game result (audit trail only)
-      recordGameResult(
-        gameId,
-        game.total_hands || 1,
-        playersBeatChucky[0].player.id,
-        winnerNames.join(' and '),
-        winnerHandDesc,
-        roundPot,
-        playerChipChanges,
-        playersBeatChucky.length > 1, // is_chopped = true if multiple winners
-        'holm',
-        game.current_game_uuid
-      );
-      
-      // Fire-and-forget: Snapshot player chips (audit trail only)
-      snapshotPlayerChips(gameId, game.total_hands || 1);
-      
-      // Reset all players for new game
-      console.log('[HOLM TIE] Resetting player states for new game');
-      // SCOPED: do not revive stood-up ('left') or observer rows. Standing up must
-      // remain terminal for dealer-game eligibility across dealer-game boundaries.
-      await supabase
-        .from('players')
-        .update({ 
-          status: 'active',
-          current_decision: null,
-          decision_locked: false,
-          ante_decision: null
-        })
-        .eq('game_id', gameId)
-        .neq('status', 'left')
-        .neq('status', 'observer');
-      
-      // First show the result announcement (round stays completed, game stays in_progress)
-      console.log('[HOLM TIE] *** PLAYERS BEAT CHUCKY! Showing announcement. ***');
-      
-      await supabase
-        .from('games')
-        .update({
-          last_round_result: `${winnerNames.join(' and ')} beat Chucky!|||POT:${roundPot}`
-        })
-        .eq('id', gameId);
-      
-      // 2-second delay for players to see the winning announcement
-      console.log('[HOLM TIE] Pausing 2 seconds for announcement...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // ── AUTHORITATIVE TERMINAL SETTLEMENT (server-owned) ───────────────
+      // Awards, accounting row, player-state reset, POST-PAYOUT snapshot, pot
+      // and buck clear, round completion and the game_over vs session_ended
+      // choice all happen in ONE transaction. game_over_at stays NULL on the
+      // ordinary path so the existing frontend celebration handshake still
+      // stamps it; the RPC only stamps session_ended_at when the session was
+      // already flagged to end.
+      const tbWinIdentity = await resolveHolmSettlementIdentity(roundId, game);
+      try {
+        const settled = await settleHolmHand({
+          gameId,
+          dealerGameId: tbWinIdentity.dealerGameId,
+          handNumber: tbWinIdentity.handNumber,
+          eventKind: 'chucky_final_award',
+          potFinal: 0,
+          awaitingNextRound: false, // game is over, not awaiting next round
+          lastRoundResult: `${winnerNames.join(' and ')} beat Chucky!|||POT:${roundPot}`,
+          chipDeltas: playerChipChanges,
+          winningHandDescription: winnerHandDesc,
+          winnerPlayerId: playersBeatChucky[0].player.id,
+          winnerUsername: winnerNames.join(' and '),
+          isChopped: playersBeatChucky.length > 1,
+          potWon: roundPot,
+          markRoundCompleted: true,
+          clearChuckyActive: true,
+          resetPlayerStates: true,
+        });
+        console.log('[HOLM TIE] Terminal settlement disposition:', settled.terminalDisposition);
+      } catch (err) {
+        console.error('[HOLM TIE] Terminal tie-break settlement RPC failed:', err);
+        return;
+      }
       
       // NOTE: Dealer rotation is NOT done here - it's done in handleGameOverComplete
       // AFTER evaluating player states (waiting → active, sit_out_next_hand → sitting_out, etc.)
-      console.log('[HOLM TIE] NOT rotating dealer here - will be done in handleGameOverComplete after player state evaluation');
-      
-      // Game ends - players beat Chucky
-      // Set game_over_at to null so frontend celebration shows first
-      // NOTE: dealer_position is NOT changed here - rotation happens in handleGameOverComplete
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          game_over_at: null, // NULL - frontend celebration will set this after completing
-          // dealer_position is NOT updated here - rotation happens after player state evaluation
-          buck_position: null,
-          pot: 0,
-          awaiting_next_round: false // Set to false since game is over, not awaiting next round
-        })
-        .eq('id', gameId);
-      
-      // CRITICAL FIX: Mark round as completed before returning
-      // Without this, round stays in 'showdown' status and game appears frozen
-      await supabase
-        .from('rounds')
-        .update({ 
-          status: 'completed',
-          chucky_active: false
-        })
-        .eq('id', roundId);
-      
       console.log('[HOLM TIE] Game over - Chucky was beaten by tied players (dealer rotation deferred)');
       return; // Early return - game is over
     }
