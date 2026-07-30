@@ -1687,7 +1687,7 @@ async function handleChuckyShowdown(
       });
       console.log('[HOLM SHOWDOWN] Terminal settlement disposition:', settled.terminalDisposition);
     } catch (err) {
-      console.error('[HOLM SHOWDOWN] Terminal settlement RPC failed:', err);
+      reportHolmSettlementFailure('Chucky final award', err);
       return;
     }
 
@@ -1756,7 +1756,8 @@ async function handleChuckyShowdown(
         clearChuckyActive: true,
       });
     } catch (err) {
-      console.error('[HOLM SHOWDOWN] Chucky pot-match settlement RPC failed:', err);
+      reportHolmSettlementFailure('Chucky pot match', err);
+      return;
     }
 
     // Frontend will handle the animation and transition via awaiting_next_round
@@ -2301,7 +2302,8 @@ async function handleMultiPlayerShowdown(
         });
         console.log('[HOLM TIE] Settled tie-break pot match authoritatively, pot=', newPot);
       } catch (err) {
-        console.error('[HOLM TIE] Tie-break pot-match settlement RPC failed:', err);
+        reportHolmSettlementFailure('Chucky tie-break pot match', err);
+        return;
       }
     } else {
       // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
@@ -2366,7 +2368,7 @@ async function handleMultiPlayerShowdown(
         });
         console.log('[HOLM TIE] Terminal settlement disposition:', settled.terminalDisposition);
       } catch (err) {
-        console.error('[HOLM TIE] Terminal tie-break settlement RPC failed:', err);
+        reportHolmSettlementFailure('Chucky final award (tie-break)', err);
         return;
       }
       
