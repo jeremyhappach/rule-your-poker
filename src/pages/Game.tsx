@@ -16365,6 +16365,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
+            {/* Shared transient Session Ended table. Same shell, same felt,
+                same seat ring — gameplay content and every affordance are
+                replaced by the read-only results panel. Client-local. */}
+            {_sessionEndedTableActive ? (
+              <SessionEndedTablePanel
+                gameId={gameId!}
+                sessionName={game.name ?? null}
+                currentUserId={user?.id ?? null}
+                onBackToLobby={() => {
+                  setSessionEndedTableAdmitted(false);
+                  navigate('/');
+                }}
+              />
+            ) : null}
+
           </PersistentTableShell>
           
           {/* Gin-only readiness probe (capability-driven, not shell branching).
