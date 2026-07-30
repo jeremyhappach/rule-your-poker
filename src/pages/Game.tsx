@@ -11248,6 +11248,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 decision: p.current_decision,
               })),
             });
+            // Same deadlock guard as the multi-winner branch above.
+            setHolmTerminalPresentationDone(resultMessage);
             return;
           }
 
