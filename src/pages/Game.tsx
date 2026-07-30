@@ -15841,8 +15841,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'game_over',
     'session_ended',
   ]);
+  // Terminal-presentation hold: `session_ended` must not hand seat/HUD
+  // ownership to PreSessionSeatLayer while the canonical win sequence is
+  // still running on this client — that is what tore the HUD stacks and
+  // chip-transfer destination out mid-celebration on a LAST HAND win.
   const _isPreSessionPhase =
-    (game.status != null && _PRE_SESSION_STATUSES.has(game.status)) ||
+    (game.status != null &&
+      _PRE_SESSION_STATUSES.has(game.status) &&
+      !(game.status === 'session_ended' && terminalPresentationActive)) ||
     _isFreshWaitingNoFamily;
   // shellMode === 'lobby' — drives both seat ownership AND
   // presentation (title, stakes) regardless of stale gameplay state
