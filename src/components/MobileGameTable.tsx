@@ -1013,6 +1013,8 @@ interface MobileGameTableProps {
   onHolmShowdownLosersEnded?: () => void;
   // Holm win pot animation props (player beats Chucky)
   holmWinPotTriggerId?: string | null;
+  /** Published while a Holm terminal celebration owns the surface (see hold below). */
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
   holmWinPotAmount?: number;
   holmWinWinnerPosition?: number;
   holmWinWinnerPositions?: number[]; // For multi-player wins
@@ -1279,6 +1281,7 @@ export const MobileGameTable = ({
   onHolmShowdownLosersStarted,
   onHolmShowdownLosersEnded,
   holmWinPotTriggerId,
+  onTerminalPresentationActiveChange,
   holmWinPotAmount = 0,
   holmWinWinnerPosition = 1,
   holmWinWinnerPositions = [],
