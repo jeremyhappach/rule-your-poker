@@ -14573,6 +14573,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           game.status === 'cribbage_dealer_selection' ||
           (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') ||
           (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee')) ||
+          // TERMINAL-PRESENTATION HOLD (shared seam). This gate — not the
+          // per-family branch selector inside the slot — is the first owner
+          // that removed the gameplay surface on a LAST HAND win: the
+          // authoritative status goes straight to `session_ended`, no clause
+          // here matched, and the whole PlayfieldSlotController subtree
+          // (felt content, seat ring, local + remote HUD stacks, pot/chip
+          // destination anchors) physically unmounted while the shell-owned
+          // overlay layers kept animating. Keeping the SAME slot mounted
+          // preserves the existing instances and keys.
+          _terminalPresentationHold ||
+
           // Phase 7 fix (inter-game continuity): keep the slot controller
           // continuously mounted across the inter-game lifecycle window
           // for the poker-variant family so the NeutralInterstitial
