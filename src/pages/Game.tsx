@@ -1558,6 +1558,41 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // later remount / refresh on an already-ended session never replays the
   // celebration or holds navigation.
   const holmSawLiveSessionRef = useRef(false);
+
+  // ── PARENT-OWNED HOLM TERMINAL PRESENTATION HOLD ────────────────────
+  // The previous hold was published UP from <MobileGameTable> via
+  // onTerminalPresentationActiveChange. That is circular: the hold is what
+  // keeps MobileGameTable admitted, but MobileGameTable must be mounted to
+  // publish it. On a LAST HAND win the authoritative `session_ended`
+  // snapshot removes the subtree in the SAME commit, its unmount cleanup
+  // publishes `false`, and the celebration never gets an owner.
+  //
+  // Ownership therefore lives HERE, in the route component that survives
+  // every authoritative status transition, and is derived from durable
+  // terminal truth (`games.last_round_result`, already committed by the
+  // settlement RPC) instead of a child's effect. No timer, no status write.
+  const [holmTerminalPresentationDone, setHolmTerminalPresentationDone] = useState<string | null>(null);
+  const holmChuckyWinResult =
+    game?.game_type === 'holm-game' &&
+    typeof game?.last_round_result === 'string' &&
+    game.last_round_result.includes('beat Chucky') &&
+    !game.last_round_result.includes('Chucky beat')
+      ? game.last_round_result
+      : null;
+  // True from the very first render that carries `session_ended` (same
+  // snapshot as the durable result) until the celebration completes or the
+  // trigger owner proves it cannot resolve a winner.
+  const holmLastHandPresentationPending =
+    game?.game_type === 'holm-game' &&
+    (game?.status as string) === 'session_ended' &&
+    holmSawLiveSessionRef.current &&
+    (
+      (!!holmChuckyWinResult && holmTerminalPresentationDone !== holmChuckyWinResult) ||
+      !!holmShowdownTriggerId ||
+      holmShowdownPhase !== 'idle'
+    );
+
+
   
   // Horses win pot animation state (when player wins the round)
   const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
