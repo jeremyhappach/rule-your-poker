@@ -5528,7 +5528,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate, terminalPresentationActive]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
