@@ -5500,7 +5500,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // settlement owner (disconnect-safe), which can land BEFORE this client
     // finishes its terminal win presentation. Hold the redirect while the
     // celebration is still running locally.
-    if (terminalPresentationActive) return;
+    // Holm LAST HAND: the hold is owned by this route (see
+    // holmLastHandPresentationPending) precisely because the gameplay subtree
+    // that used to publish it is removed by the same `session_ended` snapshot.
+    if (terminalPresentationActive || holmLastHandPresentationPending) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
