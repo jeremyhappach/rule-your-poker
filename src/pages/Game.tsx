@@ -5581,6 +5581,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // holmLastHandPresentationPending) precisely because the gameplay subtree
     // that used to publish it is removed by the same `session_ended` snapshot.
     if (terminalPresentationActive || holmLastHandPresentationPending) return;
+    // Transient Session Ended table: this client stayed through the live
+    // terminal presentation, so navigation is now user-owned (Back to Lobby).
+    // Non-admitted clients (fresh mount / reconnect) keep direct-to-lobby.
+    if (sessionEndedTableAdmitted) return;
+
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
