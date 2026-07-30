@@ -11324,7 +11324,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset the transition guard for future game_over handling
       gameOverTransitionRef.current = false;
     }
-  }, [game?.status, game?.game_type, game?.last_round_result, players]);
+  }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey]);
 
   // Horses/SCC win pot animation trigger detection
   // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
