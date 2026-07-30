@@ -1661,6 +1661,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       holmShowdownPhase !== 'idle'
     );
 
+  // Mirror authoritative terminal facts into a ref so completion callbacks
+  // can consult them without re-creating on every snapshot. Read-only.
+  terminalStatusFactsRef.current = {
+    status: (game?.status as string) ?? null,
+    pendingSessionEnd: (game as any)?.pending_session_end === true,
+  };
+
+  
 
   
   // Horses win pot animation state (when player wins the round)
