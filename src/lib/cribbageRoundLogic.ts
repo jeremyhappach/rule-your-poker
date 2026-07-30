@@ -322,50 +322,149 @@ export async function updateCribbageState(
 }
 
 /**
- * Consume a pending "last hand" session-end request as part of authoritative
- * terminal settlement.
+ * SHARED TERMINAL-DISPOSITION OWNER.
  *
- * DURABILITY INVARIANT: once a scoring event creates a winning score, terminal
- * settlement must complete idempotently WITHOUT requiring the browser that
- * owned the counting presentation to survive. `handleGameOverComplete` in
- * Game.tsx only runs after the win animation finishes on the elected leader
- * client; if that client goes away mid-presentation the session stays open
- * forever (observed: game_over written, pending_session_end left true).
- * `endCribbageGame` is the settlement owner that always runs (and re-runs
- * idempotently on later mounts), so it closes the session here too.
+ * Both endCribbageGame branches (fresh settlement + idempotent re-entry)
+ * route their final games-row write through here, so terminal truth is
+ * authored by the settlement operation itself and never by a presentation
+ * callback.
+ *
+ * Disposition contract:
+ *   pending_session_end = false -> status = 'game_over'
+ *   pending_session_end = true  -> session balances reconciled, then
+ *                                  status = 'session_ended',
+ *                                  session_ended_at stamped,
+ *                                  pending_session_end cleared.
+ *
+ * Balance reconciliation reuses the canonical session-settlement owner:
+ * `snapshotPlayerChips` writes the authoritative final per-player chip
+ * snapshot into `session_player_snapshots`, and the DB trigger
+ * `record_session_results` (fires on games.status -> 'session_ended')
+ * converts the latest snapshot per user into `player_transactions`
+ * 'SessionResult' rows. No Cribbage-specific financial math exists here.
+ *
+ * Idempotency:
+ *  - already `session_ended` -> no writes at all
+ *  - snapshot for (game_id, hand_number) already present -> not re-inserted
+ *  - `game_over_at` / `session_ended_at` are never re-stamped
+ *  - the session-results trigger only fires on the status transition, so
+ *    duplicate invocations cannot double-adjust balances
  */
-async function consumePendingSessionEnd(gameId: string): Promise<boolean> {
+async function applyCribbageTerminalDisposition(
+  gameId: string,
+  handNumber: number,
+  resultDescription: string | null
+): Promise<'game_over' | 'session_ended' | null> {
+  const { data: g, error: gErr } = await supabase
+    .from('games')
+    .select('status, pending_session_end, game_over_at, session_ended_at')
+    .eq('id', gameId)
+    .maybeSingle();
+
+  if (gErr || !g) {
+    console.error('[CRIBBAGE] Terminal disposition: failed to read game', gErr);
+    return null;
+  }
+
+  // Terminal already reached — return existing state, perform no writes.
+  if (g.status === 'session_ended') {
+    console.log('[CRIBBAGE] Terminal disposition: session already ended (no-op)');
+    return 'session_ended';
+  }
+
+  const endSession = g.pending_session_end === true;
+  const nowIso = new Date().toISOString();
+
+  if (endSession) {
+    // Reconcile all player balances BEFORE the session becomes externally
+    // complete: the final snapshot must exist before the status transition
+    // that fires `record_session_results`.
+    await ensureFinalChipSnapshot(gameId, handNumber);
+  }
+
+  const update: Record<string, unknown> = {
+    status: endSession ? 'session_ended' : 'game_over',
+    pot: 0,
+    game_over_at: g.game_over_at ?? nowIso,
+  };
+  if (resultDescription) update.last_round_result = resultDescription;
+  if (endSession) {
+    update.session_ended_at = g.session_ended_at ?? nowIso;
+    update.pending_session_end = false;
+  }
+
+  const { error } = await supabase.from('games').update(update).eq('id', gameId);
+  if (error) {
+    console.error('[CRIBBAGE] Terminal disposition write failed:', error);
+    return null;
+  }
+
+  console.log('[CRIBBAGE] Terminal disposition applied', {
+    gameId,
+    status: update.status,
+    endSession,
+  });
+  return endSession ? 'session_ended' : 'game_over';
+}
+
+/**
+ * Idempotent final-balance snapshot. Reuses the canonical
+ * `snapshotPlayerChips` owner; skips if a snapshot already exists for this
+ * (game, hand) so retries cannot duplicate session-result inputs.
+ */
+async function ensureFinalChipSnapshot(gameId: string, handNumber: number): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from('session_player_snapshots')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('hand_number', handNumber)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      console.log('[CRIBBAGE] Final chip snapshot already present for hand', handNumber);
+      return;
+    }
+    await snapshotPlayerChips(gameId, handNumber);
+  } catch (err) {
+    console.error('[CRIBBAGE] Failed to reconcile final chip snapshot:', err);
+  }
+}
+
+/**
+ * LEGACY RECOVERY ONLY.
+ *
+ * Fresh settlements now close the session inside
+ * `applyCribbageTerminalDisposition`. This helper exists solely to repair
+ * already-malformed games (status='game_over' with pending_session_end=true)
+ * on a later mount. It reuses the same canonical owner and never recreates
+ * payout logic.
+ */
+export async function consumePendingSessionEnd(gameId: string): Promise<boolean> {
   try {
     const { data: g } = await supabase
       .from('games')
-      .select('pending_session_end, session_ended_at, status')
+      .select('pending_session_end, status, total_hands')
       .eq('id', gameId)
       .maybeSingle();
 
-    if (!g?.pending_session_end) return false;
-    if (g.status !== 'game_over' && g.status !== 'session_ended') return false;
+    if (!g) return false;
     if (g.status === 'session_ended') return true;
+    if (!g.pending_session_end) return false;
+    if (g.status !== 'game_over') return false;
 
-    const { error } = await supabase
-      .from('games')
-      .update({
-        status: 'session_ended',
-        session_ended_at: g.session_ended_at ?? new Date().toISOString(),
-        pending_session_end: false,
-      })
-      .eq('id', gameId);
-
-    if (error) {
-      console.error('[CRIBBAGE] Failed to close pending session end:', error);
-      return false;
-    }
-    console.log('[CRIBBAGE] Consumed pending_session_end -> session_ended');
-    return true;
+    const disposition = await applyCribbageTerminalDisposition(
+      gameId,
+      g.total_hands ?? 1,
+      null
+    );
+    return disposition === 'session_ended';
   } catch (err) {
     console.error('[CRIBBAGE] Error consuming pending_session_end:', err);
     return false;
   }
 }
+
 
 /**
  * End a cribbage game/hand and distribute winnings
@@ -473,24 +572,11 @@ export async function endCribbageGame(
       const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
       const resultDescription = `${winnerDisplayName} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
-      const { data: priorGame } = await supabase
-        .from('games')
-        .select('game_over_at')
-        .eq('id', gameId)
-        .maybeSingle();
-
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          pot: 0,
-          last_round_result: resultDescription,
-          // Idempotent re-entry must not re-stamp the original terminal time.
-          game_over_at: priorGame?.game_over_at ?? new Date().toISOString(),
-        })
-        .eq('id', gameId);
-
-      await consumePendingSessionEnd(gameId);
+      // Idempotent re-entry: same shared terminal-disposition owner.
+      // Never re-stamps game_over_at, closes a pending session end, and
+      // reconciles balances before the session becomes complete.
+      const priorHandNumber = existingRound?.hand_number ?? 1;
+      await applyCribbageTerminalDisposition(gameId, priorHandNumber, resultDescription);
 
       return true;
     }
@@ -555,17 +641,6 @@ export async function endCribbageGame(
     const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
     const resultDescription = `${winnerUsername} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
-    // Update game status
-    await supabase
-      .from('games')
-      .update({
-        status: 'game_over',
-        pot: 0,
-        last_round_result: resultDescription,
-        game_over_at: new Date().toISOString(),
-      })
-      .eq('id', gameId);
-
     // Record in game_results with actual hand_number and chip changes
     const { error: resultError } = await supabase
       .from('game_results')
@@ -581,32 +656,29 @@ export async function endCribbageGame(
         player_chip_changes: chipChanges,
         game_type: 'cribbage',
       });
-    
+
     if (resultError) {
       console.error('[CRIBBAGE] Failed to record game result:', resultError);
     } else {
       console.log('[CRIBBAGE] Game result recorded successfully');
     }
 
-    // Fire-and-forget: Snapshot final player chip totals for accurate session results.
-    // IMPORTANT: Snapshots should store the player's CURRENT chips balance (running session total),
-    // not the per-hand delta. Using snapshotPlayerChips keeps this consistent across game types.
-    void snapshotPlayerChips(gameId, handNumber).catch((err) => {
-      console.error('[CRIBBAGE] Failed to snapshot player chips:', err);
-    });
+    // Snapshot final player chip totals AFTER the payouts land. Awaited (not
+    // fire-and-forget) because the terminal disposition below may end the
+    // session, and session results must never be derived from stale or
+    // partially settled balances.
+    await ensureFinalChipSnapshot(gameId, handNumber);
 
-    // DURABILITY FALLBACK (last-hand session close):
-    // The normal path closes the session in handleGameOverComplete once the
-    // win presentation finishes on the elected leader client. If that client
-    // disappears mid-presentation, nothing ever consumes pending_session_end.
-    // This settlement owner therefore re-checks after the celebration window
-    // and closes the session itself. Fully idempotent: it no-ops if the flag
-    // was already consumed or the game already moved on.
-    if (typeof window !== 'undefined') {
-      window.setTimeout(() => {
-        void consumePendingSessionEnd(gameId);
-      }, 20000);
-    }
+    // TERMINAL DISPOSITION (disconnect-safe):
+    // The settlement owner — not a client presentation callback — decides and
+    // writes the final state. If this was the last hand, the session is closed
+    // here with balances already reconciled.
+    const disposition = await applyCribbageTerminalDisposition(
+      gameId,
+      handNumber,
+      resultDescription
+    );
+    console.log('[CRIBBAGE] Terminal disposition:', disposition);
 
     console.log('[CRIBBAGE] Game ended successfully - chip transfers and records complete');
     return true;

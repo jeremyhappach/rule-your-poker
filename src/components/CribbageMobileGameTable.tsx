@@ -220,6 +220,13 @@ interface CribbageMobileGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  /**
+   * True while a terminal win presentation is in flight on THIS client.
+   * The settlement owner now closes last-hand sessions immediately (see
+   * cribbageRoundLogic.applyCribbageTerminalDisposition), so the lobby
+   * redirect must not fire out from under an active celebration.
+   */
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
   // Dealer selection props (optional - used during cribbage_dealer_selection phase).
@@ -584,6 +591,7 @@ export const CribbageMobileGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  onTerminalPresentationActiveChange,
   // Game configuration with defaults
   gameConfig = {
     pointsToWin: 121,
@@ -1894,6 +1902,18 @@ export const CribbageMobileGameTable = ({
   // ── Win sequence state (declared early so instrumentation can reference it) ─
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
   const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
+
+  // Publish terminal-presentation liveness so the session-ended lobby redirect
+  // can hold while this client is still celebrating. 'complete' is treated as
+  // finished (onGameComplete fires from that transition).
+  useEffect(() => {
+    const active = winSequencePhase !== 'idle' && winSequencePhase !== 'complete';
+    onTerminalPresentationActiveChange?.(active);
+    return () => {
+      if (active) onTerminalPresentationActiveChange?.(false);
+    };
+  }, [winSequencePhase, onTerminalPresentationActiveChange]);
+
   const [winSequenceData, setWinSequenceData] = useState<{
     winnerId: string;
     winnerName: string;

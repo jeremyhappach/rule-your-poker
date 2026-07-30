@@ -1155,6 +1155,10 @@ const Game = () => {
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
   const gameOverTransitionRef = useRef<boolean>(false); // Guard against multiple clients racing to transition game_over
+  // True while a game's terminal win presentation is running on THIS client.
+  // Used to hold the session_ended lobby redirect (settlement may close the
+  // session before the local celebration finishes).
+  const [terminalPresentationActive, setTerminalPresentationActive] = useState(false);
   
   // Track previous game config for "Running it Back" detection
   interface PreviousGameConfig {
@@ -5450,6 +5454,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
   useEffect(() => {
     if (game?.status !== 'session_ended') return;
+    // Cribbage last-hand settlement now closes the session inside the
+    // settlement owner (disconnect-safe), which can land BEFORE this client
+    // finishes its terminal win presentation. Hold the redirect while the
+    // celebration is still running locally.
+    if (terminalPresentationActive) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
@@ -5474,7 +5483,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -15139,6 +15148,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={cribbagePot}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
+                onTerminalPresentationActiveChange={setTerminalPresentationActive}
                 dealerChatMessages={cribbageDealerChatMessages}
                 onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
