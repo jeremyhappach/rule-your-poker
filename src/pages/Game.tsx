@@ -1558,6 +1558,41 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // later remount / refresh on an already-ended session never replays the
   // celebration or holds navigation.
   const holmSawLiveSessionRef = useRef(false);
+
+  // ── PARENT-OWNED HOLM TERMINAL PRESENTATION HOLD ────────────────────
+  // The previous hold was published UP from <MobileGameTable> via
+  // onTerminalPresentationActiveChange. That is circular: the hold is what
+  // keeps MobileGameTable admitted, but MobileGameTable must be mounted to
+  // publish it. On a LAST HAND win the authoritative `session_ended`
+  // snapshot removes the subtree in the SAME commit, its unmount cleanup
+  // publishes `false`, and the celebration never gets an owner.
+  //
+  // Ownership therefore lives HERE, in the route component that survives
+  // every authoritative status transition, and is derived from durable
+  // terminal truth (`games.last_round_result`, already committed by the
+  // settlement RPC) instead of a child's effect. No timer, no status write.
+  const [holmTerminalPresentationDone, setHolmTerminalPresentationDone] = useState<string | null>(null);
+  const holmChuckyWinResult =
+    game?.game_type === 'holm-game' &&
+    typeof game?.last_round_result === 'string' &&
+    game.last_round_result.includes('beat Chucky') &&
+    !game.last_round_result.includes('Chucky beat')
+      ? game.last_round_result
+      : null;
+  // True from the very first render that carries `session_ended` (same
+  // snapshot as the durable result) until the celebration completes or the
+  // trigger owner proves it cannot resolve a winner.
+  const holmLastHandPresentationPending =
+    game?.game_type === 'holm-game' &&
+    (game?.status as string) === 'session_ended' &&
+    holmSawLiveSessionRef.current &&
+    (
+      (!!holmChuckyWinResult && holmTerminalPresentationDone !== holmChuckyWinResult) ||
+      !!holmShowdownTriggerId ||
+      holmShowdownPhase !== 'idle'
+    );
+
+
   
   // Horses win pot animation state (when player wins the round)
   const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
@@ -5465,7 +5500,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // settlement owner (disconnect-safe), which can land BEFORE this client
     // finishes its terminal win presentation. Hold the redirect while the
     // celebration is still running locally.
-    if (terminalPresentationActive) return;
+    // Holm LAST HAND: the hold is owned by this route (see
+    // holmLastHandPresentationPending) precisely because the gameplay subtree
+    // that used to publish it is removed by the same `session_ended` snapshot.
+    if (terminalPresentationActive || holmLastHandPresentationPending) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
@@ -5490,7 +5528,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate, terminalPresentationActive]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -11146,8 +11184,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               winnerName,
               winnerNames,
             });
+            // No descriptor can be built from this result — release the
+            // route-owned LAST HAND hold so navigation is never deadlocked.
+            setHolmTerminalPresentationDone(resultMessage);
             return;
           }
+
           
           // Mark processed
           holmWinProcessedRef.current = resultMessage;
@@ -11206,6 +11248,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 decision: p.current_decision,
               })),
             });
+            // Same deadlock guard as the multi-winner branch above.
+            setHolmTerminalPresentationDone(resultMessage);
             return;
           }
 
@@ -11998,14 +12042,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
     // LAST HAND terminal path: the authoritative settlement already committed
     // `session_ended`, so there is no next game to proceed to. Release the
-    // presentation hold (clearing the trigger drops
-    // `holmTerminalPresentationActive`), which lets the shared
-    // session-ended navigation effect resume. No status write, no timer.
+    // route-owned presentation hold (`holmTerminalPresentationDone`), which
+    // lets the shared session-ended navigation effect resume. The trigger is
+    // cleared in the same commit so the animation cannot re-arm.
+    // No status write, no timer.
     if (game?.status === 'session_ended' && game?.game_type === 'holm-game') {
       recordHolmLifecycle('winpot.complete.terminal-release', {
         gameStatus: game?.status ?? null,
         lastRoundResult: game?.last_round_result ?? null,
       });
+      setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
       return;
@@ -13722,7 +13768,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `session_ended` consults it. No status rewrite, no timer, no
   // duplicate surface.
   const _terminalPresentationHold =
-    terminalPresentationActive && (game.status as string) === 'session_ended';
+    (terminalPresentationActive || holmLastHandPresentationPending) &&
+    (game.status as string) === 'session_ended';
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
   // lobby mode — that swaps branding and releases the gameplay surface out
@@ -14670,10 +14717,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
+            // ORDINARY-WIN CONTINUITY (Defect A owner). This flag makes the
+            // slot controller render NeutralInterstitial *exclusively* —
+            // it drops the persistent gameplay children entirely. The old
+            // predicate (holm + game_over + current_game_uuid == null) is
+            // ALSO true for every ordinary dealer-game rollover, so the
+            // table physically unmounted for the whole game_over →
+            // game_selection gap and remounted at next-game setup. Scope it
+            // to a real authoritative session end, and never while a
+            // terminal presentation is still running locally.
             isTerminalSessionEndHandoff={
               game?.game_type === 'holm-game' &&
               game?.status === 'game_over' &&
-              (game as any)?.current_game_uuid == null
+              (game as any)?.current_game_uuid == null &&
+              (game as any)?.pending_session_end === true &&
+              !_terminalPresentationHold
             }
 
             neutralActiveTab={mobileActiveTab}
@@ -14870,6 +14928,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             game.status === 'game_over' ||
             !!game.game_over_at ||
             terminalPresentationActive ||
+            // Route-owned Holm LAST HAND hold: keeps the round context (and
+            // therefore cards / pot / result props) alive from the first
+            // `session_ended` render — before the trigger effect commits —
+            // so the surface never blanks under the celebration.
+            _terminalPresentationHold ||
             (is357WinAnimationActive && game.game_type !== 'holm-game') ||
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
