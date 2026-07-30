@@ -1551,6 +1551,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const [holmWinWinnerPositions, setHolmWinWinnerPositions] = useState<number[]>([]); // For multi-player wins
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
+  // ── CONSUMED TERMINAL PRESENTATION IDENTITIES (presentation only) ────
+  // `holmWinProcessedRef` is a single-slot latch that only survives while the
+  // in-memory value matches; it does NOT survive a remount of the animation
+  // owner and it is wiped whenever status leaves the terminal window. The
+  // ordinary rollover therefore replayed the SAME authoritative result once
+  // more during the `game_over` → next-dealer-game gap.
+  //
+  // This set records terminal RESULT identities whose presentation has already
+  // run to completion on this client, keyed by stable authoritative truth
+  // (dealerGameId + hand number + result kind + result text) — never by
+  // Date.now() / trigger id. Admission consults it; completion writes to it.
+  // Purely presentational: no settlement, payout, or status semantics.
+  const holmPresentedResultKeysRef = useRef<Set<string>>(new Set());
+
   // LAST-HAND terminal presentation ownership. On a final-hand Holm win the
   // authoritative settlement commits `session_ended` directly (never through
   // `game_over`), so the win-pot trigger must also admit that status. This ref
