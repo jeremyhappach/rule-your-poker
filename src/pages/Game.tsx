@@ -14717,10 +14717,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
+            // ORDINARY-WIN CONTINUITY (Defect A owner). This flag makes the
+            // slot controller render NeutralInterstitial *exclusively* —
+            // it drops the persistent gameplay children entirely. The old
+            // predicate (holm + game_over + current_game_uuid == null) is
+            // ALSO true for every ordinary dealer-game rollover, so the
+            // table physically unmounted for the whole game_over →
+            // game_selection gap and remounted at next-game setup. Scope it
+            // to a real authoritative session end, and never while a
+            // terminal presentation is still running locally.
             isTerminalSessionEndHandoff={
               game?.game_type === 'holm-game' &&
               game?.status === 'game_over' &&
-              (game as any)?.current_game_uuid == null
+              (game as any)?.current_game_uuid == null &&
+              (game as any)?.pending_session_end === true &&
+              !_terminalPresentationHold
             }
 
             neutralActiveTab={mobileActiveTab}
