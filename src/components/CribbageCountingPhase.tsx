@@ -781,7 +781,28 @@ export const CribbageCountingPhase = ({
     const hasPersistedProgress = persistedTargetIndex != null && persistedTargetIndex > 0;
     const hasPersistedBeat = persistedBeatIndex != null && persistedBeatIndex > -1;
 
-    if ((hasPersistedProgress || hasPersistedBeat) && !skipAheadAppliedRef.current) {
+    // TERMINAL-SNAPSHOT GUARD:
+    // If the authoritative cribbage state has already resolved this hand
+    // (winner latched / phase complete), the baseline scores we were handed
+    // ALREADY include every counting beat. Replaying persisted progress on
+    // top of them double-applies points and overshoots the rail (observed:
+    // 122 authoritative rendered as 130 after a late remount). In that case
+    // never pre-apply — display the authoritative scores and complete.
+    const authoritativeHandResolved =
+      !!cribbageState?.winnerPlayerId || cribbageState?.phase === 'complete';
+
+    if (authoritativeHandResolved) {
+      skipIsTerminal = true;
+      skipAheadAppliedRef.current = true;
+      logCountingDebug('crib:counting_resume_skip_compute', {
+        source: 'authoritative_terminal_snapshot',
+        persistedTargetIndex: persistedTargetIndex ?? null,
+        persistedBeatIndex: persistedBeatIndex ?? null,
+        persistedHandKey: persistedHandKey ?? null,
+        skipIsTerminal: true,
+        baselineScores,
+      });
+    } else if ((hasPersistedProgress || hasPersistedBeat) && !skipAheadAppliedRef.current) {
       const pTargetIdx = persistedTargetIndex ?? 0;
       const pBeatIdx = persistedBeatIndex ?? -1;
       const { beats, targets: targetTimelines, totalDuration } = buildBeatTimeline();
@@ -790,6 +811,7 @@ export const CribbageCountingPhase = ({
       if (pTargetIdx >= targetTimelines.length) {
         skipIsTerminal = true;
       } else {
+
         // Pre-apply all completed targets' scores to baseline
         for (let ti = 0; ti < pTargetIdx; ti++) {
           const target = targetTimelines[ti];
@@ -905,12 +927,20 @@ export const CribbageCountingPhase = ({
       completedRef.current = true;
       setIsComplete(true);
       setAnnouncementData(null);
-      // Fire completion callback after a brief frame to let state settle
+      // Fire completion callback after a brief frame to let state settle.
+      // A hand resolved authoritatively reports winDetected=true so the
+      // parent routes into the terminal owner instead of next-hand setup.
       completeTimerRef.current = setTimeout(() => {
-        if (!winFrozenRef.current) onCountingComplete(false);
+        if (authoritativeHandResolved) {
+          onCountingComplete(true);
+        } else if (!winFrozenRef.current) {
+          onCountingComplete(false);
+        }
       }, 100);
       return;
     }
+
+
 
     // Apply skip-ahead state if we're past the start
     if (skipTargetIndex > 0 || skipComboIndex > -1) {
