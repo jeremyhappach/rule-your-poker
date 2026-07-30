@@ -1551,6 +1551,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const [holmWinWinnerPositions, setHolmWinWinnerPositions] = useState<number[]>([]); // For multi-player wins
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
+  // LAST-HAND terminal presentation ownership. On a final-hand Holm win the
+  // authoritative settlement commits `session_ended` directly (never through
+  // `game_over`), so the win-pot trigger must also admit that status. This ref
+  // records that THIS mount observed the live (pre-terminal) session, so a
+  // later remount / refresh on an already-ended session never replays the
+  // celebration or holds navigation.
+  const holmSawLiveSessionRef = useRef(false);
   
   // Horses win pot animation state (when player wins the round)
   const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
