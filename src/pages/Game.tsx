@@ -1551,6 +1551,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const [holmWinWinnerPositions, setHolmWinWinnerPositions] = useState<number[]>([]); // For multi-player wins
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
+  // ── CONSUMED TERMINAL PRESENTATION IDENTITIES (presentation only) ────
+  // `holmWinProcessedRef` is a single-slot latch that only survives while the
+  // in-memory value matches; it does NOT survive a remount of the animation
+  // owner and it is wiped whenever status leaves the terminal window. The
+  // ordinary rollover therefore replayed the SAME authoritative result once
+  // more during the `game_over` → next-dealer-game gap.
+  //
+  // This set records terminal RESULT identities whose presentation has already
+  // run to completion on this client, keyed by stable authoritative truth
+  // (dealerGameId + hand number + result kind + result text) — never by
+  // Date.now() / trigger id. Admission consults it; completion writes to it.
+  // Purely presentational: no settlement, payout, or status semantics.
+  const holmPresentedResultKeysRef = useRef<Set<string>>(new Set());
+
   // LAST-HAND terminal presentation ownership. On a final-hand Holm win the
   // authoritative settlement commits `session_ended` directly (never through
   // `game_over`), so the win-pot trigger must also admit that status. This ref
@@ -1579,6 +1593,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     !game.last_round_result.includes('Chucky beat')
       ? game.last_round_result
       : null;
+  // Stable presentation identity for the Chucky win-pot terminal result.
+  // Deliberately excludes `current_round` (it blips to null across the
+  // dealer-game rollover, which would mint a "new" identity and re-admit the
+  // same result) and any timestamp. A genuinely later hand carries a
+  // different dealerGameId and/or hand number, so it still presents normally.
+  const holmWinPotPresentationKey = holmChuckyWinResult
+    ? `holm|winpot|${game?.current_game_uuid ?? 'nodg'}|${game?.total_hands ?? 'nh'}|${holmChuckyWinResult}`
+    : null;
+
   // True from the very first render that carries `session_ended` (same
   // snapshot as the durable result) until the celebration completes or the
   // trigger owner proves it cannot resolve a winner.
@@ -11137,6 +11160,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (holmWinProcessedRef.current === resultMessage) {
           return;
         }
+        // Consumed-presentation guard (stable identity). Once this exact
+        // authoritative terminal result has been presented to completion on
+        // this client, it can never build another descriptor — even after the
+        // in-memory single-slot latch above is wiped by a transient status or
+        // identity blip during the dealer-game rollover.
+        if (holmWinPotPresentationKey && holmPresentedResultKeysRef.current.has(holmWinPotPresentationKey)) {
+          return;
+        }
+
 
         // Parse pot amount from message
         const potMatch = resultMessage.match(/POT:(\d+)/);
@@ -11292,7 +11324,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset the transition guard for future game_over handling
       gameOverTransitionRef.current = false;
     }
-  }, [game?.status, game?.game_type, game?.last_round_result, players]);
+  }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey]);
 
   // Horses/SCC win pot animation trigger detection
   // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
@@ -12051,6 +12083,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStatus: game?.status ?? null,
         lastRoundResult: game?.last_round_result ?? null,
       });
+      if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
@@ -12080,17 +12113,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     recordHolmLifecycle('winpot.complete.start', {
       delayMs: 3000,
       lastRoundResult: game?.last_round_result ?? null,
+      presentationKey: holmWinPotPresentationKey,
     });
     console.log('[HOLM WIN POT] Animation complete, waiting 3 seconds before proceeding');
+    // ORDINARY ROLLOVER — presentation idempotency.
+    // Mark this stable terminal-result identity consumed and retire the active
+    // descriptor in the same commit. The authoritative result stays
+    // observable through the whole `game_over` → next-dealer-game gap, so
+    // without this the animation owner could be re-mounted (or re-admitted)
+    // and replay the same pot/confetti sequence. Table retention is unaffected:
+    // `isTerminalSlotPresentation` still holds via `game_over` / `game_over_at`.
+    if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
+    setHolmWinPotTriggerId(null);
+    setHolmWinWinnerPositions([]);
     // Wait 3 seconds after animation to let players see the final state (tabled cards stay visible)
     await new Promise(resolve => setTimeout(resolve, 3000));
+
     
     recordHolmLifecycle('winpot.complete.proceed', {
       lastRoundResult: game?.last_round_result ?? null,
     });
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
-  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
+  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey]);
 
   // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
