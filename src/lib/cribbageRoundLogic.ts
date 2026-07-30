@@ -322,6 +322,51 @@ export async function updateCribbageState(
 }
 
 /**
+ * Consume a pending "last hand" session-end request as part of authoritative
+ * terminal settlement.
+ *
+ * DURABILITY INVARIANT: once a scoring event creates a winning score, terminal
+ * settlement must complete idempotently WITHOUT requiring the browser that
+ * owned the counting presentation to survive. `handleGameOverComplete` in
+ * Game.tsx only runs after the win animation finishes on the elected leader
+ * client; if that client goes away mid-presentation the session stays open
+ * forever (observed: game_over written, pending_session_end left true).
+ * `endCribbageGame` is the settlement owner that always runs (and re-runs
+ * idempotently on later mounts), so it closes the session here too.
+ */
+async function consumePendingSessionEnd(gameId: string): Promise<boolean> {
+  try {
+    const { data: g } = await supabase
+      .from('games')
+      .select('pending_session_end, session_ended_at, status')
+      .eq('id', gameId)
+      .maybeSingle();
+
+    if (!g?.pending_session_end) return false;
+    if (g.status === 'session_ended') return true;
+
+    const { error } = await supabase
+      .from('games')
+      .update({
+        status: 'session_ended',
+        session_ended_at: g.session_ended_at ?? new Date().toISOString(),
+        pending_session_end: false,
+      })
+      .eq('id', gameId);
+
+    if (error) {
+      console.error('[CRIBBAGE] Failed to close pending session end:', error);
+      return false;
+    }
+    console.log('[CRIBBAGE] Consumed pending_session_end -> session_ended');
+    return true;
+  } catch (err) {
+    console.error('[CRIBBAGE] Error consuming pending_session_end:', err);
+    return false;
+  }
+}
+
+/**
  * End a cribbage game/hand and distribute winnings
  */
 export async function endCribbageGame(
@@ -329,6 +374,7 @@ export async function endCribbageGame(
   roundId: string,
   cribbageState: CribbageState
 ): Promise<boolean> {
+
   console.log('[CRIBBAGE] Ending game', { 
     gameId, 
     roundId, 
