@@ -11160,6 +11160,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (holmWinProcessedRef.current === resultMessage) {
           return;
         }
+        // Consumed-presentation guard (stable identity). Once this exact
+        // authoritative terminal result has been presented to completion on
+        // this client, it can never build another descriptor — even after the
+        // in-memory single-slot latch above is wiped by a transient status or
+        // identity blip during the dealer-game rollover.
+        if (holmWinPotPresentationKey && holmPresentedResultKeysRef.current.has(holmWinPotPresentationKey)) {
+          return;
+        }
+
 
         // Parse pot amount from message
         const potMatch = resultMessage.match(/POT:(\d+)/);
