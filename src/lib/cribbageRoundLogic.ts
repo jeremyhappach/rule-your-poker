@@ -594,8 +594,22 @@ export async function endCribbageGame(
       console.error('[CRIBBAGE] Failed to snapshot player chips:', err);
     });
 
+    // DURABILITY FALLBACK (last-hand session close):
+    // The normal path closes the session in handleGameOverComplete once the
+    // win presentation finishes on the elected leader client. If that client
+    // disappears mid-presentation, nothing ever consumes pending_session_end.
+    // This settlement owner therefore re-checks after the celebration window
+    // and closes the session itself. Fully idempotent: it no-ops if the flag
+    // was already consumed or the game already moved on.
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        void consumePendingSessionEnd(gameId);
+      }, 20000);
+    }
+
     console.log('[CRIBBAGE] Game ended successfully - chip transfers and records complete');
     return true;
+
 
   } catch (error) {
     console.error('[CRIBBAGE] Error ending game:', error);
