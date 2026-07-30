@@ -11184,8 +11184,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               winnerName,
               winnerNames,
             });
+            // No descriptor can be built from this result — release the
+            // route-owned LAST HAND hold so navigation is never deadlocked.
+            setHolmTerminalPresentationDone(resultMessage);
             return;
           }
+
           
           // Mark processed
           holmWinProcessedRef.current = resultMessage;
