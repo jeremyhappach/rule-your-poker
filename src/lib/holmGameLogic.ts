@@ -17,6 +17,22 @@ import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugO
 // Holm outcome uses it any more.
 import { recordGameResult } from "./gameLogic";
 import { settleHolmHand } from "./holmSettleHand";
+import { toast } from "sonner";
+
+/**
+ * Visible, actionable surface for an authoritative settlement rejection.
+ * The RPC is the only settlement owner: on rejection we perform NO client
+ * financial fallback and NO status rewrite — authoritative state is left
+ * untouched and the same idempotent call remains safe to retry.
+ */
+const reportHolmSettlementFailure = (branch: string, err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[HOLM SETTLE] ${branch} settlement RPC failed:`, err);
+  toast.error('Hand settlement failed', {
+    description: `${branch}: ${message}. No chips moved — the hand is unchanged. Retry the action or reload.`,
+    duration: 15000,
+  });
+};
 
 /**
  * AUTHORITATIVE HOLM SETTLEMENT SEAM
