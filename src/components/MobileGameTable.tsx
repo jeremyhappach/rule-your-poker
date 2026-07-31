@@ -13457,7 +13457,7 @@ export const MobileGameTable = ({
              row-5 owner. No game-specific timer visuals, no free-flowing
              content below ShellTabBar. Containment / scaling issues exposed
              by this migration are deferred to a subsequent phase. */
-          const hasTimer = !!isPaused || (
+          const hasTimer = !sessionEndedPhase && (!!isPaused || (
             diceGameplayUiActive &&
             horsesController.enabled &&
             horsesController.gamePhase === 'playing' &&
