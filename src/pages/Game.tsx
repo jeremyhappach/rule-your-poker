@@ -14859,19 +14859,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // game_selection gap and remounted at next-game setup. Scope it
             // to a real authoritative session end, and never while a
             // terminal presentation is still running locally.
+            // SESSION ENDED TABLE PHASE: the exclusive handoff branch drops
+            // the persistent gameplay children — which are the owners of the
+            // canonical HUD stack (ShellHudChrome/ShellHudGrid), tab rail,
+            // chat pane and hand-history pane. The Session Ended phase is a
+            // canonical TABLE phase, so it keeps the normal mounted children
+            // (gameplay artifacts are already retired at `session_ended`) and
+            // must NOT enter the exclusive handoff.
             isTerminalSessionEndHandoff={
-              _sessionEndedTableActive ||
               (game?.game_type === 'holm-game' &&
                 game?.status === 'game_over' &&
                 (game as any)?.current_game_uuid == null &&
                 (game as any)?.pending_session_end === true &&
                 !_terminalPresentationHold)
             }
-            sessionEndedPane={
-              _sessionEndedTableActive ? (
-                <SessionEndedPaneAction onBackToLobby={() => navigate('/')} />
-              ) : null
-            }
+
 
 
             neutralActiveTab={mobileActiveTab}
