@@ -13220,7 +13220,7 @@ export const MobileGameTable = ({
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
         {/* Use a stable snapshot during the win transition so legs don't disappear/reappear mid-sequence */}
-        {gameType !== 'holm-game' && currentPlayer && (() => {
+        {!sessionEndedPhase && gameType !== 'holm-game' && currentPlayer && (() => {
           const hideLegsForWinAnimation =
             threeFiveSevenWinPhase === 'legs-to-player' ||
             threeFiveSevenWinPhase === 'pot-to-player' ||
