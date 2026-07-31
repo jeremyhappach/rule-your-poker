@@ -227,6 +227,16 @@ interface CribbageMobileGameTableProps {
    * redirect must not fire out from under an active celebration.
    */
   onTerminalPresentationActiveChange?: (active: boolean) => void;
+  /**
+   * TRUE final-completion boundary of the canonical Cribbage terminal
+   * sequence (winning scoring event → announcement → pot-to-winner chip
+   * transfer → destination presentation → celebration). Fires exactly once
+   * per terminal identity, on the winSequencePhase → 'complete' edge — the
+   * same edge that fires `onGameComplete`. Never fires on cleanup, unmount,
+   * publisher replacement or descriptor reset (unlike
+   * `onTerminalPresentationActiveChange(false)`).
+   */
+  onTerminalPresentationComplete?: (terminalIdentity: string) => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
   // Dealer selection props (optional - used during cribbage_dealer_selection phase).
@@ -592,6 +602,7 @@ export const CribbageMobileGameTable = ({
   isHost,
   onGameComplete,
   onTerminalPresentationActiveChange,
+  onTerminalPresentationComplete,
   // Game configuration with defaults
   gameConfig = {
     pointsToWin: 121,
@@ -1924,6 +1935,33 @@ export const CribbageMobileGameTable = ({
     loserIds: string[];
     chatMessage?: string;
   } | null>(null);
+
+  // ── CANONICAL TERMINAL COMPLETION TOKEN ────────────────────────────────
+  // Publishes the stable terminal identity exactly once, on the
+  // non-complete → 'complete' phase edge. That edge is the true end of the
+  // whole canonical sequence (announcement + chip transfer + destination
+  // reaction + celebration) and is the same edge that calls onGameComplete.
+  const terminalCompletePublishedRef = useRef<string | null>(null);
+  const prevWinSequencePhaseRef = useRef<WinSequencePhase>('idle');
+  useEffect(() => {
+    const prev = prevWinSequencePhaseRef.current;
+    prevWinSequencePhaseRef.current = winSequencePhase;
+    if (winSequencePhase !== 'complete') return;
+    if (prev === 'complete' || prev === 'idle') return;
+    const identity = [
+      'cribbage',
+      'winseq',
+      gameId,
+      dealerGameId ?? 'no-dealer-game',
+      String(winSequenceData?.handNumber ?? 'no-hand'),
+      winSequenceData?.winnerId ?? 'no-winner',
+    ].join('|');
+    if (terminalCompletePublishedRef.current === identity) return;
+    terminalCompletePublishedRef.current = identity;
+    onTerminalPresentationComplete?.(identity);
+  }, [winSequencePhase, winSequenceData, gameId, dealerGameId, onTerminalPresentationComplete]);
+
+
 
   // ── Terminal-path discriminator ─
   // Explicitly tags which terminal trigger path produced the win, so the felt

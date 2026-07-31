@@ -76,7 +76,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
-import { SessionEndedTablePanel } from "@/components/canonicalShell/SessionEndedTablePanel";
+import { SessionEndedFeltPanel, SessionEndedPaneAction } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
@@ -1161,16 +1161,21 @@ const Game = () => {
   // session before the local celebration finishes).
   const [terminalPresentationActive, setTerminalPresentationActive] = useState(false);
 
-  // ── SHARED TRANSIENT "SESSION ENDED" TABLE ADMISSION ───────────────
-  // Client-local, never persisted, never written to the database. It is
-  // set ONLY by a terminal-presentation completion boundary observed live
-  // on this mount (Cribbage: the child's active→inactive publication;
-  // Holm: the route-owned win-pot completion callback). A fresh mount or a
-  // reconnect on an already-`session_ended` game can therefore never enter
-  // this state — it goes straight to lobby as before.
+  // ── SHARED SESSION ENDED TABLE PHASE ADMISSION ─────────────────────
+  // Client-local, never persisted (no DB, no localStorage, no
+  // sessionStorage). Admission requires ALL THREE of:
+  //   1. this mount observed the live terminal presentation running
+  //   2. authoritative status is session_ended (or pending_session_end)
+  //   3. the canonical terminal presentation for that SAME result published
+  //      its true completion token (stable terminal identity)
+  // `onTerminalPresentationActiveChange(false)` is NOT an admission edge —
+  // it also fires on cleanup / unmount / publisher replacement / phase and
+  // descriptor resets, which is what admitted the phase mid-celebration.
   const [sessionEndedTableAdmitted, setSessionEndedTableAdmitted] = useState(false);
   // Proof that THIS mount observed the live terminal presentation running.
   const liveTerminalPresentationObservedRef = useRef(false);
+  // Terminal identities whose canonical presentation completed on this mount.
+  const terminalPresentationCompletedRef = useRef<Set<string>>(new Set());
   // Latest authoritative terminal facts, readable from completion callbacks
   // (which are not re-created on every snapshot).
   const terminalStatusFactsRef = useRef<{ status: string | null; pendingSessionEnd: boolean }>({
@@ -1179,18 +1184,20 @@ const Game = () => {
   });
 
   /**
-   * Shared terminal-presentation activity channel. Gameplay surfaces publish
-   * `true` while their canonical win sequence runs and `false` at its
-   * completion boundary. The false edge — and only after a true edge on this
-   * mount — admits the transient Session Ended table when the authoritative
-   * session is (or is about to be) closed.
+   * Canonical terminal-completion endpoint. Games call this from the exact
+   * callback that fires only after their ENTIRE terminal sequence finished
+   * (scoring event → announcement → pot/chip transfer → destination
+   * reaction → celebration/confetti), passing a stable terminal identity
+   * derived from authoritative fields.
    *
-   * FUTURE-GAME CONTRACT: any game that routes its terminal presentation
-   * through `onTerminalPresentationActiveChange` gets Session Ended mode for
-   * free. Games with a route-owned completion callback (Holm) call
-   * `admitSessionEndedTable()` in that callback instead.
+   * FUTURE-GAME CONTRACT: publish liveness through
+   * `onTerminalPresentationActiveChange` (for the redirect hold) and call
+   * this once at true completion with a durable identity. Nothing else is
+   * required to get the shared Session Ended table phase.
    */
-  const admitSessionEndedTable = useCallback(() => {
+  const markTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
+    if (!terminalIdentity) return;
+    terminalPresentationCompletedRef.current.add(terminalIdentity);
     if (!liveTerminalPresentationObservedRef.current) return;
     const facts = terminalStatusFactsRef.current;
     if (facts.status !== 'session_ended' && !facts.pendingSessionEnd) return;
@@ -1198,13 +1205,9 @@ const Game = () => {
   }, []);
 
   const handleTerminalPresentationActiveChange = useCallback((active: boolean) => {
-    if (active) {
-      liveTerminalPresentationObservedRef.current = true;
-    } else if (liveTerminalPresentationObservedRef.current) {
-      admitSessionEndedTable();
-    }
+    if (active) liveTerminalPresentationObservedRef.current = true;
     setTerminalPresentationActive(active);
-  }, [admitSessionEndedTable]);
+  }, []);
 
   
   // Track previous game config for "Running it Back" detection
@@ -12144,11 +12147,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastRoundResult: game?.last_round_result ?? null,
       });
       if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
-      // Terminal presentation completion boundary (Holm LAST HAND). Admit
-      // the transient Session Ended table BEFORE the hold releases so the
-      // shell hands off gameplay → ended-table with no lobby frame between.
+      // CANONICAL HOLM TERMINAL COMPLETION BOUNDARY (LAST HAND). Publish
+      // the same stable identity used for presentation single-fire, so the
+      // Session Ended phase can only follow a completed presentation of the
+      // exact result that produced `session_ended`.
       liveTerminalPresentationObservedRef.current = true;
-      admitSessionEndedTable();
+      markTerminalPresentationComplete(
+        holmWinPotPresentationKey ?? `holm|winpot|${(game as any)?.current_game_uuid ?? 'no-dealer-game'}|${game?.total_hands ?? 'no-hand'}|${game?.last_round_result ?? 'no-result'}`,
+      );
 
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
@@ -12201,7 +12207,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
-  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete, holmWinPotPresentationKey, admitSessionEndedTable]);
+  }, [game?.status, game?.game_type, game?.last_round_result, (game as any)?.current_game_uuid, game?.total_hands, handleGameOverComplete, holmWinPotPresentationKey, markTerminalPresentationComplete]);
 
   // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
   const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
@@ -13879,12 +13885,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `session_ended` consults it. No status rewrite, no timer, no
   // duplicate surface.
   const _terminalPresentationHold =
-    (terminalPresentationActive || holmLastHandPresentationPending || sessionEndedTableAdmitted) &&
+    (terminalPresentationActive || holmLastHandPresentationPending) &&
     (game.status as string) === 'session_ended';
-  // Transient Session Ended table (client-local). Same mounted table shell,
-  // gameplay content replaced by the read-only results panel.
+  // Shared SESSION ENDED TABLE PHASE (client-local, read-only). Structurally
+  // like Waiting: same persistent shell, same felt, same seat ring, HUD/tab
+  // rail intact — every game-specific artifact retired (not blurred, not
+  // covered: not rendered). Mutually exclusive with
+  // `_terminalPresentationHold` by construction, because admission requires
+  // the canonical terminal presentation to have already completed and this
+  // predicate is only reachable after that completion token landed.
   const _sessionEndedTableActive =
-    sessionEndedTableAdmitted && (game.status as string) === 'session_ended';
+    sessionEndedTableAdmitted &&
+    (game.status as string) === 'session_ended' &&
+    !terminalPresentationActive &&
+    !holmLastHandPresentationPending;
 
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
@@ -14784,6 +14798,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // overlay layers kept animating. Keeping the SAME slot mounted
           // preserves the existing instances and keys.
           _terminalPresentationHold ||
+          // SESSION ENDED TABLE PHASE (shared). Same mounted slot, gameplay
+          // children retired via `isTerminalSessionEndHandoff`.
+          _sessionEndedTableActive ||
 
           // Phase 7 fix (inter-game continuity): keep the slot controller
           // continuously mounted across the inter-game lifecycle window
@@ -14843,12 +14860,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // to a real authoritative session end, and never while a
             // terminal presentation is still running locally.
             isTerminalSessionEndHandoff={
-              game?.game_type === 'holm-game' &&
-              game?.status === 'game_over' &&
-              (game as any)?.current_game_uuid == null &&
-              (game as any)?.pending_session_end === true &&
-              !_terminalPresentationHold
+              _sessionEndedTableActive ||
+              (game?.game_type === 'holm-game' &&
+                game?.status === 'game_over' &&
+                (game as any)?.current_game_uuid == null &&
+                (game as any)?.pending_session_end === true &&
+                !_terminalPresentationHold)
             }
+            sessionEndedPane={
+              _sessionEndedTableActive ? (
+                <SessionEndedPaneAction onBackToLobby={() => navigate('/')} />
+              ) : null
+            }
+
 
             neutralActiveTab={mobileActiveTab}
             onNeutralActiveTabChange={setMobileActiveTabWithTrace}
@@ -15407,6 +15431,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
                 onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
+                onTerminalPresentationComplete={markTerminalPresentationComplete}
                 dealerChatMessages={cribbageDealerChatMessages}
                 onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
@@ -16366,20 +16391,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
-            {/* Shared transient Session Ended table. Same shell, same felt,
-                same seat ring — gameplay content and every affordance are
-                replaced by the read-only results panel. Client-local. */}
+            {/* SESSION ENDED TABLE PHASE — felt-relative results panel.
+                Portals into the canonical felt surface, so it is clipped by
+                the felt ellipse and can never overlap the HUD/tab rail. The
+                "Back to Lobby" affordance lives in the active-pane region
+                (see `sessionEndedPane` on PlayfieldSlotController). */}
             {_sessionEndedTableActive ? (
-              <SessionEndedTablePanel
+              <SessionEndedFeltPanel
                 gameId={gameId!}
                 sessionName={game.name ?? null}
                 currentUserId={user?.id ?? null}
-                onBackToLobby={() => {
-                  setSessionEndedTableAdmitted(false);
-                  navigate('/');
-                }}
               />
             ) : null}
+
 
           </PersistentTableShell>
           
