@@ -1161,16 +1161,21 @@ const Game = () => {
   // session before the local celebration finishes).
   const [terminalPresentationActive, setTerminalPresentationActive] = useState(false);
 
-  // ── SHARED TRANSIENT "SESSION ENDED" TABLE ADMISSION ───────────────
-  // Client-local, never persisted, never written to the database. It is
-  // set ONLY by a terminal-presentation completion boundary observed live
-  // on this mount (Cribbage: the child's active→inactive publication;
-  // Holm: the route-owned win-pot completion callback). A fresh mount or a
-  // reconnect on an already-`session_ended` game can therefore never enter
-  // this state — it goes straight to lobby as before.
+  // ── SHARED SESSION ENDED TABLE PHASE ADMISSION ─────────────────────
+  // Client-local, never persisted (no DB, no localStorage, no
+  // sessionStorage). Admission requires ALL THREE of:
+  //   1. this mount observed the live terminal presentation running
+  //   2. authoritative status is session_ended (or pending_session_end)
+  //   3. the canonical terminal presentation for that SAME result published
+  //      its true completion token (stable terminal identity)
+  // `onTerminalPresentationActiveChange(false)` is NOT an admission edge —
+  // it also fires on cleanup / unmount / publisher replacement / phase and
+  // descriptor resets, which is what admitted the phase mid-celebration.
   const [sessionEndedTableAdmitted, setSessionEndedTableAdmitted] = useState(false);
   // Proof that THIS mount observed the live terminal presentation running.
   const liveTerminalPresentationObservedRef = useRef(false);
+  // Terminal identities whose canonical presentation completed on this mount.
+  const terminalPresentationCompletedRef = useRef<Set<string>>(new Set());
   // Latest authoritative terminal facts, readable from completion callbacks
   // (which are not re-created on every snapshot).
   const terminalStatusFactsRef = useRef<{ status: string | null; pendingSessionEnd: boolean }>({
@@ -1179,18 +1184,20 @@ const Game = () => {
   });
 
   /**
-   * Shared terminal-presentation activity channel. Gameplay surfaces publish
-   * `true` while their canonical win sequence runs and `false` at its
-   * completion boundary. The false edge — and only after a true edge on this
-   * mount — admits the transient Session Ended table when the authoritative
-   * session is (or is about to be) closed.
+   * Canonical terminal-completion endpoint. Games call this from the exact
+   * callback that fires only after their ENTIRE terminal sequence finished
+   * (scoring event → announcement → pot/chip transfer → destination
+   * reaction → celebration/confetti), passing a stable terminal identity
+   * derived from authoritative fields.
    *
-   * FUTURE-GAME CONTRACT: any game that routes its terminal presentation
-   * through `onTerminalPresentationActiveChange` gets Session Ended mode for
-   * free. Games with a route-owned completion callback (Holm) call
-   * `admitSessionEndedTable()` in that callback instead.
+   * FUTURE-GAME CONTRACT: publish liveness through
+   * `onTerminalPresentationActiveChange` (for the redirect hold) and call
+   * this once at true completion with a durable identity. Nothing else is
+   * required to get the shared Session Ended table phase.
    */
-  const admitSessionEndedTable = useCallback(() => {
+  const markTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
+    if (!terminalIdentity) return;
+    terminalPresentationCompletedRef.current.add(terminalIdentity);
     if (!liveTerminalPresentationObservedRef.current) return;
     const facts = terminalStatusFactsRef.current;
     if (facts.status !== 'session_ended' && !facts.pendingSessionEnd) return;
@@ -1198,13 +1205,9 @@ const Game = () => {
   }, []);
 
   const handleTerminalPresentationActiveChange = useCallback((active: boolean) => {
-    if (active) {
-      liveTerminalPresentationObservedRef.current = true;
-    } else if (liveTerminalPresentationObservedRef.current) {
-      admitSessionEndedTable();
-    }
+    if (active) liveTerminalPresentationObservedRef.current = true;
     setTerminalPresentationActive(active);
-  }, [admitSessionEndedTable]);
+  }, []);
 
   
   // Track previous game config for "Running it Back" detection
