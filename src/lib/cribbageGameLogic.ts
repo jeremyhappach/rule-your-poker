@@ -349,12 +349,22 @@ function advanceToCutting(state: CribbageState): CribbageState {
   // Debug Harness: deterministic cut when "Max Pegging Fan" is active.
   // 4♠ never conflicts with the A/2/3 deal and is not a Jack (avoids
   // gratuitous his-heels noise during pegging-fan tuning).
+  //
+  // Debug Harness: "Perpetual Heels" forces a Jack starter EVERY hand.
+  // The Jack is chosen from `deck`, which already excludes every card in
+  // any player hand and the crib — so no duplicate is created, and the
+  // chosen starter is (like any starter) not returned to the deck.
+  // getActiveHarnessCached is fail-closed on the harnesses master gate,
+  // so with the gate OFF this reduces to normal random selection.
   const harnessCutId = getActiveHarnessCached('cribbage');
   const harnessCut =
     harnessCutId === 'max_pegging_fan'
       ? deck.find(c => c.rank === '4' && c.suit === 'spades')
-      : undefined;
+      : harnessCutId === 'perpetual_heels'
+        ? deck.find(c => c.rank === 'J')
+        : undefined;
   const cutCard = harnessCut ?? deck[Math.floor(Math.random() * deck.length)];
+
   
   let newState: CribbageState = {
     ...state,
