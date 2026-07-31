@@ -12331,7 +12331,17 @@ export const MobileGameTable = ({
                 holm.lonePlayerTabledCardsStage
                 holm.chuckyStage
               Stages own geometry; cards derive size from assignedRect.height. */}
-        {gameType === 'holm-game' && (() => {
+        {/* SESSION ENDED CARD-SURFACE EXCLUSION (shared phase signal):
+              Holm card presentation surface admitted =
+                normal Holm admission && !sessionEndedPhase
+            This single parent gate owns ALL THREE tabled-card groups
+            (lone/winning-player fan, community row, Chucky row) plus the
+            rabbit-hunt marker. Presentation admission is removed — no
+            opacity masking, no offscreen moves, no DB mutation. Session
+            Ended is only admitted after the canonical terminal
+            presentation completion boundary, so cards remain through the
+            full reveal/showdown/celebration. */}
+        {gameType === 'holm-game' && !sessionEndedPhase && (() => {
           let communityShouldShow =
             !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&
