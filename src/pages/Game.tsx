@@ -14298,6 +14298,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         variant="outline" 
                         onClick={() => { void addBotAuthoritative().catch(() => {}); }}
 
+
                       >
                         <Bot className="w-4 h-4 mr-2" />
                         Add Bot
