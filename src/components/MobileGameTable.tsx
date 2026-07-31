@@ -10745,7 +10745,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Turn Spotlight - Dealer Selection Winner */}
-        {dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
+        {!sessionEndedPhase && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
           <TurnSpotlight
             currentTurnPosition={dealerSelectionWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
