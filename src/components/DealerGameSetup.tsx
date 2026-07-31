@@ -1799,12 +1799,14 @@ const DealerGameSetupInner = ({
                     <button
                       key={game.id}
                       onClick={() => handleGameSelect(game.id)}
-                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
+                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center gap-3 border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
+                      {activeHarnessMap[game.id]?.active && <HarnessBadge />}
                       <span className="text-base font-bold text-poker-gold">
                         {game.name}
                       </span>
-                      <span className="text-sm text-amber-200/80 ml-3">
+                      <span className="text-sm text-amber-200/80">
+
                         — {game.description}
                       </span>
                     </button>
