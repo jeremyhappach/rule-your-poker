@@ -3094,6 +3094,19 @@ export const CribbageMobileGameTable = ({
   // `peg_notice` transients. Replaces the local gold-plate fallback for
   // pegging_points / go_point / his_heels. Dedup is per event.id.
   const emittedPegEventIdRef = useRef<string | null>(null);
+  // ── His Heels terminal boundary (presentation-only).
+  //
+  // A game can END on the cut itself (dealer's His Heels +2 crosses
+  // pointsToWin). Authoritative state authors `cutCard`, the `his_heels`
+  // event AND `phase: 'complete'` + `winnerPlayerId` in ONE transition,
+  // so without a gate the win sequence starts in the same frame the cut
+  // card first exists — the reveal + "+2" plate never become observable.
+  //
+  // This latch records the id of the heels event whose canonical
+  // presentation has finished (rail-owned TTL retirement). The win
+  // sequence trigger holds until then. Authoritative settlement is
+  // untouched: this only delays local presentation.
+  const [heelsPresentationConsumedId, setHeelsPresentationConsumedId] = useState<string | null>(null);
   useEffect(() => {
     const event = cribbageState?.lastEvent;
     if (!event) return;
@@ -3109,14 +3122,36 @@ export const CribbageMobileGameTable = ({
       event.type === 'his_heels'
         ? `${name}: His Heels (+2)`
         : `${name}: ${event.label} (+${event.points})`;
+    const isHeels = event.type === 'his_heels';
+    const heelsEventId = event.id;
     announcements.emit({
       id: `${gameId}:peg:${event.id}`,
       type: 'peg_notice',
       scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
       payload: { title },
       ttlMs: 3000,
+      ...(isHeels
+        ? {
+            onRetired: () => setHeelsPresentationConsumedId(heelsEventId),
+          }
+        : {}),
     });
+    if (isHeels) {
+      // Durability fallback only: if the canonical rail never retires the
+      // plate (dropped emit / provider teardown), the terminal presentation
+      // must not stall forever. Matches the rail TTL + one frame budget.
+      const t = setTimeout(() => setHeelsPresentationConsumedId(heelsEventId), 3400);
+      return () => clearTimeout(t);
+    }
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
+
+  // True while a His Heels cut reveal + "+2" plate still owes its
+  // presentation before the terminal win sequence may begin.
+  const heelsTerminalHoldActive =
+    !!cribbageState?.winnerPlayerId &&
+    cribbageState?.phase === 'complete' &&
+    cribbageState?.lastEvent?.type === 'his_heels' &&
+    heelsPresentationConsumedId !== cribbageState.lastEvent.id;
 
   // ── Phase 3: emit a brief "Dealing Next Hand…" transient at the
   // post-counting handoff. Edge-triggered on postCountingTransitionActive.
@@ -4872,6 +4907,9 @@ export const CribbageMobileGameTable = ({
     if (!cribbageState?.winnerPlayerId) return;
     if (cribbageState.phase !== 'complete') return;
     if (countingAnimationActiveRef.current) return;
+    // His Heels terminal boundary: hold the win sequence until the cut
+    // reveal + "+2" plate presentation has completed. Presentation-only.
+    if (heelsTerminalHoldActive) return;
     const winKey = winKeyFor(cribbageState.winnerPlayerId);
     if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
 
@@ -4880,7 +4918,7 @@ export const CribbageMobileGameTable = ({
     // [TERMINAL-PATH] this branch fires only when counting was never active.
     setTerminalPath('pegging');
     triggerWinSequence(cribbageState);
-  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence, heelsTerminalHoldActive]);
 
   // CRITICAL: When currentRoundId changes, reset the sync framework baseline
   // so new-hand snapshots are accepted.
@@ -8723,6 +8761,7 @@ export const CribbageMobileGameTable = ({
                   : null
               }
               dealerPlayerId={gameplayRenderState.dealerPlayerId ?? null}
+              holdCutRevealForHeels={heelsTerminalHoldActive}
             />
           )}
 
