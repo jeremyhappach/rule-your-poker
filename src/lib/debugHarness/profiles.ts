@@ -65,7 +65,13 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       label: 'Max Pegging Fan',
       description: 'Deterministic legal deal of low cards (A/2/3 ×2 suits each) — guarantees both players play all 8 cards without breaking 31, producing a maximum-length pegging row.',
     },
+    {
+      id: 'perpetual_heels',
+      label: 'Perpetual Heels',
+      description: 'Every hand: the authoritative starter/cut card is deterministically a Jack (chosen from the undealt remainder), so His Heels fires each hand. Deck integrity, hands, crib, scoring and settlement are untouched.',
+    },
   ],
+
   'gin-rummy': [
     NONE_HARNESS,
     {
