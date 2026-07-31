@@ -78,8 +78,12 @@ export function CanonicalAnnouncementLayer() {
   // outranks the dealer_configuring ambient so the winner plate gets
   // its paint window. Once match_win leaves the active slot,
   // dealer_configuring resumes between-games precedence.
+  // SESSION ENDED outranks everything: it is the terminal-most phase
+  // plate and must not be displaced by leftover gameplay announcements.
   const railActive =
-    ctx.active?.type === 'match_win'
+    ctx.ambient?.type === 'session_ended'
+      ? ctx.ambient
+      : ctx.active?.type === 'match_win'
       ? ctx.active
       : ctx.ambient?.type === 'dealer_configuring'
         ? ctx.ambient
