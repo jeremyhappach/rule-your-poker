@@ -196,16 +196,15 @@ export function SessionEndedFeltPanel({
                   key={r.key}
                   className="flex items-center justify-between gap-2.5 h-auto min-h-[21px] py-[1px] shrink-0 grow-0"
                 >
-
                   <span
                     title={r.username}
                     aria-label={r.username}
-                    className={`truncate text-xs leading-none ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
+                    className={`truncate text-xs leading-tight ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
                   >
                     {r.username}
                   </span>
                   <span
-                    className={`text-xs font-semibold font-mono tabular-nums leading-none shrink-0 text-right ${
+                    className={`text-xs font-semibold font-mono tabular-nums leading-tight shrink-0 text-right ${
                       r.net > 0 ? 'text-emerald-500' : r.net < 0 ? 'text-destructive' : 'text-muted-foreground'
                     }`}
                   >
