@@ -14798,6 +14798,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // overlay layers kept animating. Keeping the SAME slot mounted
           // preserves the existing instances and keys.
           _terminalPresentationHold ||
+          // SESSION ENDED TABLE PHASE (shared). Same mounted slot, gameplay
+          // children retired via `isTerminalSessionEndHandoff`.
+          _sessionEndedTableActive ||
 
           // Phase 7 fix (inter-game continuity): keep the slot controller
           // continuously mounted across the inter-game lifecycle window
