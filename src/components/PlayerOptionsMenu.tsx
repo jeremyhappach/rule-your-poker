@@ -68,6 +68,13 @@ export const PlayerOptionsMenu = ({
   // the item is disabled while in flight (no duplicate creation) and the
   // pending state ALWAYS clears in `finally` (never latches), so a
   // failure leaves the action retryable.
+  //
+  // Success confirmation is the table itself: the owner resolves only once
+  // the canonical player projection has observed the new bot, and only then
+  // do we close the menu so the yellow waiting seat is visible. On failure
+  // the owner throws (after its own destructive toast) and the menu stays
+  // open — never a false implication of success.
+  const [open, setOpen] = useState(false);
   const [addBotPending, setAddBotPending] = useState(false);
   const addBotInFlightRef = useRef(false);
   const runAddBot = async () => {
@@ -76,20 +83,15 @@ export const PlayerOptionsMenu = ({
     setAddBotPending(true);
     try {
       await onAddBot();
+      setOpen(false);
+    } catch {
+      // Failure surfaced by the authoritative owner; keep the menu open.
     } finally {
       addBotInFlightRef.current = false;
       setAddBotPending(false);
     }
   };
-  // Debug logging for Add Bot visibility
-  console.log('[PLAYER OPTIONS MENU] Rendering with:', {
-    isHost,
-    canAddBot,
-    hasOnAddBot: !!onAddBot,
-    gameStatus,
-    isObserver,
-    isWaitingPhase: gameStatus === 'waiting'
-  });
+
   
   // Check if we're in the waiting phase (before game starts)
   const isWaitingPhase = gameStatus === 'waiting';
