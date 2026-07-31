@@ -1059,6 +1059,15 @@ interface MobileGameTableProps {
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
   /**
+   * SESSION ENDED TABLE PHASE (shared, client-local, read-only).
+   * When true every game-specific presentation owner in this surface is
+   * retired — not blurred, not covered: not rendered. Pot zone, turn
+   * spotlights, dealer/buck/leg decorators, gameplay seat decorators,
+   * active-hand cards + action rows and the HUD timer row are all
+   * suppressed. Chat / history / lobby tabs and the HUD stack stay live.
+   */
+  sessionEndedPhase?: boolean;
+  /**
    * 3-5-7 entry-mode provenance. Mirrors the Cribbage identity contract:
    * captured at the persistent Game.tsx route-mount. 'live-transition'
    * means a new hand was created after this route mounted → PRE_DEAL so
@@ -1314,6 +1323,7 @@ export const MobileGameTable = ({
   getPositionForUserId,
   onLeaveGameNow,
   isWaitingPhase = false,
+  sessionEndedPhase = false,
   waitingSlotContent,
   waitingActivePaneContent,
   realMoney = false,
@@ -10708,6 +10718,7 @@ export const MobileGameTable = ({
                 !awaitingNextRound &&
                 spotlightPosition !== null &&
                 !isWaitingPhase &&
+                !sessionEndedPhase &&
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
               }
@@ -10727,14 +10738,14 @@ export const MobileGameTable = ({
             isObserver={!currentPlayer}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
-            isVisible={horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
+            isVisible={!sessionEndedPhase && horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
             useFullCoverage={true}
             disabled={true}
           />
         )}
         
         {/* Turn Spotlight - Dealer Selection Winner */}
-        {dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
+        {!sessionEndedPhase && dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
           <TurnSpotlight
             currentTurnPosition={dealerSelectionWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -11625,7 +11636,7 @@ export const MobileGameTable = ({
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
         {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
         {(() => {
-          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
+          const shouldHidePot = !!(sessionEndedPhase || isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
 
           // IMPORTANT: During the initial ante animation we must never briefly show a stale pre-ante pot
@@ -13087,8 +13098,12 @@ export const MobileGameTable = ({
             'game_selection',
             'ante_decision',
           ]);
+          // Session Ended reuses the pre-session static identity pill
+          // path: exactly one seat cluster per participant, no gameplay
+          // decorators (turn pulse, dealer pip, legs, card backs,
+          // emoticons, ValueChangeFlash).
           const isPreSessionPhase =
-            !!gameStatus && PRE_SESSION_STATUSES.has(gameStatus);
+            sessionEndedPhase || (!!gameStatus && PRE_SESSION_STATUSES.has(gameStatus));
 
           return players.map((player) => {
             const anchor = shellAnchors?.byPosition.get(player.position);
@@ -13186,7 +13201,7 @@ export const MobileGameTable = ({
             buck tracks the seat through every projection-mode change
             (observer-absolute / active-canonical) and lifecycle phase
             without a parallel pixel map. */}
-        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
+        {!sessionEndedPhase && gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
           const buckAnchor = shellAnchors?.byPosition.get(buckPosition);
           const buckSlot = buckAnchor?.slot ?? null;
           if (buckSlot === null) return null;
@@ -13205,7 +13220,7 @@ export const MobileGameTable = ({
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
         {/* Use a stable snapshot during the win transition so legs don't disappear/reappear mid-sequence */}
-        {gameType !== 'holm-game' && currentPlayer && (() => {
+        {!sessionEndedPhase && gameType !== 'holm-game' && currentPlayer && (() => {
           const hideLegsForWinAnimation =
             threeFiveSevenWinPhase === 'legs-to-player' ||
             threeFiveSevenWinPhase === 'pot-to-player' ||
@@ -13442,7 +13457,7 @@ export const MobileGameTable = ({
              row-5 owner. No game-specific timer visuals, no free-flowing
              content below ShellTabBar. Containment / scaling issues exposed
              by this migration are deferred to a subsequent phase. */
-          const hasTimer = !!isPaused || (
+          const hasTimer = !sessionEndedPhase && (!!isPaused || (
             diceGameplayUiActive &&
             horsesController.enabled &&
             horsesController.gamePhase === 'playing' &&
@@ -13457,7 +13472,7 @@ export const MobileGameTable = ({
             timeLeft !== null &&
             timeLeft > 0 &&
             !!maxTime
-          );
+          ));
 
           const paneContent = (
             <>
@@ -13471,7 +13486,7 @@ export const MobileGameTable = ({
               )}
 
               {/* CARDS TAB - Player cards, buttons */}
-              {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
+              {!isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
                 diceGameplayUiActive ? (
                   <HorsesMobileCardsTab
                     currentUserPlayer={currentPlayer as any}
@@ -14176,7 +14191,7 @@ export const MobileGameTable = ({
               )}
 
               {/* CARDS TAB - Observer state */}
-              {!isWaitingPhase && activeTab === 'cards' && !currentPlayer && (
+              {!isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && !currentPlayer && (
                 <div className="px-4 pb-4 h-full">
                   <div className="flex items-center justify-between mb-3">
                     {onLeaveGameNow && (
@@ -14303,7 +14318,24 @@ export const MobileGameTable = ({
             </>
           );
 
-          const identityContent = currentPlayer ? (
+          // SESSION ENDED identity row: static name + final balance only.
+          // No emoticon picker, no dealer indicator, no turn/status text,
+          // no ValueChangeFlash, no gameplay badges.
+          const identityContent = sessionEndedPhase ? (
+            currentPlayer ? (
+              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {currentPlayer.profiles?.username || 'You'}
+                </p>
+                <span className={cn(
+                  "font-bold text-lg tabular-nums",
+                  (currentPlayer.chips ?? 0) < 0 ? 'text-destructive' : 'text-poker-gold'
+                )}>
+                  ${formatChipValue(Math.round(currentPlayer.chips ?? 0))}
+                </span>
+              </div>
+            ) : null
+          ) : currentPlayer ? (
             <div className={cn(
               "w-full h-full flex items-center justify-center px-3",
               isTablet ? "gap-3" : "gap-2"
