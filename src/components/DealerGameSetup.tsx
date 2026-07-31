@@ -2114,10 +2114,11 @@ const DealerGameSetupInner = ({
   // Cards selection step - show poker game tabs
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
-        <CardContent className="pt-6 pb-6 space-y-4">
+      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+        <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
           {/* Header with Timer */}
-          <div className="flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between">
+
             <div>
               <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
               <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
