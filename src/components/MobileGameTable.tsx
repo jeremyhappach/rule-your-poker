@@ -10718,6 +10718,7 @@ export const MobileGameTable = ({
                 !awaitingNextRound &&
                 spotlightPosition !== null &&
                 !isWaitingPhase &&
+                !sessionEndedPhase &&
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
               }
