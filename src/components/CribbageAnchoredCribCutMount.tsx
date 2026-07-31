@@ -137,7 +137,25 @@ export function CribbageAnchoredCribCutMount({
   holdCutRevealForHeels = false,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
-  const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
+  //
+  // TERMINAL HIS HEELS: authoritative state authors `cutCard` + the
+  // `his_heels` event + `phase: 'complete'` in ONE transition. Every
+  // parked-cluster gate below keys off `phaseForLayout !== 'complete'`,
+  // so without this remap the whole [crib cardbacks | gap | cut card]
+  // cluster (`cribParked`) collapses in the same frame the cut card
+  // first exists — the cardbacks vanish and the canonical flip never
+  // mounts. While the heels presentation hold is active we present the
+  // layout phase as `cutting`, i.e. EXACTLY the non-terminal cut
+  // ownership path. Purely presentational: authoritative phase is
+  // unchanged, and the hold is released by the canonical heels plate's
+  // rail-owned retirement, after which `complete` classifies normally
+  // and the crib/cut artifacts retire through their usual boundary.
+  const phaseForLayout = countingOutroActive
+    ? 'pegging'
+    : holdCutRevealForHeels && cribbageState.phase === 'complete'
+      ? 'cutting'
+      : cribbageState.phase;
+
 
   const isCountingTerminalPath =
     terminalPath === 'counting' ||
