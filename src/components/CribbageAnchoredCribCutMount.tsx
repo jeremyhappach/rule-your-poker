@@ -112,6 +112,15 @@ export interface CribbageAnchoredCribCutMountProps {
    * If undefined, falls back to a snap of `crib.length` to {0,2,4}.
    */
   reservedCribLayoutCount?: 0 | 2 | 4;
+  /**
+   * True while a His Heels terminal boundary still owes its cut-card
+   * reveal presentation (game ended on the cut). Authoritative state is
+   * already `complete`, which would otherwise classify as a pegging win
+   * and retire the cut artifact in the same frame it appeared. Purely
+   * presentational hold — released by the game table once the canonical
+   * heels plate retires.
+   */
+  holdCutRevealForHeels?: boolean;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -125,6 +134,7 @@ export function CribbageAnchoredCribCutMount({
   dealerDisplayName = null,
   dealerPlayerId = null,
   reservedCribLayoutCount,
+  holdCutRevealForHeels = false,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
@@ -135,6 +145,7 @@ export function CribbageAnchoredCribCutMount({
     terminalPath === 'crib-counting';
 
   const isPeggingWin =
+    !holdCutRevealForHeels &&
     phaseForLayout === 'complete' &&
     (terminalPath === 'pegging' ||
       (terminalPath === null && !cribbageState.lastHandCount));
@@ -144,7 +155,8 @@ export function CribbageAnchoredCribCutMount({
       (phaseForLayout === 'complete' && !!cribbageState.lastHandCount) ||
       (phaseForLayout === 'complete' && isCountingTerminalPath) ||
       (phaseForLayout === 'complete' && terminalPath === 'fallback')) &&
-    !isPeggingWin;
+    !isPeggingWin &&
+    !holdCutRevealForHeels;
 
   const showCribOnFelt =
     cribbageState.crib.length > 0 &&
