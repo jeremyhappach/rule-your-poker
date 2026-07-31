@@ -8761,6 +8761,7 @@ export const CribbageMobileGameTable = ({
                   : null
               }
               dealerPlayerId={gameplayRenderState.dealerPlayerId ?? null}
+              holdCutRevealForHeels={heelsTerminalHoldActive}
             />
           )}
 
