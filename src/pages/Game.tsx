@@ -16072,13 +16072,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // those surfaces shadowed the shell-owned one because the shell
   // roster excluded `waiting` rows; hoisting to a single ambient
   // provider requires the shell roster to be the union of both.
-  // sitting_out is still excluded — sitting_out is a gameplay-state
+  // sitting_out rows are still excluded — sitting_out is a gameplay-state
   // signal and the gameplay surfaces deliberately render them
-  // separately. observer / left are excluded as before (no seat).
+  // separately — EXCEPT when the row is also `waiting=true`. A
+  // waiting+sitting_out row is a participant who has been authoritatively
+  // seated for the NEXT hand (this is exactly how mid-game Add Bot
+  // inserts a bot). Those rows own a real seat position and must appear
+  // in the canonical seat ring immediately, painted with the canonical
+  // yellow `waiting` palette by derivePlayerStatus. Excluding them was
+  // the reason a newly added bot only became visible once the next hand
+  // cleared sitting_out. observer / left are excluded as before (no seat).
+  const _isShellSeatRosterMember = (p: { status?: string | null; sitting_out?: boolean | null; waiting?: boolean | null }) =>
+    p.status !== 'observer' && p.status !== 'left' && (!p.sitting_out || p.waiting === true);
   // Stable-identity shell seat roster (see hook-rule note below).
   const _shellSeatRosterKey = shellAnchorEligible
     ? players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
         .map(p => p.position)
         .sort((a, b) => a - b)
         .join(',')
@@ -16090,11 +16099,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       shellEligibleSeats = cached.seats;
     } else {
       shellEligibleSeats = players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
         .map(p => ({ position: p.position, occupied: true, hidden: false }));
       __shellSeatRosterCache.set(gameId, { key: _shellSeatRosterKey, seats: shellEligibleSeats });
     }
   }
+
   // Same broadening for the seated-viewer projection check so a viewer
   // whose row is `waiting` (just joined) gets 'active-canonical' from
   // the shell — matching the projection the previous local provider
@@ -16155,7 +16165,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isLobbyMode = _isPreSessionPhase;
   const _shellPreSessionRosterKey = (shellAnchorEligible && _isLobbyMode)
     ? players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
+
         .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}`)
         .sort()
         .join('|')
@@ -16179,7 +16190,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       preSessionParticipants = cached.participants;
     } else {
       preSessionParticipants = players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
         .map(p => ({
           id: p.id,
           position: p.position,

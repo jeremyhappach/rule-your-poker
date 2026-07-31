@@ -16,7 +16,7 @@ import { generateUUID } from "@/lib/uuid";
 import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
-import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import { allocateBotAliasNumber, makeBotUsername } from "@/lib/botNaming";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -212,15 +212,12 @@ export function useWaitingRoomActions({
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
 
-      // Single source of truth for bot display names. `getBotAlias` will
-      // override at render anyway, but writing canonical "Bot N" at
-      // insertion eliminates the brief "Bot {hex}" flash on any path
-      // that reads `profiles.username` before the alias resolver runs.
-      const existingUsernames = (playersRef.current ?? [])
-        .filter((p) => p.is_bot)
-        .map((p: any) => p?.profiles?.username ?? null);
-      const nextNumber = getNextBotNumber(existingUsernames);
+      // Single source of truth for bot display names: the durable,
+      // atomically-allocated session ordinal. Never derived from the
+      // current roster, so removed bot numbers are never reused.
+      const nextNumber = await allocateBotAliasNumber(gameId);
       let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
+
       botNameForToast = botName;
 
       const { error: profileError } = await perf.step("profiles.insert", () =>

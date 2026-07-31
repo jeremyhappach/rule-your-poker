@@ -3,7 +3,7 @@ import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
-import { getNextBotNumber, makeBotUsername } from "./botNaming";
+import { allocateBotAliasNumber, makeBotUsername } from "./botNaming";
 import { recordStartupFlight } from "./startupFlightRecorder";
 
 // Weighted aggression levels - extreme levels are rare
@@ -117,19 +117,10 @@ export async function addBotPlayer(gameId: string) {
   const aggressionLevel = getRandomAggressionLevel(botId);
   console.log('[BOT CREATION] Assigned aggression level:', aggressionLevel);
   
-  // Get bot usernames scoped to this game session (including left bots) for sequential numbering
-  const { data: gameBotPlayers, error: profilesError } = await supabase
-    .from('players')
-    .select('user_id, profiles(username)')
-    .eq('game_id', gameId)
-    .eq('is_bot', true);
+  // Durable, session-lifetime bot ordinal (atomic; never reuses the
+  // number of a removed bot).
+  const nextNumber = await allocateBotAliasNumber(gameId);
 
-  if (profilesError) {
-    console.error('[BOT CREATION] Error fetching game bot players:', profilesError);
-  }
-
-  const existingUsernames = (gameBotPlayers ?? []).map((p) => (p.profiles as any)?.username);
-  const nextNumber = getNextBotNumber(existingUsernames);
 
   // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
   let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
@@ -238,19 +229,10 @@ export async function addBotPlayerSittingOut(gameId: string) {
   const aggressionLevel = getRandomAggressionLevel(botId);
   console.log('[BOT CREATION SITTING-OUT] Assigned aggression level:', aggressionLevel);
   
-  // Get bot usernames scoped to this game session (including left bots) for sequential numbering
-  const { data: gameBotPlayers, error: profilesError } = await supabase
-    .from('players')
-    .select('user_id, profiles(username)')
-    .eq('game_id', gameId)
-    .eq('is_bot', true);
+  // Durable, session-lifetime bot ordinal (atomic; never reuses the
+  // number of a removed bot).
+  const nextNumber = await allocateBotAliasNumber(gameId);
 
-  if (profilesError) {
-    console.error('[BOT CREATION SITTING-OUT] Error fetching game bot players:', profilesError);
-  }
-
-  const existingUsernames = (gameBotPlayers ?? []).map((p) => (p.profiles as any)?.username);
-  const nextNumber = getNextBotNumber(existingUsernames);
 
   // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
   let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
