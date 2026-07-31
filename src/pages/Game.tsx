@@ -16165,7 +16165,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isLobbyMode = _isPreSessionPhase;
   const _shellPreSessionRosterKey = (shellAnchorEligible && _isLobbyMode)
     ? players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
+
         .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}`)
         .sort()
         .join('|')
@@ -16189,7 +16190,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       preSessionParticipants = cached.participants;
     } else {
       preSessionParticipants = players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .filter(_isShellSeatRosterMember)
         .map(p => ({
           id: p.id,
           position: p.position,
