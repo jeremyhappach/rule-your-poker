@@ -543,6 +543,22 @@ export function PlayfieldSlotController({
               participantGameType={neutralParticipantGameType}
             />
           </div>
+          {sessionEndedPane ? (
+            /* Felt-relative pane region: spacer matches the felt block inside
+               NeutralInterstitial, so this content sits in the local player's
+               content pane below the felt — never over the HUD/tab rail. */
+            <div
+              data-session-ended-phase-pane=""
+              className="relative z-10 h-full min-h-0 flex flex-col"
+              style={{ pointerEvents: 'none' }}
+            >
+              <div aria-hidden style={{ flex: '0 0 var(--play-top-safe-area, 0px)' }} />
+              <div aria-hidden style={{ flex: '0 0 var(--shell-felt-h)' }} />
+              <div className="flex-1 min-h-0 flex flex-col justify-end">
+                {sessionEndedPane}
+              </div>
+            </div>
+          ) : null}
         </div>
       );
     }
