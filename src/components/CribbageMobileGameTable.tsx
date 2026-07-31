@@ -3136,13 +3136,10 @@ export const CribbageMobileGameTable = ({
           }
         : {}),
     });
-    if (isHeels) {
-      // Durability fallback only: if the canonical rail never retires the
-      // plate (dropped emit / provider teardown), the terminal presentation
-      // must not stall forever. Matches the rail TTL + one frame budget.
-      const t = setTimeout(() => setHeelsPresentationConsumedId(heelsEventId), 3400);
-      return () => clearTimeout(t);
-    }
+    // Single completion owner: the canonical rail's own `onRetired` emit
+    // above releases the heels terminal hold exactly once. No local
+    // fallback timer / debounce / minimum-duration hold exists here.
+
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
 
   // True while a His Heels cut reveal + "+2" plate still owes its
