@@ -2122,6 +2122,11 @@ const DealerGameSetupInner = ({
             <div>
               <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
               <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
+              {activeHarnessMap[selectedGameType]?.active && (
+                <p className="mt-1 text-sm font-bold text-red-500">
+                  Harness: {activeHarnessMap[selectedGameType].label}
+                </p>
+              )}
             </div>
             {timeLeft !== null && (
               <Badge 
@@ -2134,8 +2139,11 @@ const DealerGameSetupInner = ({
             )}
           </div>
 
+          {/* Scrollable configuration body — footer stays reachable */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
           {/* Game Type Tabs */}
           <Tabs value={selectedGameType} onValueChange={handleGameTypeChange} className="w-full">
+
             <TabsList className="grid w-full grid-cols-2 bg-amber-900/50">
               <TabsTrigger 
                 value="holm-game" 
