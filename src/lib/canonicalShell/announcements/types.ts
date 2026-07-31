@@ -34,7 +34,8 @@ export type AnnouncementType =
   | 'dealer_selection_in_progress'
   | 'awaiting_ante'
   | 'awaiting_discards'
-  | 'cta_prompt';
+  | 'cta_prompt'
+  | 'session_ended';
 
 
 /**
@@ -128,6 +129,7 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   waiting_for_next_round: 40,
   cta_prompt: 35,
   waiting_for_player: 30,
+  session_ended: 46,
 };
 
 export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = {
@@ -145,6 +147,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   waiting_for_players: 'ambient',
   waiting_for_next_round: 'ambient',
   waiting_for_player: 'ambient',
+  session_ended: 'ambient',
 };
 
 export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
