@@ -210,9 +210,13 @@ export const GameSelection = ({
                         <span className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
                           {game.name}
                         </span>
+                        {harnessMap[game.id]?.active && (
+                          <HarnessBadge label={harnessMap[game.id].label} />
+                        )}
                         <span className={`text-sm ${disabled ? 'text-gray-500' : 'text-amber-200/80'}`}>
                           — {game.description}
                         </span>
+
                       </div>
                       {restriction && (
                         <span className={`text-xs font-medium flex-shrink-0 ${
