@@ -113,45 +113,86 @@ export function isHarnessCacheLoaded(): boolean {
   return harnessLoaded && harnessesModeLoaded && globalLoaded;
 }
 
+/**
+ * Authoritative re-read of the shared global harness record.
+ *
+ * The ONLY source of truth is:
+ *   - public.game_defaults.debug_harness   (per game_type, global)
+ *   - public.system_settings key='harnesses_mode'.value.enabled (global gate)
+ *
+ * Nothing here is user-, device- or dealer-scoped. Returns false when the
+ * read failed, so callers can retry instead of pinning a stale 'none'.
+ */
+async function fetchAuthoritative(): Promise<boolean> {
+  try {
+    const [defaultsRes, settingsRes] = await Promise.all([
+      supabase.from('game_defaults').select('game_type, debug_harness'),
+      supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['debug_mode', 'harnesses_mode']),
+    ]);
+    if (defaultsRes.error || !defaultsRes.data) return false;
+    if (settingsRes.error || !settingsRes.data) return false;
+
+    for (const row of defaultsRes.data as Array<{ game_type: string; debug_harness: string | null }>) {
+      harnessCache[row.game_type] = row.debug_harness ?? 'none';
+    }
+    for (const row of settingsRes.data as Array<{ key: string; value: { enabled?: boolean } | null }>) {
+      const enabled = !!row.value?.enabled;
+      if (row.key === 'debug_mode') globalDebugEnabled = enabled;
+      if (row.key === 'harnesses_mode') harnessesModeEnabled = enabled;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function notifyAll(): void {
+  globalListeners.forEach((cb) => cb(globalDebugEnabled));
+  harnessesModeListeners.forEach((cb) => cb(harnessesModeEnabled));
+  harnessListeners.forEach((cb) => cb());
+}
+
+/**
+ * Force an authoritative re-read of the global record and notify listeners.
+ * Used by harness-warning surfaces on mount and by realtime (re)subscription
+ * so no client can drift onto a stale local projection.
+ */
+export async function refreshHarnessCache(): Promise<void> {
+  const ok = await fetchAuthoritative();
+  if (ok) {
+    harnessLoaded = true;
+    harnessesModeLoaded = true;
+    globalLoaded = true;
+  }
+  bindRealtime();
+  notifyAll();
+}
+
 /** Idempotent hydrate + (lazy) realtime bind. Safe to call from many sites. */
 export async function ensureHarnessCacheLoaded(): Promise<void> {
   if (harnessLoaded && harnessesModeLoaded && globalLoaded) return;
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
-    try {
-      const [defaultsRes, settingsRes] = await Promise.all([
-        supabase.from('game_defaults').select('game_type, debug_harness'),
-        supabase
-          .from('system_settings')
-          .select('key, value')
-          .in('key', ['debug_mode', 'harnesses_mode']),
-      ]);
-      if (!defaultsRes.error && defaultsRes.data) {
-        for (const row of defaultsRes.data as Array<{ game_type: string; debug_harness: string | null }>) {
-          harnessCache[row.game_type] = row.debug_harness ?? 'none';
-        }
-      }
-      if (!settingsRes.error && settingsRes.data) {
-        for (const row of settingsRes.data as Array<{ key: string; value: { enabled?: boolean } | null }>) {
-          const enabled = !!row.value?.enabled;
-          if (row.key === 'debug_mode') globalDebugEnabled = enabled;
-          if (row.key === 'harnesses_mode') harnessesModeEnabled = enabled;
-        }
-      }
-    } catch {
-      /* swallow — 'none' fallback preserves safety */
-    } finally {
+    const ok = await fetchAuthoritative();
+    if (ok) {
       harnessLoaded = true;
       harnessesModeLoaded = true;
       globalLoaded = true;
-      bindRealtime();
-      globalListeners.forEach((cb) => cb(globalDebugEnabled));
-      harnessesModeListeners.forEach((cb) => cb(harnessesModeEnabled));
-      harnessListeners.forEach((cb) => cb());
+    } else {
+      // Do NOT latch 'loaded' on a failed read — that would pin every
+      // later lookup to a fail-closed 'none' for the whole session with no
+      // retry. Clear the memoized promise so the next caller retries.
+      loadPromise = null;
     }
+    bindRealtime();
+    notifyAll();
   })();
   return loadPromise;
 }
+
 
 function bindRealtime(): void {
   if (realtimeBound) return;

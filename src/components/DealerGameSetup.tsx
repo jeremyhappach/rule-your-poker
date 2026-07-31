@@ -9,6 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  useActiveHarnessInfo,
+  useActiveHarnessMap,
+} from "@/lib/debugHarness/activeHarnessWarning";
+import { CRIBBAGE_GAME_MODES } from "@/lib/cribbageTypes";
 import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 // playerStateEvaluation helpers no longer needed here — config timeout uses
@@ -20,6 +26,31 @@ import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
+
+/**
+ * Every game id that can appear in dealer setup. Harness state for each id is
+ * resolved independently from the GLOBAL shared record.
+ */
+const HARNESS_WARNING_GAME_IDS = [
+  'holm-game',
+  '3-5-7',
+  'cribbage',
+  'gin-rummy',
+  'horses',
+  'ship-captain-crew',
+  'yahtzee',
+];
+
+/** Red "H" marker shown on any game whose global harness is actually active. */
+const HarnessBadge = () => (
+  <span
+    className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-red-600 text-[11px] font-extrabold leading-none text-white"
+    title="A test harness is active for this game"
+  >
+    H
+  </span>
+);
+
 
 import {
   useWaitingMount,
@@ -211,6 +242,13 @@ const DealerGameSetupInner = ({
   const [holmDefaults, setHolmDefaults] = useState<GameDefaults | null>(null);
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
   const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
+
+  // GLOBAL harness visibility. Source of truth is the shared game_defaults /
+  // system_settings record (see runtimeCache) — never per-user or per-device.
+  // Same resolver the runtime execution gate uses, so display can never drift.
+  const activeHarnessMap = useActiveHarnessMap(HARNESS_WARNING_GAME_IDS);
+
+
 
   // Fetch defaults for both game types on mount
   useEffect(() => {
@@ -1727,9 +1765,11 @@ const DealerGameSetupInner = ({
                         `}
                       >
                         <div className="flex items-center gap-3">
+                          {activeHarnessMap[game.id]?.active && <HarnessBadge />}
                           {!game.enabled && (
                             <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           )}
+
                           <span className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
                             {game.name}
                           </span>
@@ -1759,12 +1799,14 @@ const DealerGameSetupInner = ({
                     <button
                       key={game.id}
                       onClick={() => handleGameSelect(game.id)}
-                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
+                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center gap-3 border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
+                      {activeHarnessMap[game.id]?.active && <HarnessBadge />}
                       <span className="text-base font-bold text-poker-gold">
                         {game.name}
                       </span>
-                      <span className="text-sm text-amber-200/80 ml-3">
+                      <span className="text-sm text-amber-200/80">
+
                         — {game.description}
                       </span>
                     </button>
@@ -1853,13 +1895,19 @@ const DealerGameSetupInner = ({
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-            <CardContent className="pt-6 pb-6 space-y-6">
+          {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
+          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+            <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
               {/* Header with Timer */}
-              <div className="flex items-center justify-between">
+              <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
                   <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
+                  {activeHarnessMap[selectedGameType]?.active && (
+                    <p className="mt-1 text-sm font-bold text-red-500">
+                      Harness: {activeHarnessMap[selectedGameType].label}
+                    </p>
+                  )}
                 </div>
                 {timeLeft !== null && (
                   <Badge 
@@ -1873,7 +1921,8 @@ const DealerGameSetupInner = ({
               </div>
 
               {/* Simple Game Config */}
-              <div className="space-y-4">
+              <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+
                 <div className="space-y-1">
                   <Label htmlFor="ante-simple" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
@@ -1889,37 +1938,31 @@ const DealerGameSetupInner = ({
                 {/* Cribbage-specific settings - preset game modes */}
                 {isCribbage && (
                   <>
-                    {/* Game Mode Selection */}
-                    <div className="space-y-2">
+                    {/* Game Mode Selection — compact dropdown (same modes/values) */}
+                    <div className="space-y-1">
                       <Label className="text-amber-100 text-sm">Game Mode</Label>
-                      <div className="flex flex-col gap-2">
-                        {[
-                          { id: 'full', label: 'Full Game', desc: '121 pts' },
-                          { id: 'half', label: 'Half Game', desc: '61 pts' },
-                          { id: 'super_quick', label: 'Quick', desc: '45 pts' },
-                          { id: 'sprint', label: 'Sprint', desc: '31 pts' },
-                          { id: 'custom', label: 'Custom', desc: 'Enter target' },
-                        ].map((mode) => (
-                          <button
-                            key={mode.id}
-                            type="button"
-                            onClick={() => setCribbageGameMode(mode.id as import('@/lib/cribbageTypes').CribbageGameMode)}
-                            className={`w-full py-2.5 px-4 rounded-lg border transition-all flex items-center justify-between ${
-                              cribbageGameMode === mode.id
-                                ? 'border-poker-gold bg-poker-gold/20 text-white'
-                                : 'border-amber-700/50 bg-amber-900/20 text-amber-200 hover:bg-amber-900/40'
-                            }`}
-                          >
-                            <span className="font-medium">{mode.label}</span>
-                            <span className="text-sm opacity-70">{mode.desc}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <Select
+                        value={cribbageGameMode}
+                        onValueChange={(v) =>
+                          setCribbageGameMode(v as import('@/lib/cribbageTypes').CribbageGameMode)
+                        }
+                      >
+                        <SelectTrigger className="bg-amber-900/30 border-poker-gold/50 text-white">
+                          <SelectValue placeholder="Select game mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CRIBBAGE_GAME_MODES.map((mode) => (
+                            <SelectItem key={mode.id} value={mode.id}>
+                              {mode.label} — {mode.description}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     {/* Custom points input - only show when custom mode selected */}
                     {cribbageGameMode === 'custom' && (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <Label className="text-amber-100 text-sm">Points to Win</Label>
                         <Input
                           type="number"
@@ -1932,6 +1975,7 @@ const DealerGameSetupInner = ({
                         <p className="text-xs text-amber-200/50">Skunks disabled for custom games</p>
                       </div>
                     )}
+
                     
                     {/* Skunks Toggle - only show if mode supports skunks (not sprint or custom) */}
                     {cribbageGameMode !== 'sprint' && cribbageGameMode !== 'custom' && (
@@ -2044,7 +2088,7 @@ const DealerGameSetupInner = ({
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2 pb-[env(safe-area-inset-bottom)]">
                 <button
                   onClick={handleBackToGameSelection}
                   className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
@@ -2070,13 +2114,19 @@ const DealerGameSetupInner = ({
   // Cards selection step - show poker game tabs
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
-        <CardContent className="pt-6 pb-6 space-y-4">
+      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+        <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
           {/* Header with Timer */}
-          <div className="flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between">
+
             <div>
               <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
               <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
+              {activeHarnessMap[selectedGameType]?.active && (
+                <p className="mt-1 text-sm font-bold text-red-500">
+                  Harness: {activeHarnessMap[selectedGameType].label}
+                </p>
+              )}
             </div>
             {timeLeft !== null && (
               <Badge 
@@ -2089,8 +2139,11 @@ const DealerGameSetupInner = ({
             )}
           </div>
 
+          {/* Scrollable configuration body — footer stays reachable */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
           {/* Game Type Tabs */}
           <Tabs value={selectedGameType} onValueChange={handleGameTypeChange} className="w-full">
+
             <TabsList className="grid w-full grid-cols-2 bg-amber-900/50">
               <TabsTrigger 
                 value="holm-game" 
@@ -2303,27 +2356,31 @@ const DealerGameSetupInner = ({
               </div>
             </TabsContent>
           </Tabs>
+          </div>
 
-          {/* Back Button */}
-          <button
-            onClick={handleBackToGameSelection}
-            className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
-          >
-            ← Back to Game Types
-          </button>
+          <div className="shrink-0 space-y-2 pb-[env(safe-area-inset-bottom)]">
+            {/* Back Button */}
+            <button
+              onClick={handleBackToGameSelection}
+              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
+            >
+              ← Back to Game Types
+            </button>
 
-          {/* Start Button */}
-          <Button 
-            onClick={() => handleSubmit()} 
-            disabled={isSubmitting}
-            className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"
-          >
-            {isSubmitting ? 'Starting...' : `Start ${isHolmGame ? 'Holm Game' : '3-5-7'}`}
-          </Button>
+            {/* Start Button */}
+            <Button 
+              onClick={() => handleSubmit()} 
+              disabled={isSubmitting}
+              className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"
+            >
+              {isSubmitting ? 'Starting...' : `Start ${isHolmGame ? 'Holm Game' : '3-5-7'}`}
+            </Button>
 
-          <p className="text-xs text-amber-200/60 text-center">
-            If timer expires without action, you'll be marked as sitting out
-          </p>
+            <p className="text-xs text-amber-200/60 text-center">
+              If timer expires without action, you'll be marked as sitting out
+            </p>
+          </div>
+
         </CardContent>
       </Card>
     </div>

@@ -11,10 +11,12 @@ import { useEffect, useState } from 'react';
 import {
   ensureHarnessCacheLoaded,
   getActiveHarnessCached,
+  refreshHarnessCache,
   subscribeHarnessCache,
   subscribeHarnessesMode,
 } from './runtimeCache';
 import { getHarnessProfile, isHarnessActive } from './profiles';
+
 
 /** Map a frontend game-selection id to its game_defaults.game_type key. */
 export function toHarnessGameType(gameSelectionId: string): string {
@@ -49,9 +51,13 @@ export function useActiveHarnessInfo(
     const refresh = () => {
       if (!cancelled) setInfo(read(gameSelectionId));
     };
+    // Authoritative re-read on mount: any client opening a harness-warning
+    // surface must observe the current GLOBAL record, not a stale projection.
     void ensureHarnessCacheLoaded().then(refresh);
+    void refreshHarnessCache().then(refresh);
     const unsubA = subscribeHarnessCache(refresh);
     const unsubB = subscribeHarnessesMode(refresh);
+
     return () => {
       cancelled = true;
       unsubA();
@@ -79,7 +85,9 @@ export function useActiveHarnessMap(
       setMap(next);
     };
     void ensureHarnessCacheLoaded().then(refresh);
+    void refreshHarnessCache().then(refresh);
     refresh();
+
     const unsubA = subscribeHarnessCache(refresh);
     const unsubB = subscribeHarnessesMode(refresh);
     return () => {
