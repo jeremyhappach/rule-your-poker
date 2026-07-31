@@ -167,7 +167,7 @@ export function SessionEndedFeltPanel({
     >
       <div
         className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden"
-        style={{ height: 'auto', maxHeight: '100%', minHeight: 0 }}
+        style={{ pointerEvents: 'auto', height: 'auto', maxHeight: '100%', minHeight: 0 }}
       >
         {/* Title: never scrolls, never shrinks. */}
         <div className="px-2.5 pt-1 pb-0.5 shrink-0">
