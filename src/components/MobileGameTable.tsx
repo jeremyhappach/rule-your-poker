@@ -13098,8 +13098,12 @@ export const MobileGameTable = ({
             'game_selection',
             'ante_decision',
           ]);
+          // Session Ended reuses the pre-session static identity pill
+          // path: exactly one seat cluster per participant, no gameplay
+          // decorators (turn pulse, dealer pip, legs, card backs,
+          // emoticons, ValueChangeFlash).
           const isPreSessionPhase =
-            !!gameStatus && PRE_SESSION_STATUSES.has(gameStatus);
+            sessionEndedPhase || (!!gameStatus && PRE_SESSION_STATUSES.has(gameStatus));
 
           return players.map((player) => {
             const anchor = shellAnchors?.byPosition.get(player.position);
