@@ -13201,7 +13201,7 @@ export const MobileGameTable = ({
             buck tracks the seat through every projection-mode change
             (observer-absolute / active-canonical) and lifecycle phase
             without a parallel pixel map. */}
-        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
+        {!sessionEndedPhase && gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
           const buckAnchor = shellAnchors?.byPosition.get(buckPosition);
           const buckSlot = buckAnchor?.slot ?? null;
           if (buckSlot === null) return null;
