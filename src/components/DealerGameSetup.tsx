@@ -1938,37 +1938,31 @@ const DealerGameSetupInner = ({
                 {/* Cribbage-specific settings - preset game modes */}
                 {isCribbage && (
                   <>
-                    {/* Game Mode Selection */}
-                    <div className="space-y-2">
+                    {/* Game Mode Selection — compact dropdown (same modes/values) */}
+                    <div className="space-y-1">
                       <Label className="text-amber-100 text-sm">Game Mode</Label>
-                      <div className="flex flex-col gap-2">
-                        {[
-                          { id: 'full', label: 'Full Game', desc: '121 pts' },
-                          { id: 'half', label: 'Half Game', desc: '61 pts' },
-                          { id: 'super_quick', label: 'Quick', desc: '45 pts' },
-                          { id: 'sprint', label: 'Sprint', desc: '31 pts' },
-                          { id: 'custom', label: 'Custom', desc: 'Enter target' },
-                        ].map((mode) => (
-                          <button
-                            key={mode.id}
-                            type="button"
-                            onClick={() => setCribbageGameMode(mode.id as import('@/lib/cribbageTypes').CribbageGameMode)}
-                            className={`w-full py-2.5 px-4 rounded-lg border transition-all flex items-center justify-between ${
-                              cribbageGameMode === mode.id
-                                ? 'border-poker-gold bg-poker-gold/20 text-white'
-                                : 'border-amber-700/50 bg-amber-900/20 text-amber-200 hover:bg-amber-900/40'
-                            }`}
-                          >
-                            <span className="font-medium">{mode.label}</span>
-                            <span className="text-sm opacity-70">{mode.desc}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <Select
+                        value={cribbageGameMode}
+                        onValueChange={(v) =>
+                          setCribbageGameMode(v as import('@/lib/cribbageTypes').CribbageGameMode)
+                        }
+                      >
+                        <SelectTrigger className="bg-amber-900/30 border-poker-gold/50 text-white">
+                          <SelectValue placeholder="Select game mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CRIBBAGE_GAME_MODES.map((mode) => (
+                            <SelectItem key={mode.id} value={mode.id}>
+                              {mode.label} — {mode.description}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     {/* Custom points input - only show when custom mode selected */}
                     {cribbageGameMode === 'custom' && (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <Label className="text-amber-100 text-sm">Points to Win</Label>
                         <Input
                           type="number"
@@ -1981,6 +1975,7 @@ const DealerGameSetupInner = ({
                         <p className="text-xs text-amber-200/50">Skunks disabled for custom games</p>
                       </div>
                     )}
+
                     
                     {/* Skunks Toggle - only show if mode supports skunks (not sprint or custom) */}
                     {cribbageGameMode !== 'sprint' && cribbageGameMode !== 'custom' && (
