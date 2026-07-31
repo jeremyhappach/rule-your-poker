@@ -166,8 +166,8 @@ export function SessionEndedFeltPanel({
       style={{ pointerEvents: 'none' }}
     >
       <div
-        className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden"
-        style={{ pointerEvents: 'auto', height: 'auto', maxHeight: '100%', minHeight: 0 }}
+        className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden max-h-full min-h-0"
+        style={{ pointerEvents: 'auto' }}
       >
         {/* Title: never scrolls, never shrinks. */}
         <div className="px-2.5 pt-1 pb-0.5 shrink-0">
@@ -176,13 +176,13 @@ export function SessionEndedFeltPanel({
           </h2>
         </div>
 
-        {/* Body is `flex-none` so it takes ONLY its intrinsic content
-            height for short lists — `flex-1` previously let it absorb
-            the panel's spare height, and `items-center` on the <ul>'s
-            flex context stretched each row, which is what made seven
-            rows read as near-full-felt. min-h-0 + max-h-full keep the
-            scroll boundary inside the felt for long lists. */}
-        <div className="overflow-y-auto overflow-x-hidden overscroll-contain min-h-0 flex-none max-h-full px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
+        {/* Results body: `flex: 0 1 auto` — intrinsic height for short lists
+            (no stretching), but permitted to shrink inside the felt maximum
+            for long lists so rows scroll internally while the title stays
+            fixed. Rows are content-driven (min-height + padding), never a
+            forced fixed height, so text inflation / accessibility sizing /
+            bold names can never clip. */}
+        <div className="flex-[0_1_auto] min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
           {rows === null && !failed ? (
             <p className="text-xs text-muted-foreground py-1 text-center">Loading results…</p>
           ) : failed || (rows && rows.length === 0) ? (
@@ -194,8 +194,9 @@ export function SessionEndedFeltPanel({
               {rows!.map((r) => (
                 <li
                   key={r.key}
-                  className="flex items-center justify-between gap-2.5 py-0 h-[19px] shrink-0 grow-0"
+                  className="flex items-center justify-between gap-2.5 h-auto min-h-[21px] py-[1px] shrink-0 grow-0"
                 >
+
                   <span
                     title={r.username}
                     aria-label={r.username}
