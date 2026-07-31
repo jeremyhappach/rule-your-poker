@@ -11,7 +11,7 @@ import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
-import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import { allocateBotAliasNumber, makeBotUsername } from "@/lib/botNaming";
 import {
   useWaitingMount,
   recordWaitingLifecycle,
@@ -277,16 +277,13 @@ export const WaitingForPlayersTable = ({
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
 
-      // Canonical "Bot N" naming at insertion time — same source of
-      // truth that `botPlayer.ts` and `useWaitingRoomActions` use. Avoids
-      // any window where DB rows carry "Bot {hex}" before `getBotAlias`
-      // overrides at render.
-      const existingUsernames = (playersRef.current ?? [])
-        .filter((p) => p.is_bot)
-        .map((p) => p?.profiles?.username ?? null);
-      const nextNumber = getNextBotNumber(existingUsernames);
+      // Canonical bot naming at insertion time — the durable, atomically
+      // allocated session ordinal from `games.bot_alias_seq`. Numbers of
+      // removed bots are never reused for the lifetime of the session.
+      const nextNumber = await allocateBotAliasNumber(gameId);
       let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
       botNameForToast = botName;
+
 
       const { error: profileError } = await perf.step("profiles.insert", () =>
         supabase.from("profiles").insert({
