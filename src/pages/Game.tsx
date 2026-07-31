@@ -76,7 +76,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
-import { SessionEndedFeltPanel, SessionEndedPaneAction } from "@/components/canonicalShell/SessionEndedTablePhase";
+import { SessionEndedFeltPanel, SessionEndedPaneAction, SessionEndedAnnouncementMount } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
@@ -13907,7 +13907,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellLobbyMode =
     game.status != null &&
     _shellLobbyStatuses.has(game.status) &&
-    !_terminalPresentationHold;
+    !_terminalPresentationHold &&
+    // Session Ended is a canonical TABLE phase, not lobby: lobby mode
+    // clears the ambient announcement track, which would immediately wipe
+    // the persistent row-1 "Session Ended" plate.
+    !_sessionEndedTableActive;
+
 
   // Header chrome title contract: ALWAYS show session name, across every
   // lifecycle phase. The "P-Town Poker" lobby override applies only to
@@ -14859,19 +14864,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // game_selection gap and remounted at next-game setup. Scope it
             // to a real authoritative session end, and never while a
             // terminal presentation is still running locally.
+            // SESSION ENDED TABLE PHASE: the exclusive handoff branch drops
+            // the persistent gameplay children — which are the owners of the
+            // canonical HUD stack (ShellHudChrome/ShellHudGrid), tab rail,
+            // chat pane and hand-history pane. The Session Ended phase is a
+            // canonical TABLE phase, so it keeps the normal mounted children
+            // (gameplay artifacts are already retired at `session_ended`) and
+            // must NOT enter the exclusive handoff.
             isTerminalSessionEndHandoff={
-              _sessionEndedTableActive ||
               (game?.game_type === 'holm-game' &&
                 game?.status === 'game_over' &&
                 (game as any)?.current_game_uuid == null &&
                 (game as any)?.pending_session_end === true &&
                 !_terminalPresentationHold)
             }
-            sessionEndedPane={
-              _sessionEndedTableActive ? (
-                <SessionEndedPaneAction onBackToLobby={() => navigate('/')} />
-              ) : null
-            }
+
 
 
             neutralActiveTab={mobileActiveTab}
@@ -16391,18 +16398,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
-            {/* SESSION ENDED TABLE PHASE — felt-relative results panel.
-                Portals into the canonical felt surface, so it is clipped by
-                the felt ellipse and can never overlap the HUD/tab rail. The
-                "Back to Lobby" affordance lives in the active-pane region
-                (see `sessionEndedPane` on PlayfieldSlotController). */}
+            {/* SESSION ENDED TABLE PHASE — canonical table phase, standard HUD.
+                The results panel portals into the canonical felt surface; the
+                persistent row-1 announcement uses the canonical ambient track;
+                "Back to Lobby" portals into the canonical active-pane row
+                (HUD row 4) and only while the active game-content tab is
+                selected. No bespoke HUD, chat, or history copies. */}
             {_sessionEndedTableActive ? (
-              <SessionEndedFeltPanel
-                gameId={gameId!}
-                sessionName={game.name ?? null}
-                currentUserId={user?.id ?? null}
-              />
+              <>
+                <SessionEndedAnnouncementMount gameId={gameId!} />
+                <SessionEndedFeltPanel
+                  gameId={gameId!}
+                  currentUserId={user?.id ?? null}
+                />
+                <SessionEndedPaneAction
+                  active={mobileActiveTab === 'cards'}
+                  onBackToLobby={() => navigate('/')}
+                />
+              </>
             ) : null}
+
 
 
           </PersistentTableShell>
