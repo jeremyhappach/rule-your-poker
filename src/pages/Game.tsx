@@ -14139,18 +14139,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isHost={isCreator}
             isPaused={game.is_paused}
             onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
-            onAddBot={async () => {
-              // Single canonical bot-creation owner. Exactly one visible
-              // outcome per tap: success toast + authoritative refetch, or
-              // a destructive error toast (action stays retryable).
-              try {
-                await addBotPlayerSittingOut(gameId!);
-                fetchGameData();
-                toast({ title: "Bot added", description: "The bot joins on the next hand." });
-              } catch (error: any) {
-                toast({ title: "Could not add bot", description: error?.message ?? 'Unknown error', variant: "destructive" });
-              }
-            }}
+            onAddBot={addBotAuthoritative}
+
             canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
