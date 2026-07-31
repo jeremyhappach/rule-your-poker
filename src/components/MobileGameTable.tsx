@@ -1059,6 +1059,15 @@ interface MobileGameTableProps {
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
   /**
+   * SESSION ENDED TABLE PHASE (shared, client-local, read-only).
+   * When true every game-specific presentation owner in this surface is
+   * retired — not blurred, not covered: not rendered. Pot zone, turn
+   * spotlights, dealer/buck/leg decorators, gameplay seat decorators,
+   * active-hand cards + action rows and the HUD timer row are all
+   * suppressed. Chat / history / lobby tabs and the HUD stack stay live.
+   */
+  sessionEndedPhase?: boolean;
+  /**
    * 3-5-7 entry-mode provenance. Mirrors the Cribbage identity contract:
    * captured at the persistent Game.tsx route-mount. 'live-transition'
    * means a new hand was created after this route mounted → PRE_DEAL so
