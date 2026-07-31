@@ -7446,6 +7446,7 @@ export const CribbageMobileGameTable = ({
     interactionsAllowed
   );
   const selfHealMountOk = !!(
+    !sessionEndedPhase &&
     !primaryMountOk &&
     activeTab === 'cards' &&
     currentPlayer &&
@@ -8700,7 +8701,7 @@ export const CribbageMobileGameTable = ({
               cutCardRevealed={true}
               cribVisible={true}
             >
-              <CribbagePegBoard
+              {!sessionEndedPhase && <CribbagePegBoard
                 players={players}
                 playerStates={
                   isGameplayMode && gameplayRenderState
