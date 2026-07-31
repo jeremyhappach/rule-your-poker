@@ -2088,7 +2088,7 @@ const DealerGameSetupInner = ({
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2 pb-[env(safe-area-inset-bottom)]">
                 <button
                   onClick={handleBackToGameSelection}
                   className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
