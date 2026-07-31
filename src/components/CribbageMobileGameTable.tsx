@@ -8714,7 +8714,7 @@ export const CribbageMobileGameTable = ({
                     : latchedPegboardDataRef.current.winningScore
                 }
                 overrideScores={countingScoreOverrides ?? undefined}
-              />
+              />}
             </Wave4PegboardSlot>
           )}
 
