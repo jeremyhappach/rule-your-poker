@@ -76,7 +76,7 @@ import {
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { markVisibilityResume, setRealtimeStatus } from "@/lib/resumeSignals";
 import { emit357InstantWinTerminal, emit357GameOverCompleteDiag } from "@/lib/threeFiveSeven/instantWinLifecycle";
-import { SessionEndedTablePanel } from "@/components/canonicalShell/SessionEndedTablePanel";
+import { SessionEndedFeltPanel, SessionEndedPaneAction } from "@/components/canonicalShell/SessionEndedTablePhase";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
