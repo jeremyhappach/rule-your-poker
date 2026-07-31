@@ -16390,20 +16390,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
-            {/* Shared transient Session Ended table. Same shell, same felt,
-                same seat ring — gameplay content and every affordance are
-                replaced by the read-only results panel. Client-local. */}
+            {/* SESSION ENDED TABLE PHASE — felt-relative results panel.
+                Portals into the canonical felt surface, so it is clipped by
+                the felt ellipse and can never overlap the HUD/tab rail. The
+                "Back to Lobby" affordance lives in the active-pane region
+                (see `sessionEndedPane` on PlayfieldSlotController). */}
             {_sessionEndedTableActive ? (
-              <SessionEndedTablePanel
+              <SessionEndedFeltPanel
                 gameId={gameId!}
                 sessionName={game.name ?? null}
                 currentUserId={user?.id ?? null}
-                onBackToLobby={() => {
-                  setSessionEndedTableAdmitted(false);
-                  navigate('/');
-                }}
               />
             ) : null}
+
 
           </PersistentTableShell>
           
