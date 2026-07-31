@@ -11,10 +11,12 @@ import { useEffect, useState } from 'react';
 import {
   ensureHarnessCacheLoaded,
   getActiveHarnessCached,
+  refreshHarnessCache,
   subscribeHarnessCache,
   subscribeHarnessesMode,
 } from './runtimeCache';
 import { getHarnessProfile, isHarnessActive } from './profiles';
+
 
 /** Map a frontend game-selection id to its game_defaults.game_type key. */
 export function toHarnessGameType(gameSelectionId: string): string {
