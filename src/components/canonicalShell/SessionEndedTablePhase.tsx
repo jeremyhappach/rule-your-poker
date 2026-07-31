@@ -155,30 +155,43 @@ export function SessionEndedFeltPanel({
   if (!feltEl) return null;
 
   return createPortal(
+    // Felt-relative sizing: this wrapper is `inset-0` inside
+    // [data-canonical-felt-surface], so 100% height IS the canonical felt
+    // content box. The 4% inset keeps the panel clear of the rounded felt
+    // edge; the panel's own max-height is therefore felt-relative (never
+    // viewport-relative) and the table shell can never scroll.
     <div
       data-session-ended-felt-panel=""
-      className="absolute inset-0 z-[30] flex items-center justify-center p-[6%]"
+      className="absolute inset-0 z-[30] flex items-center justify-center p-[4%]"
       style={{ pointerEvents: 'none' }}
     >
       <div
-        className="w-[min(320px,86%)] max-h-full min-h-0 flex flex-col rounded-lg border border-border bg-card/95 shadow-xl"
-        style={{ pointerEvents: 'auto' }}
+        className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden"
+        style={{ pointerEvents: 'auto', maxHeight: '100%', minHeight: 0 }}
       >
-        <div className="px-3 pt-1.5 pb-1 shrink-0">
-          <h2 className="text-sm font-semibold text-foreground tracking-tight">Results</h2>
+        {/* Title: never scrolls, never shrinks. */}
+        <div className="px-2.5 pt-1 pb-0.5 shrink-0">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight leading-tight">
+            Results
+          </h2>
         </div>
 
-        <div className="overflow-y-auto overscroll-contain min-h-0 flex-1 px-3 pb-1.5">
+        {/* Only the row body scrolls. min-h-0 lets it shrink inside the
+            constrained column; overscroll-contain stops page drag. */}
+        <div className="overflow-y-auto overflow-x-hidden overscroll-contain min-h-0 flex-1 px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
           {rows === null && !failed ? (
-            <p className="text-xs text-muted-foreground py-1.5 text-center">Loading results…</p>
+            <p className="text-xs text-muted-foreground py-1 text-center">Loading results…</p>
           ) : failed || (rows && rows.length === 0) ? (
-            <p className="text-xs text-muted-foreground py-1.5 text-center">
+            <p className="text-xs text-muted-foreground py-1 text-center">
               Final results are unavailable.
             </p>
           ) : (
             <ul className="divide-y divide-border/60">
               {rows!.map((r) => (
-                <li key={r.key} className="flex items-center justify-between gap-3 py-1 min-h-[26px]">
+                <li
+                  key={r.key}
+                  className="flex items-center justify-between gap-2.5 py-[3px] min-h-[22px]"
+                >
                   <span
                     title={r.username}
                     aria-label={r.username}
