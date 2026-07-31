@@ -151,6 +151,9 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         />
       );
     }
+    case 'session_ended': {
+      return <LifecycleAnnouncement title="Session Ended" />;
+    }
     case 'waiting_for_players': {
       const x = p as WaitingPayload & { text?: string; subtitle?: string };
       return (
