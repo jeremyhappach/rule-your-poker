@@ -1725,6 +1725,7 @@ export type Database = {
           ante_decision_deadline: string | null
           ante_decision_timer_seconds: number
           awaiting_next_round: boolean | null
+          bot_alias_seq: number
           buck_position: number | null
           buck_transfer_presentation: Json | null
           buy_in: number
@@ -1778,6 +1779,7 @@ export type Database = {
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
+          bot_alias_seq?: number
           buck_position?: number | null
           buck_transfer_presentation?: Json | null
           buy_in?: number
@@ -1831,6 +1833,7 @@ export type Database = {
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
+          bot_alias_seq?: number
           buck_position?: number | null
           buck_transfer_presentation?: Json | null
           buy_in?: number
@@ -3028,6 +3031,7 @@ export type Database = {
         }
         Returns: Json
       }
+      allocate_bot_alias_number: { Args: { _game_id: string }; Returns: number }
       chat_operation_append_boundary_event: {
         Args: {
           _metadata?: Json
