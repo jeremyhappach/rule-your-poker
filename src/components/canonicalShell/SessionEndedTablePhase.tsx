@@ -24,11 +24,12 @@
  * (all snapshot rows for the session, not just the final seated roster).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { formatChipValue } from '@/lib/utils';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
 
 interface SessionEndedRow {
   key: string;
@@ -160,43 +161,33 @@ export function SessionEndedFeltPanel({
       style={{ pointerEvents: 'none' }}
     >
       <div
-        className="w-full max-w-[92%] max-h-full min-h-0 flex flex-col rounded-xl border border-border bg-card/95 shadow-xl"
+        className="w-[min(320px,86%)] max-h-full min-h-0 flex flex-col rounded-lg border border-border bg-card/95 shadow-xl"
         style={{ pointerEvents: 'auto' }}
       >
-        <div className="px-4 pt-3 pb-2 border-b border-border shrink-0">
-          <h2 className="text-base font-semibold text-foreground tracking-tight">Session Ended</h2>
-          {sessionName ? (
-            <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={sessionName}>
-              {sessionName}
-            </p>
-          ) : null}
+        <div className="px-3 pt-1.5 pb-1 shrink-0">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight">Results</h2>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-4 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border shrink-0">
-          <span>Player</span>
-          <span>Result</span>
-        </div>
-
-        <div className="overflow-y-auto overscroll-contain min-h-0 flex-1 px-4 py-1">
+        <div className="overflow-y-auto overscroll-contain min-h-0 flex-1 px-3 pb-1.5">
           {rows === null && !failed ? (
-            <p className="text-xs text-muted-foreground py-4 text-center">Loading results…</p>
+            <p className="text-xs text-muted-foreground py-1.5 text-center">Loading results…</p>
           ) : failed || (rows && rows.length === 0) ? (
-            <p className="text-xs text-muted-foreground py-4 text-center">
+            <p className="text-xs text-muted-foreground py-1.5 text-center">
               Final results are unavailable.
             </p>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border/60">
               {rows!.map((r) => (
-                <li key={r.key} className="flex items-center justify-between gap-3 py-1.5">
+                <li key={r.key} className="flex items-center justify-between gap-3 py-1 min-h-[26px]">
                   <span
                     title={r.username}
                     aria-label={r.username}
-                    className={`truncate text-xs ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
+                    className={`truncate text-xs leading-tight ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
                   >
                     {r.username}
                   </span>
                   <span
-                    className={`text-xs font-mono tabular-nums shrink-0 ${
+                    className={`text-xs font-semibold font-mono tabular-nums shrink-0 text-right ${
                       r.net > 0 ? 'text-emerald-500' : r.net < 0 ? 'text-destructive' : 'text-muted-foreground'
                     }`}
                   >
@@ -214,20 +205,88 @@ export function SessionEndedFeltPanel({
 }
 
 /**
- * The sole primary action for this phase, rendered inside the local player's
- * content pane. Local navigation only — no database write, no status change,
- * no effect on any other connected client.
+ * Persistent HUD row-1 announcement for the Session Ended phase.
+ *
+ * Uses the canonical ambient announcement track — no TTL, no animate-in
+ * and retire, no bespoke banner. Cleared on unmount (Back to Lobby, or
+ * leaving the phase for any reason).
  */
-export function SessionEndedPaneAction({ onBackToLobby }: { onBackToLobby: () => void }) {
-  return (
+export function SessionEndedAnnouncementMount({ gameId }: { gameId: string }) {
+  const announcements = useAnnouncements();
+  const announcementsRef = useRef(announcements);
+  useEffect(() => {
+    announcementsRef.current = announcements;
+  }, [announcements]);
+  useEffect(() => {
+    if (!gameId) return;
+    announcementsRef.current.emit({
+      id: `${gameId}:session-ended`,
+      type: 'session_ended',
+      scope: { dealerGameId: gameId },
+    });
+    return () => {
+      announcementsRef.current.clearAmbient('session_ended');
+    };
+  }, [gameId]);
+  return null;
+}
+
+/**
+ * The sole primary action for this phase, portaled into the canonical
+ * active-pane row (HUD row 4) of the normal mounted HUD grid. Local
+ * navigation only — no database write, no status change, no effect on any
+ * other connected client. Rendered only while the local viewer is on the
+ * active game-content tab.
+ */
+export function SessionEndedPaneAction({
+  onBackToLobby,
+  active = true,
+}: {
+  onBackToLobby: () => void;
+  active?: boolean;
+}) {
+  const [paneEl, setPaneEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      setPaneEl(null);
+      return;
+    }
+    const find = () => document.querySelector<HTMLElement>('[data-hud-row="pane"]');
+    const found = find();
+    if (found) {
+      setPaneEl(found);
+      return;
+    }
+    let raf = 0;
+    const tick = () => {
+      const el = find();
+      if (el) {
+        setPaneEl(el);
+        return;
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [active]);
+
+  if (!active || !paneEl) return null;
+
+  return createPortal(
     <div
       data-session-ended-pane-action=""
-      className="w-full flex items-end justify-center px-6 pb-4"
-      style={{ pointerEvents: 'auto' }}
+      className="absolute inset-0 z-[5] flex items-center justify-center px-6"
+      style={{ pointerEvents: 'none' }}
     >
-      <Button className="w-full max-w-sm" onClick={onBackToLobby}>
+      <Button
+        className="min-w-[10rem]"
+        style={{ pointerEvents: 'auto' }}
+        onClick={onBackToLobby}
+      >
         Back to Lobby
       </Button>
-    </div>
+    </div>,
+    paneEl,
   );
 }
