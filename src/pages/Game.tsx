@@ -8978,7 +8978,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // ALWAYS update players, even if fetch is stale - players list should reflect latest data
     // This is critical for the waiting phase where bots are added and need to appear immediately
-    setPlayers((playersData || []).sort((a, b) => a.position - b.position));
+    const publishedPlayers = (playersData || []).sort((a, b) => a.position - b.position);
+    // Keep the imperative mirror in lockstep with publication so callers that
+    // await a fetch can read the projection synchronously (no timers/polling).
+    playersRef.current = publishedPlayers as any;
+    setPlayers(publishedPlayers);
 
     // Apply game state only if this fetch is still the most recent.
     // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
