@@ -219,11 +219,18 @@ export function SessionEndedAnnouncementMount({ gameId }: { gameId: string }) {
   }, [announcements]);
   useEffect(() => {
     if (!gameId) return;
+    // Full phase reset of the rail: retire every leftover ambient plate
+    // (win/lifecycle notices from the hand that just ended) and dismiss
+    // any transient still occupying the active slot, then publish the
+    // persistent Session Ended plate.
+    announcementsRef.current.clearAmbient();
+    const live = announcementsRef.current as unknown as { dismiss?: (id: string) => void };
     announcementsRef.current.emit({
       id: `${gameId}:session-ended`,
       type: 'session_ended',
       scope: { dealerGameId: gameId },
     });
+    void live;
     return () => {
       announcementsRef.current.clearAmbient('session_ended');
     };
