@@ -300,10 +300,21 @@ export const DealerConfig = ({
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Dealer Configuration</CardTitle>
+        {activeHarness.active && (
+          <div className="mt-1 inline-flex w-fit items-center gap-2 rounded-md border-2 border-red-500 bg-red-600/15 px-3 py-1.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-red-600 text-[11px] font-extrabold leading-none text-white">
+              H
+            </span>
+            <span className="text-sm font-bold text-red-500">
+              Harness: {activeHarness.label}
+            </span>
+          </div>
+        )}
         <CardDescription>
           {dealerUsername} is the dealer. Configure the game parameters below.
         </CardDescription>
       </CardHeader>
+
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="ante">Ante Amount ($)</Label>
