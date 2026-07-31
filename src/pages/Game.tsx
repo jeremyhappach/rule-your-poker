@@ -14860,12 +14860,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // to a real authoritative session end, and never while a
             // terminal presentation is still running locally.
             isTerminalSessionEndHandoff={
-              game?.game_type === 'holm-game' &&
-              game?.status === 'game_over' &&
-              (game as any)?.current_game_uuid == null &&
-              (game as any)?.pending_session_end === true &&
-              !_terminalPresentationHold
+            isTerminalSessionEndHandoff={
+              _sessionEndedTableActive ||
+              (game?.game_type === 'holm-game' &&
+                game?.status === 'game_over' &&
+                (game as any)?.current_game_uuid == null &&
+                (game as any)?.pending_session_end === true &&
+                !_terminalPresentationHold)
             }
+            sessionEndedPane={
+              _sessionEndedTableActive ? (
+                <SessionEndedPaneAction onBackToLobby={() => navigate('/')} />
+              ) : null
+            }
+
 
             neutralActiveTab={mobileActiveTab}
             onNeutralActiveTabChange={setMobileActiveTabWithTrace}
