@@ -13907,7 +13907,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellLobbyMode =
     game.status != null &&
     _shellLobbyStatuses.has(game.status) &&
-    !_terminalPresentationHold;
+    !_terminalPresentationHold &&
+    // Session Ended is a canonical TABLE phase, not lobby: lobby mode
+    // clears the ambient announcement track, which would immediately wipe
+    // the persistent row-1 "Session Ended" plate.
+    !_sessionEndedTableActive;
+
 
   // Header chrome title contract: ALWAYS show session name, across every
   // lifecycle phase. The "P-Town Poker" lobby override applies only to
