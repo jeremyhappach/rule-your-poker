@@ -27,6 +27,31 @@ import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
 
+/**
+ * Every game id that can appear in dealer setup. Harness state for each id is
+ * resolved independently from the GLOBAL shared record.
+ */
+const HARNESS_WARNING_GAME_IDS = [
+  'holm-game',
+  '3-5-7',
+  'cribbage',
+  'gin-rummy',
+  'horses',
+  'ship-captain-crew',
+  'yahtzee',
+];
+
+/** Red "H" marker shown on any game whose global harness is actually active. */
+const HarnessBadge = () => (
+  <span
+    className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-red-600 text-[11px] font-extrabold leading-none text-white"
+    title="A test harness is active for this game"
+  >
+    H
+  </span>
+);
+
+
 import {
   useWaitingMount,
   recordSurfaceOwnership,
