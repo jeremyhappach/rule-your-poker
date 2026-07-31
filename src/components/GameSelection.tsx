@@ -245,6 +245,10 @@ export const GameSelection = ({
                     <span className="text-base font-bold text-poker-gold">
                       {game.name}
                     </span>
+                    {harnessMap[game.id]?.active && (
+                      <HarnessBadge label={harnessMap[game.id].label} />
+                    )}
+
                     <span className="text-sm text-amber-200/80 ml-3">
                       — {game.description}
                     </span>
