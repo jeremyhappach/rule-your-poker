@@ -10575,10 +10575,10 @@ export const MobileGameTable = ({
 
 
   return <HolmDealRuntimeMaybe
-    handContextId={gameType === 'holm-game' ? (handContextId ?? null) : null}
+    handContextId={gameType === 'holm-game' && !sessionEndedPhase ? (handContextId ?? null) : null}
     gameType={gameType}
   >
-    {gameType === 'holm-game' && handContextId && currentPlayer && (currentPlayer as any).id && typeof buckPosition === 'number' && typeof dealerPosition === 'number' && (
+    {gameType === 'holm-game' && !sessionEndedPhase && handContextId && currentPlayer && (currentPlayer as any).id && typeof buckPosition === 'number' && typeof dealerPosition === 'number' && (
       <>
         <HolmDealOrchestrator
           handContextId={handContextId}
