@@ -10738,7 +10738,7 @@ export const MobileGameTable = ({
             isObserver={!currentPlayer}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
-            isVisible={horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
+            isVisible={!sessionEndedPhase && horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
             useFullCoverage={true}
             disabled={true}
           />
