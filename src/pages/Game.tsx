@@ -14394,7 +14394,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   }}
                 />
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
-                <MobileGameTable key={gameId ?? 'unknown-game'}
+                <MobileGameTable key={gameId ?? 'unknown-game'} sessionEndedPhase={_sessionEndedTableActive}
                     instanceLabel="dealer-selection-bg"
                     currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
@@ -14474,7 +14474,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     eliminates the per-status forced remount that previously
                     caused the visible mid-transition table swap. */}
                 {!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (
-                  <MobileGameTable key={gameId ?? 'unknown-game'}
+                  <MobileGameTable key={gameId ?? 'unknown-game'} sessionEndedPhase={_sessionEndedTableActive}
                     instanceLabel="status-keyed"
                     currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
@@ -14648,7 +14648,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                as the primary route-stable gate. */
             ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && !_isPokerShellPersistent && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
-                <MobileGameTable key={gameId ?? 'unknown-game'}
+                <MobileGameTable key={gameId ?? 'unknown-game'} sessionEndedPhase={_sessionEndedTableActive}
                     instanceLabel="game-over-or-win-anim-ungated"
                     currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
                     gameId={gameId}
@@ -15424,7 +15424,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
 
             return (
-              <CribbageMobileGameTable
+              <CribbageMobileGameTable sessionEndedPhase={_sessionEndedTableActive}
                 gameId={gameId!}
                 roundId={cribbageRoundId}
                 dealerGameId={cribbageDealerGameId}
@@ -15544,7 +15544,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const isDiceTerminalPresentation = isDiceGameOver || (!!horsesWinPotTriggerId && !isInProgress && !isAnteDecision);
 
             return (
-              <MobileGameTable
+              <MobileGameTable sessionEndedPhase={_sessionEndedTableActive}
                 key={gameId ?? 'unknown-game'}
                 instanceLabel="cribbage-or-special"
                 currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
@@ -15700,7 +15700,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           return (
-            <MobileGameTable
+            <MobileGameTable sessionEndedPhase={_sessionEndedTableActive}
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
               currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
