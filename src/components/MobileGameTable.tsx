@@ -14318,7 +14318,24 @@ export const MobileGameTable = ({
             </>
           );
 
-          const identityContent = currentPlayer ? (
+          // SESSION ENDED identity row: static name + final balance only.
+          // No emoticon picker, no dealer indicator, no turn/status text,
+          // no ValueChangeFlash, no gameplay badges.
+          const identityContent = sessionEndedPhase ? (
+            currentPlayer ? (
+              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {currentPlayer.profiles?.username || 'You'}
+                </p>
+                <span className={cn(
+                  "font-bold text-lg tabular-nums",
+                  (currentPlayer.chips ?? 0) < 0 ? 'text-destructive' : 'text-poker-gold'
+                )}>
+                  ${formatChipValue(Math.round(currentPlayer.chips ?? 0))}
+                </span>
+              </div>
+            ) : null
+          ) : currentPlayer ? (
             <div className={cn(
               "w-full h-full flex items-center justify-center px-3",
               isTablet ? "gap-3" : "gap-2"
