@@ -13472,7 +13472,7 @@ export const MobileGameTable = ({
             timeLeft !== null &&
             timeLeft > 0 &&
             !!maxTime
-          );
+          ));
 
           const paneContent = (
             <>
