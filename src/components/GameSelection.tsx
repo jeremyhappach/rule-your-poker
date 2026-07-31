@@ -2,6 +2,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useActiveHarnessMap } from "@/lib/debugHarness/activeHarnessWarning";
+
+/** Red "H" badge — shown only when a game's harness would actually execute. */
+const HarnessBadge = ({ label }: { label: string }) => (
+  <span
+    title={`Harness: ${label}`}
+    aria-label={`Harness active: ${label}`}
+    className="ml-2 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-red-300 bg-red-600 text-[11px] font-extrabold leading-none text-white"
+  >
+    H
+  </span>
+);
+
 
 interface GameSelectionProps {
   onSelectGame: (gameType: string) => void;
