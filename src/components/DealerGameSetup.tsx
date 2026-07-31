@@ -1895,13 +1895,19 @@ const DealerGameSetupInner = ({
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-            <CardContent className="pt-6 pb-6 space-y-6">
+          {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
+          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+            <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
               {/* Header with Timer */}
-              <div className="flex items-center justify-between">
+              <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
                   <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
+                  {activeHarnessMap[selectedGameType]?.active && (
+                    <p className="mt-1 text-sm font-bold text-red-500">
+                      Harness: {activeHarnessMap[selectedGameType].label}
+                    </p>
+                  )}
                 </div>
                 {timeLeft !== null && (
                   <Badge 
@@ -1915,7 +1921,8 @@ const DealerGameSetupInner = ({
               </div>
 
               {/* Simple Game Config */}
-              <div className="space-y-4">
+              <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+
                 <div className="space-y-1">
                   <Label htmlFor="ante-simple" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
