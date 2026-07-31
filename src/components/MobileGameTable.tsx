@@ -14191,7 +14191,7 @@ export const MobileGameTable = ({
               )}
 
               {/* CARDS TAB - Observer state */}
-              {!isWaitingPhase && activeTab === 'cards' && !currentPlayer && (
+              {!isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && !currentPlayer && (
                 <div className="px-4 pb-4 h-full">
                   <div className="flex items-center justify-between mb-3">
                     {onLeaveGameNow && (
