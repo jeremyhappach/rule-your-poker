@@ -14860,7 +14860,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // to a real authoritative session end, and never while a
             // terminal presentation is still running locally.
             isTerminalSessionEndHandoff={
-            isTerminalSessionEndHandoff={
               _sessionEndedTableActive ||
               (game?.game_type === 'holm-game' &&
                 game?.status === 'game_over' &&
