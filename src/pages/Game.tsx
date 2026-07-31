@@ -14296,14 +14296,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     {isCreator && players.length < 7 && (
                       <Button 
                         variant="outline" 
-                        onClick={async () => {
-                          try {
-                            await addBotPlayerSittingOut(gameId!);
-                            fetchGameData();
-                          } catch (error: any) {
-                            toast({ title: "Error", description: error.message, variant: "destructive" });
-                          }
-                        }}
+                        onClick={() => { void addBotAuthoritative().catch(() => {}); }}
+
                       >
                         <Bot className="w-4 h-4 mr-2" />
                         Add Bot
