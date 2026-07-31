@@ -117,19 +117,10 @@ export async function addBotPlayer(gameId: string) {
   const aggressionLevel = getRandomAggressionLevel(botId);
   console.log('[BOT CREATION] Assigned aggression level:', aggressionLevel);
   
-  // Get bot usernames scoped to this game session (including left bots) for sequential numbering
-  const { data: gameBotPlayers, error: profilesError } = await supabase
-    .from('players')
-    .select('user_id, profiles(username)')
-    .eq('game_id', gameId)
-    .eq('is_bot', true);
+  // Durable, session-lifetime bot ordinal (atomic; never reuses the
+  // number of a removed bot).
+  const nextNumber = await allocateBotAliasNumber(gameId);
 
-  if (profilesError) {
-    console.error('[BOT CREATION] Error fetching game bot players:', profilesError);
-  }
-
-  const existingUsernames = (gameBotPlayers ?? []).map((p) => (p.profiles as any)?.username);
-  const nextNumber = getNextBotNumber(existingUsernames);
 
   // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
   let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
