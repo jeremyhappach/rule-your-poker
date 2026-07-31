@@ -201,6 +201,13 @@ function CribbageFeltAdapter(props: {
 
 interface CribbageMobileGameTableProps {
   gameId: string;
+  /**
+   * SESSION ENDED TABLE PHASE (shared, client-local, read-only).
+   * Retires every game-specific presentation owner in this surface:
+   * pegboard, turn spotlight, dealer indicator, cards-tab content.
+   * Chat / history / lobby tabs and the HUD stack stay live.
+   */
+  sessionEndedPhase?: boolean;
   roundId: string;
   dealerGameId: string | null; // Required for event logging
   handNumber: number; // Required for event logging (from round data)
@@ -590,6 +597,7 @@ function DealClippedOpponentSeatLayer(props: {
 
 export const CribbageMobileGameTable = ({
   gameId,
+  sessionEndedPhase = false,
   roundId,
   dealerGameId,
   handNumber,
@@ -7428,7 +7436,7 @@ export const CribbageMobileGameTable = ({
   const viewStateLocalHandCount = fallbackLocalPlayerId
     ? (viewState?.playerStates?.[fallbackLocalPlayerId]?.hand?.length ?? 0)
     : 0;
-  const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
+  const cardsTabBlocked = sessionEndedPhase || isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
   const primaryMountOk = !!(
     activeTab === 'cards' &&
     isGameplayMode &&
@@ -8592,7 +8600,7 @@ export const CribbageMobileGameTable = ({
                     <CribbageTurnSpotlight
                       currentTurnPlayerId={spotlightPlayerId}
                       currentPlayerId={currentPlayerId || ''}
-                      isVisible={gameplayRenderState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                      isVisible={!sessionEndedPhase && (gameplayRenderState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot))}
                       totalPlayers={activeSeatPlayers.length}
                       opponentIds={projectedSeatPlayers.map(o => o.id)}
                       currentTurnPosition={spotlightPosition}
@@ -8935,7 +8943,7 @@ export const CribbageMobileGameTable = ({
         identity={
           currentPlayer ? (
             <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
-              <QuickEmoticonPicker
+              {!sessionEndedPhase && <QuickEmoticonPicker
                 onSelect={async (emoticon) => {
                   try {
                     const expiresAt = new Date(Date.now() + 4000).toISOString();
@@ -8950,7 +8958,7 @@ export const CribbageMobileGameTable = ({
                   }
                 }}
                 disabled={false}
-              />
+              />}
               <p className="text-sm font-semibold text-foreground truncate">
                 {currentPlayer.profiles?.username || 'You'}
               </p>
@@ -8960,7 +8968,7 @@ export const CribbageMobileGameTable = ({
               )}>
                 ${formatChipValue(currentPlayer.chips)}
               </span>
-              {isCribDealer(currentPlayerId) && <DealerIndicator />}
+              {!sessionEndedPhase && isCribDealer(currentPlayerId) && <DealerIndicator />}
             </div>
           ) : null
         }
