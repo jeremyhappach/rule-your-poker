@@ -13571,6 +13571,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  /**
+   * Single canonical Add Bot owner for every entry point (mobile gear menu,
+   * desktop gear menu, desktop button).
+   *
+   * Success confirmation is the TABLE, not a toast: the authoritative insert
+   * returns the bot player row, we re-publish canonical players, then confirm
+   * the returned identity is present in the published projection. The bot is
+   * authored sitting_out=true / waiting=true, so the existing canonical
+   * participant-status palette renders it as a yellow waiting seat.
+   *
+   * Throws on failure (after a destructive toast carrying the real error
+   * text) so callers can keep their menu open — no false success.
+   */
+  const addBotAuthoritative = async (): Promise<void> => {
+    if (!gameId) throw new Error('No active game');
+    let botPlayerId: string | null = null;
+    try {
+      const botPlayer: any = await addBotPlayerSittingOut(gameId);
+      botPlayerId = botPlayer?.id ?? null;
+      if (!botPlayerId) throw new Error('Bot was created without an identity');
+      await fetchGameData('manual');
+      const observed = playersRef.current.some((p) => p.id === botPlayerId);
+      if (!observed) {
+        throw new Error('Bot was created but the table did not observe the new seat');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Could not add bot',
+        description: error?.message || String(error),
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+
+
   const handleInvite = () => {
     const gameUrl = window.location.href;
     navigator.clipboard.writeText(gameUrl);
