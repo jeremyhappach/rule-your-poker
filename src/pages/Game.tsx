@@ -16398,18 +16398,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
             />
             {innerTree}
-            {/* SESSION ENDED TABLE PHASE — felt-relative results panel.
-                Portals into the canonical felt surface, so it is clipped by
-                the felt ellipse and can never overlap the HUD/tab rail. The
-                "Back to Lobby" affordance lives in the active-pane region
-                (see `sessionEndedPane` on PlayfieldSlotController). */}
+            {/* SESSION ENDED TABLE PHASE — canonical table phase, standard HUD.
+                The results panel portals into the canonical felt surface; the
+                persistent row-1 announcement uses the canonical ambient track;
+                "Back to Lobby" portals into the canonical active-pane row
+                (HUD row 4) and only while the active game-content tab is
+                selected. No bespoke HUD, chat, or history copies. */}
             {_sessionEndedTableActive ? (
-              <SessionEndedFeltPanel
-                gameId={gameId!}
-                sessionName={game.name ?? null}
-                currentUserId={user?.id ?? null}
-              />
+              <>
+                <SessionEndedAnnouncementMount gameId={gameId!} />
+                <SessionEndedFeltPanel
+                  gameId={gameId!}
+                  currentUserId={user?.id ?? null}
+                />
+                <SessionEndedPaneAction
+                  active={mobileActiveTab === 'cards'}
+                  onBackToLobby={() => navigate('/')}
+                />
+              </>
             ) : null}
+
 
 
           </PersistentTableShell>
