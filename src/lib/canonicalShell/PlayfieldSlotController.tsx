@@ -126,6 +126,12 @@ export interface PlayfieldSlotControllerProps {
    * status flips to game_selection).
    */
   isTerminalSessionEndHandoff?: boolean;
+  /**
+   * Shared Session Ended table phase content for the local player's content
+   * pane (below the felt). Rendered ONLY in the session-end exclusive branch,
+   * so no gameplay artifact can coexist with it.
+   */
+  sessionEndedPane?: ReactNode;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
