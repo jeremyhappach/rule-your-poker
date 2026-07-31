@@ -46,11 +46,18 @@ export function ShellAnnouncementRail() {
   const active = ctx?.active;
   const ambient = ctx?.ambient;
   const hasCanonicalRailEvent =
-    !!active &&
+    ambient?.type === 'session_ended' ||
+    (!!active &&
     (active.type === 'match_win' || !isCelebrationType(active.type)) &&
-    !isCtaAmbientType(active.type);
+    !isCtaAmbientType(active.type));
+  // SESSION ENDED is the terminal-most rail state: once the shared
+  // Session Ended table phase publishes its ambient plate, it outranks
+  // every leftover gameplay announcement (win plates, ambient phase
+  // notices) for as long as the phase is mounted.
   const railActive =
-    active?.type === 'match_win'
+    ambient?.type === 'session_ended'
+      ? ambient
+      : active?.type === 'match_win'
       ? active
       : ambient?.type === 'dealer_configuring'
         ? ambient
