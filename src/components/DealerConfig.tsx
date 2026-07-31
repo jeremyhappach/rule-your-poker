@@ -63,6 +63,10 @@ export const DealerConfig = ({
   const isHolmGame = gameType === 'holm-game';
   const isCribbageGame = gameType === 'cribbage';
 
+  // Same canonical runtime predicate that gates harness execution.
+  const activeHarness = useActiveHarnessInfo(gameType);
+
+
   // Fetch defaults from game_defaults table
   useEffect(() => {
     const fetchDefaults = async () => {
