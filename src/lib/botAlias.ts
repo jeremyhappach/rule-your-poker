@@ -1,13 +1,25 @@
+import { parseBotOrdinal } from './botNaming';
+
 /**
- * Generates a session-specific bot alias (Bot 1, Bot 2, etc.)
- * based on the order bots were added to the game session.
+ * Resolve a bot's session alias.
+ *
+ * The authoritative alias is the durable ordinal written into
+ * `profiles.username` at creation time ("Bot 7"), allocated atomically
+ * from the session-scoped counter. It must be used verbatim: deriving the
+ * alias from the bot's index in the *current* roster renumbered surviving
+ * bots (and reused retired numbers) every time a bot was removed.
+ *
+ * Index-based numbering remains only as a fallback for legacy rows whose
+ * profile username is missing or non-canonical.
  */
 export function getBotAlias(
   players: Array<{ user_id: string; is_bot?: boolean; created_at?: string; profiles?: { username?: string } }>,
   botUserId: string
 ): string {
-  // Always use session-based index ordering for consistent aliases (Bot 1, Bot 2, etc.)
-  // Profile usernames like "Bot 665153" are generated garbage and should NOT be used.
+  const self = players.find(p => p.user_id === botUserId);
+  const durableOrdinal = parseBotOrdinal(self?.profiles?.username);
+  if (durableOrdinal !== null) return `Bot ${durableOrdinal}`;
+
   const bots = players
     .filter(p => p.is_bot)
     .sort((a, b) => {
@@ -16,9 +28,9 @@ export function getBotAlias(
     });
 
   const index = bots.findIndex(b => b.user_id === botUserId);
-  
+
   if (index === -1) return 'Bot';
-  
+
   return `Bot ${index + 1}`;
 }
 
