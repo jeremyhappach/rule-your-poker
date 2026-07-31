@@ -37,6 +37,12 @@ export const GameSelection = ({
   onSitOut,
   onEndSession
 }: GameSelectionProps) => {
+  // Canonical runtime predicate (master gate + per-game selection).
+  const harnessMap = useActiveHarnessMap([
+    'holm-game', '3-5-7', 'cribbage', 'gin-rummy', 'sports-trivia',
+    'horses', 'ship-captain-crew', 'yahtzee',
+  ]);
+
 
   const cardGames = [
     {
