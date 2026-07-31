@@ -224,13 +224,11 @@ export function SessionEndedAnnouncementMount({ gameId }: { gameId: string }) {
     // any transient still occupying the active slot, then publish the
     // persistent Session Ended plate.
     announcementsRef.current.clearAmbient();
-    const live = announcementsRef.current as unknown as { dismiss?: (id: string) => void };
     announcementsRef.current.emit({
       id: `${gameId}:session-ended`,
       type: 'session_ended',
       scope: { dealerGameId: gameId },
     });
-    void live;
     return () => {
       announcementsRef.current.clearAmbient('session_ended');
     };
