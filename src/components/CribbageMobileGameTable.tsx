@@ -1936,6 +1936,33 @@ export const CribbageMobileGameTable = ({
     chatMessage?: string;
   } | null>(null);
 
+  // ── CANONICAL TERMINAL COMPLETION TOKEN ────────────────────────────────
+  // Publishes the stable terminal identity exactly once, on the
+  // non-complete → 'complete' phase edge. That edge is the true end of the
+  // whole canonical sequence (announcement + chip transfer + destination
+  // reaction + celebration) and is the same edge that calls onGameComplete.
+  const terminalCompletePublishedRef = useRef<string | null>(null);
+  const prevWinSequencePhaseRef = useRef<WinSequencePhase>('idle');
+  useEffect(() => {
+    const prev = prevWinSequencePhaseRef.current;
+    prevWinSequencePhaseRef.current = winSequencePhase;
+    if (winSequencePhase !== 'complete') return;
+    if (prev === 'complete' || prev === 'idle') return;
+    const identity = [
+      'cribbage',
+      'winseq',
+      gameId,
+      dealerGameId ?? 'no-dealer-game',
+      String(winSequenceData?.handNumber ?? 'no-hand'),
+      winSequenceData?.winnerId ?? 'no-winner',
+    ].join('|');
+    if (terminalCompletePublishedRef.current === identity) return;
+    terminalCompletePublishedRef.current = identity;
+    onTerminalPresentationComplete?.(identity);
+  }, [winSequencePhase, winSequenceData, gameId, dealerGameId, onTerminalPresentationComplete]);
+
+
+
   // ── Terminal-path discriminator ─
   // Explicitly tags which terminal trigger path produced the win, so the felt
   // can choose the correct card layout instead of inferring from `!lastHandCount`
