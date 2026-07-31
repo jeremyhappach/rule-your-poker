@@ -218,6 +218,13 @@ const DealerGameSetupInner = ({
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
   const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
 
+  // GLOBAL harness visibility. Source of truth is the shared game_defaults /
+  // system_settings record (see runtimeCache) — never per-user or per-device.
+  // Same resolver the runtime execution gate uses, so display can never drift.
+  const activeHarnessMap = useActiveHarnessMap(HARNESS_WARNING_GAME_IDS);
+
+
+
   // Fetch defaults for both game types on mount
   useEffect(() => {
     const fetchAllDefaults = async () => {
