@@ -13486,7 +13486,7 @@ export const MobileGameTable = ({
               )}
 
               {/* CARDS TAB - Player cards, buttons */}
-              {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
+              {!isWaitingPhase && !sessionEndedPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
                 diceGameplayUiActive ? (
                   <HorsesMobileCardsTab
                     currentUserPlayer={currentPlayer as any}
