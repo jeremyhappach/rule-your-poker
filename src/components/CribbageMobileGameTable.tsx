@@ -4907,6 +4907,9 @@ export const CribbageMobileGameTable = ({
     if (!cribbageState?.winnerPlayerId) return;
     if (cribbageState.phase !== 'complete') return;
     if (countingAnimationActiveRef.current) return;
+    // His Heels terminal boundary: hold the win sequence until the cut
+    // reveal + "+2" plate presentation has completed. Presentation-only.
+    if (heelsTerminalHoldActive) return;
     const winKey = winKeyFor(cribbageState.winnerPlayerId);
     if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
 
@@ -4915,7 +4918,7 @@ export const CribbageMobileGameTable = ({
     // [TERMINAL-PATH] this branch fires only when counting was never active.
     setTerminalPath('pegging');
     triggerWinSequence(cribbageState);
-  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence, heelsTerminalHoldActive]);
 
   // CRITICAL: When currentRoundId changes, reset the sync framework baseline
   // so new-hand snapshots are accepted.
