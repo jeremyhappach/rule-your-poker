@@ -85,7 +85,9 @@ export function useActiveHarnessMap(
       setMap(next);
     };
     void ensureHarnessCacheLoaded().then(refresh);
+    void refreshHarnessCache().then(refresh);
     refresh();
+
     const unsubA = subscribeHarnessCache(refresh);
     const unsubB = subscribeHarnessesMode(refresh);
     return () => {
