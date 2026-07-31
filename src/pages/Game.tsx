@@ -8978,7 +8978,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // ALWAYS update players, even if fetch is stale - players list should reflect latest data
     // This is critical for the waiting phase where bots are added and need to appear immediately
-    setPlayers((playersData || []).sort((a, b) => a.position - b.position));
+    const publishedPlayers = (playersData || []).sort((a, b) => a.position - b.position);
+    // Keep the imperative mirror in lockstep with publication so callers that
+    // await a fetch can read the projection synchronously (no timers/polling).
+    playersRef.current = publishedPlayers as any;
+    setPlayers(publishedPlayers);
 
     // Apply game state only if this fetch is still the most recent.
     // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
@@ -13571,6 +13575,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  /**
+   * Single canonical Add Bot owner for every entry point (mobile gear menu,
+   * desktop gear menu, desktop button).
+   *
+   * Success confirmation is the TABLE, not a toast: the authoritative insert
+   * returns the bot player row, we re-publish canonical players, then confirm
+   * the returned identity is present in the published projection. The bot is
+   * authored sitting_out=true / waiting=true, so the existing canonical
+   * participant-status palette renders it as a yellow waiting seat.
+   *
+   * Throws on failure (after a destructive toast carrying the real error
+   * text) so callers can keep their menu open — no false success.
+   */
+  const addBotAuthoritative = async (): Promise<void> => {
+    if (!gameId) throw new Error('No active game');
+    let botPlayerId: string | null = null;
+    try {
+      const botPlayer: any = await addBotPlayerSittingOut(gameId);
+      botPlayerId = botPlayer?.id ?? null;
+      if (!botPlayerId) throw new Error('Bot was created without an identity');
+      await fetchGameData('manual');
+      const observed = playersRef.current.some((p) => p.id === botPlayerId);
+      if (!observed) {
+        throw new Error('Bot was created but the table did not observe the new seat');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Could not add bot',
+        description: error?.message || String(error),
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+
+
   const handleInvite = () => {
     const gameUrl = window.location.href;
     navigator.clipboard.writeText(gameUrl);
@@ -14098,18 +14139,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isHost={isCreator}
             isPaused={game.is_paused}
             onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
-            onAddBot={async () => {
-              // Single canonical bot-creation owner. Exactly one visible
-              // outcome per tap: success toast + authoritative refetch, or
-              // a destructive error toast (action stays retryable).
-              try {
-                await addBotPlayerSittingOut(gameId!);
-                fetchGameData();
-                toast({ title: "Bot added", description: "The bot joins on the next hand." });
-              } catch (error: any) {
-                toast({ title: "Could not add bot", description: error?.message ?? 'Unknown error', variant: "destructive" });
-              }
-            }}
+            onAddBot={addBotAuthoritative}
+
             canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
@@ -14222,15 +14253,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isHost={isCreator}
                   isPaused={game.is_paused}
                   onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
-                  onAddBot={async () => {
-                    try {
-                      await addBotPlayerSittingOut(gameId!);
-                      fetchGameData();
-                      toast({ title: "Bot added", description: "The bot joins on the next hand." });
-                    } catch (error: any) {
-                      toast({ title: "Could not add bot", description: error?.message ?? 'Unknown error', variant: "destructive" });
-                    }
-                  }}
+                  onAddBot={addBotAuthoritative}
+
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
@@ -14272,14 +14296,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     {isCreator && players.length < 7 && (
                       <Button 
                         variant="outline" 
-                        onClick={async () => {
-                          try {
-                            await addBotPlayerSittingOut(gameId!);
-                            fetchGameData();
-                          } catch (error: any) {
-                            toast({ title: "Error", description: error.message, variant: "destructive" });
-                          }
-                        }}
+                        onClick={() => { void addBotAuthoritative().catch(() => {}); }}
+
+
                       >
                         <Bot className="w-4 h-4 mr-2" />
                         Add Bot
