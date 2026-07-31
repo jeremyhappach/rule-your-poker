@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +31,7 @@ interface PlayerOptionsMenuProps {
   isHost?: boolean;
   isPaused?: boolean;
   onTogglePause?: () => void;
-  onAddBot?: () => void;
+  onAddBot?: () => void | Promise<void>;
   canAddBot?: boolean;
   onEndSession?: () => void;
   // Deck color mode props
@@ -63,6 +64,23 @@ export const PlayerOptionsMenu = ({
   deckColorMode,
   onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
+  // Add Bot pending state. One tap = exactly one authoritative attempt:
+  // the item is disabled while in flight (no duplicate creation) and the
+  // pending state ALWAYS clears in `finally` (never latches), so a
+  // failure leaves the action retryable.
+  const [addBotPending, setAddBotPending] = useState(false);
+  const addBotInFlightRef = useRef(false);
+  const runAddBot = async () => {
+    if (!onAddBot || addBotInFlightRef.current) return;
+    addBotInFlightRef.current = true;
+    setAddBotPending(true);
+    try {
+      await onAddBot();
+    } finally {
+      addBotInFlightRef.current = false;
+      setAddBotPending(false);
+    }
+  };
   // Debug logging for Add Bot visibility
   console.log('[PLAYER OPTIONS MENU] Rendering with:', {
     isHost,
@@ -142,13 +160,13 @@ export const PlayerOptionsMenu = ({
           {isHost && onAddBot && canAddBot && (
             <>
               <DropdownMenuItem
+                disabled={addBotPending}
                 onSelect={(e) => {
                   e.preventDefault();
-                  console.log('[PLAYER OPTIONS MENU] Add Bot selected in waiting phase');
-                  void onAddBot();
+                  void runAddBot();
                 }}
               >
-                🤖 Add Bot
+                {addBotPending ? '🤖 Adding bot…' : '🤖 Add Bot'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
@@ -212,13 +230,13 @@ export const PlayerOptionsMenu = ({
             )}
             {onAddBot && canAddBot && (
               <DropdownMenuItem
+                disabled={addBotPending}
                 onSelect={(e) => {
                   e.preventDefault();
-                  console.log('[PLAYER OPTIONS MENU] Add Bot selected in active game');
-                  void onAddBot();
+                  void runAddBot();
                 }}
               >
-                🤖 Add Bot
+                {addBotPending ? '🤖 Adding bot…' : '🤖 Add Bot'}
               </DropdownMenuItem>
             )}
             {onEndSession && (

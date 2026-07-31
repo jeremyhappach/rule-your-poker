@@ -167,7 +167,7 @@ export function SessionEndedFeltPanel({
     >
       <div
         className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden"
-        style={{ pointerEvents: 'auto', maxHeight: '100%', minHeight: 0 }}
+        style={{ pointerEvents: 'auto', height: 'auto', maxHeight: '100%', minHeight: 0 }}
       >
         {/* Title: never scrolls, never shrinks. */}
         <div className="px-2.5 pt-1 pb-0.5 shrink-0">
@@ -176,9 +176,13 @@ export function SessionEndedFeltPanel({
           </h2>
         </div>
 
-        {/* Only the row body scrolls. min-h-0 lets it shrink inside the
-            constrained column; overscroll-contain stops page drag. */}
-        <div className="overflow-y-auto overflow-x-hidden overscroll-contain min-h-0 flex-1 px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
+        {/* Body is `flex-none` so it takes ONLY its intrinsic content
+            height for short lists — `flex-1` previously let it absorb
+            the panel's spare height, and `items-center` on the <ul>'s
+            flex context stretched each row, which is what made seven
+            rows read as near-full-felt. min-h-0 + max-h-full keep the
+            scroll boundary inside the felt for long lists. */}
+        <div className="overflow-y-auto overflow-x-hidden overscroll-contain min-h-0 flex-none max-h-full px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
           {rows === null && !failed ? (
             <p className="text-xs text-muted-foreground py-1 text-center">Loading results…</p>
           ) : failed || (rows && rows.length === 0) ? (
@@ -190,17 +194,17 @@ export function SessionEndedFeltPanel({
               {rows!.map((r) => (
                 <li
                   key={r.key}
-                  className="flex items-center justify-between gap-2.5 py-[3px] min-h-[22px]"
+                  className="flex items-center justify-between gap-2.5 py-0 h-[19px] shrink-0 grow-0"
                 >
                   <span
                     title={r.username}
                     aria-label={r.username}
-                    className={`truncate text-xs leading-tight ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
+                    className={`truncate text-xs leading-none ${r.isSelf ? 'font-semibold text-foreground' : 'text-foreground/90'}`}
                   >
                     {r.username}
                   </span>
                   <span
-                    className={`text-xs font-semibold font-mono tabular-nums shrink-0 text-right ${
+                    className={`text-xs font-semibold font-mono tabular-nums leading-none shrink-0 text-right ${
                       r.net > 0 ? 'text-emerald-500' : r.net < 0 ? 'text-destructive' : 'text-muted-foreground'
                     }`}
                   >

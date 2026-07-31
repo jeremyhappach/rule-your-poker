@@ -14099,11 +14099,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isPaused={game.is_paused}
             onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
             onAddBot={async () => {
+              // Single canonical bot-creation owner. Exactly one visible
+              // outcome per tap: success toast + authoritative refetch, or
+              // a destructive error toast (action stays retryable).
               try {
                 await addBotPlayerSittingOut(gameId!);
                 fetchGameData();
+                toast({ title: "Bot added", description: "The bot joins on the next hand." });
               } catch (error: any) {
-                toast({ title: "Error", description: error.message, variant: "destructive" });
+                toast({ title: "Could not add bot", description: error?.message ?? 'Unknown error', variant: "destructive" });
               }
             }}
             canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
@@ -14222,8 +14226,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     try {
                       await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
+                      toast({ title: "Bot added", description: "The bot joins on the next hand." });
                     } catch (error: any) {
-                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                      toast({ title: "Could not add bot", description: error?.message ?? 'Unknown error', variant: "destructive" });
                     }
                   }}
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}

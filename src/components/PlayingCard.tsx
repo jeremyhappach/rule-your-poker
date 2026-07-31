@@ -98,9 +98,22 @@ interface PlayingCardProps {
   highlight?: 'gold' | null;
 }
 
-/** Extra classes applied when `activeHandShell` is true. */
-const ACTIVE_HAND_SHELL_CLASS =
-  'rounded-[10%] border border-white/70 ring-1 ring-black/10 shadow-[0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.55)] bg-gradient-to-b from-white to-slate-100';
+/**
+ * Extra classes applied when `activeHandShell` is true.
+ *
+ * The physical shell (radius / border / ring / shadow) is deck-mode
+ * agnostic. The white→slate gradient is a TWO-COLOR-ONLY surface: it is
+ * a `background-image`, which paints ON TOP of the inline
+ * `background-color`, so applying it in four-color mode hid the suit
+ * background entirely and left white `text-white` ranks on a white
+ * face. Four-color faces therefore keep the shell geometry but let the
+ * canonical suit background color show through.
+ */
+const ACTIVE_HAND_SHELL_BASE_CLASS =
+  'rounded-[10%] ring-1 ring-black/10 shadow-[0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.55)]';
+const ACTIVE_HAND_SHELL_TWO_COLOR_CLASS =
+  'border border-white/70 bg-gradient-to-b from-white to-slate-100';
+const ACTIVE_HAND_SHELL_FOUR_COLOR_CLASS = 'border border-black/10';
 
 
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
@@ -350,7 +363,7 @@ export const PlayingCard = ({
       data-playing-card-root=""
       data-playing-card-face=""
       data-card-id={`${card.rank}-${card.suit}`}
-      className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? ACTIVE_HAND_SHELL_CLASS : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
+      className={`${sizeClasses.container} relative flex flex-col items-center justify-center p-0 ${activeHandShell ? `${ACTIVE_HAND_SHELL_BASE_CLASS} ${isFourColor && fourColorConfig ? ACTIVE_HAND_SHELL_FOUR_COLOR_CLASS : ACTIVE_HAND_SHELL_TWO_COLOR_CLASS}` : `shadow-xl ${isWild ? '' : borderColor}`} ${highlightOuterGlowClass} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
