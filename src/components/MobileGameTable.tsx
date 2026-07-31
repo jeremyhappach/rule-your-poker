@@ -1323,6 +1323,7 @@ export const MobileGameTable = ({
   getPositionForUserId,
   onLeaveGameNow,
   isWaitingPhase = false,
+  sessionEndedPhase = false,
   waitingSlotContent,
   waitingActivePaneContent,
   realMoney = false,
