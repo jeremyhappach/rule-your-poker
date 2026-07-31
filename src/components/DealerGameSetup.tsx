@@ -2348,27 +2348,31 @@ const DealerGameSetupInner = ({
               </div>
             </TabsContent>
           </Tabs>
+          </div>
 
-          {/* Back Button */}
-          <button
-            onClick={handleBackToGameSelection}
-            className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
-          >
-            ← Back to Game Types
-          </button>
+          <div className="shrink-0 space-y-2 pb-[env(safe-area-inset-bottom)]">
+            {/* Back Button */}
+            <button
+              onClick={handleBackToGameSelection}
+              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
+            >
+              ← Back to Game Types
+            </button>
 
-          {/* Start Button */}
-          <Button 
-            onClick={() => handleSubmit()} 
-            disabled={isSubmitting}
-            className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"
-          >
-            {isSubmitting ? 'Starting...' : `Start ${isHolmGame ? 'Holm Game' : '3-5-7'}`}
-          </Button>
+            {/* Start Button */}
+            <Button 
+              onClick={() => handleSubmit()} 
+              disabled={isSubmitting}
+              className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"
+            >
+              {isSubmitting ? 'Starting...' : `Start ${isHolmGame ? 'Holm Game' : '3-5-7'}`}
+            </Button>
 
-          <p className="text-xs text-amber-200/60 text-center">
-            If timer expires without action, you'll be marked as sitting out
-          </p>
+            <p className="text-xs text-amber-200/60 text-center">
+              If timer expires without action, you'll be marked as sitting out
+            </p>
+          </div>
+
         </CardContent>
       </Card>
     </div>
