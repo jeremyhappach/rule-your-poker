@@ -1765,9 +1765,11 @@ const DealerGameSetupInner = ({
                         `}
                       >
                         <div className="flex items-center gap-3">
+                          {activeHarnessMap[game.id]?.active && <HarnessBadge />}
                           {!game.enabled && (
                             <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           )}
+
                           <span className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
                             {game.name}
                           </span>
