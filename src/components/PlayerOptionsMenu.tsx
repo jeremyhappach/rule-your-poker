@@ -99,7 +99,7 @@ export const PlayerOptionsMenu = ({
   // Observers see 4-color deck toggle + Leave Game Now
   if (isObserver) {
     return (
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
@@ -141,7 +141,7 @@ export const PlayerOptionsMenu = ({
   // During waiting phase, only show Stand Up Now and Leave Game Now
   if (isWaitingPhase) {
     return (
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
@@ -205,7 +205,7 @@ export const PlayerOptionsMenu = ({
   const sitOutDisabled = isSittingOut && !waiting;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
