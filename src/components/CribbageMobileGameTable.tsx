@@ -227,6 +227,16 @@ interface CribbageMobileGameTableProps {
    * redirect must not fire out from under an active celebration.
    */
   onTerminalPresentationActiveChange?: (active: boolean) => void;
+  /**
+   * TRUE final-completion boundary of the canonical Cribbage terminal
+   * sequence (winning scoring event → announcement → pot-to-winner chip
+   * transfer → destination presentation → celebration). Fires exactly once
+   * per terminal identity, on the winSequencePhase → 'complete' edge — the
+   * same edge that fires `onGameComplete`. Never fires on cleanup, unmount,
+   * publisher replacement or descriptor reset (unlike
+   * `onTerminalPresentationActiveChange(false)`).
+   */
+  onTerminalPresentationComplete?: (terminalIdentity: string) => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
   // Dealer selection props (optional - used during cribbage_dealer_selection phase).
