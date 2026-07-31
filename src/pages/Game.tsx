@@ -12147,11 +12147,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastRoundResult: game?.last_round_result ?? null,
       });
       if (holmWinPotPresentationKey) holmPresentedResultKeysRef.current.add(holmWinPotPresentationKey);
-      // Terminal presentation completion boundary (Holm LAST HAND). Admit
-      // the transient Session Ended table BEFORE the hold releases so the
-      // shell hands off gameplay → ended-table with no lobby frame between.
+      // CANONICAL HOLM TERMINAL COMPLETION BOUNDARY (LAST HAND). Publish
+      // the same stable identity used for presentation single-fire, so the
+      // Session Ended phase can only follow a completed presentation of the
+      // exact result that produced `session_ended`.
       liveTerminalPresentationObservedRef.current = true;
-      admitSessionEndedTable();
+      markTerminalPresentationComplete(
+        holmWinPotPresentationKey ?? `holm|winpot|${(game as any)?.current_game_uuid ?? 'no-dealer-game'}|${game?.total_hands ?? 'no-hand'}|${game?.last_round_result ?? 'no-result'}`,
+      );
 
       setHolmTerminalPresentationDone(game?.last_round_result ?? 'holm-terminal-done');
       setHolmWinPotTriggerId(null);
