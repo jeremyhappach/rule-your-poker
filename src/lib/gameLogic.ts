@@ -111,7 +111,7 @@ async function resolveDealerGameId(
  * Snapshot all players' chip counts after a hand completes.
  * This is used for accurate session results and for restoring chips when departed players rejoin.
  *
- * Idempotent at the database level: the partial unique index
+ * Idempotent at the database level: the unique index
  * `session_player_snapshots_dealer_hand_participant_key` makes a replay of the
  * same authoritative hand a no-op, while a later dealer game reusing the same
  * `hand_number` is a distinct identity and always writes.
