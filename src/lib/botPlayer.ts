@@ -110,76 +110,33 @@ export async function addBotPlayer(gameId: string) {
 
   console.log('[BOT CREATION] Game found, buy_in:', game.buy_in);
 
-  // Create a bot profile first with random aggression level
+  // Single transaction: allocate durable session ordinal, create the bot
+  // identity, seat the player row, and record durable bot_added history.
+  // Any failure rolls all of it back, including the counter increment.
   const botId = generateUUID();
-  console.log('[BOT CREATION] Generated bot ID:', botId);
-  
   const aggressionLevel = getRandomAggressionLevel(botId);
-  console.log('[BOT CREATION] Assigned aggression level:', aggressionLevel);
-  
-  // Durable, session-lifetime bot ordinal (atomic; never reuses the
-  // number of a removed bot).
-  const nextNumber = await allocateBotAliasNumber(gameId);
 
-
-  // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
-  let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
-
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
-
-  // Insert bot profile with aggression level
-  let { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: botId,
-      username: botName,
-      aggression_level: aggressionLevel,
-    });
-
-  if (profileError?.code === '23505') {
-    botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
-    console.warn('[BOT CREATION] Bot username collision, retrying with suffix:', botName);
-
-    ({ error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: botId,
-        username: botName,
-        aggression_level: aggressionLevel,
-      }));
-  }
-
-  if (profileError) {
-    console.error('[BOT CREATION] Profile creation error:', profileError);
-    throw new Error(`Failed to create bot profile: ${profileError.message}`);
-  }
-
-  console.log('[BOT CREATION] Profile created successfully, now creating player record');
-
-  // Create bot player
-  const { data: botPlayer, error } = await supabase
-    .from('players')
-    .insert({
-      user_id: botId,
-      game_id: gameId,
-      position: nextPosition,
-      chips: 0,
-      is_bot: true,
-      status: 'active'
-    })
-    .select()
-    .single();
+  const { data: created, error } = await supabase.rpc('create_session_bot', {
+    _game_id: gameId,
+    _bot_id: botId,
+    _aggression_level: aggressionLevel,
+    _position: nextPosition,
+    _sitting_out: false,
+    _waiting: false,
+  });
 
   if (error) {
-    console.error('[BOT CREATION] Player creation error:', error);
-    throw error;
+    console.error('[BOT CREATION] create_session_bot error:', error);
+    throw new Error(`Failed to add bot: ${error.message}`);
   }
 
+  const botPlayer = (created as any)?.player ?? null;
   console.log('[BOT CREATION] ========== Bot player created successfully ==========');
   console.log('[BOT CREATION] Bot player:', botPlayer);
 
   return botPlayer;
 }
+
 
 /**
  * Add a bot player that starts sitting out (waiting to join next game)
