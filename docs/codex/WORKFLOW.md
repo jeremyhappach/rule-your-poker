@@ -19,10 +19,11 @@ The standard sequence is:
 2. Report the root cause and smallest safe recommended fix.
 3. Wait for Jeremy to challenge the diagnosis or reply `approve`.
 4. After `approve`, implement, test, validate, review the final diff internally, and create a local commit.
-5. Stop before pushing and give exact Git Bash push/merge instructions.
-6. Jeremy publishes through Lovable and performs production smoke.
+5. For routine work on local `main`, report completion and ask only: `Push to origin/main?`
+6. Only if Jeremy replies `push`, run `.codex\scripts\push-origin-main.cmd`; its sole Git operation is `C:\Program Files\Git\cmd\git.exe push origin main`.
+7. Jeremy publishes through Lovable and performs production smoke.
 
-Never push, merge, deploy, publish, apply migrations, or modify production data without Jeremy's explicit instruction.
+`approve` never authorizes a push. Never push without a separate explicit push authorization, and never force-push. High-risk work requires separate explicit authorization for its branch push and its later merge. Never deploy, publish, apply migrations, or modify production data without Jeremy's explicit instruction.
 
 ## Investigation phase
 
@@ -78,6 +79,30 @@ For the recommended scope, one `approve` authorizes Codex to:
 Do not ask for separate approval for editing, tests, typechecking, linting, building, showing the diff, staging, or the local commit.
 
 If implementation shows that the recommended solution was materially wrong or that substantially broader work is required, stop and report the new evidence instead of silently expanding scope.
+
+## Meaning of `push`
+
+For routine work already committed on local `main`, Codex asks exactly:
+
+```text
+Push to origin/main?
+```
+
+Only Jeremy's exact reply `push` authorizes Codex to execute the fixed project helper:
+
+```text
+.codex\scripts\push-origin-main.cmd
+```
+
+The helper's sole Git operation is:
+
+```text
+C:\Program Files\Git\cmd\git.exe push origin main
+```
+
+Codex performs that push itself and does not send Jeremy to Git Bash. Do not infer push authorization from `approve`, a request to implement, or any earlier push authorization. Never pass arguments to or modify the helper or its rule as part of ordinary work. Never add push options, change the remote or ref, or force-push.
+
+This routine authorization does not apply to task branches. High-risk work requires one explicit authorization to push the named branch and a later, separate explicit authorization to merge it.
 
 ## Queue and backlog memory
 
@@ -180,13 +205,9 @@ When local `main` is clean and synchronized:
 1. Work directly on local `main` after approval.
 2. Implement and validate.
 3. Commit locally.
-4. Tell Jeremy to run:
-
-```bash
-git push origin main
-```
-
-Then state:
+4. Report completion and ask only: `Push to origin/main?`
+5. If Jeremy replies `push`, run `.codex\scripts\push-origin-main.cmd`, which uses the installed Windows Git to execute exactly `C:\Program Files\Git\cmd\git.exe push origin main`.
+6. After a successful push, state:
 
 ```text
 No merge is required. Publish through Lovable, then test the reported behavior in production.
@@ -213,27 +234,12 @@ For high-risk work:
 1. Create an appropriately named local branch before editing.
 2. Implement after approval.
 3. Validate and commit locally.
-4. Give Jeremy the exact command with the actual branch name:
+4. Explain in one sentence why the task required the high-risk branch workflow and ask for explicit authorization to push the actual named branch.
+5. Push the branch only after that authorization. Never force-push.
+6. Prepare or report the pull-request path, then ask separately for explicit authorization before merging.
+7. Merge only after that later authorization, then synchronize local `main` with a fast-forward-only pull.
 
-```bash
-git push -u origin <actual-branch-name>
-```
-
-5. Give compact GitHub instructions:
-
-```text
-Open the pull-request link printed by Git Bash.
-Confirm base: main and compare: <actual-branch-name>.
-Create and merge the pull request.
-```
-
-6. Give the post-merge synchronization command:
-
-```bash
-git switch main && git pull --ff-only origin main
-```
-
-Explain in one sentence why the task required the high-risk branch workflow. Fill every placeholder with the real branch name in the actual completion response.
+Branch-push authorization never authorizes the later merge. Fill every branch reference with the actual branch name.
 
 ## Completion response
 
@@ -247,19 +253,19 @@ After implementation, validation, and the local commit, respond compactly:
 - State the exact production behavior Jeremy still needs to smoke-test.
 - Mention any newly reported items added to the queue during the task.
 
-**Git Bash**
+For routine work on local `main`, end the completion report by asking only:
 
-Give one copy/paste command block containing the fewest exact next commands. Assume Git Bash on Windows: do not include `$` prompts or unfilled placeholders. Mention right-click or `Shift+Insert` paste only when it would be newly useful, not routinely.
+```text
+Push to origin/main?
+```
 
-**Merge**
-
-State either that no merge is required because the commit is already on local `main`, or give the short exact pull-request and merge steps for the actual branch.
+Do not include Git Bash push instructions. For high-risk branch work, state the branch and why it was required, then request separate authorization for the branch push; request merge authorization only after the push and pull-request state are ready.
 
 Do not request screenshots or command output when the expected result is routine and Jeremy has not reported an error. Do not provide a long retrospective unless requested.
 
 ## Publishing and smoke
 
-Codex owns local source changes, tests, validation, diff review, and the local commit. Jeremy owns pushing through Git Bash, merging when required, Lovable Publish/Update, and production smoke.
+Codex owns local source changes, tests, validation, diff review, the local commit, and an explicitly authorized push. Jeremy owns the separate push decision, separate high-risk merge decision, Lovable Publish/Update, and production smoke.
 
 After a successful push or merge, the routine next instruction is:
 

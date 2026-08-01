@@ -1,0 +1,17 @@
+# Allow only the fixed project helper used for routine main pushes.
+# The helper ignores arguments and invokes exactly:
+# C:\Program Files\Git\cmd\git.exe push origin main
+# AGENTS.md requires a separate, explicit `push` from Jeremy before execution.
+prefix_rule(
+    pattern = [
+        "C:\\Users\\jerem\\Desktop\\poker\\rule-your-poker\\.codex\\scripts\\push-origin-main.cmd",
+    ],
+    decision = "allow",
+    justification = "Allow the fixed origin/main push helper only after Jeremy explicitly replies `push`.",
+    match = [
+        '"C:\\Users\\jerem\\Desktop\\poker\\rule-your-poker\\.codex\\scripts\\push-origin-main.cmd"',
+    ],
+    not_match = [
+        '"C:\\Users\\jerem\\Desktop\\poker\\rule-your-poker\\.codex\\scripts\\push-origin-branch.cmd"',
+    ],
+)
