@@ -29,6 +29,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { formatChipValue } from '@/lib/utils';
+import { getBotAlias } from '@/lib/botAlias';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
 
 interface SessionEndedRow {
