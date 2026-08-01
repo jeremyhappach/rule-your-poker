@@ -78,11 +78,43 @@ import { emit357InstantWinTerminal } from "./threeFiveSeven/instantWinLifecycle"
 
 
 /**
+ * Canonical snapshot identity resolver.
+ *
+ * `session_player_snapshots` is keyed on
+ * (game_id, dealer_game_id, hand_number, player_id) — `hand_number` restarts
+ * at 1 for every dealer game, so the dealer game is a mandatory part of the
+ * identity. `games.current_game_uuid` is the authoritative current
+ * `dealer_games.id` for the session.
+ */
+async function resolveDealerGameId(
+  gameId: string,
+  dealerGameId?: string | null,
+): Promise<string | null> {
+  if (dealerGameId) return dealerGameId;
+  const { data } = await supabase
+    .from('games')
+    .select('current_game_uuid')
+    .eq('id', gameId)
+    .maybeSingle();
+  return (data?.current_game_uuid as string | null) ?? null;
+}
+
+/**
  * Snapshot all players' chip counts after a hand completes.
  * This is used for accurate session results and for restoring chips when departed players rejoin.
+ *
+ * Idempotent at the database level: the partial unique index
+ * `session_player_snapshots_dealer_hand_participant_key` makes a replay of the
+ * same authoritative hand a no-op, while a later dealer game reusing the same
+ * `hand_number` is a distinct identity and always writes.
  */
-export async function snapshotPlayerChips(gameId: string, handNumber: number) {
-  console.log('[SNAPSHOT] Snapshotting player chips for game:', gameId, 'hand:', handNumber);
+export async function snapshotPlayerChips(
+  gameId: string,
+  handNumber: number,
+  dealerGameId?: string | null,
+) {
+  const resolvedDealerGameId = await resolveDealerGameId(gameId, dealerGameId);
+  console.log('[SNAPSHOT] Snapshotting player chips for game:', gameId, 'dealerGame:', resolvedDealerGameId, 'hand:', handNumber);
   
   // Fetch all players with their profiles for username
   const { data: players, error: playersError } = await supabase
@@ -107,6 +139,7 @@ export async function snapshotPlayerChips(gameId: string, handNumber: number) {
     
     return {
       game_id: gameId,
+      dealer_game_id: resolvedDealerGameId,
       player_id: player.id,
       user_id: player.user_id,
       username,
@@ -121,9 +154,14 @@ export async function snapshotPlayerChips(gameId: string, handNumber: number) {
     return;
   }
   
-  const { error: insertError } = await supabase
-    .from('session_player_snapshots')
-    .insert(snapshots);
+  const { error: insertError } = resolvedDealerGameId
+    ? await supabase
+        .from('session_player_snapshots')
+        .upsert(snapshots, {
+          onConflict: 'game_id,dealer_game_id,hand_number,player_id',
+          ignoreDuplicates: true,
+        })
+    : await supabase.from('session_player_snapshots').insert(snapshots);
   
   if (insertError) {
     console.error('[SNAPSHOT] Error inserting snapshots:', insertError);
@@ -135,6 +173,10 @@ export async function snapshotPlayerChips(gameId: string, handNumber: number) {
 /**
  * Snapshot a single player's chips when they leave mid-session.
  * This ensures their final chip balance is captured for accurate session results.
+ *
+ * Uses the same canonical identity; a departure that lands on an identity that
+ * already has a snapshot updates it to the later (post-settlement) balance
+ * rather than being silently dropped.
  */
 export async function snapshotDepartingPlayer(
   gameId: string, 
@@ -149,7 +191,7 @@ export async function snapshotDepartingPlayer(
   // Get the current hand number from the game's total_hands
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('total_hands')
+    .select('total_hands, current_game_uuid')
     .eq('id', gameId)
     .maybeSingle();
   
@@ -159,18 +201,24 @@ export async function snapshotDepartingPlayer(
   }
   
   const handNumber = game.total_hands || 0;
+  const dealerGameId = (game.current_game_uuid as string | null) ?? null;
   
-  const { error: insertError } = await supabase
-    .from('session_player_snapshots')
-    .insert({
-      game_id: gameId,
-      player_id: playerId,
-      user_id: userId,
-      username,
-      chips,
-      is_bot: isBot,
-      hand_number: handNumber
-    });
+  const row = {
+    game_id: gameId,
+    dealer_game_id: dealerGameId,
+    player_id: playerId,
+    user_id: userId,
+    username,
+    chips,
+    is_bot: isBot,
+    hand_number: handNumber
+  };
+
+  const { error: insertError } = dealerGameId
+    ? await supabase
+        .from('session_player_snapshots')
+        .upsert(row, { onConflict: 'game_id,dealer_game_id,hand_number,player_id' })
+    : await supabase.from('session_player_snapshots').insert(row);
   
   if (insertError) {
     console.error('[SNAPSHOT] Error inserting departing player snapshot:', insertError);
@@ -178,6 +226,7 @@ export async function snapshotDepartingPlayer(
     console.log('[SNAPSHOT] Successfully snapshotted departing player:', username);
   }
 }
+
 
 /**
  * Get the last known chip count for a user in a session (for rejoining players)

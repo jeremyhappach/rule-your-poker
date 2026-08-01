@@ -409,27 +409,41 @@ async function applyCribbageTerminalDisposition(
 
 /**
  * Idempotent final-balance snapshot. Reuses the canonical
- * `snapshotPlayerChips` owner; skips if a snapshot already exists for this
- * (game, hand) so retries cannot duplicate session-result inputs.
+ * `snapshotPlayerChips` owner; skips only if a snapshot already exists for this
+ * exact authoritative identity (game, dealer game, hand) so retries cannot
+ * duplicate session-result inputs while a later dealer game that reuses the
+ * same `hand_number` still writes its own batch. Final safety is the DB partial
+ * unique index inside `snapshotPlayerChips`.
  */
 async function ensureFinalChipSnapshot(gameId: string, handNumber: number): Promise<void> {
   try {
-    const { data: existing } = await supabase
-      .from('session_player_snapshots')
-      .select('id')
-      .eq('game_id', gameId)
-      .eq('hand_number', handNumber)
-      .limit(1);
+    const { data: game } = await supabase
+      .from('games')
+      .select('current_game_uuid')
+      .eq('id', gameId)
+      .maybeSingle();
+    const dealerGameId = (game?.current_game_uuid as string | null) ?? null;
 
-    if (existing && existing.length > 0) {
-      console.log('[CRIBBAGE] Final chip snapshot already present for hand', handNumber);
-      return;
+    if (dealerGameId) {
+      const { data: existing } = await supabase
+        .from('session_player_snapshots')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', dealerGameId)
+        .eq('hand_number', handNumber)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        console.log('[CRIBBAGE] Final chip snapshot already present for dealer game hand', handNumber);
+        return;
+      }
     }
-    await snapshotPlayerChips(gameId, handNumber);
+    await snapshotPlayerChips(gameId, handNumber, dealerGameId);
   } catch (err) {
     console.error('[CRIBBAGE] Failed to reconcile final chip snapshot:', err);
   }
 }
+
 
 /**
  * LEGACY RECOVERY ONLY.

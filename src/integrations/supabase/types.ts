@@ -2455,6 +2455,7 @@ export type Database = {
         Row: {
           chips: number
           created_at: string | null
+          dealer_game_id: string | null
           game_id: string
           hand_number: number
           id: string
@@ -2466,6 +2467,7 @@ export type Database = {
         Insert: {
           chips: number
           created_at?: string | null
+          dealer_game_id?: string | null
           game_id: string
           hand_number: number
           id?: string
@@ -2477,6 +2479,7 @@ export type Database = {
         Update: {
           chips?: number
           created_at?: string | null
+          dealer_game_id?: string | null
           game_id?: string
           hand_number?: number
           id?: string
@@ -2486,6 +2489,13 @@ export type Database = {
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "session_player_snapshots_dealer_game_id_fkey"
+            columns: ["dealer_game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_player_snapshots_game_id_fkey"
             columns: ["game_id"]
