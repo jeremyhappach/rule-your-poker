@@ -4334,8 +4334,13 @@ export const MobileGameTable = ({
     ? staggeredCardCount
     : (communityCardsRevealed ?? 0);
 
-  const hasWinResult =
-    typeof lastRoundResult === "string" && /(beat|wins|won)/i.test(lastRoundResult);
+  // Player decisions are intentionally reset by terminal Holm settlement, so
+  // a zero-stayer count alone is not proof that this hand was an all-fold.
+  // Rabbit Hunt belongs only to the two explicit carry-forward outcomes
+  // written by the all-fold branch in endHolmRound.
+  const isAllFoldRabbitHuntResult =
+    lastRoundResult === "Pussy Tax!" ||
+    lastRoundResult === "Everyone folded! No penalty.";
 
   // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
   // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
@@ -4343,10 +4348,10 @@ export const MobileGameTable = ({
     shouldShowHolmCommunityCards &&
     rabbitHunt &&
     stayedPlayersCount === 0 &&
+    isAllFoldRabbitHuntResult &&
     !soloVsChuckyTableLocked &&
     !isSoloVsChucky &&
-    revealedForRabbitUi > 2 &&
-    !hasWinResult;
+    revealedForRabbitUi > 2;
   const shouldShowRabbitHuntLabel = _rawShouldShowRabbitHuntLabel;
 
 
