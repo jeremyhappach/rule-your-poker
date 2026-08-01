@@ -6480,6 +6480,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // (current_decision IS NULL + atomic current_turn_position CAS).
   const botWakePendingRef = useRef(false);
   const [botWakeTick, setBotWakeTick] = useState(0);
+  // SCHEDULER DRAIN (P0 lost-wake fix, second edge).
+  // The latch above only recovers wakes that were *dropped by the in-flight
+  // guard*. It cannot recover a bot turn that became authoritative while no
+  // client was evaluating (reconnect, tab resume, remount onto an
+  // already-parked turn) because no authority *transition* is observed on that
+  // client. These are explicit, event-driven drains — no polling, no timers.
+  const [botDrainTick, setBotDrainTick] = useState(0);
   // Re-render-trigger for Holm deal-ready barrier flips so the bot
   // trigger effect re-evaluates the moment the deal completes.
   const [holmReadyTick, setHolmReadyTick] = useState(0);
@@ -6489,6 +6496,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // reading from the same authority source.
   const [holmAuthorityTick, setHolmAuthorityTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
+  useEffect(() => {
+    const drain = () => setBotDrainTick(t => t + 1);
+    const onVisible = () => { if (document.visibilityState === 'visible') drain(); };
+    window.addEventListener('app:realtime-reconnect', drain);
+    window.addEventListener('focus', drain);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('app:realtime-reconnect', drain);
+      window.removeEventListener('focus', drain);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
   useEffect(() => {
     if (safetyPollsDisabled) {
       if (awaitingPollRef.current) {
