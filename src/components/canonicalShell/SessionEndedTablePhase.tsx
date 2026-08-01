@@ -199,20 +199,41 @@ export function SessionEndedFeltPanel({
   if (!feltEl) return null;
 
   return createPortal(
-    // Felt-relative sizing: this wrapper is `inset-0` inside
-    // [data-canonical-felt-surface], so 100% height IS the canonical felt
-    // content box. The 4% inset keeps the panel clear of the rounded felt
-    // edge; the panel's own max-height is therefore felt-relative (never
-    // viewport-relative) and the table shell can never scroll.
+    // CANONICAL FELT-SAFE CONTENT REGION (inscribed rectangle).
+    //
+    // [data-canonical-felt-surface] is an ELLIPSE (`rounded-[50%]` +
+    // `overflow:hidden`) whose bounding box is the full play rect. A
+    // rectangular panel sized against `inset-0` therefore extends into
+    // the four clipped corners: the lower rows were painted outside the
+    // ellipse and silently cut off before the body ever became
+    // scrollable. THAT was the defect — not a missing max-height.
+    //
+    // Geometry: for an ellipse with semi-axes (a, b), a centered
+    // rectangle of half-width `k·a` is fully inscribed iff its
+    // half-height ≤ `b·√(1 − k²)`. We take k = 0.80 →
+    // √(1 − 0.64) = 0.60, and use 58% height for visible clearance.
+    // Both numbers are PERCENTAGES OF THE FELT — no vh/dvh, no window
+    // or screen reads, no device constants, no fixed pixel heights.
+    // This wrapper is a definite-size block, so the panel's `max-h-full`
+    // and the body's `min-h-0` shrink resolve against a real constraint.
     <div
       data-session-ended-felt-panel=""
-      className="absolute inset-0 z-[30] flex items-center justify-center p-[4%]"
-      style={{ pointerEvents: 'none' }}
+      data-session-ended-felt-safe-region=""
+      className="absolute z-[30] flex items-center justify-center min-h-0 overflow-hidden"
+      style={{
+        left: '50%',
+        top: '50%',
+        width: '80%',
+        height: '58%',
+        transform: 'translate(-50%, -50%)',
+        pointerEvents: 'none',
+      }}
     >
       <div
-        className="w-[min(320px,86%)] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden max-h-full min-h-0"
+        className="w-full max-w-[320px] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden max-h-full min-h-0"
         style={{ pointerEvents: 'auto' }}
       >
+
         {/* Title: never scrolls, never shrinks. */}
         <div className="px-2.5 pt-1 pb-0.5 shrink-0">
           <h2 className="text-sm font-semibold text-foreground tracking-tight leading-tight">
