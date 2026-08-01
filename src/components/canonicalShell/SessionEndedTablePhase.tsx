@@ -29,6 +29,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { formatChipValue } from '@/lib/utils';
+import { getBotAlias } from '@/lib/botAlias';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
 
 interface SessionEndedRow {
@@ -89,29 +90,50 @@ export function SessionEndedFeltPanel({
   }, []);
 
   const load = useCallback(async (signal: { cancelled: boolean }) => {
-    // ALL participants with session activity: every snapshot row for this
-    // session, reduced to the latest row per participant identity. Not
-    // filtered by seat occupancy, connection, dealer game, or final hand.
-    const { data, error } = await supabase
-      .from('session_player_snapshots')
-      .select('player_id, user_id, username, chips, is_bot, created_at')
-      .eq('game_id', gameId)
-      .order('created_at', { ascending: false });
+    // Participant union — snapshots alone are NOT a complete participant set.
+    // `holm_settle_hand` (and the client snapshot owners) guard snapshot writes
+    // on (game_id, hand_number) only, and hand_number restarts at 1 for every
+    // dealer game, so after the first dealer game no further snapshot batch is
+    // written. Any participant seated after that batch (e.g. bots added later)
+    // has zero snapshot rows and silently disappeared from Results.
+    //
+    // Source of truth per participant:
+    //   - currently-rostered rows -> `players.chips` (the SAME value the seat
+    //     clusters render as the final balance)
+    //   - departed/removed/replaced participants -> latest snapshot row
+    const [snapRes, playerRes] = await Promise.all([
+      supabase
+        .from('session_player_snapshots')
+        .select('player_id, user_id, username, chips, is_bot, created_at')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('players')
+        .select('id, user_id, chips, is_bot, created_at, status, profiles(username)')
+        .eq('game_id', gameId),
+    ]);
     if (signal.cancelled) return;
-    if (error) {
+    if (snapRes.error && playerRes.error) {
       setFailed(true);
       return;
     }
+    const identityKey = (
+      isBot: boolean,
+      playerId: string,
+      userId?: string | null,
+    ) =>
+      isBot
+        ? `bot:${playerId}`
+        : userId
+          ? `user:${userId}`
+          : `player:${playerId}`;
+
     const latest = new Map<string, SessionEndedRow>();
-    for (const snap of (data ?? []) as any[]) {
+    for (const snap of (snapRes.data ?? []) as any[]) {
       const isBot = !!snap.is_bot;
       // Identity: user for humans (survives re-seating with a new player row),
       // player row for bots (bots have no stable user identity).
-      const key = isBot
-        ? `bot:${snap.player_id}`
-        : snap.user_id
-          ? `user:${snap.user_id}`
-          : `player:${snap.player_id}`;
+      const key = identityKey(isBot, snap.player_id, snap.user_id);
       const at = new Date(snap.created_at ?? 0).getTime();
       const existing = latest.get(key);
       if (existing && existing.latestAt >= at) continue;
@@ -124,10 +146,32 @@ export function SessionEndedFeltPanel({
         latestAt: at,
       });
     }
+
+    const roster = (playerRes.data ?? []) as any[];
+    for (const p of roster) {
+      // Observers never had accounting activity; everything else (active,
+      // sitting out, left, waiting) did and must appear exactly once.
+      if (p.status === 'observer') continue;
+      const isBot = !!p.is_bot;
+      const key = identityKey(isBot, p.id, p.user_id);
+      const username = isBot
+        ? getBotAlias(roster, p.user_id)
+        : p.profiles?.username ?? latest.get(key)?.username ?? 'Player';
+      latest.set(key, {
+        key,
+        username,
+        net: Number(p.chips ?? 0),
+        isBot,
+        isSelf: !isBot && !!currentUserId && p.user_id === currentUserId,
+        latestAt: Number.MAX_SAFE_INTEGER,
+      });
+    }
+
     const sorted = Array.from(latest.values()).sort(
       (a, b) => b.net - a.net || a.username.localeCompare(b.username),
     );
     setRows(sorted);
+
   }, [gameId, currentUserId]);
 
   useEffect(() => {
