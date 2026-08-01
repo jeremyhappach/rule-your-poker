@@ -80,6 +80,14 @@ interface PlayerHandProps {
   claimedCardIds?: string[];
   baseHandContextId?: string | null;
   boundaryCardIdPrefix?: string | null;
+  /**
+   * During a staged 3-5-7 deal, maps each currently visible card back to
+   * its authoritative source index. This keeps action/highlight indexes
+   * authoritative while transport may reveal cards in display order.
+   */
+  sourceCardIndices?: number[];
+  /** Final source-index order for the current staged 3-5-7 round. */
+  stagedDisplayOrder?: number[] | null;
   source?: string;
 }
 
@@ -117,6 +125,8 @@ export const PlayerHand = ({
   claimedCardIds,
   baseHandContextId = null,
   boundaryCardIdPrefix = null,
+  sourceCardIndices,
+  stagedDisplayOrder = null,
   source = 'PlayerHand.cards',
 }: PlayerHandProps) => {
   const instanceIdRef = useRef(0);
@@ -281,7 +291,7 @@ export const PlayerHand = ({
   // Create sorted cards with original indices for highlighting (normal display)
   const cardsWithIndices = cards.map((card, index) => ({ 
     card, 
-    originalIndex: index,
+    originalIndex: sourceCardIndices?.[index] ?? index,
     isWild: wildRank !== null && card.rank === wildRank
   }));
   
@@ -332,6 +342,17 @@ export const PlayerHand = ({
   const displayCardCount =
     holmStagedCapacity ?? three57StagedCapacity ?? (cards.length > 0 ? cards.length : (expectedCardCount || 0));
   const cardSize = getCardSize(displayCardCount);
+  const staged357Slots =
+    is357Game &&
+    !isOpponentExposedShowdown &&
+    dealPhase === 'DEALING' &&
+    three57StagedCapacity != null &&
+    stagedDisplayOrder != null &&
+    stagedDisplayOrder.length >= three57StagedCapacity
+      ? stagedDisplayOrder.slice(0, three57StagedCapacity).map((sourceIndex) =>
+          cardsWithIndices.find((entry) => entry.originalIndex === sourceIndex) ?? null,
+        )
+      : null;
 
   // Round 1 (3-5-7) on mobile: cards were getting too wide when scaled.
   // Override the base w/h to be slightly narrower + taller to match a more natural playing-card ratio.
@@ -1193,11 +1214,34 @@ export const PlayerHand = ({
     >
 
 
-      {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
+      {(staged357Slots ?? sortedCardsWithIndices).map((entry, displayIndex) => {
+        if (!entry) {
+          return (
+            <div
+              key={`three57-staged-slot-${displayIndex}`}
+              aria-hidden="true"
+              data-three57-reservation-slot={String(displayIndex)}
+              className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+              style={{
+                visibility: 'hidden',
+                pointerEvents: 'none',
+                width: dynActive ? `${dyn357!.cardWidth}px` : undefined,
+              }}
+            >
+              <div className={
+                cardSize === 'xl' ? 'w-9 h-14 sm:w-10 sm:h-16'
+                : cardSize === 'lg' ? 'w-8 h-12 sm:w-9 sm:h-14'
+                : cardSize === 'md' ? 'w-7 h-10 sm:w-8 sm:h-12'
+                : 'w-6 h-9 sm:w-7 sm:h-10'
+              } />
+            </div>
+          );
+        }
+        const { card, originalIndex, isWild } = entry;
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-        const n = holmStagedCapacity ?? sortedCardsWithIndices.length;
+        const n = holmStagedCapacity ?? staged357Slots?.length ?? sortedCardsWithIndices.length;
         const rotationDeg = useV4FanR1
           ? fanRotationDeg(v4R1TotalFanDeg, displayIndex, n) * v4R1FanSign
           : defaultFanStep * (displayIndex - (n - 1) / 2);
@@ -1277,6 +1321,7 @@ export const PlayerHand = ({
         !isOpponentExposedShowdown &&
         !forceHiddenFaces &&
         three57StagedCapacity != null &&
+        staged357Slots == null &&
         sortedCardsWithIndices.length < three57StagedCapacity
         ? Array.from(
             { length: three57StagedCapacity - sortedCardsWithIndices.length },

@@ -58,6 +58,7 @@ import { useAnnouncementContext } from "@/lib/canonicalShell/announcements/Canon
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
+import { orderActiveHandCards } from "@/lib/cardGames/cardDisplayOrder";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { subscribeHolmDealDbg, getHolmDealDbgMeta } from "@/lib/canonicalShell/cardTransport/holmDealDbg";
 import { Card, CardContent } from "@/components/ui/card";
@@ -868,10 +869,11 @@ function UseHolmSelfHand<T>({
   // canonical Holm deal completes (phase === GAMEPLAY).
   const effectiveCards = useMemo(() => {
     if (!deal || deal.gameType !== 'holm-game' || deal.phase === 'GAMEPLAY') return cards;
+    const cardsInDisplayOrder = orderActiveHandCards(cards as Array<{ rank: string; suit: string }>, 'holm') as T[];
     const out: T[] = [];
     for (let i = 0; i < selfCardIds.length; i++) {
       const cid = selfCardIds[i];
-      if (cid && deal.isSettled(cid) && cards[i] != null) out.push(cards[i]);
+      if (cid && deal.isSettled(cid) && cardsInDisplayOrder[i] != null) out.push(cardsInDisplayOrder[i]);
     }
     return out;
   }, [cards, deal, selfCardIds]);
@@ -13773,6 +13775,8 @@ export const MobileGameTable = ({
                                   baseHandContextId: string;
                                   playerId: string;
                                   boundaryCardIdPrefix: string;
+                                  sourceCardIndices?: number[];
+                                  stagedDisplayOrder?: number[] | null;
                                 }) => {
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
@@ -13861,6 +13865,8 @@ export const MobileGameTable = ({
                                           claimedCardIds={boundary.claimedCardIds}
                                           baseHandContextId={boundary.baseHandContextId}
                                           boundaryCardIdPrefix={boundary.boundaryCardIdPrefix}
+                                          sourceCardIndices={boundary.sourceCardIndices}
+                                          stagedDisplayOrder={boundary.stagedDisplayOrder}
                                           source="MobileGameTable.activeSelfHand"
                                           forceHiddenFaces={false}
                                           showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}

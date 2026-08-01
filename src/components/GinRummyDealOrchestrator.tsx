@@ -30,6 +30,7 @@ import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
+import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 
 
 interface SeatEntry {
@@ -235,14 +236,17 @@ export function GinRummyDealOrchestrator({
     };
 
     // ── 20 hidden intents to the seats (10 per player, non-dealer first)
+    // The active Gin hand renders rank/suit order, so stamp self intents in
+    // that order and let the partial reveal grow as a sorted prefix.
+    const selfHandInDisplayOrder = orderActiveHandCards(selfHand, 'gin-rummy');
     let selfRound = 0;
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (const r of order) {
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
         const cardId = `${handContextId}#card-${idx}`;
-        const visibleFace = isSelf && selfHand[selfRound]
-          ? toVisibleFace(selfHand[selfRound])
+        const visibleFace = isSelf && selfHandInDisplayOrder[selfRound]
+          ? toVisibleFace(selfHandInDisplayOrder[selfRound])
           : undefined;
         if (isSelf) selfRound++;
         pushIntent(

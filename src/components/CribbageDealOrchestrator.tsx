@@ -29,6 +29,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 const recordDealTransportDispatch: (..._args: unknown[]) => void = () => {};
 const registerCribbageHandContext: (..._args: unknown[]) => void = () => {};
 
@@ -332,6 +333,9 @@ export function CribbageDealOrchestrator({
       ? { kind: 'feltDealOrigin' }
       : { kind: 'seat', position: dealerSeat.position };
 
+    // Cribbage's active hand is rank-sorted. The database hand itself stays
+    // untouched; only the self-recipient transport projection is ordered.
+    const selfHandInDisplayOrder = orderActiveHandCards(selfHand, 'cribbage');
     const intents: CardTransportIntent[] = [];
     // Self-hand card index tracker — matches the order in which self
     // recipient intents are created (== deal order for self). Consumed
@@ -352,7 +356,7 @@ export function CribbageDealOrchestrator({
         // stays `face: 'hidden'` (opening deal is not shown face-up
         // in-flight); `visibleFace` is retained by DealRuntime and
         // surfaced via getSettledCardsForPlayer for the DEALING render.
-        const selfFace = isSelf ? selfHand[selfIntentIdx] : null;
+        const selfFace = isSelf ? selfHandInDisplayOrder[selfIntentIdx] : null;
         const visibleFace = selfFace
           ? { rank: selfFace.rank, suit: selfFace.suit }
           : undefined;

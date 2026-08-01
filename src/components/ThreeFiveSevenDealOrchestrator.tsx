@@ -82,6 +82,7 @@ import {
 
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import { emit357RuntimeDiag } from '@/lib/threeFiveSeven/runtimeDiag';
+import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 
 // Suit normalizer — accepts either the symbol form (Card) or the word
 // form (CribbageCard) and returns the transport-owned canonical word
@@ -363,6 +364,13 @@ export function ThreeFiveSevenDealOrchestrator({
       roundNumForStamp === 2 ? 3 :
       roundNumForStamp === 3 ? 5 :
       Math.max(0, selfHand.length - cardsThisWave);
+    // Only the newly-added cards travel in rounds two and three. Order that
+    // wave by the full round's final display slots, while retaining the
+    // already-dealt source cards as the stable baseline.
+    const selfDisplayOrder = getActiveHandDisplayOrder(selfHand, 'three-five-seven', {
+      roundNumber: roundNumForStamp,
+    });
+    const selfWaveSourceIndexes = selfDisplayOrder.filter((sourceIndex) => sourceIndex >= selfHandWaveOffset);
     let selfWaveIntentIdx = 0;
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
@@ -377,7 +385,7 @@ export function ThreeFiveSevenDealOrchestrator({
         // surfaced via getSettledCardsForPlayer for the DEALING render,
         // never used to reveal the flying card face.
         const selfFace = isSelf
-          ? normalizeSelfFaceFor357(selfHand[selfHandWaveOffset + selfWaveIntentIdx])
+          ? normalizeSelfFaceFor357(selfHand[selfWaveSourceIndexes[selfWaveIntentIdx]])
           : null;
         const visibleFace = selfFace ?? undefined;
         if (isSelf) selfWaveIntentIdx += 1;
@@ -815,6 +823,8 @@ export function Use357SelfHand<T>({
     baseHandContextId: string;
     playerId: string;
     boundaryCardIdPrefix: string;
+    sourceCardIndices: number[];
+    stagedDisplayOrder: number[] | null;
   }) => ReactNode;
 }) {
   const deal = useDealRuntime();
@@ -888,6 +898,18 @@ export function Use357SelfHand<T>({
   // from transport metadata alone — the DB fetch does not gate reveal,
   // so cards can never "burst" when authoritative arrives late.
   const settledPayloads = deal?.getSettledCardsForPlayer(currentPlayerId) ?? [];
+  const roundNumber = Number(deal?.handContextId?.match(/#r(\d+)$/)?.[1] ?? '0') || 0;
+  const baselineSourceCount = roundNumber === 1 ? 0 : roundNumber === 2 ? 3 : roundNumber === 3 ? 5 : baseline;
+  const stagedDisplayOrder = getActiveHandDisplayOrder(
+    sourceCards as Array<{ rank: string; suit: string }>,
+    'three-five-seven',
+    { roundNumber },
+  );
+  const transportedSourceIndices = [
+    ...Array.from({ length: Math.min(baselineSourceCount, sourceCards.length) }, (_, index) => index),
+    ...stagedDisplayOrder.filter((sourceIndex) => sourceIndex >= baselineSourceCount),
+  ];
+  const visibleSourceIndices = transportedSourceIndices.slice(0, allowed);
   const WORD_SUIT_TO_SYMBOL_357: Record<string, '♠' | '♥' | '♦' | '♣'> = {
     spades: '♠', hearts: '♥', diamonds: '♦', clubs: '♣',
   };
@@ -898,7 +920,8 @@ export function Use357SelfHand<T>({
       // visibleFace. NEVER render a cardback — if face resolution fails,
       // store unresolved claim and log 357_SELF_CARD_FACE_UNRESOLVED so
       // the next render retries once identity converges.
-      const card = sourceCards[i] ?? cacheRef.current.rendered[i];
+      const sourceIndex = visibleSourceIndices[i] ?? i;
+      const card = sourceCards[sourceIndex] ?? cacheRef.current.rendered[i];
       if (card) {
         resolvedCards.push(card);
         continue;
@@ -941,6 +964,9 @@ export function Use357SelfHand<T>({
     cacheRef.current.rendered = resolvedCards.slice();
   }
   const effectiveCards = resolvedCards;
+  const effectiveSourceCardIndices = isClaimOnlyRender
+    ? visibleSourceIndices.slice(0, effectiveCards.length)
+    : effectiveCards.map((_, index) => index);
   const boundaryCardIdPrefix = `${baseHandContextId}#self#${currentPlayerId || 'no-player'}`;
   const boundaryClaimedCardIds = Array.from(
     { length: Math.max(0, settled) },
@@ -1252,6 +1278,8 @@ export function Use357SelfHand<T>({
     baseHandContextId,
     playerId: currentPlayerId,
     boundaryCardIdPrefix,
+    sourceCardIndices: effectiveSourceCardIndices,
+    stagedDisplayOrder: isClaimOnlyRender ? stagedDisplayOrder : null,
   })}</>;
 }
 

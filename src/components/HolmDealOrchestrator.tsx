@@ -45,6 +45,7 @@ import { ffRecord } from '@/lib/canonicalShell/cardTransport/holmFullForensics';
 import { recordHolmTrace } from '@/lib/holm/holmTrace';
 import { recordCommunityTransport } from '@/lib/canonicalShell/cardTransport/holmCommunityLandingForensics';
 import type { Card as CardType } from '@/lib/cardUtils';
+import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 
 interface SeatEntry {
   playerId: string;
@@ -308,14 +309,18 @@ export function HolmDealOrchestrator({
       if (i < seats.length - 1) cur = nextClockwise(cur, positions);
     }
 
+    // The active hand rank-sorts its final four cards. Stamp self intent
+    // faces in that same presentation order so every arrival extends an
+    // already-sorted prefix instead of causing the active fan to reshuffle.
+    const selfHandInDisplayOrder = orderActiveHandCards(selfHand, 'holm');
     const specs: Parameters<typeof buildIntents>[0] = [];
     let selfRound = 0;
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (const r of ring) {
         const isSelf = r.playerId === selfPlayerId;
         const cardId = `${handContextId}#hand-${specs.length}`;
-        const visibleFace = isSelf && selfHand[selfRound]
-          ? toVisibleFace(selfHand[selfRound])
+        const visibleFace = isSelf && selfHandInDisplayOrder[selfRound]
+          ? toVisibleFace(selfHandInDisplayOrder[selfRound])
           : undefined;
         if (isSelf) selfRound++;
         specs.push({

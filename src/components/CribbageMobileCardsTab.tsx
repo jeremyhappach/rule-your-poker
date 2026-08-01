@@ -25,6 +25,7 @@ import { readSafeAreaBottomPx } from '@/lib/activeHand/safeAreaBottom';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { recordCribbageHandRenderDecision } from '@/lib/cribbage/handRenderInvariantLedger';
 import { isCribbagePostDealPhase, resolveCribbageVisibleHand } from '@/lib/cribbage/cribbageRenderGuards';
+import { orderActiveHandCards } from '@/lib/cardGames/cardDisplayOrder';
 // cardHighlight tokens retired — highlight is now a first-class
 // PlayingCard prop that renders inside the card face itself.
 
@@ -166,6 +167,10 @@ export const CribbageMobileCardsTab = ({
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const clientId = currentPlayer.user_id.slice(0, 8);
   const sourceHand = myPlayerState?.hand ?? [];
+  // Keep the authoritative hand in deal order for actions and rules, but
+  // project the active pane in its rank order for both transport and steady
+  // rendering. That makes every opening arrival extend a sorted prefix.
+  const sourceHandInDisplayOrder = orderActiveHandCards(sourceHand, 'cribbage');
   const expectedRoundId = renderTrace?.expectedRoundId ?? roundId ?? null;
   const sourceRoundId = renderTrace?.sourceRoundId ?? null;
   const roundIdentityMismatch = !!(renderTrace && expectedRoundId && sourceRoundId && expectedRoundId !== sourceRoundId);
@@ -193,15 +198,16 @@ export const CribbageMobileCardsTab = ({
   // `activeHandBlocked` inside DEALING and take the reveal count from
   // the transport-settled id list.
   const deal = useDealRuntime();
-  const authoritativeHand = renderTrace?.authoritativeHand ?? null;
+  const authoritativeHand = renderTrace?.authoritativeHand
+    ? orderActiveHandCards(renderTrace.authoritativeHand, 'cribbage')
+    : null;
   const isPostDealPhase = isCribbagePostDealPhase(cribbageState.phase);
   const clippedHand = (() => {
-    if (!deal) return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
-    // READY / GAMEPLAY — authoritative hand is the sole visual authority.
-    // Handoff preserves continuity: same cards, same order, same array
-    // reference chain (no remount, no flicker, no duplicates).
+    if (!deal) return activeHandBlocked ? ([] as CribbageCard[]) : sourceHandInDisplayOrder;
+    // READY / GAMEPLAY — authoritative hand is the sole visual authority,
+    // projected through the same rank order used by the opening transport.
     if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') {
-      return activeHandBlocked ? ([] as CribbageCard[]) : sourceHand;
+      return activeHandBlocked ? ([] as CribbageCard[]) : sourceHandInDisplayOrder;
     }
     if (deal.phase === 'PRE_DEAL') return [] as CribbageCard[];
     // DEALING — transport-owned metadata is the sole visual authority.
@@ -225,7 +231,7 @@ export const CribbageMobileCardsTab = ({
       // Fallback (should not happen for self recipients — orchestrator
       // stamps visibleFace on every self intent). Prefer the identity-
       // matched authoritative card at the same index; otherwise skip.
-      const fallback = (authoritativeHand as CribbageCard[] | null)?.[i] ?? sourceHand[i];
+      const fallback = (authoritativeHand as CribbageCard[] | null)?.[i] ?? sourceHandInDisplayOrder[i];
       if (fallback) rendered.push(fallback);
     }
     return rendered;
@@ -251,6 +257,12 @@ export const CribbageMobileCardsTab = ({
   const shouldSelfHeal = visibleHandDecision.decision === 'render-authoritative-self-heal';
   const dealClippedSourceHand: CribbageCard[] = visibleHandDecision.hand as CribbageCard[];
   const renderedHand = dealClippedSourceHand;
+  const renderedHandSourceIndices = renderedHand.map((card, displayIndex) => {
+    const sourceIndex = sourceHand.findIndex((sourceCard) =>
+      sourceCard.rank === card.rank && sourceCard.suit === card.suit,
+    );
+    return sourceIndex >= 0 ? sourceIndex : displayIndex;
+  });
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
   const sourceFingerprint = sourceCardIds.join(',');
@@ -1066,7 +1078,8 @@ export const CribbageMobileCardsTab = ({
             const card = renderedHand[index];
             if (!card) return null;
 
-            const isSelected = selectedCards.includes(index);
+            const sourceIndex = renderedHandSourceIndices[index] ?? index;
+            const isSelected = selectedCards.includes(sourceIndex);
             const isPlayable = cribbageState.phase === 'pegging' &&
               isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
@@ -1081,8 +1094,8 @@ export const CribbageMobileCardsTab = ({
 
             return (
               <button
-                onClick={() => handleCardClick(index)}
-                data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${index}`}
+                onClick={() => handleCardClick(sourceIndex)}
+                data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${sourceIndex}`}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}
                 className={cn(

@@ -13,6 +13,7 @@ import { useActiveHandLayoutPolicy } from '@/lib/activeHand/activeHandLayoutSett
 import type { Card as CanonicalCardType } from '@/lib/cardUtils';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordGinPhaseTrace } from '@/lib/ginPhaseTrace';
+import { getActiveHandDisplayOrder } from '@/lib/cardGames/cardDisplayOrder';
 // (Removed cardArtifactOverlap import — Gin active hand is HUDStack-owned,
 // not a felt-artifact overlap value. Prior static margins restored below.)
 
@@ -288,6 +289,23 @@ export const GinRummyMobileCardsTab = ({
     return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
   }, [rawMyState, deal, dealBoundToThisHand, currentPlayerId, forceFullProjection, deal?.phase, deal?.settledCardIds]);
 
+  // The opening deal keeps game state in its authoritative/deal order for
+  // actions, while this display projection follows the exact rank/suit order
+  // stamped by GinRummyDealOrchestrator. A partial reveal therefore never
+  // reshuffles cards that have already landed.
+  const openingDealDisplayItems = useMemo(() => {
+    if (!rawMyState || forceFullProjection || !dealBoundToThisHand || deal?.phase !== 'DEALING') return null;
+    const allowed = Math.min(deal.getSettledCountForPlayer(currentPlayerId), GIN_CARDS_PER_PLAYER);
+    return getActiveHandDisplayOrder(rawMyState.hand, 'gin-rummy')
+      .slice(0, allowed)
+      .map((originalIndex) => ({
+        card: rawMyState.hand[originalIndex],
+        originalIndex,
+        meldGroup: -1,
+      }))
+      .filter((item): item is { card: GinRummyCard; originalIndex: number; meldGroup: number } => !!item.card);
+  }, [rawMyState, forceFullProjection, dealBoundToThisHand, deal, currentPlayerId]);
+
   const lastProjectionTraceRef = useRef<string | null>(null);
   useEffect(() => {
     const renderedCount = myState?.hand?.length ?? 0;
@@ -545,7 +563,7 @@ export const GinRummyMobileCardsTab = ({
   );
 
   const inPostKnock = isPostKnockPhase(ginState.phase);
-  const flatSortedHand = [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
+  const flatSortedHand = openingDealDisplayItems ?? [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
     .sort((a, b) => {
       const rankDiff = (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0);
       if (rankDiff !== 0) return rankDiff;
