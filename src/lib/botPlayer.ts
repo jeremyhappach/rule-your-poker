@@ -3,7 +3,6 @@ import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
-import { allocateBotAliasNumber, makeBotUsername } from "./botNaming";
 import { recordStartupFlight } from "./startupFlightRecorder";
 
 // Weighted aggression levels - extreme levels are rare
