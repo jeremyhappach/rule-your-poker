@@ -6715,6 +6715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     gameId,
     handContextKey,
     holmReadyTick,
+    botWakeTick,
   ]);
   // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
   const holmRecoveryAttemptedRef = useRef<string | null>(null);
