@@ -7,11 +7,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
-import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
-import { allocateBotAliasNumber, makeBotUsername } from "@/lib/botNaming";
 import {
   useWaitingMount,
   recordWaitingLifecycle,
@@ -277,63 +275,28 @@ export const WaitingForPlayersTable = ({
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
 
-      // Canonical bot naming at insertion time — the durable, atomically
-      // allocated session ordinal from `games.bot_alias_seq`. Numbers of
-      // removed bots are never reused for the lifetime of the session.
-      const nextNumber = await allocateBotAliasNumber(gameId);
-      let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
-      botNameForToast = botName;
-
-
-      const { error: profileError } = await perf.step("profiles.insert", () =>
-        supabase.from("profiles").insert({
-          id: botId,
-          username: botName,
-          aggression_level: aggressionLevel,
+      // One transaction: durable session ordinal (games.bot_alias_seq,
+      // seeded from durable bot_added history) + bot identity + seated
+      // waiting row + durable history entry. Rolls back entirely on
+      // failure, so a failed insert cannot burn an ordinal.
+      const { data: created, error: rpcError } = await perf.step("create_session_bot", () =>
+        supabase.rpc("create_session_bot", {
+          _game_id: gameId,
+          _bot_id: botId,
+          _aggression_level: aggressionLevel,
+          _position: nextPosition,
+          _sitting_out: false,
+          _waiting: true,
+          _actor_user_id: currentUserId ?? null,
         })
       );
 
-      if (profileError) {
-        if (profileError.code === "23505") {
-          botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
-          botNameForToast = botName;
-
-          const { error: retryError } = await perf.step("profiles.insert.retry", () =>
-            supabase.from("profiles").insert({
-              id: botId,
-              username: botName,
-              aggression_level: aggressionLevel,
-            })
-          );
-
-          if (retryError) {
-            throw new Error(`Failed to create bot profile: ${retryError.message}`);
-          }
-        } else {
-          throw new Error(`Failed to create bot profile: ${profileError.message}`);
-        }
+      if (rpcError) {
+        throw new Error(`Failed to add bot: ${rpcError.message}`);
       }
 
-      // Create bot player - active and ready to play (not sitting out)
-      const { error: playerError } = await perf.step("players.insert", () =>
-        supabase.from("players").insert({
-          user_id: botId,
-          game_id: gameId,
-          position: nextPosition,
-          chips: 0,
-          is_bot: true,
-          status: "active",
-          sitting_out: false,
-          waiting: true, // Waiting to start game
-        })
-      );
+      botNameForToast = (created as any)?.username ?? botNameForToast;
 
-      if (playerError) {
-        throw new Error(`Failed to add bot: ${playerError.message}`);
-      }
-
-      // Log bot addition event
-      await perf.step("session_events.insert", () => logBotAdded(gameId, currentUserId, nextPosition, botNameForToast));
 
       succeeded = true;
       // Immediately notify parent to refetch - don't wait for realtime

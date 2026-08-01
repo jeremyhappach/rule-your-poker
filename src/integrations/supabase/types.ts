@@ -3267,6 +3267,18 @@ export type Database = {
         Args: { _round_id: string }
         Returns: Json
       }
+      create_session_bot: {
+        Args: {
+          _actor_user_id?: string
+          _aggression_level: string
+          _bot_id: string
+          _game_id: string
+          _position: number
+          _sitting_out?: boolean
+          _waiting?: boolean
+        }
+        Returns: Json
+      }
       cribbage_apply_discard: {
         Args: { _card_indices: number[]; _player_id: string; _round_id: string }
         Returns: Json
