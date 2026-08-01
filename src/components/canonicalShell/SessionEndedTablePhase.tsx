@@ -10,10 +10,12 @@
  *   - never reconstructed on a fresh mount / reconnect
  *
  * Structure:
- *   <SessionEndedFeltPanel/>   → portaled INTO [data-canonical-felt-surface],
- *                                so it is positioned relative to the felt, not
- *                                the viewport. No scrim, no backdrop blur, no
- *                                global pointer blocker, no viewport z-layer.
+ *   <SessionEndedFeltPanel/>   → portaled INTO the shell-owned canonical
+ *                                felt interaction layer, so it is positioned
+ *                                relative to the felt and above normal slot
+ *                                content for hit-testing. No scrim, no backdrop
+ *                                blur, no global pointer blocker, no viewport
+ *                                z-layer.
  *   <SessionEndedPaneAction/>  → the sole primary action in the local player's
  *                                content pane (Back to Lobby).
  *
@@ -31,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { formatChipValue } from '@/lib/utils';
 import { getBotAlias } from '@/lib/botAlias';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
+import { useCanonicalFeltInteractionLayerElement } from '@/lib/canonicalShell/useCanonicalFeltInteractionLayerElement';
 
 interface SessionEndedRow {
   key: string;
@@ -55,7 +58,8 @@ export interface SessionEndedTablePhaseProps {
 
 /**
  * Felt-relative results panel. Rendered through a portal into the canonical
- * felt surface so all sizing/positioning is felt-relative and the HUD/tab rail
+ * felt interaction layer so all sizing/positioning is felt-relative, the panel
+ * sits above normal gameplay slot content for hit-testing, and the HUD/tab rail
  * (outside the felt) stay unobstructed and interactive.
  */
 export function SessionEndedFeltPanel({
@@ -65,29 +69,7 @@ export function SessionEndedFeltPanel({
 }: SessionEndedTablePhaseProps) {
   const [rows, setRows] = useState<SessionEndedRow[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [feltEl, setFeltEl] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const find = () =>
-      document.querySelector<HTMLElement>('[data-canonical-felt-surface]');
-    const found = find();
-    if (found) {
-      setFeltEl(found);
-      return;
-    }
-    // The felt host may commit a frame later than this phase.
-    let raf = 0;
-    const tick = () => {
-      const el = find();
-      if (el) {
-        setFeltEl(el);
-        return;
-      }
-      raf = window.requestAnimationFrame(tick);
-    };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, []);
+  const interactionLayerEl = useCanonicalFeltInteractionLayerElement(true);
 
   const load = useCallback(async (signal: { cancelled: boolean }) => {
     // Participant union — snapshots alone are NOT a complete participant set.
@@ -196,17 +178,16 @@ export function SessionEndedFeltPanel({
     };
   }, [load, gameId]);
 
-  if (!feltEl) return null;
+  if (!interactionLayerEl) return null;
 
   return createPortal(
     // CANONICAL FELT-SAFE CONTENT REGION (inscribed rectangle).
     //
-    // [data-canonical-felt-surface] is an ELLIPSE (`rounded-[50%]` +
-    // `overflow:hidden`) whose bounding box is the full play rect. A
-    // rectangular panel sized against `inset-0` therefore extends into
-    // the four clipped corners: the lower rows were painted outside the
-    // ellipse and silently cut off before the body ever became
-    // scrollable. THAT was the defect — not a missing max-height.
+    // The interaction layer is rect-equal to [data-canonical-felt-surface],
+    // whose bounding box is the full elliptical play rect. A rectangular
+    // panel sized against `inset-0` would therefore extend into the four felt
+    // corners. Keep the same inscribed safe region while placing the panel in
+    // the shell's hit-test layer above normal gameplay slot content.
     //
     // Geometry: for an ellipse with semi-axes (a, b), a centered
     // rectangle of half-width `k·a` is fully inscribed iff its
@@ -288,7 +269,7 @@ export function SessionEndedFeltPanel({
         </div>
       </div>
     </div>,
-    feltEl,
+    interactionLayerEl,
   );
 }
 
