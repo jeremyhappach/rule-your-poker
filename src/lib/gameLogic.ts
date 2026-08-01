@@ -96,14 +96,22 @@ async function resolveDealerGameId(
     .select('current_game_uuid')
     .eq('id', gameId)
     .maybeSingle();
-  return (data?.current_game_uuid as string | null) ?? null;
+  const resolved = (data?.current_game_uuid as string | null) ?? null;
+  if (!resolved) {
+    // Legitimate only before the session's first dealer game exists (e.g. a
+    // lobby-phase departure). Any financial snapshot boundary with an active
+    // dealer game must resolve non-null; a null here degrades to the legacy
+    // identity and is therefore surfaced rather than written silently.
+    console.warn('[SNAPSHOT] No dealer game resolved — writing legacy null identity', { gameId });
+  }
+  return resolved;
 }
 
 /**
  * Snapshot all players' chip counts after a hand completes.
  * This is used for accurate session results and for restoring chips when departed players rejoin.
  *
- * Idempotent at the database level: the partial unique index
+ * Idempotent at the database level: the unique index
  * `session_player_snapshots_dealer_hand_participant_key` makes a replay of the
  * same authoritative hand a no-op, while a later dealer game reusing the same
  * `hand_number` is a distinct identity and always writes.
@@ -174,9 +182,14 @@ export async function snapshotPlayerChips(
  * Snapshot a single player's chips when they leave mid-session.
  * This ensures their final chip balance is captured for accurate session results.
  *
- * Uses the same canonical identity; a departure that lands on an identity that
- * already has a snapshot updates it to the later (post-settlement) balance
- * rather than being silently dropped.
+ * Conflict behavior is DO NOTHING (`ignoreDuplicates: true`), never DO UPDATE.
+ * Financial boundary: a snapshot already present for this exact
+ * (game, dealer game, hand, participant) identity is the post-settlement
+ * authoritative balance for that hand, and departure itself moves no chips, so
+ * the existing row must not be degraded. A departure after further play lands
+ * on a later `hand_number` and therefore writes its own row.
+ * (`session_player_snapshots` also has no UPDATE RLS policy, so a DO UPDATE
+ * upsert from the client would be rejected outright.)
  */
 export async function snapshotDepartingPlayer(
   gameId: string, 
@@ -217,7 +230,10 @@ export async function snapshotDepartingPlayer(
   const { error: insertError } = dealerGameId
     ? await supabase
         .from('session_player_snapshots')
-        .upsert(row, { onConflict: 'game_id,dealer_game_id,hand_number,player_id' })
+        .upsert(row, {
+          onConflict: 'game_id,dealer_game_id,hand_number,player_id',
+          ignoreDuplicates: true,
+        })
     : await supabase.from('session_player_snapshots').insert(row);
   
   if (insertError) {

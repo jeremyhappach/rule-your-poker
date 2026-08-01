@@ -412,7 +412,7 @@ async function applyCribbageTerminalDisposition(
  * `snapshotPlayerChips` owner; skips only if a snapshot already exists for this
  * exact authoritative identity (game, dealer game, hand) so retries cannot
  * duplicate session-result inputs while a later dealer game that reuses the
- * same `hand_number` still writes its own batch. Final safety is the DB partial
+ * same `hand_number` still writes its own batch. Final safety is the DB
  * unique index inside `snapshotPlayerChips`.
  */
 async function ensureFinalChipSnapshot(gameId: string, handNumber: number): Promise<void> {
