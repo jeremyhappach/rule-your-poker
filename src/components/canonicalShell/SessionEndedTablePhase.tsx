@@ -215,7 +215,7 @@ export function SessionEndedFeltPanel({
     // Both numbers are PERCENTAGES OF THE FELT — no vh/dvh, no window
     // or screen reads, no device constants, no fixed pixel heights.
     // This wrapper is a definite-size block, so the panel's `max-h-full`
-    // and the body's `min-h-0` shrink resolve against a real constraint.
+    // resolves against a real constraint and the panel itself scrolls.
     <div
       data-session-ended-felt-panel=""
       data-session-ended-felt-safe-region=""
