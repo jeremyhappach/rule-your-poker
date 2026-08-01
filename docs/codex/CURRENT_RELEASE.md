@@ -2,30 +2,66 @@
 
 Date: 2026-08-01
 
-## Cutover assumption
+## Frozen Lovable cutover baseline
 
-This document assumes the final published iOS Session Ended long-list scrolling fix passes. If it fails, that single defect remains the active Lovable release blocker and the Lovable baseline must not be tagged stable.
+- Lovable development is finished. No additional Lovable publish or reclone is
+  required for cutover.
+- Commit `400eecc2625eaa2ffaa0c614c2b825985e4c7fbf` is permanently tagged
+  `lovable-final-cutover-2026-08-01`.
+- That tag is the frozen final Lovable baseline. It intentionally contains the
+  known iOS Session Ended long-list scrolling defect.
+- Commit `c094f6aef15578a2bbb92887c148e4893c2abc26` is the later
+  documentation-handoff commit.
+- A `lovable-final-stable-2026-08-01` tag was not created and is not required
+  for cutover.
+- `bunx tsgo --noEmit` was not run during ingestion: neither Bun nor
+  `node_modules` is available, and dependencies were not installed.
 
-## Final release candidate scope
+## First Codex P0
+
+The first Codex implementation task is the published iOS Session Ended Results
+panel. Long participant lists render all rows but cannot be vertically
+touch-scrolled. The source in
+`src/components/canonicalShell/SessionEndedTablePhase.tsx` contains
+`overflow-y-auto`, `touch-pan-y`, and WebKit momentum-scroll styling, but
+the failed production runtime smoke outranks that plausible source fix.
+
+Codex acceptance requires new published iOS smoke proving:
+
+- one felt-contained vertical scroll owner;
+- pinned title;
+- every Hap + 10 bots row reachable;
+- short lists compact;
+- no page, HUD, or table-shell scroll.
+
+## Frozen Lovable cutover scope
 
 ### Holm bot scheduling
 
 Two scheduler defects were identified:
 
 1. A wake arriving while `botProcessingRef` was true could be discarded.
-2. A realtime authority edge could be missed entirely; fetch/remount observation did not always stamp authority because stamping was nested under an unrelated deadline branch.
+2. A realtime authority edge could be missed entirely; fetch/remount
+   observation did not always stamp authority because stamping was nested under
+   an unrelated deadline branch.
 
-Current correction latches/replays dropped wakes, stamps Holm authority on relevant fetches, compares a full round/turn/epoch authority key, adds event-driven drains on reconnect/focus/visibility, retains DB exactly-once guards, and uses no polling or arbitrary repair timeout.
+The checked-out source latches/replays dropped wakes, stamps Holm authority on
+relevant fetches, compares a full round/turn/epoch authority key, adds
+event-driven drains on reconnect/focus/visibility, retains database
+exactly-once action guards, and does not add a steady-state repair poll.
+Future changes to this behavior still require the bot-heavy smoke below.
 
 ### Add Bot
 
-Accepted behavior:
+Recorded behavior:
 
-- menu shows `Adding bot…`;
+- menu shows `Adding bot...`;
 - duplicate taps are blocked;
-- success is confirmed by the canonical yellow waiting seat, not a success toast;
+- success is confirmed by the canonical yellow waiting seat, not a success
+  toast;
 - failure may show a destructive toast with the actual reason;
-- waiting bots remain outside the current hand and join at the next canonical boundary.
+- waiting bots remain outside the current hand and join at the next canonical
+  boundary.
 
 ### Bot aliases
 
@@ -36,25 +72,31 @@ Accepted behavior:
 - removed aliases are never reused;
 - concurrent creation serializes.
 
-A bot-heavy smoke produced Bot 7–10 correctly after removals.
+A previously recorded bot-heavy smoke produced Bot 7-10 correctly after
+removals.
 
 ### Four-color deck
 
-The active-hand shell no longer paints a white gradient over four-color faces. Known debt: Holm still has a separate local-hand path besides shared `ActiveHandFan`.
+The active-hand shell source no longer paints a white gradient over four-color
+faces. Known debt: Holm still has a separate local-hand path besides shared
+`ActiveHandFan`.
 
 ### Session snapshots/results
 
-New snapshot identity:
+Source-backed snapshot identity:
 
 ```text
 (game_id, dealer_game_id, hand_number, player_id)
 ```
 
-Changes include dealer-game stamping, an ordinary unique index compatible with SQL/PostgREST conflict inference, DB-idempotent writers, current-roster override, departed-participant snapshot fallback, and no fabricated historical balances.
+The checked-out migration/source set includes dealer-game stamping, an ordinary
+unique index compatible with SQL/PostgREST conflict inference, database-
+idempotent writers, current-roster override, departed-participant snapshot
+fallback, and no fabricated historical balances.
 
 ### Session Ended
 
-Accepted:
+Source and prior smoke evidence support:
 
 - Holm player/community/Chucky cards retire together;
 - pot, spotlights, active labels, gameplay cards, and transports retire;
@@ -63,34 +105,35 @@ Accepted:
 - rostered and departed participants merge into Results;
 - results are constrained to a felt-safe region.
 
-Final active gate:
+Production evidence now narrows the remaining failure: participant inclusion is
+correct, but vertical touch scrolling is not.
 
-- long Results lists touch-scroll in published iOS;
-- title remains pinned;
-- every row is reachable;
-- short lists remain compact.
+## Codex P0 and follow-up smoke
 
-## Final cutover smoke
+The frozen Lovable cutover tag already exists. These are Codex-era acceptance
+checks, not prerequisites for cutover:
 
-Before tagging:
-
-1. Published iOS long-list scrolling passes with Hap + 10 bots.
+1. Published iOS long-list scrolling passes with Hap + 10 bots. **Failed in the
+   current published build.**
 2. A short Session Ended list remains compact.
 3. A bot-heavy Holm hand completes without a parked bot.
-4. Add Bot shows immediate yellow waiting seat and monotonic alias.
+4. Add Bot shows an immediate yellow waiting seat and monotonic alias.
 5. Four-color and standard active hands remain legible.
 6. Session Ended contains all expected current/departed participants once.
 7. `bunx tsgo --noEmit` is clean.
 8. Required migrations are deployed.
 
-## Cutover action
+Items 2-8 were not re-run during the read-only/documentation-only ingestion.
+The repository itself cannot prove deployed migration state or published
+runtime acceptance.
 
-After smoke passes:
+## Tag policy
 
-1. Publish final Lovable version.
-2. Reclone/pull exact published state.
-3. Record commit SHA.
-4. Tag `lovable-final-stable-2026-08-01`.
-5. Push tag.
-6. Begin Codex work from a clean branch based on that tag.
-7. Do not spend remaining Lovable credits on audits/nonblocking cleanup.
+- Do not move or recreate `lovable-final-cutover-2026-08-01`; it permanently
+  identifies the final Lovable product baseline, including the known scroll
+  defect.
+- Codex work proceeds from that frozen baseline plus the later documentation
+  handoff. It does not wait for another Lovable publish, reclone, or stable tag.
+- A future stable tag may be created after Codex fixes and production smoke
+  pass. Such a tag is optional post-cutover release bookkeeping, not a cutover
+  prerequisite.

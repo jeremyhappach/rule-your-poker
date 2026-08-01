@@ -34,12 +34,52 @@ Retained order:
 
 1. Yahtzee — replayable per-mount financial settlement.
 2. 3-5-7 normal terminal.
-3. Gin.
-4. Horses.
-5. SCC.
-6. 3-5-7 instant-win residual seam.
+3. Cribbage.
+4. Gin.
+5. Horses.
+6. SCC.
+7. 3-5-7 instant-win residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
+
+Source-proven ingestion findings:
+
+- Cribbage claims the round as completed before separate loser debits, winner
+  credit, result, snapshot, and disposition writes. A disconnect after the
+  claim can strand payout while a later caller skips the financial sequence.
+- Yahtzee terminal result/snapshot identity uses
+  `yahtzee_state.currentRound` instead of the authoritative
+  `rounds.hand_number`. After a tie rollover, the new round has hand 2 or
+  greater while terminal writers still pass hand 1.
+- Yahtzee setup/start comments describe an ante or score-difference payout, but
+  no ante enters a pot and terminal settlement transfers a fixed configured
+  amount from each loser.
+- Normal 3-5-7 terminal settlement remains client-owned:
+  `src/lib/gameLogic.ts:handleGameOver` claims terminal status before separate
+  award, result, snapshot, reset, and disposition writes.
+
+### 3A. Source-proven rule, ledger, and harness discrepancies
+
+These findings are separate from the broader terminal-authority migrations
+above. Preserve their exact game-specific semantics during later triage.
+
+- Cribbage three-player setup deals five cards to each player and takes one
+  discard each, producing a three-card crib. The source comment expects the
+  dealer to supply the standard fourth crib card, but no current path does so.
+- Gin dealer setup stores configurable `gin_bonus` and `undercut_bonus`,
+  while scoring uses hardcoded 25-point constants.
+- Gin per-hand `game_results.player_chip_changes` records plus/minus ante
+  deltas even though
+  `src/lib/ginRummyRoundLogic.ts:recordGinRummyHandResult` explicitly performs
+  no chip transfer.
+- Yahtzee's ascending-position turn order conflicts with canonical
+  `src/lib/canonicalShell/seatRing.ts:nextClockwise`, which defines
+  left/clockwise as the nearest lower occupied position.
+- Holm partial-tie payout uses integer division. When the pot is not divisible
+  by the number of tied winners, the remainder has no proven conservation
+  owner.
+- The 3-5-7 admin forced-card harness assigns forced cards without removing
+  them from the randomized deck, creating a duplicate-card risk.
 
 ## P1 — canonical architecture integrity
 

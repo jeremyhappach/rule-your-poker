@@ -1,31 +1,338 @@
 # Repository map
 
-Status: bootstrap required after final Lovable clone/tag.
+Status: source-indexed during the first Codex ingestion on 2026-08-01.
 
-This file must be populated by the first Codex read-only ingestion task. Do not guess paths not verified in the final repository.
+Baseline inspected: branch `main`, commit
+`c094f6aef15578a2bbb92887c148e4893c2abc26`. The worktree was clean before
+this documentation pass. The tag `lovable-final-stable-2026-08-01` does not
+exist; the only local tag is `lovable-final-cutover-2026-08-01`, whose annotated
+tag object peels to commit `400eecc2625eaa2ffaa0c614c2b825985e4c7fbf`.
 
-## Known high-value paths/symbols
+This map names verified paths and symbols. It is an ownership index, not a
+claim that every owner is already database-authoritative.
 
-| Area | Known path/symbol |
+## Application entry and routes
+
+| Area | Source owner |
 |---|---|
-| Main game orchestration | `src/pages/Game.tsx` |
-| Shared mobile table/gameplay surface | `src/components/MobileGameTable.tsx` |
-| Playing card primitive | `src/components/PlayingCard.tsx` |
-| Session Ended phase | `src/components/canonicalShell/SessionEndedTablePhase.tsx` |
-| Canonical felt | `src/components/canonicalShell/CanonicalFeltSurface.tsx` |
-| Player options/Add Bot menu | `src/components/PlayerOptionsMenu.tsx` |
-| Bot creation/decision helpers | `src/lib/botPlayer.ts` |
-| Bot alias helpers | `src/lib/botAlias.ts`, `src/lib/botNaming.ts` |
-| Shared snapshot/game logic | `src/lib/gameLogic.ts` |
-| Cribbage terminal snapshot helper | `src/lib/cribbageRoundLogic.ts` |
-| Waiting-room actions | `src/hooks/useWaitingRoomActions.ts` |
-| Waiting table | `src/components/WaitingForPlayersTable.tsx` |
-| Holm settlement RPC | `holm_settle_hand` |
-| Transactional bot creation RPC | `create_session_bot` |
-| 3-5-7 round advance RPC | `advance_357_round` |
+| Browser bootstrap | `src/main.tsx` installs startup/runtime instrumentation, presence heartbeat handling, page resume handling, and mounts `<App />`. |
+| Application providers and routes | `src/App.tsx` owns the React Query, auth/voice/chat, router, error-boundary, and global UI provider tree. |
+| Lobby route | `/` -> `src/pages/Index.tsx` -> `src/components/GameLobby.tsx`. |
+| Authentication | `/auth` -> `src/pages/Auth.tsx`. |
+| Live table | `/game/:gameId` -> `src/pages/Game.tsx` inside `RouteErrorBoundary`. |
+| Diagnostic routes | `/test-hands` -> `HandEvalTest`; `/debug-hands` -> `HandEvalDebug`; `/dice-preview` -> `DicePreview`; `/debug-deadlines` -> `DeadlineDebug`; `/diagnostics` -> `Diagnostics`; `/runtime-diagnostics` -> `RuntimeDiagnostics`. |
+| Catch-all | `src/pages/NotFound.tsx`. |
+| Web build/runtime config | `vite.config.ts`, `index.html`, `tsconfig*.json`, `tailwind.config.ts`, `postcss.config.js`. Vite serves on port 8080 by default. |
+| Native wrapper | `capacitor.config.ts` plus `@capacitor/android` and `@capacitor/ios` dependencies. |
 
-## Bootstrap deliverable
+Package scripts in `package.json` are `dev: vite`, `build: vite build`,
+`build:dev: vite build --mode development`, `lint: eslint .`, and
+`preview: vite preview`. There is no package `typecheck` script. Repository
+policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
-For each game add route/component entry, authoritative adapter/hooks, action controller, settlement helper/RPC, bot controller, configuration, presentation slots, terminal owner, migrations, and focused tests/harnesses.
+## Supabase boundary
 
-Also map Supabase initialization, realtime subscriptions, session/lobby routes, shell components, announcements, transport/celebration owners, snapshot readers/writers, participant/seat projection, and debug harness registry.
+| Area | Source owner |
+|---|---|
+| Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
+| Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
+| Local project/function config | `supabase/config.toml`, project id `ehccrxumpibuoehfsmms`. |
+| Schema history | `supabase/migrations/` (224 migration files at ingestion). Later definitions supersede earlier same-named functions. |
+| Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `generate-music`, `generate-trivia`, `reset-password`, `voice-to-text`, and `finalize-voice-operations`; shared helpers live in `supabase/functions/_shared/`. |
+
+`src/integrations/supabase/types.ts` lists
+`activate_holm_round_after_deal_presentation` and `start_holm_initial_hand`,
+but no defining migration or live call site is present in this checkout. Treat
+those generated declarations as unproven/stale until deployed definitions are
+inspected.
+
+## Session and table orchestration
+
+| Owner | Responsibility |
+|---|---|
+| `src/components/GameLobby.tsx` | Lobby listing, create/join navigation, lobby realtime, admin/settings entry, and completed-session results access. |
+| `src/lib/lobbyFetch.ts:fetchLobbyGames` | Bounded lobby query, player/profile projection, ended-session snapshot lookup, and abort handling. |
+| `src/pages/Game.tsx` | Central route/lifecycle orchestrator: cold public hydration, auth admission, game/round/player/card fetches, central realtime, identity resets, pregame, dealer selection/config, ante completion, game startup, game-over continuation, and local Session Ended admission. |
+| `src/components/PreGameLobby.tsx`, `src/components/WaitingForPlayersTable.tsx` | Pregame and waiting-room presentation inside the persistent table shell. |
+| `src/hooks/useWaitingRoomActions.ts` | Invite/rejoin/start actions and queued Add Bot calls through `create_session_bot`; minimum two players and maximum seven occupied seats are enforced here/the waiting UI. |
+| `src/components/DealerGameSetup.tsx` | Seven-game selector, per-game configuration, `dealer_games` creation, `games.current_game_uuid` assignment, dealer-game boundary cleanup, and transition to ante/dealer-selection phases. |
+| `src/hooks/useHighCardDealerSelection.ts` | Initial/session dealer-selection behavior. |
+| `src/pages/Game.tsx:handleGameOverComplete` | Shared post-presentation continuation owner: consumes pending session end, evaluates participant state, selects/rotates the next dealer, and enters dealer/game selection. |
+| `src/components/canonicalShell/SessionEndedTablePhase.tsx` | Local Session Ended announcement, felt Results panel, and Back to Lobby action. Fresh mounts of an already-ended session are redirected by `Game.tsx`; connected clients retain the shell first. |
+
+## Canonical shell ownership
+
+| Surface | Source owner |
+|---|---|
+| Persistent table root | `src/lib/canonicalShell/PersistentTableShell.tsx:PersistentTableShell`. |
+| Single felt host | `src/lib/canonicalShell/ShellOwnedFeltHost.tsx:ShellOwnedFeltHost` is the only direct importer/renderer of `src/lib/canonicalShell/CanonicalFeltSurface.tsx:CanonicalFeltSurface`. The old handoff path under `src/components/canonicalShell/` was stale. |
+| Gameplay/waiting slot | `src/lib/canonicalShell/PlayfieldSlotController.tsx:PlayfieldSlotController`; slot identity/choreography live in `PlayfieldSlot.ts`, `useSlotIdentityTracker.ts`, and `slotChoreography.ts`. |
+| HUD and tab rail | `ShellHudChrome.tsx`, `ShellHudGrid.tsx`, `ShellTabBar.tsx`, `ShellTimerRail.tsx`, and `ActivePlayerHUD.tsx`. |
+| Seat projection | `SeatAnchorLayer.tsx`, `seatAnchors.ts`, `seatRing.ts`, `CanonicalSeatCluster.tsx`, `CanonicalOpponentSeat.tsx`, `GameplayOpponentSeatLayer.tsx`, and `PreSessionSeatLayer.tsx`. |
+| Geometry | `ResponsiveGeometryProvider.tsx`, `canonicalShellLayoutConfig.ts`, `canonicalSlotPlacement.ts`, `src/lib/wave4LayoutResolver/`, and game providers in `src/lib/wave5GameplayGeometry/`. |
+| Announcements and celebration | `announcements/CanonicalAnnouncementProvider.tsx`, `CanonicalAnnouncementLayer.tsx`, `CanonicalCelebrationLayer.tsx`, `SessionLifecycleAnnouncer.tsx`, and `renderers.tsx`. |
+| Overlay ownership | `ShellOverlayMounts.tsx` exposes the canonical `slot`, `settlement`, and `transient` layers. |
+| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, and `chipEndpoints.ts`. |
+| Card transport/deal | `cardTransport/CardTransportProvider.tsx`, `CardTransportRuntime.tsx`, `DealRuntime.tsx`, and `cardEndpoints.ts`. |
+| Settlement presentation | `settlement/SettlementProvider.tsx`, `SettlementRuntime.tsx`, and `settlement/types.ts`. These are presentation owners, not financial authority. |
+| Active hand | Shared `src/components/activeHand/ActiveHandFan.tsx` and `MeasuredActiveHandFan.tsx`; Holm also retains a separate local-hand route in `MobileGameTable.tsx`. |
+
+## Authoritative identity and anti-regression
+
+`src/lib/gameStateSync/useGameStateSync.ts:useGameStateSync` accepts only
+forward authoritative snapshots and semantically identical equal-progress
+snapshots. `src/lib/gameStateSync/authoritativeIdentity.ts:useAuthoritativeIdentity`
+tracks dealer-game, hand, and round identity; `Game.tsx` and game components
+reset transient/presentation state when those identities change.
+
+| Game family | Progress adapter |
+|---|---|
+| Holm | `src/lib/gameStateSync/holmProgress.ts:getHolmProgress` |
+| 3-5-7 | `src/lib/gameStateSync/threeFiveSevenProgress.ts:getThreeFiveSevenProgress` |
+| Cribbage | `src/lib/gameStateSync/cribbageProgress.ts:getCribbageProgressFn` |
+| Gin Rummy | `src/lib/gameStateSync/ginRummyProgress.ts:getGinRummyProgress` |
+| Horses and SCC | `src/lib/gameStateSync/horsesProgress.ts:getHorsesProgress` |
+| Yahtzee | `src/lib/gameStateSync/yahtzeeProgress.ts:getYahtzeeProgress` |
+
+## Game ownership map
+
+### Holm
+
+- Entry/presentation: `Game.tsx` -> `MobileGameTable.tsx`;
+  `HolmAnchoredSlot.tsx`, `HolmDealOrchestrator.tsx`,
+  `HolmCanonicalCommunityRow.tsx`, `ChuckyHand.tsx`,
+  `CommunityCards.tsx`, and `HolmWinPotAnimation.tsx`.
+- State/actions: `src/lib/holmGameLogic.ts:startHolmRound`,
+  `checkHolmRoundComplete`, `endHolmRound`, and
+  `proceedToNextHolmRound`; decisions enter through
+  `src/lib/gameLogic.ts:makeDecision`; hand ranking is
+  `src/lib/cardUtils.ts:evaluateHand`.
+- Bots: `src/lib/botPlayer.ts:makeBotDecisions` and
+  `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling/authority
+  recovery is mounted in `Game.tsx`.
+- Settlement/terminal: `src/lib/holmSettleHand.ts:settleHolmHand` calls
+  `public.holm_settle_hand`; latest definition and snapshot identity are in
+  `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`, with the ordinary
+  snapshot unique index in
+  `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`.
+- Focused tests: `holmProgress.test.ts`,
+  `PersistentTableShell.lifecycle.test.tsx`, Holm transport/slot tests under
+  `src/lib/canonicalShell/`, and the harness profiles listed below. There is
+  no focused SQL/settlement behavior test in this checkout.
+
+### Cribbage
+
+- Entry/presentation: `Game.tsx` -> `CribbageMobileGameTable.tsx`;
+  `CribbageFeltContent.tsx`, `CribbageDealOrchestrator.tsx`,
+  `CribbageAnchoredCribCutMount.tsx`,
+  `CribbageAnchoredPeggingRowMount.tsx`, `CribbageCountingPhase.tsx`, and
+  `CribbagePegBoard.tsx`.
+- State/actions: `src/lib/cribbageTypes.ts`;
+  `src/lib/cribbageGameLogic.ts:initializeCribbageGame`, `discardToCrib`,
+  `playPeggingCard`, `callGo`, `applyHandCountScores`, and `startNewHand`;
+  component action persistence is in `CribbageMobileGameTable.tsx`.
+- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound`,
+  `startNextCribbageHand`, and `updateCribbageState`.
+- Bots/scoring: `cribbageBotLogic.ts:getBotDiscardIndices` and
+  `getBotPeggingCardIndex`; `cribbageScoring.ts:evaluateHand`,
+  `evaluatePegging`, and `checkHisHeels`; scoring detail expansion is in
+  `cribbageScoringDetails.ts`.
+- Settlement/terminal: `cribbageRoundLogic.ts:endCribbageGame` and private
+  `applyCribbageTerminalDisposition`; discard RPC
+  `cribbage_apply_discard` is defined by
+  `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
+  `cribbage_create_next_hand` is defined by
+  `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`.
+- Focused tests: Cribbage deal orchestrator, cards-tab render/measurement,
+  Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
+  render invariant tests under `src/components/` and `src/lib/cribbage/`,
+  plus `cribbageProgress.test.ts`. No focused terminal payout test exists.
+
+### Gin Rummy
+
+- Entry/presentation: `Game.tsx` -> `GinRummyGameTable.tsx`;
+  `GinRummyFeltContent.tsx`, `GinRummyDealOrchestrator.tsx`,
+  `GinAnchoredSlot.tsx`, `GinAnchoredInteractionSlot.tsx`,
+  `GinRummyMobileCardsTab.tsx`, and the knock/gin overlays.
+- State/actions: `ginRummyTypes.ts`;
+  `ginRummyGameLogic.ts:createInitialGinRummyState`, `dealHand`,
+  `takeFirstDrawCard`, `passFirstDraw`, `drawFromStock`,
+  `drawFromDiscard`, `discardCard`, `declareKnock`, `layOffCard`, and
+  `scoreHand`.
+- Lifecycle: `ginRummyRoundLogic.ts:startGinRummyRound`,
+  `startNextGinRummyHand`, `updateGinRummyState`, and
+  `fetchGinRummyState`.
+- Bots/scoring: `ginRummyBotLogic.ts`; `ginRummyScoring.ts:findOptimalMelds`,
+  `scoreKnock`, `canKnock`, and `hasGin`.
+- Settlement/terminal: `ginRummyRoundLogic.ts:recordGinRummyHandResult` and
+  `endGinRummyGame`; there is no Gin-specific settlement RPC.
+- Focused tests: `ginRummyGameLogic.test.ts`,
+  `ginRummyScoring.test.ts`, `ginRummyNonDealerNearKnock.test.ts`, Gin table
+  knock/write/tab tests, Gin cards-tab tests, and `ginRummyProgress.test.ts`.
+
+### Yahtzee
+
+- Entry/presentation: `Game.tsx` -> `YahtzeeGameTable.tsx`;
+  `YahtzeeAnchoredSlot.tsx`, `YahtzeeAnchoredInteractionSlot.tsx`,
+  `YahtzeeOverlays.tsx`, `DiceRollAnimation.tsx`, and dice shell primitives.
+- State/actions: `rounds.yahtzee_state`;
+  `yahtzeeGameLogic.ts:rollYahtzeeDice`, `toggleYahtzeeHold`,
+  `scoreYahtzeeCategory`, and `advanceYahtzeeTurn`; the mounted component
+  persists state directly.
+- Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound` and
+  `endYahtzeeRound`.
+- Bots/scoring: `yahtzeeBotLogic.ts:getBotHoldDecision`,
+  `getBotCategoryChoice`, and `shouldBotStopRolling`;
+  `yahtzeeScoring.ts:scoreCategory`, `getTotalScore`, and Joker helpers.
+- Settlement/terminal: the completion effect in `YahtzeeGameTable.tsx`
+  performs generic chip RPCs, result insertion, and snapshot, then calls
+  `endYahtzeeRound`; there is no Yahtzee settlement RPC.
+- Focused tests: `yahtzeeScoring.test.ts`,
+  `yahtzeeProgress.test.ts`, and shared die-row/shell tests.
+
+### 3-5-7
+
+- Entry/presentation: `Game.tsx` -> `MobileGameTable.tsx`;
+  `ThreeFiveSevenAnchoredSlot.tsx`, `ThreeFiveSevenDealOrchestrator.tsx`,
+  `ThreeFiveSevenProofCardsAnimation.tsx`, and
+  `ThreeFiveSevenTerminalController.tsx`.
+- State/actions: `src/lib/gameLogic.ts:startRound`, `makeDecision`,
+  `autoFoldUndecided`, `endRound`, and `proceedToNextRound`;
+  `src/lib/cardUtils.ts:evaluateHand`; seam helpers in
+  `src/lib/threeFiveSeven/advanceRound.ts`.
+- Bots: `botPlayer.ts:makeBotDecisions` with
+  `botHandStrength.ts:getBotFoldProbability`; scheduling is in `Game.tsx`.
+- Settlement/terminal: later-round/new-hand seams and a normal R1 instant sweep
+  are owned by `public.advance_357_round`, latest in
+  `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. Normal
+  leg-completion settlement remains the private client
+  `gameLogic.ts:handleGameOver`; legacy instant helpers remain under
+  `src/lib/threeFiveSeven/`.
+- Focused tests: `threeFiveSeven/advanceRound.test.ts`,
+  `threeFiveSevenProgress.test.ts`, and shared card transport/slot tests.
+
+### Horses
+
+- Entry/presentation: `Game.tsx` -> `MobileGameTable.tsx` ->
+  `useHorsesMobileController.ts`; `DiceAnchoredSlot.tsx`,
+  `HorsesMobileCardsTab.tsx`, `HorsesDie.tsx`,
+  `HorsesHandResultDisplay.tsx`, and `HorsesPlayerArea.tsx`.
+- State/actions: `rounds.horses_state`;
+  `horsesGameLogic.ts:rollDice`, `toggleHold`, `lockInHand`,
+  `evaluateHand`, and `determineWinners`; mounted action/timeout/recovery
+  owner is `useHorsesMobileController`.
+- Lifecycle: `horsesRoundLogic.ts:startHorsesRound` and
+  `endHorsesRound`.
+- Bots: `horsesBotLogic.ts:getBotHoldDecision`,
+  `shouldBotStopRolling`, and `applyHoldDecision`, driven by the claimed
+  controller in `useHorsesMobileController`.
+- RPCs: `claim_horses_bot_controller` (latest definition remains
+  `supabase/migrations/20251231220449_9e641bd2-2d4c-4be1-8d68-74aca357c083.sql`);
+  `horses_set_player_state` latest in
+  `supabase/migrations/20260208181248_b7f5d957-7530-40fb-84b6-a850c77197f6.sql`;
+  `horses_advance_turn` latest in
+  `supabase/migrations/20260322190633_da97037f-98a4-44a0-b9c3-1b3822ee7ff0.sql`.
+- Settlement/terminal: `useHorsesMobileController` claims the game row and
+  then separately pays, records, snapshots, and clears the pot. No
+  game-specific settlement RPC or focused rule/terminal test exists.
+
+### Ship Captain Crew
+
+- Entry/presentation: the Horses path above with
+  `gameType='ship-captain-crew'`; SCC artifacts are `SCCDie.tsx` and
+  `SCCHandResultDisplay.tsx`.
+- State/actions: SCC also stores state in `rounds.horses_state`;
+  `sccGameLogic.ts:rollSCCDice`, `lockInSCCHand`, `evaluateSCCHand`, and
+  `determineSCCWinners`; `useHorsesMobileController` is the mounted owner.
+- Lifecycle/bots: `sccRoundLogic.ts:startSCCRound` and `endSCCRound`;
+  `sccBotLogic.ts:getSCCBotDecision` and `shouldSCCBotStopRolling`.
+- RPC/settlement: reuses the three Horses RPCs and the same client terminal
+  sequence. It has no SCC-specific settlement RPC or focused rule/terminal
+  test.
+
+## Snapshot and result pipeline
+
+Canonical snapshot identity is
+`(game_id, dealer_game_id, hand_number, player_id)`.
+
+| Role | Source |
+|---|---|
+| Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
+| Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
+| Holm transactional writer | `public.holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`. |
+| Game-specific client writers | Cribbage and Gin in their round logic, Yahtzee in `YahtzeeGameTable.tsx`, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
+| Session Ended reader | `SessionEndedTablePhase.tsx:SessionEndedFeltPanel` merges the latest snapshot participants with the current roster; humans dedupe by `user_id`, bots by `player_id`. |
+| Lobby/session result reader | `src/components/SessionResults.tsx` is snapshot-first with `game_results` fallback; `src/lib/lobbyFetch.ts` loads ended-game snapshots. |
+| History reader | `src/components/hand-history/useHandHistoryData.ts` plus the session-history query in `Game.tsx`. |
+| SessionResult minting | `public.record_session_results`, latest definition in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`, runs on the terminal status transition and reads latest human snapshots. |
+| Snapshot schema/index | `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` adds/stamps `dealer_game_id`; `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql` creates the ordinary four-column unique index needed by PostgREST conflict inference. |
+
+## Realtime subscriptions
+
+| Channel owner | Payload |
+|---|---|
+| `Game.tsx` channel `game-${gameId}` | `games` UPDATE, `players` all events, and `rounds` all events, all scoped to the game. Fetches are debounced 300 ms. A five-second fallback poll starts only after channel failure unless safety polls are disabled. |
+| `Game.tsx` channel `session-history-${gameId}` | INSERTs into `session_player_snapshots`. |
+| `Game.tsx` channel `show-cards-${gameId}` | Ephemeral 3-5-7 `show-cards` broadcast, guarded by dealer-game identity. |
+| `CribbageMobileGameTable.tsx` | `cribbage-dealer-selection-${gameId}` watches `games`; `cribbage-mobile-${currentRoundId}` watches the current `rounds` row. |
+| `GinRummyGameTable.tsx` | `gin-rummy-${roundId}` watches the current `rounds` row. |
+| `SessionEndedTablePhase.tsx` | `session-ended-results-${gameId}` watches snapshot INSERTs. |
+| `GameLobby.tsx` | Separate all-event `games` and `players` lobby channels, plus bounded refresh on focus/visibility and every five seconds. |
+| Peripheral channels | `useGameChat.ts`, `useChipStackEmoticons.ts`, voice witness/report mounts, maintenance/make-it-take-it settings, debug harness cache, canonical layout config, and Geometry Lab stores. |
+
+Yahtzee intentionally relies on the central `Game.tsx` round subscription.
+Cribbage and Gin add current-round subscriptions on top of the central owner;
+that overlap must be considered before changing fetch/realtime behavior.
+
+## Key migrations and RPCs
+
+| Capability | Latest repository evidence |
+|---|---|
+| Holm terminal settlement | `holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`; wrapper `src/lib/holmSettleHand.ts`. |
+| 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
+| Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
+| Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
+| Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map. |
+| Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213624_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005658_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
+| Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
+| Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |
+| Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260517144847_4bec47fa-5c3a-412a-8b31-15002b5a45b9.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
+
+## Debug harness registry
+
+The canonical registry is
+`src/lib/debugHarness/profiles.ts:DEBUG_HARNESS_REGISTRY`; persistence/cache
+and hooks are `runtimeCache.ts`, `useDebugHarness.ts`, and
+`useGlobalDebugMode.ts`.
+
+| Game | Profiles excluding `none` |
+|---|---|
+| Holm | `force_player_beats_chucky`, `force_chucky_beats_player`, `pause_showdown_freeze` |
+| Cribbage | `near_double_skunk`, `max_pegging_fan`, `perpetual_heels` |
+| Gin Rummy | `near_gin`, `non_dealer_near_knock` |
+| Yahtzee | `near_win`, `reorder_probe` |
+| 3-5-7 | `instant_win`, `pause_r1_showdown`, `pause_r2_showdown`, `pause_r3_showdown` |
+| Horses | `force_tie` |
+| SCC | `force_no_qualify` |
+
+Legacy id `opponent_instant_knock` resolves read-only to
+`non_dealer_near_knock`.
+
+## Focused test index
+
+- Anti-regression: all six adapters have `*.test.ts` coverage under
+  `src/lib/gameStateSync/`, including the shared Horses/SCC adapter;
+  `useGameStateSync.test.tsx`, `authoritativeIdentity.test.ts`, and
+  `visualContract.test.tsx` cover shared behavior.
+- Canonical shell: lifecycle, routing, slot, seat ring/anchors, tab portal,
+  chip transport/endpoints, card/die row layout, and announcement renderer
+  tests live under `src/lib/canonicalShell/`.
+- Cribbage: focused component and logic tests are listed in the Cribbage map.
+- Gin: focused component, game logic, scoring, and harness tests are listed in
+  the Gin map.
+- 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts`.
+- Yahtzee: `src/lib/yahtzeeScoring.test.ts`.
+- Lobby: `src/lib/lobbyFetch.test.ts`.
+- No focused Holm financial-RPC, Cribbage terminal, Gin terminal, Yahtzee
+  terminal, Horses rule/terminal, or SCC rule/terminal test exists in this
+  checkout.
