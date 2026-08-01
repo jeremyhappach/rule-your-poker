@@ -9463,6 +9463,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
+      // ── SCHEDULER AUTHORITY STAMP (must NOT depend on a deadline) ──
+      // P0 lost-wake fix: this stamp used to live inside the
+      // `if (effectiveDeadline)` branch below, so any fetch that observed an
+      // authoritative Holm turn before/without a hydrated deadline (fresh
+      // mount, refresh/reconnect onto an already-parked bot turn, presentation
+      // window with no deadline yet) never bumped holmAuthorityTick and the
+      // bot scheduler never evaluated. Stamp unconditionally here.
+      if (gameData.game_type === 'holm-game' && currentRound?.current_turn_position) {
+        const prior = latestAuthoritativeTurnRef.current;
+        const sameRound = prior?.roundId === currentRound.id;
+        const sameTurn = prior?.currentTurnPosition === currentRound.current_turn_position;
+        const sameHand = prior?.handNumber === ((currentRound as any).hand_number ?? null);
+        if (!prior || !sameRound || !sameTurn || !sameHand) {
+          authoritativeTurnEpochRef.current += 1;
+          latestAuthoritativeTurnRef.current = {
+            roundId: currentRound.id,
+            handNumber: (currentRound as any).hand_number ?? null,
+            currentTurnPosition: currentRound.current_turn_position ?? null,
+            epoch: authoritativeTurnEpochRef.current,
+          };
+          setHolmAuthorityTick(t => t + 1);
+        }
+      }
+
       // For Holm, prefer presentation-layer deadline; fall back to the raw round
       // deadline if presentation has not yet hydrated it (e.g. during visual
       // contract / freeze window). This closes the regression where the timer
