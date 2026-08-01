@@ -6530,9 +6530,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       is_paused: game?.is_paused
     });
     
-    // Skip if already processing
+    // Skip if already processing — but LATCH the wake so it is replayed once
+    // the in-flight dispatch settles (see LOST-WAKEUP LATCH above).
     if (botProcessingRef.current) {
-      console.log('[BOT TRIGGER] Already processing a bot decision, skipping');
+      botWakePendingRef.current = true;
+      console.log('[BOT TRIGGER] Already processing a bot decision — wake latched for replay');
       return;
     }
     
