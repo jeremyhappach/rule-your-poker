@@ -230,7 +230,10 @@ export async function snapshotDepartingPlayer(
   const { error: insertError } = dealerGameId
     ? await supabase
         .from('session_player_snapshots')
-        .upsert(row, { onConflict: 'game_id,dealer_game_id,hand_number,player_id' })
+        .upsert(row, {
+          onConflict: 'game_id,dealer_game_id,hand_number,player_id',
+          ignoreDuplicates: true,
+        })
     : await supabase.from('session_player_snapshots').insert(row);
   
   if (insertError) {
