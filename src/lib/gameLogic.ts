@@ -182,9 +182,14 @@ export async function snapshotPlayerChips(
  * Snapshot a single player's chips when they leave mid-session.
  * This ensures their final chip balance is captured for accurate session results.
  *
- * Uses the same canonical identity; a departure that lands on an identity that
- * already has a snapshot updates it to the later (post-settlement) balance
- * rather than being silently dropped.
+ * Conflict behavior is DO NOTHING (`ignoreDuplicates: true`), never DO UPDATE.
+ * Financial boundary: a snapshot already present for this exact
+ * (game, dealer game, hand, participant) identity is the post-settlement
+ * authoritative balance for that hand, and departure itself moves no chips, so
+ * the existing row must not be degraded. A departure after further play lands
+ * on a later `hand_number` and therefore writes its own row.
+ * (`session_player_snapshots` also has no UPDATE RLS policy, so a DO UPDATE
+ * upsert from the client would be rejected outright.)
  */
 export async function snapshotDepartingPlayer(
   gameId: string, 
