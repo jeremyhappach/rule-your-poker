@@ -215,7 +215,7 @@ export function SessionEndedFeltPanel({
     // Both numbers are PERCENTAGES OF THE FELT — no vh/dvh, no window
     // or screen reads, no device constants, no fixed pixel heights.
     // This wrapper is a definite-size block, so the panel's `max-h-full`
-    // and the body's `min-h-0` shrink resolve against a real constraint.
+    // resolves against a real constraint and the panel itself scrolls.
     <div
       data-session-ended-felt-panel=""
       data-session-ended-felt-safe-region=""
@@ -229,39 +229,30 @@ export function SessionEndedFeltPanel({
         pointerEvents: 'none',
       }}
     >
-      {/* The panel is a COLUMN flex item of a definite-height container, so
-          `flex: 0 1 auto` + `min-height: 0` make it intrinsically sized for
-          short lists and genuinely SHRINKABLE for long ones. The previous
-          `max-h-full` on an auto-height item relied on max-height clamping to
-          retroactively hand the inner column a definite main size — WebKit
-          does not re-run flex shrink after that clamp, so the body kept its
-          full intrinsic height (clientHeight === scrollHeight, nothing to
-          scroll) and the panel simply clipped the overflow. */}
+      {/* THE PANEL IS THE SOLE VERTICAL SCROLL OWNER.
+          Nested flex-shrink scroll viewports do not reliably engage in iOS
+          WebKit (the inner body kept clientHeight === scrollHeight and the
+          panel merely clipped). The panel now scrolls itself: `max-h-full`
+          against the definite-height felt-safe wrapper, `overflow-y-auto`,
+          and a `sticky` title. The rows list is plain block flow with no
+          overflow of its own — exactly one scroll container. */}
       <div
-        className="w-full max-w-[320px] flex flex-col flex-[0_1_auto] rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden min-h-0"
+        data-session-ended-panel=""
+        className="w-full max-w-[320px] max-h-full overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y rounded-lg border border-border bg-card/95 shadow-xl [-webkit-overflow-scrolling:touch]"
         style={{ pointerEvents: 'auto' }}
       >
 
-        {/* Title: never scrolls, never shrinks. */}
-        <div className="px-2.5 pt-1 pb-0.5 shrink-0">
+        {/* Title: sticky, opaque, pinned while the panel scrolls beneath. */}
+        <div className="sticky top-0 z-10 px-2.5 pt-1 pb-0.5 bg-card">
           <h2 className="text-sm font-semibold text-foreground tracking-tight leading-tight">
             Results
           </h2>
         </div>
 
-        {/* Results body: `flex: 0 1 auto` — intrinsic height for short lists
-            (no stretching), but permitted to shrink inside the felt maximum
-            for long lists so rows scroll internally while the title stays
-            fixed. Rows are content-driven (min-height + padding), never a
-            forced fixed height, so text inflation / accessibility sizing /
-            bold names can never clip. `touch-action: pan-y` +
-            `pointer-events: auto` are the narrow interaction grant: only this
-            viewport accepts the vertical drag; the felt/HUD/page stay exactly
-            as noninteractive as before. */}
-        <div
-          className="flex-[0_1_auto] min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y px-2.5 pb-1 [-webkit-overflow-scrolling:touch]"
-          style={{ pointerEvents: 'auto' }}
-        >
+        {/* Rows: normal intrinsic block flow. No overflow, no flex shrink,
+            no nested scroll container. */}
+        <div className="px-2.5 pb-1">
+
 
           {rows === null && !failed ? (
             <p className="text-xs text-muted-foreground py-1 text-center">Loading results…</p>
