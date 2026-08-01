@@ -6681,11 +6681,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           throw error;
         } finally {
           botProcessingRef.current = false;
+          // Replay a dropped wake, or self-wake when authority advanced
+          // during this dispatch (the drifted snapshot is exactly the case
+          // that previously parked the turn with no further state change).
+          const authAfter = latestAuthoritativeTurnRef.current;
+          const authorityMoved =
+            isHolmGame &&
+            ((authAfter?.epoch ?? authoritativeTurnEpochRef.current) !== capturedAuthorityEpoch ||
+              (authAfter?.roundId ?? null) !== capturedRoundId);
+          if (botWakePendingRef.current || authorityMoved) {
+            botWakePendingRef.current = false;
+            setBotWakeTick(t => t + 1);
+          }
         }
       };
 
       
-      triggerBot();
+      triggerBot().catch(() => { /* handled via recordHolmDecisionSubmission */ });
     } else {
       console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
