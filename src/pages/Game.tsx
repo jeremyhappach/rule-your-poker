@@ -6480,6 +6480,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // (current_decision IS NULL + atomic current_turn_position CAS).
   const botWakePendingRef = useRef(false);
   const [botWakeTick, setBotWakeTick] = useState(0);
+  // SCHEDULER DRAIN (P0 lost-wake fix, second edge).
+  // The latch above only recovers wakes that were *dropped by the in-flight
+  // guard*. It cannot recover a bot turn that became authoritative while no
+  // client was evaluating (reconnect, tab resume, remount onto an
+  // already-parked turn) because no authority *transition* is observed on that
+  // client. These are explicit, event-driven drains — no polling, no timers.
+  const [botDrainTick, setBotDrainTick] = useState(0);
   // Re-render-trigger for Holm deal-ready barrier flips so the bot
   // trigger effect re-evaluates the moment the deal completes.
   const [holmReadyTick, setHolmReadyTick] = useState(0);
@@ -6489,6 +6496,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // reading from the same authority source.
   const [holmAuthorityTick, setHolmAuthorityTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
+  useEffect(() => {
+    const drain = () => setBotDrainTick(t => t + 1);
+    const onVisible = () => { if (document.visibilityState === 'visible') drain(); };
+    window.addEventListener('app:realtime-reconnect', drain);
+    window.addEventListener('focus', drain);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('app:realtime-reconnect', drain);
+      window.removeEventListener('focus', drain);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
   useEffect(() => {
     if (safetyPollsDisabled) {
       if (awaitingPollRef.current) {
@@ -6568,6 +6587,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         capturedTurnPosition = currentRound?.current_turn_position;
         capturedRoundId = currentRound?.id ?? null;
       }
+
+      // Full authority identity captured for this dispatch. The `finally`
+      // drain compares against this exact key so no advance can vanish.
+      const capturedAuthorityKey = isHolmGame
+        ? `${capturedRoundId}:${capturedTurnPosition ?? null}:${capturedAuthorityEpoch}`
+        : null;
 
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
@@ -6684,11 +6709,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Replay a dropped wake, or self-wake when authority advanced
           // during this dispatch (the drifted snapshot is exactly the case
           // that previously parked the turn with no further state change).
+          // Authority identity is compared as a full key (round + turn +
+          // epoch): comparing epoch/round alone let a turn advance that
+          // re-used the epoch counter path disappear, and a guard rejection
+          // consumed the wake permanently.
           const authAfter = latestAuthoritativeTurnRef.current;
-          const authorityMoved =
-            isHolmGame &&
-            ((authAfter?.epoch ?? authoritativeTurnEpochRef.current) !== capturedAuthorityEpoch ||
-              (authAfter?.roundId ?? null) !== capturedRoundId);
+          const authorityKeyAfter = isHolmGame
+            ? `${authAfter?.roundId ?? null}:${authAfter?.currentTurnPosition ?? null}:${authAfter?.epoch ?? authoritativeTurnEpochRef.current}`
+            : null;
+          const authorityMoved = isHolmGame && authorityKeyAfter !== capturedAuthorityKey;
           if (botWakePendingRef.current || authorityMoved) {
             botWakePendingRef.current = false;
             setBotWakeTick(t => t + 1);
@@ -6716,6 +6745,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handContextKey,
     holmReadyTick,
     botWakeTick,
+    botDrainTick,
   ]);
   // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
   const holmRecoveryAttemptedRef = useRef<string | null>(null);
@@ -9463,6 +9493,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
+      // ── SCHEDULER AUTHORITY STAMP (must NOT depend on a deadline) ──
+      // P0 lost-wake fix: this stamp used to live inside the
+      // `if (effectiveDeadline)` branch below, so any fetch that observed an
+      // authoritative Holm turn before/without a hydrated deadline (fresh
+      // mount, refresh/reconnect onto an already-parked bot turn, presentation
+      // window with no deadline yet) never bumped holmAuthorityTick and the
+      // bot scheduler never evaluated. Stamp unconditionally here.
+      if (gameData.game_type === 'holm-game' && currentRound?.current_turn_position) {
+        const prior = latestAuthoritativeTurnRef.current;
+        const sameRound = prior?.roundId === currentRound.id;
+        const sameTurn = prior?.currentTurnPosition === currentRound.current_turn_position;
+        const sameHand = prior?.handNumber === ((currentRound as any).hand_number ?? null);
+        if (!prior || !sameRound || !sameTurn || !sameHand) {
+          authoritativeTurnEpochRef.current += 1;
+          latestAuthoritativeTurnRef.current = {
+            roundId: currentRound.id,
+            handNumber: (currentRound as any).hand_number ?? null,
+            currentTurnPosition: currentRound.current_turn_position ?? null,
+            epoch: authoritativeTurnEpochRef.current,
+          };
+          setHolmAuthorityTick(t => t + 1);
+        }
+      }
+
       // For Holm, prefer presentation-layer deadline; fall back to the raw round
       // deadline if presentation has not yet hydrated it (e.g. during visual
       // contract / freeze window). This closes the regression where the timer
