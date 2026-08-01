@@ -6588,6 +6588,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         capturedRoundId = currentRound?.id ?? null;
       }
 
+      // Full authority identity captured for this dispatch. The `finally`
+      // drain compares against this exact key so no advance can vanish.
+      const capturedAuthorityKey = isHolmGame
+        ? `${capturedRoundId}:${capturedTurnPosition ?? null}:${capturedAuthorityEpoch}`
+        : null;
+
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
         captured_turn: capturedTurnPosition,
