@@ -219,7 +219,7 @@ export function SessionEndedFeltPanel({
     <div
       data-session-ended-felt-panel=""
       data-session-ended-felt-safe-region=""
-      className="absolute z-[30] flex items-center justify-center min-h-0 overflow-hidden"
+      className="absolute z-[30] flex flex-col items-center justify-center min-h-0 overflow-hidden"
       style={{
         left: '50%',
         top: '50%',
@@ -229,8 +229,16 @@ export function SessionEndedFeltPanel({
         pointerEvents: 'none',
       }}
     >
+      {/* The panel is a COLUMN flex item of a definite-height container, so
+          `flex: 0 1 auto` + `min-height: 0` make it intrinsically sized for
+          short lists and genuinely SHRINKABLE for long ones. The previous
+          `max-h-full` on an auto-height item relied on max-height clamping to
+          retroactively hand the inner column a definite main size — WebKit
+          does not re-run flex shrink after that clamp, so the body kept its
+          full intrinsic height (clientHeight === scrollHeight, nothing to
+          scroll) and the panel simply clipped the overflow. */}
       <div
-        className="w-full max-w-[320px] flex flex-col rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden max-h-full min-h-0"
+        className="w-full max-w-[320px] flex flex-col flex-[0_1_auto] rounded-lg border border-border bg-card/95 shadow-xl overflow-hidden min-h-0"
         style={{ pointerEvents: 'auto' }}
       >
 
@@ -246,8 +254,15 @@ export function SessionEndedFeltPanel({
             for long lists so rows scroll internally while the title stays
             fixed. Rows are content-driven (min-height + padding), never a
             forced fixed height, so text inflation / accessibility sizing /
-            bold names can never clip. */}
-        <div className="flex-[0_1_auto] min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-2.5 pb-1 [-webkit-overflow-scrolling:touch]">
+            bold names can never clip. `touch-action: pan-y` +
+            `pointer-events: auto` are the narrow interaction grant: only this
+            viewport accepts the vertical drag; the felt/HUD/page stay exactly
+            as noninteractive as before. */}
+        <div
+          className="flex-[0_1_auto] min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y px-2.5 pb-1 [-webkit-overflow-scrolling:touch]"
+          style={{ pointerEvents: 'auto' }}
+        >
+
           {rows === null && !failed ? (
             <p className="text-xs text-muted-foreground py-1 text-center">Loading results…</p>
           ) : failed || (rows && rows.length === 0) ? (
