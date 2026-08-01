@@ -26,14 +26,14 @@ The normal workflow is:
 2. Codex investigates read-only.
 3. Codex reports the root cause and recommended fix in plain English.
 4. Jeremy may challenge the diagnosis or reply `approve`.
-5. `approve` authorizes the full local workflow within the approved scope: implementation, required local file changes, focused tests when useful, validation, correction of change-caused validation failures, final diff review, staging, and one clear local commit.
-6. For routine work committed on local `main`, Codex reports completion and asks only: `Push to origin/main?`
-7. Only when Jeremy replies `push`, Codex runs `.codex\scripts\push-origin-main.cmd`, whose sole Git operation uses `C:\Program Files\Git\cmd\git.exe` to execute exactly `git push origin main`.
+5. `approve` authorizes the full delivery workflow within the approved scope: implementation, required local file changes, focused tests when useful, validation, correction of change-caused validation failures, final diff review, staging, one clear local commit, and the Git integration and push needed to make it publish-ready on `origin/main`.
+6. Codex uses direct local `main` for routine work. For high-risk work, Codex uses the required task branch and completes the necessary branch push, conflict-free fast-forward integration, and `main` push without adding approval gates.
+7. For `main`, Codex runs `.codex\scripts\push-origin-main.cmd`, whose sole Git operation uses `C:\Program Files\Git\cmd\git.exe` to execute exactly `git push origin main`.
 8. Jeremy publishes through Lovable and performs production smoke testing.
 
-One `approve` is enough for implementation through the local commit, but it never authorizes a push. Do not add approval gates between implementation, validation, staging, and the local commit. If implementation proves the recommended solution materially wrong or reveals substantially broader work, stop and explain the new finding instead of expanding scope silently.
+One `approve` is enough for implementation through validation, commit, required branch integration, and push to `origin/main`. Do not add approval gates between those steps. If implementation proves the recommended solution materially wrong or reveals substantially broader work, stop and explain the new finding instead of expanding scope silently.
 
-Never push without Jeremy's separate explicit push authorization. For routine local `main`, only the exact reply `push` authorizes `.codex\scripts\push-origin-main.cmd`, which runs exactly `C:\Program Files\Git\cmd\git.exe push origin main`. Never pass arguments to or modify the push helper or its rule unless Jeremy explicitly requests a workflow-configuration change. Never force-push. High-risk branches require separate explicit authorization for the branch push and for the later merge. Never deploy, publish, apply migrations, or modify production data unless Jeremy explicitly instructs Codex to do so.
+Never pass arguments to or modify the push helper or its rule unless Jeremy explicitly requests a workflow-configuration change. Never force-push. If a merge conflict, remote divergence, or other Git condition requires a material judgment, stop and report it. Never deploy, publish, apply migrations, or modify production data unless Jeremy explicitly instructs Codex to do so.
 
 Jeremy normally needs to provide only what he observed, where he observed it, what he expected, and any reproduction details he happens to know. Do not require an engineering specification, source paths, hypotheses, formal acceptance criteria, or prompts relayed from another assistant. Ask a clarifying question only when missing information would materially affect the diagnosis or make the work unsafe.
 
@@ -177,9 +177,9 @@ Before committing, inspect the diff internally for scope, correctness, unrelated
 - Do not mix documentation/audit cleanup with release-blocking fixes.
 - Use direct local `main` for routine low-risk work when it is clean and synchronized.
 - Use a task-specific branch for migrations/RPCs, financial settlement or chip movement, auth, canonical state ownership, cross-game lifecycle, broad architecture, dependencies/build configuration, large refactors, or changes difficult to roll back.
-- For routine work committed on local `main`, stop after the local commit, report completion, and ask only `Push to origin/main?`; run `.codex\scripts\push-origin-main.cmd` only after Jeremy replies `push`.
+- For routine approved work committed on local `main`, run `.codex\scripts\push-origin-main.cmd` so `origin/main` is ready for Lovable publication.
 - The routine helper must use the installed Windows Git at `C:\Program Files\Git\cmd\git.exe` and execute exactly `git push origin main`; do not use Codex's bundled Git for pushes.
-- High-risk branches require Jeremy to explicitly authorize the branch push and, separately, the later merge.
+- For approved high-risk work, push the task branch when required, fast-forward it into `main` after validation, and push `main` without separate approval gates.
 - Never force-push or append force options to a push command.
 - Before a release checkpoint, record the commit SHA and tag it.
 - The Lovable cutover tag is documented in `CUTOVER_CHECKLIST.md`.

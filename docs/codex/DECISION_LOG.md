@@ -43,3 +43,7 @@ Do not mutate a production freeze until authoritative identity, action tape, and
 ## D-011 — Broad audits are read-only first
 
 Canonicalization and game-rule audits produce an inventory/plan before implementation.
+
+## D-012 — Approval makes a fix publish-ready
+
+An approved fix includes the required Git integration and push to `origin/main`. Lovable publication and production smoke remain Jeremy's responsibility.
