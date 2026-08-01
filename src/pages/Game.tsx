@@ -6467,6 +6467,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Use a ref to track if we're already processing a bot decision to avoid duplicates
   // SKIP if game is paused
   const botProcessingRef = useRef(false);
+  // LOST-WAKEUP LATCH (P0 bot-controller ownership fix).
+  // `botProcessingRef` is a synchronous in-flight guard. Authority can advance
+  // WHILE a dispatch is in flight (the in-flight dispatch's own
+  // fetchGameData stamps latestAuthoritativeTurnRef and bumps
+  // holmAuthorityTick *before* the `finally` clears the guard). The effect run
+  // caused by that tick was silently dropped, and because the new authority
+  // (the next bot's turn) produces no further state change, the turn parked
+  // forever. Latch the dropped wake and replay it exactly once when the
+  // in-flight dispatch settles. Idempotent + disconnect/reconnect-safe:
+  // exactly-once execution is still enforced in the DB
+  // (current_decision IS NULL + atomic current_turn_position CAS).
+  const botWakePendingRef = useRef(false);
+  const [botWakeTick, setBotWakeTick] = useState(0);
   // Re-render-trigger for Holm deal-ready barrier flips so the bot
   // trigger effect re-evaluates the moment the deal completes.
   const [holmReadyTick, setHolmReadyTick] = useState(0);
@@ -6517,9 +6530,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       is_paused: game?.is_paused
     });
     
-    // Skip if already processing
+    // Skip if already processing — but LATCH the wake so it is replayed once
+    // the in-flight dispatch settles (see LOST-WAKEUP LATCH above).
     if (botProcessingRef.current) {
-      console.log('[BOT TRIGGER] Already processing a bot decision, skipping');
+      botWakePendingRef.current = true;
+      console.log('[BOT TRIGGER] Already processing a bot decision — wake latched for replay');
       return;
     }
     
@@ -6666,11 +6681,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           throw error;
         } finally {
           botProcessingRef.current = false;
+          // Replay a dropped wake, or self-wake when authority advanced
+          // during this dispatch (the drifted snapshot is exactly the case
+          // that previously parked the turn with no further state change).
+          const authAfter = latestAuthoritativeTurnRef.current;
+          const authorityMoved =
+            isHolmGame &&
+            ((authAfter?.epoch ?? authoritativeTurnEpochRef.current) !== capturedAuthorityEpoch ||
+              (authAfter?.roundId ?? null) !== capturedRoundId);
+          if (botWakePendingRef.current || authorityMoved) {
+            botWakePendingRef.current = false;
+            setBotWakeTick(t => t + 1);
+          }
         }
       };
 
       
-      triggerBot();
+      triggerBot().catch(() => { /* handled via recordHolmDecisionSubmission */ });
     } else {
       console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
@@ -6688,6 +6715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     gameId,
     handContextKey,
     holmReadyTick,
+    botWakeTick,
   ]);
   // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
   const holmRecoveryAttemptedRef = useRef<string | null>(null);
