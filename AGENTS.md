@@ -13,21 +13,52 @@ Before any task:
 1. Read `docs/codex/INDEX.md`.
 2. Read `docs/codex/CURRENT_RELEASE.md`.
 3. Read only the additional documents relevant to the task.
-4. Inspect the actual source and migrations before proposing changes.
+4. Inspect the actual source, tests, migrations, and Git history needed to establish the relevant owner and failure boundary.
 5. Do not reread the entire repository unless the task genuinely requires a broad audit.
 
 For a new session, use `CODEX_KICKOFF_PROMPT.md` only when repository context has not yet been indexed or the index is stale.
 
+## Core working contract
+
+The normal workflow is:
+
+1. Jeremy reports a bug or improvement in plain English.
+2. Codex investigates read-only.
+3. Codex reports the root cause and recommended fix in plain English.
+4. Jeremy may challenge the diagnosis or reply `approve`.
+5. `approve` authorizes the full local workflow within the approved scope: implementation, required local file changes, focused tests when useful, validation, correction of change-caused validation failures, final diff review, staging, and one clear local commit.
+6. Codex stops before pushing and gives Jeremy the shortest exact Git Bash instructions needed to push and, when applicable, merge into `main`.
+7. Jeremy publishes through Lovable and performs production smoke testing.
+
+One `approve` is enough. Do not add approval gates between implementation, validation, staging, and the local commit. If implementation proves the recommended solution materially wrong or reveals substantially broader work, stop and explain the new finding instead of expanding scope silently.
+
+Never push, merge, deploy, publish, apply migrations, or modify production data unless Jeremy explicitly instructs Codex to do so.
+
+Jeremy normally needs to provide only what he observed, where he observed it, what he expected, and any reproduction details he happens to know. Do not require an engineering specification, source paths, hypotheses, formal acceptance criteria, or prompts relayed from another assistant. Ask a clarifying question only when missing information would materially affect the diagnosis or make the work unsafe.
+
+See `docs/codex/WORKFLOW.md` for investigation, approval, validation, queue, Git, and completion procedures.
+
 ## Operating model
 
+- For every active runtime bug, start read-only and trace the exact owner and failure boundary before proposing a patch.
 - For large or cross-cutting work, investigate and produce a plan before editing.
-- For narrow defects, trace the exact owner and failure boundary before patching.
-- Keep tasks scoped to one coherent defect or migration.
+- Keep work scoped to one coherent defect or migration.
 - Runtime smoke by Jeremy is acceptance truth.
-- Source inspection, database evidence, and production repros outrank plausible theories.
-- Do not claim a behavior is fixed merely because typecheck passes.
+- Source inspection, database evidence, Git history, instrumentation, tests, and production repros outrank plausible theories.
+- Do not claim a behavior is fixed merely because local validation passes.
 - Preserve frozen production repros until the exact failure is identified.
 - Never mutate historical sessions during investigation unless explicitly authorized.
+- Do not edit product code before Jeremy approves the recommended correction.
+
+## Queue and durable memory
+
+`docs/codex/BACKLOG.md` is the durable work queue.
+
+If Jeremy reports another bug, smoke observation, improvement, or follow-up while a different issue is active, do not interrupt the active task unless he explicitly asks to switch. Briefly acknowledge the item, search the backlog for duplicates, and automatically add or update a `Queued` entry with the useful observation, expectation, runtime context, reproduction evidence, provenance, and report date. Assign priority only when reasonably clear.
+
+Backlog capture is pre-authorized documentation work. It does not permit investigation or product-code changes for the queued item, must not expand the active code scope, and should be kept in a separate local documentation commit when practical. Never lose a queued observation because the task, chat, or smoke session changes.
+
+When Jeremy asks what is next, read the backlog and current release state, ignore completed/superseded/duplicate/blocked entries, select the highest-priority actionable item, explain the choice briefly, and begin its normal read-only investigation. Ask Jeremy to choose only when genuinely equal options would materially affect product direction.
 
 ## Source-of-truth hierarchy
 
@@ -47,7 +78,7 @@ When these disagree, stop and report the discrepancy.
 
 - The database owns gameplay truth, settlement, balances, snapshots, terminal disposition, and persistent lifecycle state.
 - Optimistic state may improve responsiveness but may not become hidden authoritative truth.
-- Presentation state may animate, latch, or preserve continuity but may not advance gameplay.
+- Presentation state may animate, latch, or preserve continuity but may not advance gameplay or become financial authority.
 - Reject regressive snapshots.
 - Accept equal-progress snapshots only when semantically identical.
 - Hard-reset hand/round transients when `dealer_game_id`, `hand_number`, or `round_id` changes.
@@ -85,7 +116,7 @@ Do not add a second table, felt, seat ring, HUD, lifecycle surface, terminal own
 
 ## Change protocol
 
-Before editing, establish:
+Before proposing a correction, establish:
 
 1. Exact authoritative identity.
 2. Exact owner of the behavior.
@@ -95,9 +126,7 @@ Before editing, establish:
 6. Explicit preserve list.
 7. Runtime acceptance steps.
 
-Do not patch from correlation alone.
-
-For shared/canonical components, enumerate all applicable game call sites before changing behavior.
+Do not patch from correlation alone. For shared/canonical components, enumerate all applicable game call sites before changing behavior.
 
 For database work:
 
@@ -119,7 +148,7 @@ Do not introduce:
 - alias/display-name identity;
 - local-only placeholder participants;
 - hidden progression surfaces;
-- broad speculative refactors during a release fix;
+- broad speculative refactors during a scoped fix;
 - console-only proof as acceptance;
 - permanent production debug badges or instrumentation;
 - hardcoded game-specific patches when a canonical owner exists;
@@ -127,27 +156,27 @@ Do not introduce:
 
 Bot/player/action identity must use UUIDs and authoritative keys, never display aliases.
 
-## Validation
+## Validation and review
 
-Default validation for narrow work:
+Codex owns relevant local validation after approval. Use focused tests and checks proportionate to risk; the default narrow typecheck is:
 
 ```bash
 bunx tsgo --noEmit
 ```
 
-Do not run broad suites, create harnesses, or add tests unless the task specifically warrants them or Jeremy asks.
+Do not install dependencies or tools without explicit permission. When database behavior changes, add the smallest direct SQL/PostgREST proof required and roll back or delete synthetic data.
 
-When database behavior changes, add the smallest direct SQL/PostgREST proof required and roll back/delete synthetic data.
-
-Always state files changed, migrations changed, commands run, unresolved uncertainty, and exact runtime smoke required.
+Before committing, inspect the diff internally for scope, correctness, unrelated cleanup, secrets, generated junk, and accidental files. Do not show a raw diff by default. Show hunks only when Jeremy asks, risk warrants it, implementation materially differs from the approved plan, or a line-level decision needs his input.
 
 ## Git and release discipline
 
-- Start from a clean worktree.
-- Inspect `git status` and the current branch before editing.
+- Inspect `git status` and the current branch before editing; preserve unrelated user changes.
 - Do not rewrite or amend existing history without explicit approval.
-- Keep commits small and named for the single behavior changed.
+- Keep commits small and named for one coherent behavior.
 - Do not mix documentation/audit cleanup with release-blocking fixes.
+- Use direct local `main` for routine low-risk work when it is clean and synchronized.
+- Use a task-specific branch for migrations/RPCs, financial settlement or chip movement, auth, canonical state ownership, cross-game lifecycle, broad architecture, dependencies/build configuration, large refactors, or changes difficult to roll back.
+- Stop after the local commit unless Jeremy explicitly authorizes pushing or further release actions.
 - Before a release checkpoint, record the commit SHA and tag it.
 - The Lovable cutover tag is documented in `CUTOVER_CHECKLIST.md`.
 
@@ -157,21 +186,12 @@ After a material architectural decision or verified fix:
 
 - update `docs/codex/CURRENT_RELEASE.md`;
 - update `docs/codex/STABLE_CHECKPOINTS.md` when a smoke passes;
-- update `docs/codex/BACKLOG.md` for deferred work;
+- update `docs/codex/BACKLOG.md` for deferred or newly queued work;
 - update `docs/codex/DECISION_LOG.md` for durable architectural decisions;
 - update `docs/codex/REPO_MAP.md` when ownership or key paths change.
 
-Keep `AGENTS.md` stable and concise. Put detailed knowledge in `docs/codex/`.
+Keep `AGENTS.md` stable and concise. Put detailed operating procedures and project knowledge in `docs/codex/`.
 
 ## Communication style
 
-Be direct and evidence-based. For implementation work, return:
-
-1. finding;
-2. exact cause;
-3. exact correction;
-4. preserved behavior;
-5. validation;
-6. runtime smoke.
-
-Do not overstate certainty. Do not report “ready for smoke” until required source, typecheck, and database proofs are complete.
+Lead with the practical conclusion, use plain English, keep routine responses short, and give one clear next action. Do not make Jeremy act as a middleman between Codex and another assistant. Do not turn a simple correction into an enterprise release process unless its actual risk warrants it.
