@@ -6703,11 +6703,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Replay a dropped wake, or self-wake when authority advanced
           // during this dispatch (the drifted snapshot is exactly the case
           // that previously parked the turn with no further state change).
+          // Authority identity is compared as a full key (round + turn +
+          // epoch): comparing epoch/round alone let a turn advance that
+          // re-used the epoch counter path disappear, and a guard rejection
+          // consumed the wake permanently.
           const authAfter = latestAuthoritativeTurnRef.current;
-          const authorityMoved =
-            isHolmGame &&
-            ((authAfter?.epoch ?? authoritativeTurnEpochRef.current) !== capturedAuthorityEpoch ||
-              (authAfter?.roundId ?? null) !== capturedRoundId);
+          const authorityKeyAfter = isHolmGame
+            ? `${authAfter?.roundId ?? null}:${authAfter?.currentTurnPosition ?? null}:${authAfter?.epoch ?? authoritativeTurnEpochRef.current}`
+            : null;
+          const authorityMoved = isHolmGame && authorityKeyAfter !== capturedAuthorityKey;
           if (botWakePendingRef.current || authorityMoved) {
             botWakePendingRef.current = false;
             setBotWakeTick(t => t + 1);
@@ -6735,6 +6739,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     handContextKey,
     holmReadyTick,
     botWakeTick,
+    botDrainTick,
   ]);
   // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
   const holmRecoveryAttemptedRef = useRef<string | null>(null);
