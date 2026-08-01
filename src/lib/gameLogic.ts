@@ -96,7 +96,15 @@ async function resolveDealerGameId(
     .select('current_game_uuid')
     .eq('id', gameId)
     .maybeSingle();
-  return (data?.current_game_uuid as string | null) ?? null;
+  const resolved = (data?.current_game_uuid as string | null) ?? null;
+  if (!resolved) {
+    // Legitimate only before the session's first dealer game exists (e.g. a
+    // lobby-phase departure). Any financial snapshot boundary with an active
+    // dealer game must resolve non-null; a null here degrades to the legacy
+    // identity and is therefore surfaced rather than written silently.
+    console.warn('[SNAPSHOT] No dealer game resolved — writing legacy null identity', { gameId });
+  }
+  return resolved;
 }
 
 /**
