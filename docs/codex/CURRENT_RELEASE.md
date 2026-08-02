@@ -62,6 +62,20 @@ Lovable-backed source project.
 The detailed evidence and remaining cutover gates live in
 `docs/codex/SUPABASE_CUTOVER.md`.
 
+### Owned-Supabase preview runtime
+
+- Vercel Preview branch `codex/supabase-preview` is isolated to the owned
+  project through branch-scoped `VITE_SUPABASE_*` variables. Production remains
+  on the Lovable-backed source project.
+- The preview build for commit `3714e43a0f442f591633b1e71f658e979e42d72f`
+  reached `READY` and serves the app at
+  <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
+- Supabase Auth allows that exact preview hostname (all paths). The owned
+  project's Site URL remains local until the production cutover.
+- Vercel Authentication protects the preview. The signed-in browser reached
+  the app's `/auth` screen; real-user sign-in and gameplay smoke are the next
+  acceptance gate.
+
 ## Frozen Lovable cutover baseline
 
 - Lovable development is finished. No additional Lovable publish or reclone is

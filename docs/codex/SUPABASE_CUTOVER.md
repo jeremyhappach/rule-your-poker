@@ -129,8 +129,12 @@ Reference remediation:
    Supabase project; replace the Lovable AI dependency.
 2. Decide whether voice is in the initial cutover. If yes, explicitly approve
    its external-audio/data path and deploy/test the two deferred functions.
-3. Create a preview runtime pointed at the owned target with the target's
-   client-safe legacy anon key where current Bearer usage requires a JWT.
+3. **Complete 2026-08-02:** Vercel branch `codex/supabase-preview` is scoped to
+   the owned target with the client-safe legacy anon key. The protected preview
+   is
+   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>,
+   and its exact hostname is allowed in Supabase Auth. Production remains on
+   the source backend.
 4. Smoke Auth sign-in, lobby/history, one fake-money game, one real-money game,
    Storage image rendering, deadline enforcement, and the Cribbage disconnect
    settlement contract against the target.
