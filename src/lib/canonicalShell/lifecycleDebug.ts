@@ -1,10 +1,9 @@
 /**
- * Lifecycle instrumentation with persistent logging.
+ * Lifecycle instrumentation with opt-in persistent logging.
  *
- * Events (mount / unmount / fact) are appended to the `debug_events`
- * table so the user can reproduce regressions normally and then
- * inspect the persisted trace, instead of relying on browser console
- * logs as the validation path.
+ * The in-memory lifecycle ledger is always available. Mount / unmount / fact
+ * events are appended to `debug_events` only while the shared `events` debug
+ * channel is enabled, preventing normal gameplay from filling the database.
  *
  * Schema mapping (debug_events):
  *   game_id      ← current lifecycle context game_id (fallback: NIL uuid)
@@ -17,6 +16,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { isDebugChannel } from '@/lib/debugChannels';
 import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 type Snapshot = Record<string, string | number | boolean | null | undefined>;
@@ -111,7 +111,7 @@ export function getLifecycleContext(): Readonly<LifecycleContext> {
 
 // ── Persistence queue ──────────────────────────────────────────────
 // We batch inserts to keep request volume low. Up to 20 events or
-// 500 ms — whichever comes first — flush to debug_events.
+// 500 ms — whichever comes first — flush enabled events to debug_events.
 
 type QueuedEvent = {
   game_id: string;
@@ -168,6 +168,10 @@ function scheduleFlush() {
 }
 
 function persistEvent(eventType: string, payload: Record<string, unknown>) {
+  // Keep the canonical in-memory lifecycle ledger available, but only persist
+  // its high-volume rows when the existing debug-events channel is enabled.
+  if (!isDebugChannel('events')) return;
+
   void ensureUserId();
   const enriched = {
     ts_client_iso: new Date().toISOString(),

@@ -1,3 +1,5 @@
+import { isDebugChannel } from "@/lib/debugChannels";
+
 const STORAGE_KEY = "diceSnap";
 const STORAGE_MS_KEY = "diceSnapMs";
 
@@ -10,16 +12,36 @@ function getSearchParams(): URLSearchParams {
 }
 
 /**
- * Enable/disable is controlled via URL only (no UI), but persisted in sessionStorage
- * so it survives in-app navigation.
+ * Disabled by default. Enable through the shared `dice` debug channel or a
+ * URL override that is persisted in sessionStorage for in-app navigation.
  *
  * - Enable:  ?diceSnap=1
  * - Disable: ?diceSnap=0
+ * - Shared debug toggle: channel `dice`
  * - Optional interval override: ?diceSnapMs=50
  */
 export function isDiceSnapEnabled(): boolean {
-  // TEMPORARY: Always enabled for debugging dice position jumps
-  return true;
+  if (typeof window === "undefined") return false;
+
+  const requested = getSearchParams().get(STORAGE_KEY);
+  try {
+    if (requested === "0") {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return false;
+    }
+    if (requested === "1") {
+      sessionStorage.setItem(STORAGE_KEY, "1");
+      return true;
+    }
+  } catch { /* storage can be unavailable in restricted browsers */ }
+
+  if (isDebugChannel("dice")) return true;
+
+  try {
+    return sessionStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function getDiceSnapIntervalMs(): number {

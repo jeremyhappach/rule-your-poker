@@ -65,3 +65,22 @@ Lovable publication is no longer part of the delivery path.
 Lovable Cloud remains a temporary database and authentication dependency until
 the controlled Phase 2 migration to an owned Supabase project. Frontend
 publication must not be coupled back to Lovable during that migration.
+
+## D-015 — Core cutover excludes forensic bulk
+
+The owned Supabase cutover preserves users/password hashes, canonical gameplay,
+financial/history data, Storage objects, schema/RPC behavior, and Realtime
+membership. Persisted debug, incident, trace, voice, and operation telemetry is
+not migration authority and is excluded from the core copy.
+
+Normal production runs keep high-volume dice snapshots and persistent lifecycle
+events off by default. When diagnostics are explicitly enabled, a target cron
+purges the bounded diagnostic set after seven days. Gameplay, financial, audit,
+and session-history tables are never part of that retention purge.
+
+## D-016 — Rehearsal never silently cuts production over
+
+An owned Supabase rehearsal may apply schema, copy approved data, deploy safe
+functions, and prove parity without changing Vercel's production backend. The
+actual environment-variable switch requires a completed rehearsal, provider
+secret decisions, a final delta/freeze window, and explicit cutover approval.

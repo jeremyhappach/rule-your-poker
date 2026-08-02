@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_games_status_created_at ON public.games (status, created_at DESC);

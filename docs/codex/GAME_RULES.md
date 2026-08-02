@@ -120,7 +120,7 @@ contradictions.
 | Bots | `src/lib/cribbageBotLogic.ts:getBotDiscardIndices`, `getBotPeggingCardIndex`, and `shouldBotCallGo`. |
 | State acceptance | `src/lib/gameStateSync/cribbageProgress.ts:getCribbageProgressFn`. |
 | Settlement | `src/lib/cribbageSettleGame.ts:settleCribbageGame` and `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
-| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`; `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
+| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`; `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 
 ### Implemented rules
 
@@ -328,7 +328,7 @@ contradictions.
 |---|---|
 | Setup/config | `src/components/DealerGameSetup.tsx`: ante, leg value, legs to win, optional Pussy Tax/value, optional pot cap/value, and reveal-at-showdown. |
 | State/actions | `src/lib/gameLogic.ts:startRound`, `makeDecision`, `autoFoldUndecided`, `endRound`, and `proceedToNextRound`; hand ranking in `src/lib/cardUtils.ts:evaluateHand`. |
-| Atomic seam | `src/lib/threeFiveSeven/advanceRound.ts` builds assignments; `public.advance_357_round` latest in `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
+| Atomic seam | `src/lib/threeFiveSeven/advanceRound.ts` builds assignments; `public.advance_357_round` latest in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
 | Bots | `src/lib/botPlayer.ts:makeBotDecisions` and `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling in `src/pages/Game.tsx`. |
 | State acceptance | `src/lib/gameStateSync/threeFiveSevenProgress.ts:getThreeFiveSevenProgress`. |
 | Terminal | Normal leg win: private `src/lib/gameLogic.ts:handleGameOver`; atomic R1 sweep: `advance_357_round`; presentation owner `src/components/ThreeFiveSevenTerminalController.tsx`. |

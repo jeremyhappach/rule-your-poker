@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Bug } from "lucide-react";
 import { refreshDebugEventFlag } from "@/lib/debugEventLogger";
+import { refreshDebugChannels } from "@/lib/debugChannels";
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_debug_events";
@@ -25,13 +26,18 @@ export function DebugLogToggle() {
         window.localStorage.removeItem(STORAGE_KEY);
       }
     } catch { /* */ }
+    refreshDebugChannels();
     refreshDebugEventFlag();
     setEnabled(next);
   }, [enabled]);
 
   // Sync if changed in another tab
   useEffect(() => {
-    const handler = () => setEnabled(readFlag());
+    const handler = () => {
+      refreshDebugChannels();
+      refreshDebugEventFlag();
+      setEnabled(readFlag());
+    };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);

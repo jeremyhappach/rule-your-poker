@@ -1,1 +1,0 @@
-ALTER TABLE public.games ALTER COLUMN game_type DROP DEFAULT;

@@ -1,1 +1,0 @@
-ALTER TABLE public.games ADD COLUMN IF NOT EXISTS buck_transfer_presentation jsonb;

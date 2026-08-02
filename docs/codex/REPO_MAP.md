@@ -36,9 +36,13 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 |---|---|
 | Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
-| Local project/function config | `supabase/config.toml`, project id `ehccrxumpibuoehfsmms`. |
-| Schema history | `supabase/migrations/` (224 migration files at ingestion). Later definitions supersede earlier same-named functions. |
+| Local project/function config | `supabase/config.toml`, owned rehearsal project id `xvhmbuppghwmwpwrkzao`. Vercel production still targets the Lovable-backed source until explicit cutover. |
+| Schema history | `supabase/migrations/` (246 files after reconciliation: 244 exact source migration records plus two owned-target diagnostic-retention migrations). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `generate-music`, `generate-trivia`, `reset-password`, `voice-to-text`, and `finalize-voice-operations`; shared helpers live in `supabase/functions/_shared/`. |
+
+Owned-target rehearsal evidence, the retained/excluded data boundary, function
+deployment status, and final cutover gates are recorded in
+`docs/codex/SUPABASE_CUTOVER.md`.
 
 `src/integrations/supabase/types.ts` lists
 `activate_holm_round_after_deal_presentation` and `start_holm_initial_hand`,
@@ -145,9 +149,9 @@ reset transient/presentation state when those identities change.
   transaction. `CribbageMobileGameTable.tsx` observes/replays settlement and
   owns presentation only. Discard RPC
   `cribbage_apply_discard` is defined by
-  `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
+  `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
   `cribbage_create_next_hand` is defined by
-  `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`.
+  `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`.
 - Focused tests: Cribbage deal orchestrator, cards-tab render/measurement,
   Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
   render invariant tests under `src/components/` and `src/lib/cribbage/`,
@@ -211,7 +215,7 @@ reset transient/presentation state when those identities change.
   `botHandStrength.ts:getBotFoldProbability`; scheduling is in `Game.tsx`.
 - Settlement/terminal: later-round/new-hand seams and a normal R1 instant sweep
   are owned by `public.advance_357_round`, latest in
-  `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. Normal
+  `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. Normal
   leg-completion settlement remains the private client
   `gameLogic.ts:handleGameOver`; legacy instant helpers remain under
   `src/lib/threeFiveSeven/`.
@@ -234,11 +238,11 @@ reset transient/presentation state when those identities change.
   `shouldBotStopRolling`, and `applyHoldDecision`, driven by the claimed
   controller in `useHorsesMobileController`.
 - RPCs: `claim_horses_bot_controller` (latest definition remains
-  `supabase/migrations/20251231220449_9e641bd2-2d4c-4be1-8d68-74aca357c083.sql`);
+  `supabase/migrations/20251231220448_9e641bd2-2d4c-4be1-8d68-74aca357c083.sql`);
   `horses_set_player_state` latest in
-  `supabase/migrations/20260208181248_b7f5d957-7530-40fb-84b6-a850c77197f6.sql`;
+  `supabase/migrations/20260208181247_b7f5d957-7530-40fb-84b6-a850c77197f6.sql`;
   `horses_advance_turn` latest in
-  `supabase/migrations/20260322190633_da97037f-98a4-44a0-b9c3-1b3822ee7ff0.sql`.
+  `supabase/migrations/20260322190632_da97037f-98a4-44a0-b9c3-1b3822ee7ff0.sql`.
 - Settlement/terminal: `useHorsesMobileController` claims the game row and
   then separately pays, records, snapshots, and clears the pot. No
   game-specific settlement RPC or focused rule/terminal test exists.
@@ -297,15 +301,15 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Capability | Latest repository evidence |
 |---|---|
 | Holm terminal settlement | `holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`; wrapper `src/lib/holmSettleHand.ts`. |
-| 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
-| Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
-| Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
+| 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
+| Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
+| Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
 | Cribbage terminal settlement | `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`; wrapper `src/lib/cribbageSettleGame.ts`. |
 | Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map. |
-| Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213624_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005658_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
+| Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213623_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005657_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
 | Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |
-| Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260517144847_4bec47fa-5c3a-412a-8b31-15002b5a45b9.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
+| Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260517144846_4bec47fa-5c3a-412a-8b31-15002b5a45b9.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
 
 ## Debug harness registry
 

@@ -13,12 +13,54 @@ Date: 2026-08-02
   repository history.
 - `vercel.json` owns Vite SPA deep-link routing so `/auth`, `/game/:gameId`, and
   other client routes resolve through `index.html`.
-- Lovable Cloud remains the temporary database and authentication owner. Phase
-  2 will migrate those services to an owned Supabase project without changing
-  the frontend publication path.
+- Lovable Cloud remains the production database and authentication owner. The
+  owned Supabase Phase 2 rehearsal described below has not changed Vercel's
+  production environment variables.
 - The approved workflow is now plain-English issue -> diagnosis -> one approval
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.
+
+## Phase 2 owned-Supabase core rehearsal
+
+The owned project `ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`) now contains a
+validated rehearsal copy of the core backend while production still uses the
+Lovable-backed source project.
+
+- All 244 source migration records are represented by exact local versions and
+  SQL; 19 deployed-but-missing migrations were recovered into
+  `supabase/migrations/` and Lovable's filename/version drift was reconciled.
+  Two target migrations add the bounded diagnostic purge and its explicit
+  audit/session-history preservation boundary, for 246 total records.
+- Schema parity was proved before the target-only retention migration: 48
+  public tables, 42 routines, 133 policies, 20 enabled application triggers,
+  and 18 Realtime publication tables.
+- Auth contains the same 11 users, identities, and password hashes. Sessions,
+  refresh tokens, MFA claims, and one-time tokens were intentionally not
+  copied, so the later cutover requires an ordinary sign-in but no password
+  reset.
+- Twenty retained application/history/financial tables match source row counts
+  and per-row content manifests. Persisted debug, incident, trace, voice, and
+  operation telemetry was intentionally excluded.
+- The public `chat-images` bucket contains the same five objects, paths, MIME
+  types, and 4,526,239 total bytes.
+- Six repository Edge Functions are active: `enforce-deadlines`,
+  `enforce-all-deadlines`, `generate-incident-report`, `generate-music`,
+  `generate-trivia`, and `reset-password`. The deadline function passed a
+  non-mutating boot check. `voice-to-text` and `finalize-voice-operations` are
+  deferred because they expose the excluded voice/incident pipeline and the
+  former still forwards audio through Lovable AI.
+- Third-party function secrets were not copied. Trivia, music, and password
+  email remain rehearsal-incomplete until their providers/secrets are chosen;
+  Lovable AI must be replaced for a fully independent backend.
+- Gameplay cron is disabled on the target. The sole active job purges retained
+  diagnostic rows older than seven days. High-volume dice snapshots and
+  lifecycle persistence are also off by default in the frontend.
+- The target database is 26 MB. Security/performance advisors report inherited
+  source-schema warnings, not target drift; remediation is a separate scoped
+  hardening task.
+
+The detailed evidence and remaining cutover gates live in
+`docs/codex/SUPABASE_CUTOVER.md`.
 
 ## Frozen Lovable cutover baseline
 
