@@ -55,3 +55,7 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   `20260802174956_restore_public_data_api_grants.sql` restored explicit Data API
   grants. Keep all 48 public tables behind RLS and preserve anonymous read-only
   access to `games`.
+- Authenticated voice transcription passed preview smoke on 2026-08-02 through
+  the direct OpenAI `gpt-transcribe` path: spoken text returned to the unsent
+  message draft. Preserve the user-JWT requirement and the no-persisted-audio or
+  voice-diagnostics posture.

@@ -51,9 +51,11 @@ Lovable-backed source project.
   diagnostics. `finalize-voice-operations` is retired. Trivia was removed from
   the app; the formerly deployed target function is an authenticated 410
   tombstone with no provider call.
-- Third-party function secrets were not copied. `OPENAI_API_KEY` and the
-  production email/SMTP credentials still require direct entry and smoke on the
-  target; music provider configuration remains a separate product gate.
+- `OPENAI_API_KEY` is installed directly on the target. Authenticated voice
+  transcription returned the spoken text to the unsent draft in owned-preview
+  smoke on 2026-08-02. Production email/SMTP configuration and password-reset
+  smoke remain outstanding; music provider configuration is a separate product
+  gate.
 - Gameplay cron is disabled on the target. The sole active job purges retained
   diagnostic rows older than seven days. High-volume dice snapshots and
   lifecycle persistence are also off by default in the frontend.
@@ -76,7 +78,7 @@ The detailed evidence and remaining cutover gates live in
 - Vercel Preview branch `codex/supabase-preview` is isolated to the owned
   project through branch-scoped `VITE_SUPABASE_*` variables. Production remains
   on the Lovable-backed source project.
-- The preview build for commit `2c0d08d6970ac01cca1fbe8d22d02585b0a956ec`
+- The preview build for commit `7e10cafd391330f387fb009e0ab96050ba84894f`
   reached `READY` and serves the app at
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
 - Supabase Auth allows that exact preview hostname (all paths). The owned
@@ -84,8 +86,9 @@ The detailed evidence and remaining cutover gates live in
 - Vercel Authentication protects the preview. After restoring the target's
   explicit Data API grants, the signed-in browser loads the lobby, profile
   balance, history dependencies, and game list without the prior table
-  permission errors. Jeremy reported the create-game/game-entry rerun clean on
-  2026-08-02. The broader backend-cutover smoke checklist remains tracked in
+  permission errors. Jeremy reported the create-game/game-entry rerun and the
+  authenticated voice-transcription path clean on 2026-08-02. The broader
+  backend-cutover smoke checklist remains tracked in
   `docs/codex/SUPABASE_CUTOVER.md`.
 
 ## Frozen Lovable cutover baseline

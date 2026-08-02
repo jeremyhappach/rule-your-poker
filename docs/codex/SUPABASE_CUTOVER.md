@@ -110,10 +110,11 @@ Active on target:
 
 `finalize-voice-operations` is retired and is not deployed on the target.
 
-Custom third-party secrets were not copied. `OPENAI_API_KEY`, the production
-email/SMTP credentials, and any retained music-provider secret must be entered
-directly in their owning service and must not be put in Git. Voice will return
-503 until `OPENAI_API_KEY` is present.
+Custom third-party secrets were not copied. `OPENAI_API_KEY` is now installed
+directly on the target, and authenticated voice transcription passed owned-
+preview smoke on 2026-08-02. Production email/SMTP credentials and any retained
+music-provider secret must still be entered directly in their owning service
+and must not be put in Git.
 
 ## Diagnostic posture
 
@@ -144,9 +145,10 @@ Reference remediation:
 
 ## Gates before production cutover
 
-1. Enter `OPENAI_API_KEY` directly in the owned Supabase project and configure
-   production email/SMTP credentials; then smoke voice transcription and
-   password reset. The direct OpenAI voice path is approved and deployed.
+1. **Voice complete 2026-08-02:** `OPENAI_API_KEY` is installed directly in the
+   owned Supabase project and the direct OpenAI transcription path passed
+   authenticated preview smoke. Configure production email/SMTP credentials,
+   then smoke the native Supabase recovery-link and password-update flow.
 2. Decide whether `generate-music` remains in the initial cutover and, if so,
    enter/test its provider secret. Trivia and its provider dependency are
    retired.
