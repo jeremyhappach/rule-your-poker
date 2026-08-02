@@ -1,73 +1,44 @@
-# Welcome to your Lovable project
+# P-Town Poker
 
-## Project info
+P-Town Poker is a multiplayer React/Vite application backed by a
+Supabase-compatible PostgreSQL service.
 
-**URL**: https://lovable.dev/projects/f3697503-2dc9-4ef5-9e06-eda015b74ae1
+## Runtime
 
-## How can I edit this code?
+- Production frontend: <https://ptown-poker.vercel.app>
+- Source and release branch: GitHub `main`
+- Publication: Vercel automatically builds and publishes each push to `main`
+- Backend: the existing Lovable Cloud database and authentication service
+  during the first cutover phase
 
-There are several ways of editing your application.
+The planned second phase moves the database and authentication service to an
+owned Supabase project. The frontend no longer requires Lovable publication.
 
-**Use Lovable**
+## Local development
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f3697503-2dc9-4ef5-9e06-eda015b74ae1) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Install Node.js, then run:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm ci
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The Vite client requires these local environment variables:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+VITE_SUPABASE_PROJECT_ID
+```
 
-**Use GitHub Codespaces**
+Do not commit their values. The corresponding production values are managed in
+the Vercel project.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Delivery
 
-## What technologies are used for this project?
+Approved changes are validated, committed, and pushed to `origin/main` by
+Codex. Vercel then publishes the production build automatically. Database
+migrations are applied and verified before a dependent frontend commit reaches
+`main`.
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/f3697503-2dc9-4ef5-9e06-eda015b74ae1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+See `AGENTS.md` and `docs/codex/WORKFLOW.md` for the engineering workflow.

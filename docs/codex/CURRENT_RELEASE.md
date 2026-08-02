@@ -1,6 +1,24 @@
 # Current release and cutover state
 
-Date: 2026-08-01
+Date: 2026-08-02
+
+## Phase 1 delivery cutover
+
+- GitHub `main` is connected to the Vercel project `ptown-poker`; pushes create
+  production deployments automatically.
+- The production frontend URL is <https://ptown-poker.vercel.app>.
+- The Vercel project contains the current Lovable Cloud backend values for all
+  three `VITE_SUPABASE_*` build variables. The deployed bundle was verified to
+  contain the expected public project configuration without exposing values in
+  repository history.
+- `vercel.json` owns Vite SPA deep-link routing so `/auth`, `/game/:gameId`, and
+  other client routes resolve through `index.html`.
+- Lovable Cloud remains the temporary database and authentication owner. Phase
+  2 will migrate those services to an owned Supabase project without changing
+  the frontend publication path.
+- The approved workflow is now plain-English issue -> diagnosis -> one approval
+  -> implementation, validation, required migration, Git push, automatic Vercel
+  publication, then Jeremy's real-user smoke.
 
 ## Frozen Lovable cutover baseline
 
@@ -34,7 +52,7 @@ Codex acceptance requires new published iOS smoke proving:
 - short lists compact;
 - no page, HUD, or table-shell scroll.
 
-## Cribbage atomic-settlement candidate
+## Cribbage atomic settlement
 
 The current source candidate moves Cribbage terminal settlement into
 `public.cribbage_settle_game`. One transaction now owns the durable result
@@ -44,11 +62,14 @@ snapshot batch, `game_over`/`session_ended` disposition, and real-money
 immutable game, round, dealer-game, and hand identity; presentation remains
 local.
 
-Migration `20260802001500_atomic_cribbage_terminal_settlement.sql` and the
-matching app build are not yet proven deployed or production-smoked. Publish
-acceptance must cover duplicate callers, disconnect after terminal-state
-persistence, and LAST HAND real-money session closure with one financial
-result per human.
+Migration `20260802001500_atomic_cribbage_terminal_settlement.sql` was applied
+to the live Lovable Cloud database on 2026-08-02 as one transaction and recorded
+in `supabase_migrations.schema_migrations`. Live verification proved both
+unique indexes, the restricted result-insert policy, authenticated-only RPC
+execution, and the deduped `record_session_results` trigger definition. The
+matching app build is deployed through Vercel. Production acceptance still
+must cover duplicate callers, disconnect after terminal-state persistence, and
+LAST HAND real-money session closure with one financial result per human.
 
 ## Frozen Lovable cutover scope
 

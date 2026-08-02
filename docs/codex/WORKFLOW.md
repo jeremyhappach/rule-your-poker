@@ -21,9 +21,14 @@ The standard sequence is:
 4. After `approve`, implement, test, validate, review the final diff internally, create a local commit, and complete the Git integration and push needed to make `origin/main` publish-ready.
 5. For routine work on local `main`, run `.codex\scripts\push-origin-main.cmd`; its sole Git operation is `C:\Program Files\Git\cmd\git.exe push origin main`.
 6. For high-risk work, complete the necessary branch push, conflict-free fast-forward integration, and `main` push after validation.
-7. Jeremy publishes through Lovable and performs production smoke.
+7. Vercel automatically publishes the pushed `main` commit; Codex verifies the
+   deployment, and Jeremy performs production smoke.
 
-`approve` authorizes the Git actions needed to make the approved work publish-ready on `origin/main`. Never force-push. If a merge conflict, remote divergence, or other condition requires a material judgment, stop and report it. Never deploy, publish, apply migrations, or modify production data without Jeremy's explicit instruction.
+`approve` authorizes the Git actions, Vercel production publication, and schema
+migrations explicitly included in the recommended solution. It does not
+authorize unrelated production-data mutation or broader infrastructure work.
+Never force-push. If a merge conflict, remote divergence, or other condition
+requires a material judgment, stop and report it.
 
 ## Investigation phase
 
@@ -74,7 +79,11 @@ For the recommended scope, one `approve` authorizes Codex to:
 5. Resolve validation failures caused by the change.
 6. Inspect the final diff for accidental or unrelated edits.
 7. Stage the intended files and create a concise local Git commit.
-8. Complete the required branch integration and push to `origin/main`.
+8. Apply and verify any approved schema migration before the dependent client
+   reaches production.
+9. Complete the required branch integration and push to `origin/main`.
+10. Monitor the automatic Vercel deployment through `READY` and verify the
+    production routes.
 
 Do not ask for separate approval for editing, tests, typechecking, linting, building, showing the diff, staging, the local commit, branch integration, or pushing `main`.
 
@@ -82,7 +91,9 @@ If implementation shows that the recommended solution was materially wrong or th
 
 ## Git delivery after approval
 
-An approval authorizes the Git actions needed to make the approved work available to Lovable from `origin/main`. For routine work on local `main`, Codex runs the fixed project helper:
+An approval authorizes the Git actions needed to make the approved work
+available to Vercel from `origin/main`. For routine work on local `main`, Codex
+runs the fixed project helper:
 
 ```text
 .codex\scripts\push-origin-main.cmd
@@ -203,7 +214,8 @@ When local `main` is clean and synchronized:
 5. After a successful push, state:
 
 ```text
-No merge is required. Publish through Lovable, then test the reported behavior in production.
+No merge is required. Vercel published the `main` commit; test the reported
+behavior in production.
 ```
 
 Do not create a branch, pull request, merge commit, cleanup task, and repull cycle for every routine correction.
@@ -229,7 +241,8 @@ For high-risk work:
 3. Validate and commit locally.
 4. Push the branch when required by the integration path. Never force-push.
 5. Fetch `origin/main`, verify the branch can fast-forward from it, fast-forward local `main`, and push `main` with the approved helper.
-6. Report that `origin/main` is ready for Lovable publication.
+6. Monitor the automatic Vercel deployment and report its production URL and
+   state.
 
 ## Completion response
 
@@ -243,19 +256,22 @@ After implementation, validation, and the local commit, respond compactly:
 - State the exact production behavior Jeremy still needs to smoke-test.
 - Mention any newly reported items added to the queue during the task.
 
-For routine work on local `main`, state that `origin/main` is ready for Lovable publication after the successful push. Do not include Git Bash push instructions. For high-risk branch work, state the branch, why it was required, and the resulting merge/push status.
+For routine work on local `main`, state that Vercel published the pushed commit
+after the deployment reaches `READY`. Do not include Git Bash push
+instructions. For high-risk branch work, state the branch, why it was required,
+and the resulting integration, push, and deployment status.
 
 Do not request screenshots or command output when the expected result is routine and Jeremy has not reported an error. Do not provide a long retrospective unless requested.
 
 ## Publishing and smoke
 
-Codex owns local source changes, tests, validation, diff review, the local commit, and the Git integration/push needed to make `origin/main` publish-ready. Jeremy owns Lovable Publish/Update and production smoke.
+Codex owns local source changes, tests, validation, diff review, the local
+commit, required approved schema migrations, Git integration/push, and Vercel
+deployment verification. A push to `origin/main` automatically creates the
+production deployment. Jeremy owns the real-user production smoke.
 
-After a successful push or merge, the routine next instruction is:
-
-```text
-Publish through Lovable, then test the reported behavior in production.
-```
+After Vercel reports the pushed commit as `READY`, the routine next instruction
+is to test the reported behavior at <https://ptown-poker.vercel.app>.
 
 Treat Jeremy's production smoke as authoritative. If the active fix fails smoke, begin a new read-only investigation from that observation; do not defend the source because tests passed.
 

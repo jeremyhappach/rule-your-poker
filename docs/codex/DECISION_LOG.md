@@ -54,3 +54,14 @@ A terminal settlement claim, chip movement, result row, post-payout snapshots,
 terminal disposition, and session financial rows commit together or not at
 all. Clients submit immutable authoritative identity and may replay; a durable
 database key makes every financial consequence exactly once.
+
+## D-014 — Vercel publishes GitHub main
+
+`origin/main` is the production frontend release source. Vercel automatically
+builds and publishes every pushed `main` commit, and Codex verifies the
+deployment before handing the runtime to Jeremy for smoke testing. Manual
+Lovable publication is no longer part of the delivery path.
+
+Lovable Cloud remains a temporary database and authentication dependency until
+the controlled Phase 2 migration to an owned Supabase project. Frontend
+publication must not be coupled back to Lovable during that migration.
