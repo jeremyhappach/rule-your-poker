@@ -47,3 +47,11 @@ Do not reintroduce a scrim/modal, automatic lobby redirect for connected flow, o
 ## Validation
 
 Published runtime smoke is acceptance. Typecheck alone is never a stable checkpoint.
+
+## Owned Supabase preview
+
+- The authenticated lobby and create-game/game-entry path passed preview smoke
+  on 2026-08-02 after migration
+  `20260802174956_restore_public_data_api_grants.sql` restored explicit Data API
+  grants. Keep all 48 public tables behind RLS and preserve anonymous read-only
+  access to `games`.

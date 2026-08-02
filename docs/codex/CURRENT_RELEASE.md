@@ -71,7 +71,7 @@ The detailed evidence and remaining cutover gates live in
 - Vercel Preview branch `codex/supabase-preview` is isolated to the owned
   project through branch-scoped `VITE_SUPABASE_*` variables. Production remains
   on the Lovable-backed source project.
-- The preview build for commit `3714e43a0f442f591633b1e71f658e979e42d72f`
+- The preview build for commit `2c0d08d6970ac01cca1fbe8d22d02585b0a956ec`
   reached `READY` and serves the app at
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
 - Supabase Auth allows that exact preview hostname (all paths). The owned
@@ -79,8 +79,9 @@ The detailed evidence and remaining cutover gates live in
 - Vercel Authentication protects the preview. After restoring the target's
   explicit Data API grants, the signed-in browser loads the lobby, profile
   balance, history dependencies, and game list without the prior table
-  permission errors. Jeremy's create-game and gameplay smoke remain the next
-  acceptance gate.
+  permission errors. Jeremy reported the create-game/game-entry rerun clean on
+  2026-08-02. The broader backend-cutover smoke checklist remains tracked in
+  `docs/codex/SUPABASE_CUTOVER.md`.
 
 ## Frozen Lovable cutover baseline
 

@@ -144,7 +144,9 @@ Reference remediation:
    Storage image rendering, deadline enforcement, and the Cribbage disconnect
    settlement contract against the target. Signed-in lobby loading is complete;
    the create-game failure caused by missing new-project Data API grants was
-   corrected on 2026-08-02, and full gameplay smoke remains pending.
+   corrected, and Jeremy reported the create-game/game-entry rerun clean on
+   2026-08-02. The remaining enumerated coverage is still required before this
+   gate is complete.
 5. Freeze source writes, copy the final data delta, repeat manifests, and record
    database/Auth/Storage counts.
 6. With explicit approval, change Vercel production environment variables,
