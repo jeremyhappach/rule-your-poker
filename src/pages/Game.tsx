@@ -105,7 +105,6 @@ import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
-import { TriviaGameTable } from "@/components/TriviaGameTable";
 import { GinRummyGameTable } from "@/components/GinRummyGameTable";
 import { YahtzeeGameTable } from "@/components/YahtzeeGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
@@ -14640,7 +14639,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
                     activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
-                    isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
@@ -15043,7 +15041,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
                     activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
-                    isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
@@ -15393,8 +15390,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               _selectedBranch = 'dice:MobileGameTable(cribbage-or-special)';
             } else if (game.game_type === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
               _selectedBranch = 'yahtzee:YahtzeeGameTable';
-            } else if (isInProgress && game.game_type === 'trivia') {
-              _selectedBranch = 'trivia:TriviaGameTable';
             }
             _shellLogIfChanged('Game.IIFE.branch', _selectedBranch, {
               gameStatus: game.status,
@@ -15758,27 +15753,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // GIN RUMMY is handled above in the unified block
 
-
-          // TRIVIA GAME
-          if (isInProgress && game.game_type === 'trivia') {
-            const currentPlayer = players.find(p => p.user_id === user?.id);
-            const currentUsername = currentPlayer?.profiles?.username || 'Player';
-            return (
-              <TriviaGameTable
-                gameId={gameId!}
-                roundId={currentRound?.id || ''}
-                players={players}
-                currentPlayerId={currentPlayer?.id || ''}
-                currentUsername={currentUsername}
-                pot={potForDisplay}
-                anteAmount={game.ante_amount || 1}
-                onRoundComplete={(winnerIds, amount) => {
-                  // Handle round completion - refresh game data
-                  fetchGameData();
-                }}
-              />
-            );
-          }
 
           // 3-5-7 entry-mode provenance (persistent Game.tsx route owner).
           // Capture once at first hydrated render; classify current

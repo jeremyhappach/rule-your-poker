@@ -1,254 +1,103 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-/**
- * voice-to-text — Lovable AI Gateway Speech-to-Text.
- *
- * Now also writes durable server-side incident events into
- * public.voice_operation_events for every boundary. These events survive
- * sender-client death and are the primary forensic source.
- *
- * Body: { audio: base64, mimeType: string, voice_operation_id?: string }
- * Returns: { transcript: string }
- */
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const MAX_BASE64_LENGTH = Math.ceil(MAX_AUDIO_BYTES / 3) * 4;
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const admin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-  : null;
+const mimeExtensions: Record<string, string> = {
+  "audio/mp3": "mp3",
+  "audio/mp4": "mp4",
+  "audio/mpeg": "mp3",
+  "audio/mpga": "mpga",
+  "audio/m4a": "m4a",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/webm": "webm",
+};
 
-async function writeEdgeEvent(
-  voice_operation_id: string | null | undefined,
-  phase: string,
-  extras: Record<string, unknown> = {},
-): Promise<void> {
-  if (!admin || !voice_operation_id) return;
-  try {
-    await admin.from("voice_operation_events").insert({
-      voice_operation_id,
-      origin: "edge",
-      phase,
-      status_code: (extras.status_code as number) ?? null,
-      duration_ms: (extras.duration_ms as number) ?? null,
-      byte_count: (extras.byte_count as number) ?? null,
-      error_category: (extras.error_category as string) ?? null,
-      error_message: (extras.error_message as string) ?? null,
-      metadata: extras.metadata ?? {},
-    });
-  } catch { /* durability-best-effort */ }
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
-/** Fire-and-forget: run the server-side finalizer immediately so any
- * eligible incident (including this one) is turned into a report even if
- * the sender client never sends another event. */
-async function runFinalizer(): Promise<void> {
-  if (!admin) return;
-  try { await admin.rpc("finalize_voice_operations"); } catch { /* noop */ }
+function jsonResponse(body: Record<string, unknown>, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
-
-
-async function patchIncident(
-  voice_operation_id: string | null | undefined,
-  patch: Record<string, unknown>,
-): Promise<void> {
-  if (!admin || !voice_operation_id) return;
-  try {
-    await admin
-      .from("voice_operation_incidents")
-      .update(patch)
-      .eq("voice_operation_id", voice_operation_id);
-  } catch { /* noop */ }
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
+serve(async (request) => {
+  if (request.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const t0 = Date.now();
-  let voiceOpId: string | null = null;
-
   try {
-    const body = await req.json().catch(() => ({}));
-    const { audio, mimeType, voice_operation_id } = body ?? {};
-    voiceOpId = typeof voice_operation_id === "string" ? voice_operation_id : null;
+    const body = await request.json().catch(() => ({}));
+    const { audio, mimeType } = body ?? {};
+    const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-    await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_RECEIVED", {
-      byte_count: typeof audio === "string" ? audio.length : 0,
-      metadata: { mimeType: mimeType ?? null },
-    });
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
-        status_code: 503,
-        error_category: "not-configured",
-        error_message: "voice-to-text capability not configured",
-        duration_ms: Date.now() - t0,
-      });
-      await patchIncident(voiceOpId, {
-        edge_function_last_phase: "EDGE_REQUEST_FAILED",
-        edge_function_last_phase_at: new Date().toISOString(),
-        edge_function_status_code: 503,
-        edge_function_error_category: "not-configured",
-        edge_function_error_message: "not configured",
-      });
-      await runFinalizer();
-      return new Response(
-        JSON.stringify({ error: "voice-to-text capability not configured." }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-
+    if (!openAiApiKey) {
+      return jsonResponse({ error: "voice-to-text capability not configured." }, 503);
     }
-
     if (!audio || typeof audio !== "string") {
-      await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
-        status_code: 400,
-        error_category: "validation",
-        error_message: "missing audio payload",
-        duration_ms: Date.now() - t0,
-      });
-      await patchIncident(voiceOpId, {
-        edge_function_last_phase: "EDGE_REQUEST_FAILED",
-        edge_function_last_phase_at: new Date().toISOString(),
-        edge_function_status_code: 400,
-        edge_function_error_category: "validation",
-      });
-      await runFinalizer();
-      return new Response(
-        JSON.stringify({ error: "Missing audio payload." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-
+      return jsonResponse({ error: "Missing audio payload." }, 400);
     }
 
-    await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_VALIDATED", {
-      byte_count: audio.length,
-    });
+    const normalizedMime = typeof mimeType === "string" && mimeType
+      ? mimeType.split(";")[0]
+      : "audio/webm";
+    const extension = mimeExtensions[normalizedMime];
+    if (!extension) {
+      return jsonResponse({ error: "Unsupported audio format." }, 415);
+    }
+    if (audio.length > MAX_BASE64_LENGTH) {
+      return jsonResponse({ error: "Audio recording exceeds the 25 MB limit." }, 413);
+    }
 
     const bytes = base64ToBytes(audio);
-    const mt = typeof mimeType === "string" && mimeType ? mimeType.split(";")[0] : "audio/webm";
-    const extMap: Record<string, string> = {
-      "audio/webm": "webm", "audio/mp4": "mp4", "audio/mpeg": "mp3",
-      "audio/mp3": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg",
-    };
-    const ext = extMap[mt] ?? "webm";
-    const file = new File([bytes], `chat.${ext}`, { type: mt });
+    if (bytes.byteLength > MAX_AUDIO_BYTES) {
+      return jsonResponse({ error: "Audio recording exceeds the 25 MB limit." }, 413);
+    }
 
     const form = new FormData();
-    form.append("file", file);
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append(
+      "file",
+      new File([bytes], `chat.${extension}`, { type: normalizedMime }),
+    );
+    form.append("model", "gpt-transcribe");
 
-    await writeEdgeEvent(voiceOpId, "EDGE_TRANSCRIPTION_STARTED", {
-      byte_count: bytes.byteLength,
-      metadata: { mime: mt },
-    });
-
-    const tTrans = Date.now();
-    const upstream = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+    const upstream = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      headers: { Authorization: `Bearer ${openAiApiKey}` },
       body: form,
     });
 
     if (!upstream.ok) {
-      const txt = await upstream.text().catch(() => "");
-      const status = upstream.status === 402 ? 402 : upstream.status === 429 ? 429 : 502;
-      const errCategory = upstream.status === 402 ? "credits"
-        : upstream.status === 429 ? "rate-limit" : "upstream-transcription";
-      const errMsg = upstream.status === 402 ? "Out of Lovable AI credits."
-        : upstream.status === 429 ? "Rate limited."
-        : `Transcription failed (${upstream.status}).`;
-
-      await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
-        status_code: status,
-        error_category: errCategory,
-        error_message: errMsg,
-        duration_ms: Date.now() - tTrans,
-        metadata: { upstream_status: upstream.status, snippet: txt.slice(0, 256) },
-      });
-      await patchIncident(voiceOpId, {
-        edge_function_last_phase: "EDGE_REQUEST_FAILED",
-        edge_function_last_phase_at: new Date().toISOString(),
-        edge_function_status_code: status,
-        edge_function_error_category: errCategory,
-        edge_function_error_message: errMsg,
-      });
-      await runFinalizer();
-      return new Response(
-        JSON.stringify({ error: errMsg, detail: txt.slice(0, 512) }),
-        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-
+      const status = upstream.status === 429 ? 429 : upstream.status === 413 ? 413 : 502;
+      const error = upstream.status === 429
+        ? "Voice transcription is temporarily rate limited."
+        : upstream.status === 413
+          ? "Audio recording is too large."
+          : "Voice transcription is temporarily unavailable.";
+      console.error("OpenAI transcription failed", { upstreamStatus: upstream.status });
+      return jsonResponse({ error }, status);
     }
 
     const payload = await upstream.json();
-    const transcript = typeof payload?.text === "string" ? payload.text : "";
-    const transcriptionMs = Date.now() - tTrans;
-
-    await writeEdgeEvent(voiceOpId, "EDGE_TRANSCRIPTION_COMPLETED", {
-      status_code: 200,
-      duration_ms: transcriptionMs,
-      metadata: { transcript_length: transcript.length },
-    });
-
-    await writeEdgeEvent(voiceOpId, "EDGE_RESPONSE_SENT", {
-      status_code: 200,
-      duration_ms: Date.now() - t0,
-      metadata: { transcript_length: transcript.length },
-    });
-
-    await patchIncident(voiceOpId, {
-      edge_function_last_phase: "EDGE_RESPONSE_SENT",
-      edge_function_last_phase_at: new Date().toISOString(),
-      edge_function_status_code: 200,
-    });
-
-    // Terminal server state — kick the finalizer immediately so a report
-    // exists even if the sender client never sends another event.
-    await runFinalizer();
-
-    return new Response(
-      JSON.stringify({ transcript }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await writeEdgeEvent(voiceOpId, "EDGE_REQUEST_FAILED", {
-      status_code: 500,
-      error_category: "unhandled",
-      error_message: message.slice(0, 500),
-      duration_ms: Date.now() - t0,
-    });
-    await patchIncident(voiceOpId, {
-      edge_function_last_phase: "EDGE_REQUEST_FAILED",
-      edge_function_last_phase_at: new Date().toISOString(),
-      edge_function_status_code: 500,
-      edge_function_error_category: "unhandled",
-      edge_function_error_message: message.slice(0, 500),
-    });
-    await runFinalizer();
-
-    return new Response(
-      JSON.stringify({ error: message || "voice-to-text error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    const transcript = typeof payload?.text === "string" ? payload.text.trim() : "";
+    return jsonResponse({ transcript }, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("voice-to-text error", { message: message.slice(0, 500) });
+    return jsonResponse({ error: "Voice transcription is temporarily unavailable." }, 500);
   }
 });

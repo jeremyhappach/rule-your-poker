@@ -126,7 +126,6 @@ interface DealerGameSetupProps {
   anteDecisionTimerSeconds: number; // Cached at session start
   activePlayerCount?: number; // Number of active players for game restrictions
   activeHumanCount?: number; // Number of active human (non-bot) players
-  isSuperuser?: boolean; // Whether the dealer is a superuser (enables dev-only games)
   onConfigComplete: () => void;
   onSessionEnd: () => void;
   onSitOut?: () => void; // Callback when dealer chooses to sit out
@@ -159,7 +158,6 @@ const DealerGameSetupInner = ({
   anteDecisionTimerSeconds,
   activePlayerCount = 0,
   activeHumanCount = 0,
-  isSuperuser = false,
   onConfigComplete,
   onSessionEnd,
   onSitOut,
@@ -1224,7 +1222,6 @@ const DealerGameSetupInner = ({
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
-      case 'sports-trivia': return 'Trivia';
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
       default: return gameType;
@@ -1236,7 +1233,7 @@ const DealerGameSetupInner = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'sports-trivia' || gameType === 'cribbage' || gameType === 'gin-rummy';
+    return isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy';
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -1254,7 +1251,7 @@ const DealerGameSetupInner = ({
     if (gameType === 'holm-game' || gameType === '3-5-7') {
       handleGameTypeChange(gameType);
     } else if (isSimpleAnteGame(gameType)) {
-      // Fetch defaults for simple ante games (dice, trivia, cribbage, gin-rummy)
+      // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
         .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus')
@@ -1315,8 +1312,6 @@ const DealerGameSetupInner = ({
   const isGameDisabled = (game: typeof allGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
-    // Disable trivia for non-superusers (cribbage is now available to all)
-    if (game.id === 'sports-trivia' && !isSuperuser) return true;
     return false;
   };
 
@@ -1344,7 +1339,6 @@ const DealerGameSetupInner = ({
     const isCribbage = gameTypeToSubmit === 'cribbage';
     const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 
                          gameTypeToSubmit === 'horses' ? 'Horses' : 
-                         gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : 
                          gameTypeToSubmit === 'yahtzee' ? 'Yahtzee' :
                          isCribbage ? 'Cribbage' : gameTypeToSubmit;
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
@@ -1669,7 +1663,7 @@ const DealerGameSetupInner = ({
       setSelectedGameType(previousGameType);
       setAnteAmount(String(previousGameConfig.ante_amount));
       
-      // For simple ante games (dice + trivia), we only need ante - submit with simple handler
+      // Simple ante games only need ante configuration.
       if (isSimpleAnteGame(previousGameType)) {
         // Pass game type directly to avoid state race condition
         handleSimpleAnteGameSubmit(previousGameType);
@@ -1871,23 +1865,20 @@ const DealerGameSetupInner = ({
 
   // Config step - show config UI based on selected game type
   if (selectionStep === 'config') {
-    // Simple ante games (dice + trivia) - just need ante config
+    // Simple ante games only need ante configuration.
     if (isSimpleAnteGame(selectedGameType)) {
       const isSCC = selectedGameType === 'ship-captain-crew';
       const isHorses = selectedGameType === 'horses';
-      const isTrivia = selectedGameType === 'sports-trivia';
       const isCribbage = selectedGameType === 'cribbage';
       const isGinRummy = selectedGameType === 'gin-rummy';
       const isYahtzee = selectedGameType === 'yahtzee';
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : selectedGameType;
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : selectedGameType;
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
-          : isTrivia
-            ? 'Answer trivia questions • Win the pot'
-            : isGinRummy
+          : isGinRummy
               ? '10 cards • Draw & discard • Knock at ≤10 deadwood • Match to target'
               : isYahtzee
                 ? '5 dice • 13 categories • Highest total wins'

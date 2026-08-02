@@ -48,7 +48,6 @@ export const AnteUpDialog = ({
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
   const isHorsesGame = gameType === 'horses';
   const isSCCGame = gameType === 'ship-captain-crew';
-  const isTriviaGame = gameType === 'sports-trivia';
   const isCribbageGame = gameType === 'cribbage';
   const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
   const isYahtzeeGame = gameType === 'yahtzee';
@@ -57,7 +56,6 @@ export const AnteUpDialog = ({
     if (isHolmGame) return 'Holm Game';
     if (isHorsesGame) return 'Horses';
     if (isSCCGame) return 'Ship Captain Crew';
-    if (isTriviaGame) return 'Sports Trivia';
     if (isCribbageGame) return 'Cribbage';
     if (isGinRummyGame) return 'Gin Rummy';
     if (isYahtzeeGame) return 'Yahtzee';
@@ -253,7 +251,7 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && !isCribbageGame && !isGinRummyGame && !isYahtzeeGame && (
+            {!isHolmGame && !isHorsesGame && !isSCCGame && !isCribbageGame && !isGinRummyGame && !isYahtzeeGame && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>
@@ -269,12 +267,6 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {isTriviaGame && (
-              <>
-                <div className="font-semibold">Format:</div>
-                <div className="text-right">Winner takes pot</div>
-              </>
-            )}
           </div>
         </div>
 

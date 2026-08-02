@@ -26,12 +26,12 @@ The owned project `ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`) now contains a
 validated rehearsal copy of the core backend while production still uses the
 Lovable-backed source project.
 
-- All 244 source migration records are represented by exact local versions and
+- All 245 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into
   `supabase/migrations/` and Lovable's filename/version drift was reconciled.
   Three target migrations add the bounded diagnostic purge, its explicit
   audit/session-history preservation boundary, and the source-equivalent Data
-  API grants required by new Supabase projects, for 247 total records.
+  API grants required by new Supabase projects, for 248 target records.
 - Schema parity was proved before the target-only retention migration: 48
   public tables, 42 routines, 133 policies, 20 enabled application triggers,
   and 18 Realtime publication tables.
@@ -39,29 +39,34 @@ Lovable-backed source project.
   refresh tokens, MFA claims, and one-time tokens were intentionally not
   copied, so the later cutover requires an ordinary sign-in but no password
   reset.
-- Twenty retained application/history/financial tables match source row counts
-  and per-row content manifests. Persisted debug, incident, trace, voice, and
-  operation telemetry was intentionally excluded.
+- The target now retains all 179 real-money sessions and their financial/history
+  rows. All 177 fake-money sessions and 155 fake/orphan Cribbage archives were
+  removed; 331 financial transactions, 4,847 profiles, and all 11 auth users
+  remain. Persisted debug, incident, trace, voice, and operation telemetry was
+  intentionally excluded.
 - The public `chat-images` bucket contains the same five objects, paths, MIME
   types, and 4,526,239 total bytes.
-- Six repository Edge Functions are active: `enforce-deadlines`,
-  `enforce-all-deadlines`, `generate-incident-report`, `generate-music`,
-  `generate-trivia`, and `reset-password`. The deadline function passed a
-  non-mutating boot check. `voice-to-text` and `finalize-voice-operations` are
-  deferred because they expose the excluded voice/incident pipeline and the
-  former still forwards audio through Lovable AI.
-- Third-party function secrets were not copied. Trivia, music, and password
-  email remain rehearsal-incomplete until their providers/secrets are chosen;
-  Lovable AI must be replaced for a fully independent backend.
+- The target's `voice-to-text` Edge Function now calls OpenAI directly with
+  `gpt-transcribe`, requires a Supabase user JWT, and persists no voice
+  diagnostics. `finalize-voice-operations` is retired. Trivia was removed from
+  the app; the formerly deployed target function is an authenticated 410
+  tombstone with no provider call.
+- Third-party function secrets were not copied. `OPENAI_API_KEY` and the
+  production email/SMTP credentials still require direct entry and smoke on the
+  target; music provider configuration remains a separate product gate.
 - Gameplay cron is disabled on the target. The sole active job purges retained
   diagnostic rows older than seven days. High-volume dice snapshots and
   lifecycle persistence are also off by default in the frontend.
-- The target database is 26 MB. Security/performance advisors report inherited
+- The target database is 31 MB. Security/performance advisors report inherited
   source-schema warnings, not target drift; remediation is a separate scoped
   hardening task.
 - Data API access now matches the source project: all 48 public tables retain
   RLS and authenticated/service roles have table DML; anonymous access is
   read-only for `games`. Future public tables must declare grants explicitly.
+- Migration `20260802184800_cutover_readiness.sql` is installed on source and
+  target with its write lock disabled. It provides 47 public-table statement
+  guards, Storage write guards, an explicit import bypass, and the verified
+  fake-session purge used only on the target.
 
 The detailed evidence and remaining cutover gates live in
 `docs/codex/SUPABASE_CUTOVER.md`.

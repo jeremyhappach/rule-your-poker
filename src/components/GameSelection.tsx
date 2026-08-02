@@ -22,7 +22,6 @@ interface GameSelectionProps {
   isFirstHand?: boolean;
   activePlayerCount?: number;
   activeHumanCount?: number;
-  isSuperuser?: boolean;
   onSitOut?: () => void;
   onEndSession?: () => void;
 }
@@ -33,13 +32,12 @@ export const GameSelection = ({
   isFirstHand = true,
   activePlayerCount = 0,
   activeHumanCount = 0,
-  isSuperuser = false,
   onSitOut,
   onEndSession
 }: GameSelectionProps) => {
   // Canonical runtime predicate (master gate + per-game selection).
   const harnessMap = useActiveHarnessMap([
-    'holm-game', '3-5-7', 'cribbage', 'gin-rummy', 'sports-trivia',
+    'holm-game', '3-5-7', 'cribbage', 'gin-rummy',
     'horses', 'ship-captain-crew', 'yahtzee',
   ]);
 
@@ -71,12 +69,6 @@ export const GameSelection = ({
       enabled: true,
       maxPlayers: 2,
     },
-    {
-      id: "sports-trivia",
-      name: "Trivia",
-      description: "Answer trivia, win the pot",
-      enabled: true,
-    },
   ];
 
   const diceGames = [
@@ -106,7 +98,6 @@ export const GameSelection = ({
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
-      case 'sports-trivia': return 'Trivia';
       case 'cribbage': return 'Cribbage';
       case 'gin-rummy': return 'Gin Rummy';
       case 'yahtzee': return 'Yahtzee';
@@ -135,8 +126,6 @@ export const GameSelection = ({
   const isGameDisabled = (game: typeof cardGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
-    // Disable trivia for non-superusers
-    if (game.id === 'sports-trivia' && !isSuperuser) return true;
     return false;
   };
 

@@ -27,6 +27,10 @@ import React, { useEffect } from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore -- ?raw import provided by Vite/Vitest at test time.
 import useVoiceToTextSource from './useVoiceToText.ts?raw';
+// @ts-ignore -- ?raw import provided by Vite/Vitest at test time.
+import voiceFunctionSource from '../../supabase/functions/voice-to-text/index.ts?raw';
+// @ts-ignore -- ?raw import provided by Vite/Vitest at test time.
+import supabaseConfigSource from '../../supabase/config.toml?raw';
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -73,6 +77,23 @@ describe('useVoiceToText isolation (static)', () => {
       expect(codeOnly.includes(forbidden)).toBe(false);
     });
   }
+});
+
+describe('voice-to-text edge boundary (static)', () => {
+  it('uses OpenAI file transcription without Lovable or persisted voice diagnostics', () => {
+    expect(voiceFunctionSource).toContain('https://api.openai.com/v1/audio/transcriptions');
+    expect(voiceFunctionSource).toContain('Deno.env.get("OPENAI_API_KEY")');
+    expect(voiceFunctionSource).toContain('form.append("model", "gpt-transcribe")');
+    expect(voiceFunctionSource).not.toMatch(/lovable/i);
+    expect(voiceFunctionSource).not.toMatch(/voice_operation|finalize_voice/i);
+    expect(voiceFunctionSource).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
+  it('requires a valid Supabase user JWT before invoking the paid provider', () => {
+    expect(supabaseConfigSource).toMatch(
+      /\[functions\.voice-to-text\]\s+verify_jwt\s*=\s*true/,
+    );
+  });
 });
 
 // ---- Test harness: mount a hook in a real React root ------------------------

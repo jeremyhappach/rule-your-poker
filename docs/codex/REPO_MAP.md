@@ -37,8 +37,8 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
 | Local project/function config | `supabase/config.toml`, owned rehearsal project id `xvhmbuppghwmwpwrkzao`. Vercel production still targets the Lovable-backed source until explicit cutover. |
-| Schema history | `supabase/migrations/` (246 files after reconciliation: 244 exact source migration records plus two owned-target diagnostic-retention migrations). Later definitions supersede earlier same-named functions. |
-| Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `generate-music`, `generate-trivia`, `reset-password`, `voice-to-text`, and `finalize-voice-operations`; shared helpers live in `supabase/functions/_shared/`. |
+| Schema history | `supabase/migrations/` (248 files: 245 source/common migration records plus three owned-target rehearsal migrations). Later definitions supersede earlier same-named functions. |
+| Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `generate-music`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in
@@ -310,6 +310,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
 | Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |
 | Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260517144846_4bec47fa-5c3a-412a-8b31-15002b5a45b9.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
+| Cutover write lock and fake-history purge | `supabase/migrations/20260802184800_cutover_readiness.sql`; the lock is inert until its `system_settings` flag is enabled, and the controlled import bypass is session-local. |
 
 ## Debug harness registry
 

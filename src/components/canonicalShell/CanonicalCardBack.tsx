@@ -10,7 +10,7 @@
  *   ONE TABLE · ONE DEAL · ONE CARD BACK
  *
  * No game (Cribbage, Gin Rummy, Holm, Horses, SCC, 3-5-7, Yahtzee,
- * Trivia, future showdowns) may render its own hidden-card artwork.
+ * Future showdowns may render their own hidden-card artwork.
  * They MUST mount <CanonicalCardBack /> with width/height sizing only.
  *
  * Owns:

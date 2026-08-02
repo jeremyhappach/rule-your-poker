@@ -84,3 +84,16 @@ An owned Supabase rehearsal may apply schema, copy approved data, deploy safe
 functions, and prove parity without changing Vercel's production backend. The
 actual environment-variable switch requires a completed rehearsal, provider
 secret decisions, a final delta/freeze window, and explicit cutover approval.
+
+## D-017 — Cutover keeps product truth, not retired dependencies
+
+The owned backend retains real-money sessions, users/password hashes,
+financials, and canonical history. Fake-money session history and orphaned
+Cribbage archives are disposable rehearsal data. Trivia is retired. Voice
+transcription calls OpenAI directly behind Supabase JWT verification and does
+not persist audio or forensic voice telemetry.
+
+Final copy safety is a database write lock shared by source and target. The
+lock is inert until explicitly enabled, blocks application and Storage writes,
+and has one session-local bypass for the controlled import. It does not change
+game lifecycle or settle/tear down active sessions itself.

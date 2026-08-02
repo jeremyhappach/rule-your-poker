@@ -18,11 +18,10 @@ describe('isPokerVariantFamily', () => {
     expect(isPokerVariantFamily('ship-captain-crew')).toBe(true);
   });
 
-  it('returns false for unified-table game types (cribbage / gin / yahtzee / trivia)', () => {
+  it('returns false for unified-table game types (cribbage / gin / yahtzee)', () => {
     expect(isPokerVariantFamily('cribbage')).toBe(false);
     expect(isPokerVariantFamily('gin-rummy')).toBe(false);
     expect(isPokerVariantFamily('yahtzee')).toBe(false);
-    expect(isPokerVariantFamily('trivia')).toBe(false);
   });
 
   it('returns false for null / undefined / empty', () => {
@@ -60,7 +59,6 @@ describe('canonical seat consumer registry invariant', () => {
     expect(isCanonicalSeatConsumer('horses')).toBe(true);
     expect(isCanonicalSeatConsumer('ship-captain-crew')).toBe(true);
     // Not seat consumers:
-    expect(isCanonicalSeatConsumer('trivia')).toBe(false);
     expect(isCanonicalSeatConsumer(null)).toBe(false);
     expect(isCanonicalSeatConsumer(undefined)).toBe(false);
   });

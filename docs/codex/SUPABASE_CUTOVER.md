@@ -18,12 +18,14 @@ variables or modify/delete source data.
 
 ### Schema and migrations
 
-- Reconciled all 244 deployed source migration versions and normalized SQL
+- Reconciled all 245 deployed source migration versions and normalized SQL
   hashes against local files.
 - Recovered 19 exact deployed migrations that were absent from Git.
 - Applied the resulting source schema to the owned target with historical
   non-replay-safe cron mutations sanitized only for the baseline replay.
-- Recorded the exact 244 source versions/statements in target migration history.
+- Recorded the original 244 source versions/statements in target migration
+  history, then applied the common cutover-readiness migration to both source
+  and target as version `20260802184800`.
 - Applied target migrations `20260802152940_bound_diagnostic_retention.sql`
   and `20260802165743_preserve_audit_session_history.sql`; the latter makes the
   audit/session-history exclusion explicit in the live purge definition.
@@ -32,10 +34,16 @@ variables or modify/delete source data.
   current-object Data API grants while preserving RLS and anonymous read-only
   access to `games`. Default privileges remain unchanged so future public
   tables must declare their grants explicitly.
+- Applied `20260802184800_cutover_readiness.sql` to both backends. Its lock is
+  off by default; 47 public-table statement triggers plus restrictive Storage
+  policies block writes when enabled, while an explicit session-local bypass
+  supports the controlled final import. Rollback proofs showed both schemas
+  install the same guards and that normal writes block before any row mutation.
 - Proved pre-retention schema hashes equal for columns, constraints, indexes,
   policies, routines, triggers, and Realtime publication membership.
-- Current target: 247 migration records, 20/20 application triggers enabled,
-  no nonstandard trigger states, and 18 Realtime tables.
+- Current target: 248 migration records, 20/20 application triggers enabled,
+  47 inert cutover guards, no nonstandard application-trigger states, and 18
+  Realtime tables.
 
 Gameplay cron remains disabled. Target cron contains only
 `purge-expired-diagnostics-daily` at `15 4 * * *`.
@@ -51,7 +59,8 @@ Gameplay cron remains disabled. Target cron contains only
 
 ### Retained application data
 
-The following 20 tables match source counts and row-content manifests:
+The initial rehearsal proved source row-count and per-row manifests for these
+20 retained tables before the approved fake-money cleanup:
 
 `chat_messages`, `chip_stack_emoticons`, `cribbage_events`,
 `cribbage_hand_archive`, `custom_game_names`, `dealer_games`,
@@ -59,6 +68,12 @@ The following 20 tables match source counts and row-content manifests:
 `geometry_overrides`, `player_actions`, `player_cards`,
 `player_transactions`, `players`, `profiles`, `rounds`,
 `session_player_snapshots`, `system_settings`, and `user_roles`.
+
+The owned target now intentionally diverges from source session history. The
+verified purge deleted all 177 fake-money games plus 20 fake-linked and 135
+orphan Cribbage archives. It retained 179 real-money games, 168 real-money
+Cribbage archives, 331 financial transactions, 4,847 profiles, and all 11 auth
+users. The source backend was not purged and remains the rollback authority.
 
 `chat_messages.chat_operation_id` is intentionally null on the target because
 the associated operation/diagnostic pipeline was excluded; message content and
@@ -75,7 +90,7 @@ seven-day purge.
 - Public bucket `chat-images` exists with the source policies.
 - Five object paths, MIME types, and byte sizes match source.
 - Object bytes total 4,526,239.
-- Entire target database size after the rehearsal: 26 MB.
+- Entire target database size after readiness cleanup: 31 MB.
 
 ### Edge Functions
 
@@ -87,19 +102,18 @@ Active on target:
   invoked against copied sessions.
 - `generate-incident-report` (`verify_jwt=true`), retained emergency no-op.
 - `generate-music` (`verify_jwt=false`).
-- `generate-trivia` (`verify_jwt=false`).
+- `generate-trivia` (`verify_jwt=true`) is a 410 retired tombstone with no
+  external-provider call; trivia source/routes/components were removed.
 - `reset-password` (`verify_jwt=true`).
+- `voice-to-text` (`verify_jwt=true`) calls OpenAI's audio transcription API
+  with `gpt-transcribe` and persists no diagnostic or audio data.
 
-Deferred:
+`finalize-voice-operations` is retired and is not deployed on the target.
 
-- `voice-to-text`: still forwards user audio through `LOVABLE_API_KEY` and
-  writes the excluded voice/runtime diagnostic pipeline.
-- `finalize-voice-operations`: mutates the excluded voice diagnostic pipeline.
-
-Custom third-party secrets were not copied. `LOVABLE_API_KEY`,
-`ELEVENLABS_API_KEY`, and `RESEND_API_KEY` must not be put in Git. Provider
-selection/secret entry is a later explicit gate; Lovable AI must be replaced
-to meet the independence goal.
+Custom third-party secrets were not copied. `OPENAI_API_KEY`, the production
+email/SMTP credentials, and any retained music-provider secret must be entered
+directly in their owning service and must not be put in Git. Voice will return
+503 until `OPENAI_API_KEY` is present.
 
 ## Diagnostic posture
 
@@ -130,10 +144,12 @@ Reference remediation:
 
 ## Gates before production cutover
 
-1. Decide providers and enter required function secrets directly in the owned
-   Supabase project; replace the Lovable AI dependency.
-2. Decide whether voice is in the initial cutover. If yes, explicitly approve
-   its external-audio/data path and deploy/test the two deferred functions.
+1. Enter `OPENAI_API_KEY` directly in the owned Supabase project and configure
+   production email/SMTP credentials; then smoke voice transcription and
+   password reset. The direct OpenAI voice path is approved and deployed.
+2. Decide whether `generate-music` remains in the initial cutover and, if so,
+   enter/test its provider secret. Trivia and its provider dependency are
+   retired.
 3. **Complete 2026-08-02:** Vercel branch `codex/supabase-preview` is scoped to
    the owned target with the client-safe legacy anon key. The protected preview
    is
@@ -147,8 +163,9 @@ Reference remediation:
    corrected, and Jeremy reported the create-game/game-entry rerun clean on
    2026-08-02. The remaining enumerated coverage is still required before this
    gate is complete.
-5. Freeze source writes, copy the final data delta, repeat manifests, and record
-   database/Auth/Storage counts.
+5. Enable the common source/target write lock, copy the final real-money data
+   delta through the explicit import bypass, repeat manifests, and record
+   database/Auth/Storage counts. Keep fake-money session history excluded.
 6. With explicit approval, change Vercel production environment variables,
    redeploy, and run the same production smoke.
 7. Keep the source project unchanged for rollback until the owned deployment is

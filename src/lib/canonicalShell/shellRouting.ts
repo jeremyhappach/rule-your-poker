@@ -5,7 +5,7 @@
  * Poker-variant family routes through MobileGameTable across multiple
  * lifecycle phases and is the target of the Phase 5 outer-shell lift.
  *
- * Cribbage / Gin Rummy / Yahtzee / Trivia already render through their
+ * Cribbage / Gin Rummy / Yahtzee already render through their
  * own unified persistent game tables and are explicitly excluded; their
  * persistence semantics are owned by those components today and are
  * untouched by this phase.
