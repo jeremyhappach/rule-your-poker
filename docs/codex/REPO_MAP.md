@@ -137,8 +137,13 @@ reset transient/presentation state when those identities change.
   `getBotPeggingCardIndex`; `cribbageScoring.ts:evaluateHand`,
   `evaluatePegging`, and `checkHisHeels`; scoring detail expansion is in
   `cribbageScoringDetails.ts`.
-- Settlement/terminal: `cribbageRoundLogic.ts:endCribbageGame` and private
-  `applyCribbageTerminalDisposition`; discard RPC
+- Settlement/terminal: `src/lib/cribbageSettleGame.ts:settleCribbageGame`
+  submits immutable identity to `public.cribbage_settle_game`, defined by
+  `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`.
+  The RPC owns the result claim, server-derived payout, chips, round completion,
+  snapshots, terminal disposition, and LAST HAND session financials in one
+  transaction. `CribbageMobileGameTable.tsx` observes/replays settlement and
+  owns presentation only. Discard RPC
   `cribbage_apply_discard` is defined by
   `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
   `cribbage_create_next_hand` is defined by
@@ -146,7 +151,9 @@ reset transient/presentation state when those identities change.
 - Focused tests: Cribbage deal orchestrator, cards-tab render/measurement,
   Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
   render invariant tests under `src/components/` and `src/lib/cribbage/`,
-  plus `cribbageProgress.test.ts`. No focused terminal payout test exists.
+  plus `cribbageProgress.test.ts`; `cribbageSettleGame.test.ts` covers the
+  identity-only client RPC boundary and replay/error result handling. Direct
+  SQL behavior still requires migration/deployment proof.
 
 ### Gin Rummy
 
@@ -260,11 +267,12 @@ Canonical snapshot identity is
 | Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
 | Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
 | Holm transactional writer | `public.holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`. |
-| Game-specific client writers | Cribbage and Gin in their round logic, Yahtzee in `YahtzeeGameTable.tsx`, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
+| Game-specific client writers | Gin in its round logic, Yahtzee in `YahtzeeGameTable.tsx`, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
+| Cribbage transactional writer | `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 | Session Ended reader | `SessionEndedTablePhase.tsx:SessionEndedFeltPanel` merges the latest snapshot participants with the current roster; humans dedupe by `user_id`, bots by `player_id`. |
 | Lobby/session result reader | `src/components/SessionResults.tsx` is snapshot-first with `game_results` fallback; `src/lib/lobbyFetch.ts` loads ended-game snapshots. |
 | History reader | `src/components/hand-history/useHandHistoryData.ts` plus the session-history query in `Game.tsx`. |
-| SessionResult minting | `public.record_session_results`, latest definition in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`, runs on the terminal status transition and reads latest human snapshots. |
+| SessionResult minting | `public.record_session_results`, latest definition in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`, runs on the terminal status transition, reads latest human snapshots, and dedupes new writes by source game and profile. |
 | Snapshot schema/index | `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` adds/stamps `dealer_game_id`; `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql` creates the ordinary four-column unique index needed by PostgREST conflict inference. |
 
 ## Realtime subscriptions
@@ -292,6 +300,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201548_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
 | Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
+| Cribbage terminal settlement | `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`; wrapper `src/lib/cribbageSettleGame.ts`. |
 | Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map. |
 | Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213624_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005658_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
@@ -333,6 +342,7 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts`.
 - Yahtzee: `src/lib/yahtzeeScoring.test.ts`.
 - Lobby: `src/lib/lobbyFetch.test.ts`.
-- No focused Holm financial-RPC, Cribbage terminal, Gin terminal, Yahtzee
-  terminal, Horses rule/terminal, or SCC rule/terminal test exists in this
-  checkout.
+- No focused Holm financial-RPC, Gin terminal, Yahtzee terminal, Horses
+  rule/terminal, or SCC rule/terminal test exists in this checkout. Cribbage
+  has a focused client RPC-boundary test; direct SQL/deployed behavior remains
+  a required proof.

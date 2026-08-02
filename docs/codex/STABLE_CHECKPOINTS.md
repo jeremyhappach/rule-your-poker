@@ -9,8 +9,11 @@
 
 ## Cribbage
 
-- Terminal settlement is authoritative and disconnect-safe.
-- LAST HAND reconciles balances.
+- Prior runtime smoke accepted Cribbage terminal and LAST HAND presentation,
+  but the later source audit found settlement was still a client-owned
+  multi-write sequence. The atomic database replacement is a current release
+  candidate and is not a stable checkpoint until deployed disconnect/LAST HAND
+  smoke passes.
 - Table/HUD remains through celebration.
 - His Heels reveal/announcement sequencing passed production smoke.
 - Perpetual Heels harness is gated and visibly identified.

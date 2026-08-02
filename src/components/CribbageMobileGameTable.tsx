@@ -11,7 +11,8 @@ import {
   callGo,
   applyHandCountScores,
 } from '@/lib/cribbageGameLogic';
-import { endCribbageGame, startNextCribbageHand } from '@/lib/cribbageRoundLogic';
+import { startNextCribbageHand, updateCribbageState } from '@/lib/cribbageRoundLogic';
+import { settleCribbageGame } from '@/lib/cribbageSettleGame';
 import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
 import { fetchSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHost';
 import { archiveCribbageHand } from '@/lib/cribbageHandArchive';
@@ -229,9 +230,8 @@ interface CribbageMobileGameTableProps {
   onGameComplete: () => void;
   /**
    * True while a terminal win presentation is in flight on THIS client.
-   * The settlement owner now closes last-hand sessions immediately (see
-   * cribbageRoundLogic.applyCribbageTerminalDisposition), so the lobby
-   * redirect must not fire out from under an active celebration.
+   * The database settlement RPC closes last-hand sessions immediately, so
+   * the lobby redirect must not fire out from under an active celebration.
    */
   onTerminalPresentationActiveChange?: (active: boolean) => void;
   /**
@@ -998,6 +998,102 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     cribbageStateRef.current = cribbageState;
   }, [cribbageState]);
+
+  // Terminal settlement is authoritative, replayable database work. Every
+  // client that observes the persisted terminal state may submit the same
+  // immutable identity; the RPC serializes callers and moves money once.
+  const settlementInFlightKeyRef = useRef<string | null>(null);
+  const settlementCompletedKeyRef = useRef<string | null>(null);
+  const settlementRetryKeyRef = useRef<string | null>(null);
+  const settlementRequestRef = useRef<(source: string) => void>(() => {});
+  const terminalPresentationFinishedRef = useRef(false);
+  const requestCribbageSettlement = useCallback((source: string): void => {
+    const state = cribbageStateRef.current;
+    if (state?.phase !== 'complete' || !state.winnerPlayerId) return;
+    if (!gameId || !dealerGameId || !currentRoundId || !Number.isInteger(currentHandNumber)) return;
+
+    const key = `${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}`;
+    if (settlementCompletedKeyRef.current === key) {
+      return;
+    }
+    if (settlementInFlightKeyRef.current === key) {
+      // In particular, remember a terminal-state database write that commits
+      // while an earlier optimistic-state attempt is still in flight.
+      settlementRetryKeyRef.current = key;
+      return;
+    }
+
+    settlementInFlightKeyRef.current = key;
+    void settleCribbageGame({
+      gameId,
+      roundId: currentRoundId,
+      dealerGameId,
+      handNumber: currentHandNumber,
+    }).then((result) => {
+      settlementCompletedKeyRef.current = key;
+      console.log('[CRIBBAGE SETTLE] Authoritative settlement acknowledged', {
+        source,
+        status: result.status,
+        terminalDisposition: result.terminalDisposition,
+        roundId: currentRoundId,
+        handNumber: currentHandNumber,
+      });
+      if (terminalPresentationFinishedRef.current) {
+        // The first completion callback may have arrived while settlement was
+        // offline or still rolling back. Replay the shared, idempotent
+        // continuation owner now that authoritative terminal status exists.
+        void onGameComplete();
+      }
+    }).catch((error) => {
+      // Do not advance lifecycle or invent a local fallback. A later persisted
+      // snapshot, reconnect/focus, or online event can replay the same request.
+      console.error('[CRIBBAGE SETTLE] Authoritative settlement attempt failed', {
+        source,
+        roundId: currentRoundId,
+        handNumber: currentHandNumber,
+        error,
+      });
+    }).finally(() => {
+      if (settlementInFlightKeyRef.current === key) {
+        settlementInFlightKeyRef.current = null;
+      }
+      const shouldReplay =
+        settlementRetryKeyRef.current === key &&
+        settlementCompletedKeyRef.current !== key;
+      if (settlementRetryKeyRef.current === key) {
+        settlementRetryKeyRef.current = null;
+      }
+      if (shouldReplay) {
+        settlementRequestRef.current('coalesced-terminal-write-retry');
+      }
+    });
+  }, [gameId, dealerGameId, currentRoundId, currentHandNumber, onGameComplete]);
+  settlementRequestRef.current = requestCribbageSettlement;
+
+  useEffect(() => {
+    if (cribbageState?.phase !== 'complete' || !cribbageState.winnerPlayerId) return;
+    requestCribbageSettlement('persisted-terminal-state');
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, requestCribbageSettlement]);
+
+  useEffect(() => {
+    const retryVisibleTerminalSettlement = () => {
+      if (document.visibilityState === 'visible') {
+        requestCribbageSettlement('visibility-or-focus');
+      }
+    };
+    const retryOnlineTerminalSettlement = () => {
+      requestCribbageSettlement('online');
+    };
+
+    window.addEventListener('focus', retryVisibleTerminalSettlement);
+    window.addEventListener('online', retryOnlineTerminalSettlement);
+    document.addEventListener('visibilitychange', retryVisibleTerminalSettlement);
+    return () => {
+      window.removeEventListener('focus', retryVisibleTerminalSettlement);
+      window.removeEventListener('online', retryOnlineTerminalSettlement);
+      document.removeEventListener('visibilitychange', retryVisibleTerminalSettlement);
+    };
+  }, [requestCribbageSettlement]);
 
   // ── Sync Framework ──────────────────────────────────────────
   // Provides three-layer state management: authoritative, optimistic, presentation.
@@ -3176,8 +3272,14 @@ export const CribbageMobileGameTable = ({
   }, [postCountingTransitionActive, gameId, currentRoundId, currentHandNumber, announcements]);
 
 
-  // Backend acknowledgement guard: only transition to next game after backend marks game_over.
+  // Backend acknowledgement guard: only transition after the settlement RPC
+  // has authored either terminal disposition.
   const gameOverAckRef = useRef(false);
+  useEffect(() => {
+    gameOverAckRef.current = false;
+    settlementRetryKeyRef.current = null;
+    terminalPresentationFinishedRef.current = false;
+  }, [dealerGameId]);
   const ensureBackendGameOverAck = useCallback(async (): Promise<boolean> => {
     if (gameOverAckRef.current) return true;
     if (!gameId) return false;
@@ -3188,7 +3290,7 @@ export const CribbageMobileGameTable = ({
         .eq('id', gameId)
         .single();
       if (error) return false;
-      if (data?.status === 'game_over') {
+      if (data?.status === 'game_over' || data?.status === 'session_ended') {
         gameOverAckRef.current = true;
         return true;
       }
@@ -3944,7 +4046,7 @@ export const CribbageMobileGameTable = ({
           ? { ...expectedIdentity }
           : { roundId: currentRoundId, handNumber: currentHandNumber };
 
-        setTimeout(() => {
+        setTimeout(async () => {
           const liveIdentity = countingIdentityRef.current;
           if (
             !liveIdentity ||
@@ -3982,6 +4084,30 @@ export const CribbageMobileGameTable = ({
             }
             return;
           }
+
+          // This reactive path derives the terminal score locally while the
+          // counting presentation is still frozen. Persist that terminal game
+          // state first so the settlement RPC reads database-owned truth. If
+          // this client disappears after the write, any peer or reconnect can
+          // replay settlement from the durable terminal snapshot.
+          if (!scheduledIdentity.roundId) {
+            console.error('[CRIBBAGE] Reactive win: missing round identity for terminal persistence');
+            winSequenceScheduledRef.current = null;
+            return;
+          }
+          const terminalPersisted = await updateCribbageState(
+            scheduledIdentity.roundId,
+            stateWithWinner,
+          );
+          if (!terminalPersisted) {
+            console.error('[CRIBBAGE] Reactive win: terminal state persistence failed');
+            winSequenceScheduledRef.current = null;
+            return;
+          }
+          syncHandle.receiveAuthoritativeUpdate(stateWithWinner);
+          setCribbageState(stateWithWinner);
+          cribbageStateRef.current = stateWithWinner;
+          requestCribbageSettlement('reactive-terminal-state-persisted');
           triggerWinSequence(stateWithWinner);
         }, 2000);
         
@@ -4775,32 +4901,6 @@ export const CribbageMobileGameTable = ({
       // Stash chat message so the chip-transfer handoff can inject it.
       chatMessage: deferredWinnerChatMessage,
     });
-
-    // Persist end-of-game to backend.
-    // IMPORTANT: All clients should attempt this call because:
-    // 1. In H2H the host can be the loser/offline
-    // 2. endCribbageGame is idempotent (only one client will actually execute payouts via atomic DB guard)
-    // 3. If we don't call it, the game gets stuck
-    if (roundId && gameId) {
-      console.log('[CRIBBAGE] Persisting endCribbageGame', {
-        isHost,
-        isWinnerClient: currentPlayerId === winnerId,
-        roundId,
-        gameId,
-      });
-      endCribbageGame(gameId, roundId, state).then((success) => {
-        if (!success) {
-          console.error('[CRIBBAGE] Failed to end game in database');
-        } else {
-          console.log('[CRIBBAGE] endCribbageGame completed successfully');
-        }
-      });
-    } else {
-      console.warn('[CRIBBAGE] Cannot persist endCribbageGame - missing roundId or gameId', {
-        hasRoundId: !!roundId,
-        hasGameId: !!gameId,
-      });
-    }
 
     // Confetti now runs as a continuous burst loop across the announcement +
     // chip-transfer window (see effect below keyed on winSequencePhase).
@@ -5645,6 +5745,10 @@ export const CribbageMobileGameTable = ({
       
       // Immediate authoritative promotion — prevents stale snapshots from overwriting
       syncHandle.receiveAuthoritativeUpdate(newState);
+      if (newState.phase === 'complete' && newState.winnerPlayerId) {
+        cribbageStateRef.current = newState;
+        requestCribbageSettlement('terminal-state-write-acknowledged');
+      }
     } catch (err) {
       console.error('[CRIBBAGE] Error updating state:', err);
       logCribbageDebug(debugCtx, 'db_write_failure', { error: (err as Error).message }, tid);
@@ -7118,6 +7222,7 @@ export const CribbageMobileGameTable = ({
       terminalEventId,
       site: 'handleChipAnimationEnd',
     });
+    terminalPresentationFinishedRef.current = true;
     setWinSequencePhase('complete');
     // Small delay before transitioning to next game
     setTimeout(() => {
@@ -7158,9 +7263,9 @@ export const CribbageMobileGameTable = ({
   //
   // ROOT-CAUSE FIX (match-end freeze): the previous implementation listed
   // `handleAnnouncementComplete` in the dep array. That callback's identity
-  // changes whenever `players` mutates — and during match-end, the chip
-  // RPCs in endCribbageGame produce realtime updates that re-render the
-  // parent and replace the `players` array reference. Each replacement
+  // changes whenever `players` mutates — and during match-end, authoritative
+  // settlement produces realtime updates that re-render the parent and
+  // replace the `players` array reference. Each replacement
   // cancelled the in-flight 4500ms timer and re-armed a fresh one,
   // indefinitely. Result: chip animation never fired and the game froze.
   //

@@ -119,8 +119,8 @@ contradictions.
 | Persistence/lifecycle | `src/lib/cribbageRoundLogic.ts:startCribbageRound`, `startNextCribbageHand`, `updateCribbageState`; mounted controller in `src/components/CribbageMobileGameTable.tsx`. |
 | Bots | `src/lib/cribbageBotLogic.ts:getBotDiscardIndices`, `getBotPeggingCardIndex`, and `shouldBotCallGo`. |
 | State acceptance | `src/lib/gameStateSync/cribbageProgress.ts:getCribbageProgressFn`. |
-| Settlement | `src/lib/cribbageRoundLogic.ts:endCribbageGame` and private `applyCribbageTerminalDisposition`. |
-| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
+| Settlement | `src/lib/cribbageSettleGame.ts:settleCribbageGame` and `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
+| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222815_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; `cribbage_create_next_hand` in `supabase/migrations/20260702221623_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`; `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 
 ### Implemented rules
 
@@ -154,13 +154,16 @@ contradictions.
   discard idempotently. The client still observes all discards and advances to
   cutting. `cribbage_create_next_hand` creates the next hand with predecessor
   identity/deduplication.
-- At match end, `endCribbageGame` claims by changing the current round to
-  `completed`, then performs separate loser deductions, winner award,
-  `game_results` insert, canonical snapshot, and terminal disposition writes.
-  Result identity is the claimed round's `dealer_game_id + hand_number`.
+- At match end, clients submit only game, round, dealer-game, and hand identity
+  to `cribbage_settle_game`. The RPC locks the round and game, derives the
+  skunk multiplier from the persisted scoreboard and game configuration, and
+  atomically writes the durable result claim, balanced chip movement, round
+  completion, final snapshots, and terminal disposition. Duplicate callers
+  return the existing claim without financial writes.
 - A normal win becomes `game_over`. If LAST HAND has set
-  `pending_session_end`, `applyCribbageTerminalDisposition` snapshots first
-  and writes `session_ended`.
+  `pending_session_end`, the same transaction snapshots post-payout balances,
+  writes `session_ended`, and mints deduplicated real-money `SessionResult`
+  rows through the terminal-status trigger.
 - Bots choose discards with the crib owner in context and select legal pegging
   cards; they call Go when no legal card exists.
 
@@ -170,12 +173,9 @@ contradictions.
   an extra crib card, but `initializeCribbageGame`, local discard logic, and
   `cribbage_apply_discard` produce only three crib cards for three players.
   No fourth crib card is dealt by the current implementation.
-- `docs/codex/STABLE_CHECKPOINTS.md` and comments in
-  `cribbageRoundLogic.ts` call terminal settlement authoritative and
-  disconnect-safe. The actual round claim and subsequent chip/result/snapshot/
-  status writes are separate client calls. A disconnect after the claim can
-  leave payout incomplete, while another caller sees a completed round and
-  skips the financial sequence.
+- The atomic settlement migration and matching client cutover remain a release
+  candidate until deployed duplicate-caller, disconnect, and LAST HAND
+  real-money smoke proves the database behavior.
 - First-hand creation and several phase transitions remain multi-write client
   operations.
 

@@ -34,6 +34,22 @@ Codex acceptance requires new published iOS smoke proving:
 - short lists compact;
 - no page, HUD, or table-shell scroll.
 
+## Cribbage atomic-settlement candidate
+
+The current source candidate moves Cribbage terminal settlement into
+`public.cribbage_settle_game`. One transaction now owns the durable result
+claim, server-derived skunk payout, player chips, completed round, post-payout
+snapshot batch, `game_over`/`session_ended` disposition, and real-money
+`SessionResult` rows. Connected clients and reconnects submit only the
+immutable game, round, dealer-game, and hand identity; presentation remains
+local.
+
+Migration `20260802001500_atomic_cribbage_terminal_settlement.sql` and the
+matching app build are not yet proven deployed or production-smoked. Publish
+acceptance must cover duplicate callers, disconnect after terminal-state
+persistence, and LAST HAND real-money session closure with one financial
+result per human.
+
 ## Frozen Lovable cutover scope
 
 ### Holm bot scheduling

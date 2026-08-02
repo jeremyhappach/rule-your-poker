@@ -1596,6 +1596,7 @@ export type Database = {
           is_chopped: boolean
           player_chip_changes: Json
           pot_won: number
+          settlement_key: string | null
           winner_player_id: string | null
           winner_username: string | null
           winning_hand_description: string | null
@@ -1611,6 +1612,7 @@ export type Database = {
           is_chopped?: boolean
           player_chip_changes?: Json
           pot_won?: number
+          settlement_key?: string | null
           winner_player_id?: string | null
           winner_username?: string | null
           winning_hand_description?: string | null
@@ -1626,6 +1628,7 @@ export type Database = {
           is_chopped?: boolean
           player_chip_changes?: Json
           pot_won?: number
+          settlement_key?: string | null
           winner_player_id?: string | null
           winner_username?: string | null
           winning_hand_description?: string | null
@@ -2132,6 +2135,7 @@ export type Database = {
           id: string
           notes: string | null
           profile_id: string
+          source_game_id: string | null
           transaction_type: string
         }
         Insert: {
@@ -2141,6 +2145,7 @@ export type Database = {
           id?: string
           notes?: string | null
           profile_id: string
+          source_game_id?: string | null
           transaction_type: string
         }
         Update: {
@@ -2150,6 +2155,7 @@ export type Database = {
           id?: string
           notes?: string | null
           profile_id?: string
+          source_game_id?: string | null
           transaction_type?: string
         }
         Relationships: [
@@ -2158,6 +2164,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_transactions_source_game_id_fkey"
+            columns: ["source_game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
             referencedColumns: ["id"]
           },
         ]
@@ -3298,6 +3311,15 @@ export type Database = {
           _cribbage_state: Json
           _player_cards: Json
           _predecessor_round_id: string
+        }
+        Returns: Json
+      }
+      cribbage_settle_game: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
         }
         Returns: Json
       }

@@ -47,3 +47,10 @@ Canonicalization and game-rule audits produce an inventory/plan before implement
 ## D-012 — Approval makes a fix publish-ready
 
 An approved fix includes the required Git integration and push to `origin/main`. Lovable publication and production smoke remain Jeremy's responsibility.
+
+## D-013 — Terminal settlement is one replay-safe transaction
+
+A terminal settlement claim, chip movement, result row, post-payout snapshots,
+terminal disposition, and session financial rows commit together or not at
+all. Clients submit immutable authoritative identity and may replay; a durable
+database key makes every financial consequence exactly once.
