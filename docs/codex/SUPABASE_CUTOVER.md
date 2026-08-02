@@ -27,9 +27,14 @@ variables or modify/delete source data.
 - Applied target migrations `20260802152940_bound_diagnostic_retention.sql`
   and `20260802165743_preserve_audit_session_history.sql`; the latter makes the
   audit/session-history exclusion explicit in the live purge definition.
+- Applied target migration
+  `20260802174956_restore_public_data_api_grants.sql`, restoring the source's
+  current-object Data API grants while preserving RLS and anonymous read-only
+  access to `games`. Default privileges remain unchanged so future public
+  tables must declare their grants explicitly.
 - Proved pre-retention schema hashes equal for columns, constraints, indexes,
   policies, routines, triggers, and Realtime publication membership.
-- Current target: 246 migration records, 20/20 application triggers enabled,
+- Current target: 247 migration records, 20/20 application triggers enabled,
   no nonstandard trigger states, and 18 Realtime tables.
 
 Gameplay cron remains disabled. Target cron contains only
@@ -137,7 +142,9 @@ Reference remediation:
    the source backend.
 4. Smoke Auth sign-in, lobby/history, one fake-money game, one real-money game,
    Storage image rendering, deadline enforcement, and the Cribbage disconnect
-   settlement contract against the target.
+   settlement contract against the target. Signed-in lobby loading is complete;
+   the create-game failure caused by missing new-project Data API grants was
+   corrected on 2026-08-02, and full gameplay smoke remains pending.
 5. Freeze source writes, copy the final data delta, repeat manifests, and record
    database/Auth/Storage counts.
 6. With explicit approval, change Vercel production environment variables,

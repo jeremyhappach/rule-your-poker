@@ -29,8 +29,9 @@ Lovable-backed source project.
 - All 244 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into
   `supabase/migrations/` and Lovable's filename/version drift was reconciled.
-  Two target migrations add the bounded diagnostic purge and its explicit
-  audit/session-history preservation boundary, for 246 total records.
+  Three target migrations add the bounded diagnostic purge, its explicit
+  audit/session-history preservation boundary, and the source-equivalent Data
+  API grants required by new Supabase projects, for 247 total records.
 - Schema parity was proved before the target-only retention migration: 48
   public tables, 42 routines, 133 policies, 20 enabled application triggers,
   and 18 Realtime publication tables.
@@ -58,6 +59,9 @@ Lovable-backed source project.
 - The target database is 26 MB. Security/performance advisors report inherited
   source-schema warnings, not target drift; remediation is a separate scoped
   hardening task.
+- Data API access now matches the source project: all 48 public tables retain
+  RLS and authenticated/service roles have table DML; anonymous access is
+  read-only for `games`. Future public tables must declare grants explicitly.
 
 The detailed evidence and remaining cutover gates live in
 `docs/codex/SUPABASE_CUTOVER.md`.
@@ -72,8 +76,10 @@ The detailed evidence and remaining cutover gates live in
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
 - Supabase Auth allows that exact preview hostname (all paths). The owned
   project's Site URL remains local until the production cutover.
-- Vercel Authentication protects the preview. The signed-in browser reached
-  the app's `/auth` screen; real-user sign-in and gameplay smoke are the next
+- Vercel Authentication protects the preview. After restoring the target's
+  explicit Data API grants, the signed-in browser loads the lobby, profile
+  balance, history dependencies, and game list without the prior table
+  permission errors. Jeremy's create-game and gameplay smoke remain the next
   acceptance gate.
 
 ## Frozen Lovable cutover baseline
