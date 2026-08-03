@@ -95,8 +95,10 @@ The detailed evidence and remaining cutover gates live in
   explicit Data API grants, the signed-in browser loads the lobby, profile
   balance, history dependencies, and game list without the prior table
   permission errors. Jeremy reported the create-game/game-entry rerun and the
-  authenticated voice-transcription path clean on 2026-08-02. The broader
-  backend-cutover smoke checklist remains tracked in
+  authenticated voice-transcription path clean on 2026-08-02. A complete
+  fake-money game and its Completed Sessions appearance passed against the
+  owned preview on 2026-08-03. The broader backend-cutover smoke checklist
+  remains tracked in
   `docs/codex/SUPABASE_CUTOVER.md`.
 
 ## Frozen Lovable cutover baseline

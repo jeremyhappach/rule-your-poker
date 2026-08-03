@@ -175,8 +175,10 @@ Reference remediation:
    settlement contract against the target. Signed-in lobby loading is complete;
    the create-game failure caused by missing new-project Data API grants was
    corrected, and Jeremy reported the create-game/game-entry rerun clean on
-   2026-08-02. The remaining enumerated coverage is still required before this
-   gate is complete.
+   2026-08-02. A complete fake-money game and its appearance in Completed
+   Sessions passed on 2026-08-03. Real-money gameplay, Storage image rendering,
+   deadline enforcement, and the Cribbage disconnect settlement contract remain
+   required before this gate is complete.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.
