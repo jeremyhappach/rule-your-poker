@@ -58,8 +58,11 @@ Lovable-backed source project.
   transcription returned the spoken text to the unsent draft in owned-preview
   smoke on 2026-08-02. Custom Auth SMTP is now enabled on the target through a
   sending-only, domain-scoped Resend key and the verified
-  `auth.holm357.com` sender domain. A native password-reset smoke remains
-  outstanding; music provider configuration is a separate product gate.
+  `auth.holm357.com` sender domain. Native recovery email delivery, callback,
+  password update, sign-out, and sign-in with the new password passed against
+  the owned preview on 2026-08-03. The unused, unauthenticated
+  `generate-music` Edge Function was removed from the repository and owned
+  project on 2026-08-03; no ElevenLabs secret is required for cutover.
 - Gameplay cron is disabled on the target. The sole active job purges retained
   diagnostic rows older than seven days. High-volume dice snapshots and
   lifecycle persistence are also off by default in the frontend.

@@ -91,7 +91,9 @@ The owned backend retains real-money sessions, users/password hashes,
 financials, and canonical history. Fake-money session history and orphaned
 Cribbage archives are disposable rehearsal data. Trivia is retired. Voice
 transcription calls OpenAI directly behind Supabase JWT verification and does
-not persist audio or forensic voice telemetry.
+not persist audio or forensic voice telemetry. The unused, unauthenticated
+`generate-music` Edge Function is retired rather than carrying an ElevenLabs
+dependency into the owned backend; the separate static music UI is unchanged.
 
 Final copy safety is a database write lock shared by source and target. The
 lock is inert until explicitly enabled, blocks application and Storage writes,

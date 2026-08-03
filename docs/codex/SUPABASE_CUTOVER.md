@@ -101,7 +101,6 @@ Active on target:
 - `enforce-all-deadlines` (`verify_jwt=false`), deployed but deliberately not
   invoked against copied sessions.
 - `generate-incident-report` (`verify_jwt=true`), retained emergency no-op.
-- `generate-music` (`verify_jwt=false`).
 - `generate-trivia` (`verify_jwt=true`) is a 410 retired tombstone with no
   external-provider call; trivia source/routes/components were removed.
 - `reset-password` (`verify_jwt=true`).
@@ -116,7 +115,12 @@ preview smoke on 2026-08-02. On 2026-08-03, custom Auth SMTP was enabled on the
 target through Resend using a sending-only key scoped to the verified
 `auth.holm357.com` domain; the sender is `no-reply@auth.holm357.com`. The key
 was transferred directly between its owning services and was not put in Git.
-Any retained music-provider secret must follow the same direct-entry rule.
+Native recovery email delivery, recovery callback, password update, sign-out,
+and sign-in with the new password passed against the owned preview on
+2026-08-03.
+The unused, unauthenticated `generate-music` function had no application call
+site and was deleted from the owned project and repository on 2026-08-03. No
+ElevenLabs secret is part of the cutover.
 
 ## Diagnostic posture
 
@@ -147,15 +151,16 @@ Reference remediation:
 
 ## Gates before production cutover
 
-1. **Voice complete 2026-08-02:** `OPENAI_API_KEY` is installed directly in the
-   owned Supabase project and the direct OpenAI transcription path passed
-   authenticated preview smoke. **SMTP configured 2026-08-03:** Resend DNS is
-   verified for `auth.holm357.com` and the target's custom SMTP settings persist
-   the expected sender, host, port, and username. Smoke the native Supabase
-   recovery-link and password-update flow before marking this gate complete.
-2. Decide whether `generate-music` remains in the initial cutover and, if so,
-   enter/test its provider secret. Trivia and its provider dependency are
-   retired.
+1. **Complete 2026-08-03:** `OPENAI_API_KEY` is installed directly in the owned
+   Supabase project and the direct OpenAI transcription path passed
+   authenticated preview smoke. Resend DNS is verified for
+   `auth.holm357.com`, the target's custom SMTP settings persist the expected
+   sender, host, port, and username, and the native Supabase recovery email,
+   callback, password update, sign-out, and new-password sign-in flow passed
+   against the owned preview.
+2. **Complete 2026-08-03:** `generate-music` is retired from the repository and
+   owned project, so the cutover has no ElevenLabs dependency. Trivia and its
+   provider dependency are also retired.
 3. **Complete 2026-08-02:** Vercel branch `codex/supabase-preview` is scoped to
    the owned target with the client-safe legacy anon key. The protected preview
    is

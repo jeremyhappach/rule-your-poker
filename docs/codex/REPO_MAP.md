@@ -38,7 +38,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
 | Local project/function config | `supabase/config.toml`, owned rehearsal project id `xvhmbuppghwmwpwrkzao`. Vercel production still targets the Lovable-backed source until explicit cutover. |
 | Schema history | `supabase/migrations/` (248 files: 245 source/common migration records plus three owned-target rehearsal migrations). Later definitions supersede earlier same-named functions. |
-| Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `generate-music`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
+| Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in
