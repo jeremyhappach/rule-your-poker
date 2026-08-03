@@ -240,5 +240,6 @@ Reference remediation:
    ordinary production sign-in and lobby loading clean with the migrated
    password. The combined production fake-money smoke also passed: create/play,
    authenticated voice-to-text, completion, and Completed Sessions all worked.
-   Production password recovery remains the final account-access acceptance
-   step.
+   Production password recovery then passed on `holm357.com`: email delivery,
+   production callback, password update, sign-out, and new-password sign-in all
+   worked. All production cutover acceptance steps are complete.

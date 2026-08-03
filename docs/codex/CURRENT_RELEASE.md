@@ -50,6 +50,10 @@ validated production copy of the core backend and is live behind
 - Jeremy then reported the combined production fake-money smoke clean: game
   creation and play worked, authenticated voice-to-text worked, the game
   completed, and it appeared under Completed Sessions.
+- Production password recovery also passed on `holm357.com`: the recovery email
+  arrived, its link returned to the production reset form, password update
+  succeeded, and sign-out plus sign-in with the new password worked. All owned-
+  Supabase cutover acceptance gates are complete.
 
 - All 245 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into

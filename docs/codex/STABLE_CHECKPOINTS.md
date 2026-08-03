@@ -72,8 +72,11 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   2026-08-03.
 - The combined production fake-money smoke then passed: create/play,
   authenticated voice-to-text, game completion, and Completed Sessions all
-  worked against the owned backend. Production password recovery remains the
-  final account-access smoke item.
+  worked against the owned backend.
+- Production password recovery then passed on `holm357.com`: email delivery,
+  production callback, password update, sign-out, and new-password sign-in all
+  worked. The owned-Supabase production cutover is accepted complete; the
+  retired source remains the locked rollback snapshot.
 
 ## Owned Supabase preview
 

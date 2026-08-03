@@ -140,8 +140,7 @@ above. Preserve their exact game-specific semantics during later triage.
 
 ### Password reset failure
 
-Status: Owned-target remediation validated 2026-08-03; the production backend
-cutover is complete and the same flow now needs final smoke on `holm357.com`.
+Status: Resolved 2026-08-03.
 
 - Reported 2026-08-01: `mcru81` is trying to reset their password, and the
   reset flow is reportedly not working correctly in the production runtime.
@@ -162,8 +161,8 @@ cutover is complete and the same flow now needs final smoke on `holm357.com`.
 - The owned target now uses verified custom SMTP through Resend. Native recovery
   delivery, callback, password update, sign-out, and sign-in with the new
   password passed against the owned preview on 2026-08-03.
-- Keep this item open only until the production frontend is cut over to the
-  owned target and the same flow passes on `holm357.com`.
+- The same complete recovery flow passed on production `holm357.com` on
+  2026-08-03, closing the account-access acceptance item.
 
 ## P1 — canonical architecture integrity
 
