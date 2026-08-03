@@ -214,8 +214,12 @@ hand blink: the ordinary stale-complete guard mistook the terminal His Heels
 reveal for a completed hand awaiting its successor. The follow-up source
 correction excludes `complete` states with authoritative `winnerPlayerId` from
 that bootstrap guard while preserving non-winning stale-hand suppression.
-Settlement and financial authority are unchanged. Published real-money
-acceptance smoke is still required.
+Settlement and financial authority are unchanged. Published follow-up smoke
+on commit `f9c7b1ebba91287049916e4caa09d281ace3df5a` passed on 2026-08-03,
+including continuous visibility of the remaining connected client's hand
+through the terminal cut-card reveal and win presentation. Cribbage is now the
+accepted disconnect-safe settlement and connected-terminal-presentation model
+for the remaining games.
 
 ## Frozen Lovable cutover scope
 

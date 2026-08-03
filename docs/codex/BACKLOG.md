@@ -30,9 +30,8 @@ Codex follow-up:
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
-Status: Route hold passed production smoke on 2026-08-03; the diagnosed card-
-continuity correction is implemented and awaiting published real-money smoke.
-Durable settlement remains clean.
+Status: Resolved and accepted in published production smoke on 2026-08-03.
+Durable settlement and connected-client terminal presentation are clean.
 
 - Production smoke reported 2026-08-02 on the Vercel build at commit
   `22da08820d453186a431088520100a88672b6782`.
@@ -108,19 +107,30 @@ Durable settlement remains clean.
   the existing suppression for ordinary non-winning completed hands. Add
   focused pure coverage for both sides of that boundary; do not change rules,
   settlement, timing, card data, or Session Ended admission.
+- Published follow-up smoke on commit
+  `f9c7b1ebba91287049916e4caa09d281ace3df5a` passed on 2026-08-03. The
+  remaining connected client's hand retained continuity through the terminal
+  cut-card reveal and win presentation. This closes the separate presentation
+  defect without reopening the already-proven atomic financial settlement.
 
 ### 3. Remaining terminal-authority migrations
 
-Retained order:
+Recommended game-by-game delivery order after the 2026-08-03 read-only audit:
 
 1. Yahtzee — replayable per-mount financial settlement.
 2. 3-5-7 normal terminal.
 3. Gin.
-4. Horses.
-5. SCC.
-6. 3-5-7 instant-win residual seam.
+4. Horses + SCC as one shared dice-resolution delivery with separate rule
+   validation and acceptance for each game.
+5. 3-5-7 instant-win/initial-Round-1 residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
+
+Every delivery must also include the connected-client half of the accepted
+Cribbage model: immediate settlement may not tear down a table that observed
+the live terminal identity. The route owns an exact-identity hold through the
+game's full terminal presentation and true completion token; a fresh mount of
+an already-ended session still goes directly to the lobby.
 
 Source-proven ingestion findings:
 
@@ -134,9 +144,27 @@ Source-proven ingestion findings:
 - Yahtzee setup/start comments describe an ante or score-difference payout, but
   no ante enters a pot and terminal settlement transfers a fixed configured
   amount from each loser.
+- Yahtzee is first because its elected client currently credits/debits chips,
+  writes result/snapshot, waits for presentation, and only then claims terminal
+  status. A disconnected elected writer can leave a partial settlement, while
+  a replacement writer can replay money. Preserve the actual fixed-stake rule
+  and key settlement to the authoritative `rounds.hand_number`, not the JSON
+  `currentRound` field that remains 1 after tie rollover.
 - Normal 3-5-7 terminal settlement remains client-owned:
   `src/lib/gameLogic.ts:handleGameOver` claims terminal status before separate
   award, result, snapshot, reset, and disposition writes.
+- Gin has the same partial-write failure class plus an existing dual-purpose
+  hand-history/terminal-result seam. Define and dedupe the final hand-history
+  row explicitly before moving its financial result into one transaction;
+  configurable bonus discrepancies remain separate rule work.
+- Horses and SCC share one controller and settlement sequence, so migrate their
+  completed-round resolver together but retain explicit game-type winner
+  derivation and separate tests. Their transaction must handle both sole-
+  winner payout and tie rollover/re-ante; first-hand setup can remain separate.
+- Preserve the already-atomic later-Round-1 `advance_357_round` sweep while
+  migrating normal 3-5-7. Its missing post-payout snapshot, broad function ACL,
+  initial-Round-1 client path, and incomplete-round re-ante repair remain the
+  final residual slice rather than expanding the normal-terminal correction.
 
 ### 3A. Source-proven rule, ledger, and harness discrepancies
 

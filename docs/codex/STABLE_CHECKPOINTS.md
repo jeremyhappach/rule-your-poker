@@ -9,11 +9,20 @@
 
 ## Cribbage
 
-- Prior runtime smoke accepted Cribbage terminal and LAST HAND presentation,
-  but the later source audit found settlement was still a client-owned
-  multi-write sequence. The atomic database replacement is a current release
-  candidate and is not a stable checkpoint until deployed disconnect/LAST HAND
-  smoke passes.
+- Atomic Cribbage settlement and connected-client terminal presentation are an
+  accepted production checkpoint as of 2026-08-03. The disconnect/LAST HAND
+  path settles immediately and exactly once in the database while a remaining
+  connected client retains the table, cards, cut reveal, win presentation, and
+  transient Session Ended flow. A genuinely fresh mount of an already-ended
+  session still goes directly to the lobby.
+- Preserve `public.cribbage_settle_game` as the replay-safe owner of result,
+  payout, post-payout snapshots, terminal disposition, and real-money session
+  ledger rows. Presentation may retry settlement and hold the mounted shell,
+  but may not delay or own financial authority.
+- Published follow-up smoke for commit
+  `f9c7b1ebba91287049916e4caa09d281ace3df5a` passed the terminal card-
+  continuity correction. Do not restore the stale-complete bootstrap guard for
+  a `complete` Cribbage state with an authoritative winner.
 - Table/HUD remains through celebration.
 - His Heels reveal/announcement sequencing passed production smoke.
 - Perpetual Heels harness is gated and visibly identified.
