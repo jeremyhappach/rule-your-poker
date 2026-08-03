@@ -324,6 +324,25 @@ on 2026-08-03.
   verify the published HTML contains no `lovable.dev` or Lovable-branded
   social tag.
 
+### 13F. Player Balances list escapes its modal
+
+Status: Queued; reproduced in owned-Supabase production on 2026-08-03.
+
+- Runtime: `holm357.com`, immediately after the clean production sign-in and
+  lobby smoke.
+- Actual: with the full player list open, balance rows continue below the white
+  Player Balances dialog and render over the dark page overlay. The screenshot
+  shows the `mcru81` row crossing the dialog's lower edge and the next row
+  beginning entirely outside it.
+- Expected: the dialog remains viewport-safe; its title, close control, sort
+  control, and description stay contained while one internal list body scrolls
+  through every player. No player row or name may render outside the dialog.
+- Current source owner:
+  `src/components/AdminPlayerListDialog.tsx`. Its `DialogContent` declares
+  `max-h-[80vh]` while the nested `ScrollArea` has an independent
+  `max-h-[400px]`; preserve sorting, balance colors, row selection, and the
+  transition into transaction history when correcting the containment.
+
 ## Documentation/bootstrap
 
 ### 14. Complete exact game-rule documentation

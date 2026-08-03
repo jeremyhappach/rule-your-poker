@@ -68,8 +68,9 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   `xvhmbuppghwmwpwrkzao` and contains no Lovable-backed project reference.
   The target is unlocked; the retired source remains write-locked for rollback.
 - The unauthenticated production route reached `/auth` with no console errors.
-  Authenticated production smoke remains required before treating user-facing
-  Auth/gameplay behavior as accepted production evidence.
+  Jeremy then reported ordinary production sign-in and lobby loading clean on
+  2026-08-03. Broader production gameplay, voice, and recovery smoke remain
+  separate acceptance steps.
 
 ## Owned Supabase preview
 

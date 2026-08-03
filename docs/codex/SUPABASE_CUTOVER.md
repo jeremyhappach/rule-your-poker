@@ -236,5 +236,7 @@ Reference remediation:
 7. **Complete 2026-08-03:** The owned target was unlocked only after deployment
    identity proof; a rollback-only ordinary write succeeded and was rolled
    back. The retired source remains locked. A clean browser load of
-   `holm357.com` reached `/auth` without console errors. Authenticated
-   production smoke remains Jeremy's acceptance step.
+   `holm357.com` reached `/auth` without console errors. Jeremy then reported
+   ordinary production sign-in and lobby loading clean with the migrated
+   password. Broader production gameplay, voice, and recovery smoke remain
+   Jeremy's acceptance steps.
