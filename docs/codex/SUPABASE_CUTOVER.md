@@ -90,12 +90,13 @@ seven-day purge.
 - Public bucket `chat-images` exists with the source policies.
 - Five object paths, MIME types, and byte sizes match source.
 - Object bytes total 4,526,239.
-- One retained `chat_messages.image_url` references the source project's
-  absolute public Storage URL. The same object exists and returns HTTP 200 from
-  the owned project at the identical bucket path, but all chat renderers use
-  the stored URL verbatim. Rewrite source-project `chat-images` URL prefixes on
-  the target during rehearsal and again after the final delta import; otherwise
-  historical rendering remains dependent on the source project.
+- Historical chat-image attachments are disposable. On 2026-08-03 the target's
+  one retained source-project `chat_messages.image_url` was normalized to null;
+  the row remains present and no other row fields changed. The five copied
+  objects remain but do not have to be recopied or retained for cutover.
+- The final delta import must set source-project `chat_messages.image_url`
+  values to null and skip historical object copying. Keep the bucket, policies,
+  and application upload path intact so new target uploads continue to work.
 - Entire target database size after readiness cleanup: 31 MB.
 
 ### Edge Functions
@@ -188,11 +189,11 @@ Reference remediation:
    `status='session_ended'`, one `cribbage_terminal` result, and exactly two
    distinct-profile SessionResult transactions of `-10/+10` summing to zero.
    The remaining client again bypassed the live win presentation and returned
-   to the lobby, matching the known presentation-only backlog defect. Storage
-   smoke is blocked by one retained absolute source-project image URL even
-   though the matching target object is present and serves HTTP 200. Rewriting
-   that target row and repeating runtime image smoke, plus deadline enforcement,
-   remain required before this gate is complete.
+   to the lobby, matching the known presentation-only backlog defect. Legacy
+   Storage normalization is complete: old source-project image references are
+   disposable and the target's retained reference is null. A new target image
+   upload/render smoke and deadline enforcement remain required before this gate
+   is complete.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.

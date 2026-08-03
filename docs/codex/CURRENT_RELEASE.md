@@ -47,11 +47,12 @@ Lovable-backed source project.
   removed; 331 financial transactions, 4,847 profiles, and all 11 auth users
   remain. Persisted debug, incident, trace, voice, and operation telemetry was
   intentionally excluded.
-- The public `chat-images` bucket contains the same five objects, paths, MIME
-  types, and 4,526,239 total bytes. One retained chat message still stores the
-  source project's absolute public URL even though the matching owned-target
-  object serves HTTP 200; that row must be rewritten during cutover so image
-  rendering does not depend on the Lovable-backed source remaining online.
+- Historical chat-image attachments were declared disposable on 2026-08-03.
+  The target's one retained source-project `image_url` was normalized to null
+  without deleting its `chat_messages` row or changing any other row fields.
+  The five previously copied objects (4,526,239 total bytes) remain in the
+  public `chat-images` bucket but are not cutover authority. New image uploads
+  remain supported through the owned bucket and await a target runtime smoke.
 - The target's `voice-to-text` Edge Function now calls OpenAI directly with
   `gpt-transcribe`, requires a Supabase user JWT, and persists no voice
   diagnostics. `finalize-voice-operations` is retired. Trivia was removed from

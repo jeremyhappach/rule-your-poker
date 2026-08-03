@@ -94,6 +94,10 @@ transcription calls OpenAI directly behind Supabase JWT verification and does
 not persist audio or forensic voice telemetry. The unused, unauthenticated
 `generate-music` Edge Function is retired rather than carrying an ElevenLabs
 dependency into the owned backend; the separate static music UI is unchanged.
+Historical chat-image attachments are disposable: the final import nulls
+source-project `chat_messages.image_url` values and does not copy historical
+objects, while the owned bucket, policies, and new-upload behavior remain part
+of the product.
 
 Final copy safety is a database write lock shared by source and target. The
 lock is inert until explicitly enabled, blocks application and Storage writes,
