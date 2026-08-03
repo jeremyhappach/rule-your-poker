@@ -56,9 +56,10 @@ Lovable-backed source project.
   tombstone with no provider call.
 - `OPENAI_API_KEY` is installed directly on the target. Authenticated voice
   transcription returned the spoken text to the unsent draft in owned-preview
-  smoke on 2026-08-02. Production email/SMTP configuration and password-reset
-  smoke remain outstanding; music provider configuration is a separate product
-  gate.
+  smoke on 2026-08-02. Custom Auth SMTP is now enabled on the target through a
+  sending-only, domain-scoped Resend key and the verified
+  `auth.holm357.com` sender domain. A native password-reset smoke remains
+  outstanding; music provider configuration is a separate product gate.
 - Gameplay cron is disabled on the target. The sole active job purges retained
   diagnostic rows older than seven days. High-volume dice snapshots and
   lifecycle persistence are also off by default in the frontend.

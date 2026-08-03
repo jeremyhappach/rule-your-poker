@@ -112,9 +112,11 @@ Active on target:
 
 Custom third-party secrets were not copied. `OPENAI_API_KEY` is now installed
 directly on the target, and authenticated voice transcription passed owned-
-preview smoke on 2026-08-02. Production email/SMTP credentials and any retained
-music-provider secret must still be entered directly in their owning service
-and must not be put in Git.
+preview smoke on 2026-08-02. On 2026-08-03, custom Auth SMTP was enabled on the
+target through Resend using a sending-only key scoped to the verified
+`auth.holm357.com` domain; the sender is `no-reply@auth.holm357.com`. The key
+was transferred directly between its owning services and was not put in Git.
+Any retained music-provider secret must follow the same direct-entry rule.
 
 ## Diagnostic posture
 
@@ -147,8 +149,10 @@ Reference remediation:
 
 1. **Voice complete 2026-08-02:** `OPENAI_API_KEY` is installed directly in the
    owned Supabase project and the direct OpenAI transcription path passed
-   authenticated preview smoke. Configure production email/SMTP credentials,
-   then smoke the native Supabase recovery-link and password-update flow.
+   authenticated preview smoke. **SMTP configured 2026-08-03:** Resend DNS is
+   verified for `auth.holm357.com` and the target's custom SMTP settings persist
+   the expected sender, host, port, and username. Smoke the native Supabase
+   recovery-link and password-update flow before marking this gate complete.
 2. Decide whether `generate-music` remains in the initial cutover and, if so,
    enter/test its provider secret. Trivia and its provider dependency are
    retired.
