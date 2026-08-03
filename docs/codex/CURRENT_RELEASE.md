@@ -48,7 +48,10 @@ Lovable-backed source project.
   remain. Persisted debug, incident, trace, voice, and operation telemetry was
   intentionally excluded.
 - The public `chat-images` bucket contains the same five objects, paths, MIME
-  types, and 4,526,239 total bytes.
+  types, and 4,526,239 total bytes. One retained chat message still stores the
+  source project's absolute public URL even though the matching owned-target
+  object serves HTTP 200; that row must be rewritten during cutover so image
+  rendering does not depend on the Lovable-backed source remaining online.
 - The target's `voice-to-text` Edge Function now calls OpenAI directly with
   `gpt-transcribe`, requires a Supabase user JWT, and persists no voice
   diagnostics. `finalize-voice-operations` is retired. Trivia was removed from
@@ -97,8 +100,11 @@ The detailed evidence and remaining cutover gates live in
   permission errors. Jeremy reported the create-game/game-entry rerun and the
   authenticated voice-transcription path clean on 2026-08-02. A complete
   fake-money game and its Completed Sessions appearance passed against the
-  owned preview on 2026-08-03. The broader backend-cutover smoke checklist
-  remains tracked in
+  owned preview on 2026-08-03. A two-human real-money Cribbage LAST HAND
+  disconnect smoke also passed durable settlement on 2026-08-03: the target
+  ended the session, wrote one terminal result, and wrote exactly one `-10`
+  and one `+10` SessionResult transaction. The broader backend-cutover smoke
+  checklist remains tracked in
   `docs/codex/SUPABASE_CUTOVER.md`.
 
 ## Frozen Lovable cutover baseline
@@ -148,9 +154,11 @@ to the live Lovable Cloud database on 2026-08-02 as one transaction and recorded
 in `supabase_migrations.schema_migrations`. Live verification proved both
 unique indexes, the restricted result-insert policy, authenticated-only RPC
 execution, and the deduped `record_session_results` trigger definition. The
-matching app build is deployed through Vercel. Production acceptance still
-must cover duplicate callers, disconnect after terminal-state persistence, and
-LAST HAND real-money session closure with one financial result per human.
+matching app build is deployed through Vercel. Source-production and owned-
+preview smoke now cover disconnect during LAST HAND real-money closure with
+one financial result per human; direct duplicate-caller acceptance remains.
+Both runtimes deterministically reproduce the separate connected-client win-
+presentation bypass tracked in the backlog.
 
 ## Frozen Lovable cutover scope
 

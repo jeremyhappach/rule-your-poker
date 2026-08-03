@@ -90,6 +90,12 @@ seven-day purge.
 - Public bucket `chat-images` exists with the source policies.
 - Five object paths, MIME types, and byte sizes match source.
 - Object bytes total 4,526,239.
+- One retained `chat_messages.image_url` references the source project's
+  absolute public Storage URL. The same object exists and returns HTTP 200 from
+  the owned project at the identical bucket path, but all chat renderers use
+  the stored URL verbatim. Rewrite source-project `chat-images` URL prefixes on
+  the target during rehearsal and again after the final delta import; otherwise
+  historical rendering remains dependent on the source project.
 - Entire target database size after readiness cleanup: 31 MB.
 
 ### Edge Functions
@@ -176,9 +182,17 @@ Reference remediation:
    the create-game failure caused by missing new-project Data API grants was
    corrected, and Jeremy reported the create-game/game-entry rerun clean on
    2026-08-02. A complete fake-money game and its appearance in Completed
-   Sessions passed on 2026-08-03. Real-money gameplay, Storage image rendering,
-   deadline enforcement, and the Cribbage disconnect settlement contract remain
-   required before this gate is complete.
+   Sessions passed on 2026-08-03. Two-human real-money Cribbage LAST HAND
+   disconnect smoke also passed on 2026-08-03. Authoritative target evidence
+   for game `4b6fce29-de49-4c68-8ff2-71d48d6d35d9` shows
+   `status='session_ended'`, one `cribbage_terminal` result, and exactly two
+   distinct-profile SessionResult transactions of `-10/+10` summing to zero.
+   The remaining client again bypassed the live win presentation and returned
+   to the lobby, matching the known presentation-only backlog defect. Storage
+   smoke is blocked by one retained absolute source-project image URL even
+   though the matching target object is present and serves HTTP 200. Rewriting
+   that target row and repeating runtime image smoke, plus deadline enforcement,
+   remain required before this gate is complete.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.

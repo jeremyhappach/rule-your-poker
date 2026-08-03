@@ -28,6 +28,61 @@ Codex follow-up:
 - preserve no-polling and DB exactly-once behavior;
 - add a focused deterministic test only if existing test architecture supports it reliably.
 
+### 2A. Cribbage LAST HAND win presentation bypass
+
+Status: Queued; diagnosed and reproduced on both backends. Durable settlement
+passed; live-flow presentation failed.
+
+- Production smoke reported 2026-08-02 on the Vercel build at commit
+  `22da08820d453186a431088520100a88672b6782`.
+- Repro: two-human real-money Cribbage, game to 1, `perpetual_heels`
+  harness; host selected End Session for LAST HAND, discarded, then left;
+  remaining human discarded and the cut card should have produced His Heels
+  and the terminal win.
+- Expected: the remaining connected client sees the cut-card/win/settlement
+  presentation and Session Ended table phase before choosing Back to Lobby.
+- Actual: the table unmounted and the remaining human was sent directly to the
+  lobby. The session correctly appeared under Completed Sessions and balances
+  were correct, proving durable terminal settlement and financial writes
+  completed.
+- Root cause: the persisted `phase='complete'` effect added with atomic
+  Cribbage settlement invokes `cribbage_settle_game` immediately, while the
+  His Heels presentation path intentionally keeps `winSequencePhase='idle'`
+  until the cut-card reveal and `+2` rail item retire. The parent therefore has
+  not yet observed `onTerminalPresentationActiveChange(true)` when the RPC's
+  realtime `session_ended` snapshot arrives. `Game.tsx` treats the client as
+  non-admitted, drops the Cribbage render branch, and then follows its existing
+  fresh-mount/reconnect redirect path.
+- Production evidence for game `9d69b82f-6a8f-4c89-92e0-c1efc688da07`:
+  persisted terminal state was a Jack of hearts / `his_heels` win; the remaining
+  client mounted `Hap: His Heels (+2)` at `14:13:32.147Z`, received
+  `session_ended` at `14:13:32.599Z`, and unmounted the Cribbage table at
+  `14:13:32.603Z`. Exactly one `cribbage_terminal` result recorded the expected
+  `+10/-10` chip changes.
+- Owned-Supabase preview smoke on 2026-08-03 reproduced the same remaining-
+  client boot for game `4b6fce29-de49-4c68-8ff2-71d48d6d35d9`. Authoritative
+  target state is `session_ended` with one `cribbage_terminal` result and
+  exactly two distinct-profile SessionResult transactions of `-10/+10`
+  summing to zero. This proves the presentation failure is deterministic across
+  the source and target backends while durable settlement remains correct.
+- Preserve the proven atomic settlement and direct-to-lobby behavior for
+  genuinely fresh mounts of already-ended sessions. The correction should
+  establish the route-owned live-terminal hold before the delayed His Heels
+  presentation begins; it must not delay or return settlement authority to the
+  client presentation sequence.
+- Required contract clarification from Jeremy: immediate authoritative
+  settlement is intentional and must remain independent of client presence.
+  Settlement reaching `session_ended` must not itself tear down a table that
+  was already mounted and observed the live terminal event. Any such connected
+  client must retain the existing table, felt, seats, HUD, and round context
+  through the complete game-specific win sequence, then enter the transient
+  Session Ended table phase. Only a genuinely fresh mount/reconnect after the
+  session is already ended should bypass presentation and go directly to the
+  lobby.
+- Initial hosting triage found the Vercel deployment `READY`, no Vercel runtime
+  errors, and no application-source change in the cutover commit. Treat this as
+  a client lifecycle/presentation defect unless contrary evidence appears.
+
 ### 3. Remaining terminal-authority migrations
 
 Retained order:
@@ -80,6 +135,35 @@ above. Preserve their exact game-specific semantics during later triage.
   owner.
 - The 3-5-7 admin forced-card harness assigns forced cards without removing
   them from the randomized deck, creating a duplicate-card risk.
+
+## P1 — account access
+
+### Password reset failure
+
+Status: Owned-target remediation validated 2026-08-03; production remains on
+the source backend until cutover.
+
+- Reported 2026-08-01: `mcru81` is trying to reset their password, and the
+  reset flow is reportedly not working correctly in the production runtime.
+- Expected: the account owner can request a reset, follow the recovery link,
+  set a new password, and sign in with it.
+- Exact failed step, visible error, device/browser, and whether a recovery
+  email arrived were not supplied with the initial report. Follow-up confirmed
+  that no recovery email arrived.
+- Read-only production evidence confirms the `mcru81` profile exists, is
+  active, and has an email address. The live `/auth` reset request UI renders.
+- Failure boundary: delivery occurs before the recovery callback. The live UI
+  calls Supabase Auth `resetPasswordForEmail`; the repository contains no
+  deployed SMTP configuration evidence, and its older Resend-backed
+  `reset-password` Edge Function has no live caller.
+- The exact provider/log error remains unverified because the current operator
+  sign-in did not grant access to the Supabase project dashboard. Do not claim
+  a specific SMTP error until deployed Auth configuration/logs are available.
+- The owned target now uses verified custom SMTP through Resend. Native recovery
+  delivery, callback, password update, sign-out, and sign-in with the new
+  password passed against the owned preview on 2026-08-03.
+- Keep this item open only until the production frontend is cut over to the
+  owned target and the same flow passes on `holm357.com`.
 
 ## P1 — canonical architecture integrity
 
@@ -164,6 +248,21 @@ Audit only with a current repro:
 - duplicate chip stack;
 - stale title/stakes;
 - Horses transition delay.
+
+### 13A. Yahtzee static music assets
+
+Status: Queued; discovered during owned-Supabase music-provider retirement on
+2026-08-03.
+
+- `MusicToggleButton` is mounted only by Yahtzee and uses
+  `useBackgroundMusic`.
+- The hook references five `/music/bluegrass-*.mp3` files, but no matching
+  audio assets are tracked in the repository.
+- The hook reports `hasMusic=true` from the non-empty hardcoded path list, so
+  the control renders even when every referenced asset is absent.
+- The retired `generate-music` Edge Function was never a caller or fallback for
+  this UI. Decide separately whether to supply licensed static assets or hide
+  and remove the nonfunctional control.
 
 ## Documentation/bootstrap
 
