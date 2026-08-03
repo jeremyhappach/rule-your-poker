@@ -1,12 +1,15 @@
 # Current release and cutover state
 
-Date: 2026-08-02
+Date: 2026-08-03
 
 ## Phase 1 delivery cutover
 
 - GitHub `main` is connected to the Vercel project `ptown-poker`; pushes create
   production deployments automatically.
-- The production frontend URL is <https://ptown-poker.vercel.app>.
+- The canonical production frontend URL is <https://holm357.com>. The original
+  <https://ptown-poker.vercel.app> address remains attached as a fallback.
+- Vercel reports `holm357.com` as a valid Production domain, and the HTTPS root
+  returned the P-Town Poker app with HTTP 200 on 2026-08-03.
 - The Vercel project contains the current Lovable Cloud backend values for all
   three `VITE_SUPABASE_*` build variables. The deployed bundle was verified to
   contain the expected public project configuration without exposing values in
@@ -81,8 +84,9 @@ The detailed evidence and remaining cutover gates live in
 - The preview build for commit `7e10cafd391330f387fb009e0ab96050ba84894f`
   reached `READY` and serves the app at
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
-- Supabase Auth allows that exact preview hostname (all paths). The owned
-  project's Site URL remains local until the production cutover.
+- Supabase Auth allows that exact preview hostname (all paths) and
+  `https://holm357.com/**`. The owned project's Site URL is now
+  `https://holm357.com` for production-cutover readiness.
 - Vercel Authentication protects the preview. After restoring the target's
   explicit Data API grants, the signed-in browser loads the lobby, profile
   balance, history dependencies, and game list without the prior table

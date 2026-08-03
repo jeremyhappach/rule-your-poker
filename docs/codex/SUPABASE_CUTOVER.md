@@ -156,8 +156,11 @@ Reference remediation:
    the owned target with the client-safe legacy anon key. The protected preview
    is
    <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>,
-   and its exact hostname is allowed in Supabase Auth. Production remains on
-   the source backend.
+   and its exact hostname is allowed in Supabase Auth. **Complete 2026-08-03:**
+   `holm357.com` is a valid Vercel Production domain serving the app over HTTPS;
+   it is the owned project's Auth Site URL and `https://holm357.com/**` is in
+   the redirect allow list. Production remains on the source backend until the
+   backend environment cutover.
 4. Smoke Auth sign-in, lobby/history, one fake-money game, one real-money game,
    Storage image rendering, deadline enforcement, and the Cribbage disconnect
    settlement contract against the target. Signed-in lobby loading is complete;

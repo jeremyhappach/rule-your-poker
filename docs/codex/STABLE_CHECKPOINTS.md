@@ -59,3 +59,7 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   the direct OpenAI `gpt-transcribe` path: spoken text returned to the unsent
   message draft. Preserve the user-JWT requirement and the no-persisted-audio or
   voice-diagnostics posture.
+- `holm357.com` was attached to the existing Vercel Production environment on
+  2026-08-03 with valid configuration and HTTPS HTTP 200. The owned Supabase
+  Auth Site URL is `https://holm357.com`; preserve both its `/**` redirect entry
+  and the protected owned-preview redirect entry through backend cutover.
