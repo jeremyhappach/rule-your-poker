@@ -666,6 +666,12 @@ export function HolmDealRuntimeMaybe({
  *   multi: enterGameplay once community wave has settled (community-3 in).
  *   solo:  enterGameplay once chucky wave has settled (chucky-(N-1) in).
  *
+ * DealRuntime's readyReleased latch is the canonical "transport is fully
+ * quiet" boundary. Card settle callbacks can finish just before their
+ * transport intents drain; advancing during that gap strands readyReleased
+ * as false after phase becomes GAMEPLAY and permanently suppresses the Holm
+ * timer. Never advance on dealSettled alone.
+ *
  * Idempotent — uses a ref latch.
  */
 export function HolmDealPhaseHost({
@@ -682,6 +688,7 @@ export function HolmDealPhaseHost({
   useEffect(() => {
     if (!deal || firedRef.current) return;
     if (!deal.dealSettled) return;
+    if (!deal.readyReleased) return;
     if (deal.phase !== 'READY') return;
 
     if (soloDeclared) {
@@ -695,7 +702,7 @@ export function HolmDealPhaseHost({
 
     firedRef.current = true;
     deal.enterGameplay();
-  }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.phase]);
+  }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.readyReleased, deal?.phase]);
   return null;
 }
 

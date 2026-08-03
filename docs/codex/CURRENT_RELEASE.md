@@ -110,6 +110,17 @@ The detailed evidence and remaining cutover gates live in
   and one `+10` SessionResult transaction. The broader backend-cutover smoke
   checklist remains tracked in
   `docs/codex/SUPABASE_CUTOVER.md`.
+- The first owned-preview Holm deadline smoke failed on 2026-08-03 in fake-
+  money game `8bb30eac-cacc-43d4-a306-ecf2e0a4d71e`. With No Timers disabled,
+  the authoritative 30-second deadline expired and correctly folded/scheduled
+  the human to sit out, but the visible timer never appeared and the all-fold
+  hand remained parked in `betting`. The source candidate now requires the
+  canonical `readyReleased` transport latch before Holm enters `GAMEPLAY`, and
+  evaluates the scoped `all_decisions_in + betting` edge immediately from
+  connected-client state. Resolution still runs through `endHolmRound` and its
+  atomic `betting -> processing` claim; the churn-prone polling recovery was
+  removed for this edge. A replacement owned-preview smoke is required before
+  deadline enforcement is accepted.
 
 ## Frozen Lovable cutover baseline
 

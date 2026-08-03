@@ -16,15 +16,10 @@ export interface TimerEligibility {
 /**
  * Canonical timer eligibility.
  *
- * Holm: explicitly BYPASSES DealRuntime gating. Holm timers are derived
- * from actionability (`canPlayerAct(playerId)`) by their consumers,
- * NOT from deal phase. We return `{ visible: true, running: true }` so
- * the consumer's own actionability check controls visibility/running.
- *
- * IMPORTANT: this bypass is for TIMERS ONLY. Holm card-render gating
- * still uses DealRuntime ownership/settle (PlayerHand boundary guard,
- * community/chucky settle gating). Do not extend this bypass to card
- * visibility paths.
+ * Holm: actionability is published by the game consumer, but DealRuntime's
+ * readyReleased latch still owns when that timer may become visible. This
+ * keeps an authoritative server deadline from appearing while the initial
+ * card transports are still active.
  *
  * 357: keep the strict GAMEPLAY + settled gate.
  *
@@ -44,7 +39,7 @@ export function getCanonicalTimerEligibility({
     // initial deal (hands + community + chucky) is still in flight.
     // We still defer presence (visible) to actionability, but suppress
     // visibility AND running until the deal has fully settled and
-    // readyReleased = true (DealRuntime enters GAMEPLAY).
+    // readyReleased = true before DealRuntime enters GAMEPLAY.
     const settled = dealSettled === true && readyReleased === true;
     return { visible: settled, running: settled && !!activePlayerId };
   }

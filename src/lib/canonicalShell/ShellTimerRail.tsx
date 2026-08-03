@@ -220,10 +220,11 @@ export function ShellTimerRail() {
   }, [identityKey]);
 
   const paused = !!state?.paused;
-  // Holm bypasses DealRuntime timer gating. Local-timer visibility for
-  // Holm is decided by whether the caller published state at all
-  // (actionability — caller only publishes when self can act). TIMER-ONLY
-  // bypass; Holm card rendering still uses DealRuntime settle gating.
+  // Holm bypasses this inner DealRuntime check because the outer
+  // DealAwareShellTimerRail already enforces readyReleased. Inside that
+  // boundary, published state is the actionability owner (the caller only
+  // publishes when self can act). Holm card rendering remains separately
+  // gated by DealRuntime settle ownership.
   const isHolm = deal?.gameType === 'holm-game';
   const eligibility = (deal && !isHolm)
     ? getCanonicalTimerEligibility({

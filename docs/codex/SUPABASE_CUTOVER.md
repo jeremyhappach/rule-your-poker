@@ -198,7 +198,15 @@ Reference remediation:
    disposable and the target's retained reference is null. The current UI has
    no attachment entry point, so fresh upload/render smoke is deferred until
    that capability is redeployed and is not a cutover blocker. Deadline
-   enforcement remains required before this gate is complete.
+   enforcement remains required before this gate is complete. The first Holm
+   deadline attempt on 2026-08-03 failed in fake-money game
+   `8bb30eac-cacc-43d4-a306-ecf2e0a4d71e`: the backend expired the human and
+   recorded all decisions, but no visible timer had rendered and the all-fold
+   hand did not progress. The approved source candidate preserves the
+   deal-settled presentation gate, closes the `readyReleased` phase race, and
+   invokes the existing atomically guarded Holm resolver from authoritative
+   client state instead of relying on the churn-prone fallback interval. This
+   candidate still requires an owned-preview rerun.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.

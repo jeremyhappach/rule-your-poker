@@ -280,6 +280,7 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
+import { getHolmResolutionRecoveryKey } from "@/lib/holmResolutionRecovery";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
@@ -5067,18 +5068,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (latestRound?.community_cards_revealed ?? 0) < 4 &&
       currentPlayer;
 
-    // Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
-    // enforcement) but the round is still 'betting'. In this state, the UI can appear stuck (spotlight/turn
-    // confusion) unless a client calls endHolmRound.
-    // P0 follow-up: identity-scoping via isAllDecisionsInFor() guarantees the flag matches THIS
-    // round, so the prior "at least one decision exists" anti-stale guard is no longer required.
-    const holmAllDecidedButBettingStuck =
-      game?.game_type === 'holm-game' &&
-      game?.status === 'in_progress' &&
-      isAllDecisionsInFor(game, latestRound?.id ?? null) &&
-      latestRound?.status === 'betting' &&
-      currentPlayer;
-    
     // Also detect when Holm game started but no round was created
     // CRITICAL: Check rounds array, NOT game.current_round (which we no longer update for Holm)
     const holmNoRound = 
@@ -5087,7 +5076,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmAllDecidedButBettingStuck || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -5141,22 +5130,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }
 
-      // If backend already flagged all_decisions_in but the round is still betting, force recovery.
-      // MEDIUM FIX: Only attempt once per round identity to avoid spamming DB with repeated
-      // endHolmRound calls (which each do atomic lock attempts + player fetches).
-      if (holmAllDecidedButBettingStuck && latestRound?.id) {
-        const recoveryKey = `holm-betting-stuck-${latestRound.id}`;
-        if (holmRecoveryAttemptedRef.current !== recoveryKey) {
-          holmRecoveryAttemptedRef.current = recoveryKey;
-          console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound (once per round)');
-          try {
-            await endHolmRound(gameId!);
-          } catch (e) {
-            console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
-          }
-        }
-      }
-      
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
       // The proper flow is: ante collection (line 2959) -> startHolmRound -> round created.
       // Polling should only fetch data, not create rounds.
@@ -6746,8 +6719,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     botWakeTick,
     botDrainTick,
   ]);
-  // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
-  const holmRecoveryAttemptedRef = useRef<string | null>(null);
+  // Holm final-decision recovery is event-driven. Timeout enforcement can be
+  // the writer that records the final fold, so no decision-making client is
+  // guaranteed to remain in the call stack that normally invokes
+  // endHolmRound. Every connected participant evaluates the same scoped
+  // authoritative edge; endHolmRound's betting -> processing CAS selects the
+  // single settlement owner.
+  const holmResolutionRecoveryInFlightRef = useRef<string | null>(null);
+  const holmParticipantPresent = players.some(
+    player => player.user_id === user?.id && player.status !== 'observer' && player.status !== 'left',
+  );
+  const holmResolutionRecoveryKey = getHolmResolutionRecoveryKey({
+    gameId,
+    gameType: game?.game_type,
+    gameStatus: game?.status,
+    dealerGameId: game?.current_game_uuid,
+    roundId: currentRound?.id,
+    roundStatus: currentRound?.status,
+    allDecisionsInForRound: isAllDecisionsInFor(game, currentRound?.id),
+    participantPresent: holmParticipantPresent,
+  });
+
+  useEffect(() => {
+    if (!gameId || !holmResolutionRecoveryKey) return;
+    if (holmResolutionRecoveryInFlightRef.current === holmResolutionRecoveryKey) return;
+
+    holmResolutionRecoveryInFlightRef.current = holmResolutionRecoveryKey;
+    console.warn('[HOLM RECOVERY] Final decision is authoritative while round is still betting; resolving now', {
+      gameId,
+      dealerGameId: game?.current_game_uuid ?? null,
+      roundId: currentRound?.id ?? null,
+    });
+
+    void endHolmRound(gameId)
+      .catch((error) => {
+        console.error('[HOLM RECOVERY] endHolmRound failed', error);
+      })
+      .finally(() => {
+        if (holmResolutionRecoveryInFlightRef.current === holmResolutionRecoveryKey) {
+          holmResolutionRecoveryInFlightRef.current = null;
+        }
+      });
+  }, [
+    gameId,
+    holmResolutionRecoveryKey,
+    holmAuthorityTick,
+    botDrainTick,
+    game?.current_game_uuid,
+    currentRound?.id,
+  ]);
 
   // Auto-execute pre-fold/pre-stay OR auto-fold when it becomes player's turn in Holm games
   // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
