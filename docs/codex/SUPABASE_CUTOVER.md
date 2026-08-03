@@ -97,6 +97,10 @@ seven-day purge.
 - The final delta import must set source-project `chat_messages.image_url`
   values to null and skip historical object copying. Keep the bucket, policies,
   and application upload path intact so new target uploads continue to work.
+- Jeremy confirmed on 2026-08-03 that the current chat UI has no attachment
+  icon because voice-to-text replaced that entry point. Fresh upload/render
+  smoke is therefore deferred until attachment UI is redeployed; the dormant
+  capability is retained but is not a production-backend cutover gate.
 - Entire target database size after readiness cleanup: 31 MB.
 
 ### Edge Functions
@@ -178,8 +182,8 @@ Reference remediation:
    the redirect allow list. Production remains on the source backend until the
    backend environment cutover.
 4. Smoke Auth sign-in, lobby/history, one fake-money game, one real-money game,
-   Storage image rendering, deadline enforcement, and the Cribbage disconnect
-   settlement contract against the target. Signed-in lobby loading is complete;
+   deadline enforcement, and the Cribbage disconnect settlement contract
+   against the target. Signed-in lobby loading is complete;
    the create-game failure caused by missing new-project Data API grants was
    corrected, and Jeremy reported the create-game/game-entry rerun clean on
    2026-08-02. A complete fake-money game and its appearance in Completed
@@ -191,9 +195,10 @@ Reference remediation:
    The remaining client again bypassed the live win presentation and returned
    to the lobby, matching the known presentation-only backlog defect. Legacy
    Storage normalization is complete: old source-project image references are
-   disposable and the target's retained reference is null. A new target image
-   upload/render smoke and deadline enforcement remain required before this gate
-   is complete.
+   disposable and the target's retained reference is null. The current UI has
+   no attachment entry point, so fresh upload/render smoke is deferred until
+   that capability is redeployed and is not a cutover blocker. Deadline
+   enforcement remains required before this gate is complete.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.

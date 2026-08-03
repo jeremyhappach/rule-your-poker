@@ -51,8 +51,11 @@ Lovable-backed source project.
   The target's one retained source-project `image_url` was normalized to null
   without deleting its `chat_messages` row or changing any other row fields.
   The five previously copied objects (4,526,239 total bytes) remain in the
-  public `chat-images` bucket but are not cutover authority. New image uploads
-  remain supported through the owned bucket and await a target runtime smoke.
+  public `chat-images` bucket but are not cutover authority. The current chat
+  UI has no attachment entry point because voice-to-text replaced it. The
+  bucket, policies, and upload code remain for future use; fresh upload/render
+  smoke is deferred until the attachment capability is redeployed and does not
+  block the backend cutover.
 - The target's `voice-to-text` Edge Function now calls OpenAI directly with
   `gpt-transcribe`, requires a Supabase user JWT, and persists no voice
   diagnostics. `finalize-voice-operations` is retired. Trivia was removed from

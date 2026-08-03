@@ -264,6 +264,18 @@ Status: Queued; discovered during owned-Supabase music-provider retirement on
   this UI. Decide separately whether to supply licensed static assets or hide
   and remove the nonfunctional control.
 
+### 13B. Chat image upload acceptance on redeployment
+
+Status: Queued; runtime entry point intentionally absent as of 2026-08-03.
+
+- Voice-to-text replaced the attachment icon in the current chat UI, so the
+  owned-Supabase preview has no user path for a fresh image upload/render smoke.
+- Do not remove the existing `chat-images` bucket, Storage policies, or dormant
+  upload/render code solely because the entry point is absent.
+- When attachment UI is redeployed, require an owned-target preview smoke that
+  uploads a new image and renders it in chat, then repeat in production before
+  calling the capability live.
+
 ## Documentation/bootstrap
 
 ### 14. Complete exact game-rule documentation
