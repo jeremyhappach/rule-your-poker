@@ -30,9 +30,9 @@ Codex follow-up:
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
-Status: Route hold passed production smoke on 2026-08-03; one presentation-
-continuity follow-up is diagnosed and awaiting approval. Durable settlement
-remains clean.
+Status: Route hold passed production smoke on 2026-08-03; the diagnosed card-
+continuity correction is implemented and awaiting published real-money smoke.
+Durable settlement remains clean.
 
 - Production smoke reported 2026-08-02 on the Vercel build at commit
   `22da08820d453186a431088520100a88672b6782`.
@@ -103,7 +103,7 @@ remains clean.
   `winnerPlayerId`. The stale-hand guard ignores that terminal discriminator,
   enters bootstrap mode, and unmounts the Cards pane. Celebration moves the
   win sequence out of `idle`, which releases the guard and remounts the cards.
-- Recommended correction: exclude authoritative terminal-complete states
+- Approved correction: exclude authoritative terminal-complete states
   (`winnerPlayerId` present) from the stale-next-hand guard, while preserving
   the existing suppression for ordinary non-winning completed hands. Add
   focused pure coverage for both sides of that boundary; do not change rules,

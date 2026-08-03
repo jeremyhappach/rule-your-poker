@@ -209,7 +209,12 @@ presentation bypass tracked in the backlog. The 2026-08-03 source correction
 adds a route-owned, exact-identity live-terminal latch so an already-connected
 Cribbage client retains its mounted table through the child-owned terminal
 sequence, while a fresh mount of an ended session still goes directly to the
-lobby. Settlement and financial authority are unchanged. Published real-money
+lobby. The first production smoke proved that route hold but exposed a local-
+hand blink: the ordinary stale-complete guard mistook the terminal His Heels
+reveal for a completed hand awaiting its successor. The follow-up source
+correction excludes `complete` states with authoritative `winnerPlayerId` from
+that bootstrap guard while preserving non-winning stale-hand suppression.
+Settlement and financial authority are unchanged. Published real-money
 acceptance smoke is still required.
 
 ## Frozen Lovable cutover scope

@@ -20,6 +20,35 @@ export function hasAnyCribbageAuthoritativeHand(state: CribbageState | null | un
   return Object.values(cribbageAuthoritativeHandCounts(state)).some((count) => count > 0);
 }
 
+export interface CribbageStaleCompleteBootstrapArgs {
+  state: Pick<CribbageState, 'phase' | 'winnerPlayerId'> | null | undefined;
+  winSequenceIdle: boolean;
+  countingStateSnapshotActive: boolean;
+  countingDelayActive: boolean;
+  postCountingTransitionActive: boolean;
+  isTransitioning: boolean;
+}
+
+/**
+ * Distinguishes an ordinary completed hand awaiting its next identity from a
+ * terminal completed game whose presentation still owns the current table.
+ * `winnerPlayerId` is the authoritative discriminator: terminal cards must
+ * not be retired merely because the win sequence is intentionally still idle.
+ */
+export function shouldEnterCribbageStaleCompleteBootstrap(
+  args: CribbageStaleCompleteBootstrapArgs,
+): boolean {
+  return Boolean(
+    args.state?.phase === 'complete' &&
+      !args.state.winnerPlayerId &&
+      args.winSequenceIdle &&
+      !args.countingStateSnapshotActive &&
+      !args.countingDelayActive &&
+      !args.postCountingTransitionActive &&
+      !args.isTransitioning,
+  );
+}
+
 export interface CribbageParentRenderModeArgs {
   isDealerSelection: boolean;
   isHighCardMode: boolean;

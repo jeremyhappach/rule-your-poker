@@ -4,6 +4,7 @@ import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
   resolveCribbageVisibleHand,
+  shouldEnterCribbageStaleCompleteBootstrap,
 } from './cribbageRenderGuards';
 
 const c = (rank: string): CribbageCard => ({ rank, suit: 'spades', value: rank === 'A' ? 1 : Number(rank) || 10 });
@@ -38,6 +39,49 @@ function state(phase: CribbageState['phase'] = 'discarding'): CribbageState {
 describe('Cribbage render guards', () => {
   it('captures authoritative counts for both players', () => {
     expect(cribbageAuthoritativeHandCounts(state())).toEqual({ p1: 6, p2: 6 });
+  });
+
+  it('ordinary non-winning complete hand enters stale-next-hand bootstrap', () => {
+    expect(shouldEnterCribbageStaleCompleteBootstrap({
+      state: state('complete'),
+      winSequenceIdle: true,
+      countingStateSnapshotActive: false,
+      countingDelayActive: false,
+      postCountingTransitionActive: false,
+      isTransitioning: false,
+    })).toBe(true);
+  });
+
+  it('terminal His Heels complete state retains gameplay presentation before celebration starts', () => {
+    const terminalState = {
+      ...state('complete'),
+      winnerPlayerId: 'p1',
+      cutCard: c('J'),
+    };
+    const staleComplete = shouldEnterCribbageStaleCompleteBootstrap({
+      state: terminalState,
+      winSequenceIdle: true,
+      countingStateSnapshotActive: false,
+      countingDelayActive: false,
+      postCountingTransitionActive: false,
+      isTransitioning: false,
+    });
+
+    expect(staleComplete).toBe(false);
+    expect(deriveCribbageParentRenderMode({
+      isDealerSelection: false,
+      isHighCardMode: false,
+      initialLoadComplete: true,
+      renderHandKey: 'terminal-hand',
+      currentHandKey: 'terminal-hand',
+      currentPlayerId: 'p2',
+      isObserver: false,
+      isStaleCompleteAwaitingNext: staleComplete,
+      authoritativeState: terminalState,
+    })).toMatchObject({
+      isBootstrapMode: false,
+      isGameplayMode: true,
+    });
   });
 
   it('first-hand chaos: authoritative hands force gameplay even when initial load/render presentation are stale', () => {

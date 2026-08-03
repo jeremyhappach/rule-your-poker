@@ -119,6 +119,7 @@ import {
   deriveCribbageParentRenderMode,
   hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
+  shouldEnterCribbageStaleCompleteBootstrap,
 } from '@/lib/cribbage/cribbageRenderGuards';
 // Highlight flows through `<CribbagePlayingCard highlight="gold"/>`.
 
@@ -7490,21 +7491,19 @@ export const CribbageMobileGameTable = ({
     renderHandKey === currentHandKey
   );
   // ── STALE-COMPLETE LATCH ────────────────────────────────────
-  // Detect a hand that has finished locally but whose boundary reset has not yet
-  // fired (parent prop roundId still lagging behind the other client that advanced).
-  // In that window viewState/cribbageState are both the OLD hand and the gameplay
-  // surface would otherwise keep rendering interactable stale cards. Treat it as
-  // bootstrap so the felt drops to the "Preparing next hand..." shell immediately,
-  // independent of when the parent prop catches up.
-  const isStaleCompleteAwaitingNext = !!(
-    viewState &&
-    viewState.phase === 'complete' &&
-    winSequencePhase === 'idle' &&
-    !countingStateSnapshot &&
-    !countingDelayActive &&
-    !postCountingTransitionActive &&
-    !isTransitioning
-  );
+  // Detect a non-winning hand that has finished locally but whose boundary
+  // reset has not yet fired (parent prop roundId still lagging behind the other
+  // client that advanced). Terminal complete states are explicitly excluded:
+  // His Heels keeps the win sequence idle during its cut reveal, and that
+  // presentation still owns the current hand until celebration completes.
+  const isStaleCompleteAwaitingNext = shouldEnterCribbageStaleCompleteBootstrap({
+    state: viewState,
+    winSequenceIdle: winSequencePhase === 'idle',
+    countingStateSnapshotActive: !!countingStateSnapshot,
+    countingDelayActive,
+    postCountingTransitionActive,
+    isTransitioning,
+  });
   const rawHighCardMode = effectiveShowHighCardSelection;
   const authoritativePostDealCardsPresent = !!(
     cribbageState &&
