@@ -276,6 +276,40 @@ Status: Queued; runtime entry point intentionally absent as of 2026-08-03.
   uploads a new image and renders it in chat, then repeat in production before
   calling the capability live.
 
+### 13C. Holm timer initial-fill regression
+
+Status: Queued; non-blocking presentation regression reproduced in owned-
+Supabase preview smoke on 2026-08-03.
+
+- Runtime: commit `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220`, fake-money
+  Holm game `25662485-03b6-434b-85f0-f96e983dfe7e`.
+- Actual: when the human turn begins, the visible timer first appears roughly
+  70% full, animates upward to full, and only then begins counting down.
+- Expected: after the deal-settled gate releases, the timer's first visible
+  frame is full and all subsequent movement is a monotonic countdown.
+- This is a known defect that had previously been corrected and has regressed.
+  Preserve the newly accepted rule that no visible Holm timer appears while
+  card transports are still active.
+
+### 13D. Holm timeout rebound and transient card reactivation
+
+Status: Queued; new non-blocking presentation defect first observed in owned-
+Supabase preview smoke on 2026-08-03.
+
+- Runtime: commit `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220`, fake-money
+  Holm game `25662485-03b6-434b-85f0-f96e983dfe7e`.
+- Actual: deadline expiry folded the human and showed auto-fold for about one
+  second; the clock then rebounded to roughly one second and the folded cards
+  briefly reactivated before a second visible fold/auto-fold transition became
+  stable.
+- Expected: one monotonic terminal timer transition. Once the authoritative
+  fold arrives, the timer stays retired, the cards remain inactive, and the
+  auto-fold/sitting-out presentation does not flicker or replay.
+- Authoritative progression was not harmed: the game advanced, auto-folded the
+  player for subsequent hands, allowed rejoin, and completed normally. Do not
+  reopen the accepted atomic Holm resolver or add a second action owner while
+  correcting this presentation seam.
+
 ## Documentation/bootstrap
 
 ### 14. Complete exact game-rule documentation

@@ -181,9 +181,9 @@ Reference remediation:
    it is the owned project's Auth Site URL and `https://holm357.com/**` is in
    the redirect allow list. Production remains on the source backend until the
    backend environment cutover.
-4. Smoke Auth sign-in, lobby/history, one fake-money game, one real-money game,
-   deadline enforcement, and the Cribbage disconnect settlement contract
-   against the target. Signed-in lobby loading is complete;
+4. **Complete 2026-08-03:** Smoke Auth sign-in, lobby/history, one fake-money
+   game, one real-money game, deadline enforcement, and the Cribbage disconnect
+   settlement contract against the target. Signed-in lobby loading is complete;
    the create-game failure caused by missing new-project Data API grants was
    corrected, and Jeremy reported the create-game/game-entry rerun clean on
    2026-08-02. A complete fake-money game and its appearance in Completed
@@ -197,16 +197,20 @@ Reference remediation:
    Storage normalization is complete: old source-project image references are
    disposable and the target's retained reference is null. The current UI has
    no attachment entry point, so fresh upload/render smoke is deferred until
-   that capability is redeployed and is not a cutover blocker. Deadline
-   enforcement remains required before this gate is complete. The first Holm
+   that capability is redeployed and is not a cutover blocker. The first Holm
    deadline attempt on 2026-08-03 failed in fake-money game
    `8bb30eac-cacc-43d4-a306-ecf2e0a4d71e`: the backend expired the human and
    recorded all decisions, but no visible timer had rendered and the all-fold
    hand did not progress. The approved source candidate preserves the
    deal-settled presentation gate, closes the `readyReleased` phase race, and
    invokes the existing atomically guarded Holm resolver from authoritative
-   client state instead of relying on the churn-prone fallback interval. This
-   candidate still requires an owned-preview rerun.
+   client state instead of relying on the churn-prone fallback interval. The
+   replacement smoke passed on commit
+   `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220` in fake-money game
+   `25662485-03b6-434b-85f0-f96e983dfe7e`: timeout progression, pussy tax,
+   later auto-folds, rejoin, and game completion all worked. The recurring
+   initial-fill animation and new brief timeout rebound/card-reactivation
+   flicker are presentation-only backlog items and do not block cutover.
 5. Enable the common source/target write lock, copy the final real-money data
    delta through the explicit import bypass, repeat manifests, and record
    database/Auth/Storage counts. Keep fake-money session history excluded.

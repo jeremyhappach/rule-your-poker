@@ -29,6 +29,14 @@
 - Session Ended removes player/community/Chucky card rows.
 - Add Bot waiting-seat and alias behavior passed the later bot-heavy smoke.
 - Bot scheduler fixes require regression attention because multiple distinct lost-edge defects were found.
+- Owned-preview deadline/progression smoke passed on 2026-08-03 at commit
+  `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220` in Holm game
+  `25662485-03b6-434b-85f0-f96e983dfe7e`: the timer stayed hidden until the
+  deal settled, expiry reached the atomically guarded resolver, the all-fold
+  hand progressed, later auto-folds and rejoin worked, and the game completed.
+  Preserve the event-driven resolver and no-polling boundary. The two observed
+  timer animation/flicker defects are explicitly non-blocking backlog items,
+  not failures of authoritative progression.
 
 ## Session Ended
 

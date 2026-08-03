@@ -92,7 +92,7 @@ The detailed evidence and remaining cutover gates live in
 - Vercel Preview branch `codex/supabase-preview` is isolated to the owned
   project through branch-scoped `VITE_SUPABASE_*` variables. Production remains
   on the Lovable-backed source project.
-- The preview build for commit `7e10cafd391330f387fb009e0ab96050ba84894f`
+- The preview build for commit `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220`
   reached `READY` and serves the app at
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.
 - Supabase Auth allows that exact preview hostname (all paths) and
@@ -110,17 +110,18 @@ The detailed evidence and remaining cutover gates live in
   and one `+10` SessionResult transaction. The broader backend-cutover smoke
   checklist remains tracked in
   `docs/codex/SUPABASE_CUTOVER.md`.
-- The first owned-preview Holm deadline smoke failed on 2026-08-03 in fake-
-  money game `8bb30eac-cacc-43d4-a306-ecf2e0a4d71e`. With No Timers disabled,
-  the authoritative 30-second deadline expired and correctly folded/scheduled
-  the human to sit out, but the visible timer never appeared and the all-fold
-  hand remained parked in `betting`. The source candidate now requires the
-  canonical `readyReleased` transport latch before Holm enters `GAMEPLAY`, and
-  evaluates the scoped `all_decisions_in + betting` edge immediately from
-  connected-client state. Resolution still runs through `endHolmRound` and its
-  atomic `betting -> processing` claim; the churn-prone polling recovery was
-  removed for this edge. A replacement owned-preview smoke is required before
-  deadline enforcement is accepted.
+- The first owned-preview Holm deadline smoke failed on 2026-08-03 in game
+  `8bb30eac-cacc-43d4-a306-ecf2e0a4d71e`; the corrected build at commit
+  `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220` then passed the replacement
+  smoke in fake-money game `25662485-03b6-434b-85f0-f96e983dfe7e`.
+  The timer remained suppressed through the deal, expiry folded and scheduled
+  the human to sit out, the all-fold pussy-tax branch progressed, subsequent
+  hands auto-folded the player, rejoin worked, and the game completed normally.
+  Resolution remains in `endHolmRound` behind its atomic
+  `betting -> processing` claim; the churn-prone polling recovery remains
+  removed for this edge. Two non-blocking timer presentation seams exposed by
+  the pass—the recurring initial-fill animation and a new one-second timeout
+  rebound/card-reactivation flicker—are queued separately in the backlog.
 
 ## Frozen Lovable cutover baseline
 
