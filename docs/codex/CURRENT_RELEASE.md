@@ -21,6 +21,10 @@ Date: 2026-08-03
   Storage, and Edge Function owner. The former Lovable-backed project remains
   write-locked as a rollback snapshot and is no longer referenced by the
   production frontend.
+- The obsolete `https://ptown-poker.lovable.app` publication was unpublished
+  on 2026-08-03. All three preserved jobs on its retired Cloud backend are
+  inactive; the project and write-locked backend remain available only as the
+  rollback snapshot.
 - The approved workflow is now plain-English issue -> diagnosis -> one approval
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.

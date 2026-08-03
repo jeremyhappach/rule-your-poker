@@ -119,3 +119,10 @@ write target. Do not dual-write, silently unlock it, or reintroduce its project
 configuration into a production or preview build. A rollback requires a
 separate explicit decision, a bounded data-loss assessment, and coordinated
 frontend/backend switching.
+
+## D-019 — Lovable runtime is retired without deleting the rollback snapshot
+
+As of 2026-08-03, `ptown-poker.lovable.app` is unpublished and every cron job
+on its former Cloud backend is inactive. The Lovable project and write-locked
+backend remain intact solely for an explicitly approved rollback; GitHub,
+Vercel, and the owned Supabase project remain the live production authorities.

@@ -77,6 +77,10 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   production callback, password update, sign-out, and new-password sign-in all
   worked. The owned-Supabase production cutover is accepted complete; the
   retired source remains the locked rollback snapshot.
+- Lovable runtime retirement completed on 2026-08-03: the old Lovable
+  publication is offline, all three source Cloud jobs are inactive, and the
+  write-locked rollback project remains preserved. The Vercel fallback
+  `https://ptown-poker.vercel.app/auth` continued to return HTTP 200.
 
 ## Owned Supabase preview
 

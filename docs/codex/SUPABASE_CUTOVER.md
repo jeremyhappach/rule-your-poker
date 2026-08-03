@@ -8,6 +8,11 @@ Date: 2026-08-03
   (`xvhmbuppghwmwpwrkzao`).
 - Retired rollback source: Lovable-backed Supabase project
   `ehccrxumpibuoehfsmms`, with the cutover write lock enabled.
+- All three preserved source cron definitions are inactive:
+  `purge-old-rounds-daily`, `enforce-all-deadlines-every-30s`, and
+  `finalize-voice-operations-5s`.
+- The legacy `https://ptown-poker.lovable.app` publication is unpublished. The
+  Lovable project and Cloud backend remain intact only for explicit rollback.
 - Frontend publication: GitHub `main` -> Vercel production at
   <https://holm357.com>.
 - Vercel Production and Preview backend variables point to the owned project.
