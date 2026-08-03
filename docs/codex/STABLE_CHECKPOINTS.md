@@ -69,8 +69,11 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   The target is unlocked; the retired source remains write-locked for rollback.
 - The unauthenticated production route reached `/auth` with no console errors.
   Jeremy then reported ordinary production sign-in and lobby loading clean on
-  2026-08-03. Broader production gameplay, voice, and recovery smoke remain
-  separate acceptance steps.
+  2026-08-03.
+- The combined production fake-money smoke then passed: create/play,
+  authenticated voice-to-text, game completion, and Completed Sessions all
+  worked against the owned backend. Production password recovery remains the
+  final account-access smoke item.
 
 ## Owned Supabase preview
 

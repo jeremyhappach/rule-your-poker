@@ -47,6 +47,9 @@ validated production copy of the core backend and is live behind
 - Jeremy reported the ordinary production sign-in and lobby clean on
   `holm357.com` on 2026-08-03. The migrated password worked without a reset,
   and the production lobby loaded against the owned backend.
+- Jeremy then reported the combined production fake-money smoke clean: game
+  creation and play worked, authenticated voice-to-text worked, the game
+  completed, and it appeared under Completed Sessions.
 
 - All 245 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into

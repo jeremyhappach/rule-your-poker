@@ -238,5 +238,7 @@ Reference remediation:
    back. The retired source remains locked. A clean browser load of
    `holm357.com` reached `/auth` without console errors. Jeremy then reported
    ordinary production sign-in and lobby loading clean with the migrated
-   password. Broader production gameplay, voice, and recovery smoke remain
-   Jeremy's acceptance steps.
+   password. The combined production fake-money smoke also passed: create/play,
+   authenticated voice-to-text, completion, and Completed Sessions all worked.
+   Production password recovery remains the final account-access acceptance
+   step.
