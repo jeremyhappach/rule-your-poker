@@ -30,9 +30,9 @@ Codex follow-up:
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
-Status: Fix implemented on 2026-08-03; awaiting published real-money smoke.
-Durable settlement passed on both backends; live-flow presentation was the
-remaining acceptance failure.
+Status: Route hold passed production smoke on 2026-08-03; one presentation-
+continuity follow-up is diagnosed and awaiting approval. Durable settlement
+remains clean.
 
 - Production smoke reported 2026-08-02 on the Vercel build at commit
   `22da08820d453186a431088520100a88672b6782`.
@@ -91,6 +91,23 @@ remaining acceptance failure.
   covers live capture, sparse realtime rows, exact-identity rejection, fresh
   terminal mount, nonterminal release, and leaving Cribbage. No settlement,
   financial, timer, or database behavior changed.
+- Production smoke on commit `7a9f56931996089f7775364993f5149f8763a2fe`
+  proved the remaining client now stays at the table through cut reveal and
+  celebration. The local active hand disappeared during the cut-card reveal,
+  then reappeared when celebration began.
+- Follow-up root cause: `isStaleCompleteAwaitingNext` in
+  `CribbageMobileGameTable.tsx` classifies every `phase='complete'` render with
+  `winSequencePhase='idle'` as an ordinary completed hand awaiting the next
+  hand. A His Heels win intentionally has that exact presentation state while
+  its cut reveal and `+2` rail item run, but it also has authoritative
+  `winnerPlayerId`. The stale-hand guard ignores that terminal discriminator,
+  enters bootstrap mode, and unmounts the Cards pane. Celebration moves the
+  win sequence out of `idle`, which releases the guard and remounts the cards.
+- Recommended correction: exclude authoritative terminal-complete states
+  (`winnerPlayerId` present) from the stale-next-hand guard, while preserving
+  the existing suppression for ordinary non-winning completed hands. Add
+  focused pure coverage for both sides of that boundary; do not change rules,
+  settlement, timing, card data, or Session Ended admission.
 
 ### 3. Remaining terminal-authority migrations
 
