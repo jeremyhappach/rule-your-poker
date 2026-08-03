@@ -310,6 +310,20 @@ Supabase preview smoke on 2026-08-03.
   reopen the accepted atomic Holm resolver or add a second action owner while
   correcting this presentation seam.
 
+### 13E. Retire residual Lovable social metadata
+
+Status: Queued; discovered during final owned-Supabase production verification
+on 2026-08-03.
+
+- The application and production bundle no longer reference the
+  Lovable-backed Supabase project, but root `index.html` still declares a
+  Lovable-hosted `og:image` and the `@Lovable` Twitter account.
+- This is social-preview metadata, not a gameplay, Auth, database, publication,
+  or runtime dependency; it does not block the completed backend cutover.
+- Replace it with an owned image/domain and P-Town Poker social metadata, then
+  verify the published HTML contains no `lovable.dev` or Lovable-branded
+  social tag.
+
 ## Documentation/bootstrap
 
 ### 14. Complete exact game-rule documentation
