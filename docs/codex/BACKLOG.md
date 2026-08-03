@@ -140,8 +140,8 @@ above. Preserve their exact game-specific semantics during later triage.
 
 ### Password reset failure
 
-Status: Owned-target remediation validated 2026-08-03; production remains on
-the source backend until cutover.
+Status: Owned-target remediation validated 2026-08-03; the production backend
+cutover is complete and the same flow now needs final smoke on `holm357.com`.
 
 - Reported 2026-08-01: `mcru81` is trying to reset their password, and the
   reset flow is reportedly not working correctly in the production runtime.

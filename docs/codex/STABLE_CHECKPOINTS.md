@@ -56,6 +56,21 @@ Do not reintroduce a scrim/modal, automatic lobby redirect for connected flow, o
 
 Published runtime smoke is acceptance. Typecheck alone is never a stable checkpoint.
 
+## Owned Supabase production
+
+- The final backend cutover completed on 2026-08-03. Vercel production
+  deployment `dpl_9DxrLEW3xwuZQCZv2USavnqr7uDC` reached `READY` and serves
+  <https://holm357.com>.
+- All 20 retained application datasets, all 11 password/metadata fingerprints,
+  and the per-profile financial ledger matched the locked source immediately
+  before the frontend switch.
+- The emitted production bundle contains the owned project
+  `xvhmbuppghwmwpwrkzao` and contains no Lovable-backed project reference.
+  The target is unlocked; the retired source remains write-locked for rollback.
+- The unauthenticated production route reached `/auth` with no console errors.
+  Authenticated production smoke remains required before treating user-facing
+  Auth/gameplay behavior as accepted production evidence.
+
 ## Owned Supabase preview
 
 - The authenticated lobby and create-game/game-entry path passed preview smoke

@@ -10,24 +10,40 @@ Date: 2026-08-03
   <https://ptown-poker.vercel.app> address remains attached as a fallback.
 - Vercel reports `holm357.com` as a valid Production domain, and the HTTPS root
   returned the P-Town Poker app with HTTP 200 on 2026-08-03.
-- The Vercel project contains the current Lovable Cloud backend values for all
-  three `VITE_SUPABASE_*` build variables. The deployed bundle was verified to
-  contain the expected public project configuration without exposing values in
-  repository history.
+- The Vercel Production and Preview environments now point to the owned
+  Supabase project `ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`). Production
+  deployment `dpl_9DxrLEW3xwuZQCZv2USavnqr7uDC` reached `READY` on
+  2026-08-03. The emitted bundle contains the owned project URL and identifier
+  and contains no reference to the retired Lovable-backed project.
 - `vercel.json` owns Vite SPA deep-link routing so `/auth`, `/game/:gameId`, and
   other client routes resolve through `index.html`.
-- Lovable Cloud remains the production database and authentication owner. The
-  owned Supabase Phase 2 rehearsal described below has not changed Vercel's
-  production environment variables.
+- The owned Supabase project is the production database, Auth, Realtime,
+  Storage, and Edge Function owner. The former Lovable-backed project remains
+  write-locked as a rollback snapshot and is no longer referenced by the
+  production frontend.
 - The approved workflow is now plain-English issue -> diagnosis -> one approval
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.
 
-## Phase 2 owned-Supabase core rehearsal
+## Phase 2 owned-Supabase production cutover
 
 The owned project `ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`) now contains a
-validated rehearsal copy of the core backend while production still uses the
-Lovable-backed source project.
+validated production copy of the core backend and is live behind
+<https://holm357.com>.
+
+- The final source and target locks were enabled only after proving there was
+  no recent real-money activity. The final reconciliation removed six
+  disposable target fake-money games, the single owned-preview real-money smoke
+  game, its two transactions, and five target-only test bots.
+- All 20 retained application datasets then matched source by row count and
+  content hash. Final authority includes 179 real-money games, 527 dealer
+  games, 420 rounds, 337 players, 2,653 real-money results, 2,630 retained
+  snapshots, 331 financial transactions, and 4,846 profiles.
+- All 11 Auth password fingerprints and metadata manifests match source. The
+  per-profile financial ledger matches exactly.
+- After the production bundle proved its owned backend identity, the target
+  lock was disabled and a rollback-only write proof succeeded. The source lock
+  remains enabled. Both maintenance-mode settings remain disabled.
 
 - All 245 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into
@@ -40,12 +56,12 @@ Lovable-backed source project.
   and 18 Realtime publication tables.
 - Auth contains the same 11 users, identities, and password hashes. Sessions,
   refresh tokens, MFA claims, and one-time tokens were intentionally not
-  copied, so the later cutover requires an ordinary sign-in but no password
-  reset.
+  copied, so users perform an ordinary sign-in after cutover but do not need a
+  password reset.
 - The target now retains all 179 real-money sessions and their financial/history
-  rows. All 177 fake-money sessions and 155 fake/orphan Cribbage archives were
-  removed; 331 financial transactions, 4,847 profiles, and all 11 auth users
-  remain. Persisted debug, incident, trace, voice, and operation telemetry was
+  rows. All fake-money sessions and fake/orphan Cribbage archives were removed;
+  331 financial transactions, 4,846 profiles, and all 11 auth users remain.
+  Persisted debug, incident, trace, voice, and operation telemetry was
   intentionally excluded.
 - Historical chat-image attachments were declared disposable on 2026-08-03.
   The target's one retained source-project `image_url` was normalized to null
@@ -80,18 +96,19 @@ Lovable-backed source project.
   RLS and authenticated/service roles have table DML; anonymous access is
   read-only for `games`. Future public tables must declare grants explicitly.
 - Migration `20260802184800_cutover_readiness.sql` is installed on source and
-  target with its write lock disabled. It provides 47 public-table statement
-  guards, Storage write guards, an explicit import bypass, and the verified
-  fake-session purge used only on the target.
+  target. Its lock remains enabled on the retired source and is disabled on the
+  live owned target. It provides 47 public-table statement guards, Storage
+  write guards, an explicit import bypass, and the verified fake-session purge
+  used only on the target.
 
 The detailed evidence and remaining cutover gates live in
 `docs/codex/SUPABASE_CUTOVER.md`.
 
 ### Owned-Supabase preview runtime
 
-- Vercel Preview branch `codex/supabase-preview` is isolated to the owned
-  project through branch-scoped `VITE_SUPABASE_*` variables. Production remains
-  on the Lovable-backed source project.
+- Vercel Preview branch `codex/supabase-preview` retains its branch-scoped
+  owned-project variables. The general Production and Preview variables now
+  also point to the owned project.
 - The preview build for commit `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220`
   reached `READY` and serves the app at
   <https://ptown-poker-git-codex-supabase-preview-jeremy-8e2b.vercel.app>.

@@ -46,7 +46,9 @@ Canonicalization and game-rule audits produce an inventory/plan before implement
 
 ## D-012 — Approval makes a fix publish-ready
 
-An approved fix includes the required Git integration and push to `origin/main`. Lovable publication and production smoke remain Jeremy's responsibility.
+An approved fix includes the required Git integration and push to `origin/main`.
+Vercel publication is automatic; production smoke remains Jeremy's
+responsibility.
 
 ## D-013 — Terminal settlement is one replay-safe transaction
 
@@ -62,9 +64,10 @@ builds and publishes every pushed `main` commit, and Codex verifies the
 deployment before handing the runtime to Jeremy for smoke testing. Manual
 Lovable publication is no longer part of the delivery path.
 
-Lovable Cloud remains a temporary database and authentication dependency until
-the controlled Phase 2 migration to an owned Supabase project. Frontend
-publication must not be coupled back to Lovable during that migration.
+Lovable Cloud was a temporary database and authentication dependency until the
+controlled Phase 2 migration completed on 2026-08-03. D-018 records the live
+owned-backend boundary. Frontend publication must not be coupled back to
+Lovable.
 
 ## D-015 — Core cutover excludes forensic bulk
 
@@ -103,3 +106,16 @@ Final copy safety is a database write lock shared by source and target. The
 lock is inert until explicitly enabled, blocks application and Storage writes,
 and has one session-local bypass for the controlled import. It does not change
 game lifecycle or settle/tear down active sessions itself.
+
+## D-018 — Owned Supabase is production authority
+
+As of 2026-08-03, `ptown-poker-prod` (`xvhmbuppghwmwpwrkzao`) owns production
+database, Auth, Realtime, Storage, and Edge Function behavior. Vercel Production
+and Preview variables point to that project, and GitHub `main` remains the
+frontend publication authority.
+
+The former Lovable-backed project is a locked rollback snapshot, not a parallel
+write target. Do not dual-write, silently unlock it, or reintroduce its project
+configuration into a production or preview build. A rollback requires a
+separate explicit decision, a bounded data-loss assessment, and coordinated
+frontend/backend switching.

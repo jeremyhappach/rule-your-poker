@@ -1,18 +1,20 @@
 # Owned Supabase cutover
 
-Date: 2026-08-02
+Date: 2026-08-03
 
 ## Current boundary
 
-- Source/production backend: Lovable-backed Supabase project
-  `ehccrxumpibuoehfsmms`.
-- Owned rehearsal target: `ptown-poker-prod`, project
-  `xvhmbuppghwmwpwrkzao`.
-- Frontend publication: GitHub `main` -> Vercel production.
-- Production Vercel environment: unchanged; still points to the source backend.
+- Live production backend: owned Supabase project `ptown-poker-prod`
+  (`xvhmbuppghwmwpwrkzao`).
+- Retired rollback source: Lovable-backed Supabase project
+  `ehccrxumpibuoehfsmms`, with the cutover write lock enabled.
+- Frontend publication: GitHub `main` -> Vercel production at
+  <https://holm357.com>.
+- Vercel Production and Preview backend variables point to the owned project.
+  The production bundle contains no retired source-project reference.
 
-Nothing in the core rehearsal is authorization to change Vercel's backend
-variables or modify/delete source data.
+The approved final cutover completed on 2026-08-03. Do not unlock or mutate the
+retired source unless a separately approved rollback requires it.
 
 ## Rehearsal evidence
 
@@ -69,11 +71,14 @@ The initial rehearsal proved source row-count and per-row manifests for these
 `player_transactions`, `players`, `profiles`, `rounds`,
 `session_player_snapshots`, `system_settings`, and `user_roles`.
 
-The owned target now intentionally diverges from source session history. The
-verified purge deleted all 177 fake-money games plus 20 fake-linked and 135
-orphan Cribbage archives. It retained 179 real-money games, 168 real-money
-Cribbage archives, 331 financial transactions, 4,847 profiles, and all 11 auth
-users. The source backend was not purged and remains the rollback authority.
+The owned target intentionally diverges from disposable source session history.
+The rehearsal purge deleted all 177 copied fake-money games plus 20 fake-linked
+and 135 orphan Cribbage archives. Final reconciliation also deleted six
+target-only fake-money games, one owned-preview real-money smoke game, its two
+transactions, and five test-bot profiles. The target retains 179 real-money
+games, 168 real-money Cribbage archives, 331 financial transactions, 4,846
+profiles, and all 11 auth users. The source backend was not purged and remains
+the locked rollback authority.
 
 `chat_messages.chat_operation_id` is intentionally null on the target because
 the associated operation/diagnostic pipeline was excluded; message content and
@@ -94,9 +99,10 @@ seven-day purge.
   one retained source-project `chat_messages.image_url` was normalized to null;
   the row remains present and no other row fields changed. The five copied
   objects remain but do not have to be recopied or retained for cutover.
-- The final delta import must set source-project `chat_messages.image_url`
-  values to null and skip historical object copying. Keep the bucket, policies,
-  and application upload path intact so new target uploads continue to work.
+- Final reconciliation retained normalized null source-project
+  `chat_messages.image_url` values and skipped historical object copying.
+  Keep the bucket, policies, and application upload path intact so new target
+  uploads continue to work.
 - Jeremy confirmed on 2026-08-03 that the current chat UI has no attachment
   icon because voice-to-text replaced that entry point. Fresh upload/render
   smoke is therefore deferred until attachment UI is redeployed; the dormant
@@ -160,7 +166,7 @@ Reference remediation:
 - <https://supabase.com/docs/guides/database/database-linter>
 - <https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection>
 
-## Gates before production cutover
+## Production cutover completion
 
 1. **Complete 2026-08-03:** `OPENAI_API_KEY` is installed directly in the owned
    Supabase project and the direct OpenAI transcription path passed
@@ -179,8 +185,7 @@ Reference remediation:
    and its exact hostname is allowed in Supabase Auth. **Complete 2026-08-03:**
    `holm357.com` is a valid Vercel Production domain serving the app over HTTPS;
    it is the owned project's Auth Site URL and `https://holm357.com/**` is in
-   the redirect allow list. Production remains on the source backend until the
-   backend environment cutover.
+   the redirect allow list.
 4. **Complete 2026-08-03:** Smoke Auth sign-in, lobby/history, one fake-money
    game, one real-money game, deadline enforcement, and the Cribbage disconnect
    settlement contract against the target. Signed-in lobby loading is complete;
@@ -211,10 +216,25 @@ Reference remediation:
    later auto-folds, rejoin, and game completion all worked. The recurring
    initial-fill animation and new brief timeout rebound/card-reactivation
    flicker are presentation-only backlog items and do not block cutover.
-5. Enable the common source/target write lock, copy the final real-money data
-   delta through the explicit import bypass, repeat manifests, and record
-   database/Auth/Storage counts. Keep fake-money session history excluded.
-6. With explicit approval, change Vercel production environment variables,
-   redeploy, and run the same production smoke.
-7. Keep the source project unchanged for rollback until the owned deployment is
-   accepted and a stable checkpoint is recorded.
+5. **Complete 2026-08-03:** Source and target write locks were enabled after
+   proving no recent real-money activity. After the bounded target cleanup, all
+   20 retained datasets matched source by count and content hash: 179 games,
+   527 dealer games, 420 rounds, 337 players, 549 player-card rows, 121 player
+   actions, 100 dice-audit rows, 3,936 Cribbage events, 168 Cribbage archives,
+   2,653 real-money results, 2,630 snapshots, 362 chat messages, 19 chip
+   emoticons, 331 transactions, 4,846 profiles, 35 custom names, seven game
+   defaults, 12 geometry overrides, 26 non-lock settings, and three user-role
+   rows. All 11 password/metadata fingerprints and the per-profile financial
+   ledger also match.
+6. **Complete 2026-08-03:** With explicit approval, all five general Vercel
+   Supabase variables were changed to the owned project and production
+   deployment `dpl_9DxrLEW3xwuZQCZv2USavnqr7uDC` reached `READY` for
+   `holm357.com`, `ptown-poker.vercel.app`, and the main aliases. The
+   production root returned HTTP 200. Its emitted bundle contains
+   `xvhmbuppghwmwpwrkzao` and its owned Supabase URL and does not contain
+   `ehccrxumpibuoehfsmms`.
+7. **Complete 2026-08-03:** The owned target was unlocked only after deployment
+   identity proof; a rollback-only ordinary write succeeded and was rolled
+   back. The retired source remains locked. A clean browser load of
+   `holm357.com` reached `/auth` without console errors. Authenticated
+   production smoke remains Jeremy's acceptance step.
