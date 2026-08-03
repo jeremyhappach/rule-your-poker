@@ -57,6 +57,11 @@ terminal disposition, and session financial rows commit together or not at
 all. Clients submit immutable authoritative identity and may replay; a durable
 database key makes every financial consequence exactly once.
 
+Immediate settlement does not authorize client teardown. When a connected
+mount observed the exact live terminal scope, the route retains the existing
+table through the game-owned win sequence and only then admits Session Ended.
+A fresh mount or reconnect after settlement remains direct-to-lobby.
+
 ## D-014 — Vercel publishes GitHub main
 
 `origin/main` is the production frontend release source. Vercel automatically

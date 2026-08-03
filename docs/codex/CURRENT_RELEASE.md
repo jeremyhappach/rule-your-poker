@@ -204,8 +204,13 @@ execution, and the deduped `record_session_results` trigger definition. The
 matching app build is deployed through Vercel. Source-production and owned-
 preview smoke now cover disconnect during LAST HAND real-money closure with
 one financial result per human; direct duplicate-caller acceptance remains.
-Both runtimes deterministically reproduce the separate connected-client win-
-presentation bypass tracked in the backlog.
+Both runtimes deterministically reproduced the separate connected-client win-
+presentation bypass tracked in the backlog. The 2026-08-03 source correction
+adds a route-owned, exact-identity live-terminal latch so an already-connected
+Cribbage client retains its mounted table through the child-owned terminal
+sequence, while a fresh mount of an ended session still goes directly to the
+lobby. Settlement and financial authority are unchanged. Published real-money
+acceptance smoke is still required.
 
 ## Frozen Lovable cutover scope
 

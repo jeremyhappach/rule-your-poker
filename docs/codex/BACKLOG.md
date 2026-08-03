@@ -30,8 +30,9 @@ Codex follow-up:
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
-Status: Queued; diagnosed and reproduced on both backends. Durable settlement
-passed; live-flow presentation failed.
+Status: Fix implemented on 2026-08-03; awaiting published real-money smoke.
+Durable settlement passed on both backends; live-flow presentation was the
+remaining acceptance failure.
 
 - Production smoke reported 2026-08-02 on the Vercel build at commit
   `22da08820d453186a431088520100a88672b6782`.
@@ -82,6 +83,14 @@ passed; live-flow presentation failed.
 - Initial hosting triage found the Vercel deployment `READY`, no Vercel runtime
   errors, and no application-source change in the cutover commit. Treat this as
   a client lifecycle/presentation defect unless contrary evidence appears.
+- Implemented correction: `Game.tsx` now owns an identity-scoped Cribbage
+  live-terminal latch before the child publishes animation liveness. The latch
+  admits only the exact game/dealer-game/round/hand observed live on this mount,
+  holds the existing table through the child-owned completion callback, and is
+  absent on a fresh terminal mount. `liveTerminalPresentationHold.test.ts`
+  covers live capture, sparse realtime rows, exact-identity rejection, fresh
+  terminal mount, nonterminal release, and leaving Cribbage. No settlement,
+  financial, timer, or database behavior changed.
 
 ### 3. Remaining terminal-authority migrations
 
@@ -89,19 +98,18 @@ Retained order:
 
 1. Yahtzee — replayable per-mount financial settlement.
 2. 3-5-7 normal terminal.
-3. Cribbage.
-4. Gin.
-5. Horses.
-6. SCC.
-7. 3-5-7 instant-win residual seam.
+3. Gin.
+4. Horses.
+5. SCC.
+6. 3-5-7 instant-win residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
 Source-proven ingestion findings:
 
-- Cribbage claims the round as completed before separate loser debits, winner
-  credit, result, snapshot, and disposition writes. A disconnect after the
-  claim can strand payout while a later caller skips the financial sequence.
+- Cribbage's former multi-write terminal sequence was replaced by
+  `public.cribbage_settle_game`; it is the completed atomic-settlement model,
+  with the separate live-presentation acceptance tracked in 2A above.
 - Yahtzee terminal result/snapshot identity uses
   `yahtzee_state.currentRound` instead of the authoritative
   `rounds.hand_number`. After a tie rollover, the new round has hand 2 or

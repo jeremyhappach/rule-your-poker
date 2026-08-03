@@ -97,6 +97,11 @@ import {
   setHolmTraceActive,
 } from "@/lib/holm/holmTrace";
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
+import {
+  advanceLiveTerminalPresentationScope,
+  shouldHoldLiveTerminalPresentation,
+  type LiveTerminalPresentationScope,
+} from "@/lib/canonicalShell/liveTerminalPresentationHold";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 // 3-5-7 presentation ledger removed (temporary tracking).
@@ -1176,6 +1181,10 @@ const Game = () => {
   const liveTerminalPresentationObservedRef = useRef(false);
   // Terminal identities whose canonical presentation completed on this mount.
   const terminalPresentationCompletedRef = useRef<Set<string>>(new Set());
+  // Route-owned identity latch for a terminal presentation this mount first
+  // observed during live play. Unlike child-published animation liveness, the
+  // latch exists before an atomic settlement can publish `session_ended`.
+  const cribbageLiveTerminalScopeRef = useRef<LiveTerminalPresentationScope | null>(null);
   // Latest authoritative terminal facts, readable from completion callbacks
   // (which are not re-created on every snapshot).
   const terminalStatusFactsRef = useRef<{ status: string | null; pendingSessionEnd: boolean }>({
@@ -1663,6 +1672,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!!holmChuckyWinResult && holmTerminalPresentationDone !== holmChuckyWinResult) ||
       !!holmShowdownTriggerId ||
       holmShowdownPhase !== 'idle'
+    );
+
+  // Cribbage LAST HAND can settle while His Heels still owns the cut reveal
+  // and +2 rail item. Remember the live authoritative scope here, above the
+  // game subtree, so the first `session_ended` render cannot unmount the child
+  // before it publishes animation liveness. A fresh terminal mount never
+  // observed `in_progress`, so it has no scope and still redirects to lobby.
+  const cribbageTerminalRoundForHold = game?.game_type === 'cribbage'
+    ? pickActiveSingleRoundGameRound(game.rounds, {
+        dealerGameId: game.current_game_uuid,
+        currentRoundNumber: game.current_round,
+        currentHandNumber: game.total_hands,
+      })
+    : null;
+  const cribbageTerminalHoldObservation = {
+    gameId: gameId ?? null,
+    gameType: game?.game_type === 'cribbage' ? 'cribbage' : null,
+    status: (game?.status as string) ?? null,
+    dealerGameId: game?.game_type === 'cribbage' ? game.current_game_uuid ?? null : null,
+    roundId: cribbageTerminalRoundForHold?.id ?? null,
+    handNumber: cribbageTerminalRoundForHold?.hand_number ?? game?.total_hands ?? null,
+    terminalResultPresent: Boolean(game?.last_round_result),
+  };
+  cribbageLiveTerminalScopeRef.current = advanceLiveTerminalPresentationScope(
+    cribbageLiveTerminalScopeRef.current,
+    cribbageTerminalHoldObservation,
+  );
+  const cribbageLastHandPresentationPending =
+    !sessionEndedTableAdmitted &&
+    shouldHoldLiveTerminalPresentation(
+      cribbageLiveTerminalScopeRef.current,
+      cribbageTerminalHoldObservation,
     );
 
   // Mirror authoritative terminal facts into a ref so completion callbacks
@@ -5556,7 +5597,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Holm LAST HAND: the hold is owned by this route (see
     // holmLastHandPresentationPending) precisely because the gameplay subtree
     // that used to publish it is removed by the same `session_ended` snapshot.
-    if (terminalPresentationActive || holmLastHandPresentationPending) return;
+    if (
+      terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      cribbageLastHandPresentationPending
+    ) return;
     // Transient Session Ended table: this client stayed through the live
     // terminal presentation, so navigation is now user-owned (Back to Lobby).
     // Non-admitted clients (fresh mount / reconnect) keep direct-to-lobby.
@@ -5586,7 +5631,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, sessionEndedTableAdmitted]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, cribbageLastHandPresentationPending, sessionEndedTableAdmitted]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -14027,7 +14072,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `session_ended` consults it. No status rewrite, no timer, no
   // duplicate surface.
   const _terminalPresentationHold =
-    (terminalPresentationActive || holmLastHandPresentationPending) &&
+    (
+      terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      cribbageLastHandPresentationPending
+    ) &&
     (game.status as string) === 'session_ended';
   // Shared SESSION ENDED TABLE PHASE (client-local, read-only). Structurally
   // like Waiting: same persistent shell, same felt, same seat ring, HUD/tab
@@ -14040,7 +14089,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     sessionEndedTableAdmitted &&
     (game.status as string) === 'session_ended' &&
     !terminalPresentationActive &&
-    !holmLastHandPresentationPending;
+    !holmLastHandPresentationPending &&
+    !cribbageLastHandPresentationPending;
 
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into

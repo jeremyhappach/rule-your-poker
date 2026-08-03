@@ -147,7 +147,12 @@ reset transient/presentation state when those identities change.
   The RPC owns the result claim, server-derived payout, chips, round completion,
   snapshots, terminal disposition, and LAST HAND session financials in one
   transaction. `CribbageMobileGameTable.tsx` observes/replays settlement and
-  owns presentation only. Discard RPC
+  owns presentation only. `Game.tsx` and
+  `src/lib/canonicalShell/liveTerminalPresentationHold.ts` own the exact-scope,
+  same-mount hold that keeps the table admitted when atomic settlement reaches
+  `session_ended` before the child can publish terminal animation liveness; a
+  fresh terminal mount has no latch and follows the direct-to-lobby path.
+  Discard RPC
   `cribbage_apply_discard` is defined by
   `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
   `cribbage_create_next_hand` is defined by
@@ -156,8 +161,10 @@ reset transient/presentation state when those identities change.
   Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
   render invariant tests under `src/components/` and `src/lib/cribbage/`,
   plus `cribbageProgress.test.ts`; `cribbageSettleGame.test.ts` covers the
-  identity-only client RPC boundary and replay/error result handling. Direct
-  SQL behavior still requires migration/deployment proof.
+  identity-only client RPC boundary and replay/error result handling, and
+  `liveTerminalPresentationHold.test.ts` covers live-versus-fresh terminal
+  admission identity. Direct SQL behavior still requires migration/deployment
+  proof.
 
 ### Gin Rummy
 
