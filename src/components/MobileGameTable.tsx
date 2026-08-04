@@ -12696,9 +12696,14 @@ export const MobileGameTable = ({
           // Sticky alone (HCI-matched, non-empty cards) keeps the stage
           // mounted through celebration; do not additionally gate on
           // cachedChuckyActive.
-          let chuckyVisible =
+          // In solo-vs-Chucky, the lone player's tabled cards establish the
+          // showdown before Chucky's stage (including the devil avatar) may
+          // appear. Multi-player Chucky tiebreak presentation is unchanged.
+          const chuckySoloStageReady = !isSoloVsChucky || lonePlayerVisible;
+          let chuckyVisible = chuckySoloStageReady && (
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
-            (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0);
+            (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0)
+          );
           let chuckyTotalVisibleForRender = chuckyCardsForRender?.length ?? 0;
           const eligibleCachedRevealed = cachedChuckySourceEligible ? cachedChuckyCardsRevealed : 0;
           const eligibleStickyRevealed = stickyChuckySourceEligible
