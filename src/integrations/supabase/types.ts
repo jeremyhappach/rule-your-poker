@@ -3426,6 +3426,15 @@ export type Database = {
         }
         Returns: Json
       }
+      three_five_seven_settle_game: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_round_id: string
+        }
+        Returns: Json
+      }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
       yahtzee_settle_game: {

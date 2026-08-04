@@ -1688,7 +1688,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const liveTerminalGameType =
     game?.game_type === 'cribbage' ||
     game?.game_type === 'gin-rummy' ||
-    game?.game_type === 'yahtzee'
+    game?.game_type === 'yahtzee' ||
+    game?.game_type === '3-5-7' ||
+    game?.game_type === '3-5-7-game' ||
+    game?.game_type === '357'
       ? game.game_type
       : null;
   const terminalRoundForHold = liveTerminalGameType
@@ -12461,7 +12464,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Fetch fresh game status from DB - React state may be stale
     const { data: freshGame, error: fetchError } = await supabase
       .from('games')
-      .select('status, current_game_uuid, current_round, game_over_at, last_round_result')
+      .select('status, game_type, current_game_uuid, current_round, total_hands, game_over_at, last_round_result')
       .eq('id', gameId)
       .single();
 
@@ -12487,6 +12490,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           ? `status-is-${freshGame.status}-not-game_over`
           : 'status-is-game_over-or-null',
     });
+
+    if (!fetchError && freshGame?.status === 'session_ended') {
+      markTerminalPresentationComplete(
+        `${freshGame.game_type}|winseq|${gameId}|${freshGame.current_game_uuid ?? 'no'}|${freshGame.total_hands ?? 'no'}`,
+      );
+      await fetchGameData();
+      return;
+    }
 
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
       emit357GameOverCompleteDiag('returned', {

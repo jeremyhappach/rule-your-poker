@@ -314,6 +314,23 @@ export async function recordGameResult(
   return { error: null };
 }
 
+async function settleThreeFiveSevenTerminal(
+  gameId: string,
+  roundId: string,
+  dealerGameId: string,
+  handNumber: number,
+) {
+  const { data, error } = await supabase.rpc('three_five_seven_settle_game', {
+    p_game_id: gameId,
+    p_round_id: roundId,
+    p_dealer_game_id: dealerGameId,
+    p_hand_number: handNumber,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
   
@@ -949,6 +966,24 @@ export async function startRound(gameId: string, roundNumber: number) {
           }
 
           try {
+            // The database owns the terminal claim, payout, snapshots, and
+            // lifecycle disposition. This can safely race with another client.
+            const settlement = await settleThreeFiveSevenTerminal(
+              gameId,
+              round.id,
+              currentGameUuid,
+              handNumber,
+            );
+            await trace357InstantWin('commit.game_over', gameId, {
+              roundId: round.id,
+              handNumber,
+              dealerGameId: currentGameUuid,
+              winnerPlayerId: player?.id ?? null,
+              winnerUsername: username,
+              settlement,
+            });
+            return round;
+
             // Mark round completed and set sweep message.
             await __withWartimeDbMutationCorrelation({
               label: 'instant_win.rounds_completed',
@@ -1901,7 +1936,7 @@ export async function autoFoldUndecided(gameId: string, opts?: {
 
 
 // Centralized game-over handler to ensure consistency
-async function handleGameOver(
+async function handleGameOverLegacy(
   gameId: string,
   winnerId: string,
   winnerUsername: string,
@@ -2072,6 +2107,35 @@ async function handleGameOver(
     gameOverAt: gameOverUpdate?.[0]?.game_over_at,
     pot: gameOverUpdate?.[0]?.pot
   });
+}
+
+// Terminal financial state is owned by the replay-safe RPC. The retained
+// helper above is no longer called by either active 3-5-7 terminal path.
+async function handleGameOver(
+  gameId: string,
+  _winnerId: string,
+  _winnerUsername: string,
+  _winnerLegs: number,
+  _allPlayers: any[],
+  _currentPot: number,
+  _legValue: number,
+  _legsToWin: number,
+  _currentDealerPosition: number,
+  currentGameUuid?: string | null,
+  roundId?: string | null,
+  handNumber?: number | null,
+) {
+  if (!currentGameUuid || !roundId || !handNumber) {
+    throw new Error('three_five_seven_settle_game requires round, dealer-game, and hand identity');
+  }
+
+  const settlement = await settleThreeFiveSevenTerminal(
+    gameId,
+    roundId,
+    currentGameUuid,
+    handNumber,
+  );
+  console.log('[HANDLE GAME OVER] Authoritative terminal settlement complete', settlement);
 }
 
 export async function endRound(gameId: string) {
@@ -2288,6 +2352,14 @@ export async function endRound(gameId: string) {
         if (player) {
           const cards = pc.cards as unknown as Card[];
           if (has357Hand(cards)) {
+            await settleThreeFiveSevenTerminal(
+              gameId,
+              round.id,
+              currentGameUuid,
+              handNumber,
+            );
+            return;
+
             const username = player.is_bot 
               ? getBotAlias(allPlayers, player.user_id) 
               : (player.profiles?.username || `Player ${player.position}`);
@@ -2454,6 +2526,22 @@ export async function endRound(gameId: string) {
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
       console.log('[SOLO WIN] Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
+
+      await handleGameOver(
+        gameId,
+        soloStayer.id,
+        username,
+        newLegCount,
+        allPlayers,
+        game.pot || 0,
+        legValue,
+        legsToWin,
+        game.dealer_position || 1,
+        currentGameUuid,
+        round.id,
+        handNumber,
+      );
+      return;
       
       // Set result message and awaiting state so user sees the leg win
       const nextRound = currentRound < 3 ? currentRound + 1 : 1;
@@ -2471,6 +2559,22 @@ export async function endRound(gameId: string) {
         .from('players')
         .select('*, profiles(username)')
         .eq('game_id', gameId);
+
+      await handleGameOver(
+        gameId,
+        soloStayer.id,
+        username,
+        newLegCount,
+        freshPlayers || allPlayers,
+        game.pot || 0,
+        legValue,
+        legsToWin,
+        game.dealer_position || 1,
+        currentGameUuid,
+        round.id,
+        handNumber,
+      );
+      return;
       
       // Wait 4 seconds to show "won a leg" message, then transition to game over
       setTimeout(async () => {
