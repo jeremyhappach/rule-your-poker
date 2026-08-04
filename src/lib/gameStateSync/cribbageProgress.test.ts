@@ -15,7 +15,7 @@ function stubState(overrides: Partial<CribbageStateForProgress> & { handNumber?:
 
 describe('getCribbageProgress', () => {
   it('null state returns zero vector', () => {
-    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   // ── Phase E prereq: matchCompleteLatch top-bit ─────────────────
@@ -66,8 +66,9 @@ describe('getCribbageProgress', () => {
   it('legacy (no cohort/resolved fields) snapshot is treated as resolved', () => {
     const legacy = stubState({ phase: 'dealing' });
     const vec = getCribbageProgress(legacy);
-    // [matchLatch=0, hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
-    expect(vec).toEqual([0, 1, 0, 1, 0, 0]);
+    // [matchLatch=0, hand=1, cohort=0, resolved=1, phaseOrd=0,
+    //  peggingSequence=0, countingProgress=0, sub=0]
+    expect(vec).toEqual([0, 1, 0, 1, 0, 0, 0, 0]);
   });
 
   it('discarding → cutting is forward', () => {
@@ -125,6 +126,34 @@ describe('getCribbageProgress', () => {
       playerStates: { p1: { pegScore: 12 }, p2: { pegScore: 8 } },
     });
     expect(compareProgress(getCribbageProgress(a), getCribbageProgress(b))).toBe(1);
+  });
+
+  it('pegging event sequence makes an otherwise equal peer snapshot forward', () => {
+    const before = stubState({
+      phase: 'pegging',
+      pegging: { playedCards: new Array(5), eventSequence: 8 },
+      playerStates: { p1: { pegScore: 10 }, p2: { pegScore: 8 } },
+    });
+    const after = stubState({
+      phase: 'pegging',
+      pegging: { playedCards: new Array(5), eventSequence: 9 },
+      playerStates: { p1: { pegScore: 10 }, p2: { pegScore: 8 } },
+    });
+    expect(compareProgress(getCribbageProgress(before), getCribbageProgress(after))).toBe(1);
+  });
+
+  it('newer persisted counting beat rejects an older beat', () => {
+    const later = stubState({
+      phase: 'counting',
+      countingTargetIndex: 1,
+      countingBeatIndex: 2,
+    });
+    const earlier = stubState({
+      phase: 'counting',
+      countingTargetIndex: 1,
+      countingBeatIndex: 1,
+    });
+    expect(compareProgress(getCribbageProgress(later), getCribbageProgress(earlier))).toBe(-1);
   });
 
   // ── Hand boundary tests ──────────────────────────────────────

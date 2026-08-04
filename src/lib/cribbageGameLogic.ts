@@ -14,6 +14,7 @@ import {
   DISCARD_COUNT 
 } from './cribbageTypes';
 import { evaluateHand, evaluatePegging, checkHisHeels, getCardPointValue, hasPlayableCard } from './cribbageScoring';
+import { getHandScoringCombos, getTotalFromCombos } from './cribbageScoringDetails';
 import type { PeggingPoints } from './cribbageTypes';
 import { generateUUID } from '@/lib/uuid';
 import { getActiveHarnessCached } from '@/lib/debugHarness/runtimeCache';
@@ -178,6 +179,7 @@ export function initializeCribbageGame(
     pegging: {
       playedCards: [],
       currentCount: 0,
+      eventSequence: 0,
       currentTurnPlayerId: turnOrder[0],
       lastToPlay: null,
       goCalledBy: [],
@@ -502,6 +504,7 @@ export function playPeggingCard(
       ...state.pegging,
       playedCards: newPlayedCards,
       currentCount: newCount,
+      eventSequence: (state.pegging.eventSequence ?? 0) + 1,
       lastToPlay: playerId,
       goCalledBy: newCount === 31 ? [] : state.pegging.goCalledBy, // reset on 31
       // Fresh play consumes any pending Go bubble from the prior run.
@@ -575,6 +578,7 @@ export function callGo(state: CribbageState, playerId: string): CribbageState {
     },
     pegging: {
       ...state.pegging,
+      eventSequence: (state.pegging.eventSequence ?? 0) + 1,
       goCalledBy: newGoCalledBy,
     },
   };
@@ -801,12 +805,14 @@ function advanceToCounting(state: CribbageState): CribbageState {
   // the animation completes (or at the exact win moment) to prevent score "jump" spoilers.
 
   const playerHandScores: Record<string, ReturnType<typeof evaluateHand>> = {};
+  const playerHands: Record<string, CribbageCard[]> = {};
 
   for (const playerId of state.turnOrder) {
     // Reconstruct the 4-card post-discard hand from played pegging cards
     const originalHand = state.pegging.playedCards
       .filter(pc => pc.playerId === playerId)
       .map(pc => pc.card);
+    playerHands[playerId] = originalHand;
     playerHandScores[playerId] = evaluateHand(originalHand, state.cutCard, false);
   }
 
@@ -815,6 +821,33 @@ function advanceToCounting(state: CribbageState): CribbageState {
     .map(pc => pc.card);
   const dealerHandScore = evaluateHand(dealerHand, state.cutCard, false);
   const cribScore = evaluateHand(state.crib, state.cutCard, true);
+  const baselineScores = Object.fromEntries(
+    Object.entries(state.playerStates).map(([playerId, playerState]) => [
+      playerId,
+      playerState.pegScore ?? 0,
+    ]),
+  );
+  const buildPlanTarget = (
+    playerId: string,
+    type: 'hand' | 'crib',
+    hand: CribbageCard[],
+  ) => {
+    const combos = getHandScoringCombos(hand, state.cutCard, type === 'crib');
+    const comboPoints = combos.map(combo => combo.points);
+    return {
+      playerId,
+      type,
+      comboPoints,
+      totalPoints: getTotalFromCombos(combos),
+    };
+  };
+  const countingPlanTargets = [
+    ...state.turnOrder
+      .filter(playerId => playerId !== state.dealerPlayerId)
+      .map(playerId => buildPlanTarget(playerId, 'hand', playerHands[playerId] ?? [])),
+    buildPlanTarget(state.dealerPlayerId, 'hand', dealerHand),
+    buildPlanTarget(state.dealerPlayerId, 'crib', state.crib),
+  ];
 
   return {
     ...state,
@@ -825,6 +858,11 @@ function advanceToCounting(state: CribbageState): CribbageState {
     countingHandKey: null, // Set by the UI layer with dealerGameId:handNumber
     countingTargetIndex: 0,
     countingBeatIndex: -1,
+    countingPlan: {
+      version: 1,
+      baselineScores,
+      targets: countingPlanTargets,
+    },
     // Clear any stale winner fields; counting determines the winner via UI progression.
     winnerPlayerId: null,
     loserScore: null,
@@ -867,12 +905,14 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
   const dealerId = state.dealerPlayerId;
   const { playerHandScores, dealerHandScore, cribScore } = state.lastHandCount;
 
+  const plannedTotals = getPlannedCountingTotals(state);
   const nextPlayerStates: CribbageState['playerStates'] = { ...state.playerStates };
 
   for (const [playerId, ps] of Object.entries(state.playerStates)) {
     const isDealer = playerId === dealerId;
-    const handTotal = (playerHandScores[playerId]?.total ?? (isDealer ? dealerHandScore.total : 0)) || 0;
-    const cribTotal = isDealer ? (cribScore?.total ?? 0) : 0;
+    const handTotal = plannedTotals?.[playerId]
+      ?? ((playerHandScores[playerId]?.total ?? (isDealer ? dealerHandScore.total : 0)) || 0);
+    const cribTotal = plannedTotals ? 0 : (isDealer ? (cribScore?.total ?? 0) : 0);
     nextPlayerStates[playerId] = {
       ...ps,
       pegScore: (ps.pegScore ?? 0) + handTotal + cribTotal,
@@ -928,6 +968,25 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
     ...baseUpdatedState,
     lastHandCount: null,
   };
+}
+
+function getPlannedCountingTotals(state: CribbageState): Record<string, number> | null {
+  const plan = state.countingPlan;
+  if (!plan || plan.version !== 1) return null;
+
+  const totals: Record<string, number> = Object.fromEntries(
+    Object.keys(state.playerStates).map(playerId => [playerId, 0]),
+  );
+
+  for (const target of plan.targets) {
+    if (!Object.prototype.hasOwnProperty.call(totals, target.playerId)) return null;
+    if (!Array.isArray(target.comboPoints) || !target.comboPoints.every(Number.isFinite)) return null;
+    const summedPoints = target.comboPoints.reduce((total, points) => total + points, 0);
+    if (!Number.isFinite(target.totalPoints) || summedPoints !== target.totalPoints) return null;
+    totals[target.playerId] += summedPoints;
+  }
+
+  return totals;
 }
 
 /**

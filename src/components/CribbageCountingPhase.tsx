@@ -575,7 +575,24 @@ export const CribbageCountingPhase = ({
   const currentTarget = countingTargets[currentTargetIndex];
   const targetSummaries = useMemo(() => {
     return countingTargets.map((target, index) => {
-      const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
+      const calculatedCombos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
+      const plannedTarget = cribbageState.countingPlan?.version === 1
+        ? cribbageState.countingPlan.targets[index]
+        : null;
+      const plannedPoints = plannedTarget &&
+        plannedTarget.playerId === target.playerId &&
+        plannedTarget.type === (target.type === 'crib' ? 'crib' : 'hand') &&
+        plannedTarget.comboPoints.length === calculatedCombos.length &&
+        plannedTarget.comboPoints.every(Number.isFinite) &&
+        plannedTarget.comboPoints.reduce((total, points) => total + points, 0) === plannedTarget.totalPoints
+        ? plannedTarget.comboPoints
+        : null;
+      const combos = plannedPoints
+        ? calculatedCombos.map((combo, comboIndex) => ({
+            ...combo,
+            points: plannedPoints[comboIndex],
+          }))
+        : calculatedCombos;
       return {
         ...target,
         targetIndex: index,
@@ -583,7 +600,7 @@ export const CribbageCountingPhase = ({
         totalPoints: getTotalFromCombos(combos),
       };
     });
-  }, [countingTargets, cribbageState.cutCard]);
+  }, [countingTargets, cribbageState.countingPlan, cribbageState.cutCard]);
 
   const currentCombos = targetSummaries[currentTargetIndex]?.combos ?? [];
 

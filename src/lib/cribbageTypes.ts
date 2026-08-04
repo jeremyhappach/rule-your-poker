@@ -17,6 +17,12 @@ export interface CribbagePlayerState {
 export interface PeggingState {
   playedCards: { playerId: string; card: CribbageCard }[];
   currentCount: number; // Running count (0-31)
+  /**
+   * Monotonic identity for every authoritative pegging action. It advances
+   * for a played card and for a declared Go, so a delayed snapshot can never
+   * replace a newer pegging score with an earlier one.
+   */
+  eventSequence?: number;
   currentTurnPlayerId: string | null;
   lastToPlay: string | null; // For awarding "go" and "last card" points
   goCalledBy: string[]; // Players who have called "go" this count
@@ -56,6 +62,24 @@ export interface CribbageHandCountSummary {
   playerHandScores: Record<string, HandScore>;
   dealerHandScore: HandScore;
   cribScore: HandScore;
+}
+
+/**
+ * Immutable score sequence committed with the transition into counting.
+ * `pegScore` remains the settled match score; this plan is the authoritative
+ * source for the incremental counting presentation until settlement.
+ */
+export interface CribbageCountingPlanTarget {
+  playerId: string;
+  type: 'hand' | 'crib';
+  comboPoints: number[];
+  totalPoints: number;
+}
+
+export interface CribbageCountingPlan {
+  version: 1;
+  baselineScores: Record<string, number>;
+  targets: CribbageCountingPlanTarget[];
 }
 
 export type CribbagePhase = 
@@ -99,6 +123,8 @@ export interface CribbageState {
   /** Index of the current scoring combo within the active target (-1=pre-combo/entering).
    *  Persisted during counting for reconnect beat-level resume. */
   countingBeatIndex?: number | null;
+  /** Immutable, database-persisted source for counting-phase score presentation. */
+  countingPlan?: CribbageCountingPlan | null;
   // Skunk tracking
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk

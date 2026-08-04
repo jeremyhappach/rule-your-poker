@@ -1,8 +1,9 @@
 /**
  * Cribbage progress vector extractor for the anti-regression framework.
  *
- * Vector (Phase E-prereq, 6-dim):
- *   [matchCompleteLatch, handNumber, dealerSelectionCohort, dealerResolved, phaseOrdinal, subPhase]
+ * Vector (Phase E-prereq, 8-dim):
+ *   [matchCompleteLatch, handNumber, dealerSelectionCohort, dealerResolved,
+ *    phaseOrdinal, peggingEventSequence, countingProgress, subPhase]
  *
  *   1. matchCompleteLatch — terminal latch. 0 until phase first reaches
  *      'complete', 1 thereafter. Top-bit guards reconnecting clients
@@ -40,6 +41,7 @@ export interface CribbageStateForProgress {
   phase: CribbagePhase;
   pegging: {
     playedCards: unknown[];
+    eventSequence?: number;
   };
   crib: unknown[];
   playerStates: Record<string, {
@@ -54,6 +56,8 @@ export interface CribbageStateForProgress {
   dealerResolved?: boolean;
   /** Phase E prereq: terminal latch — true once match has completed. */
   matchCompleteLatch?: boolean;
+  countingTargetIndex?: number | null;
+  countingBeatIndex?: number | null;
 }
 
 /**
@@ -63,7 +67,7 @@ export function getCribbageProgress(
   state: CribbageStateForProgress | null,
   handNumber?: number,
 ): ProgressVector {
-  if (!state) return [0, 0, 0, 0, 0, 0];
+  if (!state) return [0, 0, 0, 0, 0, 0, 0, 0];
 
   const handNum = handNumber ?? (state as any).handNumber ?? 1;
   const cohort = state.dealerSelectionCohort ?? 0;
@@ -80,6 +84,14 @@ export function getCribbageProgress(
       : 0;
 
   const playedCards = state.pegging?.playedCards?.length ?? 0;
+  const peggingEventSequence = state.pegging?.eventSequence ?? 0;
+  const countingTargetIndex = state.phase === 'counting'
+    ? (state.countingTargetIndex ?? 0)
+    : 0;
+  const countingBeatIndex = state.phase === 'counting'
+    ? (state.countingBeatIndex ?? -1)
+    : -1;
+  const countingProgress = (countingTargetIndex * 1000) + (countingBeatIndex + 1);
   const cribSize = state.crib?.length ?? 0;
 
   let totalDiscarded = 0;
@@ -91,7 +103,16 @@ export function getCribbageProgress(
 
   const subPhase = playedCards * 1000 + totalDiscarded * 100 + cribSize * 10 + totalScore;
 
-  return [matchLatch, handNum, cohort, resolved, phaseOrd, subPhase];
+  return [
+    matchLatch,
+    handNum,
+    cohort,
+    resolved,
+    phaseOrd,
+    peggingEventSequence,
+    countingProgress,
+    subPhase,
+  ];
 }
 
 /** Convenience typed version for the sync framework config. */

@@ -1878,7 +1878,8 @@ export const CribbageMobileGameTable = ({
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
   const [countingTargetLabel, setCountingTargetLabel] = useState<string | null>(null);
   
-  // Counting phase animated scores - peg board reads these instead of final scores
+  // Counting presentation scores derive from the immutable plan committed with
+  // the counting transition; the peg board never invents combo values locally.
   const [countingScoreOverrides, setCountingScoreOverrides] = useState<Record<string, number> | null>(null);
 
   // IMPORTANT: Keep a stable baseline for the counting animation.
@@ -3454,10 +3455,20 @@ export const CribbageMobileGameTable = ({
     // the cached and authoritative scores, causing the old code to lock in the stale baseline.
     // The authoritative pegScore is ALWAYS correct at this point (confirmed by instrumentation).
     //
-    // On reconnect, reverse-engineer the baseline since pegScore may already include counting points.
-    const rawBaselineScores = isReconnect
-      ? calculateCountingBaselineScores(state)
-      : stateScores;
+    const plannedBaseline = state.countingPlan?.version === 1
+      ? state.countingPlan.baselineScores
+      : null;
+    const hasCompletePlannedBaseline = plannedBaseline !== null &&
+      Object.keys(stateScores).every(playerId => Number.isFinite(plannedBaseline[playerId]));
+
+    // The plan is committed in the same write that enters counting. It is the
+    // canonical pre-count score baseline for every client, including reconnects.
+    // Legacy states retain the existing direct/reconstructed fallback.
+    const rawBaselineScores: Record<string, number> = hasCompletePlannedBaseline && plannedBaseline
+      ? plannedBaseline
+      : isReconnect
+        ? calculateCountingBaselineScores(state)
+        : stateScores;
 
     const baselineScores: Record<string, number> = {};
     for (const playerId of Object.keys(stateScores)) {
@@ -3466,10 +3477,12 @@ export const CribbageMobileGameTable = ({
         lastPeggingScoresRef.current?.[playerId] ?? authoritativeScore;
       const rawBaseline =
         rawBaselineScores[playerId] ?? authoritativeScore;
-      baselineScores[playerId] = Math.min(
-        authoritativeScore,
-        Math.max(rawBaseline, previousRailScore),
-      );
+      baselineScores[playerId] = hasCompletePlannedBaseline
+        ? rawBaseline
+        : Math.min(
+            authoritativeScore,
+            Math.max(rawBaseline, previousRailScore),
+          );
     }
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
@@ -3563,11 +3576,17 @@ export const CribbageMobileGameTable = ({
       });
       setCountingDelayActive(false);
     } else {
-      // Normal flow: 2-second delay to let final pegging announcement display
-      setCountingDelayActive(true);
+      // Align every connected client to the same database committed start
+      // anchor instead of beginning a full delay when it receives the state late.
+      const elapsedMs = countingStartedAt
+        ? Math.max(0, Date.now() - new Date(countingStartedAt).getTime())
+        : 0;
+      const remainingDelayMs = Math.max(0, 2000 - elapsedMs);
+      setCountingDelayActive(remainingDelayMs > 0);
+      if (remainingDelayMs === 0) return;
       const timer = setTimeout(() => {
         setCountingDelayActive(false);
-      }, 2000);
+      }, remainingDelayMs);
 
       return () => {
         clearTimeout(timer);
