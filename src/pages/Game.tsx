@@ -13754,12 +13754,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       } else {
         // Active game in progress - defer to end-of-hand
-        await supabase
-          .from('games')
-          .update({
-            pending_session_end: true,
-          })
-          .eq('id', gameId);
+        if (game?.game_type === 'holm' || game?.game_type === 'holm-game') {
+          // Holm's final decision and terminal settlement are server-owned. This
+          // request takes the same game-row lock so LAST HAND cannot be lost if
+          // a browser closes while the final decision is resolving.
+          const { data, error } = await supabase.rpc('holm_request_session_end', {
+            p_game_id: gameId,
+          });
+
+          if (error || !(data as { request_recorded?: boolean } | null)?.request_recorded) {
+            throw error ?? new Error('Holm LAST HAND request was not recorded');
+          }
+        } else {
+          await supabase
+            .from('games')
+            .update({
+              pending_session_end: true,
+            })
+            .eq('id', gameId);
+        }
       }
 
       setShowEndSessionDialog(false);
