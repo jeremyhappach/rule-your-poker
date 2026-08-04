@@ -28,6 +28,18 @@
 - Perpetual Heels harness is gated and visibly identified.
 - Cribbage scoring announcement timing was reported stable.
 
+## Yahtzee
+
+- Atomic Yahtzee settlement and connected-client terminal presentation passed
+  the published two-human terminal-disconnect smoke on 2026-08-03. Preserve
+  `public.yahtzee_settle_game` as the replay-safe owner of result, fixed-stake
+  payout, snapshots, terminal disposition, and real-money ledger output; the
+  client may retry settlement and retain presentation, but may not own those
+  writes.
+- The winner chip did not bounce during the accepted smoke's celebration. This
+  is a queued presentation-only defect; do not reopen the accepted settlement
+  or terminal-hold behavior to correct it.
+
 ## Holm
 
 - `holm_settle_hand` owns known terminal branches.

@@ -121,8 +121,10 @@ connected-client terminal hold are implemented; migration
 `20260804000259_fix_yahtzee_settlement_replay.sql` are installed on the owned
 production database. Final human/bot score writes now make terminal state
 durable before their local highlight, and live presentation retains departed
-round participants. It is awaiting published two-human runtime smoke before
-becoming a stable checkpoint.
+round participants. Published two-human terminal-disconnect smoke passed on
+2026-08-03, making atomic settlement and the connected-client terminal hold a
+stable checkpoint. The separate missing winner-chip bounce is queued below as
+a presentation defect.
 
 Remaining game-by-game delivery order after Yahtzee acceptance:
 
@@ -320,6 +322,16 @@ Audit only with a current repro:
 - duplicate chip stack;
 - stale title/stakes;
 - Horses transition delay.
+
+### 13B. Yahtzee winner chip does not bounce
+
+Status: Queued; reported by production two-human terminal-disconnect smoke on
+2026-08-03.
+
+The remaining client saw the correct winner sequence, Session Ended flow, and
+exactly-once settlement, but the winner chip did not bounce during celebration.
+Treat this as presentation-only: preserve the accepted atomic settlement and
+live-terminal hold while restoring the animation.
 
 ### 13A. Yahtzee static music assets
 

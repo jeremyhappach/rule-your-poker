@@ -265,7 +265,11 @@ leaves. Production rollback proofs cover legacy replay plus synthetic tie,
 later-hand identity, LAST HAND and ordinary-win settlement, duplicate callers,
 fixed-stake zero-sum payout, snapshot overwrite, authorization, and one
 SessionResult per human. All synthetic rows rolled back to zero. Published
-two-human runtime smoke is the remaining acceptance evidence.
+two-human terminal-disconnect smoke passed on 2026-08-03: the remaining client
+retained the table through terminal presentation, settlement completed once,
+and the session ended correctly. The winner chip did not bounce during
+celebration; that isolated presentation defect is queued separately and does
+not reopen settlement acceptance.
 
 ## Frozen Lovable cutover scope
 
