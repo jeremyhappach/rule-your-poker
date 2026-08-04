@@ -129,10 +129,9 @@ a presentation defect.
 Remaining game-by-game delivery order after Yahtzee acceptance:
 
 1. 3-5-7 normal terminal.
-2. Gin.
-3. Horses + SCC as one shared dice-resolution delivery with separate rule
+2. Horses + SCC as one shared dice-resolution delivery with separate rule
    validation and acceptance for each game.
-4. 3-5-7 instant-win/initial-Round-1 residual seam.
+3. 3-5-7 instant-win/initial-Round-1 residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
@@ -163,10 +162,11 @@ Source-proven ingestion findings:
 - Normal 3-5-7 terminal settlement remains client-owned:
   `src/lib/gameLogic.ts:handleGameOver` claims terminal status before separate
   award, result, snapshot, reset, and disposition writes.
-- Gin has the same partial-write failure class plus an existing dual-purpose
-  hand-history/terminal-result seam. Define and dedupe the final hand-history
-  row explicitly before moving its financial result into one transaction;
-  configurable bonus discrepancies remain separate rule work.
+- Gin terminal settlement is now `public.gin_rummy_settle_game`: it atomically
+  writes the final hand-history row and terminal claim, moves chips, snapshots
+  post-payout balances, and disposes the game/session. Published two-human
+  disconnect smoke remains before it becomes a stable checkpoint. Configurable
+  bonus discrepancies remain separate rule work.
 - Horses and SCC share one controller and settlement sequence, so migrate their
   completed-round resolver together but retain explicit game-type winner
   derivation and separate tests. Their transaction must handle both sole-

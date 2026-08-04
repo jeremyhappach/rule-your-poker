@@ -191,7 +191,7 @@ contradictions.
 | Persistence/lifecycle | `src/lib/ginRummyRoundLogic.ts:startGinRummyRound`, `startNextGinRummyHand`, `updateGinRummyState`; controller `src/components/GinRummyGameTable.tsx`. |
 | Bots | `src/lib/ginRummyBotLogic.ts:shouldBotTakeFirstDraw`, `botChooseDrawSource`, `botChooseDiscard`, `botShouldKnock`, and `botGetLayOffs`. |
 | State acceptance | `src/lib/gameStateSync/ginRummyProgress.ts:getGinRummyProgress`. |
-| Settlement | `src/lib/ginRummyRoundLogic.ts:recordGinRummyHandResult` and `endGinRummyGame`; no game-specific settlement RPC. |
+| Settlement | Ordinary hand history: `src/lib/ginRummyRoundLogic.ts:recordGinRummyHandResult`; terminal settlement: `src/lib/ginRummySettleGame.ts:settleGinRummyGame` and `public.gin_rummy_settle_game` in `20260804010000_atomic_gin_terminal_settlement.sql`. |
 
 ### Implemented rules
 
@@ -219,11 +219,11 @@ contradictions.
   match scores and the opposite dealer.
 - Chips move only at match end. The loser pays and winner receives
   `ante + (winnerScore - loserScore) * per_point_value`.
-- `recordGinRummyHandResult` writes hand history and a snapshot without moving
-  chips. `endGinRummyGame` claims the round as completed, then separately
-  transfers chips, writes `game_over`, inserts the result, and snapshots.
-  Its result identity is the claimed `dealer_game_id + hand_number`; the final
-  snapshot currently uses `hand_number + 1`.
+- `recordGinRummyHandResult` remains the ordinary nonterminal hand-history
+  writer. On a terminal match, `gin_rummy_settle_game` writes the final hand
+  history and durable terminal claim, moves the derived fixed match payout,
+  snapshots post-payout balances at the exact hand identity, and writes
+  `game_over` or `session_ended` in one transaction.
 - Shared `Game.tsx:handleGameOverComplete` handles run-it-back/next dealer or
   consumes a pending session end.
 - Bots evaluate whether to accept the initial upcard, choose the draw source
@@ -238,12 +238,13 @@ contradictions.
 - Per-hand history records `player_chip_changes` of plus/minus the ante and
   `pot_won=ante` even though the same function explicitly performs no chip
   transfer. Ledger semantics therefore disagree with balances.
-- The comment calling the two chip RPC calls a single transaction is false.
-  Round claim, loser debit, winner credit, status, result, and snapshot are
-  separate operations with an arbitrary 200 ms wait before the snapshot.
-- Bot driving is mounted-client work guarded primarily by local processing
-  state and fresh reads; no Gin-specific durable controller claim or
-  settlement RPC exists.
+- The terminal partial-write seam is removed by the settlement RPC. Gin still
+  relies on persisted client game-state data for score/knock provenance; the
+  RPC validates terminal structure and derives payout from persisted state and
+  dealer-game configuration.
+- Bot driving remains mounted-client work guarded primarily by local processing
+  state and fresh reads; terminal settlement no longer relies on that client
+  ownership.
 
 ## Yahtzee
 

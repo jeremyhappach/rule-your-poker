@@ -182,8 +182,11 @@ reset transient/presentation state when those identities change.
   `fetchGinRummyState`.
 - Bots/scoring: `ginRummyBotLogic.ts`; `ginRummyScoring.ts:findOptimalMelds`,
   `scoreKnock`, `canKnock`, and `hasGin`.
-- Settlement/terminal: `ginRummyRoundLogic.ts:recordGinRummyHandResult` and
-  `endGinRummyGame`; there is no Gin-specific settlement RPC.
+- Settlement/terminal: ordinary hand history remains in
+  `ginRummyRoundLogic.ts:recordGinRummyHandResult`; terminal settlement is
+  `ginRummySettleGame.ts:settleGinRummyGame`, which submits immutable identity
+  to `public.gin_rummy_settle_game` in
+  `20260804010000_atomic_gin_terminal_settlement.sql`.
 - Focused tests: `ginRummyGameLogic.test.ts`,
   `ginRummyScoring.test.ts`, `ginRummyNonDealerNearKnock.test.ts`, Gin table
   knock/write/tab tests, Gin cards-tab tests, and `ginRummyProgress.test.ts`.

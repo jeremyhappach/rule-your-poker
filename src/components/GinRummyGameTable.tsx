@@ -56,8 +56,8 @@ import {
 import {
   startNextGinRummyHand,
   recordGinRummyHandResult,
-  endGinRummyGame,
 } from '@/lib/ginRummyRoundLogic';
+import { settleGinRummyGame } from '@/lib/ginRummySettleGame';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
@@ -382,6 +382,8 @@ interface GinRummyGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
+  onTerminalPresentationComplete?: (terminalIdentity: string) => void;
   bootstrapState?: GinRummyState | null;
   // Lifted mobile tab + chat compose ownership. When supplied by the
   // shell (Game.tsx), these become the single source of truth so the
@@ -410,6 +412,8 @@ export const GinRummyGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  onTerminalPresentationActiveChange,
+  onTerminalPresentationComplete,
   bootstrapState = null,
   activeTab: externalActiveTab,
   onActiveTabChange,
@@ -2367,9 +2371,21 @@ export const GinRummyGameTable = ({
           dealerGameId,
           handNumber,
         });
-        // Record hand result (history only, no chip transfer per-hand)
-        if (viewState.knockResult) {
+        const isTerminalMatch = Boolean(viewState.winnerPlayerId);
+        // Ordinary hands retain their existing history-only writer. Terminal
+        // hands are written by the settlement transaction below instead.
+        if (viewState.knockResult && !isTerminalMatch) {
           await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
+        }
+
+        if (isTerminalMatch) {
+          onTerminalPresentationActiveChange?.(true);
+          await settleGinRummyGame({
+            gameId,
+            roundId,
+            dealerGameId,
+            handNumber,
+          });
         }
 
         // ---- Canonical HAND-RESULT announcement ----
@@ -2530,14 +2546,17 @@ export const GinRummyGameTable = ({
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
 
-          // Wait for animation to play
+          // Settlement is already complete; this delay is presentation-only.
           await new Promise(resolve => setTimeout(resolve, 4500));
-          await endGinRummyGame(gameId, roundId, viewState);
           // Hard teardown of terminal UI before handing off — prevents the
           // chip-transfer overlay and any seat-projected terminal state from
           // bleeding into the next-game / dealer-setup surface.
           setStoredChipPositions(null);
           setChipAnimTriggerId(null);
+          onTerminalPresentationComplete?.(
+            `gin-rummy|winseq|${gameId}|${dealerGameId}|${handNumber}`,
+          );
+          onTerminalPresentationActiveChange?.(false);
           // Stale-scope guard: only fire the dealer-game transition if
           // we're still on the dealer-game that started this lifecycle.
           if (dealerGameIdAtStart === dealerGameId) {
@@ -2565,13 +2584,26 @@ export const GinRummyGameTable = ({
         }
       } catch (err) {
         console.error('[GIN-RUMMY] Hand completion error:', err);
+        if (viewState.winnerPlayerId) {
+          matchEndKeyRef.current = null;
+          onTerminalPresentationActiveChange?.(false);
+        }
       } finally {
         handCompletionInProgress.current = false;
       }
     };
 
     processCompletion();
-  }, [viewState?.phase, viewState?.winnerPlayerId, dealerGameId]);
+  }, [
+    viewState?.phase,
+    viewState?.winnerPlayerId,
+    dealerGameId,
+    gameId,
+    roundId,
+    handNumber,
+    onTerminalPresentationActiveChange,
+    onTerminalPresentationComplete,
+  ]);
 
 
 

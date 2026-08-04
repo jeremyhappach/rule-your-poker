@@ -1686,7 +1686,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // unmount the presentation owner. A fresh terminal mount never observed
   // `in_progress`, so it has no scope and still redirects to the lobby.
   const liveTerminalGameType =
-    game?.game_type === 'cribbage' || game?.game_type === 'yahtzee'
+    game?.game_type === 'cribbage' ||
+    game?.game_type === 'gin-rummy' ||
+    game?.game_type === 'yahtzee'
       ? game.game_type
       : null;
   const terminalRoundForHold = liveTerminalGameType
@@ -15289,7 +15291,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             game.game_type === 'cribbage' &&
             (game.status === 'game_over' || _terminalPresentationHold);
 
-          const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
+          const isGinRummyGameOver =
+            game.game_type === 'gin-rummy' &&
+            (game.status === 'game_over' || _terminalPresentationHold);
           const isTerminalSlotPresentation =
             game.status === 'game_over' ||
             !!game.game_over_at ||
@@ -15731,6 +15735,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   pot={potForDisplay}
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
+                  onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
+                  onTerminalPresentationComplete={markTerminalPresentationComplete}
                   bootstrapState={
                     ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null
                   }

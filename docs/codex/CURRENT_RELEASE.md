@@ -271,6 +271,23 @@ and the session ended correctly. The winner chip did not bounce during
 celebration; that isolated presentation defect is queued separately and does
 not reopen settlement acceptance.
 
+## Gin Rummy atomic settlement
+
+Migration `20260804010000_atomic_gin_terminal_settlement.sql` is installed on
+the owned production database. `public.gin_rummy_settle_game` is now the
+replay-safe owner of the final hand-history record, terminal result claim,
+match payout, post-payout snapshots, and `game_over`/`session_ended`
+disposition. It accepts only immutable game, round, dealer-game, and hand
+identity; clients retain presentation only.
+
+The matching client submits settlement before the terminal announcement and
+chip sequence. Gin now uses the same route-owned exact-identity terminal hold
+as Cribbage and Yahtzee, so a connected LAST HAND client retains the table
+until Gin emits its completion token; a fresh ended-session mount still goes
+directly to the lobby. Production rollback proof passed winner, tie, duplicate,
+replay, late-replay, authorization, continuation, and terminal-state cases;
+published two-human runtime smoke remains the acceptance evidence.
+
 ## Frozen Lovable cutover scope
 
 ### Holm bot scheduling
