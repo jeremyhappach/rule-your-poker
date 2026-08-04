@@ -741,7 +741,11 @@ function buildHolmSnapshot(
 ): HolmAuthoritativeSnapshot | null {
   if (!currentRound) return null;
   if (gameData.game_type !== 'holm-game') return null;
-  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
+  if (
+    gameData.status !== 'in_progress' &&
+    gameData.status !== 'game_over' &&
+    gameData.status !== 'session_ended'
+  ) return null;
 
   const roundStatus = (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting';
   const rawRevealed = currentRound.community_cards_revealed ?? 0;
@@ -2004,6 +2008,111 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
+  // A server-resolved LAST HAND arrives as one completed snapshot. Keep the
+  // settlement authoritative, but replay its reveal path in presentation state
+  // before the win-pot sequence is admitted.
+  const holmTerminalRevealTimersRef = useRef<number[]>([]);
+  const holmTerminalRevealKeyRef = useRef<string | null>(null);
+  const [holmTerminalRevealPresentationKey, setHolmTerminalRevealPresentationKey] = useState<string | null>(null);
+  const [holmTerminalRevealCompleteKey, setHolmTerminalRevealCompleteKey] = useState<string | null>(null);
+
+  const clearHolmTerminalRevealTimers = useCallback(() => {
+    holmTerminalRevealTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    holmTerminalRevealTimersRef.current = [];
+  }, []);
+
+  const startHolmTerminalRevealPresentation = useCallback((snapshot: HolmAuthoritativeSnapshot): string | null => {
+    if (!gameId || !snapshot.lastRoundResult?.includes('beat Chucky') || snapshot.lastRoundResult.includes('Chucky beat')) {
+      return null;
+    }
+
+    const previous = holmSync.presentationRefValue;
+    if (!previous || previous.roundId !== snapshot.roundId) {
+      return null;
+    }
+
+    const key = `holm|winpot|${snapshot.dealerGameId}|${snapshot.handNumber}|${snapshot.lastRoundResult}`;
+    if (holmTerminalRevealKeyRef.current === key) {
+      return key;
+    }
+
+    clearHolmTerminalRevealTimers();
+    holmTerminalRevealKeyRef.current = key;
+    setHolmTerminalRevealPresentationKey(key);
+    setHolmTerminalRevealCompleteKey(null);
+
+    const contract = holmSync.beginVisualContract({
+      type: 'holm-terminal-reveal',
+      identity: {
+        gameId,
+        roundId: snapshot.roundId,
+        handNumber: snapshot.handNumber,
+        phase: 'session_ended',
+      },
+      expectedSteps: 3 + Math.max(0, snapshot.chuckyCardsRevealed),
+      timeoutMs: 6_000,
+    });
+
+    const commit = (delayMs: number, state: HolmAuthoritativeSnapshot, complete = false) => {
+      const timer = window.setTimeout(() => {
+        if (holmTerminalRevealKeyRef.current !== key) return;
+        holmSync.commitToPresentation(state);
+        if (complete) {
+          holmSync.completeVisualContract(contract);
+          setHolmTerminalRevealCompleteKey(key);
+        }
+      }, delayMs);
+      holmTerminalRevealTimersRef.current.push(timer);
+    };
+
+    // These are visual frames only. The completed server snapshot remains the
+    // financial and gameplay source of truth throughout the sequence.
+    const tabledStart: HolmAuthoritativeSnapshot = {
+      ...snapshot,
+      roundStatus: 'showdown',
+      communityCardsRevealed: Math.min(2, snapshot.communityCardsRevealed),
+      chuckyActive: false,
+      chuckyCardsRevealed: 0,
+    };
+    holmSync.commitToPresentation(tabledStart);
+
+    let delayMs = 550;
+    if (snapshot.communityCardsRevealed >= 3) {
+      commit(delayMs, { ...tabledStart, communityCardsRevealed: 3 });
+      delayMs += 550;
+    }
+    if (snapshot.communityCardsRevealed >= 4) {
+      commit(delayMs, { ...tabledStart, communityCardsRevealed: 4 });
+      delayMs += 550;
+    }
+    if (snapshot.chuckyActive) {
+      commit(delayMs, { ...tabledStart, communityCardsRevealed: snapshot.communityCardsRevealed, chuckyActive: true });
+      delayMs += 350;
+    }
+    for (let revealed = 1; revealed <= snapshot.chuckyCardsRevealed; revealed += 1) {
+      commit(delayMs, {
+        ...tabledStart,
+        communityCardsRevealed: snapshot.communityCardsRevealed,
+        chuckyActive: true,
+        chuckyCardsRevealed: revealed,
+      });
+      delayMs += 350;
+    }
+    commit(delayMs, snapshot, true);
+
+    return key;
+  }, [clearHolmTerminalRevealTimers, gameId, holmSync]);
+
+  useEffect(() => () => clearHolmTerminalRevealTimers(), [clearHolmTerminalRevealTimers]);
+
+  useEffect(() => {
+    if (game?.status !== 'session_ended') {
+      clearHolmTerminalRevealTimers();
+      holmTerminalRevealKeyRef.current = null;
+      setHolmTerminalRevealPresentationKey(null);
+      setHolmTerminalRevealCompleteKey(null);
+    }
+  }, [clearHolmTerminalRevealTimers, game?.status]);
 
   // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
@@ -9333,7 +9442,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           setCommunityCacheEpoch((e) => e + 1);
         }
 
+        const isHolmChuckyWin =
+          !!snapshot.lastRoundResult &&
+          snapshot.lastRoundResult.includes('beat Chucky') &&
+          !snapshot.lastRoundResult.includes('Chucky beat');
+        const shouldStageHolmTerminalReveal =
+          gameData.status === 'session_ended' &&
+          holmSawLiveSessionRef.current &&
+          snapshot.roundStatus === 'completed' &&
+          snapshot.communityCardsRevealed >= 4 &&
+          snapshot.chuckyActive &&
+          snapshot.chuckyCardsRevealed > 0 &&
+          isHolmChuckyWin;
+        const terminalRevealKey = shouldStageHolmTerminalReveal
+          ? startHolmTerminalRevealPresentation(snapshot)
+          : null;
         const result = holmSync.receiveAuthoritativeUpdate(snapshot);
+        if (shouldStageHolmTerminalReveal && !terminalRevealKey) {
+          // A live client that did not retain a pre-terminal round has no safe
+          // visual baseline to animate from. Admit the already-authoritative
+          // completed frame rather than inventing gameplay state.
+          setHolmTerminalRevealPresentationKey(null);
+          setHolmTerminalRevealCompleteKey(
+            `holm|winpot|${snapshot.dealerGameId}|${snapshot.handNumber}|${snapshot.lastRoundResult ?? ''}`,
+          );
+        }
 
         // Forensic event: every accepted/rejected authoritative arrival.
         import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
@@ -11403,6 +11536,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (_holmTerminalStatus && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
 
+      if (
+        game.status === 'session_ended' &&
+        holmTerminalRevealPresentationKey === holmWinPotPresentationKey &&
+        holmTerminalRevealCompleteKey !== holmWinPotPresentationKey
+      ) {
+        return;
+      }
+
       // Check if this is a player beating Chucky (not Chucky beating a player)
       if (resultMessage.includes('beat Chucky') && !resultMessage.includes('Chucky beat')) {
         // Prevent duplicate processing
@@ -11573,7 +11714,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset the transition guard for future game_over handling
       gameOverTransitionRef.current = false;
     }
-  }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey]);
+  }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey, holmTerminalRevealPresentationKey, holmTerminalRevealCompleteKey]);
 
   // Horses/SCC win pot animation trigger detection
   // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
@@ -13055,6 +13196,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             if (holmIsRecovery) {
               console.warn('[ANTE][HOLM] Recovery start: is_first_hand=false but still in ante_decision; starting Holm without first-hand flag');
+            } else if (!shouldRunHolmFirstHand) {
+              // Another client has claimed the first-hand lock but has not yet
+              // published the ante pot. It alone may create the initial round;
+              // starting a zero-pot "recovery" here strands the real antes.
+              console.log('[ANTE][HOLM] First hand already claimed; waiting for the locked starter to publish the pot and round');
+              anteProcessingRef.current = false;
+              return;
             }
 
             await startHolmRound(gameId, shouldRunHolmFirstHand);
