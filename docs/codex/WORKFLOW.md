@@ -30,6 +30,82 @@ authorize unrelated production-data mutation or broader infrastructure work.
 Never force-push. If a merge conflict, remote divergence, or other condition
 requires a material judgment, stop and report it.
 
+## Mandatory execution-budget policy
+
+This policy governs how the existing workflow is executed. It does not create
+routine approval gates or weaken the required database, ownership, or runtime
+evidence.
+
+### Agent orchestration
+
+1. Do not spawn subagents by default.
+2. Never use `fork_turns: "all"`.
+3. Never allow multiple agents to edit the same worktree. The primary agent
+   owns all implementation.
+4. If independent review is genuinely warranted, use at most one read-only
+   reviewer with all of the following:
+   - `fork_turns: "none"`;
+   - Terra Medium;
+   - a compact task packet containing only relevant facts and exact paths;
+   - no inherited conversation history.
+5. The reviewer may inspect the final implementation once. It must not
+   independently rediscover the architecture or begin editing.
+
+### Proven-pattern migrations
+
+When applying an architecture already accepted in another game:
+
+1. Treat the accepted reference game as the architectural source of truth.
+2. Compare only the target game's differences.
+3. Do not repeat repository-wide architecture discovery, Git-history
+   archaeology, or shared-infrastructure analysis unless contradictory evidence
+   appears.
+4. Read the reference implementation and target ownership paths once, then use
+   bounded symbol and line-range reads. Do not repeatedly reread entire large
+   files.
+5. Use Sol High at normal speed for pattern application. Reserve Sol Ultra for
+   genuinely unresolved architecture decisions, never mechanical application
+   of an accepted pattern.
+
+### Execution budget and circuit breaker
+
+For a bounded single-game pattern application:
+
+1. Target 25--35 minutes maximum.
+2. Do not exceed one primary agent, one combined ownership search, one initial
+   Git status, one final Git status/diff/check pass, or three database
+   validation operations:
+   - inspect schema and indexes;
+   - run one complete rollback proof;
+   - apply one migration and rerun the proof.
+3. Include winner, tie, duplicate, replay, late-replay, authorization,
+   continuation, and terminal-state cases in the initial rollback proof before
+   applying any migration.
+4. Do not apply the migration until the complete rollback proof passes.
+5. If execution exceeds 35 minutes, 100 tool calls, or requires repeated reads
+   of the same large file, stop before consuming more compute and report:
+   - what is blocking completion;
+   - why the reference pattern was insufficient;
+   - the smallest decision needed from Jeremy.
+
+This circuit breaker is a usage-safety exception, not a routine additional
+approval gate.
+
+### Scope control
+
+1. Do not combine implementation with unrelated documentation cleanup, backlog
+   grooming, webhook investigation, or deployment troubleshooting. Queue
+   unrelated findings for later.
+2. Complete database, client, and release work as bounded internal phases under
+   the existing approval:
+   - database proof and migration;
+   - client implementation and focused tests;
+   - one preview/build and one production verification.
+3. Establish tool availability once, then continue with the supported path;
+   do not repeatedly probe unavailable tools.
+4. Do not poll deployments every few seconds. Wait once for an appropriate
+   interval, then check once.
+
 ## Investigation phase
 
 For every active runtime bug, begin read-only. Treat actual runtime behavior as authoritative evidence.

@@ -52,6 +52,71 @@ See `docs/codex/WORKFLOW.md` for investigation, approval, validation, queue, Git
 - Never mutate historical sessions during investigation unless explicitly authorized.
 - Do not edit product code before Jeremy approves the recommended correction.
 
+## Mandatory execution-budget policy
+
+This policy applies to all future work. It preserves the existing approval and
+release workflow while placing non-negotiable limits on execution cost and
+scope.
+
+### Agent orchestration
+
+- Do not spawn subagents by default.
+- Never use `fork_turns: "all"`.
+- The primary agent owns all implementation; never allow multiple agents to
+  edit the same worktree.
+- If independent review is genuinely warranted, use at most one read-only
+  reviewer with `fork_turns: "none"`, Terra Medium, and a compact task packet
+  containing only relevant facts and exact paths. It receives no inherited
+  conversation history.
+- A reviewer may inspect the final implementation once. It must not rediscover
+  the architecture independently or begin editing.
+
+### Proven-pattern migrations
+
+- When applying an architecture already accepted in another game, treat that
+  reference game as the architectural source of truth and compare only the
+  target game's differences.
+- Do not repeat repository-wide architecture discovery, Git-history
+  archaeology, or shared-infrastructure analysis unless contradictory evidence
+  appears.
+- Read the reference implementation and target ownership paths once, then use
+  bounded symbol and line-range reads. Do not repeatedly reread entire large
+  files.
+- Use Sol High at normal speed for accepted-pattern application. Reserve Sol
+  Ultra for genuinely unresolved architecture decisions, never mechanical
+  application of an accepted pattern.
+
+### Circuit breaker
+
+For a bounded single-game pattern application, target 25--35 minutes and do
+not exceed one primary agent, one combined ownership search, one initial Git
+status, one final Git status/diff/check pass, or three database validation
+operations: inspect schema/indexes; run one complete rollback proof; apply one
+migration and rerun that proof.
+
+The initial rollback proof must cover winner, tie, duplicate, replay,
+late-replay, authorization, continuation, and terminal-state cases before any
+migration is applied. Do not apply the migration until that proof passes.
+
+If execution exceeds 35 minutes, 100 tool calls, or requires repeated reads of
+the same large file, stop before consuming more compute and report the blocker,
+why the reference pattern was insufficient, and the smallest decision needed
+from Jeremy. This is a usage-safety exception, not a routine additional
+approval gate.
+
+### Scope control
+
+- Do not combine implementation with unrelated documentation cleanup, backlog
+  grooming, webhook investigation, or deployment troubleshooting; queue those
+  findings for later.
+- Complete database, client, and release work as bounded internal phases under
+  the existing approval: database proof/migration; client implementation and
+  focused tests; one preview/build and one production verification.
+- Establish tool availability once and continue with the supported path; do not
+  repeatedly probe unavailable tools.
+- Do not poll deployments every few seconds. Wait once for an appropriate
+  interval, then check once.
+
 ## Queue and durable memory
 
 `docs/codex/BACKLOG.md` is the durable work queue.
