@@ -35,7 +35,7 @@ import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import {
   rollYahtzeeDice, toggleYahtzeeHold,
-  scoreYahtzeeCategory, advanceYahtzeeTurn,
+  buildYahtzeeScoreTransition,
 } from "@/lib/yahtzeeGameLogic";
 import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import {
@@ -50,8 +50,7 @@ import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
-import { recordGameResult, snapshotPlayerChips } from "@/lib/gameLogic";
-import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
+import { settleYahtzeeGame } from "@/lib/yahtzeeSettleGame";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
@@ -130,10 +129,13 @@ interface YahtzeeGameTableProps {
   dealerPosition: number;
   currentRoundId: string | null;
   dealerGameId: string | null;
+  handNumber: number | null;
   yahtzeeState: YahtzeeState | null;
   onRefetch: () => void;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
+  onTerminalPresentationActiveChange?: (active: boolean) => void;
+  onTerminalPresentationComplete?: (terminalIdentity: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,7 +224,9 @@ const DiceIcon = ({ className }: { className?: string }) => (
 
 export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
-  currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
+  currentRoundId, dealerGameId, handNumber, yahtzeeState, onRefetch,
+  isHost = false, onPlayerClick, onTerminalPresentationActiveChange,
+  onTerminalPresentationComplete,
 }: YahtzeeGameTableProps) {
   // SHELL LC: mount marker for comparative branch-swap evidence.
   useLifecycleMount('YahtzeeGameTable');
@@ -367,6 +371,103 @@ export function YahtzeeGameTable({
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
 
+  // Terminal settlement is authoritative, replayable database work. Every
+  // mounted client that observes the persisted terminal state may submit the
+  // same immutable identity; the RPC admits only session participants/admin,
+  // serializes callers, and applies the winner/tie disposition exactly once.
+  const settlementInFlightKeyRef = useRef<string | null>(null);
+  const settlementCompletedKeyRef = useRef<string | null>(null);
+  const settlementRetryKeyRef = useRef<string | null>(null);
+  const settlementRequestRef = useRef<(
+    source: string,
+    terminalWriteAcknowledged?: boolean,
+  ) => void>(() => {});
+  const requestYahtzeeSettlement = useCallback((
+    source: string,
+    terminalWriteAcknowledged = false,
+  ): void => {
+    if (!terminalWriteAcknowledged && authoritativeYahtzeeState?.gamePhase !== 'complete') return;
+    if (!gameId || !dealerGameId || !currentRoundId || !Number.isInteger(handNumber)) return;
+
+    const key = `${gameId}:${dealerGameId}:${currentRoundId}:${handNumber}`;
+    if (settlementCompletedKeyRef.current === key) return;
+    if (settlementInFlightKeyRef.current === key) {
+      settlementRetryKeyRef.current = key;
+      return;
+    }
+
+    settlementInFlightKeyRef.current = key;
+    void settleYahtzeeGame({
+      gameId,
+      roundId: currentRoundId,
+      dealerGameId,
+      handNumber: handNumber as number,
+    }).then((result) => {
+      settlementCompletedKeyRef.current = key;
+      console.log('[YAHTZEE SETTLE] Authoritative settlement acknowledged', {
+        source,
+        status: result.status,
+        terminalDisposition: result.terminalDisposition,
+        roundId: currentRoundId,
+        handNumber,
+      });
+    }).catch((error) => {
+      // Do not invent a client fallback. A later persisted snapshot,
+      // reconnect/focus, or online event can replay the same identity.
+      console.error('[YAHTZEE SETTLE] Authoritative settlement attempt failed', {
+        source,
+        roundId: currentRoundId,
+        handNumber,
+        error,
+      });
+    }).finally(() => {
+      if (settlementInFlightKeyRef.current === key) {
+        settlementInFlightKeyRef.current = null;
+      }
+      const shouldReplay =
+        settlementRetryKeyRef.current === key &&
+        settlementCompletedKeyRef.current !== key;
+      if (settlementRetryKeyRef.current === key) {
+        settlementRetryKeyRef.current = null;
+      }
+      if (shouldReplay) {
+        settlementRequestRef.current('coalesced-terminal-write-retry');
+      }
+    });
+  }, [
+    authoritativeYahtzeeState?.gamePhase,
+    gameId,
+    dealerGameId,
+    currentRoundId,
+    handNumber,
+  ]);
+  settlementRequestRef.current = requestYahtzeeSettlement;
+
+  useEffect(() => {
+    if (authoritativeYahtzeeState?.gamePhase !== 'complete') return;
+    requestYahtzeeSettlement('persisted-terminal-state');
+  }, [authoritativeYahtzeeState?.gamePhase, requestYahtzeeSettlement]);
+
+  useEffect(() => {
+    const retryVisibleTerminalSettlement = () => {
+      if (document.visibilityState === 'visible') {
+        settlementRequestRef.current('visibility-or-focus');
+      }
+    };
+    const retryOnlineTerminalSettlement = () => {
+      settlementRequestRef.current('online');
+    };
+
+    window.addEventListener('focus', retryVisibleTerminalSettlement);
+    window.addEventListener('online', retryOnlineTerminalSettlement);
+    document.addEventListener('visibilitychange', retryVisibleTerminalSettlement);
+    return () => {
+      window.removeEventListener('focus', retryVisibleTerminalSettlement);
+      window.removeEventListener('online', retryOnlineTerminalSettlement);
+      document.removeEventListener('visibilitychange', retryVisibleTerminalSettlement);
+    };
+  }, []);
+
   // ── HELD-DIE TRACE: Presentation state cutover ──
   const prevPresentationTurnRef = useRef<string | null>(null);
   const prevPresentationRollKeyRef = useRef<string | number | null>(null);
@@ -441,6 +542,37 @@ export function YahtzeeGameTable({
   const [chipTransferWinnerPos, setChipTransferWinnerPos] = useState<number>(0);
   const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
+
+  // Terminal presentation is client-local. The route holds a live
+  // session-ending table while this identity is active, and admits Session
+  // Ended only after the chip animation publishes the exact completion token.
+  const terminalPresentationActiveKeyRef = useRef<string | null>(null);
+  const terminalPresentationCompletedKeyRef = useRef<string | null>(null);
+  const beginTerminalPresentation = useCallback((identity: string) => {
+    if (terminalPresentationActiveKeyRef.current === identity) return;
+    terminalPresentationActiveKeyRef.current = identity;
+    onTerminalPresentationActiveChange?.(true);
+  }, [onTerminalPresentationActiveChange]);
+  const handleTerminalChipAnimationEnd = useCallback(() => {
+    setChipTransferTriggerId(null);
+    const identity = terminalPresentationActiveKeyRef.current;
+    if (!identity) return;
+
+    if (terminalPresentationCompletedKeyRef.current !== identity) {
+      terminalPresentationCompletedKeyRef.current = identity;
+      onTerminalPresentationComplete?.(identity);
+    }
+    terminalPresentationActiveKeyRef.current = null;
+    onTerminalPresentationActiveChange?.(false);
+  }, [onTerminalPresentationActiveChange, onTerminalPresentationComplete]);
+
+  useEffect(() => {
+    return () => {
+      if (!terminalPresentationActiveKeyRef.current) return;
+      terminalPresentationActiveKeyRef.current = null;
+      onTerminalPresentationActiveChange?.(false);
+    };
+  }, [onTerminalPresentationActiveChange]);
 
   // Guard: prevent double-execution of end-of-game completion effect.
   // Keyed on currentRoundId — single-fire per round, on every client.
@@ -564,6 +696,26 @@ export function YahtzeeGameTable({
   const turnSeededKeyRef = useRef<string | null>(null);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
+  // Keep the immutable match roster available through terminal presentation.
+  // Game.tsx removes `status = left` rows from its live `players` prop, but a
+  // participant may leave after the terminal score is persisted and before
+  // the connected client's chip animation resolves its endpoints. Never let
+  // that mutable presence filter erase the winner/loser presentation roster.
+  const terminalPresentationRosterRef = useRef<{
+    roundId: string | null;
+    playersById: Map<string, Player>;
+  }>({ roundId: null, playersById: new Map() });
+  useEffect(() => {
+    if (terminalPresentationRosterRef.current.roundId !== currentRoundId) {
+      terminalPresentationRosterRef.current = {
+        roundId: currentRoundId,
+        playersById: new Map(),
+      };
+    }
+    for (const player of players) {
+      terminalPresentationRosterRef.current.playersById.set(player.id, player);
+    }
+  }, [currentRoundId, players]);
   const shellAnchors = useRequiredSeatAnchors('yahtzee');
   // Render-facing derived values use viewState (presentationState) for visual stability
   const gamePhase = viewState?.gamePhase || 'waiting';
@@ -1073,7 +1225,8 @@ export function YahtzeeGameTable({
       }
     }
 
-    const newPs = scoreYahtzeeCategory(myPs, category);
+    const scoreTransition = buildYahtzeeScoreTransition(rawState, myPlayer.id, category);
+    const newPs = scoreTransition.scoredPlayerState;
     localDiceRef.current = newPs.dice;
     localRollsRemainingRef.current = newPs.rollsRemaining;
     setLocalDice(newPs.dice);
@@ -1083,14 +1236,45 @@ export function YahtzeeGameTable({
     const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
     setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
 
-    // FIRST WRITE: scored state only (no turn advance) — opponent sees category choice
-    let scoredState = {
-      ...rawState,
-      playerStates: { ...rawState.playerStates, [myPlayer.id]: newPs },
-    };
+    // First authoritative write. Nonterminal scores preserve the existing
+    // scored-only presentation handoff; a terminal score includes completion.
+    const { scoredState, advancedState, authoritativeScoreState, isTerminalScore } = scoreTransition;
     console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
     yahtzeeSync.applyOptimistic(scoredState);
-    await updateYahtzeeState(currentRoundId, scoredState);
+    if (isTerminalScore) {
+      // The final category and terminal phase are one durable write. Keep the
+      // two-second score highlight in the presentation layer only: if this
+      // client disappears during that hold, the persisted terminal snapshot
+      // is already sufficient for any peer/reconnect to replay settlement.
+      yahtzeeSync.freezePresentation();
+    }
+    const scoreWriteError = await updateYahtzeeState(
+      currentRoundId,
+      authoritativeScoreState,
+    );
+    if (scoreWriteError) {
+      console.error('[YAHTZEE] Failed to persist category score', {
+        currentRoundId,
+        category,
+        isTerminalScore,
+        error: scoreWriteError,
+      });
+      if (isTerminalScore) {
+        yahtzeeSync.clearOptimistic();
+        yahtzeeSync.unfreezePresentation();
+      }
+      setLastScoredCategory(null);
+      setLastScoredValue(null);
+      setScoringInProgress(false);
+      setCachedOpponentDice(null);
+      return;
+    }
+    if (isTerminalScore) {
+      // Dispatch settlement from the acknowledged terminal write itself; do
+      // not require this client to remain mounted long enough to receive its
+      // own realtime echo. Realtime/focus callers still replay the same key.
+      settlementRequestRef.current('terminal-score-write-acknowledged', true);
+    }
 
     // Wait 2 seconds so both players can see the selection highlighted
     await new Promise(r => setTimeout(r, 2000));
@@ -1098,8 +1282,8 @@ export function YahtzeeGameTable({
     // Keep optimistic score visible until DB subscription catches up
     setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
 
-    // SECOND WRITE: advance turn (opponent sees turn change after highlight)
-    const advancedState = advanceYahtzeeTurn(scoredState);
+    // NONTERMINAL SECOND WRITE: advance turn after the score highlight. The
+    // terminal case was already persisted atomically with the score above.
     console.log('[YAHTZEE_SYNC] Writing turn-advance snapshot', describeYahtzeeSnapshot(advancedState));
     // CRITICAL: Apply turn-advance optimistic BEFORE clearing scoring flags.
     // Otherwise there's a 1-2 frame gap where scoringInProgress=false but
@@ -1112,28 +1296,29 @@ export function YahtzeeGameTable({
     setScoringInProgress(false);
     setCachedOpponentDice(null);
 
+    if (isTerminalScore) {
+      yahtzeeSync.unfreezePresentation();
+      return;
+    }
+
     await updateYahtzeeState(currentRoundId, advancedState);
     // P9.3b: NO direct handleGameComplete call here — completion is now driven
     // by the authoritative effect below (fires once per currentRoundId on every
-    // client; only the elected botControllerUserId performs DB writes).
+    // client; settlement is replayed separately from authoritative state).
   }, [currentRoundId, authoritativeYahtzeeState, myPlayer]);
 
-  /* ---- P9.3b: authoritative end-of-game effect ----
+  /* ---- P9.3b: end-of-game presentation effect ----
    * Fires on EVERY client (active scorer, non-scoring active, observer) when
    * viewState.gamePhase === 'complete'. Latched per currentRoundId.
    *
-   *  - Presentation (overlay + chip-transfer trigger): all clients.
-   *  - Authoritative writes (RPCs, recordGameResult, snapshot, endYahtzeeRound):
-   *    only the single elected writer = authoritativeYahtzeeState.botControllerUserId.
-   *    Same single-writer gate the bot-turn path uses verbatim — no new
-   *    election mechanism. If controllerUserId is null (bot-only game),
-   *    every client attempts (matches bot-turn path semantics for that edge).
+   * This effect owns presentation only. The separate persisted-state effect
+   * above calls the identity-only settlement RPC from every mounted client.
    */
   useEffect(() => {
     if (!viewState || viewState.gamePhase !== 'complete') return;
     if (!currentRoundId) return;
+    if (!dealerGameId || !Number.isInteger(handNumber)) return;
     if (completionLatchRoundIdRef.current === currentRoundId) return;
-    completionLatchRoundIdRef.current = currentRoundId;
 
     console.log('[YAHTZEE] 🏆 completion effect firing', { currentRoundId, currentUserId });
 
@@ -1143,28 +1328,66 @@ export function YahtzeeGameTable({
     if (results.length === 0) return;
     const maxScore = results[0].total;
     const winners = results.filter(r => r.total === maxScore);
-    const scoreSummary = results.map(r => r.total).join('-');
-    const scoreDetails = results.map(r => {
-      const p = players.find(pl => pl.id === r.pid);
-      return { name: p ? getPlayerUsername(p) : '?', total: r.total };
-    });
 
     // ── Presentation (all clients) ──
     if (winners.length === 1) {
       const winnerId = winners[0].pid;
-      const winnerPlayer = players.find(p => p.id === winnerId);
+      const terminalIdentity = [
+        'yahtzee',
+        'winseq',
+        gameId,
+        dealerGameId,
+        String(handNumber),
+        winnerId,
+      ].join('|');
+      const presentationRoster = Array.from(
+        terminalPresentationRosterRef.current.playersById.values(),
+      );
+      const winnerPlayer = terminalPresentationRosterRef.current.playersById.get(winnerId);
       if (winnerPlayer) {
-        const winnerName = getPlayerUsername(winnerPlayer);
+        const winnerName = winnerPlayer.is_bot
+          ? getBotAlias(presentationRoster, winnerPlayer.user_id)
+          : (winnerPlayer.profiles?.username || 'Player');
         const isWinnerMe = winnerPlayer.user_id === currentUserId;
-        const losers = activePlayers.filter(p => p.id !== winnerId);
-        void scoreDetails;
+        // Presentation follows the immutable terminal-state roster. A player
+        // may have disconnected or become sitting-out after taking a turn;
+        // mutable UI activity flags must not remove their chip destination.
+        const losers = results
+          .filter(result => result.pid !== winnerId)
+          .map(result => terminalPresentationRosterRef.current.playersById.get(result.pid))
+          .filter((player): player is Player => Boolean(player));
+        if (losers.length !== results.length - 1) {
+          // The live path should always have the round-scoped roster captured
+          // above. If hydration was incomplete, release the exact terminal
+          // hold instead of leaving the table permanently wedged waiting for
+          // an animation whose endpoints cannot be resolved.
+          completionLatchRoundIdRef.current = currentRoundId;
+          console.error('[YAHTZEE] Terminal presentation roster incomplete', {
+            currentRoundId,
+            expectedPlayerIds: results.map(result => result.pid),
+            retainedPlayerIds: presentationRoster.map(player => player.id),
+          });
+          beginTerminalPresentation(terminalIdentity);
+          handleTerminalChipAnimationEnd();
+          return;
+        }
+
+        completionLatchRoundIdRef.current = currentRoundId;
+
+        // Publish liveness before the requestAnimationFrame that begins the
+        // visual sequence. Atomic LAST HAND settlement may commit
+        // `session_ended` immediately after this persisted terminal state.
+        beginTerminalPresentation(terminalIdentity);
 
         // ── Canonical match_win emit (all clients) ──
         // Co-fired with chip-transfer trigger so rail plate, confetti, and
         // chip animation all paint in the same window. Matches Gin pattern.
         const scoreLine = results.map(r => {
-          const p = players.find(pl => pl.id === r.pid);
-          return `${p ? getPlayerUsername(p) : '?'}: ${r.total}`;
+          const p = terminalPresentationRosterRef.current.playersById.get(r.pid);
+          const displayName = p
+            ? (p.is_bot ? getBotAlias(presentationRoster, p.user_id) : (p.profiles?.username || 'Player'))
+            : '?';
+          return `${displayName}: ${r.total}`;
         }).join(' • ');
         const matchKey = `yahtzee-match:${dealerGameId ?? 'no-dg'}:${currentRoundId ?? 'no-r'}:${winnerId}:${maxScore}`;
         if (lastEmittedYahtzeeMatchRef.current !== matchKey) {
@@ -1239,61 +1462,36 @@ export function YahtzeeGameTable({
           setChipTransferLoserIds(losers.map(p => p.id));
           setChipTransferTriggerId(`yahtzee-win-${currentRoundId}`);
         }
+      } else {
+        // Missing terminal metadata must not strand an already-settled LAST
+        // HAND forever. A live client normally retained this player above;
+        // release the exact hold if hydration was incomplete.
+        completionLatchRoundIdRef.current = currentRoundId;
+        console.error('[YAHTZEE] Terminal winner missing from retained roster', {
+          currentRoundId,
+          winnerId,
+          retainedPlayerIds: presentationRoster.map(player => player.id),
+        });
+        beginTerminalPresentation(terminalIdentity);
+        handleTerminalChipAnimationEnd();
       }
+    } else {
+      completionLatchRoundIdRef.current = currentRoundId;
+      console.log('[YAHTZEE] Tie detected; authoritative RPC owns rollover');
     }
-
-
-    // ── Authoritative writes (single writer) ──
-    const controllerUserId = authoritativeYahtzeeState?.botControllerUserId;
-    const isAuthoritativeWriter =
-      !controllerUserId || controllerUserId === currentUserId;
-    if (!isAuthoritativeWriter) {
-      console.log('[YAHTZEE] completion effect — not authoritative writer, presentation only', {
-        controllerUserId,
-        currentUserId,
-      });
-      return;
-    }
-
-    (async () => {
-      try {
-        if (winners.length > 1) {
-          console.log('[YAHTZEE] Tie detected, ending round as tie');
-          await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
-          return;
-        }
-        const winnerId = winners[0].pid;
-        const winnerPlayer = players.find(p => p.id === winnerId);
-        if (!winnerPlayer) return;
-        const winnerName = getPlayerUsername(winnerPlayer);
-        const losers = activePlayers.filter(p => p.id !== winnerId);
-        const winAmount = losers.length * anteAmount;
-
-        console.log('[YAHTZEE] Awarding chips (writer):', { winnerId, winAmount, loserCount: losers.length });
-        await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: winAmount });
-        if (losers.length > 0) {
-          await supabase.rpc('decrement_player_chips', {
-            player_ids: losers.map(p => p.id),
-            amount: anteAmount,
-          });
-        }
-        const chipChanges: Record<string, number> = { [winnerId]: winAmount };
-        losers.forEach(l => { chipChanges[l.id] = -anteAmount; });
-        recordGameResult(gameId, viewState.currentRound || 1, winnerId,
-          `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', dealerGameId);
-        snapshotPlayerChips(gameId, viewState.currentRound || 1).catch(err =>
-          console.error('[YAHTZEE] Failed to snapshot chips:', err));
-
-        // Hold long enough for winner overlay + chip animation to complete before
-        // Game.tsx's game_over handler can swap surfaces.
-        await new Promise(r => setTimeout(r, 2500));
-        await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
-        console.log('[YAHTZEE] endYahtzeeRound completed');
-      } catch (e) {
-        console.error('[YAHTZEE] completion-effect writer error:', e);
-      }
-    })();
-  }, [viewState?.gamePhase, currentRoundId]);
+  }, [
+    viewState?.gamePhase,
+    viewState?.playerStates,
+    currentRoundId,
+    dealerGameId,
+    handNumber,
+    players,
+    gameId,
+    currentUserId,
+    announcements,
+    beginTerminalPresentation,
+    handleTerminalChipAnimationEnd,
+  ]);
 
   /* ---- Bot logic ---- */
   // Drive bot control ENTIRELY from authoritative state — never presentation/viewState.
@@ -1406,6 +1604,7 @@ export function YahtzeeGameTable({
       let activeRoll = -1;
       let lastHolds: boolean[] | null = null;
       let lastPrevRollKey: string | number | undefined;
+      let terminalPresentationFrozen = false;
 
       // Double-check guard in case of race between timer fire and identity change
       if (isCancelled('runBot:start')) {
@@ -1729,13 +1928,29 @@ export function YahtzeeGameTable({
         setLastScoredCategory(category);
         setScoringInProgress(true);
 
-        ps = scoreYahtzeeCategory(ps, category);
-        state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
+        const scoreTransition = buildYahtzeeScoreTransition(state, botPlayerId, category);
+        ps = scoreTransition.scoredPlayerState;
+        state = scoreTransition.scoredState;
+        const { advancedState, authoritativeScoreState, isTerminalScore } = scoreTransition;
         yahtzeeSync.applyOptimistic(state);
-        await updateYahtzeeState(currentRoundId, state);
+        if (isTerminalScore) {
+          // As with a human's final category, terminal truth is durable before
+          // the local score-highlight pause. Bot-controller cancellation can
+          // no longer strand all-complete scorecards in `playing`.
+          yahtzeeSync.freezePresentation();
+          terminalPresentationFrozen = true;
+        }
+        const scoreWriteError = await updateYahtzeeState(
+          currentRoundId,
+          authoritativeScoreState,
+        );
+        if (scoreWriteError) throw scoreWriteError;
+        if (isTerminalScore) {
+          settlementRequestRef.current('terminal-bot-score-write-acknowledged', true);
+        }
 
         await new Promise(r => setTimeout(r, 2000));
-        if (isCancelled('after-score-wait')) {
+        if (!isTerminalScore && isCancelled('after-score-wait')) {
           setLastScoredCategory(null);
           setLastScoredValue(null);
           setScoringInProgress(false);
@@ -1754,7 +1969,7 @@ export function YahtzeeGameTable({
         setCachedOpponentDice(null);
 
         const prevTurnOwner = state.currentTurnPlayerId;
-        state = advanceYahtzeeTurn(state);
+        state = advancedState;
         console.log('[TURN TRANSITION]', {
           roundId: currentRoundId,
           fromPlayerId: prevTurnOwner,
@@ -1763,6 +1978,11 @@ export function YahtzeeGameTable({
           turnIdentity,
         });
         yahtzeeSync.applyOptimistic(state);
+        if (isTerminalScore) {
+          yahtzeeSync.unfreezePresentation();
+          terminalPresentationFrozen = false;
+          return;
+        }
         await updateYahtzeeState(currentRoundId, state);
         // P9.3b: completion is driven by the authoritative effect — no direct
         // handleGameComplete call here. Effect fires on every client when
@@ -1778,6 +1998,10 @@ export function YahtzeeGameTable({
           turnIdentity,
         });
       } finally {
+        if (terminalPresentationFrozen) {
+          yahtzeeSync.clearOptimistic();
+          yahtzeeSync.unfreezePresentation();
+        }
         botProcessingRef.current = false;
         // Only clear identity if it still matches (prevents clearing a newer turn's identity)
         if (activeBotTurnIdentityRef.current === turnIdentity) {
@@ -2181,7 +2405,7 @@ export function YahtzeeGameTable({
           currentPlayerPosition={myPlayer?.position ?? null}
           getClockwiseDistance={getClockwiseDistance}
           containerRef={tableContainerRef}
-          onAnimationEnd={() => setChipTransferTriggerId(null)}
+          onAnimationEnd={handleTerminalChipAnimationEnd}
         />
 
         {/* Canonical seat clusters — shell anchors drive all chip positioning.

@@ -62,9 +62,10 @@ validated production copy of the core backend and is live behind
 - All 245 source migration records are represented by exact local versions and
   SQL; 19 deployed-but-missing migrations were recovered into
   `supabase/migrations/` and Lovable's filename/version drift was reconciled.
-  Three target migrations add the bounded diagnostic purge, its explicit
+  Five target migrations add the bounded diagnostic purge, its explicit
   audit/session-history preservation boundary, and the source-equivalent Data
-  API grants required by new Supabase projects, for 248 target records.
+  API grants required by new Supabase projects, plus atomic Yahtzee terminal
+  settlement and its late-replay correction, for 250 target records.
 - Schema parity was proved before the target-only retention migration: 48
   public tables, 42 routines, 133 policies, 20 enabled application triggers,
   and 18 Realtime publication tables.
@@ -220,6 +221,51 @@ including continuous visibility of the remaining connected client's hand
 through the terminal cut-card reveal and win presentation. Cribbage is now the
 accepted disconnect-safe settlement and connected-terminal-presentation model
 for the remaining games.
+
+## Yahtzee atomic settlement
+
+Migration `20260803234111_atomic_yahtzee_terminal_settlement.sql` is installed
+on the owned production database. `public.yahtzee_settle_game` now derives a
+unique winner or tie from the persisted complete scorecards, reads the fixed
+stake from the immutable dealer-game configuration, and keys every request to
+the authoritative round row and `rounds.hand_number`. This corrects the former
+post-tie identity bug where client writers continued to use JSON
+`yahtzee_state.currentRound = 1` on later hands.
+
+For a unique winner, one transaction owns the durable result claim, fixed-
+stake zero-sum chip transfer, completed round, post-payout snapshot batch,
+`game_over`/direct `session_ended` disposition, and real-money SessionResult
+trigger output. A tie moves no money, writes no result, completes the exact
+round, and atomically publishes the existing rollover flag. Replayed callers
+perform no financial writes. The function has an empty fixed search path;
+Public and anonymous execution are revoked; authenticated callers must be a
+session participant or admin.
+
+Follow-up migration
+`20260804000259_fix_yahtzee_settlement_replay.sql` keeps an exact durable
+settlement replay valid after ordinary lifecycle progression changes the
+session's current game, type, stake, pot, or status. Those mutable current-game
+fields remain mandatory for a first settlement but are no longer allowed to
+invalidate a matching completed claim. A rollback-only production proof
+settled one synthetic match, changed the session to a different live Holm
+dealer game with different stake and pot, then replayed the old Yahtzee
+identity as `already_settled/game_over` without changing its result, chips,
+snapshots, or the newer lifecycle. Rollback left zero synthetic rows.
+
+The matching client candidate removes the elected browser's direct payout,
+result, snapshot, and lifecycle writes. Every mounted client may replay only
+immutable settlement identity. The route's exact live-terminal hold is now
+shared by Cribbage and Yahtzee: an already-connected LAST HAND client retains
+the same table through the real winner/chip-animation completion callback,
+while a fresh mount of an already-ended session still goes directly to the
+lobby. Final human and bot category scoring now persists the score and
+`gamePhase='complete'` together before the two-second local highlight, and the
+terminal animation retains its round roster even when a settled participant
+leaves. Production rollback proofs cover legacy replay plus synthetic tie,
+later-hand identity, LAST HAND and ordinary-win settlement, duplicate callers,
+fixed-stake zero-sum payout, snapshot overwrite, authorization, and one
+SessionResult per human. All synthetic rows rolled back to zero. Published
+two-human runtime smoke is the remaining acceptance evidence.
 
 ## Frozen Lovable cutover scope
 

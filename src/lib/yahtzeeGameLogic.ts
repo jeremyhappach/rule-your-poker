@@ -110,3 +110,48 @@ export function advanceYahtzeeTurn(gameState: YahtzeeState): YahtzeeState {
   // Shouldn't reach here, but fallback
   return { ...gameState, currentTurnPlayerId: null, gamePhase: 'complete' };
 }
+
+/**
+ * Build one category-score transition and choose the snapshot that must be
+ * persisted before any presentation pause.
+ *
+ * Nonterminal turns preserve Yahtzee's existing scored-then-advance visual
+ * handoff. A terminal score persists the scorecard and `gamePhase=complete`
+ * together, so a disappearing scorer cannot strand an all-complete match in
+ * the playing phase.
+ */
+export function buildYahtzeeScoreTransition(
+  gameState: YahtzeeState,
+  playerId: string,
+  category: YahtzeeCategory,
+): {
+  scoredPlayerState: YahtzeePlayerState;
+  scoredState: YahtzeeState;
+  advancedState: YahtzeeState;
+  authoritativeScoreState: YahtzeeState;
+  isTerminalScore: boolean;
+} {
+  const playerState = gameState.playerStates[playerId];
+  if (!playerState) {
+    throw new Error(`Missing Yahtzee player state: ${playerId}`);
+  }
+
+  const scoredPlayerState = scoreYahtzeeCategory(playerState, category);
+  const scoredState: YahtzeeState = {
+    ...gameState,
+    playerStates: {
+      ...gameState.playerStates,
+      [playerId]: scoredPlayerState,
+    },
+  };
+  const advancedState = advanceYahtzeeTurn(scoredState);
+  const isTerminalScore = advancedState.gamePhase === 'complete';
+
+  return {
+    scoredPlayerState,
+    scoredState,
+    advancedState,
+    authoritativeScoreState: isTerminalScore ? advancedState : scoredState,
+    isTerminalScore,
+  };
+}

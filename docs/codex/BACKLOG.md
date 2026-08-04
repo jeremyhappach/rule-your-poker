@@ -115,14 +115,22 @@ Durable settlement and connected-client terminal presentation are clean.
 
 ### 3. Remaining terminal-authority migrations
 
-Recommended game-by-game delivery order after the 2026-08-03 read-only audit:
+Yahtzee delivery status: the atomic RPC, identity-only client cutover, and
+connected-client terminal hold are implemented; migration
+`20260803234111_atomic_yahtzee_terminal_settlement.sql` and late-replay fix
+`20260804000259_fix_yahtzee_settlement_replay.sql` are installed on the owned
+production database. Final human/bot score writes now make terminal state
+durable before their local highlight, and live presentation retains departed
+round participants. It is awaiting published two-human runtime smoke before
+becoming a stable checkpoint.
 
-1. Yahtzee — replayable per-mount financial settlement.
-2. 3-5-7 normal terminal.
-3. Gin.
-4. Horses + SCC as one shared dice-resolution delivery with separate rule
+Remaining game-by-game delivery order after Yahtzee acceptance:
+
+1. 3-5-7 normal terminal.
+2. Gin.
+3. Horses + SCC as one shared dice-resolution delivery with separate rule
    validation and acceptance for each game.
-5. 3-5-7 instant-win/initial-Round-1 residual seam.
+4. 3-5-7 instant-win/initial-Round-1 residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
@@ -137,18 +145,18 @@ Source-proven ingestion findings:
 - Cribbage's former multi-write terminal sequence was replaced by
   `public.cribbage_settle_game`; it is the completed atomic-settlement model,
   with the separate live-presentation acceptance tracked in 2A above.
-- Yahtzee terminal result/snapshot identity uses
+- The former Yahtzee terminal result/snapshot writers used
   `yahtzee_state.currentRound` instead of the authoritative
   `rounds.hand_number`. After a tie rollover, the new round has hand 2 or
-  greater while terminal writers still pass hand 1.
+  greater while those writers still passed hand 1. The atomic settlement
+  candidate removes that client authority and uses the round row identity.
 - Yahtzee setup/start comments describe an ante or score-difference payout, but
   no ante enters a pot and terminal settlement transfers a fixed configured
   amount from each loser.
-- Yahtzee is first because its elected client currently credits/debits chips,
-  writes result/snapshot, waits for presentation, and only then claims terminal
-  status. A disconnected elected writer can leave a partial settlement, while
-  a replacement writer can replay money. Preserve the actual fixed-stake rule
-  and key settlement to the authoritative `rounds.hand_number`, not the JSON
+- Yahtzee was first because its elected client credited/debited chips, wrote
+  result/snapshot, waited for presentation, and only then claimed terminal
+  status. The delivered candidate preserves the actual fixed-stake rule and
+  keys settlement to authoritative `rounds.hand_number`, not the JSON
   `currentRound` field that remains 1 after tie rollover.
 - Normal 3-5-7 terminal settlement remains client-owned:
   `src/lib/gameLogic.ts:handleGameOver` claims terminal status before separate
@@ -183,6 +191,18 @@ above. Preserve their exact game-specific semantics during later triage.
 - Yahtzee's ascending-position turn order conflicts with canonical
   `src/lib/canonicalShell/seatRing.ts:nextClockwise`, which defines
   left/clockwise as the nearest lower occupied position.
+- Yahtzee nonterminal category selection still persists the scored snapshot,
+  waits for presentation, and then persists the next-turn snapshot. If the
+  acting client disappears in that interval, the current turn can remain on a
+  now-complete scorecard. The terminal score path is fixed in the settlement
+  delivery; migrate the broader nonterminal handoff separately without losing
+  the visible score highlight.
+- Yahtzee gameplay state is still written directly to
+  `rounds.yahtzee_state`, and the deployed `rounds` UPDATE policy permits both
+  anonymous and authenticated mutation. The settlement RPC validates terminal
+  structure and score domains but cannot reconstruct roll/category provenance.
+  Move roll, hold, score, and advance actions behind authenticated,
+  participant/turn-scoped RPCs and then narrow direct round UPDATE access.
 - Holm partial-tie payout uses integer division. When the pot is not divisible
   by the number of tied winners, the remainder has no proven conservation
   owner.

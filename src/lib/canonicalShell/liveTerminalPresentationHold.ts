@@ -101,3 +101,22 @@ export function shouldHoldLiveTerminalPresentation(
       matchesObservedScope(scope, observation),
   );
 }
+
+/**
+ * True when a game-owned terminal completion token belongs to the exact live
+ * scope retained by the route. This makes Session Ended admission independent
+ * of whether presentation completion or the terminal database snapshot arrives
+ * first, without allowing an older hand's token to admit a later one.
+ */
+export function terminalPresentationIdentityMatchesLiveScope(
+  identity: string,
+  scope: LiveTerminalPresentationScope | null,
+): boolean {
+  if (!scope || !identity) return false;
+  const [gameType, phase, gameId, dealerGameId, handNumber] = identity.split('|');
+  if (phase !== 'winseq') return false;
+  if (gameType !== scope.gameType) return false;
+  if (gameId !== scope.gameId) return false;
+  if (dealerGameId !== scope.dealerGameId) return false;
+  return handNumber === String(scope.handNumber);
+}

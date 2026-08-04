@@ -36,8 +36,8 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 |---|---|
 | Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
-| Local project/function config | `supabase/config.toml`, owned rehearsal project id `xvhmbuppghwmwpwrkzao`. Vercel production still targets the Lovable-backed source until explicit cutover. |
-| Schema history | `supabase/migrations/` (248 files: 245 source/common migration records plus three owned-target rehearsal migrations). Later definitions supersede earlier same-named functions. |
+| Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
+| Schema history | `supabase/migrations/` (250 files: 245 source/common migration records plus five owned-target migrations). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
@@ -197,16 +197,23 @@ reset transient/presentation state when those identities change.
   `yahtzeeGameLogic.ts:rollYahtzeeDice`, `toggleYahtzeeHold`,
   `scoreYahtzeeCategory`, and `advanceYahtzeeTurn`; the mounted component
   persists state directly.
-- Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound` and
-  `endYahtzeeRound`.
+- Lifecycle: `yahtzeeRoundLogic.ts:startYahtzeeRound`; terminal disposition is
+  owned by the settlement RPC below.
 - Bots/scoring: `yahtzeeBotLogic.ts:getBotHoldDecision`,
   `getBotCategoryChoice`, and `shouldBotStopRolling`;
   `yahtzeeScoring.ts:scoreCategory`, `getTotalScore`, and Joker helpers.
-- Settlement/terminal: the completion effect in `YahtzeeGameTable.tsx`
-  performs generic chip RPCs, result insertion, and snapshot, then calls
-  `endYahtzeeRound`; there is no Yahtzee settlement RPC.
-- Focused tests: `yahtzeeScoring.test.ts`,
-  `yahtzeeProgress.test.ts`, and shared die-row/shell tests.
+- Settlement/terminal: `src/lib/yahtzeeSettleGame.ts:settleYahtzeeGame`
+  submits immutable identity to `public.yahtzee_settle_game`, defined by
+  `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`
+  and corrected for post-progression replay by
+  `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`.
+  The RPC derives score/winner or tie, owns fixed-stake payout, result claim,
+  post-payout snapshots, and terminal disposition. `YahtzeeGameTable.tsx`
+  retries settlement and owns presentation only; `Game.tsx` plus the generic
+  live-terminal scope helper retain a connected LAST HAND table.
+- Focused tests: `yahtzeeScoring.test.ts`, `yahtzeeGameLogic.test.ts`,
+  `yahtzeeProgress.test.ts`, `yahtzeeSettleGame.test.ts`, the Yahtzee cases in
+  `liveTerminalPresentationHold.test.ts`, and shared die-row/shell tests.
 
 ### 3-5-7
 
@@ -278,8 +285,9 @@ Canonical snapshot identity is
 | Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
 | Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
 | Holm transactional writer | `public.holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`. |
-| Game-specific client writers | Gin in its round logic, Yahtzee in `YahtzeeGameTable.tsx`, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
+| Game-specific client writers | Gin in its round logic, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
 | Cribbage transactional writer | `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
+| Yahtzee transactional writer | `public.yahtzee_settle_game` in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest definition in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`. |
 | Session Ended reader | `SessionEndedTablePhase.tsx:SessionEndedFeltPanel` merges the latest snapshot participants with the current roster; humans dedupe by `user_id`, bots by `player_id`. |
 | Lobby/session result reader | `src/components/SessionResults.tsx` is snapshot-first with `game_results` fallback; `src/lib/lobbyFetch.ts` loads ended-game snapshots. |
 | History reader | `src/components/hand-history/useHandHistoryData.ts` plus the session-history query in `Game.tsx`. |
@@ -312,6 +320,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
 | Cribbage terminal settlement | `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`; wrapper `src/lib/cribbageSettleGame.ts`. |
+| Yahtzee terminal settlement | `yahtzee_settle_game` introduced in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`; wrapper `src/lib/yahtzeeSettleGame.ts`. |
 | Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map. |
 | Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213623_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005657_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
@@ -352,9 +361,12 @@ Legacy id `opponent_instant_knock` resolves read-only to
 - Gin: focused component, game logic, scoring, and harness tests are listed in
   the Gin map.
 - 3-5-7: `src/lib/threeFiveSeven/advanceRound.test.ts`.
-- Yahtzee: `src/lib/yahtzeeScoring.test.ts`.
+- Yahtzee: `src/lib/yahtzeeScoring.test.ts`,
+  `src/lib/yahtzeeGameLogic.test.ts`,
+  `src/lib/yahtzeeSettleGame.test.ts`, and Yahtzee terminal-scope cases in
+  `src/lib/canonicalShell/liveTerminalPresentationHold.test.ts`.
 - Lobby: `src/lib/lobbyFetch.test.ts`.
-- No focused Holm financial-RPC, Gin terminal, Yahtzee terminal, Horses
-  rule/terminal, or SCC rule/terminal test exists in this checkout. Cribbage
-  has a focused client RPC-boundary test; direct SQL/deployed behavior remains
-  a required proof.
+- No focused Holm financial-RPC, Gin terminal, Horses rule/terminal, or SCC
+  rule/terminal test exists in this checkout. Cribbage and Yahtzee have
+  focused client RPC-boundary tests; direct SQL/deployed behavior remains a
+  required proof.

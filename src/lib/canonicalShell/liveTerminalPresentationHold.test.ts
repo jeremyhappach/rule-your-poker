@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceLiveTerminalPresentationScope,
   shouldHoldLiveTerminalPresentation,
+  terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationObservation,
 } from './liveTerminalPresentationHold';
 
@@ -12,6 +13,16 @@ const liveObservation: LiveTerminalPresentationObservation = {
   dealerGameId: 'dealer-game-1',
   roundId: 'round-7',
   handNumber: 7,
+  terminalResultPresent: false,
+};
+
+const liveYahtzeeHandTwoObservation: LiveTerminalPresentationObservation = {
+  gameId: 'yahtzee-game-1',
+  gameType: 'yahtzee',
+  status: 'in_progress',
+  dealerGameId: 'yahtzee-dealer-game-1',
+  roundId: 'yahtzee-round-2',
+  handNumber: 2,
   terminalResultPresent: false,
 };
 
@@ -111,5 +122,106 @@ describe('live terminal presentation hold', () => {
     };
 
     expect(advanceLiveTerminalPresentationScope(armed, holm)).toBeNull();
+  });
+});
+
+describe('Yahtzee live terminal presentation hold', () => {
+  it('captures the authoritative second-hand scope observed by this mount', () => {
+    expect(
+      advanceLiveTerminalPresentationScope(null, liveYahtzeeHandTwoObservation),
+    ).toEqual({
+      gameId: 'yahtzee-game-1',
+      gameType: 'yahtzee',
+      dealerGameId: 'yahtzee-dealer-game-1',
+      roundId: 'yahtzee-round-2',
+      handNumber: 2,
+    });
+  });
+
+  it('holds the matching second-hand scope when settlement ends the session', () => {
+    const armed = advanceLiveTerminalPresentationScope(
+      null,
+      liveYahtzeeHandTwoObservation,
+    );
+    const ended = {
+      ...liveYahtzeeHandTwoObservation,
+      status: 'session_ended',
+      terminalResultPresent: true,
+    };
+
+    const retained = advanceLiveTerminalPresentationScope(armed, ended);
+    expect(retained).toBe(armed);
+    expect(shouldHoldLiveTerminalPresentation(retained, ended)).toBe(true);
+  });
+
+  it('does not hold a fresh mount of an already-ended Yahtzee session', () => {
+    const ended = {
+      ...liveYahtzeeHandTwoObservation,
+      status: 'session_ended',
+      terminalResultPresent: true,
+    };
+
+    expect(advanceLiveTerminalPresentationScope(null, ended)).toBeNull();
+    expect(shouldHoldLiveTerminalPresentation(null, ended)).toBe(false);
+  });
+
+  it.each([
+    ['round', { roundId: 'yahtzee-round-3' }],
+    ['hand', { handNumber: 3 }],
+  ] as const)('rejects a terminal snapshot from a different %s identity', (_label, mismatch) => {
+    const armed = advanceLiveTerminalPresentationScope(
+      null,
+      liveYahtzeeHandTwoObservation,
+    );
+    const ended = {
+      ...liveYahtzeeHandTwoObservation,
+      ...mismatch,
+      status: 'session_ended',
+      terminalResultPresent: true,
+    };
+
+    expect(advanceLiveTerminalPresentationScope(armed, ended)).toBeNull();
+    expect(shouldHoldLiveTerminalPresentation(armed, ended)).toBe(false);
+  });
+
+  it('does not hold ordinary Yahtzee game_over progression', () => {
+    const armed = advanceLiveTerminalPresentationScope(
+      null,
+      liveYahtzeeHandTwoObservation,
+    );
+    const gameOver = {
+      ...liveYahtzeeHandTwoObservation,
+      status: 'game_over',
+      terminalResultPresent: true,
+    };
+
+    expect(advanceLiveTerminalPresentationScope(armed, gameOver)).toBeNull();
+    expect(shouldHoldLiveTerminalPresentation(armed, gameOver)).toBe(false);
+  });
+
+  it('matches only a completion token from the retained live hand', () => {
+    const scope = advanceLiveTerminalPresentationScope(
+      null,
+      liveYahtzeeHandTwoObservation,
+    );
+
+    expect(
+      terminalPresentationIdentityMatchesLiveScope(
+        'yahtzee|winseq|yahtzee-game-1|yahtzee-dealer-game-1|2|winner-1',
+        scope,
+      ),
+    ).toBe(true);
+    expect(
+      terminalPresentationIdentityMatchesLiveScope(
+        'yahtzee|winseq|yahtzee-game-1|yahtzee-dealer-game-1|1|winner-1',
+        scope,
+      ),
+    ).toBe(false);
+    expect(
+      terminalPresentationIdentityMatchesLiveScope(
+        'cribbage|winseq|yahtzee-game-1|yahtzee-dealer-game-1|2|winner-1',
+        scope,
+      ),
+    ).toBe(false);
   });
 });

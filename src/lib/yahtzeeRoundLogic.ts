@@ -5,7 +5,6 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { recordGameResult } from "./gameLogic";
 import { createInitialYahtzeeDice } from "./yahtzeeGameLogic";
 import { createEmptyScorecard } from "./yahtzeeScoring";
 import { YahtzeeState } from "./yahtzeeTypes";
@@ -189,7 +188,8 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     applyYahtzeeSeedScenario(initialState, seedScenario, hostPlayerId);
   }
 
-  // Yahtzee doesn't collect antes — chips transfer at end based on score difference
+  // Yahtzee doesn't collect antes into a pot. At match end, each loser pays
+  // the fixed configured stake to the unique winner.
   const potForRound = 0;
 
   // Create round
@@ -232,68 +232,9 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     })
     .eq('id', gameId);
 
-  // No ante collection in Yahtzee — chips transfer at end based on score
+  // The terminal settlement owner transfers the fixed configured stake.
 
   logYahtzeeHandStart(gameId, newHandNumber, turnOrder.length);
 
   console.log('[YAHTZEE] ✅ Round started, pot:', potForRound);
-}
-
-/** End the Yahtzee game and award pot to winner */
-export async function endYahtzeeRound(
-  gameId: string,
-  winnerId: string | null,
-  winnerDescription: string,
-  isTie: boolean = false,
-): Promise<void> {
-  console.log('[YAHTZEE] Ending round', { gameId, winnerId, winnerDescription, isTie });
-
-  if (isTie) {
-    await supabase
-      .from('games')
-      .update({
-        awaiting_next_round: true,
-        last_round_result: 'Tie - rollover',
-      })
-      .eq('id', gameId);
-  } else if (winnerId) {
-    // Use atomic guard: only transition if still in_progress
-    const { data: claim } = await supabase
-      .from('games')
-      .update({
-        status: 'game_over',
-        last_round_result: winnerDescription,
-        game_over_at: new Date().toISOString(),
-        awaiting_next_round: true,
-      })
-      .eq('id', gameId)
-      .eq('status', 'in_progress')
-      .select('id');
-
-    if (!claim || claim.length === 0) {
-      // Atomic guard missed — check if game is already game_over (another client beat us)
-      const { data: freshGame } = await supabase
-        .from('games')
-        .select('status')
-        .eq('id', gameId)
-        .maybeSingle();
-
-      if (freshGame?.status === 'game_over') {
-        console.log('[YAHTZEE] Game already in game_over, no action needed');
-        return;
-      }
-
-      // Status is something unexpected — force transition to game_over so we don't get stuck
-      console.warn('[YAHTZEE] Atomic guard missed but game not game_over (status:', freshGame?.status, '), forcing transition');
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          last_round_result: winnerDescription,
-          game_over_at: new Date().toISOString(),
-          awaiting_next_round: true,
-        })
-        .eq('id', gameId);
-    }
-  }
 }

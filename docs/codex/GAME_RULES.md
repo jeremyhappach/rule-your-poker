@@ -254,10 +254,10 @@ contradictions.
 | Setup/config | `src/components/DealerGameSetup.tsx` exposes a positive ante/stake; timer defaults come from `game_defaults`. |
 | State/actions | `src/lib/yahtzeeTypes.ts`; `src/lib/yahtzeeGameLogic.ts:rollYahtzeeDice`, `toggleYahtzeeHold`, `scoreYahtzeeCategory`, and `advanceYahtzeeTurn`; mounted persistence in `src/components/YahtzeeGameTable.tsx`. |
 | Scoring | `src/lib/yahtzeeScoring.ts:calculateCategoryScore`, `scoreCategory`, `getJokerValidCategories`, `getJokerScore`, and `getTotalScore`. |
-| Lifecycle | `src/lib/yahtzeeRoundLogic.ts:startYahtzeeRound` and `endYahtzeeRound`. |
+| Lifecycle | `src/lib/yahtzeeRoundLogic.ts:startYahtzeeRound`; terminal disposition is owned by `public.yahtzee_settle_game`, and shared continuation remains in `Game.tsx`. |
 | Bots | `src/lib/yahtzeeBotLogic.ts:getBotHoldDecision`, `getBotCategoryChoice`, and `shouldBotStopRolling`. |
 | State acceptance | `src/lib/gameStateSync/yahtzeeProgress.ts:getYahtzeeProgress`. |
-| Settlement | Completion effect in `src/components/YahtzeeGameTable.tsx`, generic chip RPCs, `src/lib/gameLogic.ts:recordGameResult`, then `endYahtzeeRound`. No Yahtzee settlement RPC. |
+| Settlement | `src/lib/yahtzeeSettleGame.ts:settleYahtzeeGame`; `public.yahtzee_settle_game`, introduced by `20260803234111_atomic_yahtzee_terminal_settlement.sql` and latest in `20260804000259_fix_yahtzee_settlement_replay.sql`. |
 
 ### Implemented rules
 
@@ -280,18 +280,27 @@ contradictions.
 - The session dealer remains fixed for this Yahtzee dealer game. A tie creates
   another Yahtzee hand under that dealer; after a win, shared lifecycle chooses
   the next dealer/game.
-- Highest total wins. If multiple players share the high score, no chips move
-  and `endYahtzeeRound(..., isTie=true)` marks a rollover/new hand.
+- Highest total wins. If multiple players share the high score, no chips move;
+  the settlement RPC completes the exact round and atomically publishes the
+  rollover flag for a new hand.
 - Start logic sets pot to zero and does not collect an ante. On a non-tie
   completion, each loser pays the configured `anteAmount`; the winner receives
   `loserCount * anteAmount`. The payout is fixed stake, not score-difference
   based.
-- `YahtzeeGameTable` chooses an authoritative writer from
-  `yahtzee_state.botControllerUserId`, performs payout/result/snapshot, waits
-  2.5 seconds for presentation, then `endYahtzeeRound` claims
-  `games.status='game_over'`. The result and snapshot use
-  `(dealer_game_id, hand_number=yahtzee_state.currentRound)`, which is normally
-  hand 1 for the first match.
+- Final human and bot category actions persist the final score and
+  `gamePhase='complete'` in one snapshot before their two-second local score
+  highlight. Every mounted participant may then replay immutable
+  game/round/dealer-game/hand identity to `yahtzee_settle_game`.
+- For a unique winner, the RPC atomically claims one `yahtzee_terminal`
+  result, transfers the fixed configured stake, completes the round, replaces
+  final snapshots with post-payout balances, and publishes `game_over` or
+  direct `session_ended`. An exact replay performs no financial writes and
+  remains valid after ordinary lifecycle progression changes mutable current-
+  game fields.
+- Connected clients retain the round-scoped participant roster for the win
+  plate and loser-to-winner chip animation even if a settled player leaves.
+  The route holds the exact live terminal identity through real animation
+  completion; a fresh mount of an already-ended session goes to the lobby.
 - Shared `handleGameOverComplete` continues the session or consumes pending
   session end.
 - Bots hold toward valuable categories, choose the highest heuristic available
@@ -300,25 +309,24 @@ contradictions.
 
 ### Contradictions and risk
 
-- `startYahtzeeRound` comments say chips transfer based on score difference,
-  while the actual completion effect transfers a fixed ante from each loser.
-  Dealer setup calls the value an ante even though no ante is collected.
+- Dealer setup calls the fixed terminal stake an ante even though no ante is
+  collected into a pot.
 - `yahtzeeTypes.ts` describes `currentRound` as 1-13, but the action reducer
   never increments it; scorecard category counts, not that field, carry match
   progress.
-- Terminal result/snapshot identity is taken from that state `currentRound`
-  instead of the authoritative `rounds.hand_number`. After a tie rollover, the
-  new row has hand number 2 or greater while terminal writers still pass 1,
-  reusing the wrong canonical dealer-game/hand identity.
+- Nonterminal category selection still uses a scored-state write, a visual
+  pause, and a later turn-advance write. A disconnect in that interval can
+  strand the current turn on a player whose scorecard just became complete;
+  the terminal path no longer has this gap.
 - The turn-order comment says left of dealer, but the implementation walks
   ascending positions after the dealer. Canonical
   `src/lib/canonicalShell/seatRing.ts:nextClockwise` defines left/clockwise as the nearest lower
   occupied position. The two direction rules disagree.
-- The mounted writer transfers chips and records results before the game-status
-  claim. Those writes are replayable if ownership changes, and payout, result,
-  snapshot, and terminal disposition are not atomic.
-- The snapshot is fire-and-forget and is called without the already-available
-  dealer-game id.
+- Gameplay roll/hold/score state is still written directly to the round JSON.
+  The deployed broad round UPDATE policy means terminal structural/domain
+  validation cannot prove the roll and category history that produced a real-
+  money scorecard. Server-owned action RPCs and narrower UPDATE access remain
+  separate integrity work.
 
 ## 3-5-7
 
@@ -502,12 +510,12 @@ contradictions.
 | Severity | Disagreement |
 |---|---|
 | Release blocker | Published iOS runtime shows the Session Ended Results panel contains all participants but does not vertically scroll. Source CSS in `SessionEndedTablePhase.tsx` claims a WebKit scroll owner; runtime evidence wins. This is presentation, not a game-rule change. |
-| Financial authority | Only Holm terminal settlement and the 3-5-7 atomic R1 sweep currently combine their full terminal consequences in a database function. Cribbage, Gin, Yahtzee, Horses, SCC, and normal 3-5-7 retain claim-to-payout client seams despite broader documentation language about authoritative settlement. |
+| Financial authority | Holm, Cribbage, and Yahtzee terminal settlement plus the 3-5-7 atomic R1 sweep combine their terminal consequences in database functions. Gin, Horses, SCC, and normal 3-5-7 retain claim-to-payout client seams. |
 | Cribbage | Three-player source constructs a three-card crib while a source comment expects the dealer's extra fourth card. |
 | Gin | Configurable gin/undercut bonuses are stored but scoring hardcodes 25; per-hand result chip deltas describe transfers that do not occur. |
-| Yahtzee | Comments describe score-difference payout, implementation uses fixed ante; its ascending-position turn order conflicts with canonical lower-position clockwise order. |
+| Yahtzee | The fixed terminal stake does not enter a pot; direct round JSON mutation still cannot prove roll/category provenance; its ascending-position turn order conflicts with canonical lower-position clockwise order. |
 | 3-5-7 | Normal terminal and instant-sweep authority differ; forced harness cards are not removed from the random deck; repair-path ante idempotency is not proven. |
 | Holm | Partial tie integer division can leave a pot remainder unallocated. |
 
-These discrepancies are findings for later scoped tasks. No product code or
-migration was changed during this ingestion.
+These discrepancies remain findings for later scoped tasks unless their game
+section explicitly records a delivered correction.

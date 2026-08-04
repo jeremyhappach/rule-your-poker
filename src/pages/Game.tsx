@@ -100,6 +100,7 @@ import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import {
   advanceLiveTerminalPresentationScope,
   shouldHoldLiveTerminalPresentation,
+  terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationScope,
 } from "@/lib/canonicalShell/liveTerminalPresentationHold";
 
@@ -1184,12 +1185,17 @@ const Game = () => {
   // Route-owned identity latch for a terminal presentation this mount first
   // observed during live play. Unlike child-published animation liveness, the
   // latch exists before an atomic settlement can publish `session_ended`.
-  const cribbageLiveTerminalScopeRef = useRef<LiveTerminalPresentationScope | null>(null);
+  const liveTerminalPresentationScopeRef = useRef<LiveTerminalPresentationScope | null>(null);
   // Latest authoritative terminal facts, readable from completion callbacks
   // (which are not re-created on every snapshot).
-  const terminalStatusFactsRef = useRef<{ status: string | null; pendingSessionEnd: boolean }>({
+  const terminalStatusFactsRef = useRef<{
+    status: string | null;
+    pendingSessionEnd: boolean;
+    lastRoundResult: string | null;
+  }>({
     status: null,
     pendingSessionEnd: false,
+    lastRoundResult: null,
   });
 
   /**
@@ -1674,36 +1680,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       holmShowdownPhase !== 'idle'
     );
 
-  // Cribbage LAST HAND can settle while His Heels still owns the cut reveal
-  // and +2 rail item. Remember the live authoritative scope here, above the
-  // game subtree, so the first `session_ended` render cannot unmount the child
-  // before it publishes animation liveness. A fresh terminal mount never
-  // observed `in_progress`, so it has no scope and still redirects to lobby.
-  const cribbageTerminalRoundForHold = game?.game_type === 'cribbage'
+  // Atomic LAST HAND settlement can publish `session_ended` before a child
+  // finishes its terminal presentation. Remember the exact live authoritative
+  // scope here, above every game subtree, so that first terminal render cannot
+  // unmount the presentation owner. A fresh terminal mount never observed
+  // `in_progress`, so it has no scope and still redirects to the lobby.
+  const liveTerminalGameType =
+    game?.game_type === 'cribbage' || game?.game_type === 'yahtzee'
+      ? game.game_type
+      : null;
+  const terminalRoundForHold = liveTerminalGameType
     ? pickActiveSingleRoundGameRound(game.rounds, {
         dealerGameId: game.current_game_uuid,
         currentRoundNumber: game.current_round,
         currentHandNumber: game.total_hands,
       })
     : null;
-  const cribbageTerminalHoldObservation = {
+  const liveTerminalHoldObservation = {
     gameId: gameId ?? null,
-    gameType: game?.game_type === 'cribbage' ? 'cribbage' : null,
+    gameType: liveTerminalGameType,
     status: (game?.status as string) ?? null,
-    dealerGameId: game?.game_type === 'cribbage' ? game.current_game_uuid ?? null : null,
-    roundId: cribbageTerminalRoundForHold?.id ?? null,
-    handNumber: cribbageTerminalRoundForHold?.hand_number ?? game?.total_hands ?? null,
+    dealerGameId: liveTerminalGameType ? game.current_game_uuid ?? null : null,
+    roundId: terminalRoundForHold?.id ?? null,
+    handNumber: terminalRoundForHold?.hand_number ?? game?.total_hands ?? null,
     terminalResultPresent: Boolean(game?.last_round_result),
   };
-  cribbageLiveTerminalScopeRef.current = advanceLiveTerminalPresentationScope(
-    cribbageLiveTerminalScopeRef.current,
-    cribbageTerminalHoldObservation,
+  liveTerminalPresentationScopeRef.current = advanceLiveTerminalPresentationScope(
+    liveTerminalPresentationScopeRef.current,
+    liveTerminalHoldObservation,
   );
-  const cribbageLastHandPresentationPending =
+  const liveTerminalPresentationPending =
     !sessionEndedTableAdmitted &&
     shouldHoldLiveTerminalPresentation(
-      cribbageLiveTerminalScopeRef.current,
-      cribbageTerminalHoldObservation,
+      liveTerminalPresentationScopeRef.current,
+      liveTerminalHoldObservation,
     );
 
   // Mirror authoritative terminal facts into a ref so completion callbacks
@@ -1711,7 +1721,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   terminalStatusFactsRef.current = {
     status: (game?.status as string) ?? null,
     pendingSessionEnd: (game as any)?.pending_session_end === true,
+    lastRoundResult: game?.last_round_result ?? null,
   };
+
+  // Completion and settlement are independent races. Cribbage normally waits
+  // for backend acknowledgement before publishing completion; Yahtzee's chip
+  // animation can legitimately finish first on a slow request. Admit Session
+  // Ended once both facts exist in either order, but only for the exact live
+  // dealer-game/hand scope retained by this mount.
+  useEffect(() => {
+    const facts = terminalStatusFactsRef.current;
+    if (facts.status !== 'session_ended' && !facts.pendingSessionEnd) return;
+    if (!liveTerminalPresentationObservedRef.current) return;
+    const scope = liveTerminalPresentationScopeRef.current;
+    const completedExactScope = Array.from(
+      terminalPresentationCompletedRef.current,
+    ).some(identity => terminalPresentationIdentityMatchesLiveScope(identity, scope));
+    if (completedExactScope) setSessionEndedTableAdmitted(true);
+  }, [game?.status, (game as any)?.pending_session_end, liveTerminalPresentationPending]);
 
   
 
@@ -5590,17 +5617,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
   useEffect(() => {
     if (game?.status !== 'session_ended') return;
-    // Cribbage last-hand settlement now closes the session inside the
-    // settlement owner (disconnect-safe), which can land BEFORE this client
+    // Atomic last-hand settlement can close the session before this client
     // finishes its terminal win presentation. Hold the redirect while the
-    // celebration is still running locally.
+    // exact live terminal scope is still presenting locally.
     // Holm LAST HAND: the hold is owned by this route (see
     // holmLastHandPresentationPending) precisely because the gameplay subtree
     // that used to publish it is removed by the same `session_ended` snapshot.
     if (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      cribbageLastHandPresentationPending
+      liveTerminalPresentationPending
     ) return;
     // Transient Session Ended table: this client stayed through the live
     // terminal presentation, so navigation is now user-owned (Back to Lobby).
@@ -5631,7 +5657,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     }, 2000);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, cribbageLastHandPresentationPending, sessionEndedTableAdmitted]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -12501,11 +12527,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   handleGameOverCompleteRef.current = handleGameOverComplete;
 
   const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
+  const handleYahtzeeTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
+    markTerminalPresentationComplete(terminalIdentity);
+    const facts = terminalStatusFactsRef.current;
+    if (facts.status !== 'game_over') return;
+
+    // The animation callback is the ordinary-game continuation boundary.
+    // Mark this result before invoking the shared owner so the fallback effect
+    // cannot schedule a second transition in the same render.
+    yahtzeeGameOverProcessedRef.current = facts.lastRoundResult || 'unknown';
+    gameOverTransitionRef.current = false;
+    void handleGameOverCompleteRef.current();
+  }, [markTerminalPresentationComplete]);
+
   useEffect(() => {
     if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
       if (game?.status !== 'game_over') yahtzeeGameOverProcessedRef.current = null;
       return;
     }
+    // Settlement is immediate, but connected clients keep the same table
+    // through the real chip-animation completion boundary. The callback above
+    // owns normal continuation; this effect is recovery-only while no local
+    // presentation is active.
+    if (terminalPresentationActive) return;
     const resultKey = game?.last_round_result || 'unknown';
     if (yahtzeeGameOverProcessedRef.current === resultKey) return;
     yahtzeeGameOverProcessedRef.current = resultKey;
@@ -12528,7 +12572,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, 8000);
 
     return () => { clearTimeout(timer); clearTimeout(fallback); };
-  }, [game?.status, game?.game_type, game?.last_round_result, gameId]);
+  }, [game?.status, game?.game_type, game?.last_round_result, gameId, terminalPresentationActive]);
 
 
   // When high-card dealer selection finishes, transition to in_progress and create round 1
@@ -14075,7 +14119,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      cribbageLastHandPresentationPending
+      liveTerminalPresentationPending
     ) &&
     (game.status as string) === 'session_ended';
   // Shared SESSION ENDED TABLE PHASE (client-local, read-only). Structurally
@@ -14090,7 +14134,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     (game.status as string) === 'session_ended' &&
     !terminalPresentationActive &&
     !holmLastHandPresentationPending &&
-    !cribbageLastHandPresentationPending;
+    !liveTerminalPresentationPending;
 
   // Terminal-presentation hold: while the canonical win sequence is still
   // presenting locally, a `session_ended` status must NOT flip the shell into
@@ -15228,7 +15272,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           >
             {(() => {
           const isInProgress = game.status === 'in_progress';
-          const isYahtzeeGameOver = game.status === 'game_over' && game.game_type === 'yahtzee';
+          const isYahtzeeGameOver =
+            game.game_type === 'yahtzee' &&
+            (game.status === 'game_over' || _terminalPresentationHold);
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
@@ -15813,8 +15859,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerPosition={game.dealer_position || 1}
                 currentRoundId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.id || null) : null}
                 dealerGameId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.dealer_game_id || null) : null}
+                handNumber={(isInProgress || isYahtzeeGameOver) ? (currentRound?.hand_number ?? null) : null}
                 yahtzeeState={yahtzeeState}
                 onRefetch={fetchGameData}
+                onTerminalPresentationActiveChange={handleTerminalPresentationActiveChange}
+                onTerminalPresentationComplete={handleYahtzeeTerminalPresentationComplete}
                 isHost={isCreator}
                 onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
               />
