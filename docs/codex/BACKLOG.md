@@ -305,6 +305,29 @@ Goals: viewport-safe layout, scrollable body, fixed footer, compact selectors, n
 - Holm long-tail visuals;
 - Yahtzee held-dice reorder/scatter.
 
+### 11. Cribbage deal transport burst recurrence
+
+Status: Queued; reported by production smoke on 2026-08-04.
+
+- One connected client saw a visible card burst during the deal and submitted a
+  Visual Bug report at the time it occurred.
+- Treat this as a card-transport presentation defect until the report is
+  correlated with an authoritative hand/deal identity. Do not reopen the
+  accepted scoring or settlement model from this observation alone.
+
+### 12. Cribbage reconnect inherits stale final-pegging announcement
+
+Status: Queued; reproduced by production smoke on 2026-08-04.
+
+- Refreshing during counting correctly resumes the authoritative counting
+  sequence and score presentation, but the announcement rail initially shows
+  the durable final-pegging message (for example, `Last +1`) until the next
+  counting announcement replaces it.
+- The likely seam is reconnect admission for the presentation-only pegging
+  notice: it is valid during the live pegging-to-counting handoff but should
+  not be revived when the client mounts already in counting. Preserve the live
+  final Last/Go notice and the persisted counting sequence.
+
 ## P2 — known low-severity defects
 
 ### 11. 3-5-7 refresh transport
