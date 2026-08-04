@@ -6295,9 +6295,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const holmDealIdentityKey = (game?.game_type === 'holm-game' && holmView)
     ? `${holmView.roundId}:h${holmView.handNumber}`
     : null;
+  // Holm must never fall back to currentCardIdentity here. During a delayed
+  // presentation hydration, that fallback changes as cards arrive and would
+  // remount DealRuntime with fresh transport IDs for the same hand. Match
+  // Gin's admission rule instead: no committed Holm identity means no deal
+  // runtime or orchestrator yet.
   const handContextKey = hasCurrentRoundDealerGameMismatch
     ? null
-    : holmDealIdentityKey
+    : game?.game_type === 'holm-game'
       ? holmDealIdentityKey
       : (cardStateContext?.roundId ??
         (currentRound?.id
