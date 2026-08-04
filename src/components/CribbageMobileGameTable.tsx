@@ -113,6 +113,7 @@ import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpoi
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
+import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import {
   cribbageAuthoritativeHandCounts,
@@ -333,38 +334,6 @@ function cribPipPlacementForSlot(slot: number | null): string | null {
   }
 }
 
-
-function getHandKey(
-  state: CribbageState | null,
-  boundary: {
-    roundId: string | null | undefined;
-    handNumber: number | null | undefined;
-  },
-): string {
-  // Canonical hand identity requires ALL of: cribbage state, roundId, and a
-  // valid handNumber. Any missing piece MUST yield an empty key — never a
-  // provisional placeholder like `no-round` or `-1`, because a provisional
-  // key can collide across genuinely different canonical hands and let
-  // DealRuntime / orchestrator identity survive into a new hand.
-  if (!state) return '';
-  if (!boundary.roundId) return '';
-  if (typeof boundary.handNumber !== 'number' || !Number.isFinite(boundary.handNumber) || boundary.handNumber < 0) {
-    return '';
-  }
-  const firstPlayerId = state.turnOrder[0];
-  const firstPlayerHand = state.playerStates[firstPlayerId]?.hand || [];
-  const discarded = state.playerStates[firstPlayerId]?.discardedToCrib || [];
-  // Include cards this player has played during pegging to keep the key stable
-  // as cards move from hand → playedCards
-  const playedByFirstPlayer = (state.pegging?.playedCards || [])
-    .filter(pc => pc.playerId === firstPlayerId)
-    .map(pc => pc.card);
-  const handSig = [...firstPlayerHand, ...discarded, ...playedByFirstPlayer]
-    .map(c => `${c.rank}${c.suit}`)
-    .sort()
-    .join(',');
-  return `r:${boundary.roundId}|h:${boundary.handNumber}|${state.dealerPlayerId}-${handSig}`;
-}
 
 const HAND_BOUNDARY_GUARD_LIMIT = 24;
 
@@ -1520,20 +1489,20 @@ export const CribbageMobileGameTable = ({
   }
 
   // Track hand key to detect hand transitions and prevent stale card flash.
-  // Authoritative boundary: currentRoundId + currentHandNumber (writer-side,
-  // aligned to authIdentity via the sync framework).
+  // Authoritative boundary: currentRoundId + currentHandNumber only.
+  // Mutable cards must never rotate DealRuntime or CardTransport mid-hand.
   const currentHandKey = useMemo(
-    () => getHandKey(cribbageState, { roundId: currentRoundId, handNumber: currentHandNumber }),
-    [cribbageState, currentRoundId, currentHandNumber],
+    () => getCribbageHandIdentity(currentRoundId, currentHandNumber),
+    [currentRoundId, currentHandNumber],
   );
   // Render-specific hand key: derived from the existing presentation-owned
   // boundary (syncHandle.presentationIdentity). No new mirror/latch/timer.
   const renderHandKey = useMemo(
-    () => getHandKey(viewState, {
-      roundId: syncHandle.presentationIdentity?.roundId,
-      handNumber: syncHandle.presentationIdentity?.handNumber,
-    }),
-    [viewState, syncHandle.presentationIdentity?.roundId, syncHandle.presentationIdentity?.handNumber],
+    () => getCribbageHandIdentity(
+      syncHandle.presentationIdentity?.roundId,
+      syncHandle.presentationIdentity?.handNumber,
+    ),
+    [syncHandle.presentationIdentity?.roundId, syncHandle.presentationIdentity?.handNumber],
   );
 
   // Durable canonical DealRuntime identity latch.
