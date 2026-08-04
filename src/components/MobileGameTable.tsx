@@ -12941,16 +12941,7 @@ export const MobileGameTable = ({
                     </span>
                     {chuckyCardsForRender.map((card, index) => {
                       const isRevealed = index < chuckyRevealedCountForRender;
-                      const isFourColor = deckColorMode === 'four_color';
-                      const fourColorConfig = getFourColorSuit(card.suit);
-                      const cardBg = isRevealed
-                        ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white'
-                        : undefined;
-                      const twoColorTextStyle = !isFourColor && isRevealed
-                        ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
-                        : {};
                       const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
-                      const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
                       return (
                         <div
                           key={index}
@@ -12997,31 +12988,15 @@ export const MobileGameTable = ({
                             return null;
                           })()}
                           <HolmSettledGate cardId={`${chuckyHandIdForRender}#chucky-${index}`}>
-                            {isRevealed ? (
-                              <div
-                                className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
-                                style={{
-                                  backgroundColor: cardBg,
-                                  ...twoColorTextStyle,
-                                  ...dimStyle,
-                                }}
-                              >
-                                <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                                  {card.rank}
-                                </span>
-                                {!isFourColor && (
-                                  <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
-                                )}
-                              </div>
-                            ) : (
-                              <CanonicalCardBack
-                                widthPx={40}
-                                heightPx={60}
-                                variant="raised"
-                                radiusPx={6}
-                                style={{ width: '100%', height: '100%' }}
-                              />
-                            )}
+                            <PlayingCard
+                              card={card}
+                              isHidden={!isRevealed}
+                              size="lg"
+                              tier="medium"
+                              borderColor="border-red-500"
+                              isDimmed={shouldDimChucky}
+                              style={{ width: '100%', height: '100%' }}
+                            />
                           </HolmSettledGate>
                         </div>
                       );
