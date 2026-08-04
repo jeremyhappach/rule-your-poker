@@ -1445,6 +1445,49 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log(`[MAKE_DECISION] Player BEFORE update: position=${player.position} decision_locked=${player.decision_locked} current_decision=${player.current_decision} status=${player.status}`);
 
+  // Holm owns the final decision on the server.  In particular, the last
+  // decision and the solo-vs-Chucky settlement must be one transaction: a
+  // browser closing after its Stay/Fold write cannot be the thing that decides
+  // whether a LAST HAND session ever reaches session_ended.
+  if (isHolmGame) {
+    const { data, error } = await supabase.rpc('holm_submit_decision', {
+      p_game_id: gameId,
+      p_player_id: playerId,
+      p_decision: decision,
+    });
+
+    if (error) {
+      console.error('[MAKE_DECISION] Holm server decision failed:', error);
+      throw new Error(`Holm decision failed: ${error.message}`);
+    }
+
+    const result = (data ?? {}) as {
+      already_locked?: boolean;
+      already_terminal?: boolean;
+      round_not_betting?: boolean;
+      all_decisions_in?: boolean;
+      server_resolved?: boolean;
+      terminal_disposition?: 'game_over' | 'session_ended' | null;
+    };
+
+    console.log('[MAKE_DECISION] Holm server decision result:', result);
+
+    if (result.already_locked || result.already_terminal || result.round_not_betting) {
+      return;
+    }
+
+    // The server resolves all-fold and solo-vs-Chucky hands, including their
+    // final-session disposition. Multi-player showdown presentation retains
+    // its existing owner for now; it can safely claim the already-persisted
+    // all-decisions state below.
+    if (result.server_resolved) {
+      return;
+    }
+
+    const { checkHolmRoundComplete } = await import('./holmGameLogic');
+    await checkHolmRoundComplete(gameId, player.position);
+    return;
+  }
 
   // Prevent double-clicking - if player has already locked in a decision, don't allow changes
   if (player.decision_locked) {

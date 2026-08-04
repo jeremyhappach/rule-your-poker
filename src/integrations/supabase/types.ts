@@ -3379,6 +3379,14 @@ export type Database = {
         }
         Returns: Json
       }
+      holm_submit_decision: {
+        Args: {
+          p_decision: string
+          p_game_id: string
+          p_player_id: string
+        }
+        Returns: Json
+      }
       horses_advance_turn: {
         Args: { _expected_current_player_id: string; _round_id: string }
         Returns: Json
