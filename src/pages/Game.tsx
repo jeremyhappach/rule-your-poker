@@ -15484,6 +15484,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
+          // The route retains the actual `session_ended` lifecycle state.  Holm's
+          // already-mounted card renderer, however, admits terminal card
+          // snapshots under its established `game_over` presentation contract.
+          // This alias exists only for the connected client's held reveal.
+          const holmPresentationStatus =
+            game.game_type === 'holm-game' && _terminalPresentationHold
+              ? 'game_over'
+              : game.status;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
@@ -16121,7 +16129,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isPaused={renderRoundContext ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
-              gameStatus={game.status}
+              gameStatus={holmPresentationStatus}
               holmDealerGameId={(game as any).current_game_uuid ?? null}
               horsesRoundId={currentRound?.id ?? null}
               horsesHandNumber={currentRound?.hand_number ?? null}
