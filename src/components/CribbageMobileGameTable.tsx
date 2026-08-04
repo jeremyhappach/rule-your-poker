@@ -7867,6 +7867,21 @@ export const CribbageMobileGameTable = ({
 
   // Latch pegboard data whenever we have valid gameplay state
   const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
+  const latestAcceptedScoreStates = syncHandle.authoritativeState?.playerStates ?? null;
+  const pegboardPlayerStates: CribbageState['playerStates'] = isGameplayMode && gameplayRenderState
+    ? Object.fromEntries(
+        Object.entries(gameplayRenderState.playerStates).map(([playerId, playerState]) => [
+          playerId,
+          {
+            ...playerState,
+            // Card transport may hold the broader presentation snapshot. Scores
+            // must remain live, so an accepted pegging event cannot be hidden
+            // behind that animation latch.
+            pegScore: latestAcceptedScoreStates?.[playerId]?.pegScore ?? playerState.pegScore,
+          },
+        ]),
+      )
+    : latchedPegboardDataRef.current?.playerStates ?? {};
 
   if (isGameplayMode && gameplayRenderState) {
     latchedPegboardDataRef.current = {
@@ -8795,11 +8810,7 @@ export const CribbageMobileGameTable = ({
             >
               {!sessionEndedPhase && <CribbagePegBoard
                 players={players}
-                playerStates={
-                  isGameplayMode && gameplayRenderState
-                    ? gameplayRenderState.playerStates
-                    : latchedPegboardDataRef.current.playerStates
-                }
+                playerStates={pegboardPlayerStates}
                 winningScore={
                   isGameplayMode && gameplayRenderState
                     ? gameplayRenderState.pointsToWin
