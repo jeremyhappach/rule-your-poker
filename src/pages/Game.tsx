@@ -8729,15 +8729,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const is357Trace = false;
 
 
-    // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
+    // Fetch player cards if game is in progress or game_over (keep cards visible during announcements).
+    // A connected Holm client can receive atomic `session_ended` before its
+    // terminal reveal finishes. Retain/fetch only that exact live terminal
+    // round; a fresh mount never sets holmSawLiveSessionRef and therefore
+    // cannot hydrate or present historical cards.
+    const isHolmGame = gameData.game_type === 'holm-game';
+    const shouldFetchHolmLiveTerminalCards =
+      isHolmGame &&
+      gameData.status === 'session_ended' &&
+      holmSawLiveSessionRef.current &&
+      Boolean(gameData.current_game_uuid) &&
+      Boolean(gameData.last_round_result);
     // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
-    const shouldFetchCards = gameData.status === 'in_progress' || gameData.status === 'game_over';
+    const shouldFetchCards =
+      gameData.status === 'in_progress' ||
+      gameData.status === 'game_over' ||
+      shouldFetchHolmLiveTerminalCards;
     const shouldFetchCardsReason357 = `status=${gameData.status ?? 'null'}`;
 
     // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
-    const isHolmGame = gameData.game_type === 'holm-game';
     const keepCards = shouldFetchCards
-      ? (gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round)
+      ? (
+          gameData.status === 'game_over' ||
+          shouldFetchHolmLiveTerminalCards ||
+          !isHolmGame ||
+          !gameData.awaiting_next_round
+        )
       : false;
 
     // Keep cards visible during results announcement (last_round_result exists)
@@ -15484,14 +15502,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             !!holmWinPotTriggerId ||
             !!horsesWinPotTriggerId;
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
-          // The route retains the actual `session_ended` lifecycle state.  Holm's
-          // already-mounted card renderer, however, admits terminal card
-          // snapshots under its established `game_over` presentation contract.
-          // This alias exists only for the connected client's held reveal.
-          const holmPresentationStatus =
-            game.game_type === 'holm-game' && _terminalPresentationHold
-              ? 'game_over'
-              : game.status;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
@@ -16129,7 +16139,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isPaused={renderRoundContext ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
-              gameStatus={holmPresentationStatus}
+              gameStatus={game.status}
               holmDealerGameId={(game as any).current_game_uuid ?? null}
               horsesRoundId={currentRound?.id ?? null}
               horsesHandNumber={currentRound?.hand_number ?? null}
