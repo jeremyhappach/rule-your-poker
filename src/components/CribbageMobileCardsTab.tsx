@@ -902,7 +902,7 @@ export const CribbageMobileCardsTab = ({
 
 
 
-  const handleCardClick = (index: number) => {
+  const handleCardClick = (sourceIndex: number, displayIndex: number) => {
     if (!myPlayerState) return;
     if (renderTrace?.interactionsAllowed === false) return;
     if (peggingBoundaryBlocked) return;
@@ -911,21 +911,25 @@ export const CribbageMobileCardsTab = ({
 
 
     if (cribbageState.phase === 'discarding') {
-      if (selectedCards.includes(index)) {
-        setSelectedCards(selectedCards.filter(i => i !== index));
+      if (selectedCards.includes(sourceIndex)) {
+        setSelectedCards(selectedCards.filter(i => i !== sourceIndex));
       } else if (selectedCards.length < expectedDiscard) {
-        setSelectedCards([...selectedCards, index]);
+        setSelectedCards([...selectedCards, sourceIndex]);
       }
     } else if (cribbageState.phase === 'pegging') {
       if (isMyTurn) {
-        const card = renderedHand[index];
+        // Rules evaluate the card the player actually tapped in the sorted
+        // display, while the mutation retains the authoritative deal-order
+        // index. Conflating these indices rejects legal cards whenever display
+        // order differs from source order.
+        const card = renderedHand[displayIndex];
         if (card && getCardPointValue(card) + cribbageState.pegging.currentCount <= 31) {
           // Task C2 — synchronously capture selected hand card rect BEFORE
           // authoritative play mutates state. Overlay animation will fly
           // from this rect to the pegging row center.
           let sourceRect: { x: number; y: number; width: number; height: number } | null = null;
           try {
-            const key = `${card.rank}${card.suit[0]}-${index}`;
+            const key = `${card.rank}${card.suit[0]}-${sourceIndex}`;
             const el = document.querySelector(
               `[data-cribbage-hand-card-key="${key}"]`,
             ) as HTMLElement | null;
@@ -936,7 +940,7 @@ export const CribbageMobileCardsTab = ({
               }
             }
           } catch { /* best-effort */ }
-          onPlayCard(index, sourceRect);
+          onPlayCard(sourceIndex, sourceRect);
         } else {
           toast.error('Card would exceed 31');
         }
@@ -1094,7 +1098,7 @@ export const CribbageMobileCardsTab = ({
 
             return (
               <button
-                onClick={() => handleCardClick(sourceIndex)}
+                onClick={() => handleCardClick(sourceIndex, index)}
                 data-cribbage-hand-card-key={`${card.rank}${card.suit[0]}-${sourceIndex}`}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || renderTrace?.interactionsAllowed === false || peggingBoundaryBlocked || selfPlayUnresolved}

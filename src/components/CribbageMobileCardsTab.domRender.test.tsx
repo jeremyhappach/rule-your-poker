@@ -294,6 +294,62 @@ describe('CribbageMobileCardsTab — healthy in-flight deal is not clobbered by 
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+describe('CribbageMobileCardsTab sorted display action identity', () => {
+  it('plays the displayed 4 at count 26 using its authoritative source index', () => {
+    const state = makeState({ phase: 'pegging' });
+    state.playerStates.p1.hand = [
+      { rank: '6', suit: 'clubs', value: 6 },
+      { rank: '4', suit: 'diamonds', value: 4 },
+      { rank: '9', suit: 'diamonds', value: 9 },
+    ];
+    state.pegging = {
+      ...state.pegging,
+      currentCount: 26,
+      currentTurnPlayerId: 'p1',
+    };
+    const onPlayCard = vi.fn();
+
+    act(() => {
+      root!.render(
+        <CribbageMobileCardsTab
+          cribbageState={state}
+          currentPlayerId="p1"
+          playerCount={2}
+          isProcessing={false}
+          onDiscard={() => {}}
+          onPlayCard={onPlayCard}
+          currentPlayer={currentPlayer}
+          gameId="game-1"
+          isDealer
+          roundId="round-1"
+          selectedCards={[]}
+          renderTrace={{
+            renderHandKey: 'live-hand',
+            currentHandKey: 'live-hand',
+            dealerGameId: 'dg-1',
+            isFrozen: false,
+            authoritativeHand: state.playerStates.p1.hand,
+            renderSource: 'sync-presentation',
+            expectedRoundId: 'round-1',
+            sourceRoundId: 'round-1',
+            handNumber: 2,
+            isGameplayMode: true,
+            viewStateIsCurrentRound: true,
+            interactionsAllowed: true,
+          }}
+        />,
+      );
+    });
+
+    const fourButton = container!.querySelector(
+      '[data-cribbage-hand-card-key="4d-1"]',
+    ) as HTMLButtonElement | null;
+    expect(fourButton).toBeTruthy();
+    act(() => { fourButton!.click(); });
+    expect(onPlayCard).toHaveBeenCalledWith(1, null);
+  });
+});
+
 // The former "opening-deal grace prevents pre-transport flash" describe
 // (six tests) was deleted. It exclusively asserted the fixed 2000ms
 // opening-deal grace, which was deliberately removed. Visibility is
