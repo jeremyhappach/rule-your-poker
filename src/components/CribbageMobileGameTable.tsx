@@ -8720,15 +8720,19 @@ export const CribbageMobileGameTable = ({
                 })()}
 
                 {/* Forced-Go bubble. Anchored to blocked players' canonical
-                    chipstacks. Truth derives from authoritative
-                    pegging.goCalledBy (populated by advanceToNextPeggingTurn
-                    BEFORE spotlight reassignment) — no timer, no latch. */}
+                    chipstacks. Ordinary Go truth comes from goCalledBy; the
+                    reset-surviving immediate-Go latch is visible only during
+                    this client's matching boundary presentation hold. */}
                 <CribbagePeggingGoBubble
                   cribbageState={gameplayRenderState}
                   playerPositionById={
                     new Map(activeSeatPlayers.map(p => [p.id, p.position]))
                   }
                   localPlayerId={currentPlayerId}
+                  showPendingGoBubble={
+                    thirtyOneDelayActive &&
+                    heldSequenceSnapshot?.armedEventType === 'go_point'
+                  }
                   // Local-player Go bubble presentation was removed by
                   // contract; `localPlayerId` is still passed so the
                   // component can filter out the local id from the

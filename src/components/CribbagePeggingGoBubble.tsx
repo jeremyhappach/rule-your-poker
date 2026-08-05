@@ -42,6 +42,9 @@ interface CribbagePeggingGoBubbleProps {
   /** Suppress bubbles when non-pegging presentation is in flight
    *  (counting outro, terminal path, etc.). */
   isPeggingPresentation: boolean;
+  /** Admit the reset-surviving immediate-Go latch only while the parent
+   *  is still presenting that Go boundary. */
+  showPendingGoBubble?: boolean;
 }
 
 interface Placement {
@@ -87,9 +90,12 @@ export const CribbagePeggingGoBubble = ({
   playerPositionById,
   localPlayerId,
   isPeggingPresentation,
+  showPendingGoBubble = false,
 }: CribbagePeggingGoBubbleProps) => {
   const goCalledBy = cribbageState?.pegging.goCalledBy ?? [];
-  const pendingBubbleIds = cribbageState?.pegging.pendingGoBubblePlayerIds ?? [];
+  const pendingBubbleIds = showPendingGoBubble
+    ? cribbageState?.pegging.pendingGoBubblePlayerIds ?? []
+    : [];
   const playerStates = cribbageState?.playerStates ?? {};
   const phase = cribbageState?.phase;
 

@@ -152,11 +152,12 @@ describe('CribbagePeggingGoBubble presentation', () => {
     expect(s.pegging.pendingGoBubblePlayerIds).toEqual(['bot']);
     expect(s.lastEvent?.type).toBe('go_point');
 
-    render(
+    const { rerender } = render(
       <CribbagePeggingGoBubble
         cribbageState={s}
         playerPositionById={positions}
         isPeggingPresentation
+        showPendingGoBubble
       />,
     );
     await new Promise(r => requestAnimationFrame(() => r(null)));
@@ -165,6 +166,18 @@ describe('CribbagePeggingGoBubble presentation', () => {
     expect(
       document.querySelector('[data-cribbage-go-bubble="2"]'),
     ).not.toBeNull();
+
+    // The authoritative latch may remain until the next play, but it must
+    // stop rendering as soon as the Go boundary presentation releases.
+    rerender(
+      <CribbagePeggingGoBubble
+        cribbageState={s}
+        playerPositionById={positions}
+        isPeggingPresentation
+        showPendingGoBubble={false}
+      />,
+    );
+    expect(screen.queryByText('Go')).toBeNull();
 
     // Latch clears when the new run leader plays.
     const sAfter = playPeggingCard(s, 'bot', 0);
