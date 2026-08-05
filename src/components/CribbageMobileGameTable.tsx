@@ -8829,7 +8829,7 @@ export const CribbageMobileGameTable = ({
             <CribbageAnchoredCribCutMount
               cribbageState={gameplayRenderState}
               cardBackColors={cardBackColors}
-              handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
+              handBoundaryKey={renderHandKey || currentHandKey}
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               visibleCribCount={Math.min(
