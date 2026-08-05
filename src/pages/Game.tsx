@@ -4330,10 +4330,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
           stopFallbackPolling();
-          // Signal a rehydration to the resume-handler (identical contract to
-          // visibility resume). Dispatched only after the channel is healthy
-          // again; the in-flight guard in the resume handler prevents
-          // duplicate simultaneous refreshes.
+          // Close the fetch-before-subscribe blind window with one full
+          // authoritative snapshot. This must be owned here rather than by the
+          // auth-gated resume effect: a player INSERT can land after the cold
+          // fetch but before this channel becomes SUBSCRIBED, and that effect
+          // may not be mounted yet. Keep the event for non-fetch reconnect
+          // drains (for example the Holm bot scheduler).
+          void fetchGameData('realtime_reconnect').catch((error) => {
+            console.warn('[SUBSCRIPTION] Authoritative catch-up failed:', error);
+          });
           try {
             window.dispatchEvent(new CustomEvent('app:realtime-reconnect'));
           } catch { /* noop */ }
@@ -4370,7 +4375,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   //   • Same-scope preservation for the render branch is done via
   //     `lastValidCribbageIdentityRef` (see Cribbage render branch below).
   //   • A single in-flight guard prevents concurrent refreshes fired by
-  //     overlapping visibility / focus / pageshow / realtime-reconnect signals.
+  //     overlapping visibility / focus / pageshow signals. Realtime SUBSCRIBED
+  //     catch-up is owned directly by the subscription effect above.
   const resyncInFlightRef = useRef<boolean>(false);
   useEffect(() => {
     if (!gameId || !user) return;
@@ -4378,7 +4384,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     let lastResyncTime = 0;
     const RESYNC_DEBOUNCE_MS = 1000; // Don't resync more than once per second
 
-    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow' | 'realtime-reconnect') => {
+    const handleResync = async (source: 'visibility' | 'focus' | 'pageshow') => {
       const now = Date.now();
       if (now - lastResyncTime < RESYNC_DEBOUNCE_MS) return;
       if (resyncInFlightRef.current) return;
@@ -4448,9 +4454,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // Force full refetch (rehydrates games row + rounds → currentRound).
-          await fetchGameData(
-            source === 'realtime-reconnect' ? 'realtime_reconnect' : source
-          );
+          await fetchGameData(source);
         }
       } finally {
         resyncInFlightRef.current = false;
@@ -4477,22 +4481,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     };
 
-    // Realtime reconnect: after transport drops and re-subscribes, treat it
-    // the same as a visibility resume so identity is rehydrated authoritatively.
-    const handleRealtimeReconnect = () => {
-      void handleResync('realtime-reconnect');
-    };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pageshow', handlePageShow as EventListener);
-    window.addEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
-      window.removeEventListener('app:realtime-reconnect', handleRealtimeReconnect as EventListener);
     };
   }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
