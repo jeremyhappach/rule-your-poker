@@ -52,14 +52,35 @@ interface Placement {
   bubbleY: number;
   /** Tail rotation in degrees (0 = tail points right / east). */
   tailAngleDeg: number;
+  /** Distance from the bubble center to the center of the SVG tail. */
+  tailCenterOffsetPx: number;
 }
 
-const REMOTE_BUBBLE_OFFSET_PX = 44;
-const TAIL_LENGTH_PX = 12;
+const BUBBLE_WIDTH_PX = 58;
+const BUBBLE_HEIGHT_PX = 34;
+const BUBBLE_RADIUS_PX = 12;
+const TAIL_LENGTH_PX = 14;
+const TAIL_HEIGHT_PX = 14;
+const TAIL_BODY_OVERLAP_PX = 3;
+const CHIP_CLEARANCE_PX = 3;
 
 // Soft, readable green — Tailwind emerald-200 body, emerald-700 border.
 const BUBBLE_FILL = '#a7f3d0';
 const BUBBLE_BORDER = '#047857';
+
+function ellipseRadiusAlongVector(
+  unitX: number,
+  unitY: number,
+  radiusX: number,
+  radiusY: number,
+): number {
+  if (radiusX <= 0 || radiusY <= 0) return 0;
+  const denominator = Math.sqrt(
+    (unitX * unitX) / (radiusX * radiusX) +
+      (unitY * unitY) / (radiusY * radiusY),
+  );
+  return denominator > 0 ? 1 / denominator : 0;
+}
 
 export const CribbagePeggingGoBubble = ({
   cribbageState,
@@ -131,8 +152,30 @@ export const CribbagePeggingGoBubble = ({
         const dist = Math.hypot(dx, dy) || 1;
         const ux = dx / dist;
         const uy = dy / dist;
-        const bubbleX = cx + ux * REMOTE_BUBBLE_OFFSET_PX;
-        const bubbleY = cy + uy * REMOTE_BUBBLE_OFFSET_PX;
+        // Resolve both shapes along the live seat-to-felt axis. The tail can
+        // overlap the body but its tip stops outside the chip perimeter.
+        const bodyEdgeRadius = ellipseRadiusAlongVector(
+          -ux,
+          -uy,
+          BUBBLE_WIDTH_PX / 2,
+          BUBBLE_HEIGHT_PX / 2,
+        );
+        const tailBaseOffsetPx = Math.max(
+          0,
+          bodyEdgeRadius - TAIL_BODY_OVERLAP_PX,
+        );
+        const tailCenterOffsetPx = tailBaseOffsetPx + TAIL_LENGTH_PX / 2;
+        const tailTipReachPx = tailBaseOffsetPx + TAIL_LENGTH_PX;
+        const chipEdgeRadius = ellipseRadiusAlongVector(
+          ux,
+          uy,
+          cr.width / 2,
+          cr.height / 2,
+        );
+        const bubbleOffsetPx =
+          chipEdgeRadius + CHIP_CLEARANCE_PX + tailTipReachPx;
+        const bubbleX = cx + ux * bubbleOffsetPx;
+        const bubbleY = cy + uy * bubbleOffsetPx;
         // Tail points OUTWARD back to the chipstack.
         const tailAngleDeg = (Math.atan2(-uy, -ux) * 180) / Math.PI;
         next.push({
@@ -141,6 +184,7 @@ export const CribbagePeggingGoBubble = ({
           bubbleX,
           bubbleY,
           tailAngleDeg,
+          tailCenterOffsetPx,
         });
       }
 
@@ -153,6 +197,9 @@ export const CribbagePeggingGoBubble = ({
             if (Math.abs(p.bubbleX - n.bubbleX) > 0.5) return false;
             if (Math.abs(p.bubbleY - n.bubbleY) > 0.5) return false;
             if (Math.abs(p.tailAngleDeg - n.tailAngleDeg) > 0.5) return false;
+            if (
+              Math.abs(p.tailCenterOffsetPx - n.tailCenterOffsetPx) > 0.5
+            ) return false;
             return true;
           })
         ) {
@@ -187,15 +234,7 @@ export const CribbagePeggingGoBubble = ({
 
   return createPortal(
     <>
-      {placements.map(p => {
-        // Outer (border) triangle is slightly larger than the inner
-        // (fill) triangle so the tail carries the same border treatment
-        // as the bubble body without an SVG.
-        const outerHalf = TAIL_LENGTH_PX * 0.85;
-        const innerHalf = TAIL_LENGTH_PX * 0.6;
-        // Push the tail so its base sits flush with the bubble edge.
-        const tailBaseOffsetPx = 22;
-        return (
+      {placements.map(p => (
           <div
             key={p.playerId}
             data-cribbage-go-bubble={p.position}
@@ -205,56 +244,52 @@ export const CribbagePeggingGoBubble = ({
               left: p.bubbleX,
               top: p.bubbleY,
               transform: 'translate(-50%, -50%)',
+              isolation: 'isolate',
             }}
           >
-            <div
-              className="relative rounded-full font-extrabold uppercase tracking-wide"
+            <svg
+              aria-hidden
+              data-cribbage-go-tail
+              viewBox="0 0 16 14"
+              className="absolute left-1/2 top-1/2"
               style={{
+                width: TAIL_LENGTH_PX + 2,
+                height: TAIL_HEIGHT_PX,
+                overflow: 'visible',
+                transform: `translate(-50%, -50%) rotate(${p.tailAngleDeg}deg) translate(${p.tailCenterOffsetPx}px, 0)`,
+                transformOrigin: 'center',
+                zIndex: 0,
+              }}
+            >
+              <path
+                d="M 1 1 L 15 7 L 1 13 Z"
+                fill={BUBBLE_FILL}
+                stroke={BUBBLE_BORDER}
+                strokeWidth="2"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <div
+              className="relative flex items-center justify-center font-extrabold uppercase tracking-wide"
+              style={{
+                width: BUBBLE_WIDTH_PX,
+                height: BUBBLE_HEIGHT_PX,
+                borderRadius: BUBBLE_RADIUS_PX,
                 fontSize: 15,
                 lineHeight: 1,
-                padding: '6px 14px',
-                minWidth: 44,
                 textAlign: 'center',
                 color: '#000',
                 backgroundColor: BUBBLE_FILL,
                 border: `2px solid ${BUBBLE_BORDER}`,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                zIndex: 1,
               }}
             >
               Go
-              {/* Outer (border) tail */}
-              <span
-                aria-hidden
-                className="absolute left-1/2 top-1/2"
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: `${TAIL_LENGTH_PX}px solid ${BUBBLE_BORDER}`,
-                  borderTop: `${outerHalf}px solid transparent`,
-                  borderBottom: `${outerHalf}px solid transparent`,
-                  transform: `translate(-50%, -50%) rotate(${p.tailAngleDeg}deg) translate(${tailBaseOffsetPx}px, 0)`,
-                  transformOrigin: 'center',
-                }}
-              />
-              {/* Inner (fill) tail — slightly smaller & pulled inward
-                  so the outer border rims the tail evenly. */}
-              <span
-                aria-hidden
-                className="absolute left-1/2 top-1/2"
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: `${TAIL_LENGTH_PX - 2}px solid ${BUBBLE_FILL}`,
-                  borderTop: `${innerHalf}px solid transparent`,
-                  borderBottom: `${innerHalf}px solid transparent`,
-                  transform: `translate(-50%, -50%) rotate(${p.tailAngleDeg}deg) translate(${tailBaseOffsetPx - 2}px, 0)`,
-                  transformOrigin: 'center',
-                }}
-              />
             </div>
           </div>
-        );
-      })}
+      ))}
     </>,
     document.body,
   );
