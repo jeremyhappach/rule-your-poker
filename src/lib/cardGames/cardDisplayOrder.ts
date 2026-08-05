@@ -36,7 +36,10 @@ const GIN_SUIT_ORDER: Record<string, number> = {
   '♦': 3,
 };
 
-function rankValue(rank: string | number): number {
+function rankValue(rank: string | number, game: ActiveHandDisplayGame): number {
+  if (String(rank) === 'A' && (game === 'holm' || game === 'three-five-seven')) {
+    return 14;
+  }
   return RANK_ORDER[String(rank)] ?? Number.MAX_SAFE_INTEGER;
 }
 
@@ -69,7 +72,7 @@ export function getActiveHandDisplayOrder<T extends DisplayOrderCard>(
         if (aWild !== bWild) return aWild ? -1 : 1;
       }
 
-      const rankDifference = rankValue(a.card.rank) - rankValue(b.card.rank);
+      const rankDifference = rankValue(a.card.rank, game) - rankValue(b.card.rank, game);
       if (rankDifference !== 0) return rankDifference;
 
       if (game === 'gin-rummy') {
