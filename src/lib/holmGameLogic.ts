@@ -407,9 +407,62 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
  * - Decision starts with buck position and rotates clockwise
  * - Uses firstHand flag: true = collect antes; false = preserve pot from showdown
  */
+export type HolmInitialHandStartResult = {
+  outcome: 'started' | 'already-started' | 'rejected';
+  reason?: string;
+  round_id?: string;
+  dealer_game_id?: string;
+  hand_number?: number;
+  buck_position?: number;
+  pot?: number;
+  deduped?: boolean;
+};
+
+/**
+ * Authoritative first-hand bootstrap. The RPC locks the game row and owns the
+ * ante, deal, round/card inserts, and game-pointer publication atomically.
+ * Duplicate and delayed callers receive the same first-round identity.
+ */
+export async function startHolmInitialHand(
+  gameId: string,
+): Promise<HolmInitialHandStartResult> {
+  const { data, error } = await supabase.rpc('start_holm_initial_hand', {
+    _game_id: gameId,
+    _skip_ante_collection: false,
+  });
+
+  if (error) {
+    throw new Error(`Holm initial-hand RPC failed: ${error.message}`);
+  }
+
+  const result = (data ?? {}) as HolmInitialHandStartResult;
+  if (result.outcome !== 'started' && result.outcome !== 'already-started') {
+    throw new Error(`Holm initial-hand RPC rejected: ${result.reason ?? 'unknown reason'}`);
+  }
+
+  if (result.outcome === 'started') {
+    persistTransition(gameId, 'holm', 1, 'hand-start', {
+      buckPosition: result.buck_position ?? null,
+      pot: result.pot ?? null,
+      firstHand: true,
+      atomic: true,
+    });
+  }
+
+  console.log('[HOLM] Initial hand RPC complete', result);
+  return result;
+}
+
 export async function startHolmRound(gameId: string, isFirstHand: boolean = false, passedBuckPosition?: number) {
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
+
+  // Keep every first-hand caller on the replay-safe server boundary. This also
+  // protects any older call site that still invokes startHolmRound(..., true).
+  if (isFirstHand) {
+    await startHolmInitialHand(gameId);
+    return;
+  }
 
   // The caller may pass isFirstHand=true, but older stuck states can have is_first_hand already consumed.
   // In that case, we can safely "recover" by starting the hand without first-hand logic (no re-ante),

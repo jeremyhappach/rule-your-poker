@@ -285,7 +285,7 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
-import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
+import { startHolmInitialHand, startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { getHolmResolutionRecoveryKey } from "@/lib/holmResolutionRecovery";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
@@ -13202,24 +13202,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // Now start the round (animation already triggered above)
           if (isHolmGame) {
-            const pot = typeof freshGame?.pot === 'number' ? freshGame.pot : 0;
-            const shouldRunHolmFirstHand = freshGame?.is_first_hand === true;
-            // Recovery: if first-hand flag was already consumed but we're still stuck in ante_decision,
-            // start without first-hand lock/ante collection (pot should already be set).
-            const holmIsRecovery = !shouldRunHolmFirstHand && pot > 0;
-
-            if (holmIsRecovery) {
-              console.warn('[ANTE][HOLM] Recovery start: is_first_hand=false but still in ante_decision; starting Holm without first-hand flag');
-            } else if (!shouldRunHolmFirstHand) {
-              // Another client has claimed the first-hand lock but has not yet
-              // published the ante pot. It alone may create the initial round;
-              // starting a zero-pot "recovery" here strands the real antes.
-              console.log('[ANTE][HOLM] First hand already claimed; waiting for the locked starter to publish the pot and round');
-              anteProcessingRef.current = false;
-              return;
-            }
-
-            await startHolmRound(gameId, shouldRunHolmFirstHand);
+            // Every client may safely request the same start. PostgreSQL locks
+            // the game row and returns the existing first round to replays.
+            await startHolmInitialHand(gameId);
           } else if (isHorsesGame) {
             // isHorsesGame now includes ship-captain-crew - use freshGame for type check
             const firstHandCallerContext = {

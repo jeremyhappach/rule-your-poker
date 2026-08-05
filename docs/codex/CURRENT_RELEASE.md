@@ -288,6 +288,29 @@ directly to the lobby. Production rollback proof passed winner, tie, duplicate,
 replay, late-replay, authorization, continuation, and terminal-state cases;
 published two-human runtime smoke remains the acceptance evidence.
 
+## Holm atomic initial-hand startup
+
+The 2026-08-05 `Aug 5 - Pioneer Parkway` production repro proved that Holm's
+former browser-owned startup could create two authoritative hands 1.066 seconds
+apart. The first caller consumed `games.is_first_hand` and published the ante
+pot before inserting its round; a second client then interpreted that visible
+partial state as recovery, derived `max(hand_number) + 1`, and created hand 2.
+
+Migration `20260805175524_atomic_holm_initial_hand.sql` is installed on the
+owned production database. `public.start_holm_initial_hand` now locks the game
+row and owns the first-hand identity, exactly-once ante movement and audit,
+deck/deal, round and player-card inserts, and game-pointer publication in one
+transaction. Duplicate and delayed callers receive the same hand-1 round.
+Anonymous execution is revoked; an authenticated caller must be a seated
+participant or superuser. The client candidate removes the partial-state
+recovery branch and submits only the game identity.
+
+The rollback proof passed authorization, first start, card uniqueness,
+exactly-once ante, duplicate, replay, winner/tie late replay, continuation,
+terminal-state, and legacy-recovery rejection cases with zero persisted test
+rows. Published two-client production smoke remains required; the frozen
+Pioneer Parkway session is evidence only and is not repaired or replayed.
+
 ## Frozen Lovable cutover scope
 
 ### Holm bot scheduling
