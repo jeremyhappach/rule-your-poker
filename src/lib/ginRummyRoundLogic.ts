@@ -20,16 +20,34 @@ import { ginTrace } from './ginStartupTrace';
 import { isGinTwoActionHarnessEnabled } from './debugFlags';
 import { resolveSessionHostPlayerId } from './debugHarness/resolveHarnessHost';
 import { recordStartupFlight } from './startupFlightRecorder';
+import {
+  GIN_INITIAL_HAND_NUMBER,
+  deriveGinSuccessorHandNumber,
+} from './ginRummy/handIdentity';
+
+async function fetchGinRoundByIdentity(dealerGameId: string, handNumber: number) {
+  const { data, error } = await supabase
+    .from('rounds')
+    .select('*')
+    .eq('dealer_game_id', dealerGameId)
+    .eq('hand_number', handNumber)
+    .eq('round_number', 1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch existing Gin round: ${error.message}`);
+  }
+
+  return data;
+}
 
 /**
  * Start the first Gin Rummy round/hand.
  * Creates a round record with gin_rummy_state initialized.
  *
- * Critical-path optimization: callers that have already fetched the game row
- * (with players) and know this is the first hand of the dealer_game may pass
- * `preloaded` to skip the redundant `games` re-fetch and the existing-rounds
- * pre-check. The 23505 unique-constraint guard on insert still protects
- * concurrency, so semantics are preserved.
+ * This entry point owns only the opening hand. Its identity is always H1/R1;
+ * delayed or concurrent callers reuse that exact row instead of deriving a
+ * later hand from mutable database state.
  */
 export async function startGinRummyRound(
   gameId: string,
@@ -158,43 +176,10 @@ export async function startGinRummyRound(
       throw new Error('No dealer_game_id - cannot create round');
     }
 
-    // Calculate hand number (DB-First). Skip the precheck on the happy path
-    // when caller asserts this is the first hand of the dealer_game — the
-    // 23505 unique-constraint guard on insert still catches concurrent inserts.
-    let handNumber: number;
-    if (preloaded?.assumeFirstHand) {
-      handNumber = 1;
-      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds skipped (first-hand assumed)', {
-        file: 'src/lib/ginRummyRoundLogic.ts',
-        function: 'startGinRummyRound',
-        gameId,
-        dealerGameId,
-      });
-    } else {
-      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch start', {
-        file: 'src/lib/ginRummyRoundLogic.ts',
-        function: 'startGinRummyRound',
-        gameId,
-        dealerGameId,
-      });
-      const { data: existingRounds } = await supabase
-        .from('rounds')
-        .select('hand_number')
-        .eq('dealer_game_id', dealerGameId)
-        .order('hand_number', { ascending: false })
-        .limit(1);
-      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch complete', {
-        file: 'src/lib/ginRummyRoundLogic.ts',
-        function: 'startGinRummyRound',
-        gameId,
-        dealerGameId,
-        oldValue: null,
-        newValue: existingRounds ?? [],
-      });
-      handNumber = existingRounds && existingRounds.length > 0
-        ? (existingRounds[0].hand_number || 0) + 1
-        : 1;
-    }
+    // Opening identity is immutable. The unique
+    // (dealer_game_id, hand_number, round_number) index arbitrates concurrent
+    // callers because every caller now attempts the same H1/R1 row.
+    const handNumber = GIN_INITIAL_HAND_NUMBER;
 
     // Stamp handNumber into state for the sync progress vector
     ginState = { ...ginState, handNumber };
@@ -248,10 +233,20 @@ export async function startGinRummyRound(
     });
 
     if (roundError || !round) {
-      // Atomic guard: unique constraint violation means another client already created it
+      // Atomic guard: unique constraint violation means another client already
+      // created the exact opening identity. Reuse that authoritative row.
       if (roundError?.code === '23505') {
         console.log('[GIN-RUMMY] Round already exists (atomic guard)');
-      return { success: true };
+        const existingRound = await fetchGinRoundByIdentity(dealerGameId, handNumber);
+        if (!existingRound) {
+          throw new Error('Gin opening round conflict resolved without an existing H1/R1 row');
+        }
+        return {
+          success: true,
+          roundId: existingRound.id,
+          handNumber: existingRound.hand_number ?? handNumber,
+          round: existingRound,
+        };
       }
       throw new Error(`Failed to create round: ${roundError?.message}`);
     }
@@ -411,17 +406,11 @@ export async function startNextGinRummyHand(
     }
     newState = dealHand(newState, harnessTargetPlayerId);
 
-    // Get next hand number (DB-First)
-    const { data: existingRounds } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('hand_number', { ascending: false })
-      .limit(1);
-
-    const handNumber = existingRounds && existingRounds.length > 0
-      ? (existingRounds[0].hand_number || 0) + 1
-      : 1;
+    // The successor identity is derived only from the completed predecessor.
+    // Two or three clients processing the same completed hand therefore all
+    // attempt the same H+1/R1 row; a stale replay can never skip ahead by
+    // observing another caller's insert through max(hand_number).
+    const handNumber = deriveGinSuccessorHandNumber(previousState.handNumber);
 
     // Stamp handNumber into state for the sync progress vector
     newState = { ...newState, handNumber };
@@ -445,7 +434,17 @@ export async function startNextGinRummyHand(
     if (roundError) {
       if (roundError.code === '23505' || roundError.message?.includes('duplicate key')) {
         console.log('[GIN-RUMMY] Next hand already exists (atomic guard)');
-        return { success: true, alreadyStarted: true };
+        const existingRound = await fetchGinRoundByIdentity(dealerGameId, handNumber);
+        if (!existingRound) {
+          throw new Error(`Gin successor conflict resolved without existing H${handNumber}/R1 row`);
+        }
+        return {
+          success: true,
+          alreadyStarted: true,
+          roundId: existingRound.id,
+          handNumber: existingRound.hand_number ?? handNumber,
+          newState: existingRound.gin_rummy_state as unknown as GinRummyState,
+        };
       }
       throw new Error(`Failed to create round: ${roundError?.message}`);
     }

@@ -58,6 +58,10 @@
   Preserve the event-driven resolver and no-polling boundary. The two observed
   timer animation/flicker defects are explicitly non-blocking backlog items,
   not failures of authoritative progression.
+- Atomic Holm initial-hand startup passed fresh two-client production smoke on
+  2026-08-05: one opening deal was shown and refresh retained the same
+  authoritative hand. Preserve the database-owned H1/R1 identity and do not
+  restore browser-side `max(hand_number) + 1` recovery.
 
 ## Session Ended
 

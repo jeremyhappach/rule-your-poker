@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-Date: 2026-08-03
+Date: 2026-08-06
 
 ## Phase 1 delivery cutover
 
@@ -288,6 +288,23 @@ directly to the lobby. Production rollback proof passed winner, tie, duplicate,
 replay, late-replay, authorization, continuation, and terminal-state cases;
 published two-human runtime smoke remains the acceptance evidence.
 
+The 2026-08-05 `Aug 4 - Grandview Drive` production evidence also proved a
+separate ordinary-hand rollover defect: pairs of authoritative Gin hands were
+created 100--440 ms apart. Every connected client processed the same completed
+hand, but `startNextGinRummyHand` derived its successor from the mutable
+database maximum. The first caller inserted H+1; the next caller observed that
+row and incorrectly inserted H+2, so presentation legitimately launched a new
+deal and upcard for each skipped identity.
+
+The current source candidate makes Gin creation predecessor-keyed. The opening
+entry point always targets H1/R1, and ordinary rollover always targets the
+completed predecessor's H+1/R1. The deployed unique
+`(dealer_game_id, hand_number, round_number)` index now arbitrates concurrent
+callers because all of them attempt the same row; losing and stale callers load
+and reuse that exact authoritative round. Shared card transport, deal timing,
+rules, and settlement are unchanged. Published two-client multi-hand smoke
+remains required.
+
 ## Holm atomic initial-hand startup
 
 The 2026-08-05 `Aug 5 - Pioneer Parkway` production repro proved that Holm's
@@ -308,8 +325,10 @@ recovery branch and submits only the game identity.
 The rollback proof passed authorization, first start, card uniqueness,
 exactly-once ante, duplicate, replay, winner/tie late replay, continuation,
 terminal-state, and legacy-recovery rejection cases with zero persisted test
-rows. Published two-client production smoke remains required; the frozen
-Pioneer Parkway session is evidence only and is not repaired or replayed.
+rows. Jeremy reported the fresh two-client production smoke clean on
+2026-08-05: one opening deal was shown and refresh retained the same
+authoritative hand. The frozen Pioneer Parkway session is evidence only and is
+not repaired or replayed.
 
 ## Frozen Lovable cutover scope
 
