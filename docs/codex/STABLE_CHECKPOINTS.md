@@ -62,6 +62,10 @@
   2026-08-05: one opening deal was shown and refresh retained the same
   authoritative hand. Preserve the database-owned H1/R1 identity and do not
   restore browser-side `max(hand_number) + 1` recovery.
+- Holm deadline-epoch timer presentation passed production smoke on 2026-08-06
+  at commit `d7149e0d4ab3a3409ee6fbbc3aa15cf7f1c810e2`: after the deal-settled gate,
+  the first visible frame was full and the timer only descended. Preserve the
+  atomic remaining/total/deadline snapshot and pre-paint transition reset.
 
 ## Session Ended
 

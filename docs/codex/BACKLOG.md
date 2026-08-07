@@ -385,8 +385,9 @@ Status: Queued; runtime entry point intentionally absent as of 2026-08-03.
 
 ### 13C. Holm timer initial-fill regression
 
-Status: Queued; non-blocking presentation regression reproduced in owned-
-Supabase preview smoke on 2026-08-03.
+Status: Completed; corrected at commit
+`d7149e0d4ab3a3409ee6fbbc3aa15cf7f1c810e2` and accepted by production smoke
+on 2026-08-06.
 
 - Runtime: commit `a7a52d1d1f4541cfae1c71521e1a3fa77a69c220`, fake-money
   Holm game `25662485-03b6-434b-85f0-f96e983dfe7e`.
@@ -397,6 +398,10 @@ Supabase preview smoke on 2026-08-03.
 - This is a known defect that had previously been corrected and has regressed.
   Preserve the newly accepted rule that no visible Holm timer appears while
   card transports are still active.
+- Accepted correction: publish one atomic remaining/total/deadline snapshot,
+  key the canonical rail to that deadline epoch, and suppress transitions on
+  its first paint. Production smoke confirmed a full first visible frame and
+  monotonic countdown.
 
 ### 13D. Holm timeout rebound and transient card reactivation
 

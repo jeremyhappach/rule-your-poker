@@ -151,9 +151,11 @@ The detailed evidence and remaining cutover gates live in
   hands auto-folded the player, rejoin worked, and the game completed normally.
   Resolution remains in `endHolmRound` behind its atomic
   `betting -> processing` claim; the churn-prone polling recovery remains
-  removed for this edge. Two non-blocking timer presentation seams exposed by
-  the pass—the recurring initial-fill animation and a new one-second timeout
-  rebound/card-reactivation flicker—are queued separately in the backlog.
+  removed for this edge. The recurring initial-fill animation was corrected at
+  commit `d7149e0d4ab3a3409ee6fbbc3aa15cf7f1c810e2` and passed production smoke
+  on 2026-08-06: the first visible frame was full and the timer then descended
+  monotonically. The separate one-second timeout rebound/card-reactivation
+  flicker remains queued.
 
 ## Frozen Lovable cutover baseline
 
