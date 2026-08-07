@@ -12695,6 +12695,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     if (!fetchError && freshGame?.status === 'session_ended') {
+      // Reaching this callback proves this mount presented the live 3-5-7
+      // terminal sequence through its canonical completion boundary.
+      liveTerminalPresentationObservedRef.current = true;
       markTerminalPresentationComplete(
         `${freshGame.game_type}|winseq|${gameId}|${freshGame.current_game_uuid ?? 'no'}|${freshGame.total_hands ?? 'no'}`,
       );
@@ -12736,7 +12739,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       throw e;
     }
-  }, [game?.status, game?.game_type, game?.current_game_uuid, game?.current_round, game?.total_hands, game?.last_round_result, gameId, handleGameOverComplete, fetchGameData, user?.id, threeFiveSevenWinnerId, threeFiveSevenWinTriggerId]);
+  }, [game?.status, game?.game_type, game?.current_game_uuid, game?.current_round, game?.total_hands, game?.last_round_result, gameId, handleGameOverComplete, fetchGameData, markTerminalPresentationComplete, user?.id, threeFiveSevenWinnerId, threeFiveSevenWinTriggerId]);
 
 
   // YAHTZEE game_over transition
