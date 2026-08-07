@@ -919,6 +919,8 @@ interface MobileGameTableProps {
   playerCards: PlayerCards[];
   timeLeft: number | null;
   maxTime?: number;
+  /** Normalized authoritative deadline; uniquely identifies one timer epoch. */
+  timerEpoch?: string | null;
   lastRoundResult: string | null;
   dealerPosition: number | null;
   legValue: number;
@@ -1230,6 +1232,7 @@ export const MobileGameTable = ({
   playerCards,
   timeLeft,
   maxTime = 10,
+  timerEpoch,
   lastRoundResult,
   dealerPosition,
   legValue,
@@ -6304,7 +6307,9 @@ export const MobileGameTable = ({
         secondsRemaining: timeLeft as number,
         totalSeconds: maxTime as number,
         activePlayerId: currentPlayer.id,
-        identityKey: `turn-${currentRound}-${currentTurnPosition ?? ''}`,
+        identityKey: timerEpoch
+          ? `turn-${timerEpoch}-${currentPlayer.id}`
+          : `turn-${currentRound}-${currentTurnPosition ?? ''}`,
       };
     }
     useShellTimer(shellTimerState);

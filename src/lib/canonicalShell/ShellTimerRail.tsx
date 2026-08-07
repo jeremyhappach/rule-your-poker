@@ -32,6 +32,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -207,17 +208,19 @@ export function ShellTimerRail() {
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
-  // Snap-to-mount: enable CSS width transitions only after the first
-  // paint (so the bar appears at its correct width without animating
-  // up from zero). Also re-snap when the identityKey changes so a
-  // turn handoff resets without animating across actor boundaries.
-  const [mounted, setMounted] = useState(false);
   const identityKey = state?.identityKey ?? null;
-  useEffect(() => {
-    setMounted(false);
-    const id = requestAnimationFrame(() => setMounted(true));
+  const identityToken = identityKey ?? (state ? '__anonymous-timer__' : '__no-timer__');
+
+  // Transition readiness belongs to the exact timer identity. Comparing the
+  // committed identity during render keeps transitions OFF on the first DOM
+  // commit of a new epoch. The old effect-based reset ran after that commit,
+  // allowing the prior width to animate upward before CSS was disabled.
+  const [transitionReadyIdentity, setTransitionReadyIdentity] = useState<string | null>(null);
+  const mounted = transitionReadyIdentity === identityToken;
+  useLayoutEffect(() => {
+    const id = requestAnimationFrame(() => setTransitionReadyIdentity(identityToken));
     return () => cancelAnimationFrame(id);
-  }, [identityKey]);
+  }, [identityToken]);
 
   const paused = !!state?.paused;
   // Holm bypasses this inner DealRuntime check because the outer
@@ -235,8 +238,30 @@ export function ShellTimerRail() {
         activePlayerId: state?.activePlayerId ?? state?.identityKey ?? null,
       })
     : { visible: !!state, running: !!state && !paused && state.secondsRemaining > 0 };
-  const total = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
+  const authoritativeTotal = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
   const seconds = Math.max(0, Math.round(state?.secondsRemaining ?? 0));
+  // Holm's deadline may already be counting while the deal-settled gate keeps
+  // this rail unmounted. Latch the remaining window at the first visible frame
+  // of each deadline epoch so that frame is full. Expiry remains governed by
+  // the untouched authoritative deadline.
+  const [holmPresentationWindow, setHolmPresentationWindow] = useState<{
+    identity: string;
+    total: number;
+  } | null>(null);
+  const effectiveHolmPresentationWindow =
+    isHolm && holmPresentationWindow?.identity !== identityToken
+      ? { identity: identityToken, total: Math.max(1, seconds) }
+      : holmPresentationWindow;
+  useLayoutEffect(() => {
+    setHolmPresentationWindow(current => {
+      if (!isHolm) return current === null ? current : null;
+      if (current?.identity === identityToken) return current;
+      return { identity: identityToken, total: Math.max(1, seconds) };
+    });
+  }, [isHolm, identityToken, seconds]);
+  const total = isHolm
+    ? (effectiveHolmPresentationWindow?.total ?? authoritativeTotal)
+    : authoritativeTotal;
   const effectivePaused = paused || !eligibility.running;
   const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
 
@@ -334,6 +359,7 @@ export function ShellTimerRail() {
     >
       <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
         <div
+          key={identityToken}
           className={`h-full ${mounted ? 'transition-[width] duration-1000 ease-linear' : ''} ${fillClass}`}
           style={{ width: `${pct}%` }}
         />

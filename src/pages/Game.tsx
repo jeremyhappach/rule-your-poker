@@ -1157,11 +1157,22 @@ const Game = () => {
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(false);
-  // Per-deadline maxTime: captured from the first frame of a new deadline identity so
-  // visuals always start full and scale to the actual configured timeout window,
-  // independent of any stale game_defaults cache (memory or localStorage).
+  // Legacy denominator remains the presentation source for non-Holm games.
   const [decisionMaxTime, setDecisionMaxTime] = useState<number | null>(null);
   const decisionMaxTimeDeadlineRef = useRef<string | null>(null);
+  // Atomic presentation snapshot for one normalized deadline identity. Keeping the
+  // remaining value, denominator, and epoch together prevents a new Holm turn from
+  // publishing the prior turn's percentage while the new denominator is committing.
+  // Gameplay expiry continues to use `timeLeft` and the authoritative deadline.
+  const [decisionTimerPresentation, setDecisionTimerPresentation] = useState<{
+    deadline: string;
+    remainingSeconds: number;
+    totalSeconds: number;
+  } | null>(null);
+  const currentDecisionTimerPresentation =
+    decisionDeadline && decisionTimerPresentation?.deadline === decisionDeadline
+      ? decisionTimerPresentation
+      : null;
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
@@ -4813,6 +4824,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (isNoTimersEnabledCached()) {
       decisionMaxTimeDeadlineRef.current = null;
       setDecisionMaxTime(null);
+      setDecisionTimerPresentation(null);
       setTimeLeft(null);
       return;
     }
@@ -4834,6 +4846,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       decisionMaxTimeDeadlineRef.current = null;
       setDecisionMaxTime(null);
+      setDecisionTimerPresentation(null);
       setTimeLeft(null);
       return;
     }
@@ -4849,6 +4862,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       decisionMaxTimeDeadlineRef.current = null;
       setDecisionMaxTime(null);
+      setDecisionTimerPresentation(null);
       return;
     }
 
@@ -4861,6 +4875,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const currentPlayer = players.find(p => p.user_id === user?.id);
       if (currentPlayer?.auto_fold && !currentPlayer.is_bot && !currentPlayer.sitting_out) {
         console.log('[TIMER COUNTDOWN] Suppressing timer - player has auto_fold enabled (card game)');
+        setDecisionTimerPresentation(null);
         setTimeLeft(null);
         return;
       }
@@ -4883,15 +4898,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const rawRemaining = calculateRemaining();
       const seed = rawRemaining > 0 ? rawRemaining : 1;
       setTimeLeft(seed);
+      if (decisionMaxTimeDeadlineRef.current !== decisionDeadline) {
+        decisionMaxTimeDeadlineRef.current = decisionDeadline;
+        setDecisionMaxTime(rawRemaining > 0 ? rawRemaining : (decisionTimerRef.current || 30));
+      }
       // Capture maxTime from the actual deadline window on first frame of a new
       // deadline identity. Guarantees the visual bar/ring starts full (timeLeft/maxTime = 1)
       // and scales to the configured timeout — not to a stale cached default (e.g. 30s).
-      if (decisionMaxTimeDeadlineRef.current !== decisionDeadline) {
-        decisionMaxTimeDeadlineRef.current = decisionDeadline;
-        // Use raw remaining (not seed) so a tiny clock skew doesn't lock maxTime to 1.
-        // Fall back to configured timer if deadline already passed on first frame.
-        const captured = rawRemaining > 0 ? rawRemaining : (decisionTimerRef.current || 30);
-        setDecisionMaxTime(captured);
+      if (game?.game_type === 'holm-game') {
+        setDecisionTimerPresentation(current => {
+          if (current?.deadline === decisionDeadline) {
+            return current.remainingSeconds === seed
+              ? current
+              : { ...current, remainingSeconds: seed };
+          }
+          return {
+            deadline: decisionDeadline,
+            remainingSeconds: seed,
+            // Use raw remaining (not seed) so tiny clock skew cannot lock total to 1.
+            totalSeconds: rawRemaining > 0 ? rawRemaining : (decisionTimerRef.current || 30),
+          };
+        });
+      } else {
+        setDecisionTimerPresentation(null);
       }
 
       // ── Targeted turn-transition timer instrumentation (issue #2) ──
@@ -4952,6 +4981,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const remaining = calculateRemaining();
       console.log('[TIMER COUNTDOWN] Tick (from deadline):', remaining);
       setTimeLeft(remaining);
+      setDecisionTimerPresentation(current =>
+        current?.deadline === decisionDeadline
+          ? { ...current, remainingSeconds: remaining }
+          : current
+      );
 
       // Refill / upward-jump detection (only logs if delta > 1s within same identity).
       try {
@@ -16093,8 +16127,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
-              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : timeLeft) : (isAnteDecision ? anteTimeLeft : null)}
-              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
+              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.remainingSeconds ?? null) : timeLeft)) : (isAnteDecision ? anteTimeLeft : null)}
+              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.totalSeconds ?? decisionTimerSeconds) : (decisionMaxTime ?? decisionTimerSeconds)) : undefined}
+              timerEpoch={isInProgress && game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.deadline ?? null) : null}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
