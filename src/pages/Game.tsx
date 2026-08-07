@@ -6996,9 +6996,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const instant357OtherPlayersAutoFoldRef = useRef<Set<string>>(new Set());
   const recover357EndRoundKeyRef = useRef<string | null>(null);
 
-  // 3-5-7 RECOVERY: If the atomic all_decisions_in flag is already true but the round is still
-  // stuck in "betting", a previous client likely set the flag but crashed/refreshed before
-  // calling endRound(). This must be idempotent and race-safe.
+  // 3-5-7 RECOVERY: Resume either side of the authoritative round boundary:
+  // - betting + identity-matched all_decisions_in means resolution never claimed the round;
+  // - completed + exactly one terminal winner means the final leg committed but settlement
+  //   was interrupted before the replay-safe terminal RPC returned.
   //
   // P0 follow-up: identity-scoping via isAllDecisionsInFor() guarantees the flag was set against
   // THIS round, so the prior "stale flag from a previous hand → reset it" branch is no longer
@@ -7010,19 +7011,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== "in_progress") return;
     if (game?.is_paused) return;
     if (game?.awaiting_next_round) return;
-    if (!currentRound || currentRound.status !== "betting") return;
+    if (!currentRound) return;
     if (!gameId) return;
-    if (!isAllDecisionsInFor(game, currentRound.id)) return;
 
-    const key = `${currentRound.id}:recoverEndRound`;
+    const terminalWinnerCount = players.filter(
+      (player) => (player.legs || 0) >= (game?.legs_to_win || 3),
+    ).length;
+    const shouldRecoverUnclaimedRound =
+      currentRound.status === "betting" && isAllDecisionsInFor(game, currentRound.id);
+    const shouldRecoverTerminalSettlement =
+      currentRound.status === "completed" && terminalWinnerCount === 1;
+    if (!shouldRecoverUnclaimedRound && !shouldRecoverTerminalSettlement) return;
+
+    const recoveryKind = shouldRecoverTerminalSettlement ? "terminalSettlement" : "endRound";
+    const key = `${currentRound.id}:recover:${recoveryKind}`;
     if (recover357EndRoundKeyRef.current === key) return;
     recover357EndRoundKeyRef.current = key;
 
-    console.warn("[357 RECOVERY] all_decisions_in=true but round still betting - calling endRound()", {
+    console.warn("[357 RECOVERY] Replaying authoritative round owner", {
       gameId,
       roundId: currentRound.id,
       handNumber: game?.total_hands,
       roundNumber: game?.current_round,
+      recoveryKind,
+      terminalWinnerCount,
     });
 
     void endRound(gameId).catch((err) => {
@@ -7039,7 +7051,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.status,
     game?.total_hands,
     game?.current_round,
+    game?.legs_to_win,
     gameId,
+    players,
   ]);
   
   // 3-5-7 instant auto-fold: fold immediately when round starts if auto_fold=true

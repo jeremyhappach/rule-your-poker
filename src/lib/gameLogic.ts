@@ -2295,8 +2295,39 @@ export async function endRound(gameId: string) {
   
   console.log(`[END_ROUND] Round found: id=${round.id.slice(0,8)} status=${round.status} round_number=${round.round_number} hand_number=${round.hand_number}`);
   
-  // Prevent duplicate calls - if round is already completed, don't process again
+  // A completed 3-5-7 round can be the durable resolution lock left behind
+  // after the winning leg was awarded but before terminal settlement returned.
+  // Replay the authoritative RPC for that exact signature; its settlement key
+  // makes concurrent/reconnected callers safe. Ordinary completed rounds still
+  // return without being processed twice.
   if (round.status === 'completed') {
+    const terminalWinners = (game.players || []).filter(
+      (player: any) => (player.legs || 0) >= legsToWin,
+    );
+
+    if (
+      is357Game &&
+      game.status === 'in_progress' &&
+      currentGameUuid &&
+      terminalWinners.length === 1
+    ) {
+      console.warn('[END_ROUND] Recovering interrupted 3-5-7 terminal settlement', {
+        gameId: shortGameId,
+        roundId: round.id,
+        dealerGameId: currentGameUuid,
+        handNumber,
+        winnerPlayerId: terminalWinners[0].id,
+      });
+      const settlement = await settleThreeFiveSevenTerminal(
+        gameId,
+        round.id,
+        currentGameUuid,
+        handNumber,
+      );
+      console.log('[END_ROUND] Recovered authoritative 3-5-7 terminal settlement', settlement);
+      return;
+    }
+
     console.log(`[END_ROUND] Round already completed, skipping. round=${round.id.slice(0,8)}`);
     return;
   }

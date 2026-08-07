@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-Date: 2026-08-06
+Date: 2026-08-07
 
 ## Phase 1 delivery cutover
 
@@ -28,6 +28,30 @@ Date: 2026-08-06
 - The approved workflow is now plain-English issue -> diagnosis -> one approval
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.
+
+## 3-5-7 completed-round terminal correction
+
+- Production disconnect smoke on 2026-08-07 exposed an admission mismatch in
+  normal final-leg settlement: `endRound` correctly claimed resolution by
+  marking the round `completed`, while `three_five_seven_settle_game` rejected
+  that same completed round. The connected client therefore saw the leg
+  animation from the committed player state, but no terminal result, payout,
+  or game-over disposition followed.
+- Migration
+  `20260807143000_allow_completed_three_five_seven_terminal_round.sql` is
+  installed on the owned production database. It admits only the existing
+  `betting` instant-sweep state and the `completed` normal-final-leg state;
+  immutable identity, authorization, single-winner, durable-claim, and
+  lifecycle guards remain authoritative.
+- The client candidate adds one exact-state replay through the same idempotent
+  RPC when a connected or reconnecting client observes `in_progress` plus a
+  completed current round and exactly one terminal winner. It adds no timer,
+  polling loop, financial writer, or presentation owner.
+- Complete rollback proofs passed before and after migration for winner, tie,
+  duplicate, replay, late replay, authorization, continuation, LAST HAND
+  terminal disposition, payout, snapshots, and zero-sum balances. Production
+  disconnect smoke remains the acceptance gate; the frozen repro was not
+  manually repaired.
 
 ## Phase 2 owned-Supabase production cutover
 

@@ -126,12 +126,20 @@ round participants. Published two-human terminal-disconnect smoke passed on
 stable checkpoint. The separate missing winner-chip bounce is queued below as
 a presentation defect.
 
-Remaining game-by-game delivery order after Yahtzee acceptance:
+Normal 3-5-7 delivery status: the atomic settlement RPC and connected-client
+presentation latch are implemented. Production smoke on 2026-08-07 exposed a
+completed-round admission mismatch between `endRound` and the RPC. Migration
+`20260807143000_allow_completed_three_five_seven_terminal_round.sql` corrects
+that mismatch, and the client candidate adds one identity-bound idempotent
+recovery attempt for the interrupted terminal signature. The complete rollback
+proof passed before and after deployment; repeat production disconnect smoke
+remains before this becomes a stable checkpoint.
 
-1. 3-5-7 normal terminal.
-2. Horses + SCC as one shared dice-resolution delivery with separate rule
+Remaining game-by-game delivery order after 3-5-7 acceptance:
+
+1. Horses + SCC as one shared dice-resolution delivery with separate rule
    validation and acceptance for each game.
-3. 3-5-7 instant-win/initial-Round-1 residual seam.
+2. 3-5-7 instant-win/initial-Round-1 residual seam.
 
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
@@ -159,9 +167,11 @@ Source-proven ingestion findings:
   status. The delivered candidate preserves the actual fixed-stake rule and
   keys settlement to authoritative `rounds.hand_number`, not the JSON
   `currentRound` field that remains 1 after tie rollover.
-- Normal 3-5-7 terminal settlement remains client-owned:
-  `src/lib/gameLogic.ts:handleGameOver` claims terminal status before separate
-  award, result, snapshot, reset, and disposition writes.
+- Normal 3-5-7 terminal settlement is now owned by
+  `public.three_five_seven_settle_game`: it atomically claims the result, pays
+  the winner, snapshots post-payout balances, resets terminal player state,
+  and commits game/session disposition. The exact completed-round recovery
+  correction is published as a candidate and awaits repeat production smoke.
 - Gin terminal settlement is now `public.gin_rummy_settle_game`: it atomically
   writes the final hand-history row and terminal claim, moves chips, snapshots
   post-payout balances, and disposes the game/session. Published two-human
