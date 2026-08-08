@@ -43,8 +43,9 @@ Date: 2026-08-07
 - At `waiting`, `waiting_for_players`, dealer/configuration selection, or
   `game_over`, three missed heartbeats (15 seconds) mark an absent human sitting
   out. Closing requires a second server observation ten seconds later. A
-  database cron runs the same transactional reconciler every ten seconds, so
-  no surviving browser is required.
+  database cron runs the same transactional reconciler every thirty seconds,
+  so no surviving browser is required; the lower cadence avoids unnecessary
+  `pg_cron` history churn while preserving prompt orphan cleanup.
 - Sessions with settled `game_results` close only when every current human has
   a matching final snapshot; the existing deduplicated terminal trigger then
   mints SessionResult rows in the same transaction. Incomplete settlement
