@@ -29,6 +29,35 @@ Date: 2026-08-07
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.
 
+## Authoritative real-money abandonment reconciliation
+
+- Migration
+  `20260807233000_authoritative_session_presence_reconciliation.sql` is
+  installed on the owned production database. The existing four-second tab
+  heartbeat now has a database-stamped `updated_at` lease on both insert and
+  update; client-supplied time is not lifecycle authority.
+- Real-money sessions are watched only after a post-deployment safe-boundary
+  or player-state signal. The migration deliberately does not enroll or mutate
+  the historical open-session backlog. The frozen `Aug 7 - Joakim Noah` repro
+  remains `waiting`, unarmed, and without SessionResult rows.
+- At `waiting`, `waiting_for_players`, dealer/configuration selection, or
+  `game_over`, three missed heartbeats (15 seconds) mark an absent human sitting
+  out. Closing requires a second server observation ten seconds later. A
+  database cron runs the same transactional reconciler every ten seconds, so
+  no surviving browser is required.
+- Sessions with settled `game_results` close only when every current human has
+  a matching final snapshot; the existing deduplicated terminal trigger then
+  mints SessionResult rows in the same transaction. Incomplete settlement
+  evidence is preserved for recovery. A genuinely pristine real-money room is
+  deleted only after fifteen minutes with zero active humans. Generic cleanup
+  never advances an `in_progress` game.
+- The complete rollback proof passed before and after installation, covering
+  fresh/stale presence, two-pass closure, exactly-once zero-sum financials,
+  replay, pristine-session grace/deletion, incomplete-history preservation,
+  fake-money isolation, unarmed historical sessions, and in-progress
+  continuation. The installed cron has completed successfully with zero
+  production sessions armed at rollout.
+
 ## 3-5-7 completed-round terminal correction
 
 - Production disconnect smoke on 2026-08-07 exposed an admission mismatch in

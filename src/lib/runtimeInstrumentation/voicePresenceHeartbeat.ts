@@ -5,6 +5,8 @@
  * (and on visibility changes / pagehide). Includes the currently active
  * voice_operation_id when one is open, so the server-side finalizer can
  * detect "sender presence went stale during an open voice operation".
+ * The row's database-stamped updated_at is also the authoritative game
+ * presence lease used only at safe session boundaries.
  *
  * Peers reading heartbeats for the same game_id become the witness source
  * for the sender's incident.
@@ -72,6 +74,20 @@ export function setVoicePresenceContext(ctx: {
   game_id?: string | null;
   session_id?: string | null;
 }): void {
-  if (ctx.game_id !== undefined) currentGameId = ctx.game_id;
-  if (ctx.session_id !== undefined) currentSessionId = ctx.session_id;
+  let changed = false;
+  if (ctx.game_id !== undefined) {
+    currentGameId = ctx.game_id;
+    changed = true;
+  }
+  if (ctx.session_id !== undefined) {
+    currentSessionId = ctx.session_id;
+    changed = true;
+  }
+
+  // Do not wait for the next four-second interval when a tab enters or leaves
+  // a game route. The server timestamp on this write establishes the new
+  // lease context; the database remains the sole lifecycle owner.
+  if (changed && started) {
+    void beat(document.hidden ? "hidden" : "active");
+  }
 }

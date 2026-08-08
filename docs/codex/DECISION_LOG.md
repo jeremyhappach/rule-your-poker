@@ -131,3 +131,19 @@ As of 2026-08-03, `ptown-poker.lovable.app` is unpublished and every cron job
 on its former Cloud backend is inactive. The Lovable project and write-locked
 backend remain intact solely for an explicitly approved rollback; GitHub,
 Vercel, and the owned Supabase project remain the live production authorities.
+
+## D-020 — Presence is a server lease and abandonment closes only at safe boundaries
+
+The database-stamped `updated_at` on the four-second tab heartbeat is the
+authoritative presence lease. Client timestamps, React renders, Realtime
+Presence, unload callbacks, and durable `players.sitting_out` flags alone are
+not proof that a human is connected.
+
+Real-money abandonment reconciliation is database-owned and limited to safe
+between-game states. Three missed beats may mark an absent player sitting out;
+session closure requires a second server observation, and a narrow database
+cron is the no-client fallback. Settled history completes through the existing
+idempotent SessionResult trigger, pristine rooms receive a longer deletion
+grace, and inconsistent history is preserved rather than guessed or deleted.
+Generic abandonment handling never settles or advances an `in_progress` game.
+The legacy monolithic deadline Edge Function is not this lifecycle owner.
