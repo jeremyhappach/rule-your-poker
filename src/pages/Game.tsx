@@ -3120,7 +3120,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (newPausedState) {
       // PAUSING: Save current remaining time
-      const remainingTime = timeLeft ?? 0;
+      const deadlineRemaining = decisionDeadline
+        ? Math.max(0, Math.floor((new Date(decisionDeadline).getTime() - Date.now()) / 1000))
+        : null;
+      const remainingTime = timeLeft ?? deadlineRemaining ?? decisionTimerRef.current;
       console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
       
       // Optimistic UI update
@@ -3140,25 +3143,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
       }
     } else {
-      // RESUMING: Reset all active deadlines to maximum duration
-      const maxTime = decisionTimerRef.current;
-      const newDeadline = new Date(Date.now() + maxTime * 1000).toISOString();
-      console.log('[PAUSE] Resuming game, resetting deadline to max:', newDeadline, 'with', maxTime, 'seconds');
+      // RESUMING: Continue the frozen decision window instead of granting a
+      // fresh maximum. This also keeps the visual-bug pause/resume flow from
+      // rewriting the active timer as a refill.
+      const remainingTime = Math.max(
+        0,
+        Math.floor(game.paused_time_remaining ?? timeLeft ?? decisionTimerRef.current),
+      );
+      const newDeadline = new Date(Date.now() + remainingTime * 1000).toISOString();
+      console.log('[PAUSE] Resuming game from saved remaining time:', newDeadline, 'with', remainingTime, 'seconds');
       
-      // Optimistic UI update
-      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-      // Normalize ISO to canonical form to prevent identity drift across realtime payloads
-      setDecisionDeadline(newDeadline ? new Date(newDeadline).toISOString() : newDeadline);
-      
-      // Update game and current round deadline
-      const { error: gameError } = await supabase
-        .from('games')
-        .update({ 
-          is_paused: false, 
-          paused_time_remaining: null 
-        })
-        .eq('id', gameId);
-      
+      // Update the deadline while every client is still paused. Publishing the
+      // unpaused game first briefly exposed the expired pre-pause deadline.
       if (currentRoundData?.id) {
         const { error: roundError } = await supabase
           .from('rounds')
@@ -3167,16 +3163,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         
         if (roundError) {
           console.error('[PAUSE] Error updating round deadline:', roundError);
+          toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
+          return;
         }
       }
+
+      const { error: gameError } = await supabase
+        .from('games')
+        .update({
+          is_paused: false,
+          paused_time_remaining: null,
+        })
+        .eq('id', gameId);
       
       if (gameError) {
         console.error('[PAUSE] Error resuming:', gameError);
-        setGame(prev => prev ? { ...prev, is_paused: true } : prev);
         toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
+        return;
       }
+
+      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+      // Normalize ISO to canonical form to prevent identity drift across realtime payloads.
+      setDecisionDeadline(new Date(newDeadline).toISOString());
     }
-  }, [game, gameId, timeLeft, toast]);
+  }, [decisionDeadline, game, gameId, timeLeft, toast]);
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -16146,7 +16156,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.remainingSeconds ?? null) : timeLeft)) : (isAnteDecision ? anteTimeLeft : null)}
               maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.totalSeconds ?? decisionTimerSeconds) : (decisionMaxTime ?? decisionTimerSeconds)) : undefined}
-              timerEpoch={isInProgress && game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.deadline ?? null) : null}
+              timerEpoch={isInProgress
+                ? (game.game_type === 'holm-game'
+                    ? (currentDecisionTimerPresentation?.deadline ?? null)
+                    : (is357GameType ? decisionDeadline : null))
+                : null}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}

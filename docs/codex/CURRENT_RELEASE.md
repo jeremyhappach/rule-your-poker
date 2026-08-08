@@ -59,6 +59,21 @@ Date: 2026-08-07
   continuation. The installed cron has completed successfully with zero
   production sessions armed at rollout.
 
+## 3-5-7 decision-timer continuity
+
+- The frozen `Aug 7 - Hector Rondon` repro proved two overlapping presentation
+  defects: 3-5-7 reused a round-number timer identity instead of the exact
+  deadline, and visual-bug pause/resume granted a fresh maximum decision
+  window rather than continuing the frozen window.
+- 3-5-7 now uses the proven deal-settled presentation latch and exact deadline
+  identity: the timer remains absent during card transport, its first visible
+  frame is full, and it can only descend within that deadline epoch.
+- Pause now records the active deadline window, writes the resumed deadline
+  while clients remain paused, and resumes from the saved remaining seconds.
+  This preserves authoritative expiry and simultaneous decisions while
+  preventing visual-bug cancellation or ordinary host resume from refilling
+  the timer.
+
 ## 3-5-7 completed-round terminal correction
 
 - Production disconnect smoke on 2026-08-07 exposed an admission mismatch in

@@ -4,15 +4,17 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const dealRuntime = vi.hoisted(() => ({
+  gameType: 'holm-game',
+  handContextId: 'timer-hand-1',
+  phase: 'GAMEPLAY',
+  dealSettled: true,
+  readyReleased: true,
+  timerAllowed: true,
+}));
+
 vi.mock('@/lib/canonicalShell/cardTransport/DealRuntime', () => ({
-  useDealRuntime: () => ({
-    gameType: 'holm-game',
-    handContextId: 'holm-hand-1',
-    phase: 'GAMEPLAY',
-    dealSettled: true,
-    readyReleased: true,
-    timerAllowed: true,
-  }),
+  useDealRuntime: () => dealRuntime,
 }));
 
 vi.mock('@/lib/canonicalShell/cardTransport/holmFullForensics', () => ({
@@ -71,6 +73,8 @@ function flushAnimationFrames() {
 }
 
 beforeEach(() => {
+  dealRuntime.gameType = 'holm-game';
+  dealRuntime.handContextId = 'timer-hand-1';
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -122,6 +126,43 @@ describe('ShellTimerRail Holm epoch presentation', () => {
       activePlayerId: 'player-a',
       identityKey: 'turn-deadline-b-player-a',
     });
+    expect(timerFill().style.width).toBe('100%');
+    expect(timerFill().className).not.toContain('transition-[width]');
+  });
+});
+
+describe('ShellTimerRail 3-5-7 epoch presentation', () => {
+  it('starts the first deal-settled frame full and descends within the exact deadline', () => {
+    dealRuntime.gameType = '3-5-7';
+
+    renderTimer({
+      secondsRemaining: 21,
+      totalSeconds: 30,
+      activePlayerId: 'player-a',
+      identityKey: 'turn-deadline-a-player-a',
+    });
+
+    expect(timerFill().style.width).toBe('100%');
+    expect(timerFill().className).not.toContain('transition-[width]');
+
+    flushAnimationFrames();
+    renderTimer({
+      secondsRemaining: 20,
+      totalSeconds: 30,
+      activePlayerId: 'player-a',
+      identityKey: 'turn-deadline-a-player-a',
+    });
+
+    expect(Number.parseFloat(timerFill().style.width)).toBeCloseTo((20 / 21) * 100);
+    expect(timerFill().className).toContain('transition-[width]');
+
+    renderTimer({
+      secondsRemaining: 14,
+      totalSeconds: 30,
+      activePlayerId: 'player-a',
+      identityKey: 'turn-deadline-b-player-a',
+    });
+
     expect(timerFill().style.width).toBe('100%');
     expect(timerFill().className).not.toContain('transition-[width]');
   });

@@ -229,6 +229,11 @@ export function ShellTimerRail() {
   // publishes when self can act). Holm card rendering remains separately
   // gated by DealRuntime settle ownership.
   const isHolm = deal?.gameType === 'holm-game';
+  const usesDealSettledPresentationWindow =
+    isHolm ||
+    deal?.gameType === '3-5-7' ||
+    deal?.gameType === '3-5-7-game' ||
+    deal?.gameType === '357';
   const eligibility = (deal && !isHolm)
     ? getCanonicalTimerEligibility({
         gameType: deal.gameType,
@@ -240,27 +245,27 @@ export function ShellTimerRail() {
     : { visible: !!state, running: !!state && !paused && state.secondsRemaining > 0 };
   const authoritativeTotal = state && state.totalSeconds > 0 ? state.totalSeconds : 1;
   const seconds = Math.max(0, Math.round(state?.secondsRemaining ?? 0));
-  // Holm's deadline may already be counting while the deal-settled gate keeps
-  // this rail unmounted. Latch the remaining window at the first visible frame
-  // of each deadline epoch so that frame is full. Expiry remains governed by
-  // the untouched authoritative deadline.
-  const [holmPresentationWindow, setHolmPresentationWindow] = useState<{
+  // The deadline may already be counting while the deal-settled gate keeps the
+  // rail unmounted. Latch the remaining window at the first visible frame of
+  // each deadline epoch so that frame is full. Expiry remains governed by the
+  // untouched authoritative deadline.
+  const [dealSettledPresentationWindow, setDealSettledPresentationWindow] = useState<{
     identity: string;
     total: number;
   } | null>(null);
-  const effectiveHolmPresentationWindow =
-    isHolm && holmPresentationWindow?.identity !== identityToken
+  const effectiveDealSettledPresentationWindow =
+    usesDealSettledPresentationWindow && dealSettledPresentationWindow?.identity !== identityToken
       ? { identity: identityToken, total: Math.max(1, seconds) }
-      : holmPresentationWindow;
+      : dealSettledPresentationWindow;
   useLayoutEffect(() => {
-    setHolmPresentationWindow(current => {
-      if (!isHolm) return current === null ? current : null;
+    setDealSettledPresentationWindow(current => {
+      if (!usesDealSettledPresentationWindow) return current === null ? current : null;
       if (current?.identity === identityToken) return current;
       return { identity: identityToken, total: Math.max(1, seconds) };
     });
-  }, [isHolm, identityToken, seconds]);
-  const total = isHolm
-    ? (effectiveHolmPresentationWindow?.total ?? authoritativeTotal)
+  }, [usesDealSettledPresentationWindow, identityToken, seconds]);
+  const total = usesDealSettledPresentationWindow
+    ? (effectiveDealSettledPresentationWindow?.total ?? authoritativeTotal)
     : authoritativeTotal;
   const effectivePaused = paused || !eligibility.running;
   const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
