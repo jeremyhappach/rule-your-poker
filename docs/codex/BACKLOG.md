@@ -204,6 +204,27 @@ Source-proven ingestion findings:
   initial-Round-1 client path, and incomplete-round re-ante repair remain the
   final residual slice rather than expanding the normal-terminal correction.
 
+### 3C. Server-authoritative dealer-setup and ante deadline enforcement
+
+Status: Queued; reported during the `Mercury` real-money smoke on 2026-08-09.
+
+- The visible setup/ante clock is presentation only. The server must enforce
+  each persisted deadline without relying on the dealer's browser, a mounted
+  modal, or a best-effort client timeout callback.
+- Audit the full chain for both phases: deadline creation, the scheduled
+  enforcer invocation, RPC admission/expiry guards, player disposition, and
+  idempotent continuation or post-game resolution.
+- Expiry with zero active humans must call the authoritative post-game resolver
+  and may never launch dealer selection, setup, or ante. One active human
+  returns to Waiting; zero settles a result-bearing session exactly once.
+- Preserve pause/resume semantics, game-specific valid continuation, and the
+  existing rule that the post-game presence lease does not run during setup or
+  ante.
+- Mercury-specific note: the observed zero-second dealer modal followed a
+  terminal presentation failure and is not by itself proof that the deadline
+  RPC failed. Reproduce config and ante expiry from their legitimate live
+  statuses during this dedicated audit.
+
 ### 3A. Source-proven rule, ledger, and harness discrepancies
 
 These findings are separate from the broader terminal-authority migrations
