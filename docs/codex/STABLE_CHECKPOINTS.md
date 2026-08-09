@@ -73,8 +73,12 @@
   at commit `52abf4628b651ed899c0b178207972b4edbfec84`. A player who sits out
   remains seated in the relative-seat projection, while next-game eligibility
   remains separate. Only explicit Stand Up or Leave releases a seat. This does
-  not yet extend the real-money-only post-game heartbeat watcher to fake-money
-  sessions.
+  not allow a post-game absence watcher to forfeit a seat.
+- The fake-money post-game heartbeat extension passed production smoke on
+  2026-08-09 at commit `d8f8cef3bc3cd01b615ab354163ef66be10c0f7b`. Only a
+  result-bearing post-game Waiting table arms the three-miss / fifteen-second
+  watch; an absent player becomes Sitting Out, and zero active humans reaches
+  Session Ended without financial rows or balance changes.
 
 ## Session Ended
 

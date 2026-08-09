@@ -92,7 +92,7 @@ Date: 2026-08-09
   winner, tie/continuation, trigger arming, duplicate and late replay,
   initial-waiting/live-game exclusion, seat retention, non-financial terminal
   disposition, and unchanged real-money finalizer behavior. Production smoke
-  remains pending.
+  passed on 2026-08-09.
 
 ## 3-5-7 decision-timer continuity
 

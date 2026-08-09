@@ -256,8 +256,8 @@ seat/projection correction.
 
 ### 3E.1 Fake-money post-game heartbeat reconciliation
 
-Status: Implemented; production smoke pending (migration
-`20260809200000_extend_fake_money_postgame_presence.sql`, 2026-08-09).
+Status: Verified in production smoke on 2026-08-09 (migration
+`20260809200000_extend_fake_money_postgame_presence.sql`).
 
 - The prior database abandonment watch, its 15-second/three-miss heartbeat
   confirmation, and post-game resolver rejected `real_money=false` before
@@ -271,8 +271,8 @@ Status: Implemented; production smoke pending (migration
 - With zero active humans, fake-money sessions should finish through a
   non-financial terminal disposition. They must not write SessionResult rows,
   balances, or financial transactions. Connected clients retain the Session
-  Ended table; fresh reconnects go to the lobby. Rollback proofs passed;
-  production runtime smoke is the remaining acceptance step.
+  Ended table; fresh reconnects go to the lobby. Rollback proofs and production
+  runtime smoke passed.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 
