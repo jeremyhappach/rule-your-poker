@@ -3866,14 +3866,32 @@ export const MobileGameTable = ({
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
 
   // The ledger owns endpoint display as soon as an immutable batch arrives,
-  // while this gate preserves Holm's canonical card-reveal ordering.
+  // while this gate preserves game-owned prerequisite presentation ordering.
   const canAdmitChipTransferPresentation = useCallback((batch: ChipPresentationBatch) => {
-    if (gameType !== 'holm-game') return true;
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
     );
-    return !movesPotToPlayer || (holmCommunityFullyRevealed && chuckyVisualRevealComplete);
-  }, [gameType, holmCommunityFullyRevealed, chuckyVisualRevealComplete]);
+    if (!movesPotToPlayer) return true;
+
+    if (gameType === 'holm-game') {
+      return holmCommunityFullyRevealed && chuckyVisualRevealComplete;
+    }
+
+    // Settlement can publish the 3-5-7 pot batch before the final-leg
+    // presentation completes. Keep its endpoints ledger-owned at their
+    // opening balances until the sole terminal-phase owner starts the pot
+    // stage (final leg -> sweep legs -> pot flight + celebration).
+    if (gameType === '3-5-7') {
+      return threeFiveSevenWinPhase === 'pot-to-player';
+    }
+
+    return true;
+  }, [
+    gameType,
+    holmCommunityFullyRevealed,
+    chuckyVisualRevealComplete,
+    threeFiveSevenWinPhase,
+  ]);
   useChipTransferPresentationAdmission(canAdmitChipTransferPresentation);
 
   // ── TERMINAL PRESENTATION HOLD (Holm) ────────────────────────────────────
@@ -6750,19 +6768,36 @@ export const MobileGameTable = ({
   // Sourced from the immutable Terminal357Descriptor identity (never
   // from mutable post-settlement state), keyed by terminalGenerationId
   // so it survives Run It Back and cannot be republished stale after
-  // rotation. Emitted the instant the descriptor arrives (terminal
-  // generation begins) and retired on descriptor rotation / clear at
+  // rotation. An instant-357 descriptor emits at its prelude; a normal
+  // final-leg descriptor emits when the pot flight begins. Both retire at
   // the canonical dealer-game boundary. TTL is generous — the plate
   // must persist through proof/leg/sweep + pot/confetti settlement.
   const lastTerminal357AnnouncementScopeRef = useRef<string | null>(null);
   useEffect(() => {
     const descriptor = threeFiveSevenTerminalDescriptor;
-    const prevScope = lastTerminal357AnnouncementScopeRef.current;
+    let prevScope = lastTerminal357AnnouncementScopeRef.current;
     if (!descriptor) {
       if (prevScope) {
         announcements.retireTransientScope(prevScope);
         lastTerminal357AnnouncementScopeRef.current = null;
       }
+      return;
+    }
+    const descriptorScope = `357-terminal:${descriptor.terminalGenerationId}`;
+    // Retire a prior terminal plate as soon as the immutable generation
+    // changes, even if this normal generation is still waiting on its legs.
+    if (prevScope && prevScope !== descriptorScope) {
+      announcements.retireTransientScope(prevScope);
+      lastTerminal357AnnouncementScopeRef.current = null;
+      prevScope = null;
+    }
+    // A normal final-leg win has a prerequisite visual sequence.  Its
+    // terminal plate joins the pot flight and winner confetti, rather than
+    // starting when realtime happens to deliver the settled descriptor.
+    if (
+      descriptor.source === 'normal-win' &&
+      threeFiveSevenWinPhase !== 'pot-to-player'
+    ) {
       return;
     }
     const genId = descriptor.terminalGenerationId;
@@ -6799,7 +6834,7 @@ export const MobileGameTable = ({
       transientScope: scope,
     });
     lastTerminal357AnnouncementScopeRef.current = scope;
-  }, [threeFiveSevenTerminalDescriptor, announcements, gameId]);
+  }, [threeFiveSevenTerminalDescriptor, threeFiveSevenWinPhase, announcements, gameId]);
 
 
   // Horses / SCC game-over result → match_win.
