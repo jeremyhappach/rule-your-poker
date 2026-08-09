@@ -10699,7 +10699,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check if session should end AND verify game is still in game_over status (not already transitioned by another client)
     const { data: gameData, error: fetchError } = await supabase
       .from('games')
-      .select('pending_session_end, current_round, status, dealer_position')
+      .select('pending_session_end, current_round, status, dealer_position, current_game_uuid')
       .eq('id', gameId)
       .single();
 
@@ -10961,18 +10961,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
 
-    // STEP 3: Determine next dealer - check "make it take it" first, then fallback to rotation
-    // First, fetch the most recent winner from game_results
-    const { data: lastResult } = await supabase
-      .from('game_results')
-      .select('winner_player_id')
-      .eq('game_id', gameId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    const lastWinnerPlayerId = lastResult?.winner_player_id || null;
-    console.log('[GAME OVER] Last winner player_id:', lastWinnerPlayerId);
+    // STEP 3: Determine next dealer - check "make it take it" first, then
+    // fallback to rotation. Only the outgoing dealer game's winner can own
+    // this choice. Result history also contains later non-winner bookkeeping
+    // rows (ante, leg purchase), which must never erase a terminal winner.
+    const outgoingDealerGameId = gameData?.current_game_uuid ?? game?.current_game_uuid ?? null;
+    let lastWinnerPlayerId: string | null = null;
+    if (outgoingDealerGameId) {
+      const { data: terminalWinnerResult, error: terminalWinnerError } = await supabase
+        .from('game_results')
+        .select('winner_player_id')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', outgoingDealerGameId)
+        .not('winner_player_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (terminalWinnerError) {
+        console.warn('[GAME OVER] Could not resolve outgoing dealer-game winner; using normal rotation', {
+          gameId,
+          outgoingDealerGameId,
+          error: terminalWinnerError,
+        });
+      } else {
+        lastWinnerPlayerId = terminalWinnerResult?.winner_player_id ?? null;
+      }
+    } else {
+      console.warn('[GAME OVER] Missing outgoing dealer-game identity; using normal rotation', { gameId });
+    }
+    console.log('[GAME OVER] Outgoing dealer-game winner player_id:', lastWinnerPlayerId, {
+      outgoingDealerGameId,
+    });
     
     // Check if "make it take it" is enabled and winner is eligible
     const makeItTakeItResult = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
