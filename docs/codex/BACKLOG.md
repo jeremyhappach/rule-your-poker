@@ -141,6 +141,24 @@ Remaining game-by-game delivery order after 3-5-7 acceptance:
    validation and acceptance for each game.
 2. 3-5-7 instant-win/initial-Round-1 residual seam.
 
+### 3B. 3-5-7 disconnected winner during next-game setup
+
+Status: Queued for a subsequent disconnect-lifecycle pass; reported during
+production smoke on 2026-08-09.
+
+- Scenario: Player 1 chooses Stay in 3-5-7, disconnects, and wins the terminal
+  leg while Player 2 folds and remains connected. Player 2 must see the normal
+  dealer-game settlement and the next-game setup state naming Player 1 as the
+  setup owner; no client may have to be present for Player 1's setup timeout.
+- Required continuation: server-side expiry moves the absent setup owner to
+  Sitting Out, returns the connected player to the post-game waiting table,
+  and preserves the normal leave/stand-up routes. If the remaining player also
+  becomes absent, the authoritative abandonment reconciler must close and
+  settle the historical real-money session exactly once.
+- Preserve the separate current correction: the 15-second absence grace begins
+  only after a completed session reaches post-game waiting, never while a
+  dealer game or its setup/terminal presentation is live.
+
 Requirements: database owns claim, payout, snapshots, disposition; idempotent settlement key; post-payout snapshot; disconnect-safe; client owns presentation only.
 
 Every delivery must also include the connected-client half of the accepted
