@@ -240,8 +240,7 @@ Status: Queued; production smoke observation on 2026-08-09.
 ### 3E. Sitting Out retains the player's seat
 
 Status: Verified in real-money smoke on 2026-08-09. This is a shared
-seat/projection correction; fake-money heartbeat absence remains separately
-queued.
+seat/projection correction.
 
 - Sit Out means keep the existing seat and opt out of the next dealer game;
   it must remain in the relative-seat model on every entry path. Only Stand Up
@@ -257,12 +256,14 @@ queued.
 
 ### 3E.1 Fake-money post-game heartbeat reconciliation
 
-Status: Queued; identified on 2026-08-09.
+Status: Implemented; production smoke pending (migration
+`20260809200000_extend_fake_money_postgame_presence.sql`, 2026-08-09).
 
-- The current database abandonment watch, its 15-second/three-miss heartbeat
-  confirmation, and post-game resolver all reject `real_money=false` before
-  they can mark an absent human Sitting Out.
-- Extend only the safe post-game waiting boundary to fake-money sessions:
+- The prior database abandonment watch, its 15-second/three-miss heartbeat
+  confirmation, and post-game resolver rejected `real_money=false` before
+  they could mark an absent human Sitting Out.
+- The deployed correction extends only the safe post-game waiting boundary to
+  fake-money sessions:
   after real results exist and `current_game_uuid` is null, three missed
   five-second windows must mark an absent seated human Sitting Out. It must
   never run during initial waiting, live gameplay, setup, ante, or terminal
@@ -270,7 +271,8 @@ Status: Queued; identified on 2026-08-09.
 - With zero active humans, fake-money sessions should finish through a
   non-financial terminal disposition. They must not write SessionResult rows,
   balances, or financial transactions. Connected clients retain the Session
-  Ended table; fresh reconnects go to the lobby.
+  Ended table; fresh reconnects go to the lobby. Rollback proofs passed;
+  production runtime smoke is the remaining acceptance step.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 

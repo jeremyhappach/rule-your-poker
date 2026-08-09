@@ -29,15 +29,15 @@ Date: 2026-08-09
   -> implementation, validation, required migration, Git push, automatic Vercel
   publication, then Jeremy's real-user smoke.
 
-## Authoritative real-money abandonment reconciliation
+## Authoritative post-game abandonment reconciliation
 
 - Migration
   `20260807233000_authoritative_session_presence_reconciliation.sql` is
   installed on the owned production database. The existing four-second tab
   heartbeat now has a database-stamped `updated_at` lease on both insert and
   update; client-supplied time is not lifecycle authority.
-- Real-money sessions are watched only after a post-deployment safe-boundary
-  or player-state signal. The migration deliberately does not enroll or mutate
+- Sessions are watched only after a post-deployment safe-boundary or
+  player-state signal. The migration deliberately does not enroll or mutate
   the historical open-session backlog. The frozen `Aug 7 - Joakim Noah` repro
   remains `waiting`, unarmed, and without SessionResult rows.
 - Migration
@@ -57,6 +57,12 @@ Date: 2026-08-09
   scheduler reads only due watches, so it is an indexed no-op while no
   post-game watch exists; it never evaluates gameplay, setup, ante, or an
   initial waiting room.
+- Migration
+  `20260809200000_extend_fake_money_postgame_presence.sql` applies that same
+  narrowly armed watch to fake-money sessions. At zero active humans, the
+  real-money branch remains the existing replay-safe financial finalizer;
+  fake-money instead moves to `session_ended` without snapshots, balances,
+  `SessionResult` rows, or financial transactions.
 - One active human returns to the post-game waiting table. Once an absent
   player is authoritatively marked Sitting Out, zero active humans closes a
   result-bearing real-money session immediately through the database and
@@ -71,9 +77,7 @@ Date: 2026-08-09
   their relative position with the Sitting Out status; only explicit Stand Up
   or Leave changes `status` to `left`. Start eligibility remains a separate
   opt-in count, and a seated player returns through Return to Play rather than
-  choosing a new `+` seat. The smoke passed on 2026-08-09. This is a shared
-  client seat/projection rule; fake-money post-game heartbeat reconciliation
-  remains separately queued.
+  choosing a new `+` seat. The smoke passed on 2026-08-09.
 - Sessions with settled `game_results` close only when every current human has
   a matching final snapshot; the existing deduplicated terminal trigger then
   mints SessionResult rows in the same transaction. Incomplete settlement
@@ -84,6 +88,11 @@ Date: 2026-08-09
   first/second/third missed windows, a post-boundary heartbeat reset,
   exactly-once zero-sum financials, winner/tie, duplicate and late replay,
   authorization, continuation, and initial-waiting/live-game exclusion.
+- The fake-money extension passed rollback proofs before and after installation:
+  winner, tie/continuation, trigger arming, duplicate and late replay,
+  initial-waiting/live-game exclusion, seat retention, non-financial terminal
+  disposition, and unchanged real-money finalizer behavior. Production smoke
+  remains pending.
 
 ## 3-5-7 decision-timer continuity
 

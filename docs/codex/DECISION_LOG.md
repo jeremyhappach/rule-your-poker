@@ -173,3 +173,17 @@ Timeout, ante decline, explicit Sit Out, and post-game absence all use the
 same rule. Only explicit Stand Up or Leave may set `status='left'` and release
 the position. A seated Sitting Out player returns through an opt-in action,
 not an open-seat selection.
+
+## D-023 — Post-game presence is lifecycle-neutral; terminal disposition is not
+
+The post-game absence watch applies to both real-money and fake-money sessions
+only after a result-bearing Waiting boundary with no active dealer-game
+identity. It never evaluates an initial room, gameplay, terminal presentation,
+setup, or ante. Three missed five-second server-stamped heartbeat windows may
+mark a seated human Sitting Out while preserving their physical seat.
+
+When that leaves zero active humans, the database chooses disposition by
+session type: real-money retains the existing snapshot-guarded, exactly-once
+financial finalizer; fake-money becomes `session_ended` without SessionResult,
+balance, or transaction writes. Connected live routes retain the Session Ended
+table, while a new terminal mount goes to the lobby.
