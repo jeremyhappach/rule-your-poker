@@ -11,6 +11,11 @@
   solo-vs-Chucky pot payout until community and Chucky reveal presentation had
   completed, then transferred exactly once without a balance bounce. The
   missing destination-chip bounce is explicitly deferred presentation debt.
+- The 3-5-7 normal final-leg payout ordering passed production smoke at commit
+  `cd88b3d1d5965593236c68324743e3f32d6a5eee`: final leg, leg sweep, then pot
+  flight, winner announcement, and confetti. Destination bounce remains
+  deferred; unsolicited winner-card exposure is a separate queued consent bug
+  (Backlog item 3H).
 
 ## Cribbage
 

@@ -568,3 +568,10 @@ empty pending-journal cleanup. Production smoke passed on 2026-08-09 at commit
 waited for the community and Chucky reveal stages before the pot departed, with
 no balance bounce or duplicate financial movement. Destination-chip bounce is
 separate presentation debt in Backlog item 8.
+
+Production smoke at commit `cd88b3d1d5965593236c68324743e3f32d6a5eee`
+confirmed the 3-5-7 normal final-leg ordering: leg award, leg sweep, then the
+canonical pot flight together with the winner announcement and confetti. The
+destination-chip bounce remains separate presentation debt in Backlog item 8.
+The same smoke exposed winner cards without an explicit Show Cards action;
+that consent defect is isolated in Backlog item 3H and is not accepted.

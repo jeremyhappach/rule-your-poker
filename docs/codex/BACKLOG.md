@@ -285,6 +285,16 @@ Status: Queued; production smoke observation on 2026-08-09.
   sender/recipient display during motion. Validate 3-5-7 plus multi-sender
   antes and multi-winner payouts in published runtime smoke.
 
+### 3H. 3-5-7 winner-card consent leak
+
+Status: Queued (P1); observed in production final-leg smoke on 2026-08-09.
+
+- A winning player who did not select Show Cards had their cards exposed to the
+  rest of the table during terminal presentation. The explicit Show Cards
+  consent latch must remain the only admission path for winner-card exposure;
+  terminal settlement, the leg/pot phase, and the match-win announcement must
+  never imply consent. Preserve the accepted chip-transfer ordering.
+
 ### 3G. Suppress invalid production debug-event writes
 
 Status: Queued; observed in production logs on 2026-08-09.
@@ -406,6 +416,10 @@ The 2026-08-09 accepted Holm canonical-transfer smoke also had no destination
 chip bounce despite the transfer and balances being correct. Treat it as the
 same cross-game presentation-only defect; preserve the accepted ledger,
 settlement ordering, and exactly-once endpoint ownership.
+
+The accepted 3-5-7 final-leg smoke on 2026-08-09 also had no destination-chip
+bounce after its otherwise correctly ordered pot flight. It is the same
+deferred presentation-only defect.
 
 ### 9. Dealer Configuration modal cleanup
 

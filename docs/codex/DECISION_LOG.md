@@ -210,3 +210,7 @@ transport. The ledger retains its database-captured opening endpoint values
 while closed and prevents later overlapping batches from starting first. This
 does not defer settlement, release ownership, or introduce a game-owned
 financial counter.
+
+For a normal 3-5-7 final-leg win, that admission opens only at the canonical
+pot stage after leg presentation has completed. The match-win announcement and
+winner confetti begin with that stage, never with early settlement delivery.
