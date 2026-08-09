@@ -67,6 +67,14 @@
   the first visible frame was full and the timer only descended. Preserve the
   atomic remaining/total/deadline snapshot and pre-paint transition reset.
 
+## Sitting Out seat retention
+
+- The shared Sitting Out seat-retention correction passed smoke on 2026-08-09
+  at commit `52abf4628b651ed899c0b178207972b4edbfec84`. A player who sits out
+  remains seated in the relative-seat projection, while next-game eligibility
+  remains separate. The same shared path applies to real-money and fake-money
+  sessions. Only explicit Stand Up or Leave releases a seat.
+
 ## Session Ended
 
 Accepted design:

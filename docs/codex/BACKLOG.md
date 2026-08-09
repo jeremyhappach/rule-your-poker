@@ -239,8 +239,8 @@ Status: Queued; production smoke observation on 2026-08-09.
 
 ### 3E. Sitting Out retains the player's seat
 
-Status: Implemented; pending production smoke. Repeated production smoke
-observation on 2026-08-09.
+Status: Verified in smoke on 2026-08-09. Applies to real-money and fake-money
+sessions through the shared seat/projection path.
 
 - Sit Out means keep the existing seat and opt out of the next dealer game;
   it must remain in the relative-seat model on every entry path. Only Stand Up
