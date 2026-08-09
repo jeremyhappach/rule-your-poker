@@ -244,7 +244,7 @@ export function useChipPresentationLedger(
         queuedRef.current = queuedRef.current.filter((candidate) => candidate.id !== batch.id);
         for (const key of endpoints) {
           activeEndpointsRef.current.set(key, batch.id);
-          writeVisible([[key, batch.opening_balances[key]]);
+          writeVisible([[key, batch.opening_balances[key]]]);
         }
 
         const running: RunningBatch = {
