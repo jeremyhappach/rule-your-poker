@@ -239,8 +239,9 @@ Status: Queued; production smoke observation on 2026-08-09.
 
 ### 3E. Sitting Out retains the player's seat
 
-Status: Verified in smoke on 2026-08-09. Applies to real-money and fake-money
-sessions through the shared seat/projection path.
+Status: Verified in real-money smoke on 2026-08-09. This is a shared
+seat/projection correction; fake-money heartbeat absence remains separately
+queued.
 
 - Sit Out means keep the existing seat and opt out of the next dealer game;
   it must remain in the relative-seat model on every entry path. Only Stand Up
@@ -253,6 +254,23 @@ sessions through the shared seat/projection path.
 - Define a later inactivity-forfeiture policy (time and/or dealer-game count)
   separately. It must be authoritative and must not redefine an immediate
   Sit Out as a stand-up.
+
+### 3E.1 Fake-money post-game heartbeat reconciliation
+
+Status: Queued; identified on 2026-08-09.
+
+- The current database abandonment watch, its 15-second/three-miss heartbeat
+  confirmation, and post-game resolver all reject `real_money=false` before
+  they can mark an absent human Sitting Out.
+- Extend only the safe post-game waiting boundary to fake-money sessions:
+  after real results exist and `current_game_uuid` is null, three missed
+  five-second windows must mark an absent seated human Sitting Out. It must
+  never run during initial waiting, live gameplay, setup, ante, or terminal
+  presentation.
+- With zero active humans, fake-money sessions should finish through a
+  non-financial terminal disposition. They must not write SessionResult rows,
+  balances, or financial transactions. Connected clients retain the Session
+  Ended table; fresh reconnects go to the lobby.
 
 ### 3F. 3-5-7 pot-to-winner label uses the committed pot
 

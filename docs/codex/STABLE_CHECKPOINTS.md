@@ -72,8 +72,9 @@
 - The shared Sitting Out seat-retention correction passed smoke on 2026-08-09
   at commit `52abf4628b651ed899c0b178207972b4edbfec84`. A player who sits out
   remains seated in the relative-seat projection, while next-game eligibility
-  remains separate. The same shared path applies to real-money and fake-money
-  sessions. Only explicit Stand Up or Leave releases a seat.
+  remains separate. Only explicit Stand Up or Leave releases a seat. This does
+  not yet extend the real-money-only post-game heartbeat watcher to fake-money
+  sessions.
 
 ## Session Ended
 

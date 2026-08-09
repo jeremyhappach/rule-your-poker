@@ -71,8 +71,9 @@ Date: 2026-08-09
   their relative position with the Sitting Out status; only explicit Stand Up
   or Leave changes `status` to `left`. Start eligibility remains a separate
   opt-in count, and a seated player returns through Return to Play rather than
-  choosing a new `+` seat. The smoke passed on 2026-08-09. This shared rule
-  has no `real_money` gate and therefore applies to fake-money sessions too.
+  choosing a new `+` seat. The smoke passed on 2026-08-09. This is a shared
+  client seat/projection rule; fake-money post-game heartbeat reconciliation
+  remains separately queued.
 - Sessions with settled `game_results` close only when every current human has
   a matching final snapshot; the existing deduplicated terminal trigger then
   mints SessionResult rows in the same transaction. Incomplete settlement
