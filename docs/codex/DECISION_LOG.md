@@ -187,3 +187,19 @@ session type: real-money retains the existing snapshot-guarded, exactly-once
 financial finalizer; fake-money becomes `session_ended` without SessionResult,
 balance, or transaction writes. Connected live routes retain the Session Ended
 table, while a new terminal mount goes to the lobby.
+
+## D-024 — Immutable transfer batches own financial presentation
+
+The database remains the sole financial authority. Each player/pot balance
+mutation is journalled and emits an immutable, game-scoped batch in the same
+transaction, with database-captured opening and closing values. The shell
+ledger—not raw realtime rows or per-game animation state—owns every touched
+endpoint until the last flight settles and a fresh authoritative read confirms
+the matching cursor.
+
+Endpoint values are composed as ordered deltas, never independent client
+snapshots. A balance mutation stages its next cursor in the same row so early
+realtime delivery is held. A reconnect, missing endpoint, or dropped runtime
+presentation cancels motion and reconciles directly to authoritative state; it
+never replays financial effects. Game adapters may retain non-financial phase
+callbacks, but may not render or author a duplicate chip movement.

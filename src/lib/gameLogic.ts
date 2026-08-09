@@ -75,6 +75,12 @@ import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
 import { emit357InstantWinTerminal } from "./threeFiveSeven/instantWinLifecycle";
+import {
+  playerToPlayer,
+  playerToPot,
+  potToPlayer,
+  settleGameplayChipTransfers,
+} from "./gameplayChipTransfers";
 
 
 /**
@@ -605,11 +611,17 @@ export async function startRound(gameId: string, roundNumber: number) {
     const playerIds = activePlayers.map(p => p.id);
     console.log('[START_ROUND] Batch charging', playerIds.length, 'players $', anteAmount, 'each');
     
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount
-    });
-    
+    let anteError: unknown = null;
+    try {
+      await settleGameplayChipTransfers(
+        gameId,
+        playerIds.map((playerId) => playerToPot(playerId, anteAmount)),
+        'ante',
+      );
+    } catch (error) {
+      anteError = error;
+    }
+
     if (anteError) {
       console.error('[START_ROUND] Error batch charging antes:', anteError);
       // RPC failed - log but don't use non-atomic fallback which causes accounting drift
@@ -655,7 +667,9 @@ export async function startRound(gameId: string, roundNumber: number) {
     current_round: insertedRound.round_number, // Use inserted row, not local variable
     all_decisions_in: false,
     all_decisions_in_round_id: null, // F5.1: clear scoping when starting a new round
-    pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
+    // Ante transfers already updated the pot in their financial transaction.
+    // This lifecycle write must not apply the same money a second time.
+    pot: currentPot,
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
     ante_decision_deadline: null,
@@ -680,7 +694,7 @@ export async function startRound(gameId: string, roundNumber: number) {
     current_round: insertedRound.round_number,
     all_decisions_in: false,
     all_decisions_in_round_id: null,
-    pot: currentPot + initialPot,
+    pot: currentPot,
     total_hands: insertedRound.round_number === 1 ? insertedRound.hand_number : currentHandNumber,
   });
   
@@ -1049,16 +1063,23 @@ export async function startRound(gameId: string, roundNumber: number) {
             const totalPrize = currentPot + totalLegValue;
 
             if (player?.id) {
+              if (currentPot > 0) {
+                await settleGameplayChipTransfers(gameId, [potToPlayer(player.id, currentPot)], 'sweep');
+              }
+              if (totalLegValue <= 0) {
+                // The pot transfer above already paid the complete prize.
+              } else {
               await __withWartimeDbMutationCorrelation({
-                label: 'instant_win.increment_player_chips',
+                label: 'instant_win.increment_leg_reserve',
                 table: 'rpc.increment_player_chips',
                 op: 'rpc',
                 identity: { gameId, roundId: round.id, dealerGameId: currentGameUuid, handNumber: commitHandNumber, currentPlayerId: player.id },
-                payloadHash: `player=${player.id}|amount=${totalPrize}`,
+                payloadHash: `player=${player.id}|amount=${totalLegValue}`,
               }, async () => await supabase.rpc('increment_player_chips', {
                 p_player_id: player.id,
-                p_amount: totalPrize,
+                p_amount: totalLegValue,
               }));
+              }
             }
 
             // Zero-sum accounting: winner receives totalPrize; other players
@@ -2038,11 +2059,18 @@ async function handleGameOverLegacy(
     }
   }
   
-  // Award the winner using atomic increment FIRST (critical path)
-  await supabase.rpc('increment_player_chips', {
-    p_player_id: winnerId,
-    p_amount: totalPrize
-  });
+  // The visible pot portion is a database-owned pot → player transfer.  Leg
+  // reserve value retains its existing accounting path (it has no visible pot
+  // endpoint), so this change does not alter settlement economics.
+  if (actualPot > 0) {
+    await settleGameplayChipTransfers(gameId, [potToPlayer(winnerId, actualPot)], 'win');
+  }
+  if (totalLegValue > 0) {
+    await supabase.rpc('increment_player_chips', {
+      p_player_id: winnerId,
+      p_amount: totalLegValue,
+    });
+  }
   
   // Fire-and-forget: Record game result for hand history (audit trail only)
   recordGameResult(
@@ -2822,9 +2850,11 @@ export async function endRound(gameId: string) {
             const currentPot = game.pot || 0;
             let totalWinnings = 0;
             
-            // Charge each loser and accumulate (pot stays for game winner)
+            // Charge each loser and award the winner in one atomic transfer
+            // projection. Independent RPCs used to race raw realtime rows.
             const loserIds: string[] = [];
             let amountPerLoser = 0;
+            const showdownTransfers: ReturnType<typeof playerToPlayer>[] = [];
             for (const player of playersWhoStayed) {
               if (player.id !== winner.playerId) {
                 let amountToCharge;
@@ -2838,31 +2868,14 @@ export async function endRound(gameId: string) {
                 totalWinnings += amountToCharge;
                 amountPerLoser = amountToCharge; // All losers pay same amount
                 loserIds.push(player.id);
-                
-                // Deduct from loser using atomic decrement
-                const { error: loserError } = await supabase.rpc('decrement_player_chips', {
-                  player_ids: [player.id],
-                  amount: amountToCharge,
-                });
-                
-                if (loserError) {
-                  console.error('[endRound] SHOWDOWN: ERROR deducting from loser:', player.id, loserError);
-                } else {
-                  console.log('[endRound] SHOWDOWN: Deducted', amountToCharge, 'from player', player.id);
-                }
+                showdownTransfers.push(playerToPlayer(player.id, winner.playerId, amountToCharge));
               }
             }
-            
-            // Award showdown winnings to winner using atomic increment
-            const { error: winnerError } = await supabase.rpc('increment_player_chips', {
-              p_player_id: winner.playerId,
-              p_amount: totalWinnings
-            });
-            
-            if (winnerError) {
-              console.error('[endRound] SHOWDOWN: ERROR awarding to winner:', winner.playerId, winnerError);
-            } else {
+            try {
+              await settleGameplayChipTransfers(gameId, showdownTransfers, 'transfer');
               console.log('[endRound] SHOWDOWN: Awarded', totalWinnings, 'to winner', winner.playerId);
+            } catch (winnerError) {
+              console.error('[endRound] SHOWDOWN: atomic transfer failed:', winnerPlayer.id, winnerError);
             }
             
             // CRITICAL: Record showdown chip changes in game_results for zero-sum accounting
@@ -2996,11 +3009,16 @@ export async function endRound(gameId: string) {
       
       console.log('[endRound] Charging pussy tax to', playerIds.length, 'active players, amount:', pussyTaxValue);
       
-      // Use atomic relative decrement to prevent race conditions / double charges
-      const { error: taxError } = await supabase.rpc('decrement_player_chips', {
-        player_ids: playerIds,
-        amount: pussyTaxValue
-      });
+      let taxError: unknown = null;
+      try {
+        await settleGameplayChipTransfers(
+          gameId,
+          playerIds.map((playerId) => playerToPot(playerId, pussyTaxValue)),
+          'bet',
+        );
+      } catch (error) {
+        taxError = error;
+      }
       
       if (taxError) {
         console.error('[357 END] Pussy tax decrement error:', taxError);
@@ -3029,18 +3047,6 @@ export async function endRound(gameId: string) {
         console.log('[endRound] Recorded pussy tax chip changes:', pussyTaxChipChanges);
       }
       const taxCollected = pussyTaxValue * activePlayersForTax.length;
-      
-      // Add pussy tax to pot
-      const { error: potError } = await supabase
-        .from('games')
-        .update({ 
-          pot: (game.pot || 0) + taxCollected
-        })
-        .eq('id', gameId);
-      
-      if (potError) {
-        console.error('[357 END] Error updating pot with pussy tax:', potError);
-      }
       
       console.log('[endRound] Pussy tax applied:', { taxCollected, newPot: (game.pot || 0) + taxCollected });
       

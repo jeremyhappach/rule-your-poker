@@ -10,6 +10,7 @@ import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import { logHorsesHandStart } from "./horsesSyncDiagnostics";
 import { nextClockwise } from "./canonicalShell/seatRing";
+import { playerToPot, settleGameplayChipTransfers } from "./gameplayChipTransfers";
 
 export interface HorsesRoundCallerContext {
   caller: string;            // e.g. 'Game.tsx:awaiting_next_round-effect' | 'Game.tsx:ante-decision-complete'
@@ -500,7 +501,6 @@ export async function startHorsesRound(
       status: 'in_progress',
       current_round: newRoundNumber,
       total_hands: newHandNumber,
-      pot: potForRound,
       all_decisions_in: false,
       awaiting_next_round: false,
       last_round_result: null,
@@ -521,10 +521,16 @@ export async function startHorsesRound(
   // STEP 3: Collect antes AFTER round is created and game pointers are set
   if (activePlayers.length > 0 && anteAmount > 0) {
     const playerIds = activePlayers.map((p) => p.id);
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount,
-    });
+    let anteError: unknown = null;
+    try {
+      await settleGameplayChipTransfers(
+        gameId,
+        playerIds.map((playerId) => playerToPot(playerId, anteAmount)),
+        'ante',
+      );
+    } catch (error) {
+      anteError = error;
+    }
 
     if (anteError) {
       console.error('[HORSES] ERROR collecting antes:', anteError);

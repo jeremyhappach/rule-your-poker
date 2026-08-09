@@ -539,3 +539,26 @@ runtime acceptance.
 - A future stable tag may be created after Codex fixes and production smoke
   pass. Such a tag is optional post-cutover release bookkeeping, not a cutover
   prerequisite.
+
+## Canonical chip-transfer presentation ledger
+
+Migrations `20260809170000_canonical_chip_transfer_ledger.sql` and
+`20260809210000_stage_chip_transfer_cursors.sql` are installed on the owned
+production database. Every player-chip or table-pot mutation is journalled in
+its financial transaction and commits an immutable, game-scoped transfer batch
+with database-captured opening and closing endpoint balances. The balance row
+stages the next cursor before it is published, so an early realtime balance
+can never render ahead of its batch.
+
+`ChipPresentationLedger` inside the shell transport provider is now the sole
+presentation owner of touched player/pot endpoints. It composes ordered deltas
+for overlapping batches, releases only after a fresh authoritative fetch
+confirms the batch cursor, and abandons/reconciles directly on endpoint loss or
+reconnect without replaying settled money. Legacy game animations remain only
+as phase callbacks; the canonical runtime renders the financial flight.
+
+The rollback-only proof `supabase/tests/canonical_chip_transfer_ledger_proof.sql`
+passed after deployment. It covers authorization, multi-sender antes,
+player-to-player composition, pot payout, opening/closing values, cursors, and
+empty pending-journal cleanup. Runtime smoke remains required before this is a
+stable checkpoint.

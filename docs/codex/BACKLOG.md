@@ -227,7 +227,7 @@ Status: Queued; reported during the `Mercury` real-money smoke on 2026-08-09.
 
 ### 3D. Post-game abandonment detection latency
 
-Status: Queued; production smoke observation on 2026-08-09.
+Status: Implemented; production smoke pending.
 
 - The accepted post-game waiting flow works, but the current 30-second sweep
   can take longer than a minute before an absent player is visibly Sitting Out.
@@ -279,8 +279,11 @@ Status: Verified in production smoke on 2026-08-09 (migration
 Status: Queued; production smoke observation on 2026-08-09.
 
 - The 3-5-7 winner chip animation displayed `$0` for an authoritative `$6`
-  pot. Audit only the presentation payload/identity capture; settlement and
-  balances are not implicated by this report.
+  pot. The root cause was the legacy presenter inferring a winner amount after
+  the authoritative pot was already zero. The cross-game immutable transfer
+  ledger now supplies the actual database transfer amount and owns every
+  sender/recipient display during motion. Validate 3-5-7 plus multi-sender
+  antes and multi-winner payouts in published runtime smoke.
 
 ### 3G. Suppress invalid production debug-event writes
 

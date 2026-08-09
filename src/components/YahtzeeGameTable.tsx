@@ -47,7 +47,7 @@ import {
 import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
-import { cn, formatChipValue } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
 import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
 import { settleYahtzeeGame } from "@/lib/yahtzeeSettleGame";
@@ -72,6 +72,7 @@ import {
   ActionStripStatusPill,
 } from "@/components/canonicalShell/actionStrip";
 import { GameplayOpponentSeatLayer } from "@/lib/canonicalShell/GameplayOpponentSeatLayer";
+import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -2397,6 +2398,7 @@ export function YahtzeeGameTable({
 
         {/* Chip transfer animation */}
         <ChipTransferAnimation
+          presentationOwned
           triggerId={chipTransferTriggerId}
           amount={anteAmount}
           winnerPosition={chipTransferWinnerPos}
@@ -2639,7 +2641,7 @@ export function YahtzeeGameTable({
                           "text-sm font-bold",
                           player.chips < 0 ? 'text-destructive' : 'text-poker-gold'
                         )}>
-                          {formatChipValue(player.chips)}
+                          <PresentationChipBalance playerId={player.id} rawBalance={player.chips} prefix="" />
                         </span>
                       </div>
                     </div>
@@ -2670,7 +2672,7 @@ export function YahtzeeGameTable({
                 "font-bold text-lg tabular-nums",
                 myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
               )}>
-                {formatChipValue(myPlayer.chips)}
+                <PresentationChipBalance playerId={myPlayer.id} rawBalance={myPlayer.chips} prefix="" />
               </span>
             </div>
           ) : null

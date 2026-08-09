@@ -1657,6 +1657,53 @@ export type Database = {
           },
         ]
       }
+      gameplay_transfer_batches: {
+        Row: {
+          closing_balances: Json
+          created_at: string
+          cursor: number
+          dealer_game_id: string | null
+          game_id: string
+          id: string
+          opening_balances: Json
+          reason: string
+          transfers: Json
+          unmatched_deltas: Json
+        }
+        Insert: {
+          closing_balances?: Json
+          created_at?: string
+          cursor: number
+          dealer_game_id?: string | null
+          game_id: string
+          id?: string
+          opening_balances?: Json
+          reason?: string
+          transfers?: Json
+          unmatched_deltas?: Json
+        }
+        Update: {
+          closing_balances?: Json
+          created_at?: string
+          cursor?: number
+          dealer_game_id?: string | null
+          game_id?: string
+          id?: string
+          opening_balances?: Json
+          reason?: string
+          transfers?: Json
+          unmatched_deltas?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameplay_transfer_batches_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_state_debug_log: {
         Row: {
           all_decisions_in: boolean | null
@@ -1733,6 +1780,7 @@ export type Database = {
           buck_transfer_presentation: Json | null
           buy_in: number
           chucky_cards: number | null
+          chip_transfer_cursor: number
           config_complete: boolean
           config_deadline: string | null
           created_at: string
@@ -1758,6 +1806,7 @@ export type Database = {
           pending_session_end: boolean | null
           points_to_win: number | null
           pot: number | null
+          pot_transfer_cursor: number | null
           pot_max_enabled: boolean
           pot_max_value: number
           pussy_tax: number
@@ -1787,6 +1836,7 @@ export type Database = {
           buck_transfer_presentation?: Json | null
           buy_in?: number
           chucky_cards?: number | null
+          chip_transfer_cursor?: number
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
@@ -1812,6 +1862,7 @@ export type Database = {
           pending_session_end?: boolean | null
           points_to_win?: number | null
           pot?: number | null
+          pot_transfer_cursor?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax?: number
@@ -1841,6 +1892,7 @@ export type Database = {
           buck_transfer_presentation?: Json | null
           buy_in?: number
           chucky_cards?: number | null
+          chip_transfer_cursor?: number
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
@@ -1866,6 +1918,7 @@ export type Database = {
           pending_session_end?: boolean | null
           points_to_win?: number | null
           pot?: number | null
+          pot_transfer_cursor?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax?: number
@@ -2182,6 +2235,7 @@ export type Database = {
           auto_ante_runback: boolean
           auto_fold: boolean
           chips: number
+          chip_transfer_cursor: number | null
           created_at: string
           current_decision: string | null
           decision_locked: boolean | null
@@ -2208,6 +2262,7 @@ export type Database = {
           auto_ante_runback?: boolean
           auto_fold?: boolean
           chips?: number
+          chip_transfer_cursor?: number | null
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
@@ -2234,6 +2289,7 @@ export type Database = {
           auto_ante_runback?: boolean
           auto_fold?: boolean
           chips?: number
+          chip_transfer_cursor?: number | null
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
@@ -3398,6 +3454,10 @@ export type Database = {
       increment_player_chips: {
         Args: { p_amount: number; p_player_id: string }
         Returns: number
+      }
+      settle_gameplay_chip_transfers: {
+        Args: { p_game_id: string; p_reason?: string; p_transfers: Json }
+        Returns: Json
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       purge_expired_diagnostics: {

@@ -294,6 +294,7 @@ export function GameplayOpponentSeatLayer({
             name={p.name}
             isDealer={dealerPip}
             chipValue={chipValue}
+            chipAmount={p.chips}
             hideChipBubble={hideChipBubble}
             statusRing={statusRing}
             scoreLine={scoreLine ?? null}

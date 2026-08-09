@@ -17,6 +17,7 @@ import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugO
 // Holm outcome uses it any more.
 import { recordGameResult } from "./gameLogic";
 import { settleHolmHand } from "./holmSettleHand";
+import { playerToPot, settleGameplayChipTransfers } from "./gameplayChipTransfers";
 import { toast } from "sonner";
 
 /**
@@ -614,16 +615,15 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   if (effectiveIsFirstHand) {
     console.log('[HOLM] FIRST HAND - Collecting antes');
     
-    // Use atomic decrement to prevent race conditions / double charges
+    // One database operation moves every ante into the pot and emits its
+    // immutable presentation batch in the same transaction.
     const playerIds = players.map(p => p.id);
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount
-    });
-    
-    if (anteError) {
-      console.error('[HOLM] ERROR collecting antes:', anteError);
-    } else {
+    try {
+      await settleGameplayChipTransfers(
+        gameId,
+        playerIds.map((playerId) => playerToPot(playerId, anteAmount)),
+        'ante',
+      );
       console.log('[HOLM] Antes collected atomically from', playerIds.length, 'players, amount:', anteAmount);
       
       // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
@@ -647,16 +647,19 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
         gameConfig.current_game_uuid || null // dealer_game_id
       );
       console.log('[HOLM] Recorded ante chip changes in game_results:', anteChipChanges);
+    } catch (anteError) {
+      console.error('[HOLM] ERROR collecting antes:', anteError);
+      throw anteError;
     }
     
     potForRound = players.length * anteAmount;
     console.log('[HOLM] Total antes collected:', potForRound);
     
-    // Update game with ante pot
+    // The transfer RPC has already updated the authoritative pot.  This
+    // remaining write is non-financial round metadata only.
     await supabase
       .from('games')
       .update({
-        pot: potForRound,
         buck_position: buckPosition
       })
       .eq('id', gameId);

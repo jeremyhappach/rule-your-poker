@@ -58,8 +58,8 @@ import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPla
 import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
 import { derivePlayerStatus } from "@/lib/canonicalShell/participantStatus";
 import { getDisplayName } from "@/lib/botAlias";
-import { formatChipValue } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
+import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { cn } from "@/lib/utils";
 import {
   useWaitingMount,
@@ -445,6 +445,7 @@ function WaitingSurfaceBody({
                             name={label}
                             isDealer={false}
                             chipValue={formatChipBalance(player.chips ?? 0)}
+                            chipAmount={player.chips ?? 0}
                             status={status}
                             ownerLabel="Shell:CanonicalShellWaitingSurface"
                             playerId={player.id}
@@ -549,7 +550,7 @@ function WaitingSurfaceBody({
                   "font-bold text-lg tabular-nums",
                   (viewerPlayer.chips ?? 0) < 0 ? "text-destructive" : "text-poker-gold"
                 )}>
-                  ${formatChipValue(viewerPlayer.chips ?? 0)}
+                  <PresentationChipBalance playerId={viewerPlayer.id} rawBalance={viewerPlayer.chips} />
                 </span>
               </div>
             ) : null

@@ -12,6 +12,7 @@ import { logSCCAnteApplied } from "./sccSyncDiagnostics";
 import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import type { HorsesRoundCallerContext } from "./horsesRoundLogic";
 import { nextClockwise } from "./canonicalShell/seatRing";
+import { playerToPot, settleGameplayChipTransfers } from "./gameplayChipTransfers";
 
 /**
  * Start a new Ship Captain Crew round
@@ -430,7 +431,6 @@ export async function startSCCRound(
       status: 'in_progress',
       current_round: newRoundNumber,
       total_hands: newHandNumber,
-      pot: potForRound,
       all_decisions_in: false,
       awaiting_next_round: false,
       last_round_result: null,
@@ -449,10 +449,16 @@ export async function startSCCRound(
   // STEP 3: Collect antes AFTER round is created and game pointers are set
   if (activePlayers.length > 0 && anteAmount > 0) {
     const playerIds = activePlayers.map((p) => p.id);
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount,
-    });
+    let anteError: unknown = null;
+    try {
+      await settleGameplayChipTransfers(
+        gameId,
+        playerIds.map((playerId) => playerToPot(playerId, anteAmount)),
+        'ante',
+      );
+    } catch (error) {
+      anteError = error;
+    }
 
     if (anteError) {
       console.error('[SCC] ERROR collecting antes:', anteError);

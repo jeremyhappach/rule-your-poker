@@ -47,7 +47,7 @@ import {
   subscribeShellNameplate,
 } from './shellNameplateConfig';
 import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
-import { cn } from '@/lib/utils';
+import { cn, formatChipValue } from '@/lib/utils';
 import {
   getCanonicalSlotPlacement,
   getCanonicalSlotRaiseClass,
@@ -56,7 +56,10 @@ import {
 import type { CanonicalSlot } from './seatAnchors';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { resolveSideAwareRowAnchor } from './sideAwareRowAnchor';
-import { useChipTransportSuppressedSeats } from './ChipTransportProvider';
+import {
+  useChipTransportSuppressedSeats,
+  usePresentationPlayerChipBalance,
+} from './ChipTransportProvider';
 import {
   getParticipantChipBgClass,
   getParticipantChipFgClass,
@@ -85,6 +88,8 @@ export interface CanonicalSeatClusterProps {
   isDealer?: boolean;
   /** Pre-formatted chip value (caller controls formatting / currency). */
   chipValue: string;
+  /** Raw authoritative balance. When supplied, the shell ledger owns its visible value. */
+  chipAmount?: number;
   /** Optional secondary line rendered below the chip bubble (e.g. running
    *  score for games that track per-player totals). Hidden when null. */
   scoreLine?: string | null;
@@ -286,6 +291,7 @@ export function CanonicalSeatCluster({
   name,
   isDealer = false,
   chipValue,
+  chipAmount,
   status = 'active',
   scoreLine,
   children,
@@ -315,6 +321,7 @@ export function CanonicalSeatCluster({
   // leave hook order stable.
   const anchors = useSeatAnchorsOptional();
   const suppressedSeats = useChipTransportSuppressedSeats();
+  const presentationChipAmount = usePresentationPlayerChipBalance(playerId, chipAmount ?? 0);
   const transportSuppressed = suppressedSeats.has(position);
   const clusterInstanceIdRef = useRef<string>('');
   if (!clusterInstanceIdRef.current) {
@@ -631,7 +638,7 @@ export function CanonicalSeatCluster({
         <CanonicalChipDisc
           size="cluster"
           amount={null}
-          chipText={chipValue}
+          chipText={chipAmount == null ? chipValue : `$${formatChipValue(presentationChipAmount)}`}
           bgClass={chipBgClass}
           ringClass={chipRingClass}
           folded={dimChip}

@@ -53,6 +53,7 @@ import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
+import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { dealerDbgStore } from '@/lib/canonicalShell/extraDebugStore';
@@ -70,8 +71,6 @@ import {
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
-// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
-import { useChipTransport } from '@/lib/canonicalShell/ChipTransportProvider';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
@@ -80,7 +79,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChatContext } from '@/hooks/GameChatContext';
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
 import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -2304,9 +2303,6 @@ export const CribbageMobileGameTable = ({
   // no longer drives JSX. Could be deleted once trace consumers update.
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
   void chipAnimationTriggerId;
-  // Wave 3B: chip transfer geometry / suppression / lifecycle owned by
-  // the shell ChipTransport runtime. Game dispatches intents only.
-  const { dispatchMany: dispatchChipTransport } = useChipTransport();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
   // Prevent double scheduling of the win sequence before the 2s delay fires.
@@ -7154,23 +7150,11 @@ export const CribbageMobileGameTable = ({
           .filter((p) => p > 0),
         note: `intents=${intents.length}`,
       });
-      dispatchChipTransport(intents, {
-        onAllSettled: () => {
-          handleChipAnimationEndRef.current?.();
-        },
-      });
+      // The database transfer batch already owns the visible financial
+      // movement.  Re-dispatching these locally would duplicate that batch.
+      handleChipAnimationEndRef.current?.();
       // And one frame later — catches a "winner seat remounted between
       // dispatch and runtime resolveLayoutEffect" race.
-      requestAnimationFrame(() => {
-        captureWinnerChipEndpoint({
-          site: 'dispatchMany:postRAF',
-          winnerPlayerId: winSequenceData.winnerId,
-          winnerSeat: winnerPosition ?? null,
-          loserSeats: intents
-            .map((i) => (i.from.kind === 'seat' ? i.from.position : -1))
-            .filter((p) => p > 0),
-        });
-      });
     } else {
       // No resolvable losers — skip straight to the post-chips lifecycle.
       handleChipAnimationEndRef.current?.();
@@ -9074,7 +9058,7 @@ export const CribbageMobileGameTable = ({
                 "font-bold text-lg tabular-nums",
                 currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
               )}>
-                ${formatChipValue(currentPlayer.chips)}
+                <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} />
               </span>
               {!sessionEndedPhase && isCribDealer(currentPlayerId) && <DealerIndicator />}
             </div>
@@ -9183,7 +9167,7 @@ export const CribbageMobileGameTable = ({
                 {players.map(player => (
                   <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
                     <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
-                    <span className="text-sm text-poker-gold">${player.chips}</span>
+                    <span className="text-sm text-poker-gold"><PresentationChipBalance playerId={player.id} rawBalance={player.chips} /></span>
                   </div>
                 ))}
               </div>

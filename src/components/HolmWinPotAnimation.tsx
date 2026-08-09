@@ -21,6 +21,8 @@ interface HolmWinPotAnimationProps {
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
   holmLedgerIdentity?: HolmLedgerIdentity;
+  /** The database-backed ledger renders the financial flight; retain callbacks for phase sequencing. */
+  presentationOwned?: boolean;
 }
 
 export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
@@ -35,6 +37,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   onAnimationStart,
   onAnimationComplete,
   holmLedgerIdentity,
+  presentationOwned = false,
 }) => {
   const [animations, setAnimations] = useState<{ position: number; fromX: number; fromY: number; toX: number; toY: number; amount: number; viewportLeft: number; viewportTop: number }[]>([]);
   const lockedAmountRef = useRef<number>(amount);
@@ -321,7 +324,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
 
   const portalToSettlement = useShellOverlayPortal('settlement');
 
-  if (animations.length === 0) return null;
+  if (presentationOwned || animations.length === 0) return null;
 
   const rendered = (
     <>

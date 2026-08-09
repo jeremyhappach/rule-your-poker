@@ -26,6 +26,8 @@ interface AnteUpAnimationProps {
   specificPlayerIds?: string[]; // If set, only animate from these players (for Chucky loss, etc.)
   onAnimationStart?: () => void;
   onChipsArrived?: () => void;
+  /** The database-backed ledger renders the financial flight; retain callbacks for phase sequencing. */
+  presentationOwned?: boolean;
 }
 
 export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
@@ -44,6 +46,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   specificPlayerIds,
   onAnimationStart,
   onChipsArrived,
+  presentationOwned = false,
 }) => {
   // Use chipAmount if provided, otherwise fall back to anteAmount
   const displayAmount = chipAmount ?? anteAmount;
@@ -252,7 +255,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     onChipsArrived,
   ]);
 
-  if (animations.length === 0) return null;
+  if (presentationOwned || animations.length === 0) return null;
 
   return (
     <>

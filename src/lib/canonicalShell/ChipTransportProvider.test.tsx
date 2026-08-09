@@ -102,6 +102,35 @@ describe('ChipTransportProvider', () => {
     expect(store.internal!.__activeIntents).toHaveLength(0);
   });
 
+  it('emits each financial flight boundary exactly once', () => {
+    const store: ApiRef = { api: null, internal: null };
+    const departed = vi.fn();
+    const arrived = vi.fn();
+    const settled = vi.fn();
+    act(() => {
+      root.render(
+        <ChipTransportProvider>
+          <Harness store={store} />
+        </ChipTransportProvider>,
+      );
+    });
+    act(() => {
+      store.api!.dispatch(baseIntent, {
+        onDeparted: departed,
+        onArrived: arrived,
+        onSettled: settled,
+      });
+      store.internal!.__markDeparted(baseIntent.id);
+      store.internal!.__markDeparted(baseIntent.id);
+      store.internal!.__markArrived(baseIntent.id);
+      store.internal!.__markArrived(baseIntent.id);
+      store.internal!.__markSettled(baseIntent.id, 1800);
+    });
+    expect(departed).toHaveBeenCalledTimes(1);
+    expect(arrived).toHaveBeenCalledTimes(1);
+    expect(settled).toHaveBeenCalledTimes(1);
+  });
+
   it('useChipTransport is a no-op outside provider', () => {
     const store: ApiRef = { api: null, internal: null };
     act(() => { root.render(<Harness store={store} />); });

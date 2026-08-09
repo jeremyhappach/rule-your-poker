@@ -26,6 +26,8 @@ interface ChipTransferAnimationProps {
   containerRef: React.RefObject<HTMLDivElement>;
   onAnimationStart?: (loserIds: string[]) => void;
   onAnimationEnd?: () => void;
+  /** The database-backed ledger renders the financial flight; retain callbacks for phase sequencing. */
+  presentationOwned?: boolean;
 }
 
 export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
@@ -39,6 +41,7 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   containerRef,
   onAnimationStart,
   onAnimationEnd,
+  presentationOwned = false,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
   const lockedAmountRef = useRef<number>(amount);
@@ -244,7 +247,7 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     });
   }, [triggerId, amount, winnerPosition, loserPositions, loserPlayerIds, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd]);
 
-  if (animations.length === 0) return null;
+  if (presentationOwned || animations.length === 0) return null;
 
   return (
     <>

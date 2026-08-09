@@ -259,6 +259,8 @@ import { useShellOverlayPortal } from "@/lib/canonicalShell/ShellOverlayMounts";
 import { OverSeatBadgePortal } from "@/lib/canonicalShell/OverSeatBadgePortal";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
+import { usePresentationPotChipBalance } from "@/lib/canonicalShell/ChipTransportProvider";
+import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
 import {
@@ -2646,6 +2648,10 @@ export const MobileGameTable = ({
     });
     return initialValue;
   });
+  // Legacy displayedPot timers still sequence non-financial phase changes,
+  // but they are never an input to the financial presentation.  The ledger
+  // starts from the authoritative games.pot row and owns every active endpoint.
+  const presentationPot = usePresentationPotChipBalance(pot);
   useLayoutEffect(() => {
     displayedPotMemoryByGameId.set(potMemoryKey, displayedPot);
   }, [potMemoryKey, displayedPot]);
@@ -9849,6 +9855,7 @@ export const MobileGameTable = ({
         position={player.position}
         name={displayName}
         chipValue={chipText}
+        chipAmount={player.chips}
         isDealer={isDealer}
         status={participantStatus}
         statusRing={statusRing}
@@ -10201,6 +10208,7 @@ export const MobileGameTable = ({
         position={player.position}
         name={displayName}
         chipValue={chipText}
+        chipAmount={player.chips}
         // Dealer pip is suppressed during R2/R3 multi-player showdowns
         // to reduce clutter (legacy parity).
         isDealer={isDealer && !is357MultiPlayerShowdown}
@@ -10363,6 +10371,7 @@ export const MobileGameTable = ({
           position={player.position}
           name={displayName}
           chipValue={chipText}
+          chipAmount={player.chips}
           /* Dice families have no dealer concept. */
           isDealer={false}
           status={participantStatus}
@@ -10558,6 +10567,7 @@ export const MobileGameTable = ({
           position={player.position}
           name={displayName}
           chipValue={chipText}
+          chipAmount={player.chips}
           /* Dice families have no dealer concept. */
           isDealer={false}
           status={participantStatus}
@@ -10871,6 +10881,7 @@ export const MobileGameTable = ({
         
         {/* Ante Up Animation */}
         <AnteUpAnimation
+          presentationOwned
           pot={pot}
           anteAmount={potInPerPlayerAmount}
           chipAmount={potInPerPlayerAmount}
@@ -11050,6 +11061,7 @@ export const MobileGameTable = ({
         
         {/* Chip Transfer Animation (3-5-7 showdowns - loser to winner) */}
         <ChipTransferAnimation
+          presentationOwned
           triggerId={chipTransferTriggerId || null}
           amount={chipTransferAmount}
           winnerPosition={players.find(p => p.id === chipTransferWinnerId)?.position || 1}
@@ -11085,6 +11097,7 @@ export const MobileGameTable = ({
         
         {/* Holm Chucky Loss Animation (loser pays into pot) */}
         <AnteUpAnimation
+          presentationOwned
           pot={pot}
           anteAmount={chuckyLossAmount}
           chipAmount={chuckyLossAmount}
@@ -11145,6 +11158,7 @@ export const MobileGameTable = ({
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             gameType={gameType}
+            presentationOwned
             onAnimationStart={() => {
               // Pot goes to 0 visually, show -$X flash
               setAnteFlashTrigger({ id: `showdown-pot-out-${Date.now()}`, amount: -holmShowdownPotAmount });
@@ -11160,6 +11174,7 @@ export const MobileGameTable = ({
         {/* Holm Win Pot Animation (player beats Chucky - dramatic 5 second animation) */}
         {holmWinPotTriggerIdGated && (
           <HolmWinPotAnimation
+            presentationOwned
             triggerId={holmWinPotTriggerIdGated}
             amount={holmWinPotAmount}
             winnerPosition={holmWinWinnerPosition}
@@ -11264,6 +11279,7 @@ export const MobileGameTable = ({
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             gameType={gameType}
+            presentationOwned
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
@@ -11282,6 +11298,7 @@ export const MobileGameTable = ({
         {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
         {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
           <AnteUpAnimation
+            presentationOwned
             pot={pot}
             anteAmount={holmShowdownMatchAmount}
             chipAmount={holmShowdownMatchAmount}
@@ -11580,6 +11597,7 @@ export const MobileGameTable = ({
               getClockwiseDistance={getClockwiseDistance}
               containerRef={tableContainerRef}
               gameType={gameType}
+              presentationOwned
               onAnimationStart={() => {
                 // Pot goes to 0 visually
                 setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
@@ -11681,11 +11699,7 @@ export const MobileGameTable = ({
               {(() => {
                 const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
                 const potValueText = `$${formatChipValue(Math.round(
-                  gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
-                    ? threeFiveSevenWinPotAmount
-                    : isInitialAntePending
-                      ? 0
-                      : displayedPot
+                  presentationPot
                 ))}`;
                 if (canonicalFeltKind) {
                   // P9.1/P9.2/P9.3: shell-defined pot pill for Holm + 3-5-7 + Horses + SCC + Yahtzee.
@@ -11707,7 +11721,7 @@ export const MobileGameTable = ({
                     <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
                       <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
                       <ValueChangeFlash
-                        value={pot}
+                        value={presentationPot}
                         position="top-right"
                         disabled={shouldHidePot}
                         manualTrigger={anteFlashTrigger}
@@ -11737,7 +11751,7 @@ export const MobileGameTable = ({
                           : (isTablet ? 'text-4xl' : 'text-3xl')
                     )}>{potValueText}</span>
                     <ValueChangeFlash
-                      value={pot}
+                      value={presentationPot}
                       position="top-right"
                       disabled={shouldHidePot}
                       manualTrigger={anteFlashTrigger}
@@ -13145,6 +13159,7 @@ export const MobileGameTable = ({
                   position={player.position}
                   name={displayName}
                   chipValue={chipText}
+                  chipAmount={player.chips}
                   status={status}
                   isDealer={false}
                   className={playerSlotZIndex}
@@ -13376,7 +13391,7 @@ export const MobileGameTable = ({
                     "font-bold text-lg tabular-nums",
                     currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
                   )}>
-                    ${formatChipValue(Math.round(currentPlayer.chips ?? 0))}
+                    <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} round />
                   </span>
                 </div>
               ) : null
@@ -13432,7 +13447,7 @@ export const MobileGameTable = ({
                               {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
                             </span>
                             <span className="text-right min-w-[45px] font-bold text-sm text-poker-gold">
-                              ${formatChipValue(Math.round(player.chips ?? 0))}
+                              <PresentationChipBalance playerId={player.id} rawBalance={player.chips} round />
                             </span>
                           </div>
                         );
@@ -14258,7 +14273,7 @@ export const MobileGameTable = ({
                         {gameType === 'holm-game' ? 'Holm' : isDiceGame ? (gameType === 'ship-captain-crew' ? 'Ship' : 'Horses') : '3-5-7'}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
+                        Pot: <span className="text-poker-gold font-bold">${Math.round(presentationPot)}</span>
                       </span>
                     </div>
                   </div>
@@ -14298,7 +14313,7 @@ export const MobileGameTable = ({
                               </div>
                             )}
                             <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                              ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
+                              <PresentationChipBalance playerId={player.id} rawBalance={player.chips} round />
                             </div>
                           </div>
                         </div>
@@ -14337,7 +14352,7 @@ export const MobileGameTable = ({
                   "font-bold text-lg tabular-nums",
                   (currentPlayer.chips ?? 0) < 0 ? 'text-destructive' : 'text-poker-gold'
                 )}>
-                  ${formatChipValue(Math.round(currentPlayer.chips ?? 0))}
+                  <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} round />
                 </span>
               </div>
             ) : null
@@ -14399,13 +14414,7 @@ export const MobileGameTable = ({
                         : 'text-poker-gold'
                     )}
                   >
-                    ${formatChipValue(
-                      Math.round(
-                        lockedChipsRef.current?.[currentPlayer.id] ??
-                          displayedChips[currentPlayer.id] ??
-                          currentPlayer.chips,
-                      ),
-                    )}
+                    <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} round />
                   </span>
                 )}
                 <ValueChangeFlash

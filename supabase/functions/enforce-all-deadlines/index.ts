@@ -64,6 +64,31 @@ async function fetchTimeoutPolicy(supabase: any, game: any): Promise<TimeoutPoli
   return resolveTimeoutPolicy(game, gd);
 }
 
+type GameplayTransfer = {
+  from: { kind: 'pot' } | { kind: 'player'; playerId: string };
+  to: { kind: 'pot' } | { kind: 'player'; playerId: string };
+  amount: number;
+};
+
+// Financial transfers from the watchdog must use the same database-owned
+// transaction/projection as connected clients.  Do not split a player debit
+// and pot credit into separate PostgREST calls: that creates two unmatched
+// balance changes and no canonical flight.
+async function settleGameplayTransfers(
+  supabase: any,
+  gameId: string,
+  transfers: GameplayTransfer[],
+  reason: 'ante' | 'bet' | 'win' | 'leg' | 'sweep' | 'transfer',
+): Promise<void> {
+  if (transfers.length === 0) return;
+  const { error } = await supabase.rpc('settle_gameplay_chip_transfers', {
+    p_game_id: gameId,
+    p_transfers: transfers,
+    p_reason: reason,
+  });
+  if (error) throw error;
+}
+
 // ============== CARD UTILITIES ==============
 // CANONICAL SUIT FORMAT: Always use symbols (♠♥♦♣), never text ('hearts', 'clubs')
 // This matches the client-side cardUtils.ts format exactly.
@@ -969,11 +994,12 @@ serve(async (req) => {
                     const winnerPlayer = playerMap.get(bestPlayer.playerId);
                     const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
                     
-                    if (winnerPlayer) {
-                      await supabase.rpc('increment_player_chips', {
-                        p_player_id: bestPlayer.playerId,
-                        p_amount: roundPot
-                      });
+                    if (winnerPlayer && roundPot > 0) {
+                      await settleGameplayTransfers(supabase, game.id, [{
+                        from: { kind: 'pot' },
+                        to: { kind: 'player', playerId: bestPlayer.playerId },
+                        amount: roundPot,
+                      }], 'win');
                     }
                     
                     const playerChipChanges: Record<string, number> = {
@@ -1527,10 +1553,16 @@ serve(async (req) => {
                 
                 // Collect antes
                 const potForRound = (game.pot || 0) + (anteAmount * players.length);
-                await supabase.rpc('decrement_player_chips', {
-                  player_ids: players.map((p: any) => p.id),
-                  amount: anteAmount,
-                });
+                await settleGameplayTransfers(
+                  supabase,
+                  game.id,
+                  players.map((p: any) => ({
+                    from: { kind: 'player' as const, playerId: p.id },
+                    to: { kind: 'pot' as const },
+                    amount: anteAmount,
+                  })),
+                  'ante',
+                );
                 
                 // Create round
                 const { error: roundError } = await supabase
@@ -1664,10 +1696,16 @@ serve(async (req) => {
                 
                 // Collect antes
                 const potForRound = (game.pot || 0) + (anteAmount * players.length);
-                await supabase.rpc('decrement_player_chips', {
-                  player_ids: players.map((p: any) => p.id),
-                  amount: anteAmount,
-                });
+                await settleGameplayTransfers(
+                  supabase,
+                  game.id,
+                  players.map((p: any) => ({
+                    from: { kind: 'player' as const, playerId: p.id },
+                    to: { kind: 'pot' as const },
+                    amount: anteAmount,
+                  })),
+                  'ante',
+                );
                 
                 // Create round
                 const { error: roundError } = await supabase
@@ -1840,11 +1878,17 @@ serve(async (req) => {
               const playerChipChanges: Record<string, number> = {};
               
               if (pussyTaxEnabled && pussyTaxValue > 0) {
+                await settleGameplayTransfers(
+                  supabase,
+                  game.id,
+                  foldedPlayers.map((player: any) => ({
+                    from: { kind: 'player' as const, playerId: player.id },
+                    to: { kind: 'pot' as const },
+                    amount: pussyTaxValue,
+                  })),
+                  'bet',
+                );
                 for (const player of foldedPlayers) {
-                  await supabase.rpc('decrement_player_chips', {
-                    player_ids: [player.id],
-                    amount: pussyTaxValue
-                  });
                   totalTaxCollected += pussyTaxValue;
                   playerChipChanges[player.id] = -pussyTaxValue;
                 }
@@ -1943,10 +1987,13 @@ serve(async (req) => {
                 const playerWins = playerEval.value > chuckyEval.value;
                 
                 if (playerWins) {
-                  await supabase.rpc('increment_player_chips', {
-                    p_player_id: player.id,
-                    p_amount: roundPot
-                  });
+                  if (roundPot > 0) {
+                    await settleGameplayTransfers(supabase, game.id, [{
+                      from: { kind: 'pot' },
+                      to: { kind: 'player', playerId: player.id },
+                      amount: roundPot,
+                    }], 'win');
+                  }
                   
                    await supabase.from('game_results').insert({
                      game_id: game.id,
@@ -1989,10 +2036,13 @@ serve(async (req) => {
                     ? Math.min(roundPot, game.pot_max_value)
                     : roundPot;
                   
-                  await supabase.rpc('decrement_player_chips', {
-                    player_ids: [player.id],
-                    amount: potMatchAmount
-                  });
+                  if (potMatchAmount > 0) {
+                    await settleGameplayTransfers(supabase, game.id, [{
+                      from: { kind: 'player', playerId: player.id },
+                      to: { kind: 'pot' },
+                      amount: potMatchAmount,
+                    }], 'bet');
+                  }
                   
                   const newPot = roundPot + potMatchAmount;
                   
@@ -2043,10 +2093,13 @@ serve(async (req) => {
                 if (winners.length === 1) {
                   const winner = winners[0];
                   
-                  await supabase.rpc('increment_player_chips', {
-                    p_player_id: winner.player.id,
-                    p_amount: roundPot
-                  });
+                  if (roundPot > 0) {
+                    await settleGameplayTransfers(supabase, game.id, [{
+                      from: { kind: 'pot' },
+                      to: { kind: 'player', playerId: winner.player.id },
+                      amount: roundPot,
+                    }], 'win');
+                  }
                   
                    await supabase.from('game_results').insert({
                      game_id: game.id,
@@ -2091,11 +2144,19 @@ serve(async (req) => {
                   const splitAmount = Math.floor(roundPot / winners.length);
                   const playerChipChanges: Record<string, number> = {};
                   
+                  if (splitAmount > 0) {
+                    await settleGameplayTransfers(
+                      supabase,
+                      game.id,
+                      winners.map((winner: any) => ({
+                        from: { kind: 'pot' as const },
+                        to: { kind: 'player' as const, playerId: winner.player.id },
+                        amount: splitAmount,
+                      })),
+                      'win',
+                    );
+                  }
                   for (const winner of winners) {
-                    await supabase.rpc('increment_player_chips', {
-                      p_player_id: winner.player.id,
-                      p_amount: splitAmount
-                    });
                     playerChipChanges[winner.player.id] = splitAmount;
                   }
                   

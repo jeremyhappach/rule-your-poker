@@ -108,6 +108,7 @@ export function PreSessionSeatLayer({
             position={player.position}
             name={label}
             chipValue={formatChipBalance(player.chips ?? 0)}
+            chipAmount={player.chips ?? 0}
             status={status}
             statusRing={status}
             isDealer={false}

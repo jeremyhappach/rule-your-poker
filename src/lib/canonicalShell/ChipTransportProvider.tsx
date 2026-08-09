@@ -27,6 +27,10 @@ import {
 import type { ChipTransportIntent } from './GameplaySlotContract';
 import { recordShellEvent } from './diagnostics';
 import { describeEndpoint } from './chipEndpoints';
+import {
+  useChipPresentationLedger,
+  type LedgerDispatchOptions,
+} from './ChipPresentationLedger';
 
 export interface ActiveChipIntent extends ChipTransportIntent {
   /** Monotonic enqueue counter for stable React keys. */
@@ -36,6 +40,10 @@ export interface ActiveChipIntent extends ChipTransportIntent {
 export interface DispatchOptions {
   /** Fires when this specific intent settles (or is dropped). */
   onSettled?: () => void;
+  /** Shell runtime lifecycle hooks. Used by the database-owned ledger only. */
+  onDeparted?: () => void;
+  onArrived?: () => void;
+  onDropped?: () => void;
 }
 
 export interface DispatchManyOptions {
@@ -52,11 +60,21 @@ interface ChipTransportContextValue {
   __activeIntents: ActiveChipIntent[];
   /** Runtime-internal: signal that an intent has finished animating. */
   __markSettled: (intentId: string, durationMs: number) => void;
+  /** Runtime-internal: source has visibly released the chip. */
+  __markDeparted: (intentId: string) => void;
+  /** Runtime-internal: chip has visibly landed at its destination. */
+  __markArrived: (intentId: string) => void;
   /** Runtime-internal: signal that an intent could not be resolved. */
   __markDropped: (
     intent: ChipTransportIntent,
     reason: 'missing-endpoint' | 'no-runtime',
   ) => void;
+  /** Runtime-internal: abandon a presentation that lost its endpoint. */
+  __cancel: (intentId: string) => void;
+  /** Sole presentation owner for a player endpoint while its batch is active. */
+  presentationPlayerBalance: (playerId: string | null | undefined, fallback: number) => number;
+  /** Sole presentation owner for the pot endpoint while its batch is active. */
+  presentationPotBalance: (fallback: number) => number;
   /** Diagnostics scoping. */
   gameId?: string | null;
   gameType?: string | null;
@@ -79,8 +97,11 @@ export function ChipTransportProvider({
   // Track every id we've ever accepted (active + settled) for dedupe.
   const seenIdsRef = useRef<Set<string>>(new Set());
   const seqRef = useRef(0);
-  // Per-intent settlement callbacks.
-  const onSettledMapRef = useRef<Map<string, () => void>>(new Map());
+  const lifecycleSignalsRef = useRef<Set<string>>(new Set());
+  // Per-intent runtime callbacks.  The presentation ledger consumes the
+  // departure/arrival boundaries; ordinary game callers continue to use only
+  // onSettled through the public dispatch API.
+  const callbacksRef = useRef<Map<string, DispatchOptions>>(new Map());
 
   const acceptOne = useCallback(
     (intent: ChipTransportIntent, opts?: DispatchOptions): boolean => {
@@ -88,8 +109,8 @@ export function ChipTransportProvider({
       if (seenIdsRef.current.has(intent.id)) return false;
       seenIdsRef.current.add(intent.id);
       const enqueueSeq = ++seqRef.current;
-      if (opts?.onSettled) {
-        onSettledMapRef.current.set(intent.id, opts.onSettled);
+      if (opts) {
+        callbacksRef.current.set(intent.id, opts);
       }
       setActiveIntents((prev) => [...prev, { ...intent, enqueueSeq }]);
       recordShellEvent('chip-transport-dispatched', {
@@ -140,15 +161,18 @@ export function ChipTransportProvider({
     [acceptOne],
   );
 
-  const fireOnSettled = useCallback((intentId: string) => {
-    const cb = onSettledMapRef.current.get(intentId);
+  const fireCallback = useCallback((intentId: string, kind: keyof LedgerDispatchOptions) => {
+    const callbacks = callbacksRef.current.get(intentId);
+    const cb = callbacks?.[kind];
     if (cb) {
-      onSettledMapRef.current.delete(intentId);
+      if (kind === 'onSettled') {
+        callbacksRef.current.delete(intentId);
+      }
       try {
         cb();
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[canonical-shell] chip-transport onSettled threw', e);
+        console.warn(`[canonical-shell] chip-transport ${kind} threw`, e);
       }
     }
   }, []);
@@ -161,10 +185,24 @@ export function ChipTransportProvider({
         gameType,
         detail: { intentId, durationMs },
       });
-      fireOnSettled(intentId);
+      fireCallback(intentId, 'onSettled');
     },
-    [gameId, gameType, fireOnSettled],
+    [gameId, gameType, fireCallback],
   );
+
+  const markDeparted = useCallback((intentId: string) => {
+    const signal = `${intentId}:departed`;
+    if (lifecycleSignalsRef.current.has(signal)) return;
+    lifecycleSignalsRef.current.add(signal);
+    fireCallback(intentId, 'onDeparted');
+  }, [fireCallback]);
+
+  const markArrived = useCallback((intentId: string) => {
+    const signal = `${intentId}:arrived`;
+    if (lifecycleSignalsRef.current.has(signal)) return;
+    lifecycleSignalsRef.current.add(signal);
+    fireCallback(intentId, 'onArrived');
+  }, [fireCallback]);
 
   const markDropped = useCallback(
     (intent: ChipTransportIntent, reason: 'missing-endpoint' | 'no-runtime') => {
@@ -186,11 +224,20 @@ export function ChipTransportProvider({
           to: describeEndpoint(intent.to),
         },
       });
-      // Honor onSettled for dropped intents so lifecycle waiters don't hang.
-      fireOnSettled(intent.id);
+      fireCallback(intent.id, 'onDropped');
+      // Honor onSettled for dropped intents so legacy lifecycle waiters don't hang.
+      fireCallback(intent.id, 'onSettled');
     },
-    [gameId, gameType, fireOnSettled],
+    [gameId, gameType, fireCallback],
   );
+
+  const cancel = useCallback((intentId: string) => {
+    setActiveIntents((prev) => prev.filter((intent) => intent.id !== intentId));
+    callbacksRef.current.delete(intentId);
+  }, []);
+
+  const ledgerTransport = useMemo(() => ({ dispatch, cancel }), [dispatch, cancel]);
+  const presentationLedger = useChipPresentationLedger(gameId, ledgerTransport);
 
   const value = useMemo<ChipTransportContextValue>(
     () => ({
@@ -198,11 +245,16 @@ export function ChipTransportProvider({
       dispatchMany,
       __activeIntents: activeIntents,
       __markSettled: markSettled,
+      __markDeparted: markDeparted,
+      __markArrived: markArrived,
       __markDropped: markDropped,
+      __cancel: cancel,
+      presentationPlayerBalance: presentationLedger.playerBalance,
+      presentationPotBalance: presentationLedger.potBalance,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, activeIntents, markSettled, markDropped, gameId, gameType],
+    [dispatch, dispatchMany, activeIntents, markSettled, markDeparted, markArrived, markDropped, cancel, presentationLedger, gameId, gameType],
   );
 
   return (
@@ -228,6 +280,25 @@ export function useChipTransport(): Pick<
     };
   }
   return { dispatch: ctx.dispatch, dispatchMany: ctx.dispatchMany };
+}
+
+/**
+ * Raw database balances are passed only as a fallback.  Once the matching
+ * database transfer cursor is observed, this returns the ledger-owned value
+ * until departure/arrival/reconciliation completes.
+ */
+export function usePresentationPlayerChipBalance(
+  playerId: string | null | undefined,
+  rawBalance: number,
+): number {
+  const ctx = useContext(ChipTransportContext);
+  return ctx?.presentationPlayerBalance(playerId, rawBalance) ?? rawBalance;
+}
+
+/** See usePresentationPlayerChipBalance for the ownership contract. */
+export function usePresentationPotChipBalance(rawBalance: number): number {
+  const ctx = useContext(ChipTransportContext);
+  return ctx?.presentationPotBalance(rawBalance) ?? rawBalance;
 }
 
 /**

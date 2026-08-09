@@ -85,12 +85,13 @@ import { useKnockSound } from '@/hooks/useKnockSound';
 import { useGameChatContext } from '@/hooks/GameChatContext';
 import { useChatAttention, useChatIconStyleGuard, chatAttentionToShellTabProps } from '@/hooks/ChatAttention';
 import { recordChatDeliveryEvent } from '@/lib/chatDelivery/chatDeliveryLedger';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
+import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
@@ -3412,6 +3413,7 @@ export const GinRummyGameTable = ({
             {/* Player-to-player chip transfer animation at match end */}
             {storedChipPositions && (
               <CribbageChipTransferAnimation
+                presentationOwned
                 triggerId={chipAnimTriggerId}
                 amount={chipAnimAmount}
                 winnerPosition={storedChipPositions.winner}
@@ -3513,7 +3515,7 @@ export const GinRummyGameTable = ({
                 {currentPlayer.profiles?.username || 'You'}
               </p>
               <span className="font-bold text-lg text-poker-gold">
-                ${formatChipValue(currentPlayer.chips)}
+                <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} />
               </span>
             </div>
           ) : null
@@ -3586,7 +3588,7 @@ export const GinRummyGameTable = ({
                 {players.map(player => (
                   <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
                     <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
-                    <span className="text-sm text-poker-gold">${formatChipValue(player.chips)}</span>
+                    <span className="text-sm text-poker-gold"><PresentationChipBalance playerId={player.id} rawBalance={player.chips} /></span>
                   </div>
                 ))}
               </div>

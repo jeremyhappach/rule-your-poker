@@ -25,6 +25,8 @@ interface CribbageChipTransferAnimationProps {
   loserPositions: { playerId: string; x: number; y: number }[];
   onAnimationStart?: () => void;
   onAnimationEnd?: () => void;
+  /** The database-backed ledger renders the financial flight; retain callbacks for phase sequencing. */
+  presentationOwned?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
   loserPositions,
   onAnimationStart,
   onAnimationEnd,
+  presentationOwned = false,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
   const lockedAmountRef = useRef<number>(amount);
@@ -110,7 +113,7 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
     }, totalDuration + 400);
   }, [triggerId, amount, winnerPlayerId, winnerPosition, loserPositions]);
 
-  if (animations.length === 0 || typeof document === 'undefined') return null;
+  if (presentationOwned || animations.length === 0 || typeof document === 'undefined') return null;
 
   const chips = animations.map((anim) => {
     const dx = anim.toX - anim.fromX;

@@ -16,6 +16,7 @@ import { type Card, has357Hand } from "../cardUtils";
 import { getBotAlias } from "../botAlias";
 import { emit357InstantWinTerminal } from "./instantWinLifecycle";
 import { recordGameResult, snapshotPlayerChips } from "../gameLogic";
+import { potToPlayer, settleGameplayChipTransfers } from "../gameplayChipTransfers";
 
 export type InstantWinDetectionResult =
   | { kind: "none" }
@@ -136,9 +137,14 @@ export async function detectAndSettleInstantWin357(args: {
       const totalPrize = currentPot + totalLegValue;
 
       if (player?.id) {
-        await supabase.rpc("increment_player_chips", {
-          p_player_id: player.id, p_amount: totalPrize,
-        });
+        if (currentPot > 0) {
+          await settleGameplayChipTransfers(gameId, [potToPlayer(player.id, currentPot)], 'sweep');
+        }
+        if (totalLegValue > 0) {
+          await supabase.rpc("increment_player_chips", {
+            p_player_id: player.id, p_amount: totalLegValue,
+          });
+        }
       }
 
       const playerChipChanges: Record<string, number> = {};

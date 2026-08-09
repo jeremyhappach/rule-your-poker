@@ -39,6 +39,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
 | Schema history | `supabase/migrations/` (260 versioned migration files). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
+| Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. |
 | Real-money abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` owns result-backed post-game watches, server-lease evaluation, three consecutive five-second missed windows, absent-player sit-out, and exactly-once terminal closure. Its due-watch index makes the five-second cron inert without an armed post-game watch; initial waiting, gameplay, setup, and ante remain outside the owner. The legacy `enforce-all-deadlines` Edge Function remains outside this owner. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
@@ -77,7 +78,7 @@ inspected.
 | Geometry | `ResponsiveGeometryProvider.tsx`, `canonicalShellLayoutConfig.ts`, `canonicalSlotPlacement.ts`, `src/lib/wave4LayoutResolver/`, and game providers in `src/lib/wave5GameplayGeometry/`. |
 | Announcements and celebration | `announcements/CanonicalAnnouncementProvider.tsx`, `CanonicalAnnouncementLayer.tsx`, `CanonicalCelebrationLayer.tsx`, `SessionLifecycleAnnouncer.tsx`, and `renderers.tsx`. |
 | Overlay ownership | `ShellOverlayMounts.tsx` exposes the canonical `slot`, `settlement`, and `transient` layers. |
-| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, and `chipEndpoints.ts`. |
+| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, `ChipPresentationLedger.ts`, and `chipEndpoints.ts`. The provider owns financial departure/arrival/reconcile display; game-specific animation components retain phase callbacks only. |
 | Card transport/deal | `cardTransport/CardTransportProvider.tsx`, `CardTransportRuntime.tsx`, `DealRuntime.tsx`, and `cardEndpoints.ts`. |
 | Settlement presentation | `settlement/SettlementProvider.tsx`, `SettlementRuntime.tsx`, and `settlement/types.ts`. These are presentation owners, not financial authority. |
 | Active hand | Shared `src/components/activeHand/ActiveHandFan.tsx` and `MeasuredActiveHandFan.tsx`; Holm also retains a separate local-hand route in `MobileGameTable.tsx`. |

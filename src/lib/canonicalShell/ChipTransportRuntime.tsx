@@ -421,6 +421,9 @@ export function ChipTransportRuntime({
         transportMounted: true,
         transportVisible: true,
       });
+      // The source balance changes at the same visual boundary as the flight:
+      // endpoint resolution succeeded and the moving chip is now mounted.
+      ctx.__markDeparted(intent.id);
       // VISIBLE CHIP DBG — dispatch-time inventory.
       recordVisibleChipScan({
         intentId: intent.id,
@@ -455,6 +458,11 @@ export function ChipTransportRuntime({
       const arrivalMs = chip.delayMs + flightMs * arrivalRatio;
       const remainingToArrival = Math.max(0, arrivalMs - elapsed);
       const remainingToSettle = Math.max(0, chip.totalMs - elapsed);
+
+      const arrivalTimer = window.setTimeout(() => {
+        ctx.__markArrived(id);
+      }, remainingToArrival);
+      timers.push(arrivalTimer);
 
       if (chip.intent.destinationReaction) {
         const reaction = chip.intent.destinationReaction;

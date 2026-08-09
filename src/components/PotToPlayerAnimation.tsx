@@ -112,6 +112,8 @@ interface PotToPlayerAnimationProps {
   gameType?: string | null; // For position adjustment
   onAnimationStart?: () => void;
   onAnimationEnd?: () => void;
+  /** The canonical database ledger renders the financial flight. */
+  presentationOwned?: boolean;
   /**
    * Optional canonical destination selector. When supplied, this selector
    * is the ONLY source for the winner endpoint — no `data-chip-center`
@@ -142,6 +144,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   onAnimationStart,
   onAnimationEnd,
   destinationSelector,
+  presentationOwned = false,
   
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
@@ -272,6 +275,18 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
   useEffect(() => {
     if (!triggerId || triggerId === lastTriggerIdRef.current) return;
+
+    // A terminal lifecycle signal is not an amount source.  In particular,
+    // 3-5-7 used to reach this component after games.pot had already been
+    // settled to zero and rendered a literal "$0" chip.  Financial flights
+    // now come from the immutable database transfer batch; this legacy phase
+    // owner must never manufacture a zero-value artifact while that batch is
+    // arriving out of order.
+    if (!Number.isFinite(amountRef.current) || amountRef.current <= 0) {
+      lastTriggerIdRef.current = triggerId;
+      const completion = window.setTimeout(() => onEndRef.current?.(), 0);
+      return () => window.clearTimeout(completion);
+    }
 
     const container = containerRefRef.current?.current;
     if (!container) return;
@@ -623,6 +638,9 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     return () => { clearPhaseTimers(); };
   }, []);
 
+  // Keep the established terminal phase callbacks alive, but the financial
+  // artifact itself belongs to the immutable database transfer batch.
+  if (presentationOwned) return null;
   if (!animation) return null;
   if (typeof document === 'undefined') return null;
 

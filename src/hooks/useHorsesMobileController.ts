@@ -43,6 +43,7 @@ import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { getRollNumber } from "@/lib/diceAudit";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
+import { potToPlayer, settleGameplayChipTransfers } from "@/lib/gameplayChipTransfers";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -2742,14 +2743,15 @@ export function useHorsesMobileController({
       const handNumber = claimed[0].total_hands || 1;
       const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
 
-      // Award pot to winner using atomic increment to prevent race conditions
-      // (non-atomic read-then-write could lose chips if state is stale)
-      const { error: updateError } = await supabase.rpc("increment_player_chips", {
-        p_player_id: winnerId,
-        p_amount: actualPot,
-      });
-
-      if (updateError) {
+      try {
+        if (actualPot > 0) {
+          await settleGameplayChipTransfers(
+            gameId,
+            [potToPlayer(winnerId, actualPot)],
+            'win',
+          );
+        }
+      } catch (updateError) {
         console.error("[HORSES] Failed to update winner chips:", updateError);
         return;
       }
@@ -2789,11 +2791,11 @@ export function useHorsesMobileController({
       // Fire-and-forget: Snapshot player chips (audit trail only)
       snapshotPlayerChips(gameId, handNumber);
 
-      // Update pot and result description (status already set in atomic claim)
+      // The canonical payout transaction already set games.pot to zero.
+      // Keep this lifecycle write free of a second financial mutation.
       await supabase
         .from("games")
         .update({
-          pot: 0,
           last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
         })
         .eq("id", gameId);
