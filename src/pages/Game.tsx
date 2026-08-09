@@ -60,6 +60,7 @@ import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { refreshVoicePresenceHeartbeat } from "@/lib/runtimeInstrumentation/voicePresenceHeartbeat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -904,6 +905,27 @@ const Game = () => {
   const hasHydratedRef = useRef(false);
   if (_game) hasHydratedRef.current = true;
   const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
+
+  // A Waiting-table entry gets one immediate, ordinary presence pulse instead
+  // of waiting for the four-second cadence. The database owns whether that
+  // observation matters: only a result-bearing post-game watch can use it.
+  // Fresh waiting rooms, live dealer games, setup, and ante remain inert.
+  const waitingPresencePulseKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const isWaitingTable =
+      game?.status === 'waiting' || game?.status === 'waiting_for_players';
+    const currentDealerGameId = (game as any)?.current_game_uuid ?? null;
+    if (!gameId || !isWaitingTable || currentDealerGameId !== null) {
+      waitingPresencePulseKeyRef.current = null;
+      return;
+    }
+
+    const pulseKey = `${gameId}:${game?.status}`;
+    if (waitingPresencePulseKeyRef.current === pulseKey) return;
+
+    waitingPresencePulseKeyRef.current = pulseKey;
+    refreshVoicePresenceHeartbeat();
+  }, [game?.status, (game as any)?.current_game_uuid, gameId]);
 
   // ── Cribbage entry-mode provenance (persistent owner: Game.tsx route mount) ──
   // Captures the canonical (dealerGameId, handNumber) pair present at the first

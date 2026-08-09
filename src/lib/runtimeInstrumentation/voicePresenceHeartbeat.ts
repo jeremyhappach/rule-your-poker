@@ -91,3 +91,13 @@ export function setVoicePresenceContext(ctx: {
     void beat(document.hidden ? "hidden" : "active");
   }
 }
+
+/**
+ * Publishes a normal, server-stamped presence observation at a safe UI
+ * boundary. This is intentionally only observational: database lifecycle
+ * functions decide whether an armed post-game watch can act on it.
+ */
+export function refreshVoicePresenceHeartbeat(): void {
+  if (!started || typeof window === "undefined") return;
+  void beat(document.hidden ? "hidden" : "active");
+}

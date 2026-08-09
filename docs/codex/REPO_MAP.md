@@ -15,7 +15,7 @@ claim that every owner is already database-authoritative.
 
 | Area | Source owner |
 |---|---|
-| Browser bootstrap | `src/main.tsx` installs startup/runtime instrumentation, presence heartbeat handling, page resume handling, and mounts `<App />`. `src/lib/runtimeInstrumentation/voicePresenceHeartbeat.ts` writes the four-second tab heartbeat and immediately refreshes its game context on route entry/exit; the database-stamped `updated_at` is the safe-boundary presence lease. |
+| Browser bootstrap | `src/main.tsx` installs startup/runtime instrumentation, presence heartbeat handling, page resume handling, and mounts `<App />`. `src/lib/runtimeInstrumentation/voicePresenceHeartbeat.ts` writes the four-second tab heartbeat, refreshes game context on route entry/exit, and accepts the one immediate Waiting-table pulse; the database-stamped `updated_at` is the safe-boundary presence lease. |
 | Application providers and routes | `src/App.tsx` owns the React Query, auth/voice/chat, router, error-boundary, and global UI provider tree. |
 | Lobby route | `/` -> `src/pages/Index.tsx` -> `src/components/GameLobby.tsx`. |
 | Authentication | `/auth` -> `src/pages/Auth.tsx`. |
@@ -39,7 +39,7 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
 | Schema history | `supabase/migrations/` (260 versioned migration files). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
-| Real-money abandonment owner | `supabase/migrations/20260807233000_authoritative_session_presence_reconciliation.sql` owns private safe-boundary watches, server-lease evaluation, absent-player sit-out, result-backed terminal closure, pristine-room deletion grace, and the narrow ten-second database cron. The legacy `enforce-all-deadlines` Edge Function remains outside this owner. |
+| Real-money abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` owns result-backed post-game watches, server-lease evaluation, three consecutive five-second missed windows, absent-player sit-out, and exactly-once terminal closure. Its due-watch index makes the five-second cron inert without an armed post-game watch; initial waiting, gameplay, setup, and ante remain outside the owner. The legacy `enforce-all-deadlines` Edge Function remains outside this owner. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in

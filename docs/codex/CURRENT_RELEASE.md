@@ -45,14 +45,23 @@ Date: 2026-08-09
   presence lease to settled post-game `waiting` / `waiting_for_players` only,
   with no active dealer-game identity. It never applies during an initial
   waiting room, live gameplay, terminal presentation, dealer setup, or ante
-  decision. The 15-second lease starts when that post-game waiting boundary is
-  armed; a heartbeat from before the boundary does not keep a departed player
-  active.
+  decision. A heartbeat from before that boundary does not keep a departed
+  player active.
+- Migration
+  `20260809190000_fast_postgame_presence_confirmation.sql` arms one
+  result-bearing post-game watch at that boundary and preserves its original
+  arm time across later game/player writes. A Waiting-table entry emits one
+  ordinary immediate heartbeat; the server then counts complete five-second
+  windows from database-stamped post-boundary heartbeats. Three consecutive
+  missed windows (fifteen seconds) mark a human Sitting Out. The five-second
+  scheduler reads only due watches, so it is an indexed no-op while no
+  post-game watch exists; it never evaluates gameplay, setup, ante, or an
+  initial waiting room.
 - One active human returns to the post-game waiting table. Once an absent
   player is authoritatively marked Sitting Out, zero active humans closes a
   result-bearing real-money session immediately through the database and
-  records exactly-once SessionResult financials. The 30-second cron remains
-  the no-client fallback; it never advances an active dealer game.
+  records exactly-once SessionResult financials. The five-second watch sweep
+  is the no-client fallback; it never advances an active dealer game.
 - A continuously mounted route now remains on the canonical Session Ended
   table after this later server-side closure and renders final seated players,
   including Sitting Out adornments. Fresh mounts and reconnects of an already
@@ -64,11 +73,9 @@ Date: 2026-08-09
   deleted only after fifteen minutes with zero active humans. Generic cleanup
   never advances an `in_progress` game.
 - The complete rollback proof passed before and after installation, covering
-  fresh/stale presence, two-pass closure, exactly-once zero-sum financials,
-  replay, pristine-session grace/deletion, incomplete-history preservation,
-  fake-money isolation, unarmed historical sessions, and in-progress
-  continuation. The installed cron has completed successfully with zero
-  production sessions armed at rollout.
+  first/second/third missed windows, a post-boundary heartbeat reset,
+  exactly-once zero-sum financials, winner/tie, duplicate and late replay,
+  authorization, continuation, and initial-waiting/live-game exclusion.
 
 ## 3-5-7 decision-timer continuity
 

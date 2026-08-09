@@ -23,6 +23,8 @@ DECLARE
   v_initial_waiting_player_id uuid := gen_random_uuid();
   v_in_progress_game_id uuid := gen_random_uuid();
   v_armed_at timestamptz;
+  v_next_check_at timestamptz;
+  v_missed_heartbeat_counts jsonb;
   v_outcome text;
   v_public_outcome text;
   v_count integer;
@@ -68,10 +70,10 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_count
-    FROM cron.job
+   FROM cron.job
    WHERE jobname = 'reconcile-abandoned-real-money-sessions'
      AND active = true
-     AND schedule = '30 seconds'
+     AND schedule = '5 seconds'
      AND command = 'SELECT private.reconcile_abandoned_sessions();';
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'session_abandonment_proof:cron-shape:%', v_count;
@@ -84,9 +86,9 @@ BEGIN
       v_public_outcome;
   END IF;
 
-  -- Winner: one remaining human returns to post-game waiting. A pre-wait
-  -- absence is ignored until the waiting lease reaches 15 seconds, then the
-  -- finalizer closes once and preserves net-zero SessionResult financials.
+  -- Winner: one remaining human returns to post-game waiting. The watch takes
+  -- three complete five-second missed windows before it marks that player
+  -- Sitting Out, then the finalizer closes once with net-zero financials.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
@@ -130,23 +132,61 @@ BEGIN
     RAISE EXCEPTION 'session_abandonment_proof:continuation:%', v_outcome;
   END IF;
 
-  SELECT armed_at INTO v_armed_at
+  SELECT armed_at, next_check_at
+    INTO v_armed_at, v_next_check_at
     FROM private.session_abandonment_watches
    WHERE game_id = v_winner_game_id;
-  IF v_armed_at IS NULL THEN
+  IF v_armed_at IS NULL
+     OR v_next_check_at <> v_armed_at + interval '5 seconds' THEN
     RAISE EXCEPTION 'session_abandonment_proof:postgame-wait-not-armed';
   END IF;
 
   SELECT private.reconcile_session_abandonment(
     v_winner_game_id,
-    v_armed_at + interval '14 seconds'
+    v_armed_at + interval '4 seconds'
   ) INTO v_outcome;
   IF v_outcome <> 'active-humans'
      OR EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_winner_player_one_id AND sitting_out = true
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:pre-lease-absence:%', v_outcome;
+    RAISE EXCEPTION 'session_abandonment_proof:pre-first-miss:%', v_outcome;
+  END IF;
+
+  SELECT private.reconcile_session_abandonment(
+    v_winner_game_id,
+    v_armed_at + interval '5 seconds'
+  ) INTO v_outcome;
+  SELECT missed_heartbeat_counts
+    INTO v_missed_heartbeat_counts
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_winner_game_id;
+  IF v_outcome <> 'active-humans'
+     OR COALESCE((v_missed_heartbeat_counts ->> v_winner_player_one_id::text)::integer, -1) <> 1
+     OR EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id AND sitting_out = true
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:first-miss:%:%',
+      v_outcome, v_missed_heartbeat_counts;
+  END IF;
+
+  SELECT private.reconcile_session_abandonment(
+    v_winner_game_id,
+    v_armed_at + interval '10 seconds'
+  ) INTO v_outcome;
+  SELECT missed_heartbeat_counts
+    INTO v_missed_heartbeat_counts
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_winner_game_id;
+  IF v_outcome <> 'active-humans'
+     OR COALESCE((v_missed_heartbeat_counts ->> v_winner_player_one_id::text)::integer, -1) <> 2
+     OR EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id AND sitting_out = true
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:second-miss:%:%',
+      v_outcome, v_missed_heartbeat_counts;
   END IF;
 
   SELECT private.reconcile_session_abandonment(
@@ -241,8 +281,8 @@ BEGIN
     RAISE EXCEPTION 'session_abandonment_proof:tie-terminal:%', v_outcome;
   END IF;
 
-  -- A heartbeat received after the post-game boundary keeps the remaining
-  -- player active even after the 15-second absence threshold.
+  -- A post-boundary heartbeat resets a player who already has two missed
+  -- windows; only three consecutive server-measured misses may sit them out.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
@@ -276,9 +316,23 @@ BEGIN
     (v_connected_game_id, v_connected_dealer_game_id, 1, v_connected_player_two_id,
      v_users[2], v_usernames[2], 0, false);
   PERFORM private.resolve_postgame_participation(v_connected_game_id);
-  UPDATE private.session_abandonment_watches
-     SET armed_at = clock_timestamp() - interval '1 hour'
+  SELECT armed_at
+    INTO v_armed_at
+    FROM private.session_abandonment_watches
    WHERE game_id = v_connected_game_id;
+  SELECT private.reconcile_session_abandonment(
+    v_connected_game_id,
+    v_armed_at + interval '10 seconds'
+  ) INTO v_outcome;
+  SELECT missed_heartbeat_counts
+    INTO v_missed_heartbeat_counts
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_connected_game_id;
+  IF v_outcome <> 'active-humans'
+     OR COALESCE((v_missed_heartbeat_counts ->> v_connected_player_one_id::text)::integer, -1) <> 2 THEN
+    RAISE EXCEPTION 'session_abandonment_proof:heartbeat-precondition:%:%',
+      v_outcome, v_missed_heartbeat_counts;
+  END IF;
   INSERT INTO public.voice_presence_heartbeats (
     user_id, tab_id, game_id, route, status, last_heartbeat_at
   ) VALUES (
@@ -289,7 +343,12 @@ BEGIN
     v_connected_game_id,
     clock_timestamp() + interval '5 seconds'
   ) INTO v_outcome;
+  SELECT missed_heartbeat_counts
+    INTO v_missed_heartbeat_counts
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_connected_game_id;
   IF v_outcome <> 'active-humans'
+     OR COALESCE((v_missed_heartbeat_counts ->> v_connected_player_one_id::text)::integer, 3) >= 3
      OR EXISTS (
        SELECT 1 FROM public.players
         WHERE id = v_connected_player_one_id AND sitting_out = true

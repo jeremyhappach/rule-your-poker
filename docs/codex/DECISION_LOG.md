@@ -153,8 +153,12 @@ The legacy monolithic deadline Edge Function is not this lifecycle owner.
 The absence lease is never evaluated during a dealer game, its terminal
 presentation, dealer setup, ante decision, or an initial waiting room. A
 settled session with one active human returns to post-game waiting, which arms
-the 15-second database-stamped lease. A pre-boundary heartbeat is not presence
-for that lease. Once zero active humans is authoritative, the database closes
-a result-bearing real-money session exactly once from final snapshots. A live
-route stays on the canonical Session Ended table; a fresh terminal mount goes
-to the lobby.
+one server-owned watch. The first, second, and third complete five-second
+windows without a database-stamped post-boundary heartbeat are counted as
+consecutive misses; the third marks that human Sitting Out. A delayed cron run
+uses elapsed server time rather than treating a delayed invocation as a free
+miss. A pre-boundary heartbeat is not presence for this lease, and a valid
+post-boundary heartbeat resets its count. Once zero active humans is
+authoritative, the database closes a result-bearing real-money session exactly
+once from final snapshots. A live route stays on the canonical Session Ended
+table; a fresh terminal mount goes to the lobby.
