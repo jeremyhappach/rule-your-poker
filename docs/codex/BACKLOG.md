@@ -239,11 +239,16 @@ Status: Queued; production smoke observation on 2026-08-09.
 
 ### 3E. Sitting Out retains the player's seat
 
-Status: Queued; production smoke observation on 2026-08-09.
+Status: Queued; repeated production smoke observation on 2026-08-09.
 
 - Sit Out means keep the existing seat and opt out of the next dealer game;
   it must remain in the relative-seat model on every entry path. Only Stand Up
   or Leave changes the player to an observer/unseated presentation.
+- In current real-money session `Aug 9 - Peoria Stadium`
+  (`01b271aa-c7f9-4f14-9dcd-19ef63d41b5e`), the post-game absence reconciler
+  correctly kept Hap at position 4 and set only `sitting_out=true`; the Waiting
+  UI nevertheless reported one player seated. This is a presentation filter/
+  projection defect, not a reason to change the authoritative Sit Out state.
 - Define a later inactivity-forfeiture policy (time and/or dealer-game count)
   separately. It must be authoritative and must not redefine an immediate
   Sit Out as a stand-up.
