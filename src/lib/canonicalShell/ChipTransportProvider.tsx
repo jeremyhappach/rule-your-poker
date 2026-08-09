@@ -32,6 +32,7 @@ import {
   useChipPresentationLedger,
   type ChipPresentationAdmission,
   type ChipPresentationBatch,
+  type ChipPresentationBatchSettled,
   type LedgerDispatchOptions,
 } from './ChipPresentationLedger';
 
@@ -79,7 +80,10 @@ interface ChipTransportContextValue {
   /** Sole presentation owner for the pot endpoint while its batch is active. */
   presentationPotBalance: (fallback: number) => number;
   /** Runtime registration for a game presentation prerequisite. */
-  __setPresentationAdmission: (admission: ChipPresentationAdmission | null) => void;
+  __setPresentationAdmission: (
+    admission: ChipPresentationAdmission | null,
+    onBatchSettled?: ChipPresentationBatchSettled | null,
+  ) => void;
   /** Diagnostics scoping. */
   gameId?: string | null;
   gameType?: string | null;
@@ -250,9 +254,20 @@ export function ChipTransportProvider({
   const canStartPresentationBatch = useCallback((batch: ChipPresentationBatch) => (
     presentationAdmissionRef.current?.(batch) ?? true
   ), []);
-  const setPresentationAdmission = useCallback((admission: ChipPresentationAdmission | null) => {
-    if (presentationAdmissionRef.current === admission) return;
+  const presentationBatchSettledRef = useRef<ChipPresentationBatchSettled | null>(null);
+  const onPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
+    presentationBatchSettledRef.current?.(batch);
+  }, []);
+  const setPresentationAdmission = useCallback((
+    admission: ChipPresentationAdmission | null,
+    onBatchSettled: ChipPresentationBatchSettled | null = null,
+  ) => {
+    if (
+      presentationAdmissionRef.current === admission &&
+      presentationBatchSettledRef.current === onBatchSettled
+    ) return;
     presentationAdmissionRef.current = admission;
+    presentationBatchSettledRef.current = onBatchSettled;
     setPresentationAdmissionVersion((version) => version + 1);
   }, []);
   const presentationLedger = useChipPresentationLedger(
@@ -260,6 +275,7 @@ export function ChipTransportProvider({
     ledgerTransport,
     canStartPresentationBatch,
     presentationAdmissionVersion,
+    onPresentationBatchSettled,
   );
 
   const value = useMemo<ChipTransportContextValue>(
@@ -332,15 +348,16 @@ export function usePresentationPotChipBalance(rawBalance: number): number {
  */
 export function useChipTransferPresentationAdmission(
   admission: ChipPresentationAdmission,
+  onBatchSettled?: ChipPresentationBatchSettled,
 ): void {
   const ctx = useContext(ChipTransportContext);
   const setAdmission = ctx?.__setPresentationAdmission;
 
   useLayoutEffect(() => {
     if (!setAdmission) return;
-    setAdmission(admission);
-    return () => setAdmission(null);
-  }, [admission, setAdmission]);
+    setAdmission(admission, onBatchSettled ?? null);
+    return () => setAdmission(null, null);
+  }, [admission, onBatchSettled, setAdmission]);
 }
 
 /**

@@ -75,6 +75,8 @@ import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { useChipTransferPresentationAdmission } from '@/lib/canonicalShell/ChipTransportProvider';
+import type { ChipPresentationBatch } from '@/lib/canonicalShell/ChipPresentationLedger';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import confetti from 'canvas-confetti';
@@ -1033,6 +1035,15 @@ export const GinRummyGameTable = ({
     losers: { playerId: string; x: number; y: number }[];
   } | null>(null);
   const [chipAnimAmount, setChipAnimAmount] = useState(0);
+  const canAdmitGinTerminalTransfer = useCallback((batch: ChipPresentationBatch) => {
+    const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
+    );
+    // The hand-result plate and the match-win paint frame own Gin's prelude.
+    // The immutable payout begins only with its existing chip stage.
+    return !movesPlayerToPlayer || chipAnimTriggerId !== null;
+  }, [chipAnimTriggerId]);
+  useChipTransferPresentationAdmission(canAdmitGinTerminalTransfer);
   // matchEndAnimatedRef removed — replaced by matchEndKeyRef (keyed on dealerGameId+winnerId) for hard idempotency.
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);

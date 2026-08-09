@@ -54,6 +54,8 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { PresentationChipBalance } from '@/lib/canonicalShell/PresentationChipBalance';
+import { useChipTransferPresentationAdmission } from '@/lib/canonicalShell/ChipTransportProvider';
+import type { ChipPresentationBatch } from '@/lib/canonicalShell/ChipPresentationLedger';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { dealerDbgStore } from '@/lib/canonicalShell/extraDebugStore';
@@ -2299,10 +2301,9 @@ export const CribbageMobileGameTable = ({
 
 
 
-  // Wave 3B: chipAnimationTriggerId retained only as a trace-id source;
-  // no longer drives JSX. Could be deleted once trace consumers update.
+  // The shell-owned ledger renders the financial flight. This trigger marks
+  // the existing Cribbage chips phase that admits its settled batch.
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
-  void chipAnimationTriggerId;
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
   // Prevent double scheduling of the win sequence before the 2s delay fires.
@@ -7133,10 +7134,8 @@ export const CribbageMobileGameTable = ({
         };
       })
       .filter((i): i is NonNullable<typeof i> => i !== null);
+    let skipLedgerFlight = false;
 
-    // Bridge to the existing lifecycle path: the last settled intent
-    // triggers the same handler that used to fire from
-    // CribbageChipTransferAnimation.onAnimationEnd.
     if (intents.length > 0) {
       // WINNER CHIP ENDPOINT DBG — snapshot at dispatch time (just
       // before dispatchMany). This is the exact moment the runtime will
@@ -7150,14 +7149,11 @@ export const CribbageMobileGameTable = ({
           .filter((p) => p > 0),
         note: `intents=${intents.length}`,
       });
-      // The database transfer batch already owns the visible financial
-      // movement.  Re-dispatching these locally would duplicate that batch.
-      handleChipAnimationEndRef.current?.();
-      // And one frame later — catches a "winner seat remounted between
-      // dispatch and runtime resolveLayoutEffect" race.
+      // The database transfer batch owns the visible movement. Its settled
+      // callback advances the terminal phase; it is never re-dispatched here.
     } else {
-      // No resolvable losers — skip straight to the post-chips lifecycle.
-      handleChipAnimationEndRef.current?.();
+      // No drawable transfer means there is no ledger batch to settle.
+      skipLedgerFlight = true;
     }
 
 
@@ -7180,6 +7176,9 @@ export const CribbageMobileGameTable = ({
       chipAnimationTriggerId: nextChipTriggerId,
     });
     setWinSequencePhase('chips');
+    if (skipLedgerFlight) {
+      handleChipAnimationEndRef.current?.();
+    }
   }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
 
@@ -7227,6 +7226,30 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     handleChipAnimationEndRef.current = handleChipAnimationEnd;
   }, [handleChipAnimationEnd]);
+
+  // The terminal settlement batch can arrive while Cribbage is still showing
+  // its skunk/announcement prelude. Keep its endpoints at their database
+  // opening values until the existing chips phase begins, then complete the
+  // legacy terminal phase only when the ledger's real flight settles.
+  const canAdmitCribbageTransfer = useCallback((batch: ChipPresentationBatch) => {
+    const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
+    );
+    return !movesPlayerToPlayer || (
+      winSequencePhase === 'chips' && chipAnimationTriggerId !== null
+    );
+  }, [winSequencePhase, chipAnimationTriggerId]);
+  const handleCribbageTransferSettled = useCallback((batch: ChipPresentationBatch) => {
+    const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
+    );
+    if (!movesPlayerToPlayer || winSequencePhase !== 'chips' || !chipAnimationTriggerId) return;
+    handleChipAnimationEndRef.current();
+  }, [winSequencePhase, chipAnimationTriggerId]);
+  useChipTransferPresentationAdmission(
+    canAdmitCribbageTransfer,
+    handleCribbageTransferSettled,
+  );
 
 
   // Gate chip animation on the shell-owned terminal announcement duration.

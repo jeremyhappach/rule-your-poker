@@ -44,6 +44,13 @@ export interface ChipPresentationBatch {
  */
 export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean;
 
+/**
+ * Presentation-only terminal handoff. Fires once only after every rendered
+ * transfer in an admitted immutable batch has settled; it is never fired for
+ * an abandoned endpoint or a reconnect baseline.
+ */
+export type ChipPresentationBatchSettled = (batch: ChipPresentationBatch) => void;
+
 interface PlayerSnapshot {
   chips: number;
   position: number;
@@ -151,6 +158,7 @@ export function useChipPresentationLedger(
   transport: ChipPresentationLedgerTransport,
   canStartBatch: ChipPresentationAdmission = () => true,
   admissionVersion = 0,
+  onBatchSettled: ChipPresentationBatchSettled = () => {},
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
   const playersRef = useRef(new Map<string, PlayerSnapshot>());
@@ -166,6 +174,8 @@ export function useChipPresentationLedger(
   const disposedRef = useRef(false);
   const canStartBatchRef = useRef(canStartBatch);
   canStartBatchRef.current = canStartBatch;
+  const onBatchSettledRef = useRef(onBatchSettled);
+  onBatchSettledRef.current = onBatchSettled;
 
   const writeVisible = useCallback((updates: Iterable<[EndpointKey, number]>) => {
     setVisibleBalances((previous) => {
@@ -231,6 +241,17 @@ export function useChipPresentationLedger(
     runningRef.current.delete(batchId);
     for (const key of Object.keys(batch.opening_balances) as EndpointKey[]) {
       if (activeEndpointsRef.current.get(key) === batchId) activeEndpointsRef.current.delete(key);
+    }
+
+    // Financial presentation is visibly complete at this edge. Games may
+    // advance their non-financial terminal phase from it, but only after the
+    // database batch's actual flight has settled.
+    try {
+      onBatchSettledRef.current(batch);
+    } catch (error) {
+      // A game phase callback must never strand ledger ownership after the
+      // financial presentation already settled.
+      console.warn('[canonical-shell] chip batch-settled callback threw', error);
     }
 
     // This fetch is the release barrier.  A cursor by itself is never enough:

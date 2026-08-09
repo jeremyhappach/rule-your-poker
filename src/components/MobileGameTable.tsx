@@ -3871,10 +3871,31 @@ export const MobileGameTable = ({
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
     );
-    if (!movesPotToPlayer) return true;
+    const movesPlayerToPot = batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
+    );
+    const movesPlayerToPlayer = batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
+    );
 
     if (gameType === 'holm-game') {
-      return holmCommunityFullyRevealed && chuckyVisualRevealComplete;
+      if (movesPotToPlayer) {
+        return (
+          holmCommunityFullyRevealed &&
+          chuckyVisualRevealComplete &&
+          (
+            holmWinPotTriggerIdGated !== null ||
+            holmShowdownPhase === 'pot-to-winner'
+          )
+        );
+      }
+      if (movesPlayerToPot && batch.reason === 'transfer') {
+        return (
+          (chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) ||
+          holmShowdownPhase === 'losers-to-pot'
+        );
+      }
+      return true;
     }
 
     // Settlement can publish the 3-5-7 pot batch before the final-leg
@@ -3882,7 +3903,24 @@ export const MobileGameTable = ({
     // opening balances until the sole terminal-phase owner starts the pot
     // stage (final leg -> sweep legs -> pot flight + celebration).
     if (gameType === '3-5-7') {
-      return threeFiveSevenWinPhase === 'pot-to-player';
+      if (movesPotToPlayer) {
+        return threeFiveSevenWinPhase === 'pot-to-player';
+      }
+      if (movesPlayerToPlayer && batch.reason === 'transfer') {
+        return (
+          chipTransferWinnerId !== null &&
+          chipTransferLoserIds.length > 0 &&
+          chipTransferAmount > 0
+        );
+      }
+      return true;
+    }
+
+    if (
+      (gameType === 'horses' || gameType === 'ship-captain-crew') &&
+      movesPotToPlayer
+    ) {
+      return horsesWinPotTriggerId !== null;
     }
 
     return true;
@@ -3890,7 +3928,15 @@ export const MobileGameTable = ({
     gameType,
     holmCommunityFullyRevealed,
     chuckyVisualRevealComplete,
+    holmWinPotTriggerIdGated,
+    holmShowdownPhase,
+    chuckyLossPlayerIds,
+    chuckyLossAmount,
     threeFiveSevenWinPhase,
+    chipTransferWinnerId,
+    chipTransferLoserIds,
+    chipTransferAmount,
+    horsesWinPotTriggerId,
   ]);
   useChipTransferPresentationAdmission(canAdmitChipTransferPresentation);
 

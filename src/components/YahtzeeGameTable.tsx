@@ -21,6 +21,8 @@ import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3d)
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
+import { useChipTransferPresentationAdmission } from "@/lib/canonicalShell/ChipTransportProvider";
+import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
@@ -543,6 +545,15 @@ export function YahtzeeGameTable({
   const [chipTransferWinnerPos, setChipTransferWinnerPos] = useState<number>(0);
   const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
+  const canAdmitYahtzeeTerminalTransfer = useCallback((batch: ChipPresentationBatch) => {
+    const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
+    );
+    // Yahtzee admits financial motion in the same frame as its match-win
+    // plate and winner confetti, never on early settlement delivery.
+    return !movesPlayerToPlayer || chipTransferTriggerId !== null;
+  }, [chipTransferTriggerId]);
+  useChipTransferPresentationAdmission(canAdmitYahtzeeTerminalTransfer);
 
   // Terminal presentation is client-local. The route holds a live
   // session-ending table while this identity is active, and admits Session
