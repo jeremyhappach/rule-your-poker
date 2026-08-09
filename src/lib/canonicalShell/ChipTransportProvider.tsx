@@ -19,6 +19,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,6 +30,8 @@ import { recordShellEvent } from './diagnostics';
 import { describeEndpoint } from './chipEndpoints';
 import {
   useChipPresentationLedger,
+  type ChipPresentationAdmission,
+  type ChipPresentationBatch,
   type LedgerDispatchOptions,
 } from './ChipPresentationLedger';
 
@@ -75,6 +78,8 @@ interface ChipTransportContextValue {
   presentationPlayerBalance: (playerId: string | null | undefined, fallback: number) => number;
   /** Sole presentation owner for the pot endpoint while its batch is active. */
   presentationPotBalance: (fallback: number) => number;
+  /** Runtime registration for a game presentation prerequisite. */
+  __setPresentationAdmission: (admission: ChipPresentationAdmission | null) => void;
   /** Diagnostics scoping. */
   gameId?: string | null;
   gameType?: string | null;
@@ -98,6 +103,11 @@ export function ChipTransportProvider({
   const seenIdsRef = useRef<Set<string>>(new Set());
   const seqRef = useRef(0);
   const lifecycleSignalsRef = useRef<Set<string>>(new Set());
+  // A game may gate a committed transfer on a prior *visual* phase. This is
+  // presentation-only: queued batches still retain the ledger's opening
+  // balances and all authoritative financial state is already committed.
+  const presentationAdmissionRef = useRef<ChipPresentationAdmission | null>(null);
+  const [presentationAdmissionVersion, setPresentationAdmissionVersion] = useState(0);
   // Per-intent runtime callbacks.  The presentation ledger consumes the
   // departure/arrival boundaries; ordinary game callers continue to use only
   // onSettled through the public dispatch API.
@@ -237,7 +247,20 @@ export function ChipTransportProvider({
   }, []);
 
   const ledgerTransport = useMemo(() => ({ dispatch, cancel }), [dispatch, cancel]);
-  const presentationLedger = useChipPresentationLedger(gameId, ledgerTransport);
+  const canStartPresentationBatch = useCallback((batch: ChipPresentationBatch) => (
+    presentationAdmissionRef.current?.(batch) ?? true
+  ), []);
+  const setPresentationAdmission = useCallback((admission: ChipPresentationAdmission | null) => {
+    if (presentationAdmissionRef.current === admission) return;
+    presentationAdmissionRef.current = admission;
+    setPresentationAdmissionVersion((version) => version + 1);
+  }, []);
+  const presentationLedger = useChipPresentationLedger(
+    gameId,
+    ledgerTransport,
+    canStartPresentationBatch,
+    presentationAdmissionVersion,
+  );
 
   const value = useMemo<ChipTransportContextValue>(
     () => ({
@@ -251,10 +274,11 @@ export function ChipTransportProvider({
       __cancel: cancel,
       presentationPlayerBalance: presentationLedger.playerBalance,
       presentationPotBalance: presentationLedger.potBalance,
+      __setPresentationAdmission: setPresentationAdmission,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, activeIntents, markSettled, markDeparted, markArrived, markDropped, cancel, presentationLedger, gameId, gameType],
+    [dispatch, dispatchMany, activeIntents, markSettled, markDeparted, markArrived, markDropped, cancel, presentationLedger, setPresentationAdmission, gameId, gameType],
   );
 
   return (
@@ -299,6 +323,24 @@ export function usePresentationPlayerChipBalance(
 export function usePresentationPotChipBalance(rawBalance: number): number {
   const ctx = useContext(ChipTransportContext);
   return ctx?.presentationPotBalance(rawBalance) ?? rawBalance;
+}
+
+/**
+ * Registers the current game's prerequisite for launching a committed chip
+ * batch.  The transport owns queueing and balances; games provide only a
+ * presentation-readiness predicate derived from their canonical stage.
+ */
+export function useChipTransferPresentationAdmission(
+  admission: ChipPresentationAdmission,
+): void {
+  const ctx = useContext(ChipTransportContext);
+  const setAdmission = ctx?.__setPresentationAdmission;
+
+  useLayoutEffect(() => {
+    if (!setAdmission) return;
+    setAdmission(admission);
+    return () => setAdmission(null);
+  }, [admission, setAdmission]);
 }
 
 /**

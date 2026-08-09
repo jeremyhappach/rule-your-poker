@@ -259,7 +259,11 @@ import { useShellOverlayPortal } from "@/lib/canonicalShell/ShellOverlayMounts";
 import { OverSeatBadgePortal } from "@/lib/canonicalShell/OverSeatBadgePortal";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
-import { usePresentationPotChipBalance } from "@/lib/canonicalShell/ChipTransportProvider";
+import {
+  useChipTransferPresentationAdmission,
+  usePresentationPotChipBalance,
+} from "@/lib/canonicalShell/ChipTransportProvider";
+import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
@@ -3860,6 +3864,17 @@ export const MobileGameTable = ({
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
   const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
+
+  // The ledger owns endpoint display as soon as an immutable batch arrives,
+  // while this gate preserves Holm's canonical card-reveal ordering.
+  const canAdmitChipTransferPresentation = useCallback((batch: ChipPresentationBatch) => {
+    if (gameType !== 'holm-game') return true;
+    const movesPotToPlayer = batch.transfers.some(
+      (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
+    );
+    return !movesPotToPlayer || (holmCommunityFullyRevealed && chuckyVisualRevealComplete);
+  }, [gameType, holmCommunityFullyRevealed, chuckyVisualRevealComplete]);
+  useChipTransferPresentationAdmission(canAdmitChipTransferPresentation);
 
   // ── TERMINAL PRESENTATION HOLD (Holm) ────────────────────────────────────
   // Authoritative settlement now lands in ONE transaction, so `status` can flip

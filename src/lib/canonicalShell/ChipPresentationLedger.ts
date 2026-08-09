@@ -14,27 +14,35 @@ import type { ChipEndpointRef, ChipTransportIntent } from './GameplaySlotContrac
 
 type EndpointKey = 'pot' | `player:${string}`;
 
-interface TransferEndpoint {
+export interface ChipPresentationEndpoint {
   kind: 'pot' | 'player';
   playerId?: string;
 }
 
-interface TransferEntry {
+export interface ChipPresentationTransfer {
   id: string;
   amount: number;
-  from: TransferEndpoint;
-  to: TransferEndpoint;
+  from: ChipPresentationEndpoint;
+  to: ChipPresentationEndpoint;
 }
 
-interface TransferBatch {
+export interface ChipPresentationBatch {
   id: string;
   game_id: string;
   cursor: number;
   reason: ChipTransportIntent['reason'];
-  transfers: TransferEntry[];
+  transfers: ChipPresentationTransfer[];
   opening_balances: Record<EndpointKey, number>;
   closing_balances: Record<EndpointKey, number>;
 }
+
+/**
+ * A game may delay the *start* of a committed financial presentation until
+ * its prerequisite presentation stage is visibly complete. The ledger keeps
+ * ownership of each touched endpoint at its authoritative opening balance
+ * while admission is closed; this never delays or changes settlement.
+ */
+export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolean;
 
 interface PlayerSnapshot {
   chips: number;
@@ -43,7 +51,7 @@ interface PlayerSnapshot {
 }
 
 interface RunningBatch {
-  batch: TransferBatch;
+  batch: ChipPresentationBatch;
   departed: Set<string>;
   arrived: Set<string>;
   settled: Set<string>;
@@ -67,12 +75,12 @@ export interface ChipPresentationLedger {
   potBalance: (fallback: number) => number;
 }
 
-function endpointKey(endpoint: TransferEndpoint): EndpointKey | null {
+function endpointKey(endpoint: ChipPresentationEndpoint): EndpointKey | null {
   if (endpoint.kind === 'pot') return 'pot';
   return endpoint.playerId ? `player:${endpoint.playerId}` : null;
 }
 
-function endpointRef(endpoint: TransferEndpoint, players: Map<string, PlayerSnapshot>): ChipEndpointRef | null {
+function endpointRef(endpoint: ChipPresentationEndpoint, players: Map<string, PlayerSnapshot>): ChipEndpointRef | null {
   if (endpoint.kind === 'pot') return { kind: 'pot' };
   const player = endpoint.playerId ? players.get(endpoint.playerId) : null;
   return player ? { kind: 'seat', position: player.position } : null;
@@ -83,7 +91,7 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeBatch(value: unknown, gameId: string): TransferBatch | null {
+function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
   if (row.game_id !== gameId || typeof row.id !== 'string') return null;
@@ -101,12 +109,12 @@ function normalizeBatch(value: unknown, gameId: string): TransferBatch | null {
     }, {});
   };
 
-  const transfers = Array.isArray(row.transfers) ? row.transfers.reduce<TransferEntry[]>((acc, raw) => {
+  const transfers = Array.isArray(row.transfers) ? row.transfers.reduce<ChipPresentationTransfer[]>((acc, raw) => {
     if (!raw || typeof raw !== 'object') return acc;
     const entry = raw as Record<string, unknown>;
     const amount = asNumber(entry.amount);
-    const from = entry.from as TransferEndpoint | undefined;
-    const to = entry.to as TransferEndpoint | undefined;
+    const from = entry.from as ChipPresentationEndpoint | undefined;
+    const to = entry.to as ChipPresentationEndpoint | undefined;
     if (
       typeof entry.id === 'string' && amount != null && amount > 0 &&
       (from?.kind === 'pot' || from?.kind === 'player') &&
@@ -141,6 +149,8 @@ function normalizeBatch(value: unknown, gameId: string): TransferBatch | null {
 export function useChipPresentationLedger(
   gameId: string | null | undefined,
   transport: ChipPresentationLedgerTransport,
+  canStartBatch: ChipPresentationAdmission = () => true,
+  admissionVersion = 0,
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
   const playersRef = useRef(new Map<string, PlayerSnapshot>());
@@ -148,12 +158,14 @@ export function useChipPresentationLedger(
   const rawCursorsRef = useRef(new Map<EndpointKey, number>());
   const releasedCursorsRef = useRef(new Map<EndpointKey, number>());
   const seenBatchIdsRef = useRef(new Set<string>());
-  const queuedRef = useRef<TransferBatch[]>([]);
+  const queuedRef = useRef<ChipPresentationBatch[]>([]);
   const runningRef = useRef(new Map<string, RunningBatch>());
   const activeEndpointsRef = useRef(new Map<EndpointKey, string>());
-  const bootEventsRef = useRef<TransferBatch[]>([]);
+  const bootEventsRef = useRef<ChipPresentationBatch[]>([]);
   const hydratedRef = useRef(false);
   const disposedRef = useRef(false);
+  const canStartBatchRef = useRef(canStartBatch);
+  canStartBatchRef.current = canStartBatch;
 
   const writeVisible = useCallback((updates: Iterable<[EndpointKey, number]>) => {
     setVisibleBalances((previous) => {
@@ -205,7 +217,7 @@ export function useChipPresentationLedger(
     if (gameRow) setRawPot(gameRow as Record<string, unknown>);
   }, [gameId, setRawPlayer, setRawPot]);
 
-  const releaseOrContinueRef = useRef<(batch: TransferBatch) => void>(() => {});
+  const releaseOrContinueRef = useRef<(batch: ChipPresentationBatch) => void>(() => {});
   const startQueuedRef = useRef<() => void>(() => {});
   const abortBatchRef = useRef<(batchId: string) => void>(() => {});
 
@@ -240,6 +252,18 @@ export function useChipPresentationLedger(
       const sorted = [...queuedRef.current].sort((a, b) => a.cursor - b.cursor);
       for (const batch of sorted) {
         const endpoints = Object.keys(batch.opening_balances) as EndpointKey[];
+        // A gated predecessor still owns its endpoints at the opening value.
+        // Do not let a later batch launch across one of those endpoints, or
+        // independent absolute openings could visually overtake each other.
+        const hasQueuedPredecessorOnEndpoint = sorted.some((candidate) =>
+          candidate.cursor < batch.cursor &&
+          Object.keys(candidate.opening_balances).some((key) => endpoints.includes(key as EndpointKey)),
+        );
+        if (hasQueuedPredecessorOnEndpoint) continue;
+        // A delayed visual sequence (for example, Holm community/Chucky
+        // reveal) may defer the flight. The raw authoritative rows remain
+        // ledger-owned at their opening values until this gate opens.
+        if (!canStartBatchRef.current(batch)) continue;
         if (endpoints.some((key) => activeEndpointsRef.current.has(key))) continue;
         queuedRef.current = queuedRef.current.filter((candidate) => candidate.id !== batch.id);
         for (const key of endpoints) {
@@ -329,7 +353,13 @@ export function useChipPresentationLedger(
   }, [finishBatch, transport, writeVisible]);
   startQueuedRef.current = startQueued;
 
-  const releaseOrContinue = useCallback((batch: TransferBatch) => {
+  // Admission may open after the immutable batch is already queued. Recheck
+  // without waiting for another realtime row; it is not a financial event.
+  useEffect(() => {
+    startQueuedRef.current();
+  }, [admissionVersion]);
+
+  const releaseOrContinue = useCallback((batch: ChipPresentationBatch) => {
     const endpoints = Object.keys(batch.opening_balances) as EndpointKey[];
     // Start an overlapping committed successor before releasing this endpoint.
     // Its opening value is the predecessor's closing value, so no raw snapshot
@@ -371,7 +401,7 @@ export function useChipPresentationLedger(
   }, [refetchAuthoritative, transport, writeVisible]);
   abortBatchRef.current = abortBatch;
 
-  const acceptBatch = useCallback((batch: TransferBatch) => {
+  const acceptBatch = useCallback((batch: ChipPresentationBatch) => {
     if (seenBatchIdsRef.current.has(batch.id)) return;
     const endpoints = Object.keys(batch.opening_balances) as EndpointKey[];
     // A reconnect may deliver an INSERT that was already fully settled while
