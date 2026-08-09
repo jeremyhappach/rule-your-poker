@@ -225,6 +225,45 @@ Status: Queued; reported during the `Mercury` real-money smoke on 2026-08-09.
   RPC failed. Reproduce config and ante expiry from their legitimate live
   statuses during this dedicated audit.
 
+### 3D. Post-game abandonment detection latency
+
+Status: Queued; production smoke observation on 2026-08-09.
+
+- The accepted post-game waiting flow works, but the current 30-second sweep
+  can take longer than a minute before an absent player is visibly Sitting Out.
+- Evaluate a server-owned short-cadence watcher only while a post-game
+  abandonment watch exists. A candidate is a five-second indexed no-op sweep
+  when no watch is armed, requiring three consecutive missed heartbeat windows
+  before changing a player state. Do not let a client, an arbitrary UI timer,
+  or a gameplay-phase heartbeat decide presence.
+
+### 3E. Sitting Out retains the player's seat
+
+Status: Queued; production smoke observation on 2026-08-09.
+
+- Sit Out means keep the existing seat and opt out of the next dealer game;
+  it must remain in the relative-seat model on every entry path. Only Stand Up
+  or Leave changes the player to an observer/unseated presentation.
+- Define a later inactivity-forfeiture policy (time and/or dealer-game count)
+  separately. It must be authoritative and must not redefine an immediate
+  Sit Out as a stand-up.
+
+### 3F. 3-5-7 pot-to-winner label uses the committed pot
+
+Status: Queued; production smoke observation on 2026-08-09.
+
+- The 3-5-7 winner chip animation displayed `$0` for an authoritative `$6`
+  pot. Audit only the presentation payload/identity capture; settlement and
+  balances are not implicated by this report.
+
+### 3G. Suppress invalid production debug-event writes
+
+Status: Queued; observed in production logs on 2026-08-09.
+
+- An active mobile client is posting `debug_events` with `game_id='0'`, causing
+  repeated UUID errors (roughly twice per second). Guard debug writers against
+  placeholder identities; do not add durable production instrumentation.
+
 ### 3A. Source-proven rule, ledger, and harness discrepancies
 
 These findings are separate from the broader terminal-authority migrations
