@@ -214,7 +214,7 @@ export function useChipPresentationLedger(
     if (!running || running.cancelled) return;
     const { batch } = running;
     for (const key of Object.keys(batch.closing_balances) as EndpointKey[]) {
-      writeVisible([[key, batch.closing_balances[key]]);
+      writeVisible([[key, batch.closing_balances[key]]]);
     }
     runningRef.current.delete(batchId);
     for (const key of Object.keys(batch.opening_balances) as EndpointKey[]) {
