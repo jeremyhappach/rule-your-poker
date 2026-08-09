@@ -402,6 +402,11 @@ Prove no callers; revoke/remove or mark migration-only; preserve transactional c
 
 3-5-7, Horses, and SCC historically completed pot-to-player transfer but missed canonical destination bounce/confetti. Apply the shared celebration owner without reopening settlement.
 
+The 2026-08-09 accepted Holm canonical-transfer smoke also had no destination
+chip bounce despite the transfer and balances being correct. Treat it as the
+same cross-game presentation-only defect; preserve the accepted ledger,
+settlement ordering, and exactly-once endpoint ownership.
+
 ### 9. Dealer Configuration modal cleanup
 
 Historical Lovable backlog path:

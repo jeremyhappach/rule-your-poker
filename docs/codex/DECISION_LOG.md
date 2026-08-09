@@ -203,3 +203,10 @@ realtime delivery is held. A reconnect, missing endpoint, or dropped runtime
 presentation cancels motion and reconciles directly to authoritative state; it
 never replays financial effects. Game adapters may retain non-financial phase
 callbacks, but may not render or author a duplicate chip movement.
+
+When a committed transfer must follow an earlier canonical visual stage, the
+game may register only a presentation-admission predicate with the shell
+transport. The ledger retains its database-captured opening endpoint values
+while closed and prevents later overlapping batches from starting first. This
+does not defer settlement, release ownership, or introduce a game-owned
+financial counter.

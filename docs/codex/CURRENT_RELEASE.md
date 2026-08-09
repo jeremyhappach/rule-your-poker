@@ -554,11 +554,17 @@ can never render ahead of its batch.
 presentation owner of touched player/pot endpoints. It composes ordered deltas
 for overlapping batches, releases only after a fresh authoritative fetch
 confirms the batch cursor, and abandons/reconciles directly on endpoint loss or
-reconnect without replaying settled money. Legacy game animations remain only
-as phase callbacks; the canonical runtime renders the financial flight.
+reconnect without replaying settled money. A game may register a
+presentation-only admission prerequisite for a committed batch; the ledger
+retains the authoritative opening balances and blocks later overlapping batches
+until that prerequisite opens. Legacy game animations remain only as phase
+callbacks; the canonical runtime renders the financial flight.
 
 The rollback-only proof `supabase/tests/canonical_chip_transfer_ledger_proof.sql`
 passed after deployment. It covers authorization, multi-sender antes,
 player-to-player composition, pot payout, opening/closing values, cursors, and
-empty pending-journal cleanup. Runtime smoke remains required before this is a
-stable checkpoint.
+empty pending-journal cleanup. Production smoke passed on 2026-08-09 at commit
+`79cfdcc75efd31c479f69cf7c72aa6a2398fba20`: a Holm solo-vs-Chucky payout
+waited for the community and Chucky reveal stages before the pot departed, with
+no balance bounce or duplicate financial movement. Destination-chip bounce is
+separate presentation debt in Backlog item 8.

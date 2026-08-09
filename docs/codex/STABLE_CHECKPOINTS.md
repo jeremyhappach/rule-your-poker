@@ -6,6 +6,11 @@
 - Canonical table/felt/shell continuity must not be replaced by per-game table swaps.
 - Chat stability and lobby performance had accepted fixes.
 - Horses, SCC, Yahtzee, Holm, and 3-5-7 had major sync cutovers validated; Cribbage and Gin functioned but retained legacy-ish areas.
+- The canonical chip-transfer ledger passed production smoke on 2026-08-09 at
+  commit `79cfdcc75efd31c479f69cf7c72aa6a2398fba20`: it held a Holm
+  solo-vs-Chucky pot payout until community and Chucky reveal presentation had
+  completed, then transferred exactly once without a balance bounce. The
+  missing destination-chip bounce is explicitly deferred presentation debt.
 
 ## Cribbage
 
