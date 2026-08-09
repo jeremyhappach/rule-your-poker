@@ -1193,6 +1193,11 @@ const Game = () => {
   // it also fires on cleanup / unmount / publisher replacement / phase and
   // descriptor resets, which is what admitted the phase mid-celebration.
   const [sessionEndedTableAdmitted, setSessionEndedTableAdmitted] = useState(false);
+  // A route that was already participating in this session may retain the
+  // canonical Session Ended table after a later server-owned lifecycle close.
+  // A fresh mount has no matching live route identity and still goes straight
+  // to the lobby.
+  const liveSessionFlowGameIdRef = useRef<string | null>(null);
   // Proof that THIS mount observed the live terminal presentation running.
   const liveTerminalPresentationObservedRef = useRef(false);
   // Terminal identities whose canonical presentation completed on this mount.
@@ -1238,6 +1243,10 @@ const Game = () => {
     if (active) liveTerminalPresentationObservedRef.current = true;
     setTerminalPresentationActive(active);
   }, []);
+
+  if (game?.id && game.status !== 'session_ended') {
+    liveSessionFlowGameIdRef.current = game.id;
+  }
 
   
   // Track previous game config for "Running it Back" detection
@@ -1759,6 +1768,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ).some(identity => terminalPresentationIdentityMatchesLiveScope(identity, scope));
     if (completedExactScope) setSessionEndedTableAdmitted(true);
   }, [game?.status, (game as any)?.pending_session_end, liveTerminalPresentationPending]);
+
+  // Normal post-game lifecycle closure can arrive after the dealer-game
+  // presentation has already retired into setup/waiting. Keep a continuously
+  // mounted participant on the canonical Session Ended table, but never admit
+  // a fresh/reconnected terminal mount.
+  useEffect(() => {
+    if (game?.status !== 'session_ended') return;
+    if (liveSessionFlowGameIdRef.current !== game.id) return;
+    if (
+      terminalPresentationActive ||
+      holmLastHandPresentationPending ||
+      liveTerminalPresentationPending
+    ) return;
+    setSessionEndedTableAdmitted(true);
+  }, [
+    game?.id,
+    game?.status,
+    terminalPresentationActive,
+    holmLastHandPresentationPending,
+    liveTerminalPresentationPending,
+  ]);
 
   
 
@@ -2953,6 +2983,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await supabase.from('games').update({ status: 'waiting' }).eq('id', gId);
       }
     }
+  };
+
+  // The database owns post-dealer-game participation resolution for real-money
+  // sessions. It either closes a settled zero-human session exactly once or
+  // returns the session to post-game waiting, where absence is reconciled.
+  const resolvePostgameParticipation = async (gId: string): Promise<string> => {
+    const { data, error } = await supabase.rpc(
+      'resolve_postgame_participation' as any,
+      { p_game_id: gId } as any,
+    );
+    if (error) throw error;
+    return (data as { outcome?: string } | null)?.outcome ?? 'unknown';
   };
 
   const handleStandUpNow = async () => {
@@ -10720,6 +10762,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER] No active human players!');
       gameOverTransitionRef.current = false;
 
+      if (game?.real_money) {
+        const outcome = await resolvePostgameParticipation(gameId);
+        console.log('[GAME OVER] Postgame participation outcome:', outcome);
+        await fetchGameData();
+        emit357GameOverCompleteDiag('returned', {
+          ..._gocId(),
+          returnSite: 'handleGameOverComplete:postgame-participation',
+          returnReason: outcome,
+        });
+        return;
+      }
+
       // P0-CONTAINMENT (NAV-04 / false-session-end):
       // Re-fetch authoritative state. Only auto-end the session if pending_session_end
       // is explicitly true, OR if there are truly no humans at the table at all
@@ -10794,25 +10848,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
       
-      // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
-      if (game?.real_money) {
-        console.log('[GAME OVER] Real money game - archiving instead of deleting');
-        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans - real money archived', hasHistory, pending_session_end: sessionEndExplicit }, userId: user?.id });
-        
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString(),
-            pending_session_end: false,
-            game_over_at: new Date().toISOString()
-          })
-          .eq('id', gameId);
-        
-        recordTerminalRecovery('session-ended-confirmed', { gameId, source: 'real-money-archive' });
-        releaseRecoveryLease('session-ended-confirmed', { gameId });
-        setTimeout(() => navigate('/'), 2000);
-      } else if (!hasHistory) {
+      if (!hasHistory) {
         // No hands played - DELETE the empty session instead of marking completed
         console.log('[GAME OVER] No hands played, deleting empty session');
         
@@ -13156,17 +13192,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           await sanitizePlayerAutomationStateForSession(gameId);
           await clearDealerGameTransientSessionState(gameId);
 
-          // Priority 1: If no active human players, END SESSION completely
+          // Zero active humans closes a settled real-money session through the
+          // database; one active human follows the existing waiting path.
           if (activeHumanCount < 1) {
-            console.log('[ANTE] No active human players! Ending session.');
-            await supabase
-              .from('games')
-              .update({
-                status: 'game_over',
-                pending_session_end: true,
-                session_ended_at: new Date().toISOString(),
-              })
-              .eq('id', gameId);
+            if (game?.real_money) {
+              const outcome = await resolvePostgameParticipation(gameId);
+              console.log('[ANTE] Postgame participation outcome:', outcome);
+            } else {
+              await supabase
+                .from('games')
+                .update({
+                  status: 'game_over',
+                  pending_session_end: true,
+                  session_ended_at: new Date().toISOString(),
+                })
+                .eq('id', gameId);
+            }
             anteProcessingRef.current = false;
             fetchGameData();
             return;
@@ -15017,24 +15058,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       console.log('[SIT OUT] After evaluation - active:', activePlayerCount, 
                         'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
                       
-                      // Step 3: Check if we have enough players to continue
-                      // Priority 1: If no active human players, end session
-                      if (activeHumanCount < 1) {
-                        console.log('[SIT OUT] No active human players - ending session');
-                        await supabase
-                          .from('games')
-                          .update({
-                            status: 'session_ended',
-                            session_ended_at: new Date().toISOString(),
-                            pending_session_end: false,
-                            game_over_at: new Date().toISOString()
-                          })
-                          .eq('id', gameId);
-                        return;
-                      }
-                      
-                      // Priority 2: Need 1+ eligible dealer AND 2+ active players, otherwise revert to waiting
-                      if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+                      // A real-money setup exit is a server-owned lifecycle
+                      // boundary. One human returns to post-game waiting; zero
+                      // humans closes exactly once from final snapshots.
+                      if (activeHumanCount < 1 || activePlayerCount < 2) {
+                        if (game?.real_money) {
+                          const outcome = await resolvePostgameParticipation(gameId);
+                          console.log('[SIT OUT] Postgame participation outcome:', outcome);
+                          await fetchGameData();
+                          return;
+                        }
+
                         console.log('[SIT OUT] Not enough players to continue - reverting to waiting');
                         
                         // Session hygiene + keep passive sit-outs seated (no status='left').
@@ -15053,6 +15087,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                           })
                           .eq('id', gameId);
                         
+                        await fetchGameData();
+                        return;
+                      }
+
+                      // Need an eligible dealer to continue even when two or
+                      // more players remain. This is not a session-end path.
+                      if (eligibleDealerCount < 1) {
+                        await sanitizePlayerAutomationStateForSession(gameId);
+                        await clearDealerGameTransientSessionState(gameId);
+                        await supabase
+                          .from('games')
+                          .update({
+                            status: 'waiting',
+                            awaiting_next_round: false,
+                            last_round_result: null,
+                            config_deadline: null,
+                            game_type: null,
+                          })
+                          .eq('id', gameId);
                         await fetchGameData();
                         return;
                       }
@@ -15404,19 +15457,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         .eq('id', dealerPlayer.id);
                       const { activePlayerCount, activeHumanCount, eligibleDealerCount } =
                         await evaluatePlayerStatesEndOfGame(gameId);
-                      if (activeHumanCount < 1) {
+                      if (activeHumanCount < 1 || activePlayerCount < 2) {
+                        if (game?.real_money) {
+                          const outcome = await resolvePostgameParticipation(gameId);
+                          console.log('[DEALER SETUP] Postgame participation outcome:', outcome);
+                          await fetchGameData();
+                          return;
+                        }
+
+                        await sanitizePlayerAutomationStateForSession(gameId);
+                        await clearDealerGameTransientSessionState(gameId);
                         await supabase
                           .from('games')
                           .update({
-                            status: 'session_ended',
-                            session_ended_at: new Date().toISOString(),
-                            pending_session_end: false,
-                            game_over_at: new Date().toISOString(),
+                            status: 'waiting',
+                            awaiting_next_round: false,
+                            last_round_result: null,
+                            config_deadline: null,
+                            game_type: null,
                           })
                           .eq('id', gameId);
+                        await fetchGameData();
                         return;
                       }
-                      if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+                      if (eligibleDealerCount < 1) {
                         await sanitizePlayerAutomationStateForSession(gameId);
                         await clearDealerGameTransientSessionState(gameId);
                         await supabase
@@ -16506,7 +16570,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // the reason a newly added bot only became visible once the next hand
   // cleared sitting_out. observer / left are excluded as before (no seat).
   const _isShellSeatRosterMember = (p: { status?: string | null; sitting_out?: boolean | null; waiting?: boolean | null }) =>
-    p.status !== 'observer' && p.status !== 'left' && (!p.sitting_out || p.waiting === true);
+    p.status !== 'observer' && p.status !== 'left' && (
+      _sessionEndedTableActive || !p.sitting_out || p.waiting === true
+    );
   // Stable-identity shell seat roster (see hook-rule note below).
   const _shellSeatRosterKey = shellAnchorEligible
     ? players
@@ -16536,7 +16602,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const isViewerSeated = !!currentPlayer
     && currentPlayer.status !== 'observer'
     && currentPlayer.status !== 'left'
-    && !currentPlayer.sitting_out;
+    && (_sessionEndedTableActive || !currentPlayer.sitting_out);
   const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
   const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellAnchorEligible
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
@@ -16590,7 +16656,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? players
         .filter(_isShellSeatRosterMember)
 
-        .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}`)
+        .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}:${p.sitting_out ? 1 : 0}`)
         .sort()
         .join('|')
     : '';

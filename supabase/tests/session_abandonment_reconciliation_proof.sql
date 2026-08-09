@@ -1,5 +1,5 @@
--- Rollback-only proof for authoritative real-money abandonment reconciliation.
--- Requires two existing profiles only as FK parents; no persisted rows survive.
+-- Rollback-only proof for post-game waiting presence and session resolution.
+-- Requires two profiles as FK parents; it writes no persistent rows.
 
 BEGIN;
 
@@ -7,23 +7,24 @@ DO $proof$
 DECLARE
   v_users uuid[];
   v_usernames text[];
-  v_result_game_id uuid := gen_random_uuid();
-  v_result_dealer_game_id uuid := gen_random_uuid();
-  v_result_player_one_id uuid := gen_random_uuid();
-  v_result_player_two_id uuid := gen_random_uuid();
+  v_winner_game_id uuid := gen_random_uuid();
+  v_winner_dealer_game_id uuid := gen_random_uuid();
+  v_winner_player_one_id uuid := gen_random_uuid();
+  v_winner_player_two_id uuid := gen_random_uuid();
+  v_tie_game_id uuid := gen_random_uuid();
+  v_tie_dealer_game_id uuid := gen_random_uuid();
+  v_tie_player_one_id uuid := gen_random_uuid();
+  v_tie_player_two_id uuid := gen_random_uuid();
   v_connected_game_id uuid := gen_random_uuid();
-  v_connected_player_id uuid := gen_random_uuid();
-  v_pristine_game_id uuid := gen_random_uuid();
-  v_pristine_player_id uuid := gen_random_uuid();
-  v_blocked_game_id uuid := gen_random_uuid();
-  v_blocked_dealer_game_id uuid := gen_random_uuid();
-  v_blocked_player_id uuid := gen_random_uuid();
+  v_connected_dealer_game_id uuid := gen_random_uuid();
+  v_connected_player_one_id uuid := gen_random_uuid();
+  v_connected_player_two_id uuid := gen_random_uuid();
+  v_initial_waiting_game_id uuid := gen_random_uuid();
+  v_initial_waiting_player_id uuid := gen_random_uuid();
   v_in_progress_game_id uuid := gen_random_uuid();
-  v_historical_game_id uuid := gen_random_uuid();
-  v_fake_game_id uuid := gen_random_uuid();
-  v_now timestamptz := clock_timestamp();
-  v_future timestamptz;
+  v_armed_at timestamptz;
   v_outcome text;
+  v_public_outcome text;
   v_count integer;
   v_sum integer;
 BEGIN
@@ -42,11 +43,8 @@ BEGIN
   END IF;
 
   IF has_schema_privilege('authenticated', 'private', 'USAGE')
-     OR has_schema_privilege('anon', 'private', 'USAGE') THEN
-    RAISE EXCEPTION 'session_abandonment_proof:private_schema_exposed';
-  END IF;
-
-  IF has_function_privilege(
+     OR has_schema_privilege('anon', 'private', 'USAGE')
+     OR has_function_privilege(
        'authenticated',
        'private.reconcile_session_abandonment(uuid,timestamp with time zone)',
        'EXECUTE'
@@ -55,301 +53,296 @@ BEGIN
        'anon',
        'private.reconcile_session_abandonment(uuid,timestamp with time zone)',
        'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'public.resolve_postgame_participation(uuid)',
+       'EXECUTE'
+     )
+     OR NOT has_function_privilege(
+       'authenticated',
+       'public.resolve_postgame_participation(uuid)',
+       'EXECUTE'
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:internal_reconciler_exposed';
+    RAISE EXCEPTION 'session_abandonment_proof:authorization-shape';
   END IF;
 
   SELECT count(*) INTO v_count
     FROM cron.job
    WHERE jobname = 'reconcile-abandoned-real-money-sessions'
      AND active = true
-     AND schedule = '10 seconds'
+     AND schedule = '30 seconds'
      AND command = 'SELECT private.reconcile_abandoned_sessions();';
   IF v_count <> 1 THEN
-    RAISE EXCEPTION 'session_abandonment_proof:cron_shape:%', v_count;
+    RAISE EXCEPTION 'session_abandonment_proof:cron-shape:%', v_count;
   END IF;
 
-  -- Settled real-money history: stale humans are sat out, closure requires a
-  -- second observation, and SessionResult rows are minted once from snapshots.
-  INSERT INTO public.games (
-    id, name, status, game_type, current_game_uuid, current_host,
-    ante_amount, pot, real_money
-  ) VALUES (
-    v_result_game_id, 'Codex rollback proof - settled abandonment',
-    'waiting', 'three-five-seven', v_result_dealer_game_id, v_users[1],
-    1, 0, true
-  );
+  SELECT (public.resolve_postgame_participation(gen_random_uuid())->>'outcome')
+    INTO v_public_outcome;
+  IF v_public_outcome <> 'not-authorized' THEN
+    RAISE EXCEPTION 'session_abandonment_proof:public-authorization:%',
+      v_public_outcome;
+  END IF;
 
+  -- Winner: one remaining human returns to post-game waiting. A pre-wait
+  -- absence is ignored until the waiting lease reaches 15 seconds, then the
+  -- finalizer closes once and preserves net-zero SessionResult financials.
+  INSERT INTO public.games (
+    id, name, status, current_host, ante_amount, pot, real_money
+  ) VALUES (
+    v_winner_game_id, 'Codex rollback proof - post-game winner',
+    'game_selection', v_users[1], 1, 0, true
+  );
   INSERT INTO public.players (
     id, game_id, user_id, position, chips, status, sitting_out, is_bot
   ) VALUES
-    (v_result_player_one_id, v_result_game_id, v_users[1], 3, -3, 'folded', false, false),
-    (v_result_player_two_id, v_result_game_id, v_users[2], 7, 3, 'active', true, false);
-
-  INSERT INTO public.dealer_games (
-    id, session_id, dealer_user_id, game_type
-  ) VALUES (
-    v_result_dealer_game_id, v_result_game_id, v_users[1], 'three-five-seven'
-  );
-
+    (v_winner_player_one_id, v_winner_game_id, v_users[1], 3, -3, 'folded', false, false),
+    (v_winner_player_two_id, v_winner_game_id, v_users[2], 7, 3, 'active', true, false);
+  INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
+  VALUES (v_winner_dealer_game_id, v_winner_game_id, v_users[1], 'three-five-seven');
   INSERT INTO public.game_results (
     game_id, dealer_game_id, game_type, hand_number, pot_won,
     winner_player_id, winner_username, player_chip_changes
   ) VALUES (
-    v_result_game_id, v_result_dealer_game_id, 'three-five-seven', 1, 6,
-    v_result_player_two_id, v_usernames[2],
+    v_winner_game_id, v_winner_dealer_game_id, 'three-five-seven', 1, 6,
+    v_winner_player_two_id, v_usernames[2],
     jsonb_build_object(
-      v_result_player_one_id::text, -3,
-      v_result_player_two_id::text, 3
+      v_winner_player_one_id::text, -3,
+      v_winner_player_two_id::text, 3
     )
   );
-
   INSERT INTO public.session_player_snapshots (
     game_id, dealer_game_id, hand_number, player_id,
     user_id, username, chips, is_bot
   ) VALUES
-    (
-      v_result_game_id, v_result_dealer_game_id, 1,
-      v_result_player_one_id, v_users[1], v_usernames[1], -3, false
-    ),
-    (
-      v_result_game_id, v_result_dealer_game_id, 1,
-      v_result_player_two_id, v_users[2], v_usernames[2], 3, false
-    );
+    (v_winner_game_id, v_winner_dealer_game_id, 1, v_winner_player_one_id,
+     v_users[1], v_usernames[1], -3, false),
+    (v_winner_game_id, v_winner_dealer_game_id, 1, v_winner_player_two_id,
+     v_users[2], v_usernames[2], 3, false);
 
-  v_future := v_now + interval '1 hour';
-  SELECT private.reconcile_session_abandonment(v_result_game_id, v_future)
+  SELECT private.resolve_postgame_participation(v_winner_game_id)
     INTO v_outcome;
-  IF v_outcome <> 'zero-active-unconfirmed'
-     OR NOT EXISTS (
-       SELECT 1 FROM public.players
-        WHERE id = v_result_player_one_id AND sitting_out = true
-     )
+  IF v_outcome <> 'waiting-active-humans:1'
      OR NOT EXISTS (
        SELECT 1 FROM public.games
-        WHERE id = v_result_game_id AND status = 'waiting'
+        WHERE id = v_winner_game_id AND status = 'waiting'
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:first_confirmation:%', v_outcome;
+    RAISE EXCEPTION 'session_abandonment_proof:continuation:%', v_outcome;
+  END IF;
+
+  SELECT armed_at INTO v_armed_at
+    FROM private.session_abandonment_watches
+   WHERE game_id = v_winner_game_id;
+  IF v_armed_at IS NULL THEN
+    RAISE EXCEPTION 'session_abandonment_proof:postgame-wait-not-armed';
   END IF;
 
   SELECT private.reconcile_session_abandonment(
-    v_result_game_id,
-    v_future + interval '5 seconds'
+    v_winner_game_id,
+    v_armed_at + interval '14 seconds'
   ) INTO v_outcome;
-  IF v_outcome <> 'zero-active-unconfirmed' THEN
-    RAISE EXCEPTION 'session_abandonment_proof:early_close:%', v_outcome;
+  IF v_outcome <> 'active-humans'
+     OR EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id AND sitting_out = true
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:pre-lease-absence:%', v_outcome;
   END IF;
 
   SELECT private.reconcile_session_abandonment(
-    v_result_game_id,
-    v_future + interval '11 seconds'
+    v_winner_game_id,
+    v_armed_at + interval '15 seconds'
   ) INTO v_outcome;
   IF v_outcome <> 'session-ended-with-results'
      OR NOT EXISTS (
+       SELECT 1 FROM public.players
+        WHERE id = v_winner_player_one_id AND sitting_out = true
+     )
+     OR NOT EXISTS (
        SELECT 1 FROM public.games
-        WHERE id = v_result_game_id AND status = 'session_ended'
+        WHERE id = v_winner_game_id AND status = 'session_ended'
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:settled_close:%', v_outcome;
+    RAISE EXCEPTION 'session_abandonment_proof:winner-terminal:%', v_outcome;
   END IF;
 
   SELECT count(*), COALESCE(sum(amount), 0)
     INTO v_count, v_sum
     FROM public.player_transactions
-   WHERE source_game_id = v_result_game_id
+   WHERE source_game_id = v_winner_game_id
      AND transaction_type = 'SessionResult';
   IF v_count <> 2 OR v_sum <> 0 THEN
-    RAISE EXCEPTION 'session_abandonment_proof:financials:count=%,sum=%',
+    RAISE EXCEPTION 'session_abandonment_proof:winner-financials:%,%',
       v_count, v_sum;
   END IF;
 
   SELECT private.reconcile_session_abandonment(
-    v_result_game_id,
-    v_future + interval '12 seconds'
+    v_winner_game_id,
+    v_armed_at + interval '1 hour'
   ) INTO v_outcome;
   SELECT count(*) INTO v_count
     FROM public.player_transactions
-   WHERE source_game_id = v_result_game_id
+   WHERE source_game_id = v_winner_game_id
      AND transaction_type = 'SessionResult';
   IF v_outcome <> 'ineligible-state' OR v_count <> 2 THEN
-    RAISE EXCEPTION 'session_abandonment_proof:replay_not_idempotent:%,%',
+    RAISE EXCEPTION 'session_abandonment_proof:duplicate-replay:%:%',
       v_outcome, v_count;
   END IF;
 
-  -- A fresh server-stamped lease keeps its human active.
+  SELECT private.finalize_settled_session_if_no_active_humans(
+    v_winner_game_id,
+    v_armed_at + interval '1 day'
+  ) INTO v_outcome;
+  IF v_outcome <> 'already-session-ended' THEN
+    RAISE EXCEPTION 'session_abandonment_proof:late-replay:%', v_outcome;
+  END IF;
+
+  -- Tie: a zero-delta/chopped result still has durable history and closes
+  -- exactly once when every human is explicitly Sitting Out.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
-    v_connected_game_id, 'Codex rollback proof - connected guard',
-    'waiting', v_users[1], 1, 0, true
+    v_tie_game_id, 'Codex rollback proof - post-game tie',
+    'game_selection', v_users[1], 1, 0, true
   );
   INSERT INTO public.players (
     id, game_id, user_id, position, chips, status, sitting_out, is_bot
+  ) VALUES
+    (v_tie_player_one_id, v_tie_game_id, v_users[1], 3, 0, 'active', true, false),
+    (v_tie_player_two_id, v_tie_game_id, v_users[2], 7, 0, 'active', true, false);
+  INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
+  VALUES (v_tie_dealer_game_id, v_tie_game_id, v_users[1], 'yahtzee');
+  INSERT INTO public.game_results (
+    game_id, dealer_game_id, game_type, hand_number, pot_won,
+    winner_player_id, winner_username, player_chip_changes, is_chopped
   ) VALUES (
-    v_connected_player_id, v_connected_game_id, v_users[1],
-    1, 0, 'active', false, false
+    v_tie_game_id, v_tie_dealer_game_id, 'yahtzee', 1, 0,
+    NULL, NULL,
+    jsonb_build_object(
+      v_tie_player_one_id::text, 0,
+      v_tie_player_two_id::text, 0
+    ), true
   );
-  INSERT INTO public.voice_presence_heartbeats (
-    user_id, tab_id, game_id, route, status,
-    last_heartbeat_at, updated_at
-  ) VALUES (
-    v_users[1], 'codex-connected-proof', v_connected_game_id,
-    '/game/' || v_connected_game_id::text, 'active',
-    v_now + interval '1 day', v_now + interval '1 day'
-  );
+  INSERT INTO public.session_player_snapshots (
+    game_id, dealer_game_id, hand_number, player_id,
+    user_id, username, chips, is_bot
+  ) VALUES
+    (v_tie_game_id, v_tie_dealer_game_id, 1, v_tie_player_one_id,
+     v_users[1], v_usernames[1], 0, false),
+    (v_tie_game_id, v_tie_dealer_game_id, 1, v_tie_player_two_id,
+     v_users[2], v_usernames[2], 0, false);
 
-  IF EXISTS (
-    SELECT 1 FROM public.voice_presence_heartbeats
-     WHERE user_id = v_users[1]
-       AND tab_id = 'codex-connected-proof'
-       AND updated_at > clock_timestamp() + interval '1 minute'
-  ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:server_timestamp_not_enforced';
+  SELECT private.resolve_postgame_participation(v_tie_game_id)
+    INTO v_outcome;
+  IF v_outcome <> 'session-ended-with-results'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games
+        WHERE id = v_tie_game_id AND status = 'session_ended'
+     ) THEN
+    RAISE EXCEPTION 'session_abandonment_proof:tie-terminal:%', v_outcome;
   END IF;
 
+  -- A heartbeat received after the post-game boundary keeps the remaining
+  -- player active even after the 15-second absence threshold.
+  INSERT INTO public.games (
+    id, name, status, current_host, ante_amount, pot, real_money
+  ) VALUES (
+    v_connected_game_id, 'Codex rollback proof - post-game heartbeat',
+    'game_selection', v_users[1], 1, 0, true
+  );
+  INSERT INTO public.players (
+    id, game_id, user_id, position, chips, status, sitting_out, is_bot
+  ) VALUES
+    (v_connected_player_one_id, v_connected_game_id, v_users[1], 3, 0, 'active', false, false),
+    (v_connected_player_two_id, v_connected_game_id, v_users[2], 7, 0, 'active', true, false);
+  INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
+  VALUES (v_connected_dealer_game_id, v_connected_game_id, v_users[1], 'gin-rummy');
+  INSERT INTO public.game_results (
+    game_id, dealer_game_id, game_type, hand_number, pot_won,
+    winner_player_id, winner_username, player_chip_changes
+  ) VALUES (
+    v_connected_game_id, v_connected_dealer_game_id, 'gin-rummy', 1, 0,
+    v_connected_player_one_id, v_usernames[1],
+    jsonb_build_object(
+      v_connected_player_one_id::text, 0,
+      v_connected_player_two_id::text, 0
+    )
+  );
+  INSERT INTO public.session_player_snapshots (
+    game_id, dealer_game_id, hand_number, player_id,
+    user_id, username, chips, is_bot
+  ) VALUES
+    (v_connected_game_id, v_connected_dealer_game_id, 1, v_connected_player_one_id,
+     v_users[1], v_usernames[1], 0, false),
+    (v_connected_game_id, v_connected_dealer_game_id, 1, v_connected_player_two_id,
+     v_users[2], v_usernames[2], 0, false);
+  PERFORM private.resolve_postgame_participation(v_connected_game_id);
+  UPDATE private.session_abandonment_watches
+     SET armed_at = clock_timestamp() - interval '1 hour'
+   WHERE game_id = v_connected_game_id;
+  INSERT INTO public.voice_presence_heartbeats (
+    user_id, tab_id, game_id, route, status, last_heartbeat_at
+  ) VALUES (
+    v_users[1], 'codex-postgame-heartbeat', v_connected_game_id,
+    '/game/' || v_connected_game_id::text, 'active', clock_timestamp()
+  );
   SELECT private.reconcile_session_abandonment(
     v_connected_game_id,
-    clock_timestamp()
+    clock_timestamp() + interval '5 seconds'
   ) INTO v_outcome;
   IF v_outcome <> 'active-humans'
      OR EXISTS (
        SELECT 1 FROM public.players
-        WHERE id = v_connected_player_id AND sitting_out = true
+        WHERE id = v_connected_player_one_id AND sitting_out = true
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:fresh_lease_not_honored:%', v_outcome;
+    RAISE EXCEPTION 'session_abandonment_proof:post-boundary-heartbeat:%',
+      v_outcome;
   END IF;
 
-  -- A pristine room is retained through the long grace and then deleted.
+  -- Initial waiting and active dealer games are never presence-reconciled.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
-    v_pristine_game_id, 'Codex rollback proof - pristine deletion',
+    v_initial_waiting_game_id, 'Codex rollback proof - initial waiting',
     'waiting', v_users[1], 1, 0, true
   );
   INSERT INTO public.players (
     id, game_id, user_id, position, chips, status, sitting_out, is_bot
   ) VALUES (
-    v_pristine_player_id, v_pristine_game_id, v_users[1],
+    v_initial_waiting_player_id, v_initial_waiting_game_id, v_users[1],
     1, 0, 'active', false, false
   );
-
   SELECT private.reconcile_session_abandonment(
-    v_pristine_game_id,
-    v_future
+    v_initial_waiting_game_id,
+    clock_timestamp() + interval '1 day'
   ) INTO v_outcome;
-  IF v_outcome <> 'zero-active-unconfirmed' THEN
-    RAISE EXCEPTION 'session_abandonment_proof:pristine_first_check:%', v_outcome;
-  END IF;
-
-  SELECT private.reconcile_session_abandonment(
-    v_pristine_game_id,
-    v_future + interval '11 seconds'
-  ) INTO v_outcome;
-  IF v_outcome <> 'pristine-session-grace'
-     OR NOT EXISTS (SELECT 1 FROM public.games WHERE id = v_pristine_game_id) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:pristine_grace:%', v_outcome;
-  END IF;
-
-  SELECT private.reconcile_session_abandonment(
-    v_pristine_game_id,
-    v_future + interval '16 minutes'
-  ) INTO v_outcome;
-  IF v_outcome <> 'deleted-pristine-session'
-     OR EXISTS (SELECT 1 FROM public.games WHERE id = v_pristine_game_id)
-     OR EXISTS (SELECT 1 FROM public.players WHERE game_id = v_pristine_game_id)
+  IF v_outcome <> 'ineligible-state'
      OR EXISTS (
        SELECT 1 FROM private.session_abandonment_watches
-        WHERE game_id = v_pristine_game_id
+        WHERE game_id = v_initial_waiting_game_id
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:pristine_delete:%', v_outcome;
-  END IF;
-
-  -- History without a settled result/snapshot batch is preserved for recovery.
-  INSERT INTO public.games (
-    id, name, status, current_game_uuid, current_host,
-    ante_amount, pot, real_money
-  ) VALUES (
-    v_blocked_game_id, 'Codex rollback proof - unsettled history',
-    'waiting', v_blocked_dealer_game_id, v_users[1], 1, 0, true
-  );
-  INSERT INTO public.players (
-    id, game_id, user_id, position, chips, status, sitting_out, is_bot
-  ) VALUES (
-    v_blocked_player_id, v_blocked_game_id, v_users[1],
-    1, 0, 'active', false, false
-  );
-  INSERT INTO public.dealer_games (
-    id, session_id, dealer_user_id, game_type
-  ) VALUES (
-    v_blocked_dealer_game_id, v_blocked_game_id, v_users[1], 'holm'
-  );
-
-  PERFORM private.reconcile_session_abandonment(v_blocked_game_id, v_future);
-  SELECT private.reconcile_session_abandonment(
-    v_blocked_game_id,
-    v_future + interval '11 seconds'
-  ) INTO v_outcome;
-  IF v_outcome <> 'blocked-unsettled-history'
-     OR NOT EXISTS (
-       SELECT 1 FROM public.games
-        WHERE id = v_blocked_game_id AND status = 'waiting'
-     ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:unsettled_history_not_preserved:%',
+    RAISE EXCEPTION 'session_abandonment_proof:initial-waiting-touched:%',
       v_outcome;
   END IF;
 
-  -- Generic abandonment handling never advances an in-progress game.
   INSERT INTO public.games (
     id, name, status, current_host, ante_amount, pot, real_money
   ) VALUES (
-    v_in_progress_game_id, 'Codex rollback proof - in progress',
+    v_in_progress_game_id, 'Codex rollback proof - active dealer game',
     'in_progress', v_users[1], 1, 0, true
   );
   INSERT INTO private.session_abandonment_watches (game_id)
   VALUES (v_in_progress_game_id);
   SELECT private.reconcile_session_abandonment(
     v_in_progress_game_id,
-    v_future
+    clock_timestamp() + interval '1 day'
   ) INTO v_outcome;
   IF v_outcome <> 'ineligible-state'
      OR NOT EXISTS (
        SELECT 1 FROM public.games
         WHERE id = v_in_progress_game_id AND status = 'in_progress'
      ) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:in_progress_was_advanced:%', v_outcome;
-  END IF;
-
-  -- Existing sessions are not swept merely because the migration was applied.
-  INSERT INTO public.games (
-    id, name, status, current_host, ante_amount, pot, real_money
-  ) VALUES (
-    v_historical_game_id, 'Codex rollback proof - historical unarmed',
-    'waiting', v_users[1], 1, 0, true
-  );
-  DELETE FROM private.session_abandonment_watches
-   WHERE game_id = v_historical_game_id;
-  SELECT private.reconcile_session_abandonment(
-    v_historical_game_id,
-    v_future
-  ) INTO v_outcome;
-  IF v_outcome <> 'unarmed'
-     OR NOT EXISTS (SELECT 1 FROM public.games WHERE id = v_historical_game_id) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:historical_session_swept:%', v_outcome;
-  END IF;
-
-  -- Fake-money lifecycle remains outside this real-money-only policy.
-  INSERT INTO public.games (
-    id, name, status, current_host, ante_amount, pot, real_money
-  ) VALUES (
-    v_fake_game_id, 'Codex rollback proof - fake money',
-    'waiting', v_users[1], 1, 0, false
-  );
-  INSERT INTO private.session_abandonment_watches (game_id)
-  VALUES (v_fake_game_id);
-  SELECT private.reconcile_session_abandonment(v_fake_game_id, v_future)
-    INTO v_outcome;
-  IF v_outcome <> 'ineligible-state'
-     OR NOT EXISTS (SELECT 1 FROM public.games WHERE id = v_fake_game_id) THEN
-    RAISE EXCEPTION 'session_abandonment_proof:fake_money_touched:%', v_outcome;
+    RAISE EXCEPTION 'session_abandonment_proof:active-game-advanced:%',
+      v_outcome;
   END IF;
 
   RAISE NOTICE 'session_abandonment_proof:passed';
