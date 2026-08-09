@@ -15,7 +15,6 @@ interface Player {
   auto_fold: boolean;
   profiles?: { username: string };
 }
-
 /**
  * Evaluate player states at end of game (before dealer rotation)
  * Returns the count of active players after evaluation
@@ -279,7 +278,6 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   return { activePlayerCount, activeHumanCount, eligibleDealerCount, playersStoodUp };
 }
-
 /**
  * Rotate dealer to next eligible player (non-sitting-out, and non-bot unless bots are allowed as dealers)
  */
@@ -559,46 +557,4 @@ export async function clearDealerGameTransientSessionState(gameId: string): Prom
   }
 }
 
-/**
- * Soft-remove all sitting out players when game transitions back to waiting.
- * Sets status='left' so they must re-select seats to rejoin.
- * Player records are preserved for hand history FK integrity.
- */
-export async function removeSittingOutPlayersOnWaiting(gameId: string): Promise<void> {
-  console.log('[WAITING CLEANUP] Soft-removing sitting out players for game:', gameId);
-  
-  // Find all sitting out players (including those with auto_fold=true who are essentially sitting out)
-  const { data: sittingOutPlayers, error: fetchError } = await supabase
-    .from('players')
-    .select('id, user_id, position, is_bot, sitting_out, auto_fold, profiles(username)')
-    .eq('game_id', gameId)
-    .neq('status', 'left')
-    .or('sitting_out.eq.true,auto_fold.eq.true');
-  
-  if (fetchError) {
-    console.error('[WAITING CLEANUP] Error fetching sitting out players:', fetchError);
-    return;
-  }
-  
-  if (!sittingOutPlayers || sittingOutPlayers.length === 0) {
-    console.log('[WAITING CLEANUP] No sitting out players to remove');
-    return;
-  }
-  
-  console.log('[WAITING CLEANUP] Found', sittingOutPlayers.length, 'sitting out players to soft-remove:', 
-    sittingOutPlayers.map(p => ({ pos: p.position, username: p.profiles?.username, is_bot: p.is_bot })));
-  
-  // Soft-delete: set status='left' instead of deleting
-  const playerIds = sittingOutPlayers.map(p => p.id);
-  
-  const { error: updateError } = await supabase
-    .from('players')
-    .update({ status: 'left', sitting_out: true })
-    .in('id', playerIds);
-  
-  if (updateError) {
-    console.error('[WAITING CLEANUP] Error soft-removing sitting out players:', updateError);
-  } else {
-    console.log('[WAITING CLEANUP] Successfully soft-removed', playerIds.length, 'sitting out players');
-  }
-}
+// No automatic sitting-out cleanup exists: seat release is explicit.

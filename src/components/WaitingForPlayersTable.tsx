@@ -179,10 +179,17 @@ export const WaitingForPlayersTable = ({
   const hostPlayer = sortedByJoinTime[0];
   const isHost = currentPlayer && hostPlayer?.user_id === currentUserId;
 
-  // Count seated players (active or waiting to play)
-  const seatedPlayerCount = players.filter((p) => p.waiting === true || !p.sitting_out).length;
-  const hasEnoughPlayers = seatedPlayerCount >= 2;
-  const hasOpenSeats = players.length < 7;
+  // Sitting Out preserves a physical seat. Eligibility to start remains
+  // separate, so a sat-out player is visible but cannot satisfy the start
+  // precondition until they opt back in.
+  const seatedPlayerCount = players.filter(
+    (p) => p.status !== 'observer' && p.status !== 'left',
+  ).length;
+  const eligiblePlayerCount = players.filter(
+    (p) => p.status !== 'observer' && p.status !== 'left' && (p.waiting === true || !p.sitting_out),
+  ).length;
+  const hasEnoughPlayers = eligiblePlayerCount >= 2;
+  const hasOpenSeats = seatedPlayerCount < 7;
 
   // Add bot for waiting phase (joins as active, ready to play)
   // Users may tap quickly to add multiple bots, so we queue requests and reserve positions locally

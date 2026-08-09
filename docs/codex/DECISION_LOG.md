@@ -162,3 +162,14 @@ post-boundary heartbeat resets its count. Once zero active humans is
 authoritative, the database closes a result-bearing real-money session exactly
 once from final snapshots. A live route stays on the canonical Session Ended
 table; a fresh terminal mount goes to the lobby.
+
+## D-022 â€” Sitting Out preserves a physical seat
+
+`players.sitting_out` means the player is opted out of the next dealer game;
+it never changes their physical seat or relative-seat projection. Seat
+occupancy is determined only by a real player row whose status is neither
+`observer` nor `left`; next-game eligibility is a separate opt-in count.
+Timeout, ante decline, explicit Sit Out, and post-game absence all use the
+same rule. Only explicit Stand Up or Leave may set `status='left'` and release
+the position. A seated Sitting Out player returns through an opt-in action,
+not an open-seat selection.

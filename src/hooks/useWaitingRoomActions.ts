@@ -130,16 +130,19 @@ export function useWaitingRoomActions({
   const hostPlayer = sortedByJoinTime[0];
   const isHost = !!currentPlayer && hostPlayer?.user_id === currentUserId;
 
-  // Only count seats whose participation intent is actively in/for the next
-  // hand. Recovery waiting (after a session sit-out) leaves players with
-  // status='observer'/'left' or sitting_out=true; those must NOT satisfy
-  // Start Game preconditions until they explicitly rejoin (waiting=true).
+  // Physical seating and next-game eligibility are deliberately separate.
+  // Sitting Out keeps a player's authoritative seat; only observer/left
+  // releases it. Start Game must still require an explicit opt-in.
   const seatedPlayerCount = players.filter((p) => {
+    if (p.status === "observer" || p.status === "left") return false;
+    return true;
+  }).length;
+  const eligiblePlayerCount = players.filter((p) => {
     if (p.status === "observer" || p.status === "left") return false;
     return p.waiting === true || !p.sitting_out;
   }).length;
-  const hasEnoughPlayers = seatedPlayerCount >= 2;
-  const hasOpenSeats = players.length < 7;
+  const hasEnoughPlayers = eligiblePlayerCount >= 2;
+  const hasOpenSeats = seatedPlayerCount < 7;
 
   // Rejoin affordance — viewer is seated but currently sat out and not
   // already queued to rejoin. This is the recovery-waiting signal.

@@ -66,6 +66,12 @@ Date: 2026-08-09
   table after this later server-side closure and renders final seated players,
   including Sitting Out adornments. Fresh mounts and reconnects of an already
   ended session remain direct-to-lobby.
+- Shared waiting-table and shell seat projection now treat `sitting_out` as a
+  participation state, never a seat release. A sitting-out player remains in
+  their relative position with the Sitting Out status; only explicit Stand Up
+  or Leave changes `status` to `left`. Start eligibility remains a separate
+  opt-in count, and a seated player returns through Return to Play rather than
+  choosing a new `+` seat. Production smoke remains pending.
 - Sessions with settled `game_results` close only when every current human has
   a matching final snapshot; the existing deduplicated terminal trigger then
   mints SessionResult rows in the same transaction. Incomplete settlement

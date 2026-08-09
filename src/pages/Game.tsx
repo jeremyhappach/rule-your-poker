@@ -303,7 +303,7 @@ import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
 import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/normalizationDbg";
 import { createStartGameTrace, emitStartGameStage, capturePostgrestResult, captureException } from "@/lib/startGameTrace";
@@ -10934,10 +10934,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount, '- reverting to waiting');
       gameOverTransitionRef.current = false;
 
-      // CONTRACT: passive timeout sit-outs remain seated and visible (red).
-      // Do NOT call removeSittingOutPlayersOnWaiting here — that would set
-      // status='left' and hide the seat, which conflates passive sit-outs
-      // with intentional departures. Sit-outs can opt back in for next game.
+      // CONTRACT: every sit-out path remains seated and visible (red).
+      // Only explicit Stand Up or Leave may release a seat; sit-outs can
+      // opt back in for the next game from their current position.
 
       // Revert to waiting status — clear stale per-dealer-game
       // scaffolding so the next Start Game has a clean bootstrap.
@@ -13180,12 +13179,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // BATCH: Handle sitting out players in parallel (fire-and-forget for non-critical counters)
     const sittingOutUpdates = sittingOutPlayers.map(player => {
       const newSittingOutHands = (player.sitting_out_hands || 0) + 1;
-      if (newSittingOutHands >= 14) {
-        console.log(`[ANTE] Soft-removing player ${player.id} (${player.position}) after 14 consecutive games sitting out`);
-        return supabase.from('players').update({ status: 'left', sitting_out: true }).eq('id', player.id);
-      } else {
-        return supabase.from('players').update({ sitting_out_hands: newSittingOutHands }).eq('id', player.id);
-      }
+      // Sitting Out is not a delayed stand-up. Keep the counter for future
+      // inactivity policy, but never forfeit a seat without an explicit
+      // Stand Up or Leave action.
+      return supabase.from('players').update({ sitting_out_hands: newSittingOutHands }).eq('id', player.id);
     });
     
     // BATCH: Reset sitting_out_hands for anted players (only those with > 0)
@@ -16596,28 +16593,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // the canonical waiting surface without an anchor provider above it.
   const shellAnchorEligible =
     shellCanonicalFamily || _isFreshWaitingNoFamily || _isConfiguringContext;
-  // P0 (chip-continuity fix): include `waiting` players in the shell-
-  // owned anchor roster. Waiting players have an authoritative seat
-  // position (they're joined; the hand simply hasn't committed them)
-  // and the canonical WaitingTable + NeutralInterstitial surfaces both
-  // render them. Previously the local SeatAnchorLayer mounts inside
-  // those surfaces shadowed the shell-owned one because the shell
-  // roster excluded `waiting` rows; hoisting to a single ambient
-  // provider requires the shell roster to be the union of both.
-  // sitting_out rows are still excluded — sitting_out is a gameplay-state
-  // signal and the gameplay surfaces deliberately render them
-  // separately — EXCEPT when the row is also `waiting=true`. A
-  // waiting+sitting_out row is a participant who has been authoritatively
-  // seated for the NEXT hand (this is exactly how mid-game Add Bot
-  // inserts a bot). Those rows own a real seat position and must appear
-  // in the canonical seat ring immediately, painted with the canonical
-  // yellow `waiting` palette by derivePlayerStatus. Excluding them was
-  // the reason a newly added bot only became visible once the next hand
-  // cleared sitting_out. observer / left are excluded as before (no seat).
-  const _isShellSeatRosterMember = (p: { status?: string | null; sitting_out?: boolean | null; waiting?: boolean | null }) =>
-    p.status !== 'observer' && p.status !== 'left' && (
-      _sessionEndedTableActive || !p.sitting_out || p.waiting === true
-    );
+  // The shell roster owns physical seats, not next-game participation.
+  // A sitting-out player remains seated and visible (red); only explicit
+  // observer/left state releases their position for another player.
+  const _isShellSeatRosterMember = (p: { status?: string | null }) =>
+    p.status !== 'observer' && p.status !== 'left';
   // Stable-identity shell seat roster (see hook-rule note below).
   const _shellSeatRosterKey = shellAnchorEligible
     ? players
@@ -16639,15 +16619,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }
 
-  // Same broadening for the seated-viewer projection check so a viewer
-  // whose row is `waiting` (just joined) gets 'active-canonical' from
-  // the shell — matching the projection the previous local provider
-  // used and avoiding a projection-mode flip across the WaitingTable
-  // → Interstitial transition.
+  // A player remains in their active canonical seat projection while
+  // sitting out. Observer projection is reserved for an actual stand-up or
+  // leave, so a sit-out never causes a table-wide geometry reset.
   const isViewerSeated = !!currentPlayer
     && currentPlayer.status !== 'observer'
-    && currentPlayer.status !== 'left'
-    && (_sessionEndedTableActive || !currentPlayer.sitting_out);
+    && currentPlayer.status !== 'left';
   const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
   const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellAnchorEligible
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')

@@ -416,21 +416,10 @@ function WaitingSurfaceBody({
                 phase swap. Fallback path (shell layer absent) keeps
                 the previous local cluster JSX so missing-shell
                 wiring is recoverable rather than blank. */}
-            {/* Viewer needing rejoin still has a `players` row at their
-                old position (sitting_out=true), but they are NOT counted
-                as a seated participant for the next hand. Treat their
-                row as vacant for both the seat-cluster layer and the
-                join affordance layer so the waiting table presents the
-                same absolute seat availability as initial join. */}
+            {/* Sitting Out preserves the player's physical seat. Eligibility
+                for the next hand is tracked separately by the action hook;
+                never turn a sitting-out row into a vacant join affordance. */}
             {(() => {
-              const viewerRejoining =
-                actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin;
-              const viewerPlayerLocal = viewerRejoining
-                ? players.find((p) => p.user_id === currentUserId) ?? null
-                : null;
-              const isHiddenForRejoin = (p: Player) =>
-                viewerPlayerLocal != null && p.id === viewerPlayerLocal.id;
-
               return (
                 <>
                   {!preSessionSeatOwned && (
@@ -439,7 +428,6 @@ function WaitingSurfaceBody({
                       className="absolute inset-0 z-20 pointer-events-none"
                     >
                       {players.map((player) => {
-                        if (isHiddenForRejoin(player)) return null;
                         const anchor = byPosition.get(player.position);
                         if (!anchor) return null;
                         const actualUsername =
@@ -466,11 +454,10 @@ function WaitingSurfaceBody({
                     </div>
                   )}
 
-                  {/* Open-seat join affordance layer — observers + rejoining viewer. */}
-                  {(actions.isObserver || viewerRejoining) && (() => {
+                  {/* Open-seat join affordance layer — true observers only. */}
+                  {actions.isObserver && (() => {
                     const occupiedSlots = new Set<number>();
                     for (const player of players) {
-                      if (isHiddenForRejoin(player)) continue;
                       const slot = byPosition.get(player.position)?.slot;
                       if (slot != null) occupiedSlots.add(slot);
                     }
@@ -480,9 +467,7 @@ function WaitingSurfaceBody({
                         className="absolute inset-0 z-25"
                       >
                         {ALL_POSITIONS.map((pos) => {
-                          const occupiedByPosition = players.some(
-                            (p) => p.position === pos && !isHiddenForRejoin(p),
-                          );
+                          const occupiedByPosition = players.some((p) => p.position === pos);
                           if (occupiedByPosition) return null;
                           const slot = observerSlotForPosition(pos);
                           if (slot == null) return null;
@@ -575,12 +560,47 @@ function WaitingSurfaceBody({
             <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
               {/* Buttons sit immediately under the tab rail */}
               <div className="w-full flex flex-col items-center justify-start gap-3">
-                {actions.isObserver || actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin ? (
+                {actions.isObserver ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
                       {openPositions.length > 0
                         ? "Tap a + on the table to take a seat."
                         : "Table is full."}
+                    </p>
+                    <Button
+                      onClick={actions.handleInvite}
+                      className="bg-[hsl(220_45%_14%)] hover:bg-[hsl(220_45%_20%)] text-amber-200 border-2 border-amber-500 font-bold shadow-lg shadow-black/40"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </>
+                ) : actions.viewerNeedsRejoin ? (
+                  <>
+                    <p className="text-sm text-muted-foreground text-center max-w-xs">
+                      You&apos;re sitting out in your current seat. Return to play to join the next game.
+                    </p>
+                    <Button
+                      onClick={actions.handleRejoin}
+                      disabled={actions.isRejoining}
+                      aria-busy={actions.isRejoining}
+                      className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40 disabled:opacity-60"
+                    >
+                      {actions.isRejoining ? "Returning…" : "Return to Play"}
+                    </Button>
+                    <Button
+                      onClick={actions.handleInvite}
+                      variant="outline"
+                      className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </>
+                ) : actions.viewerIsWaitingToRejoin ? (
+                  <>
+                    <p className="text-sm text-muted-foreground text-center max-w-xs">
+                      You&apos;re seated and queued to return for the next game.
                     </p>
                     <Button
                       onClick={actions.handleInvite}
