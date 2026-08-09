@@ -147,3 +147,14 @@ idempotent SessionResult trigger, pristine rooms receive a longer deletion
 grace, and inconsistent history is preserved rather than guessed or deleted.
 Generic abandonment handling never settles or advances an `in_progress` game.
 The legacy monolithic deadline Edge Function is not this lifecycle owner.
+
+## D-021 â€” Presence begins only at settled post-game waiting
+
+The absence lease is never evaluated during a dealer game, its terminal
+presentation, dealer setup, ante decision, or an initial waiting room. A
+settled session with one active human returns to post-game waiting, which arms
+the 15-second database-stamped lease. A pre-boundary heartbeat is not presence
+for that lease. Once zero active humans is authoritative, the database closes
+a result-bearing real-money session exactly once from final snapshots. A live
+route stays on the canonical Session Ended table; a fresh terminal mount goes
+to the lobby.

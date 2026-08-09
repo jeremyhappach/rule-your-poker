@@ -1,6 +1,6 @@
 # Current release and cutover state
 
-Date: 2026-08-07
+Date: 2026-08-09
 
 ## Phase 1 delivery cutover
 
@@ -40,12 +40,23 @@ Date: 2026-08-07
   or player-state signal. The migration deliberately does not enroll or mutate
   the historical open-session backlog. The frozen `Aug 7 - Joakim Noah` repro
   remains `waiting`, unarmed, and without SessionResult rows.
-- At `waiting`, `waiting_for_players`, dealer/configuration selection, or
-  `game_over`, three missed heartbeats (15 seconds) mark an absent human sitting
-  out. Closing requires a second server observation ten seconds later. A
-  database cron runs the same transactional reconciler every thirty seconds,
-  so no surviving browser is required; the lower cadence avoids unnecessary
-  `pg_cron` history churn while preserving prompt orphan cleanup.
+- Migration
+  `20260809173000_postgame_waiting_session_resolution.sql` narrows the
+  presence lease to settled post-game `waiting` / `waiting_for_players` only,
+  with no active dealer-game identity. It never applies during an initial
+  waiting room, live gameplay, terminal presentation, dealer setup, or ante
+  decision. The 15-second lease starts when that post-game waiting boundary is
+  armed; a heartbeat from before the boundary does not keep a departed player
+  active.
+- One active human returns to the post-game waiting table. Once an absent
+  player is authoritatively marked Sitting Out, zero active humans closes a
+  result-bearing real-money session immediately through the database and
+  records exactly-once SessionResult financials. The 30-second cron remains
+  the no-client fallback; it never advances an active dealer game.
+- A continuously mounted route now remains on the canonical Session Ended
+  table after this later server-side closure and renders final seated players,
+  including Sitting Out adornments. Fresh mounts and reconnects of an already
+  ended session remain direct-to-lobby.
 - Sessions with settled `game_results` close only when every current human has
   a matching final snapshot; the existing deduplicated terminal trigger then
   mints SessionResult rows in the same transaction. Incomplete settlement

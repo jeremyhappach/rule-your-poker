@@ -329,8 +329,8 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213623_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005657_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
 | Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |
-| Real-money abandonment reconciliation | Private functions/triggers and the `reconcile-abandoned-real-money-sessions` pg_cron job in `supabase/migrations/20260807233000_authoritative_session_presence_reconciliation.sql`; rollback proof in `supabase/tests/session_abandonment_reconciliation_proof.sql`. |
-| Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260517144846_4bec47fa-5c3a-412a-8b31-15002b5a45b9.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
+| Real-money abandonment reconciliation | Post-game waiting boundary, private finalizer/triggers, and the `reconcile-abandoned-real-money-sessions` pg_cron job latest in `supabase/migrations/20260809173000_postgame_waiting_session_resolution.sql`; rollback proof in `supabase/tests/session_abandonment_reconciliation_proof.sql`. |
+| Deadline/lifecycle helpers | `handle_config_deadline_timeout` latest in `supabase/migrations/20260809173000_postgame_waiting_session_resolution.sql`; Edge Function enforcement under `supabase/functions/enforce-*/`. |
 | Cutover write lock and fake-history purge | `supabase/migrations/20260802184800_cutover_readiness.sql`; the lock is inert until its `system_settings` flag is enabled, and the controlled import bypass is session-local. |
 
 ## Debug harness registry
