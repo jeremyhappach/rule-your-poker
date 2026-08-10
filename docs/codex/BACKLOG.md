@@ -409,7 +409,7 @@ Status: In validation (P0); corrected under the approved high-risk branch on
 
 ### 3N. Source seat cluster disappears during an outbound transfer
 
-Status: Queued (P1); observed in production smoke on 2026-08-10.
+Status: In production validation (P1); corrected on 2026-08-10.
 
 - During opponent-to-self transfer, the entire opponent seat cluster (disc,
   nameplate, and attached content) becomes invisible. The shell's source-seat
@@ -418,6 +418,12 @@ Status: Queued (P1); observed in production smoke on 2026-08-10.
 - Keep the source cluster visible with its ledger-owned decremented balance;
   remove the broad static-seat suppression from the canonical seat owner. This
   is a cross-game shell correction, not a per-game workaround.
+- Correction: `CanonicalSeatCluster` no longer consumes the source-seat
+  suppression set or applies `visibility: hidden` to any cluster node. The
+  retired hook is removed from `ChipTransportProvider`; the ledger remains the
+  sole presentation owner of the source balance. A focused regression test
+  covers an active player-to-player flight with the nameplate, chip, and both
+  attached regions still visible.
 
 ### 3O. Terminal chip-delta label burst during teardown
 

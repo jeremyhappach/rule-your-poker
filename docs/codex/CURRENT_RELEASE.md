@@ -2,6 +2,18 @@
 
 Date: 2026-08-10
 
+## Canonical source-seat continuity during chip transfer
+
+- The source participant's canonical seat cluster now remains visible during
+  every outbound chip flight. The shared ledger still decrements the displayed
+  source balance at departure, but its nameplate, disc, score line, and
+  game-owned attached content are never hidden with the moving chip.
+- This removes a cross-game shell suppression that affected player-to-player
+  transfers in Holm and any other canonical-seat game. Financial settlement,
+  transfer timing, destination behavior, and endpoint ownership are unchanged.
+- The focused source-seat regression test is typechecked and the production
+  bundle builds cleanly. Production smoke remains the acceptance gate.
+
 ## Holm staged showdown transfer projection
 
 - Migration `20260810201500_stage_holm_showdown_transfer_projection.sql` is

@@ -13,7 +13,7 @@
  *      protects the migration path that is about to land in PR-B.
  */
 
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,6 +28,7 @@ vi.mock('./diagnostics', async (importOriginal) => {
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
+import { ChipTransportProvider, useChipTransport } from './ChipTransportProvider';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -69,6 +70,34 @@ function renderInLayer(
       </SeatAnchorLayer>,
     );
   });
+}
+
+function SourceTransferSeat() {
+  const transport = useChipTransport();
+
+  useEffect(() => {
+    transport.dispatch({
+      id: 'source-seat-visible-during-flight',
+      amount: 10,
+      from: { kind: 'seat', position: 2 },
+      to: { kind: 'seat', position: 1 },
+      reason: 'transfer',
+    });
+  }, [transport]);
+
+  return (
+    <CanonicalSeatCluster
+      slot={2}
+      position={2}
+      name="Alice"
+      chipValue="$90"
+      chipAmount={90}
+      scoreLine="10"
+      avatar={<span>avatar</span>}
+    >
+      <span>cards</span>
+    </CanonicalSeatCluster>
+  );
 }
 
 describe('CanonicalSeatCluster — byte-for-byte contract for existing consumers', () => {
@@ -240,5 +269,31 @@ describe('CanonicalSeatCluster — new decorator vocabulary', () => {
     );
     expect(container.querySelector('[data-chip-center="2"]')).toBeNull();
     expect(container.querySelector('[data-canonical-seat-cluster-content]')).not.toBeNull();
+  });
+
+  it('keeps the entire source seat cluster visible during an outbound chip transfer', () => {
+    act(() => {
+      root.render(
+        <ChipTransportProvider>
+          <SeatAnchorLayer
+            projectionMode="observer-absolute"
+            viewerPosition={null}
+            seats={[{ position: 1, occupied: true }, { position: 2, occupied: true }]}
+          >
+            <SourceTransferSeat />
+          </SeatAnchorLayer>
+        </ChipTransportProvider>,
+      );
+    });
+
+    for (const selector of [
+      '[data-canonical-seat-above]',
+      '[data-canonical-seat-nameplate-layer]',
+      '[data-canonical-seat-pill]',
+      '[data-canonical-seat-below]',
+    ]) {
+      expect((container.querySelector(selector) as HTMLElement).style.visibility).not.toBe('hidden');
+    }
+    expect(container.querySelector('[data-chip-center="2"]')).not.toBeNull();
   });
 });

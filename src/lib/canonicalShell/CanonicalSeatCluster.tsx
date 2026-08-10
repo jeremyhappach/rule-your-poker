@@ -56,10 +56,7 @@ import {
 import type { CanonicalSlot } from './seatAnchors';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { resolveSideAwareRowAnchor } from './sideAwareRowAnchor';
-import {
-  useChipTransportSuppressedSeats,
-  usePresentationPlayerChipBalance,
-} from './ChipTransportProvider';
+import { usePresentationPlayerChipBalance } from './ChipTransportProvider';
 import {
   getParticipantChipBgClass,
   getParticipantChipFgClass,
@@ -320,9 +317,7 @@ export function CanonicalSeatCluster({
   // outcomes. The conditional returns below early-out the render but
   // leave hook order stable.
   const anchors = useSeatAnchorsOptional();
-  const suppressedSeats = useChipTransportSuppressedSeats();
   const presentationChipAmount = usePresentationPlayerChipBalance(playerId, chipAmount ?? 0);
-  const transportSuppressed = suppressedSeats.has(position);
   const clusterInstanceIdRef = useRef<string>('');
   if (!clusterInstanceIdRef.current) {
     clusterInstanceIdRef.current = `csc-p${position}-${++_csc_seq}`;
@@ -803,7 +798,6 @@ export function CanonicalSeatCluster({
         <div
           data-canonical-seat-above=""
           className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[2px] flex flex-col items-center gap-[2px] pointer-events-none"
-          style={transportSuppressed ? { visibility: 'hidden' } : undefined}
         >
           {aboveChipNodes}
         </div>
@@ -819,10 +813,7 @@ export function CanonicalSeatCluster({
         <div
           data-canonical-seat-nameplate-layer=""
           className="pointer-events-none"
-          style={{
-            ...namePlateAnchoredStyle,
-            ...(transportSuppressed ? { visibility: 'hidden' as const } : null),
-          }}
+          style={namePlateAnchoredStyle}
         >
           <div className="relative inline-flex items-center">
             {nameRow}
@@ -850,9 +841,7 @@ export function CanonicalSeatCluster({
         <div
           data-canonical-seat-pill=""
           data-canonical-seat-chip-cell=""
-          data-chip-transport-suppressed={transportSuppressed ? 'true' : 'false'}
           className="absolute inset-0 flex items-center justify-center"
-          style={transportSuppressed ? { visibility: 'hidden' } : undefined}
         >
           {chipCellContents}
         </div>
@@ -910,10 +899,7 @@ export function CanonicalSeatCluster({
           <div
             data-canonical-seat-below=""
             className={baseClass}
-            style={{
-              ...(transportSuppressed ? { visibility: 'hidden' as const } : null),
-              ...(overrideStyle ?? null),
-            }}
+            style={overrideStyle}
           >
             {belowChipNodes}
           </div>

@@ -9004,9 +9004,9 @@ export const CribbageMobileGameTable = ({
                 }
                 return undefined;
               },
-              // Wave 3B: hideChipBubble / chipValue='' retired. Shell
-              // ChipTransport runtime owns from-seat suppression while a
-              // fly is in flight (see useChipTransportSuppressedSeats).
+              // Wave 3B: hideChipBubble / chipValue='' retired. The shell
+              // ledger keeps the source seat visible with its decremented
+              // balance while a chip is in flight.
 
               cardBacks: (p) => {
                 if (!isGameplayMode || !gameplayRenderState) return null;

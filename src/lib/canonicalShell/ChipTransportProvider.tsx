@@ -5,11 +5,9 @@
  *   - dispatch() / dispatchMany() accept an optional `onSettled` /
  *     `onAllSettled` callback so games can advance lifecycle off
  *     transport completion without re-implementing geometry.
- *   - useChipTransportSuppressedSeats() exposes the set of seat
- *     positions currently referenced as an intent `from`-endpoint, so
- *     CanonicalSeatCluster can hide the static chip while a fly is in
- *     flight. Shell-owned suppression replaces the legacy game-side
- *     `hideChipBubble` pattern.
+ *   - Source seats remain visible while a chip flies. The canonical ledger
+ *     updates their displayed balance at departure, so hiding a static seat
+ *     cluster would obscure the owned financial state and its identity.
  *
  * Diagnostics: `chip-transport-dispatched`, `chip-transport-dropped`,
  * `chip-transport-settled` events are emitted via `recordShellEvent`.
@@ -413,29 +411,6 @@ export function useChipTransferPresentationAdmission(
     setAdmission(admission, onBatchSettled ?? null);
     return () => setAdmission(null, null);
   }, [admission, onBatchSettled, setAdmission]);
-}
-
-/**
- * Shell-owned chip suppression hook (Wave 3B).
- *
- * Returns the set of seat positions currently referenced as a `from`
- * endpoint of an active intent. Consumers (CanonicalSeatCluster) hide
- * the static chip disc while the position is in the set so the fly
- * chip is the sole visible disc at that seat.
- *
- * `to` endpoints are intentionally NOT suppressed — the winner's
- * static disc stays visible throughout the transfer.
- */
-export function useChipTransportSuppressedSeats(): Set<number> {
-  const ctx = useContext(ChipTransportContext);
-  return useMemo(() => {
-    const set = new Set<number>();
-    if (!ctx) return set;
-    for (const intent of ctx.__activeIntents) {
-      if (intent.from.kind === 'seat') set.add(intent.from.position);
-    }
-    return set;
-  }, [ctx?.__activeIntents]);
 }
 
 /** Internal hook used only by ChipTransportRuntime. */

@@ -288,3 +288,12 @@ cohort; a generic player-to-pot transfer cannot be held behind that terminal
 phase. The ledger owns each shared endpoint across the two cursors and releases
 only after its existing authoritative reconciliation barrier. Disconnect and
 reconnect still abandon presentation without replaying settled financial work.
+
+## D-030 - A chip flight never hides its source seat cluster
+
+The canonical ledger changes a source endpoint's displayed balance at the
+departure boundary. A moving chip is an additive presentation artifact, not a
+reason to remove the identity, chip disc, score line, or game-owned content
+anchored at that player endpoint. The shared seat cluster therefore remains
+rendered through every outbound player transfer; no game may reintroduce a
+source-seat visibility suppression as a bounce workaround.
