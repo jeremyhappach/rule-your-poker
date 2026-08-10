@@ -319,6 +319,25 @@ smoke on 2026-08-10.
   dealer game, not a late first observation or transient settlement state. Do
   not change authoritative settlement, the transfer ledger, or add a timer.
 
+### 3K. 3-5-7 final-leg sweep omits the visible leg-reserve return
+
+Status: In validation (P1); observed after the normal final-leg replay
+correction in production on 2026-08-10.
+
+- The final-leg deduction is projected as its own immutable cursor, but the
+  terminal settlement combines the winner's leg-reserve return with the pot
+  transfer in one later batch. The batch correctly records the return as an
+  unmatched player delta, but the canonical ledger has no presentation stage
+  for it. It therefore holds the stack at the post-leg value through the sweep,
+  adds only the pot amount when that flight lands, and then reconciles to the
+  final authoritative closing value.
+- Preserve the actual financial settlement. Split the immutable presentation
+  projection into ordered, same-transaction leg-sweep and pot-award stages so
+  the leg return is visible during Sweep the Legs and the pot amount is visible
+  only at the pot-flight destination. The generic ledger must retain endpoint
+  ownership across both stages and release only after the final authoritative
+  cursor has reconciled.
+
 ### 3J. Gin iPhone screen dim regression
 
 Status: Queued (P1); observed in the `Columbia Terrace` production all-game

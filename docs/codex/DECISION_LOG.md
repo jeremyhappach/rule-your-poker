@@ -229,3 +229,17 @@ and transient settlement nulls preserve it. The ordinary player-leg delta
 detector advances its baseline but cannot start a descriptor-owned terminal
 award. This keeps normal 3-5-7 in the one-owner terminal ordering while leaving
 the database settlement and immutable transfer-batch ledger unchanged.
+
+## D-026 — One financial settlement may expose ordered immutable presentation stages
+
+When one authoritative transaction has distinct visible chip boundaries, it
+may publish adjacent immutable batches from the same database-captured journal
+rather than collapsing them into an absolute closing balance. A normal 3-5-7
+final-leg terminal returns all purchased-leg value in a `sweep` batch and then
+awards the pot in a `transfer` batch; settlement, result, snapshots, and
+lifecycle state remain one replay-safe transaction.
+
+The canonical ledger owns every touched endpoint across the entire chain.
+Later raw rows carry the final cursor and are held until their predecessor and
+the final reconciliation complete. Game code may admit the next non-financial
+phase but may never synthesize a balance change or release the endpoint.

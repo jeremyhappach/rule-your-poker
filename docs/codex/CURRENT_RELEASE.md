@@ -2,6 +2,25 @@
 
 Date: 2026-08-10
 
+## 3-5-7 normal final-leg reserve-return projection
+
+- Migration `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql`
+  is installed on the owned production database. A normal final-leg terminal
+  still settles financially in one replay-safe transaction, but now emits two
+  adjacent immutable, game-scoped presentation batches: the winner's returned
+  purchased-leg value during Sweep the Legs, then the pot award.
+- The shared ledger remains the sole owner of the winner and pot endpoints
+  through both batches. It composes the database-captured deltas and releases
+  only after the final cursor reconciles, so early/late realtime rows cannot
+  expose the final balance between the sweep and pot flight.
+- The normal 3-5-7 adapter holds its existing terminal sequence at the new
+  ledger-owned sweep-credit phase. For a $4 stack, $2 leg, and $6 pot, the
+  visible order is now $4 -> $2 at final-leg award, $2 -> $4 during the sweep,
+  then $4 -> $10 when the pot chip arrives. Rollback proofs passed for staged
+  projection, winner, tie, duplicate, late replay, authorization,
+  continuation, and terminal state. Production smoke remains the acceptance
+  gate.
+
 ## 3-5-7 normal terminal presentation correction
 
 - The approved source candidate gates the normal final-leg award on a

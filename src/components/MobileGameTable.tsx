@@ -2388,7 +2388,8 @@ export const MobileGameTable = ({
   const latchedLegsForHandRef = useRef<{ handContextId: string | null; hadLegs: boolean }>({ handContextId: null, hadLegs: false });
   const hadLegsBeforeSweepRef = useRef<boolean>(false);
   
-  // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
+  // 3-5-7 win animation state (phases: leg -> legs-to-player ->
+  // ledger-owned sweep-credit -> pot-to-player).
   // ⚠ TODO WAVE 5 — ThreeFiveSevenWinController is parked. See
   // src/lib/357/UNDER_CONSTRUCTION.md for the full inventory and the
   // selector list (useShould357DeferPot / DeferHandReset /
@@ -2396,7 +2397,7 @@ export const MobileGameTable = ({
   // CanonicalPhaseEngine. Phase ownership remains game-local until then.
   // Known shipping bug: MGT/Game remount mid-sequence strands the win
   // animation (Loading… flash → zombie table).
-  const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle');
+  const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'waiting' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'delay'>('idle');
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
@@ -2407,7 +2408,7 @@ export const MobileGameTable = ({
   const normal357PresentationRef = useRef<{
     generationId: string;
     dealerGameId: string;
-    stage: 'award' | 'legs-to-player' | 'pot-to-player' | 'complete';
+    stage: 'award' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'complete';
   } | null>(null);
   // The boundary effect is deliberately late in this component. Incrementing
   // this epoch after it records a concrete dealer-game scope lets the normal
@@ -2415,9 +2416,13 @@ export const MobileGameTable = ({
   const [normal357ScopeEpoch, setNormal357ScopeEpoch] = useState(0);
   const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
-  const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'sweep-credit' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
   const potToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate pot-to-player completion
+  // The financial projection owns the transition from the visible leg sweep
+  // to pot flight. This callback is armed only by that exact 3-5-7 sequence
+  // and consumed only when its immutable `sweep` batch has settled.
+  const pending357LegSweepCreditRef = useRef<(() => void) | null>(null);
   
   // DEBUG: Track when phase changed for elapsed time in overlay
   const phaseChangedAtRef = useRef<number>(Date.now());
@@ -3019,7 +3024,7 @@ export const MobileGameTable = ({
 
 
     // 357 win phases:
-    // - waiting / legs-to-player: game is still resolving the win (block pot sync to avoid flicker)
+    // - waiting / legs-to-player / sweep-credit: game is still resolving the win (block pot sync to avoid flicker)
     // - pot-to-player / delay: chips are leaving pot or +$x is flashing; pot should be FREE to sync
     //   (especially for next-hand ante/bets). This is the key fix.
     const phase357 = threeFiveSevenWinPhaseRef.current;
@@ -3027,7 +3032,7 @@ export const MobileGameTable = ({
     // Once pot-to-player starts, pot is visually empty and should be allowed to sync (incl. increases)
     // even while the later +$x flash happens (delay).
     const isPotVisuallyEmpty = phase357 === 'pot-to-player' || phase357 === 'delay';
-    const isPrePotToPlayer357Phase = phase357 === 'waiting' || phase357 === 'legs-to-player';
+    const isPrePotToPlayer357Phase = phase357 === 'waiting' || phase357 === 'legs-to-player' || phase357 === 'sweep-credit';
 
     // HARD RULE: during normal play, the pot should not move backwards.
     // We only allow decreases when the pot is visually empty (chips leaving the pot).
@@ -3063,7 +3068,7 @@ export const MobileGameTable = ({
       isAnteAnimatingRef.current ||
       // Block when ante trigger exists (animation about to start) - prevents 0-flash before lock
       !!anteAnimationTriggerId ||
-      // Block during waiting/legs-to-player phases, but NOT pot-to-player/delay
+      // Block during waiting/legs-to-player/sweep-credit phases, but NOT pot-to-player/delay
       (phase357 !== 'idle' && !isPotVisuallyEmpty) ||
       // Block if trigger exists but pot-to-player hasn't started yet
       (!!threeFiveSevenWinTriggerId && !isPotVisuallyEmpty) ||
@@ -3091,7 +3096,7 @@ export const MobileGameTable = ({
 
         const phaseNow357 = threeFiveSevenWinPhaseRef.current;
         const isPotVisuallyEmptyNow = phaseNow357 === 'pot-to-player' || phaseNow357 === 'delay';
-        const isPrePotToPlayer357PhaseNow = phaseNow357 === 'waiting' || phaseNow357 === 'legs-to-player';
+        const isPrePotToPlayer357PhaseNow = phaseNow357 === 'waiting' || phaseNow357 === 'legs-to-player' || phaseNow357 === 'sweep-credit';
 
         if (
           potLockRef.current ||
@@ -3913,6 +3918,12 @@ export const MobileGameTable = ({
     // opening balances until the sole terminal-phase owner starts the pot
     // stage (final leg -> sweep legs -> pot flight + celebration).
     if (gameType === '3-5-7') {
+      // Normal final-leg settlement publishes the reserve return as an
+      // immutable, zero-flight `sweep` batch. It must settle only after the
+      // visible leg chips have reached the winner and before pot flight.
+      if (batch.reason === 'sweep' && batch.transfers.length === 0) {
+        return threeFiveSevenWinPhase === 'sweep-credit';
+      }
       if (movesPotToPlayer) {
         return threeFiveSevenWinPhase === 'pot-to-player';
       }
@@ -3948,7 +3959,24 @@ export const MobileGameTable = ({
     chipTransferAmount,
     horsesWinPotTriggerId,
   ]);
-  useChipTransferPresentationAdmission(canAdmitChipTransferPresentation);
+  const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
+    if (
+      gameType !== '3-5-7' ||
+      batch.reason !== 'sweep' ||
+      batch.transfers.length !== 0 ||
+      threeFiveSevenWinPhaseRef.current !== 'sweep-credit'
+    ) {
+      return;
+    }
+    const beginPotFlight = pending357LegSweepCreditRef.current;
+    if (!beginPotFlight) return;
+    pending357LegSweepCreditRef.current = null;
+    beginPotFlight();
+  }, [gameType]);
+  useChipTransferPresentationAdmission(
+    canAdmitChipTransferPresentation,
+    onChipTransferPresentationBatchSettled,
+  );
 
   // ── TERMINAL PRESENTATION HOLD (Holm) ────────────────────────────────────
   // Authoritative settlement now lands in ONE transaction, so `status` can flip
@@ -9007,7 +9035,7 @@ export const MobileGameTable = ({
       playersWithLegsLength: threeFiveSevenCachedLegPositions?.length ?? null,
       cachedLegPositionsLength: threeFiveSevenCachedLegPositions?.length ?? null,
       isSweepPath: false,
-      selectedNextPhase: 'pot-to-player',
+      selectedNextPhase: 'sweep-credit',
     });
 
     // Legacy legs-complete extras remain at the caller (byte-equivalent).
@@ -9021,6 +9049,10 @@ export const MobileGameTable = ({
     const winnerPositionForEntry =
       players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? null;
     const legacyLegsIdentity: Three57PresentationIdentity = build357PresentationIdentity();
+    if (normalPresentation) {
+      normalPresentation.stage = 'sweep-credit';
+    }
+    pending357LegSweepCreditRef.current = () => {
     const legsEntryResult = enterCanonical357TerminalPresentation({
       identity: {
         gameId: gameId ?? null,
@@ -9064,6 +9096,9 @@ export const MobileGameTable = ({
       destinationSelector: `[data-chip-reaction-target="${winnerPositionForEntry}"]`,
       triggerId: potTid,
     });
+    };
+    setThreeFiveSevenWinPhase('sweep-credit');
+    threeFiveSevenWinPhaseRef.current = 'sweep-credit';
   }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
@@ -9274,6 +9309,7 @@ export const MobileGameTable = ({
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       activePotIdentityRef.current = null;
+      pending357LegSweepCreditRef.current = null;
       __capture357Checkpoint('pot_to_player_complete:return', {
         animationId: animId,
         phase: 'idle',
@@ -9402,6 +9438,7 @@ export const MobileGameTable = ({
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
     normal357PresentationRef.current = null;
+    pending357LegSweepCreditRef.current = null;
     lastThreeFiveSevenTriggerRef.current = null;
     currentAnimationIdRef.current = null;
     legsToPlayerCompletedRef.current = null;
@@ -10295,6 +10332,7 @@ export const MobileGameTable = ({
       hasPendingLegAnimationClaim(player.id, player.legs);
     const hideLegsForWinAnimation =
       threeFiveSevenWinPhase === 'legs-to-player' ||
+      threeFiveSevenWinPhase === 'sweep-credit' ||
       threeFiveSevenWinPhase === 'pot-to-player' ||
       threeFiveSevenWinPhase === 'delay';
     const isInWinAnimation = threeFiveSevenWinPhase !== 'idle';
@@ -13539,6 +13577,7 @@ export const MobileGameTable = ({
         {!sessionEndedPhase && gameType !== 'holm-game' && currentPlayer && (() => {
           const hideLegsForWinAnimation =
             threeFiveSevenWinPhase === 'legs-to-player' ||
+            threeFiveSevenWinPhase === 'sweep-credit' ||
             threeFiveSevenWinPhase === 'pot-to-player' ||
             threeFiveSevenWinPhase === 'delay';
 
