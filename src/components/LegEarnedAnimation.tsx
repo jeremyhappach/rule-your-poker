@@ -17,6 +17,7 @@ interface LegEarnedAnimationProps {
 export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
+  const isWinningLegRef = useRef(isWinningLeg);
   // Track the UNIQUE animation cycle - keyed by a timestamp set when animation starts
   const animationCycleIdRef = useRef<string | null>(null);
   // Track if the current cycle has completed (prevents restart on prop flicker)
@@ -25,6 +26,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
+  isWinningLegRef.current = isWinningLeg;
 
   // Default target if not provided
   const finalTarget = targetPosition || { top: '85%', left: '65%' };
@@ -53,7 +55,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       cycleCompletedRef.current = false;
       
       // Lock duration at cycle start
-      animationDurationRef.current = isWinningLeg ? 1800 : 1500;
+      animationDurationRef.current = isWinningLegRef.current ? 1800 : 1500;
       const animationDuration = animationDurationRef.current;
       
       setVisible(true);
@@ -83,15 +85,22 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
         }
       };
     } else {
-      // show=false: Only reset refs if the animation cycle completed naturally
-      // This allows a new animation to start on next show=true
-      if (cycleCompletedRef.current) {
-        animationCycleIdRef.current = null;
-        cycleCompletedRef.current = false;
-        animationDurationRef.current = null;
+      // A dealer-game boundary may cancel an in-flight award. Treat that as
+      // a completed local presentation lifecycle: clear the private cycle
+      // lock so the next concrete dealer game can start exactly one new
+      // award rather than being permanently rejected as an old cycle.
+      if (activeTimerRef.current) {
+        clearTimeout(activeTimerRef.current);
+        activeTimerRef.current = null;
       }
+      animationCycleIdRef.current = null;
+      cycleCompletedRef.current = false;
+      animationDurationRef.current = null;
+      setVisible(false);
     }
-  }, [show, isWinningLeg]);
+    // `isWinningLeg` is intentionally sampled at the show=true boundary:
+    // the duration is locked for that cycle and must not restart mid-flight.
+  }, [show]);
 
   if (!visible) return null;
 

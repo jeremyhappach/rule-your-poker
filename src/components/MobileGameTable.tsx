@@ -2400,6 +2400,10 @@ export const MobileGameTable = ({
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
+  // Normal terminal wins have exactly one local presentation owner. This is
+  // keyed by the immutable descriptor generation rather than the ephemeral
+  // parent trigger, which is cleared as soon as the owner acquires it.
+  const normal357AwardGenerationRef = useRef<string | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
@@ -8424,13 +8428,95 @@ export const MobileGameTable = ({
     return prev !== undefined && currentLegs > prev;
   };
 
-  
-  
-  // Legacy 3-5-7 win animation trigger from parent (kept as fallback)
-  // NOTE: Primary trigger now comes from LegEarnedAnimation onComplete when isWinningLegAnimation is true
+  // Normal 3-5-7 terminal prelude: descriptor generation owns the sequence.
+  //
+  // The prior trigger effect armed an independent 1.8-second timeout at the
+  // exact duration of LegEarnedAnimation. Whichever callback won that race
+  // advanced the phase, so the final-leg award could be skipped entirely.
+  // The descriptor is immutable for this terminal generation, while the
+  // parent trigger is deliberately ephemeral; use the former as the sole
+  // presentation identity and let the award's real completion advance us.
+  useEffect(() => {
+    const descriptor = normal357TerminalDescriptor;
+    if (!descriptor || isWaitingPhase) return;
+    if (
+      descriptor.dealerGameId != null &&
+      threeFiveSevenDealerGameScope != null &&
+      descriptor.dealerGameId !== threeFiveSevenDealerGameScope
+    ) {
+      // The old descriptor can remain mounted during the brief dealer-game
+      // rotation gap. It is never allowed to acquire the new table surface.
+      return;
+    }
+    if (normal357AwardGenerationRef.current === descriptor.terminalGenerationId) {
+      return;
+    }
+    if (threeFiveSevenWinPhaseRef.current !== 'idle') {
+      // A concrete dealer-game boundary cancels stale presentation state and
+      // re-runs this effect after the phase is idle. Never overwrite an
+      // in-flight generation with a new absolute snapshot.
+      return;
+    }
+
+    const winner = players.find((player) => player.id === descriptor.winnerId);
+    if (!winner) return;
+
+    normal357AwardGenerationRef.current = descriptor.terminalGenerationId;
+    lastThreeFiveSevenTriggerRef.current = descriptor.terminalGenerationId;
+    currentAnimationIdRef.current = null;
+    legsToPlayerCompletedRef.current = null;
+    potToPlayerCompletedRef.current = null;
+    threeFiveSevenLegsSnapshotRef.current = threeFiveSevenCachedLegPositions;
+
+    // Preserve the pre-pot ownership gate during the award itself. The phase
+    // advances only from LegEarnedAnimation.onComplete below.
+    setThreeFiveSevenWinPhase('waiting');
+    threeFiveSevenWinPhaseRef.current = 'waiting';
+    setLegsToPlayerTriggerId(null);
+    setPotToPlayerTriggerId357(null);
+
+    const alreadyShowingThisAward =
+      legAnimationActiveRef.current &&
+      showLegEarned &&
+      isWinningLegAnimation &&
+      winningLegPlayerId === descriptor.winnerId;
+    if (!alreadyShowingThisAward) {
+      const winnerName = winner.is_bot
+        ? getBotAlias(players, winner.user_id)
+        : (winner.profiles?.username || `Player ${winner.position}`);
+      setLegEarnedPlayerName(winnerName);
+      setLegEarnedPlayerPosition(winner.position);
+      setIsWinningLegAnimation(true);
+      setShowLegEarned(true);
+      legAnimationActiveRef.current = true;
+    }
+    setWinningLegPlayerId(descriptor.winnerId);
+
+    // The descriptor now owns the local presentation; clear only the parent
+    // trigger, never the generation identity that drives completion.
+    onThreeFiveSevenWinAnimationStarted?.();
+  }, [
+    normal357TerminalDescriptor,
+    isWaitingPhase,
+    threeFiveSevenDealerGameScope,
+    players,
+    showLegEarned,
+    isWinningLegAnimation,
+    winningLegPlayerId,
+    threeFiveSevenCachedLegPositions,
+    onThreeFiveSevenWinAnimationStarted,
+    threeFiveSevenWinPhase,
+  ]);
+
+  // The old trigger no longer progresses a normal terminal sequence. It is
+  // retained only to retire the ephemeral parent signal for the instant
+  // controller. Missing descriptors deliberately do not fall back to a clock:
+  // presentation must wait for an immutable terminal generation.
   useEffect(() => {
     // Same reasoning as above: never run win-trigger fallback logic in the dealer-selection/setup background table.
     if (isWaitingPhase) return;
+
+    if (normal357TerminalDescriptor) return;
 
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
       return;
@@ -8468,6 +8554,23 @@ export const MobileGameTable = ({
       onThreeFiveSevenWinAnimationStarted?.();
       return;
     }
+
+    if (!threeFiveSevenTerminalDescriptor) {
+      emit357RuntimeDiag('legacy_prelude_suppressed', {
+        gameId: gameId ?? null,
+        roundId: handContextId ?? null,
+        winnerPlayerId: threeFiveSevenWinnerId ?? null,
+        terminalResultIdentity: lastRoundResult ?? null,
+      }, {
+        callerSourceAnchor: 'fallback_trigger.missing_descriptor',
+        guardMode: 'descriptor_required_no_timer_fallback',
+      });
+      return;
+    }
+
+    // The two supported descriptor sources have already returned above.
+    // Never promote a future/unknown source through a time-based fallback.
+    return;
 
 
     // NOTE: Removed game_over check - the animation should run for all players regardless of local game status.
@@ -9239,19 +9342,38 @@ export const MobileGameTable = ({
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
+    const staleNormalAwardGeneration = normal357AwardGenerationRef.current;
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'dealer_game_boundary' });
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
+    normal357AwardGenerationRef.current = null;
+    lastThreeFiveSevenTriggerRef.current = null;
+    currentAnimationIdRef.current = null;
+    legsToPlayerCompletedRef.current = null;
+    potToPlayerCompletedRef.current = null;
+    legAnimationActiveRef.current = false;
+    threeFiveSevenLegsSnapshotRef.current = [];
+    threeFiveSevenWinPhaseRef.current = 'idle';
     // Clear canonical-entry latch/identity on real dealer-game boundary
     // so a fresh generation can enter the canonical downstream path.
     canonical357EntryGenerationRef.current = null;
     canonicalTerminal357IdentityRef.current = null;
+    setShowLegEarned(false);
+    setLegEarnedPlayerName('');
+    setLegEarnedPlayerPosition(null);
+    setIsWinningLegAnimation(false);
+    setWinningLegPlayerId(null);
+    setThreeFiveSevenWinPhase('idle');
+    setLegsToPlayerTriggerId(null);
+    setPotToPlayerTriggerId357(null);
+    setThreeFiveSevenPotHiddenUntilReset(false);
+    setPotOutAnimationActive(false);
     setShowSweepsPot(false);
     setShowSweepTheLegs357(false);
     setSweepCelebrationCompleted(false);
     hadLegsBeforeSweepRef.current = false;
     lastSweepsIdentityRef.current = null;
-    if (staleSweep || stalePot) {
+    if (staleSweep || stalePot || staleNormalAwardGeneration) {
       emit357RuntimeDiag('dealer_game_boundary_reset', {
         gameId: gameId ?? null,
         roundId: handContextId ?? null,
@@ -9271,6 +9393,7 @@ export const MobileGameTable = ({
         activeTriggerId: threeFiveSevenWinTriggerId ?? null,
         hadArmedSweep: !!staleSweep,
         hadActivePot: !!stalePot,
+        cancelledNormalAwardGeneration: staleNormalAwardGeneration,
       });
     }
   }, [threeFiveSevenDealerGameScope, handContextId, gameId, currentPlayer?.id, threeFiveSevenWinnerId, lastRoundResult, threeFiveSevenWinTriggerId]);
@@ -11548,25 +11671,39 @@ export const MobileGameTable = ({
           onComplete={() => {
             setShowLegEarned(false);
             legAnimationActiveRef.current = false; // Reset ref so next leg can trigger
-            // For 3-5-7: When winning leg animation completes, immediately start the win animation sequence
-            // GUARD: Only start if not already in progress (prevents double-firing)
+            // For 3-5-7: the normal terminal descriptor is the sole owner of
+            // the prelude. Its final-leg award completion is the only event
+            // permitted to advance from waiting -> legs-to-player.
+            const activeNormalTerminal = normal357TerminalDescriptor;
+            const ownsNormalTerminalAward =
+              activeNormalTerminal != null &&
+              normal357AwardGenerationRef.current === activeNormalTerminal.terminalGenerationId;
+            const terminalWinnerId = activeNormalTerminal?.winnerId ?? threeFiveSevenWinnerId;
+            const mayAdvanceNormalTerminal = ownsNormalTerminalAward
+              ? threeFiveSevenWinPhaseRef.current === 'waiting'
+              : threeFiveSevenWinPhaseRef.current === 'idle';
             if (
               gameType !== 'holm-game' &&
               isWinningLegAnimation &&
-              threeFiveSevenWinnerId &&
-              threeFiveSevenWinPhaseRef.current === 'idle'
+              terminalWinnerId &&
+              mayAdvanceNormalTerminal
             ) {
-              // Mark this win sequence as "handled" even if the legacy parent trigger is already cleared.
-              // This prevents legs from re-appearing when we return to idle.
-              lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId ?? `357-seq-${Date.now()}`;
+              // Mark this win sequence as handled even though the parent
+              // trigger has already been retired. This prevents the same
+              // descriptor generation from re-entering after completion.
+              lastThreeFiveSevenTriggerRef.current =
+                activeNormalTerminal?.terminalGenerationId ??
+                threeFiveSevenWinTriggerId ??
+                `357-seq-${Date.now()}`;
 
               // Lock stable legs snapshot for the whole sequence.
               threeFiveSevenLegsSnapshotRef.current = threeFiveSevenCachedLegPositions;
 
-              // IMPORTANT: Clear the parent trigger (if any) so the legacy trigger-based effect cannot start a 2nd sequence later.
+              // Idempotent for descriptor-owned normal wins; retains the
+              // compatibility behavior for malformed legacy inputs.
               onThreeFiveSevenWinAnimationStarted?.();
 
-              console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
+              console.log('[357 WIN] Final-leg award complete, starting legs-to-player phase');
 
               // CRITICAL: Only set animation ID if not already set by the trigger-based effect (Path A).
               // If we overwrite it here, the delay timer's animationId check will fail and skip completion.
