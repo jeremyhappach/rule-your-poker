@@ -76,6 +76,11 @@
   at commit `d7149e0d4ab3a3409ee6fbbc3aa15cf7f1c810e2`: after the deal-settled gate,
   the first visible frame was full and the timer only descended. Preserve the
   atomic remaining/total/deadline snapshot and pre-paint transition reset.
+- Consecutive identical Holm showdowns passed production smoke on 2026-08-10
+  at commit `4eaf5b0be8c20eac4f3e33d5d3699b85f98d1588`: every hand showed its
+  canonical pot-to-winner then loser-to-pot stages. Preserve the
+  `rounds.id`/hand plus transfer-cursor phase-plan identity; never use
+  `games.current_round` as a Holm hand key.
 
 ## Sitting Out seat retention
 

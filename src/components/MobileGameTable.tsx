@@ -3618,6 +3618,10 @@ export const MobileGameTable = ({
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0, { writer: 'newGameCacheReset', reason: 'new game detected (round drop or game-type change)' });
       clearChuckyRevealOwnership('newGameCacheReset', 'new game detected (round drop or game-type change)');
+
+      // `+L` belongs solely to 3-5-7. Never carry a completed leg cue into
+      // another game surface when this shared table instance changes games.
+      setWinnerLegsFlashTrigger(null);
     }
 
     prevRoundForCacheClearRef.current = currentRound;
@@ -3647,6 +3651,7 @@ export const MobileGameTable = ({
     setApprovedHandContextId(null);
     setIsDelayingCommunityCards(false);
     setStaggeredCardCount(0);
+    setWinnerLegsFlashTrigger(null);
     lastDetectedRoundRef.current = null;
     if (communityCardsDelayRef.current) {
       clearTimeout(communityCardsDelayRef.current);
@@ -9017,7 +9022,7 @@ export const MobileGameTable = ({
 
     // Trigger "+XL" flash on winner's chipstack
     const totalLegs = threeFiveSevenCachedLegPositions.reduce((sum, p) => sum + p.legCount, 0);
-    if (threeFiveSevenWinnerId && totalLegs > 0) {
+    if (__is357GameType(gameType) && threeFiveSevenWinnerId && totalLegs > 0) {
       setWinnerLegsFlashTrigger({
         id: `legs-flash-${Date.now()}`,
         amount: totalLegs,
@@ -9108,7 +9113,7 @@ export const MobileGameTable = ({
     };
     setThreeFiveSevenWinPhase('sweep-credit');
     threeFiveSevenWinPhaseRef.current = 'sweep-credit';
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation]);
+  }, [gameType, threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId, gameId, handContextId, currentPlayer?.id, lastRoundResult, __capture357Checkpoint, build357PresentationIdentity, enterCanonical357TerminalPresentation]);
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
@@ -9976,16 +9981,18 @@ export const MobileGameTable = ({
     // The remaining disc-local flash is the non-financial +L leg cue.
     const chipDiscChildren = (
       <>
-        <ValueChangeFlash
-          value={0}
-          prefix="+L"
-          position="top-right"
-          manualTrigger={
-            winnerLegsFlashTrigger?.playerId === player.id
-              ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
-              : null
-          }
-        />
+        {__is357GameType(gameType) && (
+          <ValueChangeFlash
+            value={0}
+            prefix="+L"
+            position="top-right"
+            manualTrigger={
+              winnerLegsFlashTrigger?.playerId === player.id
+                ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
+                : null
+            }
+          />
+        )}
       </>
     );
 
@@ -10365,16 +10372,18 @@ export const MobileGameTable = ({
     const chipDiscChildren = (
       <>
         {legIndicator}
-        <ValueChangeFlash
-          value={0}
-          prefix="+L"
-          position="top-right"
-          manualTrigger={
-            winnerLegsFlashTrigger?.playerId === player.id
-              ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
-              : null
-          }
-        />
+        {__is357GameType(gameType) && (
+          <ValueChangeFlash
+            value={0}
+            prefix="+L"
+            position="top-right"
+            manualTrigger={
+              winnerLegsFlashTrigger?.playerId === player.id
+                ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
+                : null
+            }
+          />
+        )}
       </>
     );
 
@@ -14602,12 +14611,14 @@ export const MobileGameTable = ({
                     <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} round />
                   </span>
                 )}
-                <ValueChangeFlash
-                  value={0}
-                  prefix="+L"
-                  position="top-right"
-                  manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-                />
+                {__is357GameType(gameType) && (
+                  <ValueChangeFlash
+                    value={0}
+                    prefix="+L"
+                    position="top-right"
+                    manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+                  />
+                )}
               </div>
               {diceGameplayUiActive && horsesController.enabled && horsesController.isMyTurn && horsesController.gamePhase === "playing" ? (
                 <Badge variant="outline" className={isTablet ? "text-sm" : "text-xs"}>

@@ -12,7 +12,16 @@ Date: 2026-08-10
 - This is a client admission correction only. The existing `holm_settle_hand`
   transaction, its ordered immutable `pot -> winner` then `loser -> pot`
   batches, endpoint ownership, and disconnect/reconnect reconciliation are
-  unchanged. Production smoke remains the acceptance gate.
+  unchanged. Production smoke accepted the correction on 2026-08-10.
+
+## 3-5-7-only leg cue scope
+
+- The non-financial `+L` cue is now mounted and emitted only by recognized
+  3-5-7 presentation. The shared table clears that transient cue at hand and
+  game identity resets, so a prior leg event cannot surface beside a Holm,
+  Horses, SCC, or Yahtzee chipstack.
+- Canonical monetary `+$`/`-$` effects remain ledger-owned and unchanged.
+  Production smoke remains the acceptance gate.
 
 ## Canonical source-seat continuity during chip transfer
 

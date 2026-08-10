@@ -440,8 +440,7 @@ Status: Queued (P1); observed after a 3-5-7 pot win in production smoke on
 
 ### 3P. Holm can render a stale 3-5-7 `+L` leg cue beside the self chipstack
 
-Status: Queued (P1); observed in the paused `Aug 10 - Khalil Mack` Holm game
-on 2026-08-10.
+Status: In production validation (P1); corrected on 2026-08-10.
 
 - With two players staying and the self cards tabled, the self chipstack can
   display a cue such as `+L1`. Legs have no meaning in Holm and must never be
@@ -452,10 +451,15 @@ on 2026-08-10.
   be interpreted in Holm. Restrict every leg cue to its 3-5-7 presentation
   owner and clear its transient state at the canonical hand/game identity
   boundary; do not affect monetary delta labels.
+- Correction: all three shared-table `+L` render sites now mount only for a
+  recognized 3-5-7 game, its writer rejects any other game type, and the
+  transient trigger clears with hand and game cache resets. Monetary
+  `+$`/`-$` ledger labels are unchanged.
 
 ### 3Q. Consecutive identical Holm showdowns suppress canonical transfer presentation
 
-Status: In production validation (P0); corrected on 2026-08-10.
+Status: Completed; production smoke accepted on 2026-08-10 at commit
+`4eaf5b0be8c20eac4f3e33d5d3699b85f98d1588`.
 
 - The final two of three consecutive two-player showdowns settled correctly
   but showed neither required `pot -> winner` nor subsequent `loser -> pot`

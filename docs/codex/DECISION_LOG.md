@@ -310,3 +310,11 @@ delivery of the exact same settlement remains deduped.
 This key selects only a local non-financial phase plan. It does not alter
 settlement, balances, transfer batches, cursor ownership, or the established
 abandon-and-reconcile behavior on disconnect.
+
+## D-032 - A leg cue is a 3-5-7-only transient, never a balance effect
+
+`+L` is a non-financial 3-5-7 result cue and may be emitted only by the
+recognized 3-5-7 surface. The shared table must unmount it outside that scope
+and clear its trigger at canonical hand/game resets, so a stale cue cannot
+cross into Holm or any other game. This does not suppress, replace, or alter
+the ledger-owned signed monetary effects.

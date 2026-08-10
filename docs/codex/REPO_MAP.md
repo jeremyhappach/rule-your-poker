@@ -113,6 +113,8 @@ reset transient/presentation state when those identities change.
   `MobileGameTable.tsx` admits the matching staged transfer batches through
   `holmTransferPresentationStage.ts`. Do not use `games.current_round` as a
   Holm hand identity because it remains `1` across hands.
+- Non-financial leg cue: the shared `+L` `ValueChangeFlash` is a 3-5-7-only
+  child of `MobileGameTable.tsx`; it is never a Holm/pot/chip-balance effect.
 - State/actions: `src/lib/holmGameLogic.ts:startHolmRound`,
   `checkHolmRoundComplete`, `endHolmRound`, and
   `proceedToNextHolmRound`; decisions enter through
