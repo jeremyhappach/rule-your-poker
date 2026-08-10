@@ -2,6 +2,18 @@
 
 Date: 2026-08-10
 
+## Holm repeated-showdown presentation identity
+
+- The Holm showdown phase-plan latch is now keyed by the authoritative
+  `rounds.id`/hand identity and immutable transfer cursor, not
+  `games.current_round`. Holm keeps that game-level round number at `1` across
+  hands, so otherwise two identical consecutive showdowns are incorrectly
+  treated as a replay of the first.
+- This is a client admission correction only. The existing `holm_settle_hand`
+  transaction, its ordered immutable `pot -> winner` then `loser -> pot`
+  batches, endpoint ownership, and disconnect/reconnect reconciliation are
+  unchanged. Production smoke remains the acceptance gate.
+
 ## Canonical source-seat continuity during chip transfer
 
 - The source participant's canonical seat cluster now remains visible during

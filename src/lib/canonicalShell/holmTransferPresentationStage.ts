@@ -14,6 +14,32 @@ export interface HolmTransferPresentationContext {
   chuckyLossAmount: number;
 }
 
+export interface HolmShowdownPresentationIdentity {
+  dealerGameId: string | null;
+  roundId: string | null;
+  handNumber: number | null;
+  transferCursor: number | null;
+}
+
+/**
+ * A Holm dealer game contains many hands whose game-level `current_round`
+ * remains 1. Use the authoritative rounds-row identity for the phase-plan
+ * latch so identical consecutive showdowns are distinct, while the immutable
+ * transfer cursor keeps re-delivery of that exact settlement deduped.
+ */
+export function buildHolmShowdownPresentationKey({
+  dealerGameId,
+  roundId,
+  handNumber,
+  transferCursor,
+}: HolmShowdownPresentationIdentity): string {
+  return [
+    dealerGameId ?? 'no-dealer-game',
+    roundId ?? `hand-${handNumber ?? 'unknown'}`,
+    `cursor-${transferCursor ?? 'unknown'}`,
+  ].join('|');
+}
+
 function samePlayerSet(
   actual: readonly string[],
   expected: readonly string[],

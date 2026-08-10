@@ -297,3 +297,16 @@ reason to remove the identity, chip disc, score line, or game-owned content
 anchored at that player endpoint. The shared seat cluster therefore remains
 rendered through every outbound player transfer; no game may reintroduce a
 source-seat visibility suppression as a bounce workaround.
+
+## D-031 - A Holm presentation plan is identified by its immutable hand scope
+
+`games.current_round` is a rule-round number, not a Holm hand identity: it is
+normally `1` for every hand. Holm showdown duplicate suppression must therefore
+use the authoritative `rounds.id` (with the hand number as fallback) plus the
+database-published immutable transfer cursor. Consecutive equal outcomes then
+admit their own staged pot-award/replacement-pot batches, while a repeated
+delivery of the exact same settlement remains deduped.
+
+This key selects only a local non-financial phase plan. It does not alter
+settlement, balances, transfer batches, cursor ownership, or the established
+abandon-and-reconcile behavior on disconnect.

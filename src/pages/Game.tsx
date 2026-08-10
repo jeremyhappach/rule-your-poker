@@ -104,6 +104,7 @@ import {
   terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationScope,
 } from "@/lib/canonicalShell/liveTerminalPresentationHold";
+import { buildHolmShowdownPresentationKey } from "@/lib/canonicalShell/holmTransferPresentationStage";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 // 3-5-7 presentation ledger removed (temporary tracking).
@@ -7764,7 +7765,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
-    const currentRound = game?.current_round || 0;
+    const currentRoundNumber = game?.current_round || 0;
 
     // ── [ADMISSION-TRACE] effect_enter ─────────────────────────────
     // Bounded persistent trace of AUTO_PROCEED_EFFECT admission. Emits
@@ -7860,7 +7861,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setDecisionDeadline(null);
       
       // Save the game state when we start the timer
-      gameStateAtTimerStart.current = { awaiting: true, round: currentRound };
+      gameStateAtTimerStart.current = { awaiting: true, round: currentRoundNumber };
       
       // DEBUG MODE: For Holm games, don't auto-proceed if debugHolmPaused is true
       const isHolmGame = game?.game_type === 'holm-game';
@@ -7893,7 +7894,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           !!dealerGameKey && harness357PausedGameRef.current === dealerGameKey;
         if (
           harnessTargetRound !== null
-          && currentRound === harnessTargetRound
+          && currentRoundNumber === harnessTargetRound
           && transitionType357 === 'showdown'
           && !!dealerGameKey
           && !alreadyPausedThisGame
@@ -7901,7 +7902,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           harness357PausedGameRef.current = dealerGameKey;
           console.log('[357_SHOWDOWN_PAUSE_HARNESS] 🛑 Pausing AUTO_PROCEED', {
             harness: harness357,
-            round: currentRound,
+            round: currentRoundNumber,
             dealerGameKey,
             transitionType: transitionType357,
           });
@@ -7927,7 +7928,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const holmLastResult = game?.last_round_result || '';
         const holmShowdownMarker = /\|\|\|WINNER:[^|]+\|\|\|LOSERS:[^|]+\|\|\|POT:\d+\|\|\|MATCH:\d+/.test(holmLastResult);
         const dealerGameKey = game?.current_game_uuid ?? null;
-        const holmHandKey = dealerGameKey ? `${dealerGameKey}|${currentRound}` : null;
+        const holmHandKey = dealerGameKey ? `${dealerGameKey}|${currentRoundNumber}` : null;
         const alreadyPausedThisHand =
           !!holmHandKey && harnessHolmPausedHandRef.current === holmHandKey;
         if (
@@ -7939,7 +7940,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[HOLM_SHOWDOWN_FREEZE_HARNESS] 🛑 Pausing AUTO_PROCEED', {
             harness: harnessHolm,
             handKey: holmHandKey,
-            currentRound,
+            currentRound: currentRoundNumber,
           });
           return;
         }
@@ -7951,7 +7952,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       console.log('[AWAITING_NEXT_ROUND] Starting 4-second timer', {
         game_type: game?.game_type,
-        current_round: currentRound,
+        current_round: currentRoundNumber,
         pot: game?.pot,
         last_result: game?.last_round_result
       });
@@ -8120,15 +8121,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const potAmount = parseInt(holmShowdownMatch[4], 10);
           const matchAmount = parseInt(holmShowdownMatch[5], 10);
 
-          // Settlement identity: dealer game | round | winner | losers | pot | match.
-          const settlementKey = [
-            game?.current_game_uuid ?? 'no-dealer-game',
-            currentRound ?? 'no-round',
-            winnerIds.join(','),
-            loserIds.join(','),
-            potAmount,
-            matchAmount,
-          ].join('|');
+          // `games.current_round` is 1 for every Holm hand. The latch must
+          // instead follow the authoritative rounds row / hand and immutable
+          // transfer cursor so identical consecutive results are not merged.
+          const settlementKey = buildHolmShowdownPresentationKey({
+            dealerGameId: game?.current_game_uuid ?? null,
+            roundId: currentRound?.id ?? null,
+            handNumber: currentRound?.hand_number ?? null,
+            transferCursor: game?.chip_transfer_cursor ?? null,
+          });
 
           if (holmShowdownSettlementKeyRef.current === settlementKey) {
             console.log('[HOLM_SHOWDOWN_ANIMATION] Duplicate dispatch suppressed', { settlementKey });
@@ -8164,7 +8165,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         extra: {
           purpose: 'awaiting_next_round auto proceed delay',
           guard_currentAwaiting: currentAwaiting,
-          guard_currentRound: currentRound,
+          guard_currentRound: currentRoundNumber,
           guard_gameType: game?.game_type ?? null,
           guard_isPaused: game?.is_paused ?? null,
           guard_transitionType357: tType357,
@@ -8561,7 +8562,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
 
   // Clear timer when results are shown
   useEffect(() => {

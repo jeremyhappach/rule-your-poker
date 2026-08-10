@@ -455,8 +455,7 @@ on 2026-08-10.
 
 ### 3Q. Consecutive identical Holm showdowns suppress canonical transfer presentation
 
-Status: Investigating (P0); observed in the paused `Aug 10 - Khalil Mack`
-Holm game on 2026-08-10.
+Status: In production validation (P0); corrected on 2026-08-10.
 
 - The final two of three consecutive two-player showdowns settled correctly
   but showed neither required `pot -> winner` nor subsequent `loser -> pot`
@@ -467,6 +466,11 @@ Holm game on 2026-08-10.
   winner, loser, pot, and match values collide with the prior hand. Key the
   presentation plan by the authoritative round identity/hand, preserving
   duplicate suppression only for re-delivery of that exact settlement.
+- Correction: `buildHolmShowdownPresentationKey` now combines the
+  authoritative `rounds.id` (with hand fallback) and immutable transfer cursor.
+  A focused unit regression covers equal outcomes across consecutive hands and
+  repeat delivery of one exact settlement. Financial settlement and the frozen
+  session remain untouched.
 
 ### 3J. Gin iPhone screen dim regression
 

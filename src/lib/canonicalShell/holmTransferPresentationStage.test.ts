@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ChipPresentationBatch } from './ChipPresentationLedger';
-import { classifyHolmTransferPresentationStage } from './holmTransferPresentationStage';
+import {
+  buildHolmShowdownPresentationKey,
+  classifyHolmTransferPresentationStage,
+} from './holmTransferPresentationStage';
 
 const baseBatch = (overrides: Partial<ChipPresentationBatch>): ChipPresentationBatch => ({
   id: 'batch',
@@ -53,5 +56,36 @@ describe('classifyHolmTransferPresentationStage', () => {
         { id: '1', amount: 3, from: { kind: 'player', playerId: 'loser-a' }, to: { kind: 'pot' } },
       ],
     }), context)).toBeNull();
+  });
+});
+
+describe('buildHolmShowdownPresentationKey', () => {
+  it('does not collapse identical results from consecutive Holm hands', () => {
+    const firstHand = buildHolmShowdownPresentationKey({
+      dealerGameId: 'dealer-game',
+      roundId: 'round-hand-1',
+      handNumber: 1,
+      transferCursor: 11,
+    });
+    const secondHand = buildHolmShowdownPresentationKey({
+      dealerGameId: 'dealer-game',
+      roundId: 'round-hand-2',
+      handNumber: 2,
+      transferCursor: 13,
+    });
+
+    expect(secondHand).not.toBe(firstHand);
+  });
+
+  it('still dedupes repeated delivery of the exact same settlement', () => {
+    const identity = {
+      dealerGameId: 'dealer-game',
+      roundId: 'round-hand-2',
+      handNumber: 2,
+      transferCursor: 13,
+    };
+
+    expect(buildHolmShowdownPresentationKey(identity))
+      .toBe(buildHolmShowdownPresentationKey(identity));
   });
 });

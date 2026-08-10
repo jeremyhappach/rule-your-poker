@@ -108,6 +108,11 @@ reset transient/presentation state when those identities change.
   `HolmAnchoredSlot.tsx`, `HolmDealOrchestrator.tsx`,
   `HolmCanonicalCommunityRow.tsx`, `ChuckyHand.tsx`,
   `CommunityCards.tsx`, and `HolmWinPotAnimation.tsx`.
+- Showdown admission: `Game.tsx` derives one non-financial Holm phase plan per
+  authoritative `rounds.id`/hand plus immutable transfer cursor;
+  `MobileGameTable.tsx` admits the matching staged transfer batches through
+  `holmTransferPresentationStage.ts`. Do not use `games.current_round` as a
+  Holm hand identity because it remains `1` across hands.
 - State/actions: `src/lib/holmGameLogic.ts:startHolmRound`,
   `checkHolmRoundComplete`, `endHolmRound`, and
   `proceedToNextHolmRound`; decisions enter through
