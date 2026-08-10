@@ -21,7 +21,7 @@ Date: 2026-08-10
   game identity resets, so a prior leg event cannot surface beside a Holm,
   Horses, SCC, or Yahtzee chipstack.
 - Canonical monetary `+$`/`-$` effects remain ledger-owned and unchanged.
-  Production smoke remains the acceptance gate.
+  Production smoke accepted the correction on 2026-08-10.
 
 ## Canonical source-seat continuity during chip transfer
 

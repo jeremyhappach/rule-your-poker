@@ -317,4 +317,5 @@ abandon-and-reconcile behavior on disconnect.
 recognized 3-5-7 surface. The shared table must unmount it outside that scope
 and clear its trigger at canonical hand/game resets, so a stale cue cannot
 cross into Holm or any other game. This does not suppress, replace, or alter
-the ledger-owned signed monetary effects.
+the ledger-owned signed monetary effects. Production smoke accepted this
+invariant on 2026-08-10.

@@ -16,6 +16,9 @@
   flight, winner announcement, and confetti. Destination bounce remains
   deferred; unsolicited winner-card exposure is a separate queued consent bug
   (Backlog item 3H).
+- The `+L` leg cue scope passed production smoke on 2026-08-10 at commit
+  `0e6498d83c1e65faf3872a21dd344223dfc51c22`: it remains visible for real
+  3-5-7 leg wins and cannot survive into Holm or another shared-table game.
 
 ## Cribbage
 

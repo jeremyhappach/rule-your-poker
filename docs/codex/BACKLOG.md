@@ -440,7 +440,8 @@ Status: Queued (P1); observed after a 3-5-7 pot win in production smoke on
 
 ### 3P. Holm can render a stale 3-5-7 `+L` leg cue beside the self chipstack
 
-Status: In production validation (P1); corrected on 2026-08-10.
+Status: Completed; production smoke accepted on 2026-08-10 at commit
+`0e6498d83c1e65faf3872a21dd344223dfc51c22`.
 
 - With two players staying and the self cards tabled, the self chipstack can
   display a cue such as `+L1`. Legs have no meaning in Holm and must never be
