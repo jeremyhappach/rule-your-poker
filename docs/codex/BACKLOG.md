@@ -295,6 +295,28 @@ Status: Queued (P1); observed in production final-leg smoke on 2026-08-09.
   terminal settlement, the leg/pot phase, and the match-win announcement must
   never imply consent. Preserve the accepted chip-transfer ordering.
 
+### 3I. 3-5-7 second-game final-leg presentation skips the award
+
+Status: Queued (P1); observed in the `Columbia Terrace` production all-game
+smoke on 2026-08-10.
+
+- The second 3-5-7 game reached its terminal final leg but went directly to
+  the leg sweep without rendering the winning-leg award. The first-game normal
+  terminal ordering remains the reference: final-leg award, leg sweep, then
+  pot transfer, winner announcement, and confetti.
+- Trace the terminal presentation identity/reset boundary across consecutive
+  dealer games. Do not change authoritative settlement, ledger admission, or
+  add a timer as a substitute for the missing phase.
+
+### 3J. Gin iPhone screen dim regression
+
+Status: Queued (P1); observed in the `Columbia Terrace` production all-game
+smoke on 2026-08-10.
+
+- Gin dimmed the iPhone screen during play. Gin's canonical table presentation
+  must never request a dimmed surface. Trace the actual overlay/dimming owner;
+  do not apply a device-specific CSS override before finding it.
+
 ### 3G. Suppress invalid production debug-event writes
 
 Status: Queued; observed in production logs on 2026-08-09.
@@ -420,6 +442,12 @@ settlement ordering, and exactly-once endpoint ownership.
 The accepted 3-5-7 final-leg smoke on 2026-08-09 also had no destination-chip
 bounce after its otherwise correctly ordered pot flight. It is the same
 deferred presentation-only defect.
+
+The `Columbia Terrace` all-game smoke on 2026-08-10 also confirmed missing
+destination bounce for the terminal player-to-player transfers in Cribbage,
+Gin, and Yahtzee. Extend the same shared presentation owner to both pot and
+player destinations; preserve the canonical ledger's timing and balance
+ownership.
 
 ### 9. Dealer Configuration modal cleanup
 
