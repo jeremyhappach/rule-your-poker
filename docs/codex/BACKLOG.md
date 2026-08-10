@@ -204,6 +204,23 @@ Source-proven ingestion findings:
   initial-Round-1 client path, and incomplete-round re-ante repair remain the
   final residual slice rather than expanding the normal-terminal correction.
 
+### 3D. 3-5-7 rollover-ante transfer reason and instant-sweep projection
+
+Status: Queued; found in the 2026-08-10 cross-game post-Holm ante sweep.
+
+- The initial 3-5-7 Round 1 calls the canonical transfer RPC with reason
+  `ante`, but the deployed `advance_357_round` R3-to-R1 path updates player
+  chips and the pot directly. The immutable journal therefore defaults that
+  normal rollover ante to generic `transfer`.
+- The shell admits player-to-pot batches immediately in 3-5-7, so this cannot
+  reproduce Holm's delayed-terminal re-ante presentation. Horses and SCC also
+  use the explicit `ante` reason and have no equivalent admission gate.
+- Keep the correction inside the existing atomic R1 RPC: publish an explicit
+  ante stage for an ordinary R3-to-R1 rollover. Do not add only a reason label
+  to the instant-sweep branch: it presently combines ante collection and the
+  sweep in one transaction, and needs ordered ante/sweep projection with the
+  existing ledger ownership and terminal-admission proof.
+
 ### 3C. Server-authoritative dealer-setup and ante deadline enforcement
 
 Status: Queued; reported during the `Mercury` real-money smoke on 2026-08-09.
