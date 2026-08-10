@@ -295,18 +295,23 @@ Status: Queued (P1); observed in production final-leg smoke on 2026-08-09.
   terminal settlement, the leg/pot phase, and the match-win announcement must
   never imply consent. Preserve the accepted chip-transfer ordering.
 
-### 3I. 3-5-7 second-game final-leg presentation skips the award
+### 3I. 3-5-7 repeated normal final-leg presentation skips the award
 
 Status: Queued (P1); observed in the `Columbia Terrace` production all-game
 smoke on 2026-08-10.
 
-- The second 3-5-7 game reached its terminal final leg but went directly to
-  the leg sweep without rendering the winning-leg award. The first-game normal
-  terminal ordering remains the reference: final-leg award, leg sweep, then
-  pot transfer, winner announcement, and confetti.
-- Trace the terminal presentation identity/reset boundary across consecutive
-  dealer games. Do not change authoritative settlement, ledger admission, or
-  add a timer as a substitute for the missing phase.
+- A second game at `Columbia Terrace`, then the fourth consecutive 3-5-7
+  dealer game in `Mission in the Rain`, reached a normal terminal final leg
+  and went directly to the leg sweep without a reliable winning-leg award.
+  The production trace from the latter confirms both clients entered the
+  legacy fallback at the same time as the award's own completion.
+- The previous corrective build (`8c846e3d`) scoped dedupe state by dealer
+  game but left two competing owners: the award's completion and a matching
+  1.8-second fallback timer. Replace that race with one generation-scoped
+  terminal sequence: final-leg award completion, leg sweep, then pot transfer,
+  winner announcement, and confetti. Reset/cancel all local sequence state at
+  a concrete dealer-game boundary. Do not change authoritative settlement or
+  ledger admission, and do not add another timer as a substitute for a phase.
 
 ### 3J. Gin iPhone screen dim regression
 
