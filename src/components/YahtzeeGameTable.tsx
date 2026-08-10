@@ -38,7 +38,7 @@ import {
   rollYahtzeeDice, toggleYahtzeeHold,
   buildYahtzeeScoreTransition,
 } from "@/lib/yahtzeeGameLogic";
-import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
+import { getPotentialScores, getTotalScore, isYahtzee, getUpperBonusProgress, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -50,7 +50,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
 import { formatChipBalance } from "@/lib/canonicalShell/chipBalanceFormat";
-import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
+import { RotateCcw, MessageSquare, User, Clock, Check, Ban } from "lucide-react";
 import { settleYahtzeeGame } from "@/lib/yahtzeeSettleGame";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
@@ -2095,10 +2095,14 @@ export function YahtzeeGameTable({
       return undefined;
     };
 
-    const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (getEffectiveScore(c) ?? 0), 0);
+    const effectiveUpperScores = UPPER_CATEGORIES.reduce<Partial<Record<YahtzeeCategory, number>>>((scores, category) => {
+      scores[category] = getEffectiveScore(category);
+      return scores;
+    }, {});
+    const upperBonusProgress = getUpperBonusProgress(effectiveUpperScores);
+    const upperSum = upperBonusProgress.subtotal;
     const gotBonus = upperSum >= UPPER_BONUS_THRESHOLD;
-    const allUpperFilled = UPPER_CATEGORIES.every(c => getEffectiveScore(c) !== undefined);
-    const bonusFailed = allUpperFilled && !gotBonus;
+    const bonusUnachievable = !gotBonus && !upperBonusProgress.isAchievable;
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
       <div className="flex gap-1">
@@ -2176,21 +2180,43 @@ export function YahtzeeGameTable({
             "flex-1 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-md border min-w-0 min-h-[44px]",
             gotBonus
               ? "bg-green-800/60 border-green-400"
-              : bonusFailed
+              : bonusUnachievable
                 ? "bg-amber-900/50 border-red-500/70 border-2"
                 : "bg-muted/20 border-muted-foreground/40"
           )}>
             {gotBonus ? (
               <>
-                <Check className="w-3.5 h-3.5 text-green-400" />
-                <span className="font-bold text-green-400 tabular-nums text-sm leading-tight">+35</span>
+                <span className="font-bold text-amber-200 tabular-nums text-sm leading-tight">
+                  {upperSum}/{UPPER_BONUS_THRESHOLD}
+                </span>
+                <span className="flex items-center gap-0.5 font-bold text-green-400 tabular-nums text-sm leading-tight">
+                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                  +35
+                </span>
               </>
-            ) : bonusFailed ? (
-              <span className="font-bold text-red-400 tabular-nums text-sm leading-tight">0</span>
+            ) : bonusUnachievable ? (
+              <>
+                <span className="font-bold text-amber-200 tabular-nums text-sm leading-tight">
+                  {upperSum}/{UPPER_BONUS_THRESHOLD}
+                </span>
+                <Ban className="w-4 h-4 text-red-400" aria-label="Upper bonus no longer achievable" />
+              </>
             ) : (
-              <span className="font-bold text-amber-200 tabular-nums text-sm leading-tight">
-                {upperSum}/63
-              </span>
+              <>
+                <span className="font-bold text-amber-200 tabular-nums text-sm leading-tight">
+                  {upperSum}/{UPPER_BONUS_THRESHOLD}
+                </span>
+                <span className={cn(
+                  "font-bold tabular-nums text-sm leading-tight",
+                  upperBonusProgress.pace > 0
+                    ? "text-green-400"
+                    : upperBonusProgress.pace < 0
+                      ? "text-red-400"
+                      : "text-muted-foreground"
+                )}>
+                  {upperBonusProgress.pace > 0 ? `+${upperBonusProgress.pace}` : upperBonusProgress.pace}
+                </span>
+              </>
             )}
           </div>
         ))}

@@ -93,6 +93,38 @@ export function getUpperSubtotal(scorecard: YahtzeeScorecard): number {
   return UPPER_CATEGORIES.reduce((sum, cat) => sum + (scorecard.scores[cat] ?? 0), 0);
 }
 
+/**
+ * Presentation-only progress toward the upper-section bonus.
+ *
+ * Pace is measured against three of the selected face value in each filled
+ * upper category. The bonus remains attainable while the current subtotal
+ * plus five of every unfilled upper face can still reach the rule threshold.
+ */
+export function getUpperBonusProgress(scores: Partial<Record<YahtzeeCategory, number>>) {
+  let subtotal = 0;
+  let expectedSubtotal = 0;
+  let bestRemainingSubtotal = 0;
+
+  UPPER_CATEGORIES.forEach((category, index) => {
+    const faceValue = index + 1;
+    const score = scores[category];
+
+    if (score === undefined) {
+      bestRemainingSubtotal += faceValue * 5;
+      return;
+    }
+
+    subtotal += score;
+    expectedSubtotal += faceValue * 3;
+  });
+
+  return {
+    subtotal,
+    pace: subtotal - expectedSubtotal,
+    isAchievable: subtotal + bestRemainingSubtotal >= UPPER_BONUS_THRESHOLD,
+  };
+}
+
 /** Check if upper bonus is earned (>= 63 in upper section) */
 export function hasUpperBonus(scorecard: YahtzeeScorecard): boolean {
   return getUpperSubtotal(scorecard) >= UPPER_BONUS_THRESHOLD;

@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import type { YahtzeeCategory } from './yahtzeeTypes';
 import {
   calculateCategoryScore,
   isYahtzee,
   scoreCategory,
   getTotalScore,
   getUpperSubtotal,
+  getUpperBonusProgress,
   hasUpperBonus,
   getAvailableCategories,
   isScorecardComplete,
@@ -119,6 +121,60 @@ describe('getTotalScore', () => {
     card.scores.yahtzee = 50;
     card.yahtzeeBonuses = 2;
     expect(getTotalScore(card)).toBe(50 + 200);
+  });
+});
+
+describe('getUpperBonusProgress', () => {
+  it('measures pace against three of each selected upper face', () => {
+    const scores: Partial<Record<YahtzeeCategory, number>> = {
+      fives: 20,
+    };
+
+    expect(getUpperBonusProgress(scores)).toMatchObject({
+      subtotal: 20,
+      pace: 5,
+      isAchievable: true,
+    });
+
+    scores.threes = 6;
+    expect(getUpperBonusProgress(scores)).toMatchObject({
+      subtotal: 26,
+      pace: 2,
+      isAchievable: true,
+    });
+
+    scores.ones = 0;
+    expect(getUpperBonusProgress(scores)).toMatchObject({
+      subtotal: 26,
+      pace: -1,
+      isAchievable: true,
+    });
+  });
+
+  it('marks the bonus unachievable as soon as the remaining upper faces cannot reach 63', () => {
+    expect(getUpperBonusProgress({
+      twos: 4,
+      threes: 9,
+      fours: 12,
+      fives: 15,
+      sixes: 18,
+    })).toMatchObject({
+      subtotal: 58,
+      pace: -2,
+      isAchievable: true,
+    });
+
+    expect(getUpperBonusProgress({
+      twos: 3,
+      threes: 9,
+      fours: 12,
+      fives: 15,
+      sixes: 18,
+    })).toMatchObject({
+      subtotal: 57,
+      pace: -3,
+      isAchievable: false,
+    });
   });
 });
 
