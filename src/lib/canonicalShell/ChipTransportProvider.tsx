@@ -19,6 +19,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -32,6 +33,7 @@ import {
   useChipPresentationLedger,
   type ChipPresentationAdmission,
   type ChipPresentationBatch,
+  type ChipPresentationBalanceDelta,
   type ChipPresentationBatchSettled,
   type LedgerDispatchOptions,
 } from './ChipPresentationLedger';
@@ -57,6 +59,9 @@ export interface DispatchManyOptions {
   onSettled?: (intentId: string) => void;
 }
 
+/** Visible lifetime of one shell-owned signed chip delta label. */
+export const CHIP_BALANCE_DELTA_DURATION_MS = 2000;
+
 interface ChipTransportContextValue {
   dispatch: (intent: ChipTransportIntent, opts?: DispatchOptions) => boolean;
   dispatchMany: (intents: ChipTransportIntent[], opts?: DispatchManyOptions) => number;
@@ -79,6 +84,8 @@ interface ChipTransportContextValue {
   presentationPlayerBalance: (playerId: string | null | undefined, fallback: number) => number;
   /** Sole presentation owner for the pot endpoint while its batch is active. */
   presentationPotBalance: (fallback: number) => number;
+  /** Shell-owned delta effects emitted at immutable ledger boundaries. */
+  __presentationBalanceDeltas: ChipPresentationBalanceDelta[];
   /** Runtime registration for a game presentation prerequisite. */
   __setPresentationAdmission: (
     admission: ChipPresentationAdmission | null,
@@ -116,6 +123,45 @@ export function ChipTransportProvider({
   // departure/arrival boundaries; ordinary game callers continue to use only
   // onSettled through the public dispatch API.
   const callbacksRef = useRef<Map<string, DispatchOptions>>(new Map());
+  const [presentationBalanceDeltas, setPresentationBalanceDeltas] = useState<ChipPresentationBalanceDelta[]>([]);
+  const seenPresentationBalanceDeltaIdsRef = useRef(new Set<string>());
+  const presentationBalanceDeltaTimersRef = useRef(new Map<string, { batchId: string; timer: number }>());
+
+  const publishPresentationBalanceDelta = useCallback((delta: ChipPresentationBalanceDelta) => {
+    if (seenPresentationBalanceDeltaIdsRef.current.has(delta.id)) return;
+    seenPresentationBalanceDeltaIdsRef.current.add(delta.id);
+    setPresentationBalanceDeltas((previous) => [...previous, delta]);
+    const timer = window.setTimeout(() => {
+      presentationBalanceDeltaTimersRef.current.delete(delta.id);
+      setPresentationBalanceDeltas((previous) => previous.filter((entry) => entry.id !== delta.id));
+    }, CHIP_BALANCE_DELTA_DURATION_MS);
+    presentationBalanceDeltaTimersRef.current.set(delta.id, { batchId: delta.batchId, timer });
+  }, []);
+
+  const abandonPresentationBalanceDeltas = useCallback((batchId: string) => {
+    for (const [id, entry] of presentationBalanceDeltaTimersRef.current) {
+      if (entry.batchId !== batchId) continue;
+      window.clearTimeout(entry.timer);
+      presentationBalanceDeltaTimersRef.current.delete(id);
+    }
+    setPresentationBalanceDeltas((previous) => previous.filter((entry) => entry.batchId !== batchId));
+  }, []);
+
+  useEffect(() => {
+    for (const entry of presentationBalanceDeltaTimersRef.current.values()) {
+      window.clearTimeout(entry.timer);
+    }
+    presentationBalanceDeltaTimersRef.current.clear();
+    seenPresentationBalanceDeltaIdsRef.current.clear();
+    setPresentationBalanceDeltas([]);
+  }, [gameId]);
+
+  useEffect(() => () => {
+    for (const entry of presentationBalanceDeltaTimersRef.current.values()) {
+      window.clearTimeout(entry.timer);
+    }
+    presentationBalanceDeltaTimersRef.current.clear();
+  }, []);
 
   const acceptOne = useCallback(
     (intent: ChipTransportIntent, opts?: DispatchOptions): boolean => {
@@ -276,6 +322,8 @@ export function ChipTransportProvider({
     canStartPresentationBatch,
     presentationAdmissionVersion,
     onPresentationBatchSettled,
+    publishPresentationBalanceDelta,
+    abandonPresentationBalanceDeltas,
   );
 
   const value = useMemo<ChipTransportContextValue>(
@@ -290,11 +338,12 @@ export function ChipTransportProvider({
       __cancel: cancel,
       presentationPlayerBalance: presentationLedger.playerBalance,
       presentationPotBalance: presentationLedger.potBalance,
+      __presentationBalanceDeltas: presentationBalanceDeltas,
       __setPresentationAdmission: setPresentationAdmission,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, activeIntents, markSettled, markDeparted, markArrived, markDropped, cancel, presentationLedger, setPresentationAdmission, gameId, gameType],
+    [dispatch, dispatchMany, activeIntents, markSettled, markDeparted, markArrived, markDropped, cancel, presentationLedger, presentationBalanceDeltas, setPresentationAdmission, gameId, gameType],
   );
 
   return (
@@ -339,6 +388,12 @@ export function usePresentationPlayerChipBalance(
 export function usePresentationPotChipBalance(rawBalance: number): number {
   const ctx = useContext(ChipTransportContext);
   return ctx?.presentationPotBalance(rawBalance) ?? rawBalance;
+}
+
+/** Internal shell effect stream. Gameplay components never author events. */
+export function useChipPresentationBalanceDeltas(): ChipPresentationBalanceDelta[] {
+  const ctx = useContext(ChipTransportContext);
+  return ctx?.__presentationBalanceDeltas ?? [];
 }
 
 /**

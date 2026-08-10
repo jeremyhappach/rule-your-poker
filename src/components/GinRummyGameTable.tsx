@@ -3521,7 +3521,7 @@ export const GinRummyGameTable = ({
               <p className="font-semibold text-sm text-foreground">
                 {currentPlayer.profiles?.username || 'You'}
               </p>
-              <span className="font-bold text-lg text-poker-gold">
+              <span data-chip-delta-anchor={`player:${currentPlayer.id}`} className="font-bold text-lg text-poker-gold">
                 <PresentationChipBalance playerId={currentPlayer.id} rawBalance={currentPlayer.chips} />
               </span>
             </div>

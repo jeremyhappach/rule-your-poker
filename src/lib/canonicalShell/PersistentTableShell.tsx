@@ -33,6 +33,7 @@ import { recordShellEvent } from './diagnostics';
 import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { ChipPresentationDeltaRuntime } from './ChipPresentationDeltaRuntime';
 import { CardTransportProvider } from './cardTransport/CardTransportProvider';
 import { CardTransportRuntime } from './cardTransport/CardTransportRuntime';
 import { ShellOverlayLayers, ShellOverlayMountsProvider } from './ShellOverlayMounts';
@@ -436,6 +437,10 @@ export function PersistentTableShell({
         }}
       />
       <ChipTransportRuntime
+        containerRef={shellRootRef}
+        overlayRootRef={overlayRootRef}
+      />
+      <ChipPresentationDeltaRuntime
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />

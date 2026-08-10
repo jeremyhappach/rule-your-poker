@@ -2,6 +2,22 @@
 
 Date: 2026-08-10
 
+## Canonical signed chip-balance effects
+
+- The shell ledger now emits the red/gold `-$ / +$` label from the exact same
+  departure, arrival, and zero-flight settlement boundaries that mutate its
+  presentation-owned balance. The source label/decrement occurs once when the
+  chip leaves; the destination label/increment occurs once when it lands.
+- These effects are deduped by immutable batch/transfer/boundary identity,
+  compose from database-captured opening/closing values, and never infer a
+  financial change from raw realtime rows. Multi-player antes hold the pot
+  until the final chip lands, then emit one combined pot increment and label.
+- Legacy per-game dollar `ValueChangeFlash` producers have been removed. The
+  one remaining `+L` cue is explicitly non-financial. On a dropped endpoint,
+  disconnect, or unmount, any in-flight labels for that batch are discarded
+  with the transport and the display reconciles directly to authoritative
+  state. Production smoke remains the acceptance gate.
+
 ## 3-5-7 normal final-leg reserve-return projection
 
 - Migration `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql`

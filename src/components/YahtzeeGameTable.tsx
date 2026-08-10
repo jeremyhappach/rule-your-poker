@@ -26,7 +26,6 @@ import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentatio
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
-import { ValueChangeFlash } from "./ValueChangeFlash";
 import { YahtzeeRollOverlay, UpperBonusOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
@@ -2679,7 +2678,7 @@ export function YahtzeeGameTable({
                 {myPlayer.profiles?.username || 'You'}
                 <span className="ml-1 text-green-500">(active)</span>
               </p>
-              <span className={cn(
+              <span data-chip-delta-anchor={`player:${myPlayer.id}`} className={cn(
                 "font-bold text-lg tabular-nums",
                 myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
               )}>

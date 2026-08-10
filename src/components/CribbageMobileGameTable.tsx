@@ -9073,7 +9073,7 @@ export const CribbageMobileGameTable = ({
               <p className="text-sm font-semibold text-foreground truncate">
                 {currentPlayer.profiles?.username || 'You'}
               </p>
-              <span className={cn(
+              <span data-chip-delta-anchor={`player:${currentPlayer.id}`} className={cn(
                 "font-bold text-lg tabular-nums",
                 currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
               )}>

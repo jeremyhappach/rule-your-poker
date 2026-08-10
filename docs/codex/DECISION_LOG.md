@@ -243,3 +243,18 @@ The canonical ledger owns every touched endpoint across the entire chain.
 Later raw rows carry the final cursor and are held until their predecessor and
 the final reconciliation complete. Game code may admit the next non-financial
 phase but may never synthesize a balance change or release the endpoint.
+
+## D-027 - Signed balance labels are ledger lifecycle effects
+
+A red/gold chip-balance label is not an independent game effect and may not be
+derived from a raw player or pot row. The canonical presentation ledger emits
+one signed label at the same boundary where it changes an endpoint: negative
+at a source departure, positive at a destination arrival, and an authoritative
+residual only where an immutable batch has a zero-flight change.
+
+Labels use stable batch/transfer/boundary identities, so duplicates, remounts,
+and late rows cannot replay them. Multi-sender antes compose into one pot
+arrival label after all inbound chips land. When a batch is abandoned, its
+labels are cleared with its motion; reconnect reconciles directly to the
+database and never replays a settled financial effect. Game components provide
+only visible endpoint anchors, not their own dollar-label writers.

@@ -78,7 +78,7 @@ inspected.
 | Geometry | `ResponsiveGeometryProvider.tsx`, `canonicalShellLayoutConfig.ts`, `canonicalSlotPlacement.ts`, `src/lib/wave4LayoutResolver/`, and game providers in `src/lib/wave5GameplayGeometry/`. |
 | Announcements and celebration | `announcements/CanonicalAnnouncementProvider.tsx`, `CanonicalAnnouncementLayer.tsx`, `CanonicalCelebrationLayer.tsx`, `SessionLifecycleAnnouncer.tsx`, and `renderers.tsx`. |
 | Overlay ownership | `ShellOverlayMounts.tsx` exposes the canonical `slot`, `settlement`, and `transient` layers. |
-| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, `ChipPresentationLedger.ts`, and `chipEndpoints.ts`. The provider owns financial departure/arrival/reconcile display; game-specific animation components retain phase callbacks only. |
+| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, `ChipPresentationLedger.ts`, `ChipPresentationDeltaRuntime.tsx`, and `chipEndpoints.ts`. The provider owns financial departure/arrival/reconcile display and its signed delta-effect stream; game-specific animation components retain phase callbacks only. |
 | Card transport/deal | `cardTransport/CardTransportProvider.tsx`, `CardTransportRuntime.tsx`, `DealRuntime.tsx`, and `cardEndpoints.ts`. |
 | Settlement presentation | `settlement/SettlementProvider.tsx`, `SettlementRuntime.tsx`, and `settlement/types.ts`. These are presentation owners, not financial authority. |
 | Active hand | Shared `src/components/activeHand/ActiveHandFan.tsx` and `MeasuredActiveHandFan.tsx`; Holm also retains a separate local-hand route in `MobileGameTable.tsx`. |

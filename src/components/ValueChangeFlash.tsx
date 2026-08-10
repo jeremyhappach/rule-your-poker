@@ -59,7 +59,8 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
   // Auto-detect mode (when not using manual trigger)
   useEffect(() => {
     // CRITICAL: Skip if we're in manual trigger mode (prop was provided, even if null)
-    // This prevents auto-detecting pot changes during reante when anteFlashTrigger is null
+    // This prevents auto-detecting a raw parent update after a caller chose
+    // manual mode for a separate non-financial cue.
     if (isManualModeRef.current) {
       prevValueRef.current = value;
       return;

@@ -2640,9 +2640,8 @@ export const MobileGameTable = ({
 
 
   
-  // Flash triggers for winner's chipstack when receiving legs/pot
+  // Flash trigger for non-financial 3-5-7 leg presentation.
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
-  const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   
   // Chip stack emoticon hook - manages realtime emoticon overlays
   // (hook is initialized below after currentPlayer is defined)
@@ -3221,10 +3220,6 @@ export const MobileGameTable = ({
       setCachedCurrentPlayerLegs(currentPlayerData.legs);
     }
   }, [players, currentUserId]);
-  
-  // Manual trigger for value flash when ante arrives at pot
-  const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
-  
   
   // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Use external cache for community cards if provided (to persist across remounts during win animation)
@@ -9206,15 +9201,6 @@ export const MobileGameTable = ({
       normalPresentation.stage = 'complete';
     }
 
-    // Trigger "+$X" flash on winner's chipstack
-    if (threeFiveSevenWinnerId && threeFiveSevenWinPotAmount > 0) {
-      setWinnerPotFlashTrigger({
-        id: `pot-flash-${Date.now()}`,
-        amount: threeFiveSevenWinPotAmount,
-        playerId: threeFiveSevenWinnerId
-      });
-    }
-
     // Winner-only confetti was armed in the SAME commit as the pot
     // trigger inside enterCanonical357TerminalPresentation — matching
     // the canonical Holm/Cribbage shape. It does not fire here.
@@ -9746,18 +9732,7 @@ export const MobileGameTable = ({
                 </div>
               ) : undefined
             }
-          >
-            <ValueChangeFlash
-              value={0}
-              prefix="+$"
-              position="top-left"
-              manualTrigger={
-                winnerPotFlashTrigger?.playerId === player.id
-                  ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
-                  : null
-              }
-            />
-          </CanonicalChipDisc>
+          />
         </CanonicalChipstack>
       </div>
     );
@@ -9984,7 +9959,7 @@ export const MobileGameTable = ({
       />
     );
 
-    // ValueChangeFlash siblings rendered INSIDE the canonical disc.
+    // The remaining disc-local flash is the non-financial +L leg cue.
     const chipDiscChildren = (
       <>
         <ValueChangeFlash
@@ -9994,16 +9969,6 @@ export const MobileGameTable = ({
           manualTrigger={
             winnerLegsFlashTrigger?.playerId === player.id
               ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
-              : null
-          }
-        />
-        <ValueChangeFlash
-          value={0}
-          prefix="+$"
-          position="top-left"
-          manualTrigger={
-            winnerPotFlashTrigger?.playerId === player.id
-              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
               : null
           }
         />
@@ -10396,16 +10361,6 @@ export const MobileGameTable = ({
               : null
           }
         />
-        <ValueChangeFlash
-          value={0}
-          prefix="+$"
-          position="top-left"
-          manualTrigger={
-            winnerPotFlashTrigger?.playerId === player.id
-              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
-              : null
-          }
-        />
       </>
     );
 
@@ -10599,19 +10554,7 @@ export const MobileGameTable = ({
     const showAutoRollIndicator = player.auto_fold && !player.is_bot;
     const isRightSideSlot = slot >= 3;
     const chipDiscChildren = (
-      <>
-        {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
-        <ValueChangeFlash
-          value={0}
-          prefix="+$"
-          position="top-left"
-          manualTrigger={
-            winnerPotFlashTrigger?.playerId === player.id
-              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
-              : null
-          }
-        />
-      </>
+      showAutoRollIndicator ? <AutoRollIndicator isRightSide={isRightSideSlot} /> : null
     );
 
     const emoticon = emoticonOverlays[player.id];
@@ -10764,19 +10707,7 @@ export const MobileGameTable = ({
     const showAutoRollIndicator = player.auto_fold && !player.is_bot;
     const isRightSideSlot = slot >= 3;
     const chipDiscChildren = (
-      <>
-        {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
-        <ValueChangeFlash
-          value={0}
-          prefix="+$"
-          position="top-left"
-          manualTrigger={
-            winnerPotFlashTrigger?.playerId === player.id
-              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
-              : null
-          }
-        />
-      </>
+      showAutoRollIndicator ? <AutoRollIndicator isRightSide={isRightSideSlot} /> : null
     );
 
     const emoticon = emoticonOverlays[player.id];
@@ -11372,7 +11303,6 @@ export const MobileGameTable = ({
             // Keep locked values active - the useEffect watching players will clear
             // them automatically when backend values match expected values
             isAnteAnimatingRef.current = false;
-            setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: lockedTotalAmount });
             // NOTE: lockedChipsRef is NOT cleared here - it's cleared by useEffect when backend syncs
           }}
         />
@@ -11459,9 +11389,6 @@ export const MobileGameTable = ({
             console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
             // Chips arrived at pot - clear override so actual (post-loss) values show
             setDisplayedChips({});
-            // Trigger pot flash
-            const totalLoss = chuckyLossAmount * chuckyLossPlayerIds.length;
-            setAnteFlashTrigger({ id: `chucky-loss-${Date.now()}`, amount: totalLoss });
             onChuckyLossEnded?.();
           }}
         />
@@ -11478,8 +11405,6 @@ export const MobileGameTable = ({
             gameType={gameType}
             presentationOwned
             onAnimationStart={() => {
-              // Pot goes to 0 visually, show -$X flash
-              setAnteFlashTrigger({ id: `showdown-pot-out-${Date.now()}`, amount: -holmShowdownPotAmount });
               onHolmShowdownPotToWinnerStarted?.();
             }}
             onAnimationEnd={() => {
@@ -11657,10 +11582,6 @@ export const MobileGameTable = ({
               }
               console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
               setDisplayedChips({});
-              // Trigger pot flash with NET change (losers paid - winner took)
-              // Since winner already took pot, new pot = losers' match total
-              const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
-              setAnteFlashTrigger({ id: `showdown-losers-in-${Date.now()}`, amount: totalLoserPay });
               onHolmShowdownLosersEnded?.();
             }}
           />
@@ -11935,10 +11856,6 @@ export const MobileGameTable = ({
               containerRef={tableContainerRef}
               gameType={gameType}
               presentationOwned
-              onAnimationStart={() => {
-                // Pot goes to 0 visually
-                setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
-              }}
               onAnimationEnd={() => {
                 handlePotToPlayerComplete357();
               }}
@@ -12001,7 +11918,8 @@ export const MobileGameTable = ({
         })()}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
+        {/* Keep the pot mounted while hidden so its canonical transport anchor
+            survives the terminal sequence. */}
         {(() => {
           const shouldHidePot = !!(sessionEndedPhase || isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
@@ -12057,12 +11975,6 @@ export const MobileGameTable = ({
                   return (
                     <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
                       <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
-                      <ValueChangeFlash
-                        value={presentationPot}
-                        position="top-right"
-                        disabled={shouldHidePot}
-                        manualTrigger={anteFlashTrigger}
-                      />
                     </CanonicalPotZone>
                   );
                 }
@@ -12087,12 +11999,6 @@ export const MobileGameTable = ({
                           ? (isTablet ? 'text-xl' : 'text-base')
                           : (isTablet ? 'text-4xl' : 'text-3xl')
                     )}>{potValueText}</span>
-                    <ValueChangeFlash
-                      value={presentationPot}
-                      position="top-right"
-                      disabled={shouldHidePot}
-                      manualTrigger={anteFlashTrigger}
-                    />
                   </div>
                 );
               })()}
@@ -13725,7 +13631,7 @@ export const MobileGameTable = ({
                   <p className="text-sm font-semibold text-foreground truncate">
                     {currentPlayer.profiles?.username || 'You'}
                   </p>
-                  <span className={cn(
+                  <span data-chip-delta-anchor={`player:${currentPlayer.id}`} className={cn(
                     "font-bold text-lg tabular-nums",
                     currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
                   )}>
@@ -13851,7 +13757,6 @@ export const MobileGameTable = ({
                     isEmoticonSending={isEmoticonSending}
                     emoticonOverlays={emoticonOverlays}
                     winnerLegsFlashTrigger={winnerLegsFlashTrigger}
-                    winnerPotFlashTrigger={winnerPotFlashTrigger}
                     onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
                     pendingAutoRollOff={pendingAutoRollOff}
                   />
@@ -14686,7 +14591,7 @@ export const MobileGameTable = ({
                 <p className="text-sm font-semibold text-foreground truncate">
                   {currentPlayer.profiles?.username || 'You'}
                 </p>
-                <span className={cn(
+                <span data-chip-delta-anchor={`player:${currentPlayer.id}`} className={cn(
                   "font-bold text-lg tabular-nums",
                   (currentPlayer.chips ?? 0) < 0 ? 'text-destructive' : 'text-poker-gold'
                 )}>
@@ -14726,7 +14631,7 @@ export const MobileGameTable = ({
                   <span className="ml-1 text-green-500">(active)</span>
                 )}
               </p>
-              <div className="relative pr-6">
+              <div data-chip-delta-anchor={`player:${currentPlayer.id}`} className="relative pr-6">
                 {emoticonOverlays[currentPlayer.id] ? (
                   <span
                     className={cn(
@@ -14760,12 +14665,6 @@ export const MobileGameTable = ({
                   prefix="+L"
                   position="top-right"
                   manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-                />
-                <ValueChangeFlash
-                  value={0}
-                  prefix="+$"
-                  position="top-left"
-                  manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
                 />
               </div>
               {diceGameplayUiActive && horsesController.enabled && horsesController.isMyTurn && horsesController.gamePhase === "playing" ? (

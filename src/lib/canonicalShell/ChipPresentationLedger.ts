@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChipEndpointRef, ChipTransportIntent } from './GameplaySlotContract';
 
-type EndpointKey = 'pot' | `player:${string}`;
+export type ChipPresentationEndpointKey = 'pot' | `player:${string}`;
+type EndpointKey = ChipPresentationEndpointKey;
 
 export interface ChipPresentationEndpoint {
   kind: 'pot' | 'player';
@@ -32,8 +33,9 @@ export interface ChipPresentationBatch {
   cursor: number;
   reason: ChipTransportIntent['reason'];
   transfers: ChipPresentationTransfer[];
-  opening_balances: Record<EndpointKey, number>;
-  closing_balances: Record<EndpointKey, number>;
+  /** Sparse: a batch includes only the endpoints it actually touches. */
+  opening_balances: Partial<Record<EndpointKey, number>>;
+  closing_balances: Partial<Record<EndpointKey, number>>;
 }
 
 /**
@@ -50,6 +52,32 @@ export type ChipPresentationAdmission = (batch: ChipPresentationBatch) => boolea
  * an abandoned endpoint or a reconnect baseline.
  */
 export type ChipPresentationBatchSettled = (batch: ChipPresentationBatch) => void;
+
+/**
+ * A visible endpoint mutation emitted by the same ledger boundary that updates
+ * its displayed balance. This is presentation-only: the immutable batch
+ * remains the financial source of truth.
+ */
+export interface ChipPresentationBalanceDelta {
+  /** Stable across remounts: batch + transfer/residual + endpoint boundary. */
+  id: string;
+  batchId: string;
+  cursor: number;
+  endpoint: ChipPresentationEndpoint;
+  /** Resolved canonical seat for a player endpoint, when still present. */
+  position?: number;
+  /** Signed visible change: negative on departure, positive on arrival. */
+  amount: number;
+  boundary: 'departed' | 'arrived' | 'settled';
+  reason: ChipTransportIntent['reason'];
+}
+
+export type ChipPresentationBalanceDeltaHandler = (
+  delta: ChipPresentationBalanceDelta,
+) => void;
+
+/** Clears transient labels when a batch loses presentation ownership. */
+export type ChipPresentationBalanceDeltaAbandonHandler = (batchId: string) => void;
 
 interface PlayerSnapshot {
   chips: number;
@@ -93,6 +121,37 @@ function endpointRef(endpoint: ChipPresentationEndpoint, players: Map<string, Pl
   return player ? { kind: 'seat', position: player.position } : null;
 }
 
+function endpointFromKey(key: EndpointKey): ChipPresentationEndpoint {
+  if (key === 'pot') return { kind: 'pot' };
+  return { kind: 'player', playerId: key.slice('player:'.length) };
+}
+
+/** Net amount carried by immutable flights for one endpoint in this batch. */
+export function transferDeltaForEndpoint(batch: ChipPresentationBatch, key: EndpointKey): number {
+  return batch.transfers.reduce((sum, transfer) => {
+    const fromKey = endpointKey(transfer.from);
+    const toKey = endpointKey(transfer.to);
+    return sum + (toKey === key ? transfer.amount : 0) - (fromKey === key ? transfer.amount : 0);
+  }, 0);
+}
+
+/**
+ * Change not represented by a rendered flight. This is intentionally derived
+ * from the authoritative opening/closing pair, never from unmatched_deltas.
+ */
+export function residualDeltaForEndpoint(batch: ChipPresentationBatch, key: EndpointKey): number {
+  return (batch.closing_balances[key] ?? 0)
+    - (batch.opening_balances[key] ?? 0)
+    - transferDeltaForEndpoint(batch, key);
+}
+
+/** Antes are one simultaneous pot receipt even when many chips fly in. */
+export function aggregatesAntePotArrival(batch: ChipPresentationBatch, key: EndpointKey): boolean {
+  return batch.reason === 'ante'
+    && key === 'pot'
+    && batch.transfers.filter((transfer) => endpointKey(transfer.to) === key).length > 1;
+}
+
 function asNumber(value: unknown): number | null {
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : null;
@@ -105,9 +164,9 @@ function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch |
   const cursor = asNumber(row.cursor);
   if (cursor == null) return null;
 
-  const values = (candidate: unknown): Record<EndpointKey, number> => {
+  const values = (candidate: unknown): Partial<Record<EndpointKey, number>> => {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return {};
-    return Object.entries(candidate as Record<string, unknown>).reduce<Record<EndpointKey, number>>((acc, [key, raw]) => {
+    return Object.entries(candidate as Record<string, unknown>).reduce<Partial<Record<EndpointKey, number>>>((acc, [key, raw]) => {
       const balance = asNumber(raw);
       if ((key === 'pot' || key.startsWith('player:')) && balance != null) {
         acc[key as EndpointKey] = balance;
@@ -159,6 +218,8 @@ export function useChipPresentationLedger(
   canStartBatch: ChipPresentationAdmission = () => true,
   admissionVersion = 0,
   onBatchSettled: ChipPresentationBatchSettled = () => {},
+  onBalanceDelta: ChipPresentationBalanceDeltaHandler = () => {},
+  onBalanceDeltasAbandoned: ChipPresentationBalanceDeltaAbandonHandler = () => {},
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
   const playersRef = useRef(new Map<string, PlayerSnapshot>());
@@ -176,6 +237,18 @@ export function useChipPresentationLedger(
   canStartBatchRef.current = canStartBatch;
   const onBatchSettledRef = useRef(onBatchSettled);
   onBatchSettledRef.current = onBatchSettled;
+  const onBalanceDeltaRef = useRef(onBalanceDelta);
+  onBalanceDeltaRef.current = onBalanceDelta;
+  const onBalanceDeltasAbandonedRef = useRef(onBalanceDeltasAbandoned);
+  onBalanceDeltasAbandonedRef.current = onBalanceDeltasAbandoned;
+  const emittedBalanceDeltaIdsRef = useRef(new Set<string>());
+
+  const emitBalanceDelta = useCallback((delta: ChipPresentationBalanceDelta) => {
+    if (!Number.isFinite(delta.amount) || delta.amount === 0) return;
+    if (emittedBalanceDeltaIdsRef.current.has(delta.id)) return;
+    emittedBalanceDeltaIdsRef.current.add(delta.id);
+    onBalanceDeltaRef.current(delta);
+  }, []);
 
   const writeVisible = useCallback((updates: Iterable<[EndpointKey, number]>) => {
     setVisibleBalances((previous) => {
@@ -237,6 +310,24 @@ export function useChipPresentationLedger(
     const { batch } = running;
     for (const key of Object.keys(batch.closing_balances) as EndpointKey[]) {
       writeVisible([[key, batch.closing_balances[key]]]);
+      // Transfers already emitted their departure/arrival deltas. Only publish
+      // the authoritative residual here (for example a zero-flight 3-5-7
+      // leg-reserve credit), never the table's broad `unmatched_deltas` map.
+      const residual = residualDeltaForEndpoint(batch, key);
+      if (residual !== 0) {
+        const endpoint = endpointFromKey(key);
+        const ref = endpointRef(endpoint, playersRef.current);
+        emitBalanceDelta({
+          id: `${batch.id}:settled:${key}`,
+          batchId: batch.id,
+          cursor: batch.cursor,
+          endpoint,
+          position: ref?.kind === 'seat' ? ref.position : undefined,
+          amount: residual,
+          boundary: 'settled',
+          reason: batch.reason,
+        });
+      }
     }
     runningRef.current.delete(batchId);
     for (const key of Object.keys(batch.opening_balances) as EndpointKey[]) {
@@ -263,7 +354,7 @@ export function useChipPresentationLedger(
       .catch(() => {
         startQueuedRef.current();
       });
-  }, [refetchAuthoritative, writeVisible]);
+  }, [emitBalanceDelta, refetchAuthoritative, writeVisible]);
 
   const startQueued = useCallback(() => {
     if (disposedRef.current) return;
@@ -349,6 +440,16 @@ export function useChipPresentationLedger(
                 .filter((candidate) => endpointKey(candidate.to) === fromKey && active.arrived.has(candidate.id))
                 .reduce((sum, candidate) => sum + candidate.amount, 0);
               writeVisible([[fromKey, opening - departed + arrived]]);
+              emitBalanceDelta({
+                id: `${batch.id}:${entry.id}:departed:${fromKey}`,
+                batchId: batch.id,
+                cursor: batch.cursor,
+                endpoint: entry.from,
+                position: from.kind === 'seat' ? from.position : undefined,
+                amount: -entry.amount,
+                boundary: 'departed',
+                reason: batch.reason,
+              });
             },
             onArrived: () => {
               const active = runningRef.current.get(batch.id);
@@ -361,7 +462,34 @@ export function useChipPresentationLedger(
               const arrived = batch.transfers
                 .filter((candidate) => endpointKey(candidate.to) === toKey && active.arrived.has(candidate.id))
                 .reduce((sum, candidate) => sum + candidate.amount, 0);
+              // Antes arrive as a simultaneous set. Keep the pot at its
+              // opening value until every incoming ante lands, then make one
+              // composed balance change and one +$total label.
+              const inboundToEndpoint = batch.transfers.filter(
+                (candidate) => endpointKey(candidate.to) === toKey,
+              );
+              const aggregateAntePotArrival = aggregatesAntePotArrival(batch, toKey);
+              if (
+                aggregateAntePotArrival &&
+                !inboundToEndpoint.every((candidate) => active.arrived.has(candidate.id))
+              ) {
+                return;
+              }
               writeVisible([[toKey, opening - departed + arrived]]);
+              emitBalanceDelta({
+                id: aggregateAntePotArrival
+                  ? `${batch.id}:arrived:${toKey}:aggregate`
+                  : `${batch.id}:${entry.id}:arrived:${toKey}`,
+                batchId: batch.id,
+                cursor: batch.cursor,
+                endpoint: entry.to,
+                position: to.kind === 'seat' ? to.position : undefined,
+                amount: aggregateAntePotArrival
+                  ? inboundToEndpoint.reduce((sum, candidate) => sum + candidate.amount, 0)
+                  : entry.amount,
+                boundary: 'arrived',
+                reason: batch.reason,
+              });
             },
             onSettled: () => {
               const active = runningRef.current.get(batch.id);
@@ -408,6 +536,7 @@ export function useChipPresentationLedger(
     const running = runningRef.current.get(batchId);
     if (!running || running.cancelled) return;
     running.cancelled = true;
+    onBalanceDeltasAbandonedRef.current(batchId);
     for (const entry of running.batch.transfers) transport.cancel(entry.id);
     runningRef.current.delete(batchId);
     for (const key of Object.keys(running.batch.opening_balances) as EndpointKey[]) {
@@ -450,6 +579,7 @@ export function useChipPresentationLedger(
     if (!gameId) return;
     disposedRef.current = false;
     hydratedRef.current = false;
+    emittedBalanceDeltaIdsRef.current.clear();
     const client = supabase as any;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -469,6 +599,7 @@ export function useChipPresentationLedger(
       // reconciliation.  No settlement effect is replayed after recovery.
       for (const running of runningRef.current.values()) {
         running.cancelled = true;
+        onBalanceDeltasAbandonedRef.current(running.batch.id);
         for (const entry of running.batch.transfers) transport.cancel(entry.id);
       }
       runningRef.current.clear();

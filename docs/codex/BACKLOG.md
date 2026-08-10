@@ -338,6 +338,24 @@ correction in production on 2026-08-10.
   ownership across both stages and release only after the final authoritative
   cursor has reconciled.
 
+### 3L. Canonical signed chip-balance delta labels
+
+Status: In validation (P1); approved cross-game shell migration on 2026-08-10.
+
+- Every immutable player-to-player, player-to-pot, and pot-to-player transfer
+  must show one red negative label and decrement when its chip visibly leaves,
+  then one gold positive label and increment when its chip visibly arrives.
+  The same applies to the active-player pane and opponent seat stacks.
+- The shell ledger now owns the label stream. It derives residual, zero-flight
+  changes strictly as `closing - opening - immutable-flight-net`, so the 3-5-7
+  final-leg debit, sweep credit, and pot award remain three distinct composed
+  changes rather than a doubled net snapshot. Multi-player antes produce one
+  combined pot increment only after every inbound chip lands.
+- Legacy game-specific money flashes are removed. Stable ledger identities
+  dedupe each effect, and an interrupted batch discards its labels along with
+  its transport before direct authoritative reconciliation. Validate normal
+  player-to-player, multi-ante, and 3-5-7 final-leg/pot paths in production.
+
 ### 3J. Gin iPhone screen dim regression
 
 Status: Queued (P1); observed in the `Columbia Terrace` production all-game

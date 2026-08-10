@@ -7,7 +7,6 @@ import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { SCCHandResultDisplay } from "./SCCHandResultDisplay";
 import { DiceDebugOverlay } from "./DiceDebugOverlay";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
-import { ValueChangeFlash } from "./ValueChangeFlash";
 import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
@@ -63,7 +62,6 @@ interface HorsesMobileCardsTabProps {
   emoticonOverlays?: Record<string, EmoticonOverlay>;
   // Flash triggers for win animations
   winnerLegsFlashTrigger?: { playerId: string; id: string; amount: number } | null;
-  winnerPotFlashTrigger?: { playerId: string; id: string; amount: number } | null;
 }
 
 export function HorsesMobileCardsTab({
@@ -76,7 +74,6 @@ export function HorsesMobileCardsTab({
   isEmoticonSending,
   emoticonOverlays,
   winnerLegsFlashTrigger,
-  winnerPotFlashTrigger,
 }: HorsesMobileCardsTabProps) {
   const [debugOpen, setDebugOpen] = useState(false);
   const { isTablet, isDesktop } = useDeviceSize();
