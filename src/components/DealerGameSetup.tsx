@@ -329,7 +329,7 @@ const DealerGameSetupInner = ({
     setRevealAtShowdown(defaults.reveal_at_showdown ?? false);
   };
 
-  // Update config when tab changes - PRIORITY: session config > global defaults
+  // Update config when a card game is selected - PRIORITY: session config > global defaults
   // Applies to card games (holm-game, 3-5-7, cribbage) - dice games don't have persistent configs
   const handleGameTypeChange = (gameType: string) => {
     setSelectedGameType(gameType);
@@ -2150,26 +2150,10 @@ const DealerGameSetupInner = ({
 
           {/* Scrollable configuration body — footer stays reachable */}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-          {/* Game Type Tabs */}
-          <Tabs value={selectedGameType} onValueChange={handleGameTypeChange} className="w-full">
-
-            <TabsList className="grid w-full grid-cols-2 bg-amber-900/50">
-              <TabsTrigger 
-                value="holm-game" 
-                className="data-[state=active]:bg-poker-gold data-[state=active]:text-black"
-              >
-                Holm Game
-              </TabsTrigger>
-              <TabsTrigger 
-                value="3-5-7" 
-                className="data-[state=active]:bg-poker-gold data-[state=active]:text-black"
-              >
-                3-5-7
-              </TabsTrigger>
-            </TabsList>
-
+            {/* The game is fixed by the preceding selection screen. */}
             {/* Holm Game Config */}
-            <TabsContent value="holm-game" className="space-y-4 mt-4">
+            {selectedGameType === 'holm-game' && (
+              <div className="space-y-4">
               <p className="text-amber-200 text-sm text-center">4 cards + 4 community cards vs Chucky</p>
               
               <div className="grid grid-cols-2 gap-4">
@@ -2257,10 +2241,12 @@ const DealerGameSetupInner = ({
                 </div>
                 <Switch checked={rabbitHunt} onCheckedChange={setRabbitHunt} />
               </div>
-            </TabsContent>
+              </div>
+            )}
 
             {/* 3-5-7 Config */}
-            <TabsContent value="3-5-7" className="space-y-4 mt-4">
+            {selectedGameType === '3-5-7' && (
+              <div className="space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="ante-357" className="text-amber-100 text-sm">Ante ($)</Label>
@@ -2372,8 +2358,8 @@ const DealerGameSetupInner = ({
                   onCheckedChange={setRevealAtShowdown} 
                 />
               </div>
-            </TabsContent>
-          </Tabs>
+              </div>
+            )}
           </div>
 
           <div className="shrink-0 space-y-2 pb-[env(safe-area-inset-bottom)]">
