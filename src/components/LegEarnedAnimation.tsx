@@ -11,10 +11,12 @@ interface LegEarnedAnimationProps {
   targetPosition?: { top: string; left: string }; // Target coordinates for the leg indicator
   isWinningLeg?: boolean; // Is this the final leg that wins the game?
   suppressWinnerOverlay?: boolean; // Don't show "WINNER!" text (used for 3-5-7 games with separate win animation)
+  /** Immutable presentation generation for a descriptor-owned award. */
+  presentationCycleId?: string | null;
   onComplete?: () => void;
 }
 
-export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
+export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, presentationCycleId = null, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const isWinningLegRef = useRef(isWinningLeg);
@@ -23,6 +25,11 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   // Track if the current cycle has completed (prevents restart on prop flicker)
   const cycleCompletedRef = useRef(false);
   const activeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A descriptor-owned terminal award may be cancelled/unmounted while the
+  // surrounding table changes phase. Remember that immutable generation so a
+  // later raw `show=true` cannot create a second visual/complete callback.
+  const activePresentationCycleIdRef = useRef<string | null>(null);
+  const consumedPresentationCycleIdRef = useRef<string | null>(null);
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
@@ -39,19 +46,32 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
 
   useEffect(() => {
     if (show) {
+      if (presentationCycleId && consumedPresentationCycleIdRef.current === presentationCycleId) {
+        return;
+      }
+
+      if (
+        presentationCycleId &&
+        activePresentationCycleIdRef.current === presentationCycleId &&
+        animationCycleIdRef.current !== null
+      ) {
+        return;
+      }
+
       // If we already completed this animation cycle, ignore further show=true signals
-      if (cycleCompletedRef.current) {
+      if (!presentationCycleId && cycleCompletedRef.current) {
         return;
       }
       
       // If animation is already running for this cycle, ignore
-      if (animationCycleIdRef.current !== null) {
+      if (!presentationCycleId && animationCycleIdRef.current !== null) {
         return;
       }
       
       // Start a NEW animation cycle
       const cycleId = `cycle-${Date.now()}`;
       animationCycleIdRef.current = cycleId;
+      activePresentationCycleIdRef.current = presentationCycleId;
       cycleCompletedRef.current = false;
       
       // Lock duration at cycle start
@@ -74,6 +94,9 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
         
         activeTimerRef.current = null;
         cycleCompletedRef.current = true; // Mark cycle as complete BEFORE any state changes
+        if (presentationCycleId) {
+          consumedPresentationCycleIdRef.current = presentationCycleId;
+        }
         setVisible(false);
         onCompleteRef.current?.();
       }, animationDuration);
@@ -93,14 +116,20 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
         clearTimeout(activeTimerRef.current);
         activeTimerRef.current = null;
       }
+      if (presentationCycleId) {
+        // Cancellation is terminal for this immutable presentation generation.
+        // A new dealer game supplies a different generation id.
+        consumedPresentationCycleIdRef.current = presentationCycleId;
+      }
       animationCycleIdRef.current = null;
+      activePresentationCycleIdRef.current = null;
       cycleCompletedRef.current = false;
       animationDurationRef.current = null;
       setVisible(false);
     }
     // `isWinningLeg` is intentionally sampled at the show=true boundary:
     // the duration is locked for that cycle and must not restart mid-flight.
-  }, [show]);
+  }, [show, presentationCycleId]);
 
   if (!visible) return null;
 

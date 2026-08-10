@@ -214,3 +214,18 @@ financial counter.
 For a normal 3-5-7 final-leg win, that admission opens only at the canonical
 pot stage after leg presentation has completed. The match-win announcement and
 winner confetti begin with that stage, never with early settlement delivery.
+
+## D-025 — Normal 3-5-7 terminal presentation is generation-and-scope owned
+
+The normal final-leg prelude waits until the client has observed the concrete
+dealer-game scope that matches its immutable terminal descriptor. It never
+starts against a stale prior scope and then relies on a boundary reset to cancel
+it. A local presentation record carries that descriptor generation through
+award, legs-to-player, pot-to-player, and completion; callbacks from any other
+generation or stage are ignored.
+
+Only a different concrete dealer game cancels that record. Hand-context churn
+and transient settlement nulls preserve it. The ordinary player-leg delta
+detector advances its baseline but cannot start a descriptor-owned terminal
+award. This keeps normal 3-5-7 in the one-owner terminal ordering while leaving
+the database settlement and immutable transfer-batch ledger unchanged.

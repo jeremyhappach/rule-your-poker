@@ -1,6 +1,17 @@
 # Current release and cutover state
 
-Date: 2026-08-09
+Date: 2026-08-10
+
+## 3-5-7 normal terminal presentation correction
+
+- The approved source candidate gates the normal final-leg award on a
+  synchronized concrete dealer-game scope, then carries one immutable terminal
+  generation through award, leg sweep, pot flight, and completion. A late
+  boundary observation no longer cancels and re-arms the same award.
+- Generic player-leg delta detection is suppressed for descriptor-owned normal
+  terminals, and late award/leg/pot callbacks are rejected once their
+  generation has advanced or completed. Database settlement and the canonical
+  transfer ledger are unchanged. Production smoke remains the acceptance gate.
 
 ## Phase 1 delivery cutover
 

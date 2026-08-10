@@ -2400,10 +2400,20 @@ export const MobileGameTable = ({
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
-  // Normal terminal wins have exactly one local presentation owner. This is
-  // keyed by the immutable descriptor generation rather than the ephemeral
-  // parent trigger, which is cleared as soon as the owner acquires it.
-  const normal357AwardGenerationRef = useRef<string | null>(null);
+  // Normal terminal wins have exactly one local presentation owner. A raw
+  // `show` boolean is not an identity: this record carries the immutable
+  // terminal generation through award -> legs -> pot and makes every stale
+  // callback reject itself instead of re-entering the sequence.
+  const normal357PresentationRef = useRef<{
+    generationId: string;
+    dealerGameId: string;
+    stage: 'award' | 'legs-to-player' | 'pot-to-player' | 'complete';
+  } | null>(null);
+  // The boundary effect is deliberately late in this component. Incrementing
+  // this epoch after it records a concrete dealer-game scope lets the normal
+  // terminal owner defer its first start until that scope is synchronized.
+  const [normal357ScopeEpoch, setNormal357ScopeEpoch] = useState(0);
+  const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
@@ -8289,25 +8299,39 @@ export const MobileGameTable = ({
     // to false — starving the controller of its wait signal.
     const instant357Suppress =
       threeFiveSevenTerminalDescriptor?.source === 'instant-357';
+    // A final leg belongs to the immutable normal-terminal descriptor, never
+    // to this generic player-row delta detector. The result guard covers the
+    // one render before Game.tsx has materialized the descriptor.
+    const normal357TerminalSuppress =
+      __is357GameType(gameType) && (
+        threeFiveSevenTerminalDescriptor?.source === 'normal-win' ||
+        (
+          typeof lastRoundResult === 'string' &&
+          lastRoundResult.includes('won the game') &&
+          !lastRoundResult.startsWith('357_SWEEP:')
+        )
+      );
 
-    if (instant357Suppress) {
+    if (instant357Suppress || normal357TerminalSuppress) {
       // Still advance the baseline so we don't replay a stale delta after the
       // descriptor rotates.
       players.forEach((player) => {
         playerLegsRef.current[player.id] = player.legs;
       });
-      emit357RuntimeDiag('legacy_prelude_suppressed', {
-        gameId: gameId ?? null,
-        roundId: handContextId ?? null,
-        winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
-        terminalResultIdentity: lastRoundResult ?? null,
-      }, {
-        callerSourceAnchor: 'leg_gain_detector.setShowLegEarned',
-        terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
-        dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
-        handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
-        guardMode: 'descriptor_source_only',
-      });
+      if (instant357Suppress) {
+        emit357RuntimeDiag('legacy_prelude_suppressed', {
+          gameId: gameId ?? null,
+          roundId: handContextId ?? null,
+          winnerPlayerId: threeFiveSevenTerminalDescriptor?.winnerId ?? null,
+          terminalResultIdentity: lastRoundResult ?? null,
+        }, {
+          callerSourceAnchor: 'leg_gain_detector.setShowLegEarned',
+          terminalGenerationId: threeFiveSevenTerminalDescriptor?.terminalGenerationId ?? null,
+          dealerGameId: threeFiveSevenTerminalDescriptor?.dealerGameId ?? null,
+          handContextId: threeFiveSevenTerminalDescriptor?.handContextId ?? null,
+          guardMode: 'descriptor_source_only',
+        });
+      }
       return;
     }
 
@@ -8439,29 +8463,38 @@ export const MobileGameTable = ({
   useEffect(() => {
     const descriptor = normal357TerminalDescriptor;
     if (!descriptor || isWaitingPhase) return;
+    const descriptorDealerGameId = descriptor.dealerGameId ?? null;
     if (
-      descriptor.dealerGameId != null &&
-      threeFiveSevenDealerGameScope != null &&
-      descriptor.dealerGameId !== threeFiveSevenDealerGameScope
+      !descriptorDealerGameId ||
+      !threeFiveSevenDealerGameScope ||
+      descriptorDealerGameId !== threeFiveSevenDealerGameScope
     ) {
-      // The old descriptor can remain mounted during the brief dealer-game
-      // rotation gap. It is never allowed to acquire the new table surface.
+      // An old descriptor may remain mounted during dealer-game rotation, and
+      // a transient null scope can appear during settlement. Neither is a
+      // valid surface on which to begin a new presentation.
       return;
     }
-    if (normal357AwardGenerationRef.current === descriptor.terminalGenerationId) {
+    const observedScope = prev357BoundaryIdentityRef.current;
+    if (!observedScope || observedScope.dealerGameId !== descriptorDealerGameId) {
+      // The boundary owner has not yet observed this concrete dealer game.
+      // Defer the first paint until it synchronizes; starting now and then
+      // cancelling in the boundary effect is the deployed stutter/replay bug.
       return;
     }
+    if (normal357PresentationRef.current) return;
     if (threeFiveSevenWinPhaseRef.current !== 'idle') {
-      // A concrete dealer-game boundary cancels stale presentation state and
-      // re-runs this effect after the phase is idle. Never overwrite an
-      // in-flight generation with a new absolute snapshot.
+      // Never overwrite an in-flight sequence with a second absolute snapshot.
       return;
     }
 
     const winner = players.find((player) => player.id === descriptor.winnerId);
     if (!winner) return;
 
-    normal357AwardGenerationRef.current = descriptor.terminalGenerationId;
+    normal357PresentationRef.current = {
+      generationId: descriptor.terminalGenerationId,
+      dealerGameId: descriptorDealerGameId,
+      stage: 'award',
+    };
     lastThreeFiveSevenTriggerRef.current = descriptor.terminalGenerationId;
     currentAnimationIdRef.current = null;
     legsToPlayerCompletedRef.current = null;
@@ -8499,6 +8532,7 @@ export const MobileGameTable = ({
     normal357TerminalDescriptor,
     isWaitingPhase,
     threeFiveSevenDealerGameScope,
+    normal357ScopeEpoch,
     players,
     showLegEarned,
     isWinningLegAnimation,
@@ -8924,6 +8958,7 @@ export const MobileGameTable = ({
 
   const handleLegsToPlayerComplete = useCallback(() => {
     const animId = currentAnimationIdRef.current;
+    const normalPresentation = normal357PresentationRef.current;
     
     // One-shot guard: only fire once per animation sequence
     if (legsToPlayerCompletedRef.current === animId) {
@@ -8932,6 +8967,11 @@ export const MobileGameTable = ({
     
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
+      return;
+    }
+    if (normalPresentation && normalPresentation.stage !== 'legs-to-player') {
+      // A cancelled/completed normal generation must never let a late leg
+      // flight callback re-enter pot presentation.
       return;
     }
 
@@ -9001,6 +9041,9 @@ export const MobileGameTable = ({
       // Adapter refused — do not run legs-complete tail diagnostics.
       return;
     }
+    if (normalPresentation) {
+      normalPresentation.stage = 'pot-to-player';
+    }
     const potTid = legsEntryResult.potTriggerId;
     __capture357Checkpoint('pot_to_player_begin:legs_complete', {
       triggerId: potTid,
@@ -9026,6 +9069,7 @@ export const MobileGameTable = ({
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     const animId = currentAnimationIdRef.current;
+    const normalPresentation = normal357PresentationRef.current;
     const liveIdentityAtEntry = build357PresentationIdentity();
     __emitWartimeProgression({
       callback: 'MobileGameTable.handlePotToPlayerComplete357',
@@ -9084,6 +9128,13 @@ export const MobileGameTable = ({
       return;
     }
 
+    if (normalPresentation && normalPresentation.stage !== 'pot-to-player') {
+      // The normal-terminal owner has either been cancelled or has already
+      // released this generation. Ignore a late pot callback rather than
+      // re-running the terminal completion handoff.
+      return;
+    }
+
     // Sole idempotency guard: one canonical completion per animation
     // identity. Deliberately NOT gated on phase or on a stale-animation
     // id comparison — the visible pot-to-player artifact has already
@@ -9116,6 +9167,9 @@ export const MobileGameTable = ({
 
     // Mark as completed for this animation
     potToPlayerCompletedRef.current = animId;
+    if (normalPresentation) {
+      normalPresentation.stage = 'complete';
+    }
 
     // Trigger "+$X" flash on winner's chipstack
     if (threeFiveSevenWinnerId && threeFiveSevenWinPotAmount > 0) {
@@ -9317,10 +9371,10 @@ export const MobileGameTable = ({
   // A transient null identity (settlement can briefly null dealerGameId
   // / handContextId) MUST NOT count as a boundary — that would wipe the
   // armed sweep-wait and celebration state for the same terminal event.
-  // Only a transition between two DIFFERENT non-null identities is a
-  // true dealer-game boundary. `prev357BoundaryIdentityRef` therefore
+  // Only a transition to a DIFFERENT non-null dealer game is a true boundary.
+  // Hand-context changes belong to the same dealer-game presentation and must
+  // not cancel its terminal generation. `prev357BoundaryIdentityRef` therefore
   // stores the last CONCRETE (non-null) identity ever seen.
-  const prev357BoundaryIdentityRef = useRef<{ dealerGameId: string | null; handContextId: string | null } | null>(null);
   useEffect(() => {
     const nextDgId = threeFiveSevenDealerGameScope;
     const nextHandCtx = handContextId ?? null;
@@ -9333,20 +9387,21 @@ export const MobileGameTable = ({
     const prev = prev357BoundaryIdentityRef.current;
     if (!prev) {
       prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
+      // Wake the descriptor owner only after it can prove this scope was
+      // observed. The owner intentionally deferred its first start above.
+      setNormal357ScopeEpoch((epoch) => epoch + 1);
       return;
     }
-    const boundaryCrossed =
-      prev.dealerGameId !== nextDgId ||
-      prev.handContextId !== nextHandCtx;
+    const boundaryCrossed = prev.dealerGameId !== nextDgId;
     prev357BoundaryIdentityRef.current = { dealerGameId: nextDgId, handContextId: nextHandCtx };
     if (!boundaryCrossed) return;
     const staleSweep = sweepAwaitingCelebrationRef.current;
     const stalePot = activePotIdentityRef.current;
-    const staleNormalAwardGeneration = normal357AwardGenerationRef.current;
+    const staleNormalAwardGeneration = normal357PresentationRef.current?.generationId ?? null;
     __emitWartimeRefWrite({ fieldName: 'sweepAwaitingCelebrationRef', sourceSiteId: __WARTIME_SRC.STATE_SWEEP_AWAITING.id, previous: sweepAwaitingCelebrationRef.current, next: null, identity: __wartimeMgtIdentity, owner: __wartimeMgtOwner, reason: 'dealer_game_boundary' });
     sweepAwaitingCelebrationRef.current = null;
     activePotIdentityRef.current = null;
-    normal357AwardGenerationRef.current = null;
+    normal357PresentationRef.current = null;
     lastThreeFiveSevenTriggerRef.current = null;
     currentAnimationIdRef.current = null;
     legsToPlayerCompletedRef.current = null;
@@ -9373,6 +9428,8 @@ export const MobileGameTable = ({
     setSweepCelebrationCompleted(false);
     hadLegsBeforeSweepRef.current = false;
     lastSweepsIdentityRef.current = null;
+    // The next descriptor may now acquire this freshly synchronized scope.
+    setNormal357ScopeEpoch((epoch) => epoch + 1);
     if (staleSweep || stalePot || staleNormalAwardGeneration) {
       emit357RuntimeDiag('dealer_game_boundary_reset', {
         gameId: gameId ?? null,
@@ -11668,6 +11725,7 @@ export const MobileGameTable = ({
           })()}
           isWinningLeg={isWinningLegAnimation}
           suppressWinnerOverlay={gameType !== 'holm-game'} // Suppress for 3-5-7 - has its own win animation
+          presentationCycleId={normal357PresentationRef.current?.generationId ?? null}
           onComplete={() => {
             setShowLegEarned(false);
             legAnimationActiveRef.current = false; // Reset ref so next leg can trigger
@@ -11675,18 +11733,19 @@ export const MobileGameTable = ({
             // the prelude. Its final-leg award completion is the only event
             // permitted to advance from waiting -> legs-to-player.
             const activeNormalTerminal = normal357TerminalDescriptor;
+            const activeNormalPresentation = normal357PresentationRef.current;
             const ownsNormalTerminalAward =
               activeNormalTerminal != null &&
-              normal357AwardGenerationRef.current === activeNormalTerminal.terminalGenerationId;
-            const terminalWinnerId = activeNormalTerminal?.winnerId ?? threeFiveSevenWinnerId;
-            const mayAdvanceNormalTerminal = ownsNormalTerminalAward
-              ? threeFiveSevenWinPhaseRef.current === 'waiting'
-              : threeFiveSevenWinPhaseRef.current === 'idle';
+              activeNormalPresentation?.generationId === activeNormalTerminal.terminalGenerationId &&
+              activeNormalPresentation.dealerGameId === activeNormalTerminal.dealerGameId &&
+              activeNormalPresentation.stage === 'award' &&
+              threeFiveSevenWinPhaseRef.current === 'waiting';
+            const terminalWinnerId = activeNormalTerminal?.winnerId ?? null;
             if (
               gameType !== 'holm-game' &&
               isWinningLegAnimation &&
               terminalWinnerId &&
-              mayAdvanceNormalTerminal
+              ownsNormalTerminalAward
             ) {
               // Mark this win sequence as handled even though the parent
               // trigger has already been retired. This prevents the same
@@ -11699,9 +11758,12 @@ export const MobileGameTable = ({
               // Lock stable legs snapshot for the whole sequence.
               threeFiveSevenLegsSnapshotRef.current = threeFiveSevenCachedLegPositions;
 
-              // Idempotent for descriptor-owned normal wins; retains the
-              // compatibility behavior for malformed legacy inputs.
-              onThreeFiveSevenWinAnimationStarted?.();
+              // The parent trigger was retired when this generation acquired
+              // the presentation. Do not emit a second "started" signal from
+              // completion; advance this owner exactly once instead.
+              if (activeNormalPresentation) {
+                activeNormalPresentation.stage = 'legs-to-player';
+              }
 
               console.log('[357 WIN] Final-leg award complete, starting legs-to-player phase');
 

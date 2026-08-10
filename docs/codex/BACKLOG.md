@@ -295,23 +295,29 @@ Status: Queued (P1); observed in production final-leg smoke on 2026-08-09.
   terminal settlement, the leg/pot phase, and the match-win announcement must
   never imply consent. Preserve the accepted chip-transfer ordering.
 
-### 3I. 3-5-7 repeated normal final-leg presentation skips the award
+### 3I. 3-5-7 normal final-leg presentation replays during terminal settlement
 
-Status: Queued (P1); observed in the `Columbia Terrace` production all-game
+Status: In validation (P1); observed in the `Columbia Terrace` production all-game
 smoke on 2026-08-10.
 
-- A second game at `Columbia Terrace`, then the fourth consecutive 3-5-7
-  dealer game in `Mission in the Rain`, reached a normal terminal final leg
-  and went directly to the leg sweep without a reliable winning-leg award.
-  The production trace from the latter confirms both clients entered the
-  legacy fallback at the same time as the award's own completion.
-- The previous corrective build (`8c846e3d`) scoped dedupe state by dealer
-  game but left two competing owners: the award's completion and a matching
-  1.8-second fallback timer. Replace that race with one generation-scoped
-  terminal sequence: final-leg award completion, leg sweep, then pot transfer,
-  winner announcement, and confetti. Reset/cancel all local sequence state at
-  a concrete dealer-game boundary. Do not change authoritative settlement or
-  ledger admission, and do not add another timer as a substitute for a phase.
+- Earlier production runs skipped the normal winning-leg award because its
+  completion raced a matching legacy fallback timer. Build `518bbf4ea` removed
+  that timer race, but the subsequent `Aug 10 - Scents and Subtle Sounds` smoke
+  revealed the complementary replay: the award stutters/double-starts, then can
+  fire again during or after pot settlement.
+- The deployed trace proves the failure boundary. A normal terminal award is
+  armed for dealer game `2c228ea2-…`, then the late dealer-game scope reset
+  cancels that same generation (`cross_dealer_game_cancelled`) even though the
+  active scope is also `2c228ea2-…`. It clears the local latch and permits a
+  re-arm. On a second client, a stale final-leg completion then advances again
+  after pot settlement.
+- Correct the one normal-terminal owner so it starts only after the concrete
+  dealer-game scope is synchronized, preserves its generation through that
+  generation's award/sweep/pot sequence, and rejects stale completion after
+  cancellation or release. The ordinary leg-gain detector must not compete for
+  a descriptor-owned normal terminal. Reset only for a genuinely different
+  dealer game, not a late first observation or transient settlement state. Do
+  not change authoritative settlement, the transfer ledger, or add a timer.
 
 ### 3J. Gin iPhone screen dim regression
 
