@@ -2,6 +2,24 @@
 
 Date: 2026-08-10
 
+## 3-5-7 opening ante and rollover are separate rules
+
+- Migration `20260810210000_separate_357_rollover_amount.sql` is installed on
+  the owned production database. A 3-5-7 dealer game now persists an opening
+  `ante_amount` and a distinct `rollover_amount`; the initial rollover default
+  is `$1`.
+- The opening client path still collects the ante once. The database-owned
+  R3 -> next-hand R1 transition now derives only the persisted rollover,
+  records `Rollover` in the hand audit, and returns rollover-specific result
+  fields rather than ante fields. R1 -> R2 and R2 -> R3 collect neither.
+- The configured value is retained in the dealer-game JSON snapshot and in
+  session Run Back memory. Setup and Defaults each show Ante, Leg Value, and
+  Rollover in one compact row; the redundant 3-5-7 description was removed.
+- The complete rollback proof passed before and after migration for initial
+  ante preservation, rollover amount, duplicate/replay/late replay,
+  authorization, continuation, tie-labelled rollover, and terminal state.
+  Published 3-5-7 smoke remains the acceptance gate.
+
 ## Holm repeated-showdown presentation identity
 
 - The Holm showdown phase-plan latch is now keyed by the authoritative

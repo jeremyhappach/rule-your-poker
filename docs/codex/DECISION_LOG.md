@@ -319,3 +319,17 @@ and clear its trigger at canonical hand/game resets, so a stale cue cannot
 cross into Holm or any other game. This does not suppress, replace, or alter
 the ledger-owned signed monetary effects. Production smoke accepted this
 invariant on 2026-08-10.
+
+## D-033 - 3-5-7 rollover is distinct from its opening ante
+
+The opening 3-5-7 Round 1 collects `ante_amount` once. Every later R3 ->
+next-hand R1 transition derives `rollover_amount` from the locked authoritative
+game row and adds only that amount per eligible player to the carry-forward
+pot. The browser sends transition identity, never a financial amount.
+
+`games` owns the active dealer-game rule; `dealer_games.config` retains the
+same value as the historical configuration snapshot; `game_defaults` supplies
+the default. Rollover uses its own hand-audit wording and result field while
+retaining the existing one-transaction chip-transfer projection, including an
+instant R1 sweep. This prevents a new presentation batch owner from splitting
+the atomic game transition.

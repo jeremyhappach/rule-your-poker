@@ -1276,6 +1276,7 @@ const Game = () => {
   interface PreviousGameConfig {
     game_type: string | null;
     ante_amount: number;
+    rollover_amount: number;
     leg_value: number;
     legs_to_win: number;
     pussy_tax_enabled: boolean;
@@ -1420,6 +1421,7 @@ const Game = () => {
     const cfg: PreviousGameConfig = {
       game_type: gameType,
       ante_amount: game.ante_amount ?? 2,
+      rollover_amount: game.rollover_amount ?? 1,
       leg_value: game.leg_value ?? 1,
       legs_to_win: game.legs_to_win ?? 3,
       pussy_tax_enabled: game.pussy_tax_enabled ?? true,
@@ -1462,6 +1464,7 @@ const Game = () => {
     game?.config_complete,
     game?.game_type,
     game?.ante_amount,
+    game?.rollover_amount,
     game?.leg_value,
     game?.legs_to_win,
     game?.pussy_tax_enabled,
@@ -1549,7 +1552,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // handleGameTypeSelect happen to clear refs in a path the observer doesn't run.
   // Fix: clear trigger state any time the game leaves the ante_decision phase, so
   // no AnteUpAnimation mount can ever consume a stale trigger from a prior game.
-  const [reAnteMessage, setReAnteMessage] = useState<string | null>(null); // "Re-Ante" message for 3-5-7 subsequent round 1s
+  const [reAnteMessage, setReAnteMessage] = useState<string | null>(null); // Rollover message for 3-5-7 subsequent Round 1s
   
   // Chip transfer animation state (for 3-5-7 showdowns)
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -8441,9 +8444,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
             await proceedToNextRound(gameId);
             
-            // THEN trigger ante animation when proceeding to round 1 (new antes collected)
+            // THEN trigger the rollover animation when proceeding to the next hand's Round 1.
             // This happens AFTER the result has been cleared
-            // BUT skip if this is a 357 sweep (game is over, no new antes)
+            // BUT skip if this is a 357 sweep (game is over, no rollover)
             // ALSO skip if 357 win animation is currently active (use ref for closure access)
             const is357Sweep = freshGame?.last_round_result?.startsWith('357_SWEEP');
             if (freshGame?.next_round_number === 1 && !is357Sweep && !is357WinAnimationActiveRef.current) {
@@ -8451,7 +8454,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // because startRound already updated the pot in the database
               const { data: freshGameAfterProceed } = await supabase
                 .from('games')
-                .select('pot, ante_amount')
+                .select('pot, rollover_amount')
                 .eq('id', gameId)
                 .single();
               
@@ -8462,10 +8465,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               const activePlayers = (freshPlayersAfterAnte || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
               const activeCount = activePlayers.length;
-              const perPlayerAmount = typeof freshGameAfterProceed?.ante_amount === 'number' ? freshGameAfterProceed.ante_amount : 0;
+              const perPlayerAmount = typeof freshGameAfterProceed?.rollover_amount === 'number'
+                ? freshGameAfterProceed.rollover_amount
+                : 1;
 
               if (perPlayerAmount > 0 && activeCount > 0) {
-                // PRE snapshot = post chips + ante (because backend already deducted)
+                // PRE snapshot = post chips + rollover (because backend already deducted)
                 const chipSnapshot: Record<string, number> = {};
                 const expectedChips: Record<string, number> = {};
                 activePlayers.forEach(p => {
@@ -8473,8 +8478,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   expectedChips[p.id] = p.chips;
                 });
 
-                // CRITICAL: Use the FRESH pot from AFTER proceedToNextRound (backend already added antes)
-                // This is the authoritative post-ante pot value
+                // CRITICAL: Use the FRESH pot from AFTER proceedToNextRound (backend already added rollovers).
+                // This is the authoritative post-rollover pot value.
                 const expectedPot = freshGameAfterProceed?.pot || 0;
 
                 setPreAnteChips(chipSnapshot);
@@ -8485,14 +8490,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 if (anteAnimationFiredRef.current !== anteTriggerKey) {
                   anteAnimationFiredRef.current = anteTriggerKey;
                   setAnteAnimationTriggerId(`ante-${Date.now()}`);
-                  // Show "Re-Ante" announcement during 3-5-7 subsequent round 1
-                  setReAnteMessage('Re-Ante');
+                  // Make the distinct R3 -> next-hand Round 1 collection explicit.
+                  setReAnteMessage('Rollover');
                   // Clear the message after animation completes (3 seconds)
                   __scheduleWartimeTimeout({
                     sourceSiteId: __WARTIME_SRC.ASYNC_GAME_REANTE_CLEAR.id,
                     ownerLabel: 'game.357ReAnteMessageClear',
                     delayMs: 3000,
-                    extra: { purpose: 'clear 3-5-7 re-ante announcement' },
+                    extra: { purpose: 'clear 3-5-7 rollover announcement' },
                     fn: () => setReAnteMessage(null),
                   });
                 }

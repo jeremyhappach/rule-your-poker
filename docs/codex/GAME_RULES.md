@@ -335,9 +335,9 @@ contradictions.
 
 | Responsibility | Source |
 |---|---|
-| Setup/config | `src/components/DealerGameSetup.tsx`: ante, leg value, legs to win, optional Pussy Tax/value, optional pot cap/value, and reveal-at-showdown. |
+| Setup/config | `src/components/DealerGameSetup.tsx`: opening ante, rollover, leg value, legs to win, optional Pussy Tax/value, optional pot cap/value, and reveal-at-showdown. |
 | State/actions | `src/lib/gameLogic.ts:startRound`, `makeDecision`, `autoFoldUndecided`, `endRound`, and `proceedToNextRound`; hand ranking in `src/lib/cardUtils.ts:evaluateHand`. |
-| Atomic seam | `src/lib/threeFiveSeven/advanceRound.ts` builds assignments; `public.advance_357_round` latest in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
+| Atomic seam | `src/lib/threeFiveSeven/advanceRound.ts` builds assignments; `public.advance_357_round` latest in `supabase/migrations/20260810210000_separate_357_rollover_amount.sql`. |
 | Bots | `src/lib/botPlayer.ts:makeBotDecisions` and `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling in `src/pages/Game.tsx`. |
 | State acceptance | `src/lib/gameStateSync/threeFiveSevenProgress.ts:getThreeFiveSevenProgress`. |
 | Terminal | Normal leg win: private `src/lib/gameLogic.ts:handleGameOver`; atomic R1 sweep: `advance_357_round`; presentation owner `src/components/ThreeFiveSevenTerminalController.tsx`. |
@@ -365,14 +365,17 @@ contradictions.
   A top tie moves no chips.
 - If nobody stays, optional Pussy Tax is collected from every active eligible
   player into the carry-forward pot.
-- Every new Round 1 collects the configured ante from every eligible player and
-  adds it to the existing pot. Rounds 2 and 3 do not ante.
+- The opening Round 1 collects the configured ante from every eligible player.
+  After Round 3, the next hand's Round 1 instead collects the configured
+  rollover from every eligible player and adds it to the carry-forward pot.
+  Rounds 2 and 3 collect neither.
 - A player reaching `legs_to_win` wins the dealer game and receives the
   carry-forward pot plus the value of every purchased leg. All leg counts reset.
   A Round 1 3-5-7 sweep receives the same pot-plus-leg-value prize.
 - Later-round/new-hand advancement is one row/game-locked
   `advance_357_round` transaction: roster, carry-forward cards, new deal,
-  decision reset, Round 1 ante, and normal R1 instant sweep. Its seam identity
+  decision reset, persisted rollover at a new-hand Round 1, and normal R1
+  instant sweep. Its seam identity
   is `(game_id, dealer_game_id, next_hand_number, next_round_number)`.
 - The initial Round 1 still enters through client `startRound`. Normal
   leg-completion calls client `handleGameOver`, which claims `game_over`,

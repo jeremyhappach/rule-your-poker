@@ -600,7 +600,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     active: activePlayers.map((p) => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out })),
   });
   
-  // Charge antes only for round 1 (initial ante or re-ante after round 3 wraps)
+  // The client-owned opening path collects the one initial ante. Subsequent
+  // R3 -> next-hand R1 rollovers use advance_357_round instead.
   if (roundNumber === 1) {
     console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
     
@@ -3161,7 +3162,8 @@ export async function proceedToNextRound(gameId: string) {
   // --------------------------------------------
   // All three seams — R1→R2, R2→R3, and R3→next-hand-R1 — flow through
   // `advance_357_round`, which server-authors the deck, deal, roster
-  // reset, ante (R1 only), hand-number increment (R1 only), pot update,
+  // reset, persisted rollover (new-hand R1 only), hand-number increment,
+  // pot update,
   // and legs-at-start snapshot inside a single locked transaction.
   //
   // The client sends only transition identity. It never sends card
@@ -3182,15 +3184,16 @@ export async function proceedToNextRound(gameId: string) {
  *
  * Sends ONLY transition identity to the `advance_357_round` RPC. The
  * server derives the roster, reads prior-round cards for carry-forward,
- * builds the deck, shuffles, deals, resets players, charges ante (R1
- * only), and updates the game pointer — all inside a single locked
+ * builds the deck, shuffles, deals, resets players, collects the persisted
+ * rollover at the R3 -> next-hand R1 seam, and updates the game pointer — all
+ * inside a single locked
  * transaction.
  *
  * Round-only fold semantics: every non-left / non-observer / non-sitting
  * player receives the destination card set and normal Drop/Stay
  * eligibility, regardless of the previous round's fold/stay decision.
  *
- * For the R1 seam only: this function also (a) records the ante audit
+ * For the new-hand R1 seam only: this function also (a) records the rollover audit
  * game_result row, and (b) invokes the extracted instant-357 detection
  * & settlement helper. Both are guarded on `status === 'advanced'` so
  * a `repaired_and_advanced` / `already_advanced` retry does not
@@ -3260,15 +3263,12 @@ async function advance357RoundAtomic(
     } catch { /* harness read is best-effort */ }
   }
 
-  const anteAmount = nextRoundNumber === 1 ? (game.ante_amount || 0) : 0;
-
   const { data: rpcData, error: rpcErr } = await supabase.rpc('advance_357_round', {
     _game_id: gameId,
     _dealer_game_id: dealerGameId,
     _next_round_number: nextRoundNumber,
     _next_hand_number: handNumberForRpc,
     _decision_deadline: deadline,
-    _ante_amount: anteAmount,
     _forced_hand_by_player: forcedHandByPlayer as any,
   });
   if (rpcErr) {
@@ -3276,7 +3276,7 @@ async function advance357RoundAtomic(
   }
   const result = (rpcData ?? { status: 'unknown' }) as { status: string; round_id?: string };
 
-  // R1 seam consequences (ante audit game_results row AND instant-357
+  // New-hand R1 seam consequences (rollover audit game_results row AND instant-357
   // detection + full sweep settlement) are now committed inside the
   // `advance_357_round` RPC transaction. No browser callback is required
   // after the RPC returns — if the client disconnects immediately, the

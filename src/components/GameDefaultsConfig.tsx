@@ -25,6 +25,7 @@ interface GameDefaults {
   bot_decision_delay_seconds: number;
   bot_use_hand_strength: boolean;
   ante_amount: number;
+  rollover_amount: number;
   pot_max_enabled: boolean;
   pot_max_value: number;
   chucky_cards: number;
@@ -157,6 +158,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       }
       
       if (gameType === '3-5-7') {
+        const rollover = Number(defaultConfig.rollover_amount);
+        if (isNaN(rollover) || rollover < 1) {
+          validationErrors.push(`3-5-7: Rollover must be at least $1`);
+        }
+
         const legValue = Number(defaultConfig.leg_value);
         if (isNaN(legValue) || legValue < 1) {
           validationErrors.push(`3-5-7: Leg value must be at least $1`);
@@ -202,6 +208,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       ...d,
       decision_timer_seconds: Number(d.decision_timer_seconds),
       ante_amount: Number(d.ante_amount),
+      rollover_amount: Number(d.rollover_amount ?? 1),
       pot_max_value: Number(d.pot_max_value),
       pussy_tax_value: Number(d.pussy_tax_value),
       bot_decision_delay_seconds: Number(d.bot_decision_delay_seconds),
@@ -231,6 +238,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
             bot_use_hand_strength: defaultConfig.bot_use_hand_strength,
             ante_amount: defaultConfig.ante_amount,
+            rollover_amount: defaultConfig.rollover_amount,
             pot_max_enabled: defaultConfig.pot_max_enabled,
             pot_max_value: defaultConfig.pot_max_value,
             chucky_cards: defaultConfig.chucky_cards,
@@ -274,7 +282,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const getDefaultByType = (gameType: string) => 
     defaults.find(d => d.game_type === gameType);
 
-  const renderGameSettings = (gameType: string) => {
+  const renderGameSettings = (gameType: string, options: { includeAnte?: boolean } = {}) => {
     const gameDefaults = getDefaultByType(gameType);
     if (!gameDefaults) return null;
 
@@ -289,16 +297,18 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         </div>
         
         <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor={`${gameType}-ante`}>Ante Amount ($)</Label>
-            <Input
-              id={`${gameType}-ante`}
-              type="text"
-              inputMode="numeric"
-              value={gameDefaults.ante_amount}
-              onChange={(e) => updateDefault(gameType, 'ante_amount', e.target.value)}
-            />
-          </div>
+          {options.includeAnte !== false && (
+            <div className="space-y-2">
+              <Label htmlFor={`${gameType}-ante`}>Ante Amount ($)</Label>
+              <Input
+                id={`${gameType}-ante`}
+                type="text"
+                inputMode="numeric"
+                value={gameDefaults.ante_amount}
+                onChange={(e) => updateDefault(gameType, 'ante_amount', e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -514,9 +524,16 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <p className="text-xs text-muted-foreground">Time players have to make stay/drop decisions</p>
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            Legs Settings
+        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-border">
+          <div className="space-y-2">
+            <Label htmlFor="357-ante">Ante ($)</Label>
+            <Input
+              id="357-ante"
+              type="text"
+              inputMode="numeric"
+              value={defaults357.ante_amount}
+              onChange={(e) => updateDefault('3-5-7', 'ante_amount', e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="357-leg-value">Leg Value ($)</Label>
@@ -527,7 +544,22 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               value={defaults357.leg_value}
               onChange={(e) => updateDefault('3-5-7', 'leg_value', e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Dollar value per leg</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="357-rollover">Rollover ($)</Label>
+            <Input
+              id="357-rollover"
+              type="text"
+              inputMode="numeric"
+              value={defaults357.rollover_amount}
+              onChange={(e) => updateDefault('3-5-7', 'rollover_amount', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            Legs Settings
           </div>
           <div className="space-y-2">
             <Label htmlFor="357-legs-to-win">Legs to Win</Label>
@@ -553,7 +585,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           </div>
         </div>
 
-        {renderGameSettings('3-5-7')}
+        {renderGameSettings('3-5-7', { includeAnte: false })}
         {renderBotSettings('3-5-7')}
       </>
     );

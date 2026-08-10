@@ -1480,6 +1480,7 @@ export type Database = {
         Row: {
           allow_bot_dealers: boolean
           ante_amount: number
+          rollover_amount: number
           bot_decision_delay_seconds: number
           bot_fold_probability: number
           bot_use_hand_strength: boolean
@@ -1515,6 +1516,7 @@ export type Database = {
         Insert: {
           allow_bot_dealers?: boolean
           ante_amount?: number
+          rollover_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
           bot_use_hand_strength?: boolean
@@ -1550,6 +1552,7 @@ export type Database = {
         Update: {
           allow_bot_dealers?: boolean
           ante_amount?: number
+          rollover_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
           bot_use_hand_strength?: boolean
@@ -1772,6 +1775,7 @@ export type Database = {
           all_decisions_in: boolean | null
           all_decisions_in_round_id: string | null
           ante_amount: number
+          rollover_amount: number
           ante_decision_deadline: string | null
           ante_decision_timer_seconds: number
           awaiting_next_round: boolean | null
@@ -1828,6 +1832,7 @@ export type Database = {
           all_decisions_in?: boolean | null
           all_decisions_in_round_id?: string | null
           ante_amount?: number
+          rollover_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
@@ -1884,6 +1889,7 @@ export type Database = {
           all_decisions_in?: boolean | null
           all_decisions_in_round_id?: string | null
           ante_amount?: number
+          rollover_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
@@ -3100,7 +3106,6 @@ export type Database = {
       admin_delete_fake_money_games: { Args: never; Returns: number }
       advance_357_round: {
         Args: {
-          _ante_amount?: number
           _dealer_game_id: string
           _decision_deadline: string
           _forced_hand_by_player?: Json

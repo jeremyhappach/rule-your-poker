@@ -91,6 +91,7 @@ type SelectionStep = 'game' | 'config';
 interface PreviousGameConfig {
   game_type: string | null;
   ante_amount: number;
+  rollover_amount: number;
   leg_value: number;
   legs_to_win: number;
   pussy_tax_enabled: boolean;
@@ -133,6 +134,7 @@ interface DealerGameSetupProps {
 
 interface GameDefaults {
   ante_amount: number;
+  rollover_amount: number;
   leg_value: number;
   legs_to_win: number;
   pussy_tax_enabled: boolean;
@@ -214,6 +216,7 @@ const DealerGameSetupInner = ({
   
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
+  const [rolloverAmount, setRolloverAmount] = useState("1");
   const [legValue, setLegValue] = useState("1");
   const [pussyTaxEnabled, setPussyTaxEnabled] = useState(true);
   const [pussyTaxValue, setPussyTaxValue] = useState("1");
@@ -267,6 +270,7 @@ const DealerGameSetupInner = ({
       if (previousGameConfig) {
         console.log('[DEALER SETUP] Using previous game config:', previousGameConfig);
         setAnteAmount(String(previousGameConfig.ante_amount));
+        setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
         setLegValue(String(previousGameConfig.leg_value));
         setLegsToWin(String(previousGameConfig.legs_to_win));
         setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
@@ -313,6 +317,7 @@ const DealerGameSetupInner = ({
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {
     setAnteAmount(String(defaults.ante_amount));
+    setRolloverAmount(String(defaults.rollover_amount ?? 1));
     setLegValue(String(defaults.leg_value));
     setLegsToWin(String(defaults.legs_to_win));
     setPussyTaxEnabled(defaults.pussy_tax_enabled);
@@ -337,6 +342,7 @@ const DealerGameSetupInner = ({
       if (sessionConfig && sessionConfig.game_type === gameType) {
         console.log('[DEALER SETUP] Using session config for', gameType, ':', sessionConfig);
         setAnteAmount(String(sessionConfig.ante_amount));
+        setRolloverAmount(String(sessionConfig.rollover_amount ?? 1));
         setLegValue(String(sessionConfig.leg_value));
         setLegsToWin(String(sessionConfig.legs_to_win));
         setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
@@ -812,6 +818,7 @@ const DealerGameSetupInner = ({
             // Build the config object for dealer_games
             const dealerGameConfig = {
               ante_amount: previousGameConfig.ante_amount,
+              rollover_amount: previousGameConfig.rollover_amount ?? 1,
               leg_value: previousGameConfig.leg_value,
               pussy_tax_enabled: previousGameConfig.pussy_tax_enabled,
               pussy_tax_value: previousGameConfig.pussy_tax_value,
@@ -847,6 +854,7 @@ const DealerGameSetupInner = ({
             const updateData: any = {
               game_type: previousGameType,
               ante_amount: previousGameConfig.ante_amount,
+              rollover_amount: previousGameConfig.rollover_amount ?? 1,
               leg_value: previousGameConfig.leg_value,
               pussy_tax_enabled: previousGameConfig.pussy_tax_enabled,
               pussy_tax_value: previousGameConfig.pussy_tax_value,
@@ -920,6 +928,7 @@ const DealerGameSetupInner = ({
             // Build the config object for dealer_games
             const dealerGameConfig = {
               ante_amount: defaults.ante_amount,
+              rollover_amount: defaults.rollover_amount ?? 1,
               leg_value: defaults.leg_value,
               pussy_tax_enabled: defaults.pussy_tax_enabled,
               pussy_tax_value: defaults.pussy_tax_value,
@@ -955,6 +964,7 @@ const DealerGameSetupInner = ({
             const updateData: any = {
               game_type: gameType,
               ante_amount: defaults.ante_amount,
+              rollover_amount: defaults.rollover_amount ?? 1,
               leg_value: defaults.leg_value,
               pussy_tax_enabled: defaults.pussy_tax_enabled,
               pussy_tax_value: defaults.pussy_tax_value,
@@ -1019,6 +1029,7 @@ const DealerGameSetupInner = ({
 
     // Validate all numeric fields
     const parsedAnte = parseInt(anteAmount) || 0;
+    const parsedRollover = parseInt(rolloverAmount) || 0;
     const parsedLegValue = parseInt(legValue) || 0;
     const parsedLegsToWin = parseInt(legsToWin) || 0;
     const parsedPussyTax = parseInt(pussyTaxValue) || 0;
@@ -1028,6 +1039,10 @@ const DealerGameSetupInner = ({
     // Validation
     if (parsedAnte < 1) {
       console.error('Invalid Ante: must be at least $1');
+      return;
+    }
+    if (gameTypeToSubmit === '3-5-7' && parsedRollover < 1) {
+      console.error('Invalid Rollover: must be at least $1');
       return;
     }
     if (parsedLegValue < 1) {
@@ -1054,7 +1069,7 @@ const DealerGameSetupInner = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
 
-    console.log('[DEALER SETUP] Submitting game config:', { gameTypeToSubmit, parsedAnte, parsedLegValue, parsedChucky });
+    console.log('[DEALER SETUP] Submitting game config:', { gameTypeToSubmit, parsedAnte, parsedRollover, parsedLegValue, parsedChucky });
 
     const isHolmGame = gameTypeToSubmit === 'holm-game';
     const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
@@ -1071,6 +1086,7 @@ const DealerGameSetupInner = ({
     // Build the config object for dealer_games
     const dealerGameConfig = {
       ante_amount: parsedAnte,
+      rollover_amount: isHolmGame ? null : parsedRollover,
       leg_value: parsedLegValue,
       pussy_tax_enabled: pussyTaxEnabled,
       pussy_tax_value: parsedPussyTax,
@@ -1108,6 +1124,7 @@ const DealerGameSetupInner = ({
     const updateData: any = {
       game_type: gameTypeToSubmit,
       ante_amount: parsedAnte,
+      rollover_amount: isHolmGame ? 1 : parsedRollover,
       leg_value: parsedLegValue,
       pussy_tax_enabled: pussyTaxEnabled,
       pussy_tax_value: parsedPussyTax,
@@ -1662,6 +1679,7 @@ const DealerGameSetupInner = ({
       // CRITICAL: Pass the game type directly to submit functions to avoid async state issues
       setSelectedGameType(previousGameType);
       setAnteAmount(String(previousGameConfig.ante_amount));
+      setRolloverAmount(String(previousGameConfig.rollover_amount ?? 1));
       
       // Simple ante games only need ante configuration.
       if (isSimpleAnteGame(previousGameType)) {
@@ -2243,9 +2261,7 @@ const DealerGameSetupInner = ({
 
             {/* 3-5-7 Config */}
             <TabsContent value="3-5-7" className="space-y-4 mt-4">
-              <p className="text-amber-200 text-sm text-center">Classic Three, Five, Seven poker with wild cards</p>
-              
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="ante-357" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
@@ -2265,6 +2281,17 @@ const DealerGameSetupInner = ({
                     inputMode="numeric"
                     value={legValue}
                     onChange={(e) => setLegValue(e.target.value)}
+                    className="bg-amber-900/30 border-poker-gold/50 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rollover-357" className="text-amber-100 text-sm">Rollover ($)</Label>
+                  <Input
+                    id="rollover-357"
+                    type="text"
+                    inputMode="numeric"
+                    value={rolloverAmount}
+                    onChange={(e) => setRolloverAmount(e.target.value)}
                     className="bg-amber-900/30 border-poker-gold/50 text-white"
                   />
                 </div>

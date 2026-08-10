@@ -243,12 +243,16 @@ reset transient/presentation state when those identities change.
   `botHandStrength.ts:getBotFoldProbability`; scheduling is in `Game.tsx`.
 - Settlement/terminal: later-round/new-hand seams and a normal R1 instant sweep
   are owned by `public.advance_357_round`, latest in
-  `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. Normal
+  `supabase/migrations/20260810210000_separate_357_rollover_amount.sql`. Its
+  public signature accepts transition identity only and derives the persisted
+  3-5-7 rollover at the R3 -> next-hand R1 boundary. Normal
   leg-completion settlement remains the private client
   `gameLogic.ts:handleGameOver`; legacy instant helpers remain under
   `src/lib/threeFiveSeven/`.
 - Focused tests: `threeFiveSeven/advanceRound.test.ts`,
-  `threeFiveSevenProgress.test.ts`, and shared card transport/slot tests.
+  `threeFiveSevenProgress.test.ts`,
+  `supabase/tests/three_five_seven_rollover_proof.sql`, and shared card
+  transport/slot tests.
 
 ### Horses
 
