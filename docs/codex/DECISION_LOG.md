@@ -258,3 +258,18 @@ arrival label after all inbound chips land. When a batch is abandoned, its
 labels are cleared with its motion; reconnect reconciles directly to the
 database and never replays a settled financial effect. Game components provide
 only visible endpoint anchors, not their own dollar-label writers.
+
+## D-028 - Concurrent pot arrivals are one canonical presentation cohort
+
+The shell transport's flight timers are independent of provider-context
+identity, so a visible balance update at one arrival cannot cancel a sibling
+timer. A multi-sender player-to-pot batch is one zero-stagger receipt cohort:
+the ledger preserves the pot's opening value until every inbound flight has
+arrived, then mutates it and emits one signed effect for the composed total.
+This derives from immutable transfer topology, not a game-specific reason, so
+antes, bets, and transfers share the same contract while staggered player
+awards remain individual arrivals.
+
+Opponent labels use the canonical felt frame and their actual chip-disc rect to
+start on the rim facing the felt. Labels remain presentation-only and do not
+change endpoint ownership, financial settlement, or reconnect behavior.

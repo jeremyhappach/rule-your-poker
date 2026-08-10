@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  aggregatesAntePotArrival,
+  aggregatesConcurrentPotArrival,
   residualDeltaForEndpoint,
   transferDeltaForEndpoint,
   type ChipPresentationBatch,
@@ -47,19 +47,30 @@ describe('ChipPresentationLedger signed balance deltas', () => {
     expect(residualDeltaForEndpoint(potAward, 'player:winner')).toBe(0);
   });
 
-  it('aggregates a multi-player ante into one pot arrival without leaving a residual', () => {
-    const antes = batch({
-      reason: 'ante',
-      opening_balances: { 'player:one': 10, 'player:two': 10, pot: 0 },
-      closing_balances: { 'player:one': 5, 'player:two': 5, pot: 10 },
-      transfers: [
-        { id: 'ante-one', amount: 5, from: { kind: 'player', playerId: 'one' }, to: { kind: 'pot' } },
-        { id: 'ante-two', amount: 5, from: { kind: 'player', playerId: 'two' }, to: { kind: 'pot' } },
-      ],
-    });
+  it.each([
+    ['ante', 5],
+    ['bet', 1],
+    ['transfer', 3],
+  ] as const)(
+    'aggregates concurrent %s receipts into one pot arrival without a residual',
+    (reason, amount) => {
+      const potReceipt = batch({
+        reason,
+        opening_balances: { 'player:one': 10, 'player:two': 10, pot: 0 },
+        closing_balances: {
+          'player:one': 10 - amount,
+          'player:two': 10 - amount,
+          pot: amount * 2,
+        },
+        transfers: [
+          { id: 'pot-one', amount, from: { kind: 'player', playerId: 'one' }, to: { kind: 'pot' } },
+          { id: 'pot-two', amount, from: { kind: 'player', playerId: 'two' }, to: { kind: 'pot' } },
+        ],
+      });
 
-    expect(aggregatesAntePotArrival(antes, 'pot')).toBe(true);
-    expect(transferDeltaForEndpoint(antes, 'pot')).toBe(10);
-    expect(residualDeltaForEndpoint(antes, 'pot')).toBe(0);
-  });
+      expect(aggregatesConcurrentPotArrival(potReceipt, 'pot')).toBe(true);
+      expect(transferDeltaForEndpoint(potReceipt, 'pot')).toBe(amount * 2);
+      expect(residualDeltaForEndpoint(potReceipt, 'pot')).toBe(0);
+    },
+  );
 });

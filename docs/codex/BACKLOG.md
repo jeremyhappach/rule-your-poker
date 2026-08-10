@@ -342,6 +342,15 @@ correction in production on 2026-08-10.
 
 Status: In validation (P1); approved cross-game shell migration on 2026-08-10.
 
+- Follow-up correction in validation: concurrent player-to-pot transfers could
+  visibly compose the pot total while emitting only one individual `+$amount`
+  label, because a provider rerender cancelled sibling arrival timers. The
+  canonical transport now keeps timers through ledger rerenders and the ledger
+  composes every multi-sender pot receipt (ante, bet, or transfer) into one
+  landing effect. Opponent destination labels now originate at the felt-facing
+  rim of their chip disc instead of its obstructed center. Await production
+  smoke for concurrent `+$total` and readable opponent receipt labels.
+
 - Every immutable player-to-player, player-to-pot, and pot-to-player transfer
   must show one red negative label and decrement when its chip visibly leaves,
   then one gold positive label and increment when its chip visibly arrives.

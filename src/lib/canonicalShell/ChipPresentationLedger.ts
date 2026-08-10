@@ -145,11 +145,19 @@ export function residualDeltaForEndpoint(batch: ChipPresentationBatch, key: Endp
     - transferDeltaForEndpoint(batch, key);
 }
 
-/** Antes are one simultaneous pot receipt even when many chips fly in. */
-export function aggregatesAntePotArrival(batch: ChipPresentationBatch, key: EndpointKey): boolean {
-  return batch.reason === 'ante'
-    && key === 'pot'
-    && batch.transfers.filter((transfer) => endpointKey(transfer.to) === key).length > 1;
+/**
+ * Player-to-pot flights in one batch use the zero-stagger default transport,
+ * so their common pot landing is one visible receipt. This deliberately uses
+ * immutable batch topology rather than a game-specific reason: antes, bets,
+ * and multi-sender transfers all share the same presentation boundary.
+ */
+export function aggregatesConcurrentPotArrival(
+  batch: ChipPresentationBatch,
+  key: EndpointKey,
+): boolean {
+  const inbound = batch.transfers.filter((transfer) => endpointKey(transfer.to) === key);
+  return key === 'pot' && inbound.length > 1
+    && inbound.every((transfer) => transfer.from.kind === 'player');
 }
 
 function asNumber(value: unknown): number | null {
@@ -462,29 +470,29 @@ export function useChipPresentationLedger(
               const arrived = batch.transfers
                 .filter((candidate) => endpointKey(candidate.to) === toKey && active.arrived.has(candidate.id))
                 .reduce((sum, candidate) => sum + candidate.amount, 0);
-              // Antes arrive as a simultaneous set. Keep the pot at its
-              // opening value until every incoming ante lands, then make one
-              // composed balance change and one +$total label.
+              // Concurrent player-to-pot flights arrive as one receipt. Keep
+              // the pot at its opening value until every inbound chip lands,
+              // then make one composed balance change and one +$total label.
               const inboundToEndpoint = batch.transfers.filter(
                 (candidate) => endpointKey(candidate.to) === toKey,
               );
-              const aggregateAntePotArrival = aggregatesAntePotArrival(batch, toKey);
+              const aggregatePotArrival = aggregatesConcurrentPotArrival(batch, toKey);
               if (
-                aggregateAntePotArrival &&
+                aggregatePotArrival &&
                 !inboundToEndpoint.every((candidate) => active.arrived.has(candidate.id))
               ) {
                 return;
               }
               writeVisible([[toKey, opening - departed + arrived]]);
               emitBalanceDelta({
-                id: aggregateAntePotArrival
+                id: aggregatePotArrival
                   ? `${batch.id}:arrived:${toKey}:aggregate`
                   : `${batch.id}:${entry.id}:arrived:${toKey}`,
                 batchId: batch.id,
                 cursor: batch.cursor,
                 endpoint: entry.to,
                 position: to.kind === 'seat' ? to.position : undefined,
-                amount: aggregateAntePotArrival
+                amount: aggregatePotArrival
                   ? inboundToEndpoint.reduce((sum, candidate) => sum + candidate.amount, 0)
                   : entry.amount,
                 boundary: 'arrived',

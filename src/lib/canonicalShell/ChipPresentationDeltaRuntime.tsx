@@ -28,6 +28,13 @@ interface PositionedDelta {
   top: number;
 }
 
+interface ResolvedDeltaAnchor {
+  element: HTMLElement;
+  kind: 'pot' | 'self' | 'opponent-seat';
+}
+
+type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
 function hasRenderableAnchorGeometry(element: HTMLElement): boolean {
   const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
@@ -59,11 +66,12 @@ function elementsWithAttribute(
 function resolveDeltaAnchor(
   container: HTMLElement,
   delta: ChipPresentationBalanceDelta,
-): HTMLElement | null {
+): ResolvedDeltaAnchor | null {
   if (delta.endpoint.kind === 'pot') {
-    return firstRenderable(container.querySelectorAll<HTMLElement>(
+    const element = firstRenderable(container.querySelectorAll<HTMLElement>(
       '[data-canonical-pot-zone], [data-pot-anchor]',
     ));
+    return element ? { element, kind: 'pot' } : null;
   }
 
   const playerId = delta.endpoint.playerId;
@@ -73,17 +81,41 @@ function resolveDeltaAnchor(
       'data-chip-delta-anchor',
       `player:${playerId}`,
     ));
-    if (selfAnchor) return selfAnchor;
+    if (selfAnchor) return { element: selfAnchor, kind: 'self' };
   }
 
   if (delta.position != null) {
-    return firstRenderable(elementsWithAttribute(
+    const element = firstRenderable(elementsWithAttribute(
       container,
       'data-chip-reaction-target',
       String(delta.position),
     ));
+    return element ? { element, kind: 'opponent-seat' } : null;
   }
   return null;
+}
+
+/** Places an opponent label on the chip disc's edge facing the felt center. */
+export function projectFeltFacingRimOrigin(
+  anchorRect: Rect,
+  feltRect: Rect,
+): { left: number; top: number } {
+  const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+  const anchorCenterY = anchorRect.top + anchorRect.height / 2;
+  const feltCenterX = feltRect.left + feltRect.width / 2;
+  const feltCenterY = feltRect.top + feltRect.height / 2;
+  const dx = feltCenterX - anchorCenterX;
+  const dy = feltCenterY - anchorCenterY;
+  const distance = Math.hypot(dx, dy);
+  const radius = Math.min(anchorRect.width, anchorRect.height) / 2;
+
+  if (distance === 0 || radius === 0) {
+    return { left: anchorCenterX, top: anchorRect.top };
+  }
+  return {
+    left: anchorCenterX + (dx / distance) * radius,
+    top: anchorCenterY + (dy / distance) * radius,
+  };
 }
 
 export interface ChipPresentationDeltaRuntimeProps {
@@ -105,6 +137,9 @@ export function ChipPresentationDeltaRuntime({
     if (!container || !overlayRoot) return;
 
     const containerRect = container.getBoundingClientRect();
+    const feltRect = firstRenderable(container.querySelectorAll<HTMLElement>(
+      '[data-canonical-felt-interaction-layer]',
+    ))?.getBoundingClientRect() ?? containerRect;
     const additions: PositionedDelta[] = [];
     for (const delta of deltas) {
       if (seenIdsRef.current.has(delta.id)) continue;
@@ -113,11 +148,14 @@ export function ChipPresentationDeltaRuntime({
       seenIdsRef.current.add(delta.id);
       const anchor = resolveDeltaAnchor(container, delta);
       if (!anchor) continue;
-      const rect = anchor.getBoundingClientRect();
+      const rect = anchor.element.getBoundingClientRect();
+      const origin = anchor.kind === 'opponent-seat'
+        ? projectFeltFacingRimOrigin(rect, feltRect)
+        : { left: rect.left + rect.width / 2, top: rect.top };
       additions.push({
         delta,
-        left: rect.left - containerRect.left + rect.width / 2,
-        top: rect.top - containerRect.top,
+        left: origin.left - containerRect.left,
+        top: origin.top - containerRect.top,
       });
     }
     if (additions.length > 0) {

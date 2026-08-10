@@ -322,6 +322,12 @@ export function ChipTransportRuntime({
   overlayRootRef,
 }: ChipTransportRuntimeProps) {
   const ctx = useChipTransportInternal();
+  // The ledger updates the provider context as a chip crosses each visible
+  // boundary. Timers must survive those updates: concurrent arrivals belong
+  // to one already-admitted batch and cannot be cancelled by a sibling's
+  // departure/arrival render.
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
   const cacheRef = useRef<EndpointCache>({});
   const resolvedRef = useRef<Map<string, RuntimeChip>>(new Map());
   const [, force] = useState(0);
@@ -446,7 +452,7 @@ export function ChipTransportRuntime({
   }, [ctx, containerRef, activeIds, active]);
 
   useEffect(() => {
-    if (!ctx) return;
+    if (!ctxRef.current) return;
     const container = containerRef.current;
     const timers: number[] = [];
     for (const [id, chip] of resolvedRef.current.entries()) {
@@ -460,7 +466,7 @@ export function ChipTransportRuntime({
       const remainingToSettle = Math.max(0, chip.totalMs - elapsed);
 
       const arrivalTimer = window.setTimeout(() => {
-        ctx.__markArrived(id);
+        ctxRef.current?.__markArrived(id);
       }, remainingToArrival);
       timers.push(arrivalTimer);
 
@@ -536,14 +542,14 @@ export function ChipTransportRuntime({
 
       const t2 = window.setTimeout(() => {
         chipTransportDbgUpsert(id, { settled: true, transportVisible: false });
-        ctx.__markSettled(id, chip.totalMs);
+        ctxRef.current?.__markSettled(id, chip.totalMs);
       }, remainingToSettle + 16);
       timers.push(t2);
     }
     return () => {
       for (const t of timers) window.clearTimeout(t);
     };
-  }, [ctx, activeIds, containerRef]);
+  }, [activeIds, containerRef]);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;

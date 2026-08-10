@@ -2,6 +2,22 @@
 
 Date: 2026-08-10
 
+## Concurrent chip-delta cohorts and opponent label origin
+
+- The transport runtime now holds its lifecycle timers through ledger/provider
+  rerenders. A first concurrent chip arrival can no longer cancel the sibling
+  arrival timer, so all immutable transfers in the same visible cohort reach
+  the ledger exactly once.
+- Any multi-sender player-to-pot batch—antes, bets, or transfers—now uses its
+  shared zero-stagger landing boundary to hold the pot until the final inbound
+  chip lands, then show one composed `+$total` effect. Player-target awards
+  retain their individual landing boundaries.
+- Opponent stack effects now originate at the actual chip disc rim facing the
+  canonical felt center, while self and pot anchors retain their established
+  geometry. This is shell-only presentation work; database settlement and
+  transfer ownership are unchanged. Production smoke remains the acceptance
+  gate.
+
 ## Canonical signed chip-balance effects
 
 - The shell ledger now emits the red/gold `-$ / +$` label from the exact same
