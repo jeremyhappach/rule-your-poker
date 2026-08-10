@@ -438,6 +438,36 @@ Status: Queued (P1); observed after a 3-5-7 pot win in production smoke on
   reconnect contract. Do not suppress terminal labels by timer or add a second
   financial/presentation owner.
 
+### 3P. Holm can render a stale 3-5-7 `+L` leg cue beside the self chipstack
+
+Status: Queued (P1); observed in the paused `Aug 10 - Khalil Mack` Holm game
+on 2026-08-10.
+
+- With two players staying and the self cards tabled, the self chipstack can
+  display a cue such as `+L1`. Legs have no meaning in Holm and must never be
+  presented there.
+- The only writer for this cue is the non-financial 3-5-7
+  `winnerLegsFlashTrigger`, but the self chipstack renders it without a
+  game-type guard. Component state can therefore survive a game transition and
+  be interpreted in Holm. Restrict every leg cue to its 3-5-7 presentation
+  owner and clear its transient state at the canonical hand/game identity
+  boundary; do not affect monetary delta labels.
+
+### 3Q. Consecutive identical Holm showdowns suppress canonical transfer presentation
+
+Status: Investigating (P0); observed in the paused `Aug 10 - Khalil Mack`
+Holm game on 2026-08-10.
+
+- The final two of three consecutive two-player showdowns settled correctly
+  but showed neither required `pot -> winner` nor subsequent `loser -> pot`
+  flight. The immutable batches exist for every hand, with staged
+  authoritative openings and closings.
+- The client duplicate latch currently keys a Holm showdown with the game-wide
+  `current_round` number. In Holm this remains `1` across hands, so repeated
+  winner, loser, pot, and match values collide with the prior hand. Key the
+  presentation plan by the authoritative round identity/hand, preserving
+  duplicate suppression only for re-delivery of that exact settlement.
+
 ### 3J. Gin iPhone screen dim regression
 
 Status: Queued (P1); observed in the `Columbia Terrace` production all-game
