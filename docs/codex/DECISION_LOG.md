@@ -273,3 +273,18 @@ awards remain individual arrivals.
 Opponent labels use the canonical felt frame and their actual chip-disc rect to
 start on the rim facing the felt. Labels remain presentation-only and do not
 change endpoint ownership, financial settlement, or reconnect behavior.
+
+## D-029 - Holm showdowns expose pot legs, never a net player transfer
+
+Holm's multi-player showdown is one financial settlement but has two visible
+facts: the existing pot pays winner(s), then losing stayers build the next pot.
+`holm_settle_hand` records those as adjacent immutable `win` and `transfer`
+batches from its own staged database writes. It does not ask the client for
+opening balances or reconstruct topology from a net delta after the fact.
+
+`start_holm_initial_hand` labels its collection `ante`. The Holm adapter gates
+only a batch whose immutable recipients/contributors match the current showdown
+cohort; a generic player-to-pot transfer cannot be held behind that terminal
+phase. The ledger owns each shared endpoint across the two cursors and releases
+only after its existing authoritative reconciliation barrier. Disconnect and
+reconnect still abandon presentation without replaying settled financial work.

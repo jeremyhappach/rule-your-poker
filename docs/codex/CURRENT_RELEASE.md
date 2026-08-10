@@ -2,6 +2,24 @@
 
 Date: 2026-08-10
 
+## Holm staged showdown transfer projection
+
+- Migration `20260810201500_stage_holm_showdown_transfer_projection.sql` is
+  installed on the owned production database. A first Holm hand now journals
+  its player-to-pot collection as `ante`, so it admits at the hand boundary
+  rather than being mistaken for a terminal replacement-pot transfer.
+- A normal or partial-tie multi-player showdown remains one replay-safe
+  `holm_settle_hand` transaction and one result claim, but now publishes two
+  adjacent immutable batches: old pot to winner(s), then losing stayer(s) to
+  the replacement pot. Each stage carries database-captured opening and
+  closing balances; the shared ledger owns common endpoints through the chain.
+- The Holm adapter classifies the immutable transfer topology and advances its
+  second phase only after the first canonical batch settles. It no longer uses
+  invisible legacy animation timers to advance financial presentation. Rollback
+  proofs passed for initial authorization, continuation/terminal and late
+  replay, standard transfer batching, winner, partial tie, and duplicate
+  settlement. Production smoke remains the acceptance gate.
+
 ## Concurrent chip-delta cohorts and opponent label origin
 
 - The transport runtime now holds its lifecycle timers through ledger/provider

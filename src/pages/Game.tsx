@@ -1645,7 +1645,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownTriggerId, setHolmShowdownTriggerId] = useState<string | null>(null);
   const [holmShowdownPotAmount, setHolmShowdownPotAmount] = useState<number>(0); // Amount winner takes from pot
   const [holmShowdownMatchAmount, setHolmShowdownMatchAmount] = useState<number>(0); // Amount each loser pays
-  const [holmShowdownWinnerId, setHolmShowdownWinnerId] = useState<string | null>(null);
+  const [holmShowdownWinnerIds, setHolmShowdownWinnerIds] = useState<string[]>([]);
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
   // ONE SETTLEMENT = ONE PLAN. The awaiting_next_round effect can re-enter
@@ -8110,20 +8110,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         }
         
-        // Check for Holm multi-player showdown (winner takes pot, losers match)
-        // Format: "...|||WINNER:{id}|||LOSERS:{id,id}|||POT:{amount}|||MATCH:{amount}|||DEBUG:..."
-        const holmShowdownMatch = lastResult.match(/\|\|\|WINNER:([^|]+)\|\|\|LOSERS:([^|]+)\|\|\|POT:(\d+)\|\|\|MATCH:(\d+)/);
+        // Check for Holm multi-player showdown (winner(s) take the pot, losers
+        // match it). `WINNERS` is the partial-tie form and shares the same
+        // canonical batch-stage gate.
+        const holmShowdownMatch = lastResult.match(/\|\|\|(WINNER|WINNERS):([^|]+)\|\|\|LOSERS:([^|]+)\|\|\|POT:(\d+)\|\|\|MATCH:(\d+)/);
         if (holmShowdownMatch && game?.game_type === 'holm-game') {
-          const winnerId = holmShowdownMatch[1];
-          const loserIds = holmShowdownMatch[2].split(',').filter(Boolean);
-          const potAmount = parseInt(holmShowdownMatch[3], 10);
-          const matchAmount = parseInt(holmShowdownMatch[4], 10);
+          const winnerIds = holmShowdownMatch[2].split(',').filter(Boolean);
+          const loserIds = holmShowdownMatch[3].split(',').filter(Boolean);
+          const potAmount = parseInt(holmShowdownMatch[4], 10);
+          const matchAmount = parseInt(holmShowdownMatch[5], 10);
 
           // Settlement identity: dealer game | round | winner | losers | pot | match.
           const settlementKey = [
             game?.current_game_uuid ?? 'no-dealer-game',
             currentRound ?? 'no-round',
-            winnerId,
+            winnerIds.join(','),
             loserIds.join(','),
             potAmount,
             matchAmount,
@@ -8136,7 +8137,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             console.log('[HOLM_SHOWDOWN_ANIMATION] Detected multi-player showdown', {
               settlementKey,
-              winnerId,
+              winnerIds,
               loserIds,
               potAmount,
               matchAmount
@@ -8147,7 +8148,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // reset by a re-entry of this effect).
             setHolmShowdownPotAmount(potAmount);
             setHolmShowdownMatchAmount(matchAmount);
-            setHolmShowdownWinnerId(winnerId);
+            setHolmShowdownWinnerIds(winnerIds);
             setHolmShowdownLoserIds(loserIds);
             setHolmShowdownPhase('pot-to-winner');
             setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`);
@@ -16348,19 +16349,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setChuckyLossAmount(0);
               } : undefined}
               holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
-              holmShowdownPotAmount={renderRoundContext ? holmShowdownPotAmount : undefined}
               holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}
-              holmShowdownWinnerId={renderRoundContext ? holmShowdownWinnerId : null}
+              holmShowdownWinnerIds={renderRoundContext ? holmShowdownWinnerIds : []}
               holmShowdownLoserIds={renderRoundContext ? holmShowdownLoserIds : []}
               holmShowdownPhase={renderRoundContext ? holmShowdownPhase : 'idle'}
-              onHolmShowdownPotToWinnerStarted={isInProgress ? () => setHolmShowdownTriggerId(null) : undefined}
-              onHolmShowdownPotToWinnerEnded={isInProgress ? () => setHolmShowdownPhase('losers-to-pot') : undefined}
-              onHolmShowdownLosersStarted={isInProgress ? () => {} : undefined}
+              onHolmShowdownPotToWinnerEnded={isInProgress ? () => {
+                setHolmShowdownTriggerId(null);
+                setHolmShowdownPhase('losers-to-pot');
+              } : undefined}
               onHolmShowdownLosersEnded={isInProgress ? () => {
                 setHolmShowdownPhase('idle');
                 setHolmShowdownPotAmount(0);
                 setHolmShowdownMatchAmount(0);
-                setHolmShowdownWinnerId(null);
+                setHolmShowdownWinnerIds([]);
                 setHolmShowdownLoserIds([]);
               } : undefined}
               holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}

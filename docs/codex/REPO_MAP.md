@@ -78,7 +78,7 @@ inspected.
 | Geometry | `ResponsiveGeometryProvider.tsx`, `canonicalShellLayoutConfig.ts`, `canonicalSlotPlacement.ts`, `src/lib/wave4LayoutResolver/`, and game providers in `src/lib/wave5GameplayGeometry/`. |
 | Announcements and celebration | `announcements/CanonicalAnnouncementProvider.tsx`, `CanonicalAnnouncementLayer.tsx`, `CanonicalCelebrationLayer.tsx`, `SessionLifecycleAnnouncer.tsx`, and `renderers.tsx`. |
 | Overlay ownership | `ShellOverlayMounts.tsx` exposes the canonical `slot`, `settlement`, and `transient` layers. |
-| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, `ChipPresentationLedger.ts`, `ChipPresentationDeltaRuntime.tsx`, and `chipEndpoints.ts`. The provider owns financial departure/arrival/reconcile display and its signed delta-effect stream. Concurrent player-to-pot flights compose as one ledger-owned pot-arrival cohort, while the delta runtime derives opponent-label origin from the canonical felt-facing chip-disc rim; game-specific animation components retain phase callbacks only. |
+| Chip transport | `ChipTransportProvider.tsx`, `ChipTransportRuntime.tsx`, `ChipPresentationLedger.ts`, `ChipPresentationDeltaRuntime.tsx`, `holmTransferPresentationStage.ts`, and `chipEndpoints.ts`. The provider owns financial departure/arrival/reconcile display and its signed delta-effect stream. Concurrent player-to-pot flights compose as one ledger-owned pot-arrival cohort, while the delta runtime derives opponent-label origin from the canonical felt-facing chip-disc rim. Holm classifies immutable stage topology solely to admit and advance its non-financial phase. |
 | Card transport/deal | `cardTransport/CardTransportProvider.tsx`, `CardTransportRuntime.tsx`, `DealRuntime.tsx`, and `cardEndpoints.ts`. |
 | Settlement presentation | `settlement/SettlementProvider.tsx`, `SettlementRuntime.tsx`, and `settlement/types.ts`. These are presentation owners, not financial authority. |
 | Active hand | Shared `src/components/activeHand/ActiveHandFan.tsx` and `MeasuredActiveHandFan.tsx`; Holm also retains a separate local-hand route in `MobileGameTable.tsx`. |
@@ -117,8 +117,10 @@ reset transient/presentation state when those identities change.
   `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling/authority
   recovery is mounted in `Game.tsx`.
 - Settlement/terminal: `src/lib/holmSettleHand.ts:settleHolmHand` calls
-  `public.holm_settle_hand`; latest definition and snapshot identity are in
-  `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`, with the ordinary
+  `public.holm_settle_hand`; `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`
+  adds the ordered immutable pot-award/replacement-pot projection to the
+  existing one-transaction settlement. The initial-hand RPC in that migration
+  journals ante collection as `ante`; the ordinary
   snapshot unique index in
   `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`.
 - Focused tests: `holmProgress.test.ts`,
@@ -289,7 +291,7 @@ Canonical snapshot identity is
 |---|---|
 | Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
 | Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
-| Holm transactional writer | `public.holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`. |
+| Holm transactional writer | `public.holm_settle_hand`, latest projection change in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`. |
 | Game-specific client writers | Gin in its round logic, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
 | Cribbage transactional writer | `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 | Yahtzee transactional writer | `public.yahtzee_settle_game` in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest definition in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`. |
@@ -320,7 +322,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 
 | Capability | Latest repository evidence |
 |---|---|
-| Holm terminal settlement | `holm_settle_hand` in `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql`; wrapper `src/lib/holmSettleHand.ts`. |
+| Holm terminal settlement | `holm_settle_hand` with staged-showdown projection in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`; wrapper `src/lib/holmSettleHand.ts`. |
 | 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
 | Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |

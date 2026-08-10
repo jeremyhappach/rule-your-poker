@@ -263,6 +263,7 @@ import {
   usePresentationPotChipBalance,
 } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
+import { classifyHolmTransferPresentationStage } from "@/lib/canonicalShell/holmTransferPresentationStage";
 import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
@@ -1011,14 +1012,11 @@ interface MobileGameTableProps {
   onChuckyLossEnded?: () => void;
   // Holm multi-player showdown animation props (pot-to-winner, then losers-to-pot)
   holmShowdownTriggerId?: string | null;
-  holmShowdownPotAmount?: number;
   holmShowdownMatchAmount?: number;
-  holmShowdownWinnerId?: string | null;
+  holmShowdownWinnerIds?: string[];
   holmShowdownLoserIds?: string[];
   holmShowdownPhase?: 'idle' | 'pot-to-winner' | 'losers-to-pot';
-  onHolmShowdownPotToWinnerStarted?: () => void;
   onHolmShowdownPotToWinnerEnded?: () => void;
-  onHolmShowdownLosersStarted?: () => void;
   onHolmShowdownLosersEnded?: () => void;
   // Holm win pot animation props (player beats Chucky)
   holmWinPotTriggerId?: string | null;
@@ -1290,14 +1288,11 @@ export const MobileGameTable = ({
   onChuckyLossStarted,
   onChuckyLossEnded,
   holmShowdownTriggerId,
-  holmShowdownPotAmount = 0,
   holmShowdownMatchAmount = 0,
-  holmShowdownWinnerId,
+  holmShowdownWinnerIds = [],
   holmShowdownLoserIds = [],
   holmShowdownPhase = 'idle',
-  onHolmShowdownPotToWinnerStarted,
   onHolmShowdownPotToWinnerEnded,
-  onHolmShowdownLosersStarted,
   onHolmShowdownLosersEnded,
   holmWinPotTriggerId,
   onTerminalPresentationActiveChange,
@@ -2339,18 +2334,6 @@ export const MobileGameTable = ({
   const buckOverlayFiredForHciRef = useRef<string | null>(null);
 
   
-  // Holm showdown phase 2 trigger ref
-  const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
-  const lastPhaseRef = useRef<string>('idle');
-  
-  // Generate phase 2 trigger when phase changes to losers-to-pot
-  useEffect(() => {
-    if (holmShowdownPhase === 'losers-to-pot' && lastPhaseRef.current !== 'losers-to-pot') {
-      setPhase2TriggerId(`holm-losers-${Date.now()}`);
-    }
-    lastPhaseRef.current = holmShowdownPhase;
-  }, [holmShowdownPhase]);
-
   // Leg earned animation state
   const [showLegEarned, setShowLegEarned] = useState(false);
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
@@ -2905,14 +2888,6 @@ export const MobileGameTable = ({
       return { lockId: chuckyLossTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
 
-    // 3) Holm showdown losers-to-pot (losers pay match amount into pot) - POT-IN
-    if (holmShowdownPhase === 'losers-to-pot' && phase2TriggerId && holmShowdownLoserIds.length > 0 && holmShowdownMatchAmount > 0) {
-      const totalAmount = holmShowdownMatchAmount * holmShowdownLoserIds.length;
-      const postPot = pot;
-      const prePot = Math.max(0, postPot - totalAmount);
-      return { lockId: phase2TriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
-    }
-
     return null;
   }, [
     pot,
@@ -2923,10 +2898,6 @@ export const MobileGameTable = ({
     chuckyLossTriggerId,
     chuckyLossAmount,
     chuckyLossPlayerIds,
-    holmShowdownPhase,
-    phase2TriggerId,
-    holmShowdownLoserIds,
-    holmShowdownMatchAmount,
   ]);
 
   // Freeze displayedPot BEFORE the first paint whenever a pot-in animation is pending.
@@ -3881,30 +3852,42 @@ export const MobileGameTable = ({
     const movesPotToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
     );
-    const movesPlayerToPot = batch.transfers.some(
-      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
-    );
     const movesPlayerToPlayer = batch.transfers.some(
       (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
     );
 
     if (gameType === 'holm-game') {
+      const holmStage = classifyHolmTransferPresentationStage(batch, {
+        showdownWinnerIds: holmShowdownWinnerIds,
+        showdownLoserIds: holmShowdownLoserIds,
+        showdownMatchAmount: holmShowdownMatchAmount,
+        chuckyLossPlayerIds,
+        chuckyLossAmount,
+      });
+
+      if (holmStage === 'showdown-pot-award') {
+        return (
+          holmCommunityFullyRevealed &&
+          chuckyVisualRevealComplete &&
+          holmShowdownPhase === 'pot-to-winner'
+        );
+      }
+      if (holmStage === 'showdown-replacement-pot') {
+        return holmShowdownPhase === 'losers-to-pot';
+      }
+      if (holmStage === 'chucky-loss') {
+        return chuckyVisualRevealComplete;
+      }
       if (movesPotToPlayer) {
         return (
           holmCommunityFullyRevealed &&
           chuckyVisualRevealComplete &&
-          (
-            holmWinPotTriggerIdGated !== null ||
-            holmShowdownPhase === 'pot-to-winner'
-          )
+          holmWinPotTriggerIdGated !== null
         );
       }
-      if (movesPlayerToPot && batch.reason === 'transfer') {
-        return (
-          (chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) ||
-          holmShowdownPhase === 'losers-to-pot'
-        );
-      }
+      // An initial ante or other non-terminal player-to-pot batch must never
+      // wait for a terminal phase. Its immutable reason/topology is enough to
+      // admit it at the hand boundary.
       return true;
     }
 
@@ -3946,6 +3929,9 @@ export const MobileGameTable = ({
     chuckyVisualRevealComplete,
     holmWinPotTriggerIdGated,
     holmShowdownPhase,
+    holmShowdownWinnerIds,
+    holmShowdownLoserIds,
+    holmShowdownMatchAmount,
     chuckyLossPlayerIds,
     chuckyLossAmount,
     threeFiveSevenWinPhase,
@@ -3955,6 +3941,24 @@ export const MobileGameTable = ({
     horsesWinPotTriggerId,
   ]);
   const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
+    if (gameType === 'holm-game') {
+      const holmStage = classifyHolmTransferPresentationStage(batch, {
+        showdownWinnerIds: holmShowdownWinnerIds,
+        showdownLoserIds: holmShowdownLoserIds,
+        showdownMatchAmount: holmShowdownMatchAmount,
+        chuckyLossPlayerIds,
+        chuckyLossAmount,
+      });
+      if (holmStage === 'showdown-pot-award' && holmShowdownPhase === 'pot-to-winner') {
+        onHolmShowdownPotToWinnerEnded?.();
+        return;
+      }
+      if (holmStage === 'showdown-replacement-pot' && holmShowdownPhase === 'losers-to-pot') {
+        onHolmShowdownLosersEnded?.();
+        return;
+      }
+    }
+
     if (
       gameType !== '3-5-7' ||
       batch.reason !== 'sweep' ||
@@ -3967,7 +3971,17 @@ export const MobileGameTable = ({
     if (!beginPotFlight) return;
     pending357LegSweepCreditRef.current = null;
     beginPotFlight();
-  }, [gameType]);
+  }, [
+    gameType,
+    holmShowdownWinnerIds,
+    holmShowdownLoserIds,
+    holmShowdownMatchAmount,
+    holmShowdownPhase,
+    chuckyLossPlayerIds,
+    chuckyLossAmount,
+    onHolmShowdownPotToWinnerEnded,
+    onHolmShowdownLosersEnded,
+  ]);
   useChipTransferPresentationAdmission(
     canAdmitChipTransferPresentation,
     onChipTransferPresentationBatchSettled,
@@ -11393,27 +11407,6 @@ export const MobileGameTable = ({
           }}
         />
         
-        {/* Holm Multi-Player Showdown Phase 1: Pot to Winner */}
-        {holmShowdownPhase === 'pot-to-winner' && holmShowdownWinnerId && (
-          <PotToPlayerAnimation
-            triggerId={holmShowdownTriggerId}
-            amount={holmShowdownPotAmount}
-            winnerPosition={players.find(p => p.id === holmShowdownWinnerId)?.position ?? 1}
-            currentPlayerPosition={currentPlayer?.position ?? null}
-            getClockwiseDistance={getClockwiseDistance}
-            containerRef={tableContainerRef}
-            gameType={gameType}
-            presentationOwned
-            onAnimationStart={() => {
-              onHolmShowdownPotToWinnerStarted?.();
-            }}
-            onAnimationEnd={() => {
-              // Winner's chips have been updated by backend, just move to phase 2
-              onHolmShowdownPotToWinnerEnded?.();
-            }}
-          />
-        )}
-        
         {/* Holm Win Pot Animation (player beats Chucky - dramatic 5 second animation) */}
         {holmWinPotTriggerIdGated && (
           <HolmWinPotAnimation
@@ -11536,57 +11529,6 @@ export const MobileGameTable = ({
           );
         })()}
 
-
-        
-        {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
-        {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
-          <AnteUpAnimation
-            presentationOwned
-            pot={pot}
-            anteAmount={holmShowdownMatchAmount}
-            chipAmount={holmShowdownMatchAmount}
-            activePlayers={players.filter(p => !p.sitting_out).map(p => ({ position: p.position, id: p.id }))}
-            currentPlayerPosition={currentPlayer?.position ?? null}
-            getClockwiseDistance={getClockwiseDistance}
-            containerRef={tableContainerRef}
-            gameType={gameType}
-            triggerId={phase2TriggerId}
-            specificPlayerIds={holmShowdownLoserIds}
-             onAnimationStart={() => {
-               // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
-               const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
-               potLockRef.current = true;
-
-               // If we've already shown the post-loss pot (late trigger), never "rewind".
-               if (displayedPot < pot) {
-                 setDisplayedPot(Math.max(0, pot - totalLoserPay));
-               }
-
-              // Backend ALREADY deducted chips. Show pre-loss values.
-              const newDisplayedChips: Record<string, number> = {};
-              holmShowdownLoserIds.forEach(loserId => {
-                const loser = players.find(p => p.id === loserId);
-                if (loser) {
-                  newDisplayedChips[loserId] = loser.chips + holmShowdownMatchAmount;
-                }
-              });
-              setDisplayedChips(newDisplayedChips);
-            }}
-            onChipsArrived={() => {
-              // Chips arrived at pot - show post-loss pot and unlock (POT-IN complete)
-              setDisplayedPot(pot);
-              potLockRef.current = false;
-              if (potLockSafetyTimeoutRef.current) {
-                window.clearTimeout(potLockSafetyTimeoutRef.current);
-                potLockSafetyTimeoutRef.current = null;
-              }
-              console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
-              setDisplayedChips({});
-              onHolmShowdownLosersEnded?.();
-            }}
-          />
-        )}
-        
         {(() => {
           recordBucksForensic('OVERLAY_RENDERED', {
             ownerFile: 'src/components/MobileGameTable.tsx',

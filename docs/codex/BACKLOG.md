@@ -371,8 +371,8 @@ Status: In validation (P1); approved cross-game shell migration on 2026-08-10.
 
 ### 3M. Holm first-hand ante is delayed into showdown and its pot legs are lost
 
-Status: Investigating (P0); frozen production reproduction `Aug 10 - Ruby
-Waves`, reported 2026-08-10.
+Status: In validation (P0); corrected under the approved high-risk branch on
+2026-08-10. Production smoke remains required.
 
 - The database committed one legitimate initial-Holm ante batch at 20:13:42Z:
   both players paid `$3` into a zero pot before either decision. It did not
@@ -384,11 +384,11 @@ Waves`, reported 2026-08-10.
   projected it as one player-to-player transfer. The required semantic legs
   (`pot -> winner`, then `loser -> pot`) were therefore unavailable to the
   canonical ledger.
-- Correct this as one same-transaction Holm projection migration: label the
-  first-hand ante as `ante`; journal settlement as adjacent immutable
-  pot-award and replacement-pot stages with authoritative staged openings and
-  closings; and have the Holm phase gate admit only the matching canonical
-  stage. Preserve the actual once-only settlement and initial-hand ante rule.
+- Correction: `20260810201500_stage_holm_showdown_transfer_projection.sql`
+  labels the first-hand ante `ante`, journals multi-player settlement as
+  adjacent immutable pot-award and replacement-pot stages with authoritative
+  staged openings/closings, and has the Holm phase gate match actual transfer
+  cohorts. Preserve the actual once-only settlement and initial-hand ante rule.
 
 ### 3N. Source seat cluster disappears during an outbound transfer
 
