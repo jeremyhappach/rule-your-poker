@@ -28,7 +28,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { isGinNonDealerNearKnockHarnessEnabled } from '@/lib/debugFlags';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
-import { useWakeLock } from '@/hooks/useWakeLock';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { useChangeTracker, useUnmountSnapshot } from '@/lib/canonicalShell/shellLifecycleLog';
 import { ginTrace } from '@/lib/ginStartupTrace';
@@ -488,9 +487,6 @@ export const GinRummyGameTable = ({
   const cardBackColors = getCardBackColors();
   const { playKnock } = useKnockSound();
   
-  // Prevent screen from dimming during gameplay
-  useWakeLock(true);
-
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();
   const announcements = useAnnouncements();
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();

@@ -85,7 +85,6 @@ import { cn } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
-import { useWakeLock } from '@/hooks/useWakeLock';
 import { 
   useCribbageEventContext, 
   logPeggingPlay, 
@@ -655,9 +654,6 @@ export const CribbageMobileGameTable = ({
   }, []); // empty deps = true mount/unmount only
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
-  
-  // Prevent screen from dimming during gameplay
-  useWakeLock(true);
   
   // Canonical shared chat — single store lives at Game.tsx shell boundary.
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage, isChatHydrated, hydrationBaselineIds } = useGameChatContext();

@@ -12060,13 +12060,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (!isLegWinMessage && !isGameWinMessage && !isSweepMessage) return;
 
+    // A new dealer game can surface before its inherited session-level
+    // `last_round_result` row has cleared. Let the descriptor-rotation effect
+    // retire that older generation first; it will rerun this detector for a
+    // genuine new result, even if the winner text is identical.
+    if (
+      game.current_game_uuid != null &&
+      terminal357Descriptor?.dealerGameId != null &&
+      terminal357Descriptor.dealerGameId !== game.current_game_uuid &&
+      terminal357Descriptor.terminalResultIdentity === resultMessage
+    ) {
+      return;
+    }
+
     
     
-    // Prevent duplicate processing for the same backend result message within this game.
-    // IMPORTANT: We MUST NOT clear this marker until the game actually transitions away,
-    // otherwise the detection effect will immediately re-trigger while we are still on the
-    // game_over screen (which causes the full 357 win animation sequence to repeat).
-    const processedKey = `${game.id}:${resultMessage}`;
+    // Prevent duplicate processing for this terminal dealer-game generation.
+    // `game.id` is the long-lived session id, so the same player can earn the
+    // same final leg text again in the next dealer game. Preserve a prior
+    // descriptor through a transient null `current_game_uuid`, but never let
+    // it make the next concrete dealer game look like a duplicate.
+    const terminalDealerGameId =
+      game.current_game_uuid ?? terminal357Descriptor?.dealerGameId ?? 'unknown';
+    const processedKey = `${game.id}:${terminalDealerGameId}:${resultMessage}`;
 
     if (threeFiveSevenWinProcessedRef.current === processedKey) {
       console.log('[357 WIN] Already triggered for this result message, skipping duplicate detection');
@@ -12500,7 +12516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setTerminal357Descriptor(descriptor);
     })();
     // Win-presentation instrumentation was removed.
-  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId]);
+  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, game?.rounds, game?.current_game_uuid, players, playerCards, threeFiveSevenWinTriggerId, terminal357Descriptor?.dealerGameId, terminal357Descriptor?.terminalResultIdentity]);
   
   // Identity-bound winner-hand resolver.
   //
@@ -12582,7 +12598,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // not a safe erase signal — the old table surface can persist
       // through this transition. See the dedicated cleanup effect below.
     }
-  }, [game?.status, game?.current_round]);
+  }, [game?.status, game?.current_round, game?.current_game_uuid]);
 
   // Terminal descriptor cleanup — Slice 1 correction #4.
   // Clear the descriptor ONLY when the active dealerGameId rotates to a

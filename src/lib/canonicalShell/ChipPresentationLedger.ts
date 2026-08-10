@@ -317,16 +317,22 @@ export function useChipPresentationLedger(
             abortBatchRef.current(batch.id);
             break;
           }
+          // Database journal reasons are intentionally financial rather than
+          // presentational: terminal payouts from Cribbage, Gin, and Yahtzee
+          // are all recorded as `transfer`. Every player-bound movement is
+          // nevertheless an award at the canonical transport boundary, so
+          // select its win flight from immutable endpoint topology instead.
+          const isRecipientAward = entry.to.kind === 'player';
           const intent: ChipTransportIntent = {
             id: entry.id,
             amount: entry.amount,
             from,
             to,
             reason: batch.reason,
-            variant: batch.reason === 'win' || batch.reason === 'sweep'
+            variant: isRecipientAward
               ? 'canonicalWinTransfer'
               : 'default',
-            destinationReaction: batch.reason === 'win' || batch.reason === 'sweep'
+            destinationReaction: isRecipientAward
               ? { pulse: true }
               : undefined,
           };

@@ -249,7 +249,6 @@ import React, {
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
-import { useWakeLock } from "@/hooks/useWakeLock";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
@@ -1758,9 +1757,6 @@ export const MobileGameTable = ({
   }, [players, isWaitingPhase, gameStatus, gameType, instanceLabel, currentUserId]);
 
 
-
-  // Prevent screen from dimming during gameplay
-  useWakeLock(true);
 
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
@@ -8317,7 +8313,15 @@ export const MobileGameTable = ({
 
       // Player gained a leg
       if (currentLegs > prevLegs) {
-        const animationKey = `${player.id}-${currentLegs}`;
+        // A session can run multiple 3-5-7 dealer games. A player's final
+        // leg often has the same count in each, so the dedupe must include
+        // the dealer-game/hand generation rather than persist across them.
+        const animationKey = [
+          threeFiveSevenDealerGameScope ?? gameId ?? 'no-dealer-game',
+          threeFiveSevenHandIdentity ?? handContextId ?? 'no-hand',
+          player.id,
+          currentLegs,
+        ].join(':');
         if (firedLegAnimationKeysRef.current.has(animationKey)) {
           console.log('[LEG ANIMATION] Skipping duplicate animation for:', animationKey);
         } else {
@@ -8372,7 +8376,7 @@ export const MobileGameTable = ({
 
       playerLegsRef.current[player.id] = currentLegs;
     });
-  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId]);
+  }, [players, gameType, legsToWin, isWaitingPhase, threeFiveSevenTerminalDescriptor, lastRoundResult, gameId, handContextId, threeFiveSevenDealerGameScope, threeFiveSevenHandIdentity]);
 
   // Clear winning leg player when game status changes (next game starting)
   useEffect(() => {
