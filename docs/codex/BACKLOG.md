@@ -342,6 +342,10 @@ correction in production on 2026-08-10.
 
 Status: In validation (P1); approved cross-game shell migration on 2026-08-10.
 
+- Production smoke subsequently confirmed the concurrent pot receipt total and
+  opponent felt-facing label origin. Keep the remaining reports below scoped as
+  separate presentation seams; neither authorizes another financial writer.
+
 - Follow-up correction in validation: concurrent player-to-pot transfers could
   visibly compose the pot total while emitting only one individual `+$amount`
   label, because a provider rerender cancelled sibling arrival timers. The
@@ -364,6 +368,52 @@ Status: In validation (P1); approved cross-game shell migration on 2026-08-10.
   dedupe each effect, and an interrupted batch discards its labels along with
   its transport before direct authoritative reconciliation. Validate normal
   player-to-player, multi-ante, and 3-5-7 final-leg/pot paths in production.
+
+### 3M. Holm first-hand ante is delayed into showdown and its pot legs are lost
+
+Status: Investigating (P0); frozen production reproduction `Aug 10 - Ruby
+Waves`, reported 2026-08-10.
+
+- The database committed one legitimate initial-Holm ante batch at 20:13:42Z:
+  both players paid `$3` into a zero pot before either decision. It did not
+  financially re-ante after the winner was decided.
+- That batch was journaled with generic reason `transfer`, so Holm's admission
+  gate treated it as a terminal loser-to-pot movement and held it until
+  showdown. The later settlement correctly changed the winner by `+$6`, loser
+  by `-$6`, and retained a `$6` replacement pot, but generic net-delta pairing
+  projected it as one player-to-player transfer. The required semantic legs
+  (`pot -> winner`, then `loser -> pot`) were therefore unavailable to the
+  canonical ledger.
+- Correct this as one same-transaction Holm projection migration: label the
+  first-hand ante as `ante`; journal settlement as adjacent immutable
+  pot-award and replacement-pot stages with authoritative staged openings and
+  closings; and have the Holm phase gate admit only the matching canonical
+  stage. Preserve the actual once-only settlement and initial-hand ante rule.
+
+### 3N. Source seat cluster disappears during an outbound transfer
+
+Status: Queued (P1); observed in production smoke on 2026-08-10.
+
+- During opponent-to-self transfer, the entire opponent seat cluster (disc,
+  nameplate, and attached content) becomes invisible. The shell's source-seat
+  suppression currently applies `visibility: hidden` to all of those nodes,
+  though only a moving chip is intended to leave.
+- Keep the source cluster visible with its ledger-owned decremented balance;
+  remove the broad static-seat suppression from the canonical seat owner. This
+  is a cross-game shell correction, not a per-game workaround.
+
+### 3O. Terminal chip-delta label burst during teardown
+
+Status: Queued (P1); observed after a 3-5-7 pot win in production smoke on
+2026-08-10.
+
+- Several `+$`/`-$` helper labels appeared rapidly as the terminal table was
+  tearing down. The label runtime keeps completed effects alive for two seconds
+  and only explicitly abandons a running batch, so terminal lifecycle must be
+  correlated with immutable batch boundaries before changing it.
+- Preserve valid departure/arrival labels and the direct authoritative
+  reconnect contract. Do not suppress terminal labels by timer or add a second
+  financial/presentation owner.
 
 ### 3J. Gin iPhone screen dim regression
 
