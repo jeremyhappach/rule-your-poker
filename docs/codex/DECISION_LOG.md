@@ -349,7 +349,9 @@ the hold is scoped to the authoritative round/hand identity. Presentation
 identity can advance, remount, or reconcile independently and must never
 cancel the completion acknowledgement for the same exposed cut card. When
 that identity changes during the flip, the renderer resolves the card face and
-acknowledges the new boundary exactly once.
+acknowledges the new boundary exactly once. A historical/rejoining client does
+not replay completed cut presentation, so an authoritative exposed cut is its
+own completion proof; only a live-transition hand waits for the flip callback.
 
 The database remains the owner of the cut, pegging turn, cards, scoring, and
 settlement. The client gate is presentation-only: a fresh/reconnecting client

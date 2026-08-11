@@ -6100,6 +6100,36 @@ export const CribbageMobileGameTable = ({
     setCutRevealCompletedHandKey(alreadyPresented ? cutRevealHandKey : null);
   }, [cutRevealHandKey, cribbageState?.crib?.length]);
 
+  // A historical entry deliberately does not replay already-finished deal or
+  // discard presentation. If it joins an exposed cut in pegging, no local
+  // cut animation owner exists to call `handleCutRevealComplete`; reconcile
+  // that known, authoritative presentation directly. A live hand transition
+  // retains the normal flip gate above.
+  useEffect(() => {
+    const rejoinedAtExposedCut =
+      entryMode === 'historical-entry' &&
+      cribbageState?.phase === 'pegging' &&
+      !!cribbageState.cutCard &&
+      (cribbageState.crib?.length ?? 0) > 0;
+    if (!rejoinedAtExposedCut) return;
+    if (
+      cutRevealPresentationReadyRef.current &&
+      cutRevealCompletedHandKey === cutRevealHandKey
+    ) {
+      return;
+    }
+    cutRevealPresentationReadyRef.current = true;
+    setCutRevealCompletedHandKey(cutRevealHandKey);
+  }, [
+    cutRevealCompletedHandKey,
+    cutRevealHandKey,
+    cribbageState?.crib?.length,
+    cribbageState?.cutCard?.rank,
+    cribbageState?.cutCard?.suit,
+    cribbageState?.phase,
+    entryMode,
+  ]);
+
 
   // Task C2 — sample pegging-row geometry every render while it is
   // mounted. Cached rects are the destination fallback when the row has
