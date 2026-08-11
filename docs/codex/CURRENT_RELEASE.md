@@ -1,6 +1,28 @@
 # Current release and cutover state
 
-Date: 2026-08-10
+Date: 2026-08-11
+
+## Holm configurable showdown presentation cadence
+
+- Migration `20260811113000_holm_showdown_presentation_timing_defaults.sql`
+  is installed on production. Holm Game Defaults now expose integer-ms values
+  for after-tabled (`1500`), pre-Chucky (`1500`), and multi-player showdown
+  (`2000`) delays.
+- The active table admits solo community cards only after the actual lone-player
+  fan lands and the configured after-tabled hold. It emits the solo hand call
+  after the last community flip, then holds that call before admitting Chucky's
+  stage and visual stepper.
+- Multi-player showdown starts its configured reading window after the exposed
+  hands have painted locally. The raw database reveal may arrive early, but
+  cannot bypass that presentation boundary. Rejoin/historical state renders
+  the authoritative current surface without replaying a previous showdown.
+- The matching server-side solo and multi availability waits consume the same
+  Game Defaults; the replaced 2-second solo and 3-second multi hard-coded
+  reveal waits are gone. Settlement, cards, balances, and terminal lifecycle
+  remain database-owned.
+- The complete rollback proof passed before and after the migration for winner,
+  partial tie, duplicate/replay, late replay, authorization, continuation, and
+  terminal-state cases. Production smoke remains the acceptance gate.
 
 ## Cribbage cut-reveal recovery for live pegging hands
 

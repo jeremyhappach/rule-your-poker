@@ -20,7 +20,7 @@
  * `animate` prop (one-shot slide-in driven by an external ref).
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { ffRecord } from "@/lib/canonicalShell/cardTransport/holmFullForensics";
 import { useCardOverlap } from "@/lib/geometryLab/cardArtifactOverlap";
@@ -43,6 +43,8 @@ export interface HolmLonePlayerFanProps {
   animate: boolean;
   holmLedgerIdentity?: HolmLedgerIdentity;
   ownerPlayerId?: string | null;
+  /** Fires when this hand's tabled cards have visually settled. */
+  onTabledCardsLanded?: (handContextId: string | null) => void;
 }
 
 export function HolmLonePlayerFan({
@@ -56,9 +58,27 @@ export function HolmLonePlayerFan({
   animate,
   holmLedgerIdentity,
   ownerPlayerId = null,
+  onTabledCardsLanded,
 }: HolmLonePlayerFanProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const onTabledCardsLandedRef = useRef(onTabledCardsLanded);
+  const reportedLandingHandRef = useRef<string | null | undefined>(undefined);
+  onTabledCardsLandedRef.current = onTabledCardsLanded;
+
+  const reportTabledCardsLanded = useCallback(() => {
+    const handContextId = holmLedgerIdentity?.handContextId ?? null;
+    if (reportedLandingHandRef.current === handContextId) return;
+    reportedLandingHandRef.current = handContextId;
+    onTabledCardsLandedRef.current?.(handContextId);
+  }, [holmLedgerIdentity?.handContextId]);
+
+  // A direct/rejoin render does not replay the slide, but it is already
+  // visually settled and may safely report readiness to the parent.
+  useEffect(() => {
+    if (animate) return;
+    reportTabledCardsLanded();
+  }, [animate, reportTabledCardsLanded]);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -163,6 +183,10 @@ export function HolmLonePlayerFan({
       ref={wrapperRef}
       data-holm-lone-player-fan=""
       className="relative flex items-center justify-center w-full"
+      onAnimationEnd={(event) => {
+        if (event.currentTarget !== event.target || event.animationName !== 'holmSoloTableSlide') return;
+        reportTabledCardsLanded();
+      }}
       style={{
         height: "100%",
         ...(animate

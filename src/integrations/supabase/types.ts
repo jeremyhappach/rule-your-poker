@@ -1494,6 +1494,9 @@ export type Database = {
           double_skunk_threshold: number
           game_type: string
           gin_bonus: number
+          holm_after_tabled_delay_ms: number
+          holm_multi_showdown_delay_ms: number
+          holm_pre_chucky_delay_ms: number
           id: string
           leg_value: number
           legs_to_win: number
@@ -1530,6 +1533,9 @@ export type Database = {
           double_skunk_threshold?: number
           game_type: string
           gin_bonus?: number
+          holm_after_tabled_delay_ms?: number
+          holm_multi_showdown_delay_ms?: number
+          holm_pre_chucky_delay_ms?: number
           id?: string
           leg_value?: number
           legs_to_win?: number
@@ -1566,6 +1572,9 @@ export type Database = {
           double_skunk_threshold?: number
           game_type?: string
           gin_bonus?: number
+          holm_after_tabled_delay_ms?: number
+          holm_multi_showdown_delay_ms?: number
+          holm_pre_chucky_delay_ms?: number
           id?: string
           leg_value?: number
           legs_to_win?: number

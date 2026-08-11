@@ -2618,6 +2618,82 @@ export const MobileGameTable = ({
   // HOLM: Gate announcement display until the canonical community row reports
   // that card 4 has visibly completed its flip for this hand.
   const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
+  const [holmShowdownTiming, setHolmShowdownTiming] = useState({
+    afterTabled: 1500,
+    preChucky: 1500,
+    multiShowdown: 2000,
+  });
+  // This cap is presentation-only. The database may advance to four cards
+  // while the active felt is still in a deliberate tabled/reading phase.
+  const [holmCommunityRevealAdmission, setHolmCommunityRevealAdmission] = useState(
+    () => communityCardsRevealed || 2,
+  );
+  const holmShowdownPresentationHandRef = useRef<string | null>(handContextId ?? null);
+  const [soloTabledCardsLandedHand, setSoloTabledCardsLandedHand] = useState<string | null>(null);
+  const [soloCommunityDelayCompleteHand, setSoloCommunityDelayCompleteHand] = useState<string | null>(null);
+  const [soloAnnouncementEmittedHand, setSoloAnnouncementEmittedHand] = useState<string | null>(null);
+  const [soloChuckyAdmissionHand, setSoloChuckyAdmissionHand] = useState<string | null>(
+    () => chuckyActive && handContextId ? handContextId : null,
+  );
+  const [multiShowdownDelayCompleteHand, setMultiShowdownDelayCompleteHand] = useState<string | null>(null);
+
+  // Read this hand's presentation cadence before showdown. Fetching per hand
+  // lets an admin tune Game Defaults without a browser restart; safe values
+  // remain in place if the read is unavailable.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    let cancelled = false;
+    void supabase
+      .from('game_defaults')
+      .select('holm_after_tabled_delay_ms, holm_pre_chucky_delay_ms, holm_multi_showdown_delay_ms')
+      .eq('game_type', 'holm')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        const delay = (value: unknown, fallback: number) => {
+          const parsed = Number(value);
+          return Number.isInteger(parsed) && parsed >= 0 && parsed <= 10000 ? parsed : fallback;
+        };
+        setHolmShowdownTiming({
+          afterTabled: delay(data.holm_after_tabled_delay_ms, 1500),
+          preChucky: delay(data.holm_pre_chucky_delay_ms, 1500),
+          multiShowdown: delay(data.holm_multi_showdown_delay_ms, 2000),
+        });
+      });
+    return () => { cancelled = true; };
+  }, [gameType, handContextId]);
+
+  // A new active hand begins with only the original community pair admitted.
+  // A fresh/rejoined client starts with the authoritative value so it never
+  // replays a historical showdown.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const nextHandContextId = handContextId ?? null;
+    if (holmShowdownPresentationHandRef.current === nextHandContextId) return;
+    const isHydratingExistingReveal =
+      holmShowdownPresentationHandRef.current === null &&
+      (communityCardsRevealed ?? 0) >= 4;
+    holmShowdownPresentationHandRef.current = nextHandContextId;
+    setHolmCommunityRevealAdmission(isHydratingExistingReveal ? (communityCardsRevealed || 4) : 2);
+    setSoloTabledCardsLandedHand(null);
+    setSoloCommunityDelayCompleteHand(null);
+    setSoloAnnouncementEmittedHand(null);
+    setSoloChuckyAdmissionHand(isHydratingExistingReveal && chuckyActive ? nextHandContextId : null);
+    setMultiShowdownDelayCompleteHand(null);
+  }, [gameType, handContextId, communityCardsRevealed, chuckyActive]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if ((communityCardsRevealed ?? 0) < 4) {
+      setHolmCommunityRevealAdmission(communityCardsRevealed || 2);
+    }
+  }, [gameType, communityCardsRevealed]);
+
+  const handleHolmSoloTabledCardsLanded = useCallback((landedHandContextId: string | null) => {
+    if (gameType !== 'holm-game' || !landedHandContextId || landedHandContextId !== handContextId) return;
+    setSoloTabledCardsLandedHand(landedHandContextId);
+  }, [gameType, handContextId]);
+
   const handleHolmCommunityFullReveal = useCallback((completedHandContextId: string) => {
     if (gameType !== 'holm-game' || completedHandContextId !== handContextId) return;
     setHolmCommunityFullyRevealed(true);
@@ -4425,6 +4501,43 @@ export const MobileGameTable = ({
   }, [isDiceGame, gameId]);
 
   const isSoloVsChucky = isSoloVsChuckyRaw || soloVsChuckyTableLocked;
+
+  // Solo presentation transaction:
+  // tabled cards land -> configured breathing room -> community 3/4 queue.
+  // The raw database reveal may arrive earlier, but cannot bypass this hand-
+  // scoped admission gate on an already-active table.
+  useEffect(() => {
+    if (!isSoloVsChucky || !handContextId || soloTabledCardsLandedHand !== handContextId) return;
+    const timer = window.setTimeout(() => {
+      setSoloCommunityDelayCompleteHand(handContextId);
+    }, holmShowdownTiming.afterTabled);
+    return () => window.clearTimeout(timer);
+  }, [isSoloVsChucky, handContextId, soloTabledCardsLandedHand, holmShowdownTiming.afterTabled]);
+
+  useEffect(() => {
+    if (
+      !isSoloVsChucky ||
+      !handContextId ||
+      soloCommunityDelayCompleteHand !== handContextId ||
+      (communityCardsRevealed ?? 0) < 4
+    ) return;
+    setHolmCommunityRevealAdmission(4);
+  }, [
+    isSoloVsChucky,
+    handContextId,
+    soloCommunityDelayCompleteHand,
+    communityCardsRevealed,
+  ]);
+
+  // Once the hand call is emitted to the canonical rail, hold it for the
+  // configured time before admitting either Chucky's stage or its stepper.
+  useEffect(() => {
+    if (!isSoloVsChucky || !handContextId || soloAnnouncementEmittedHand !== handContextId) return;
+    const timer = window.setTimeout(() => {
+      setSoloChuckyAdmissionHand(handContextId);
+    }, holmShowdownTiming.preChucky);
+    return () => window.clearTimeout(timer);
+  }, [isSoloVsChucky, handContextId, soloAnnouncementEmittedHand, holmShowdownTiming.preChucky]);
 
   // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
@@ -6571,15 +6684,49 @@ export const MobileGameTable = ({
   // 4. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
   // Check if we're showing an announcement (either normal round result or game-over)
-  // Result announcement must wait for the Chucky VISUAL reveal to finish.
-  // Otherwise the announcement can render before / during the flips, gating
-  // observers and producing the "rapid reveal after announcement" artifact.
+  // Solo raises the player's hand call after community card 4, before Chucky;
+  // every other Chucky result keeps the completed-visual-reveal guard.
   const _rawIsShowingAnnouncement =
     gameType === 'holm-game' &&
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
-    chuckyVisualRevealComplete;
+    (isSoloVsChucky ? holmCommunityFullyRevealed : chuckyVisualRevealComplete);
   const isShowingAnnouncement = _rawIsShowingAnnouncement;
+
+  const multiShowdownExposureHandRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isHolmMultiPlayerShowdown || !hasExposedPlayers || !handContextId) return;
+    if (multiShowdownExposureHandRef.current === handContextId) return;
+    multiShowdownExposureHandRef.current = handContextId;
+
+    let cancelled = false;
+    let timer: number | null = null;
+    const frame = window.requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        if (!cancelled) setMultiShowdownDelayCompleteHand(handContextId);
+      }, holmShowdownTiming.multiShowdown);
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [isHolmMultiPlayerShowdown, hasExposedPlayers, handContextId, holmShowdownTiming.multiShowdown]);
+
+  useEffect(() => {
+    if (
+      !isHolmMultiPlayerShowdown ||
+      !handContextId ||
+      multiShowdownDelayCompleteHand !== handContextId ||
+      (communityCardsRevealed ?? 0) < 4
+    ) return;
+    setHolmCommunityRevealAdmission(4);
+  }, [
+    isHolmMultiPlayerShowdown,
+    handContextId,
+    multiShowdownDelayCompleteHand,
+    communityCardsRevealed,
+  ]);
 
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
@@ -6743,6 +6890,7 @@ export const MobileGameTable = ({
     gameType === 'holm-game' &&
     isSoloVsChucky &&
     isShowdownActive &&
+    holmCommunityFullyRevealed &&
     !sessionEndedPhase &&
     !holmWinPotTriggerIdGated &&
     !chuckyLossTriggerIdGated
@@ -6844,8 +6992,12 @@ export const MobileGameTable = ({
     }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
-    // Holm: gate until community card 4 and solo-Chucky visual reveal finish flipping.
-    if (gameType === 'holm-game' && (!holmCommunityFullyRevealed || !chuckyVisualRevealComplete)) return;
+    // Solo Holm announces the player's made hand immediately after community
+    // card 4 completes. Non-solo paths retain their Chucky reveal guard.
+    if (
+      gameType === 'holm-game' &&
+      (!holmCommunityFullyRevealed || (!isSoloVsChucky && !chuckyVisualRevealComplete))
+    ) return;
 
     const isResultEligible =
       isGameOver ||
@@ -6905,6 +7057,10 @@ export const MobileGameTable = ({
         },
         ttlMs: 3000,
       });
+    }
+
+    if (gameType === 'holm-game' && isSoloVsChucky && !isGameOver && handContextId) {
+      setSoloAnnouncementEmittedHand(handContextId);
     }
   }, [
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
@@ -7937,6 +8093,7 @@ export const MobileGameTable = ({
   const chuckyBarrierOpen =
     gameType === 'holm-game' &&
     !!handContextId &&
+    (!isSoloVsChucky || soloChuckyAdmissionHand === handContextId) &&
     isHolmHandReady(handContextId) &&
     holmDealMetaSnap.handContextId === handContextId &&
     holmDealMetaSnap.chuckyExpected > 0 &&
@@ -12950,10 +13107,13 @@ export const MobileGameTable = ({
           // Sticky alone (HCI-matched, non-empty cards) keeps the stage
           // mounted through celebration; do not additionally gate on
           // cachedChuckyActive.
-          // In solo-vs-Chucky, the lone player's tabled cards establish the
-          // showdown before Chucky's stage (including the devil avatar) may
-          // appear. Multi-player Chucky tiebreak presentation is unchanged.
-          const chuckySoloStageReady = !isSoloVsChucky || lonePlayerVisible;
+          // In solo-vs-Chucky, the lone player's tabled cards and hand call
+          // establish the showdown before Chucky's stage (including the devil
+          // avatar) may appear. Multi-player Chucky tiebreak presentation is
+          // unchanged.
+          const chuckySoloStageReady =
+            !isSoloVsChucky ||
+            (lonePlayerVisible && (soloChuckyAdmissionHand === handContextId || !handContextId));
           let chuckyVisible = chuckySoloStageReady && (
             (!!cachedChuckyActive && cachedChuckySourceEligible) ||
             (stickyChuckySourceEligible && !!chuckyCardsForRender && chuckyCardsForRender.length > 0)
@@ -13091,6 +13251,7 @@ export const MobileGameTable = ({
                       animate={shouldAnimate}
                       ownerPlayerId={soloVsChuckyPlayerIdLocked ?? null}
                       holmLedgerIdentity={loneFanLedgerIdentity}
+                      onTabledCardsLanded={handleHolmSoloTabledCardsLanded}
                     />
 
                     <style>{`
@@ -13139,7 +13300,10 @@ export const MobileGameTable = ({
                       revealed={
                         isDelayingCommunityCards
                           ? staggeredCardCount
-                          : (communityCardsRevealed || 2)
+                          : Math.min(
+                              communityCardsRevealed || 2,
+                              holmCommunityRevealAdmission,
+                            )
                       }
 
                       highlightedIndices={winningCardHighlights.communityIndices}

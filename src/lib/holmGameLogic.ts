@@ -35,6 +35,54 @@ const reportHolmSettlementFailure = (branch: string, err: unknown) => {
   });
 };
 
+const HOLM_SHOWDOWN_TIMING_FALLBACK_MS = {
+  afterTabled: 1500,
+  preChucky: 1500,
+  multiShowdown: 2000,
+} as const;
+
+type HolmShowdownTiming = typeof HOLM_SHOWDOWN_TIMING_FALLBACK_MS;
+
+const toConfiguredHolmDelayMs = (value: unknown, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 10000
+    ? parsed
+    : fallback;
+};
+
+/**
+ * Reads the same configurable presentation cadence used by the table. These
+ * pauses govern when the next visual artifact becomes available; settlement
+ * remains owned by the RPC path below.
+ */
+async function getHolmShowdownTiming(): Promise<HolmShowdownTiming> {
+  const { data, error } = await supabase
+    .from('game_defaults')
+    .select('holm_after_tabled_delay_ms, holm_pre_chucky_delay_ms, holm_multi_showdown_delay_ms')
+    .eq('game_type', 'holm')
+    .maybeSingle();
+
+  if (error || !data) {
+    console.warn('[HOLM END] Falling back to default showdown presentation timings:', error?.message);
+    return HOLM_SHOWDOWN_TIMING_FALLBACK_MS;
+  }
+
+  return {
+    afterTabled: toConfiguredHolmDelayMs(
+      data.holm_after_tabled_delay_ms,
+      HOLM_SHOWDOWN_TIMING_FALLBACK_MS.afterTabled,
+    ),
+    preChucky: toConfiguredHolmDelayMs(
+      data.holm_pre_chucky_delay_ms,
+      HOLM_SHOWDOWN_TIMING_FALLBACK_MS.preChucky,
+    ),
+    multiShowdown: toConfiguredHolmDelayMs(
+      data.holm_multi_showdown_delay_ms,
+      HOLM_SHOWDOWN_TIMING_FALLBACK_MS.multiShowdown,
+    ),
+  };
+}
+
 /**
  * AUTHORITATIVE HOLM SETTLEMENT SEAM
  * ==================================
@@ -1248,6 +1296,7 @@ export async function endHolmRound(gameId: string) {
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
     console.log('[HOLM END] Case 2: Single player vs Chucky');
+    const showdownTiming = await getHolmShowdownTiming();
     
     // Fetch all players for bot alias calculation
     const { data: allPlayersForAlias } = await supabase
@@ -1283,9 +1332,10 @@ export async function endHolmRound(gameId: string) {
       .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
       .eq('id', gameId);
     
-    // Step 2: Wait 2 seconds for player to see their exposed cards
-    console.log('[HOLM END] Step 2: 2-second delay for card exposure...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // The canonical table also waits for the actual tabled-card landing;
+    // this is the matching server-side availability delay.
+    console.log('[HOLM END] Step 2: configured delay for card exposure:', showdownTiming.afterTabled, 'ms');
+    await new Promise(resolve => setTimeout(resolve, showdownTiming.afterTabled));
     
     // Step 3: Reveal the 2 hidden community cards
     console.log('[HOLM END] Step 3: Revealing hidden community cards...');
@@ -1335,9 +1385,10 @@ export async function endHolmRound(gameId: string) {
         .eq('id', gameId);
     }
     
-    // Step 5: Wait 2 seconds for player to see their hand rank
-    console.log('[HOLM END] Step 5: 2-second delay for hand rank display...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // The canonical table guarantees the visible announcement hold before
+    // admitting Chucky. Keep the server's availability cadence aligned.
+    console.log('[HOLM END] Step 5: configured pre-Chucky delay:', showdownTiming.preChucky, 'ms');
+    await new Promise(resolve => setTimeout(resolve, showdownTiming.preChucky));
     
     // Deal Chucky's cards from remaining deck (exclude community cards and player cards)
     console.log('[HOLM END] Now dealing Chucky cards...');
@@ -1517,6 +1568,7 @@ export async function endHolmRound(gameId: string) {
 
   // Case 3: Multiple players stayed - showdown (no Chucky)
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
+  const showdownTiming = await getHolmShowdownTiming();
   
   // DEBUG LOG: Showdown start (fire-and-forget)
   logGameState({
@@ -1563,9 +1615,10 @@ export async function endHolmRound(gameId: string) {
     .in('player_id', stayedPlayerIds)
     .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
   
-  // 3 second delay for players to read exposed cards before revealing hidden community cards
-  console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  // The canonical table begins this same configured pause only after the
+  // exposed cards have painted locally, so all viewers receive the full read time.
+  console.log('[HOLM END] Waiting configured multi-player showdown delay:', showdownTiming.multiShowdown, 'ms');
+  await new Promise(resolve => setTimeout(resolve, showdownTiming.multiShowdown));
   
   // Now reveal the 2 hidden community cards (cards 3 and 4)
   console.log('[HOLM END] Revealing hidden community cards...');

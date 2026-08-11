@@ -337,6 +337,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Capability | Latest repository evidence |
 |---|---|
 | Holm terminal settlement | `holm_settle_hand` with staged-showdown projection in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`; wrapper `src/lib/holmSettleHand.ts`. |
+| Holm showdown presentation cadence | `game_defaults` columns in `supabase/migrations/20260811113000_holm_showdown_presentation_timing_defaults.sql`; server availability reader in `src/lib/holmGameLogic.ts`; active felt admission in `src/components/MobileGameTable.tsx`; Admin controls in `src/components/GameDefaultsConfig.tsx`. |
 | 3-5-7 atomic seam/instant R1 | `advance_357_round` in `supabase/migrations/20260728201549_36222967-7f21-478b-bf1c-c80cb508bcc4.sql`. |
 | Cribbage discard | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`. |
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |

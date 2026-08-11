@@ -21,6 +21,9 @@ interface GameDefaults {
   decision_timer_seconds: number;
   chucky_second_to_last_delay_seconds: number;
   chucky_last_card_delay_seconds: number;
+  holm_after_tabled_delay_ms: number;
+  holm_pre_chucky_delay_ms: number;
+  holm_multi_showdown_delay_ms: number;
   bot_fold_probability: number;
   bot_decision_delay_seconds: number;
   bot_use_hand_strength: boolean;
@@ -150,6 +153,21 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         if (isNaN(chuckyLast) || chuckyLast < 0.5 || chuckyLast > 10) {
           validationErrors.push(`Holm: Chucky last card delay must be 0.5-10 seconds`);
         }
+
+        const afterTabledDelay = Number(defaultConfig.holm_after_tabled_delay_ms);
+        if (!Number.isInteger(afterTabledDelay) || afterTabledDelay < 0 || afterTabledDelay > 10000) {
+          validationErrors.push(`Holm: After tabled cards delay must be a whole number from 0-10000 ms`);
+        }
+
+        const preChuckyDelay = Number(defaultConfig.holm_pre_chucky_delay_ms);
+        if (!Number.isInteger(preChuckyDelay) || preChuckyDelay < 0 || preChuckyDelay > 10000) {
+          validationErrors.push(`Holm: Pre-Chucky delay must be a whole number from 0-10000 ms`);
+        }
+
+        const multiShowdownDelay = Number(defaultConfig.holm_multi_showdown_delay_ms);
+        if (!Number.isInteger(multiShowdownDelay) || multiShowdownDelay < 0 || multiShowdownDelay > 10000) {
+          validationErrors.push(`Holm: Multi-player showdown delay must be a whole number from 0-10000 ms`);
+        }
         
         const chuckyCards = Number(defaultConfig.chucky_cards);
         if (isNaN(chuckyCards) || chuckyCards < 1 || chuckyCards > 7) {
@@ -214,6 +232,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       bot_decision_delay_seconds: Number(d.bot_decision_delay_seconds),
       chucky_second_to_last_delay_seconds: Number(d.chucky_second_to_last_delay_seconds),
       chucky_last_card_delay_seconds: Number(d.chucky_last_card_delay_seconds),
+      holm_after_tabled_delay_ms: Number(d.holm_after_tabled_delay_ms),
+      holm_pre_chucky_delay_ms: Number(d.holm_pre_chucky_delay_ms),
+      holm_multi_showdown_delay_ms: Number(d.holm_multi_showdown_delay_ms),
       chucky_cards: Number(d.chucky_cards),
       leg_value: Number(d.leg_value),
       legs_to_win: Number(d.legs_to_win),
@@ -234,6 +255,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
+            holm_after_tabled_delay_ms: defaultConfig.holm_after_tabled_delay_ms,
+            holm_pre_chucky_delay_ms: defaultConfig.holm_pre_chucky_delay_ms,
+            holm_multi_showdown_delay_ms: defaultConfig.holm_multi_showdown_delay_ms,
             bot_fold_probability: defaultConfig.bot_fold_probability,
             bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
             bot_use_hand_strength: defaultConfig.bot_use_hand_strength,
@@ -464,6 +488,42 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             onChange={(e) => updateDefault('holm', 'chucky_last_card_delay_seconds', e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="holm-after-tabled-delay">After Tabled Cards Delay (ms)</Label>
+          <Input
+            id="holm-after-tabled-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_after_tabled_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_after_tabled_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Pause after solo tabled cards land before community cards 3 and 4 begin to flip</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="holm-pre-chucky-delay">Pre-Chucky Delay (ms)</Label>
+          <Input
+            id="holm-pre-chucky-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_pre_chucky_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_pre_chucky_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Time the solo player hand announcement remains visible before Chucky appears</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="holm-multi-showdown-delay">Multi-player Showdown Delay (ms)</Label>
+          <Input
+            id="holm-multi-showdown-delay"
+            type="text"
+            inputMode="numeric"
+            value={holmDefaults.holm_multi_showdown_delay_ms}
+            onChange={(e) => updateDefault('holm', 'holm_multi_showdown_delay_ms', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Reading time after players expose their hands before community cards 3 and 4 begin to flip</p>
         </div>
 
         <div className="space-y-4 pt-4 border-t border-border">

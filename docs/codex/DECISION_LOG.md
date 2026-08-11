@@ -391,3 +391,18 @@ state followed by authoritative exposed pegging state on the same hand key,
 plus ordinary live gating and identity isolation. The focused suite runs in
 the production `build` script using Vitest 3.2.4, which is compatible with
 the pinned Vite 5 line.
+
+## D-038 - Holm showdown timing is Game Defaults-controlled presentation
+
+Holm's post-tabled, pre-Chucky, and multi-player showdown reading intervals
+are persisted as millisecond defaults. The active table is the presentation
+owner: it starts the solo interval from the lone-player fan's actual landing,
+starts the multi interval after exposed hands paint, and gates the community
+and Chucky artifacts by the current hand identity. The server consumes the
+same defaults only to make the next authoritative artifact available on a
+compatible cadence.
+
+Those intervals never advance cards, evaluate a hand, move chips, settle a
+pot, or change terminal state. A direct/rejoining client resolves an
+already-authoritative showdown directly instead of replaying a historical
+hold.
