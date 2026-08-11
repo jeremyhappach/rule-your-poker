@@ -5,10 +5,11 @@ Date: 2026-08-11
 ## Ante landing admission and solo pot-rail timing
 
 - Player-to-pot ante presentation now owns the local admission boundary for
-  the initial deal wave. Holm and 357 withhold their opening cards until the
-  existing ante chip-arrival callback fires; Horses and SCC likewise withhold
-  the first playable action until that boundary. Gameplay truth, chips, and
-  settlement remain database-owned.
+  the initial deal wave. The trigger closes admission in its first render;
+  Holm and 357 then withhold their opening cards until the canonical ledger
+  reports the aggregate ante arrival at the pot. Horses and SCC likewise
+  withhold their first playable action until that same actual landing boundary.
+  Gameplay truth, chips, and settlement remain database-owned.
 - In a Holm solo showdown, the felt pot box now yields as soon as the lone
   player's tabled cards have landed. The ambient announcement begins with
   `Pot $X`, adds the player's hand call after community cards three and four
@@ -130,7 +131,7 @@ Date: 2026-08-11
 ## Holm solo-showdown pot context
 
 - In the mobile solo-vs-Chucky tabled-card presentation, the readable pot
-  value now moves to the existing canonical announcement rail as `Pot: $X`.
+  value now moves to the existing canonical announcement rail as `Pot $X`.
   The felt pot remains mounted but invisible, preserving its transport anchor
   while leaving the lone player's cards unobstructed.
 - The subsequent Holm result plate keeps the same pot value with the outcome.

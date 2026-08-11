@@ -259,6 +259,7 @@ import { OverSeatBadgePortal } from "@/lib/canonicalShell/OverSeatBadgePortal";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import {
+  useChipPresentationBalanceDeltas,
   useChipTransferPresentationAdmission,
   usePresentationPotChipBalance,
 } from "@/lib/canonicalShell/ChipTransportProvider";
@@ -1760,25 +1761,53 @@ export const MobileGameTable = ({
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
   // A player-to-pot ante may already be authoritative when the new hand
   // publishes, but its canonical chip flight still belongs to this client.
-  // Hold new presentation work at that existing landing boundary. Fresh
-  // mounts own no flight, so they remain admitted without replaying it.
+  // Close initial-deal admission in the same render that observes the trigger,
+  // then reopen it from the ledger's actual aggregate pot-arrival boundary.
+  // Fresh mounts own no flight, so they remain admitted without replaying it.
+  const isPlayerToPotAnteTrigger =
+    !!anteAnimationTriggerId && !anteAnimationTriggerId.startsWith('pussy-tax-');
   const [antePresentationAdmission, setAntePresentationAdmission] = useState<{
     triggerId: string | null;
     released: boolean;
   }>({ triggerId: null, released: true });
-  useLayoutEffect(() => {
-    if (!anteAnimationTriggerId || anteAnimationTriggerId.startsWith('pussy-tax-')) return;
+  const presentationBalanceDeltas = useChipPresentationBalanceDeltas();
+  const presentationDeltaIdsRef = useRef(new Set<string>());
+  presentationDeltaIdsRef.current = new Set(presentationBalanceDeltas.map((delta) => delta.id));
+  const anteArrivalBaselineRef = useRef(new Set<string>());
+  const armAntePresentationAdmission = useCallback((triggerId: string | null | undefined) => {
+    if (!triggerId || triggerId.startsWith('pussy-tax-')) return;
+    anteArrivalBaselineRef.current = new Set(presentationDeltaIdsRef.current);
     setAntePresentationAdmission((current) =>
-      current.triggerId === anteAnimationTriggerId
+      current.triggerId === triggerId && !current.released
         ? current
-        : { triggerId: anteAnimationTriggerId, released: false },
+        : { triggerId, released: false },
     );
-  }, [anteAnimationTriggerId]);
+  }, []);
+  useLayoutEffect(() => {
+    armAntePresentationAdmission(anteAnimationTriggerId);
+  }, [anteAnimationTriggerId, armAntePresentationAdmission]);
   const releaseAntePresentationAdmission = useCallback(() => {
     setAntePresentationAdmission((current) =>
       current.released ? current : { ...current, released: true },
     );
   }, []);
+  useEffect(() => {
+    if (antePresentationAdmission.released || !antePresentationAdmission.triggerId) return;
+    const antePotArrival = presentationBalanceDeltas.find((delta) =>
+      !anteArrivalBaselineRef.current.has(delta.id) &&
+      delta.reason === 'ante' &&
+      delta.boundary === 'arrived' &&
+      delta.endpoint.kind === 'pot',
+    );
+    if (antePotArrival) releaseAntePresentationAdmission();
+  }, [
+    antePresentationAdmission.released,
+    antePresentationAdmission.triggerId,
+    presentationBalanceDeltas,
+    releaseAntePresentationAdmission,
+  ]);
+  const anteDealDispatchAllowed =
+    !isPlayerToPotAnteTrigger && antePresentationAdmission.released;
   // Dealer setup/config phases keep the table mounted as a dimmed background.
   // Dice gameplay/result surfaces must be hard-disabled here; otherwise prior
   // dealer-game result badges can survive behind the setup modal.
@@ -1809,7 +1838,7 @@ export const MobileGameTable = ({
 
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
-    enabled: diceGameplayUiActive && antePresentationAdmission.released,
+    enabled: diceGameplayUiActive && anteDealDispatchAllowed,
     gameId,
     dealerGameId: horsesDealerGameId ?? null,
     currentHandNumber: horsesHandNumber ?? null,
@@ -11187,7 +11216,7 @@ export const MobileGameTable = ({
           communityCards={communityCards ?? []}
           soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
-          dispatchAllowed={antePresentationAdmission.released}
+          dispatchAllowed={anteDealDispatchAllowed}
         />
         <HolmDealPhaseHost
           handContextId={handContextId}
@@ -11242,7 +11271,7 @@ export const MobileGameTable = ({
           activeSeats={threeFiveSevenActiveSeats}
           cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
           selfHand={currentPlayerCards}
-          dispatchAllowed={antePresentationAdmission.released}
+          dispatchAllowed={anteDealDispatchAllowed}
         />
       ) : null}
       
@@ -11470,6 +11499,7 @@ export const MobileGameTable = ({
           gameStatus={gameStatus}
           triggerId={anteAnimationTriggerId}
           onAnimationStart={() => {
+            armAntePresentationAdmission(anteAnimationTriggerId);
             // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
             isAnteAnimatingRef.current = true;
 
@@ -11581,7 +11611,6 @@ export const MobileGameTable = ({
             }
           }}
           onChipsArrived={() => {
-            releaseAntePresentationAdmission();
             // Use LOCKED values captured at animation start (props may have been cleared by parent)
             const lockedExpectedPot = lockedAnteExpectedPotRef.current;
             const lockedTotalAmount = lockedAnteTotalRef.current;
