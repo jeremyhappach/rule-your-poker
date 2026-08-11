@@ -86,6 +86,8 @@ export interface HolmDealOrchestratorProps {
   soloDeclared: boolean;
   /** Authoritative chucky pile (solo only). */
   chuckyCards: CardType[] | null | undefined;
+  /** Local presentation boundary for a player-to-pot ante. */
+  dispatchAllowed?: boolean;
 }
 
 export function HolmDealOrchestrator({
@@ -100,6 +102,7 @@ export function HolmDealOrchestrator({
   communityCards,
   soloDeclared,
   chuckyCards,
+  dispatchAllowed = true,
 }: HolmDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -234,6 +237,7 @@ export function HolmDealOrchestrator({
       handContextId,
       buckPosition,
       dealerPosition,
+      dispatchAllowed,
     };
     if (!deal || handsDispatchedRef.current) {
       ffRecord({
@@ -242,6 +246,16 @@ export function HolmDealOrchestrator({
         marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
         identity: { segmentId: handContextId, playerId: selfPlayerId },
         payload: { reason: !deal ? 'no-deal-runtime' : 'already-dispatched', guard },
+      });
+      return;
+    }
+    if (!dispatchAllowed) {
+      ffRecord({
+        writerId: 'HolmDealOrchestrator.tsx:handsWave:ante-presentation-gate',
+        source: 'HOLM_DEAL_ORCHESTRATOR',
+        marker: 'HOLM_HANDS_WAVE_EARLY_RETURN',
+        identity: { segmentId: handContextId, playerId: selfPlayerId },
+        payload: { reason: 'awaiting_ante_presentation_landing', guard },
       });
       return;
     }
@@ -382,7 +396,7 @@ export function HolmDealOrchestrator({
     ct.dispatchMany(intents);
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
-    selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated,
+    selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dispatchAllowed,
   ]);
 
   // ── 2. COMMUNITY WAVE (4 cards) ───────────────────────────────────

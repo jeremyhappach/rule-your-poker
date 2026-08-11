@@ -1758,6 +1758,27 @@ export const MobileGameTable = ({
 
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  // A player-to-pot ante may already be authoritative when the new hand
+  // publishes, but its canonical chip flight still belongs to this client.
+  // Hold new presentation work at that existing landing boundary. Fresh
+  // mounts own no flight, so they remain admitted without replaying it.
+  const [antePresentationAdmission, setAntePresentationAdmission] = useState<{
+    triggerId: string | null;
+    released: boolean;
+  }>({ triggerId: null, released: true });
+  useLayoutEffect(() => {
+    if (!anteAnimationTriggerId || anteAnimationTriggerId.startsWith('pussy-tax-')) return;
+    setAntePresentationAdmission((current) =>
+      current.triggerId === anteAnimationTriggerId
+        ? current
+        : { triggerId: anteAnimationTriggerId, released: false },
+    );
+  }, [anteAnimationTriggerId]);
+  const releaseAntePresentationAdmission = useCallback(() => {
+    setAntePresentationAdmission((current) =>
+      current.released ? current : { ...current, released: true },
+    );
+  }, []);
   // Dealer setup/config phases keep the table mounted as a dimmed background.
   // Dice gameplay/result surfaces must be hard-disabled here; otherwise prior
   // dealer-game result badges can survive behind the setup modal.
@@ -1788,7 +1809,7 @@ export const MobileGameTable = ({
 
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
-    enabled: diceGameplayUiActive,
+    enabled: diceGameplayUiActive && antePresentationAdmission.released,
     gameId,
     dealerGameId: horsesDealerGameId ?? null,
     currentHandNumber: horsesHandNumber ?? null,
@@ -6907,7 +6928,7 @@ export const MobileGameTable = ({
     gameType === 'holm-game' &&
     isSoloVsChucky &&
     isShowdownActive &&
-    holmCommunityFullyRevealed &&
+    soloTabledCardsLandedHand === handContextId &&
     !sessionEndedPhase &&
     !holmWinPotTriggerIdGated &&
     !chuckyLossTriggerIdGated
@@ -11166,6 +11187,7 @@ export const MobileGameTable = ({
           communityCards={communityCards ?? []}
           soloDeclared={!!isSoloVsChucky}
           chuckyCards={chuckyCards ?? null}
+          dispatchAllowed={antePresentationAdmission.released}
         />
         <HolmDealPhaseHost
           handContextId={handContextId}
@@ -11220,6 +11242,7 @@ export const MobileGameTable = ({
           activeSeats={threeFiveSevenActiveSeats}
           cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
           selfHand={currentPlayerCards}
+          dispatchAllowed={antePresentationAdmission.released}
         />
       ) : null}
       
@@ -11558,6 +11581,7 @@ export const MobileGameTable = ({
             }
           }}
           onChipsArrived={() => {
+            releaseAntePresentationAdmission();
             // Use LOCKED values captured at animation start (props may have been cleared by parent)
             const lockedExpectedPot = lockedAnteExpectedPotRef.current;
             const lockedTotalAmount = lockedAnteTotalRef.current;

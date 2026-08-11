@@ -124,6 +124,8 @@ export interface ThreeFiveSevenDealOrchestratorProps {
    * satisfy the prerequisite.
    */
   selfHand?: ReadonlyArray<{ rank: string | number; suit: string }>;
+  /** Local presentation boundary for a player-to-pot ante. */
+  dispatchAllowed?: boolean;
 }
 
 export function ThreeFiveSevenDealOrchestrator({
@@ -134,6 +136,7 @@ export function ThreeFiveSevenDealOrchestrator({
   activeSeats,
   cardsThisWave,
   selfHand = [],
+  dispatchAllowed = true,
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -284,6 +287,7 @@ export function ThreeFiveSevenDealOrchestrator({
       });
       return;
     }
+    if (!dispatchAllowed) { emitDecision('defer', 'awaiting_ante_presentation_landing'); return; }
     if (!dealTimingHydrated) { emitDecision('defer', 'deal_timing_not_hydrated'); return; }
     if (cardsThisWave <= 0) { emitDecision('defer', 'cards_this_wave_zero'); return; }
     if (!activeSeats.length) { emitDecision('defer', 'no_active_seats'); return; }
@@ -574,7 +578,7 @@ export function ThreeFiveSevenDealOrchestrator({
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
-    committedCardRect, fallbackUsed, transportAnchorRenderKey,
+    committedCardRect, fallbackUsed, transportAnchorRenderKey, dispatchAllowed,
   ]);
 
   return (
