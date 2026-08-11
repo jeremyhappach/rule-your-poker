@@ -16,6 +16,8 @@ interface CribbageCutCardRevealProps {
   widthPx?: number;
   /** When false, the "Cut" felt label is absolutely positioned and contributes zero layout height. */
   labelInFlow?: boolean;
+  /** Fires after this hand's cut is visibly face-up (or was already revealed). */
+  onRevealComplete?: (handBoundaryKey: string | undefined) => void;
 }
 
 
@@ -63,6 +65,7 @@ export const CribbageCutCardReveal = ({
   handBoundaryKey,
   widthPx,
   labelInFlow = true,
+  onRevealComplete,
 }: CribbageCutCardRevealProps) => {
 
   const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
@@ -88,6 +91,10 @@ export const CribbageCutCardReveal = ({
   const [showFace, setShowFace] = useState(alreadyConsumedAtMount);
 
   const currentCardKeyRef = useRef<string | null>(null);
+  const onRevealCompleteRef = useRef(onRevealComplete);
+  useEffect(() => {
+    onRevealCompleteRef.current = onRevealComplete;
+  }, [onRevealComplete]);
   // Initialize to null so the first effect run with a card registers as a
   // visibility edge and routes through the registry check / animation path.
   const previousVisibleCardKeyRef = useRef<string | null>(null);
@@ -157,6 +164,7 @@ export const CribbageCutCardReveal = ({
       });
       setShowFace(true);
       setIsFlipping(false);
+      onRevealCompleteRef.current?.(handBoundaryKey);
       return;
     }
 
@@ -173,6 +181,7 @@ export const CribbageCutCardReveal = ({
     // End animation
     const endTimer = setTimeout(() => {
       setIsFlipping(false);
+      onRevealCompleteRef.current?.(handBoundaryKey);
     }, 600);
 
     return () => {

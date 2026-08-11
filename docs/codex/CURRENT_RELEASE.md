@@ -2,6 +2,19 @@
 
 Date: 2026-08-10
 
+## Cribbage discard, cut, then pegging presentation sequence
+
+- Discard-to-crib presentation now queues both players' discard pairs instead
+  of replacing an active flight when authoritative updates arrive close
+  together. All four cards therefore reach a terminal visual outcome before
+  the cut card can appear.
+- The existing cut flip is now the local boundary for pegging presentation:
+  turn cues, player actions, bot actions, and automatic Go wait until the cut
+  is visibly face-up. Gameplay and settlement remain database-owned and
+  unchanged.
+- The focused queue regression proof and TypeScript check pass; the production
+  bundle builds cleanly. Production smoke remains the acceptance gate.
+
 ## 3-5-7 opening ante and rollover are separate rules
 
 - Migration `20260810210000_separate_357_rollover_amount.sql` is installed on

@@ -121,6 +121,8 @@ export interface CribbageAnchoredCribCutMountProps {
    * heels plate retires.
    */
   holdCutRevealForHeels?: boolean;
+  /** Presentation completion boundary for the hand-scoped cut flip. */
+  onCutRevealComplete?: (handBoundaryKey: string | undefined) => void;
 }
 
 export function CribbageAnchoredCribCutMount({
@@ -135,6 +137,7 @@ export function CribbageAnchoredCribCutMount({
   dealerPlayerId = null,
   reservedCribLayoutCount,
   holdCutRevealForHeels = false,
+  onCutRevealComplete,
 }: CribbageAnchoredCribCutMountProps) {
   // --- gating logic mirrored from CribbageFeltContent ---
   //
@@ -440,6 +443,7 @@ export function CribbageAnchoredCribCutMount({
           handBoundaryKey={handBoundaryKey}
           widthPx={cutCardWidthPx}
           labelInFlow={false}
+          onRevealComplete={onCutRevealComplete}
         />
       ) : (
         <div
