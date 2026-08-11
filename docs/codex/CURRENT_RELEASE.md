@@ -27,7 +27,10 @@ Date: 2026-08-11
   Hunt on/off, winner, partial tie, duplicate/replay, late replay,
   authorization, continuation, and terminal-state cases. Chucky's deal/reveal,
   settlement, tax collection, balances, and terminal truth remain
-  database-owned. Production smoke remains the acceptance gate.
+  database-owned. Jeremy's fresh production Rabbit Hunt smoke passed on
+  2026-08-11 at commit `22d4aa8c258fbac461d3ce92966d4924b9955a62`:
+  the both-player all-fold path showed the Rabbit Hunt marker and sequentially
+  revealed community cards three and four while pussy-tax presentation began.
 
 ## Holm Game Defaults startup correction
 

@@ -55,6 +55,14 @@
 
 ## Holm
 
+- The authoritative Rabbit Hunt all-fold reveal passed production smoke on
+  2026-08-11 at commit `22d4aa8c258fbac461d3ce92966d4924b9955a62`:
+  the both-player all-fold path showed the Rabbit Hunt marker and sequentially
+  revealed community cards three and four while pussy-tax presentation began.
+  Preserve the database settlement owner for the four-card reveal; do not
+  restore the removed client-side all-fold reveal or gate presentation on
+  mutable decision or solo-showdown latches. The deadline fallback must retain
+  parity with normal settlement.
 - Mobile solo-vs-Chucky showdown presentation passed smoke on 2026-08-10 at
   commit `abeeb3e06e46d9d1088467372ab808ac07fcf462`: the pot is legible in
   the canonical announcement rail while tabled cards remain unobstructed, the
