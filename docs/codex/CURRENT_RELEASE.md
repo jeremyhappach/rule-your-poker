@@ -13,6 +13,9 @@ Date: 2026-08-10
   cut animation, so it must not wait for a callback from an animation owner
   that is absent on rejoin. A live-transition hand keeps the normal cut-flip
   gate.
+- If a rejoining player is already the authoritative actionable player, the
+  client admits that one rejoin state to Cards rather than restoring a
+  persisted Chat tab. Later tab selections remain explicit player choices.
 - This corrects the `Aug 10 - Victor Caratini` real-money P0. The frozen hand
   remains database-owned pegging state; its cards, turn, results, settlement,
   and transfer history are not changed by this client recovery. A freshly

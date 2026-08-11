@@ -2496,6 +2496,36 @@ export const CribbageMobileGameTable = ({
   })();
   const cribbageCardsFlash: 'red' | null =
     (activeTab !== 'cards' && cribbageLocalTurnEligible) ? 'red' : null;
+
+  // A refresh/rejoin can legitimately restore the player's last-selected
+  // shell tab. Do not leave a player who re-enters directly onto an
+  // authoritative, actionable Cribbage turn stranded on Chat: admit that
+  // one rejoin state to Cards. The ref deliberately makes this a one-time
+  // admission per mounted hand, so an explicit later switch to Chat remains
+  // the player's choice.
+  const rejoinCardsAdmissionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      entryMode !== 'historical-entry' ||
+      !cribbageLocalTurnEligible ||
+      activeTab === 'cards'
+    ) {
+      return;
+    }
+    const admissionKey = currentHandKey || `${currentRoundId}-${currentHandNumber}`;
+    if (rejoinCardsAdmissionRef.current === admissionKey) return;
+    rejoinCardsAdmissionRef.current = admissionKey;
+    setActiveTab('cards');
+  }, [
+    activeTab,
+    cribbageLocalTurnEligible,
+    currentHandKey,
+    currentHandNumber,
+    currentRoundId,
+    entryMode,
+    setActiveTab,
+  ]);
+
   recordChatDeliveryEvent({
     phase: 'turn-attention-evaluated',
     consumer: 'turn-attention-audit',

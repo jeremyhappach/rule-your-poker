@@ -357,3 +357,15 @@ The database remains the owner of the cut, pegging turn, cards, scoring, and
 settlement. The client gate is presentation-only: a fresh/reconnecting client
 reconciles an already-exposed cut and resumes its existing legal action
 without altering state or replaying a card action.
+
+## D-036 - A rejoin onto an actionable turn admits Cards once
+
+Shell-tab persistence is presentation continuity, not an action gate. When a
+historical Cribbage entry arrives directly on the local player's authoritative
+actionable turn, the table admits that mounted hand to Cards exactly once.
+After that admission, an explicit player switch to Chat is retained. This
+prevents a recovery client from appearing stranded on a persisted Chat pane
+while preserving user tab choice during ordinary play.
+
+This is a client-only admission correction. The database remains the owner of
+the hand, current turn, cards, scoring, settlement, and transfers.
