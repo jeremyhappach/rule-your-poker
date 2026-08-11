@@ -229,7 +229,7 @@ import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
-import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices, has357Hand } from "@/lib/cardUtils";
+import { Card as CardType, evaluateHand, formatHandRank, formatHandRankDetailed, getWinningCardIndices, has357Hand } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
@@ -2675,6 +2675,7 @@ export const MobileGameTable = ({
       (communityCardsRevealed ?? 0) >= 4;
     holmShowdownPresentationHandRef.current = nextHandContextId;
     setHolmCommunityRevealAdmission(isHydratingExistingReveal ? (communityCardsRevealed || 4) : 2);
+    setHolmCommunityFullyRevealed(false);
     setSoloTabledCardsLandedHand(null);
     setSoloCommunityDelayCompleteHand(null);
     setSoloAnnouncementEmittedHand(null);
@@ -4591,7 +4592,7 @@ export const MobileGameTable = ({
 
   const revealedForRabbitUi = isDelayingCommunityCards
     ? staggeredCardCount
-    : (communityCardsRevealed ?? 0);
+    : Math.min(communityCardsRevealed ?? 0, holmCommunityRevealAdmission);
 
   // Player decisions are intentionally reset by terminal Holm settlement, so
   // a zero-stayer count alone is not proof that this hand was an all-fold.
@@ -4600,6 +4601,22 @@ export const MobileGameTable = ({
   const isAllFoldRabbitHuntResult =
     lastRoundResult === "Pussy Tax!" ||
     lastRoundResult === "Everyone folded! No penalty.";
+
+  // Rabbit Hunt is a third presentation path: the authoritative all-fold
+  // settlement may collect Pussy Tax, announce it, and reveal cards 3/4 at
+  // the same time. It must not inherit the solo or multi-player reading
+  // windows, but it still uses the canonical sequential community flips.
+  const isRabbitHuntRevealActive =
+    gameType === 'holm-game' &&
+    rabbitHunt &&
+    isAllFoldRabbitHuntResult &&
+    stayedPlayersCount === 0 &&
+    !isSoloVsChucky &&
+    (communityCardsRevealed ?? 0) >= 4;
+  useEffect(() => {
+    if (!isRabbitHuntRevealActive || !handContextId) return;
+    setHolmCommunityRevealAdmission(4);
+  }, [isRabbitHuntRevealActive, handContextId]);
 
   // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
   // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
@@ -6683,14 +6700,18 @@ export const MobileGameTable = ({
   // 3. Chucky is active (community cards being revealed)
   // 4. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
-  // Check if we're showing an announcement (either normal round result or game-over)
-  // Solo raises the player's hand call after community card 4, before Chucky;
-  // every other Chucky result keeps the completed-visual-reveal guard.
+  // Server-sourced Holm results wait for their visual prerequisites. Rabbit
+  // Hunt is intentionally concurrent with its Pussy Tax presentation; every
+  // showdown result, including the final solo-vs-Chucky result, waits until
+  // its relevant cards have visibly finished.
+  const holmServerResultPresentationReady =
+    isAllFoldRabbitHuntResult ||
+    (holmCommunityFullyRevealed && chuckyVisualRevealComplete);
   const _rawIsShowingAnnouncement =
     gameType === 'holm-game' &&
     !!lastRoundResult &&
     (awaitingNextRound || isGameOver) &&
-    (isSoloVsChucky ? holmCommunityFullyRevealed : chuckyVisualRevealComplete);
+    holmServerResultPresentationReady;
   const isShowingAnnouncement = _rawIsShowingAnnouncement;
 
   const multiShowdownExposureHandRef = useRef<string | null>(null);
@@ -6992,11 +7013,14 @@ export const MobileGameTable = ({
     }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
-    // Solo Holm announces the player's made hand immediately after community
-    // card 4 completes. Non-solo paths retain their Chucky reveal guard.
+    // Rabbit Hunt announces with its concurrent tax/reveal presentation. All
+    // other Holm server results wait for community and any Chucky visual
+    // reveal; the solo player's pre-Chucky hand call is emitted separately
+    // below from the rendered cards, not a transient server result string.
     if (
       gameType === 'holm-game' &&
-      (!holmCommunityFullyRevealed || (!isSoloVsChucky && !chuckyVisualRevealComplete))
+      !isAllFoldRabbitHuntResult &&
+      (!holmCommunityFullyRevealed || !chuckyVisualRevealComplete)
     ) return;
 
     const isResultEligible =
@@ -7059,14 +7083,75 @@ export const MobileGameTable = ({
       });
     }
 
-    if (gameType === 'holm-game' && isSoloVsChucky && !isGameOver && handContextId) {
-      setSoloAnnouncementEmittedHand(handContextId);
-    }
   }, [
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
     allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
     currentRound, announcements, threeFiveSevenTerminalDescriptor, isSoloVsChucky, presentationPot,
+    isAllFoldRabbitHuntResult,
+  ]);
+
+  // The server is allowed to settle a winning solo-vs-Chucky hand before the
+  // active felt finishes its presentation. Build the pre-Chucky hand call from
+  // the same authoritative cards already rendered on the felt, then begin the
+  // configured hold. This prevents an early final "beat Chucky" result from
+  // replacing the player-hand call or permanently withholding Chucky.
+  useEffect(() => {
+    if (
+      gameType !== 'holm-game' ||
+      !isSoloVsChucky ||
+      !handContextId ||
+      !holmCommunityFullyRevealed ||
+      soloAnnouncementEmittedHand === handContextId ||
+      (soloChuckyAdmissionHand === handContextId && chuckyActive)
+    ) return;
+
+    const soloPlayerId =
+      soloVsChuckyPlayerIdLocked ||
+      players.find((player) => player.current_decision === 'stay')?.id ||
+      null;
+    const soloPlayer = soloPlayerId
+      ? players.find((player) => player.id === soloPlayerId) || null
+      : null;
+    const soloCards = soloPlayerId ? getPlayerCards(soloPlayerId) : [];
+    const communityForHandCall = approvedCommunityCards ?? [];
+    if (!soloPlayer || soloCards.length < 4 || communityForHandCall.length < 4) return;
+
+    const soloPlayerName = soloPlayer.is_bot
+      ? getBotAlias(players, soloPlayer.user_id)
+      : (soloPlayer.profiles?.username || `Player ${soloPlayer.position}`);
+    const handText = `${soloPlayerName} has ${formatHandRankDetailed(
+      [...soloCards, ...communityForHandCall],
+      false,
+    )}`;
+    const key = `${gameId ?? 'no-game'}:${handContextId}:${handText}`;
+    announcements.emit({
+      id: `solo_hand:${key}`,
+      type: 'round_win',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId },
+      payload: {
+        text: handText,
+        gameType: gameType ?? undefined,
+        potText: `Pot: $${formatChipValue(Math.round(presentationPot))}`,
+      },
+      ttlMs: 3000,
+    });
+    setSoloAnnouncementEmittedHand(handContextId);
+  }, [
+    announcements,
+    approvedCommunityCards,
+    chuckyActive,
+    gameId,
+    gameType,
+    getPlayerCards,
+    handContextId,
+    holmCommunityFullyRevealed,
+    isSoloVsChucky,
+    players,
+    presentationPot,
+    soloAnnouncementEmittedHand,
+    soloChuckyAdmissionHand,
+    soloVsChuckyPlayerIdLocked,
   ]);
 
   // (B.2) 3-5-7 terminal announcement owner — canonical HudStack row 1.

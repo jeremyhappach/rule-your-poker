@@ -2,6 +2,23 @@
 
 Date: 2026-08-11
 
+## Holm Rabbit Hunt and terminal solo-showdown presentation correction
+
+- Rabbit Hunt now admits community cards three and four when the authoritative
+  all-fold result is published. The Pussy Tax call, existing player-to-pot tax
+  transport, and sequential community-card reveal therefore begin together;
+  no presentation wait is tied to the chip flight.
+- A solo showdown now keeps the authoritative final result behind the full
+  presentation sequence: tabled cards land, the configured after-tabled hold
+  ends, community cards reveal, the lone player's hand call appears, the
+  configured pre-Chucky hold ends, and Chucky reveals before the outcome can
+  replace that call. The terminal result follows the same boundary, preventing
+  a settled game from leaving Chucky hidden and the table frozen.
+- This is a client presentation admission correction only. Card availability,
+  Chucky's deal/reveal, settlement, tax collection, balances, and terminal
+  truth remain database-owned. TypeScript validation passes; production smoke
+  remains the acceptance gate.
+
 ## Holm Game Defaults startup correction
 
 - The active Holm table now reads the showdown-timing defaults through its
