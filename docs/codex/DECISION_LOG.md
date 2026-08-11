@@ -374,3 +374,20 @@ while preserving user tab choice during ordinary play.
 
 This is a client-only admission correction. The database remains the owner of
 the hand, current turn, cards, scoring, settlement, and transfers.
+
+## D-037 - An exposed-cut rejoin is one authoritative presentation boundary
+
+The pegging action boundary is not a collection of independently restored
+local latches. For a historical entry whose authoritative Cribbage state is
+already `pegging` with a cut and persisted crib cards,
+`deriveCribbageCutPresentation` resolves the complete local boundary at once:
+the cut is face-up and the crib cards are settled. Spotlight visibility,
+pegging-card admission, crib rendering, and the post-render convergence effect
+all consume that same decision.
+
+Live transitions retain the visual cut hold until their local reveal callback
+completes. Regression cases cover the real P0 ordering: initial empty local
+state followed by authoritative exposed pegging state on the same hand key,
+plus ordinary live gating and identity isolation. The focused suite runs in
+the production `build` script using Vitest 3.2.4, which is compatible with
+the pinned Vite 5 line.

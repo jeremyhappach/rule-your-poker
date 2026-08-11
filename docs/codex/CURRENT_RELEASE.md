@@ -17,6 +17,11 @@ Date: 2026-08-10
   the already-authoritative crib. A stale zero counter had continued to hide
   the turn spotlight and disable pegging cards despite the exposed-cut
   acknowledgement.
+- The two presentation facts now come from one pure authoritative recovery
+  derivation (`deriveCribbageCutPresentation`), used by the recovery effect
+  and the rendered spotlight/cards/crib boundary. Its direct-rejoin cases run
+  before every production build. Vitest is pinned to the Vite-5-compatible
+  3.2.4 line, so the release test is executable rather than aspirational.
 - If a rejoining player is already the authoritative actionable player, the
   client admits that one rejoin state to Cards rather than restoring a
   persisted Chat tab. Later tab selections remain explicit player choices.

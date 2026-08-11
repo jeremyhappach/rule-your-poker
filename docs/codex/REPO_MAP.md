@@ -141,7 +141,10 @@ reset transient/presentation state when those identities change.
   `CribbageFeltContent.tsx`, `CribbageDealOrchestrator.tsx`,
   `CribbageAnchoredCribCutMount.tsx`,
   `CribbageAnchoredPeggingRowMount.tsx`, `CribbageCountingPhase.tsx`, and
-  `CribbagePegBoard.tsx`.
+  `CribbagePegBoard.tsx`. `src/lib/cribbage/cribbageCutPresentation.ts`
+  is the sole presentation-boundary derivation for a live cut versus an
+  authoritative exposed-cut rejoin; its focused test runs before `npm run
+  build`.
 - State/actions: `src/lib/cribbageTypes.ts`;
   `src/lib/cribbageGameLogic.ts:initializeCribbageGame`, `discardToCrib`,
   `playPeggingCard`, `callGo`, `applyHandCountScores`, and `startNewHand`;

@@ -23,6 +23,7 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbageDiscardToCribAnimation, type CribbageDiscardIntent } from './CribbageDiscardToCribAnimation';
 import { CribbageDiscardPresentationQueue } from '@/lib/cribbage/discardPresentationQueue';
+import { deriveCribbageCutPresentation } from '@/lib/cribbage/cribbageCutPresentation';
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 // Wartime + peg-transport instrumentation removed post-cleanup. Local
 // no-op stubs preserve existing call-site shape without any diagnostic
@@ -2333,6 +2334,16 @@ export const CribbageMobileGameTable = ({
   const lastCutRevealHandKeyRef = useRef<string | null>(null);
   const [cutRevealCompletedHandKey, setCutRevealCompletedHandKey] = useState<string | null>(null);
   const cutRevealPresentationReadyRef = useRef(false);
+  const cutRevealHandKey = currentHandKey || `${currentRoundId}-${currentHandNumber}`;
+  const authoritativeCutPresentation = deriveCribbageCutPresentation({
+    entryMode,
+    phase: cribbageState?.phase,
+    hasCutCard: !!cribbageState?.cutCard,
+    authoritativeCribCount: cribbageState?.crib?.length ?? 0,
+    locallySettledCribCount: discardsSettledInHand,
+    cutRevealCompletedHandKey,
+    handKey: cutRevealHandKey,
+  });
   // Cached last-known pegging row geometry — sampled on every render
   // while the anchored row is mounted. Used as the destination fallback
   // for animations that fire after the row unmounts (final card of a
@@ -5577,11 +5588,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!cribbageState || isProcessing || botActionInProgress.current) return;
     if (cribbageState.phase === 'complete') return;
-    if (
-      cribbageState.phase === 'pegging' &&
-      cribbageState.cutCard &&
-      !cutRevealPresentationReadyRef.current
-    ) {
+    if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
     }
 
@@ -5760,7 +5767,13 @@ export const CribbageMobileGameTable = ({
 
     const timeout = setTimeout(processBotActions, 100);
     return () => clearTimeout(timeout);
-  }, [cribbageState, isProcessing, players, roundId, cutRevealCompletedHandKey]);
+  }, [
+    authoritativeCutPresentation.isPeggingPresentationBlocked,
+    cribbageState,
+    isProcessing,
+    players,
+    roundId,
+  ]);
 
   const updateState = async (newState: CribbageState, traceId?: string) => {
     if (!currentRoundId) return;
@@ -6104,7 +6117,6 @@ export const CribbageMobileGameTable = ({
   // identity, not the presentation identity: the latter can legitimately
   // advance while the flip is in progress and would cancel its completion
   // callback, leaving a live pegging turn permanently blocked.
-  const cutRevealHandKey = currentHandKey || `${currentRoundId}-${currentHandNumber}`;
   const handleCutRevealComplete = useCallback((handKey: string | undefined) => {
     if (handKey !== cutRevealHandKey) return;
     cutRevealPresentationReadyRef.current = true;
@@ -6136,20 +6148,12 @@ export const CribbageMobileGameTable = ({
   // that known, authoritative presentation directly. A live hand transition
   // retains the normal flip gate above.
   useEffect(() => {
-    const authoritativeCribCount = cribbageState?.crib?.length ?? 0;
-    const rejoinedAtExposedCut =
-      entryMode === 'historical-entry' &&
-      cribbageState?.phase === 'pegging' &&
-      !!cribbageState.cutCard &&
-      authoritativeCribCount > 0;
-    if (!rejoinedAtExposedCut) return;
-    // The rejoining client did not own the earlier discard transports. Their
-    // authoritative crib cards are already parked, so seed the visual
-    // settlement counter from that state. Without this, the cut can be
-    // acknowledged as face-up while the stale zero counter still suppresses
-    // the spotlight and disables every pegging card.
+    if (!authoritativeCutPresentation.isHistoricalExposedCut) return;
+    // Keep the local renderer converged with the authoritative recovery
+    // decision. Rendering itself also consumes this same derivation, so the
+    // spotlight and controls cannot remain blocked while this effect settles.
     setDiscardsSettledInHand((settled) =>
-      Math.max(settled, authoritativeCribCount),
+      Math.max(settled, authoritativeCutPresentation.settledCribCount),
     );
     if (
       cutRevealPresentationReadyRef.current &&
@@ -6160,13 +6164,10 @@ export const CribbageMobileGameTable = ({
     cutRevealPresentationReadyRef.current = true;
     setCutRevealCompletedHandKey(cutRevealHandKey);
   }, [
+    authoritativeCutPresentation.isHistoricalExposedCut,
+    authoritativeCutPresentation.settledCribCount,
     cutRevealCompletedHandKey,
     cutRevealHandKey,
-    cribbageState?.crib?.length,
-    cribbageState?.cutCard?.rank,
-    cribbageState?.cutCard?.suit,
-    cribbageState?.phase,
-    entryMode,
   ]);
 
 
@@ -6345,11 +6346,7 @@ export const CribbageMobileGameTable = ({
     sourceRect?: { x: number; y: number; width: number; height: number } | null,
   ) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
-    if (
-      cribbageState.phase === 'pegging' &&
-      cribbageState.cutCard &&
-      !cutRevealPresentationReadyRef.current
-    ) {
+    if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
     }
 
@@ -6638,15 +6635,11 @@ export const CribbageMobileGameTable = ({
       toast.error((err as Error).message);
       releasePlayWriterLock(lockClaim, 'exception-thrown');
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity, peggingBoundaryBlocked, playCardIntent, boundaryEventId, lastReleasedBoundaryEventId, thirtyOneDelayActive, heldSequenceSnapshot, renderHandKey, currentHandNumber, releasePlayWriterLock]);
+  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity, peggingBoundaryBlocked, playCardIntent, boundaryEventId, lastReleasedBoundaryEventId, thirtyOneDelayActive, heldSequenceSnapshot, renderHandKey, currentHandNumber, releasePlayWriterLock]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
-    if (
-      cribbageState.phase === 'pegging' &&
-      cribbageState.cutCard &&
-      !cutRevealPresentationReadyRef.current
-    ) {
+    if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
     }
 
@@ -6752,7 +6745,7 @@ export const CribbageMobileGameTable = ({
       toast.error((err as Error).message);
       traceGoRace(goTraceCtx, 'human:handleGo:error', { message: (err as Error).message });
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
+  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
@@ -6780,7 +6773,7 @@ export const CribbageMobileGameTable = ({
 
     if (isProcessing) { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'isProcessing', ...baseDeps }); return; }
     if (cribbageState.phase !== 'pegging') { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'not-pegging', ...baseDeps }); return; }
-    if (cribbageState.cutCard && !cutRevealPresentationReadyRef.current) {
+    if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       traceGoRace(autoCtx, 'auto-go:bail', { reason: 'cut-reveal-presentation-pending', ...baseDeps });
       return;
     }
@@ -6803,7 +6796,7 @@ export const CribbageMobileGameTable = ({
         ...baseDeps, hand: myState.hand,
       });
     }
-  }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, cutRevealCompletedHandKey, isProcessing]);
+  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
   // ── Persist counting progress to DB (fire-and-forget) ────────────
   // Called by CribbageCountingPhase whenever target/combo advances.
@@ -7979,14 +7972,17 @@ export const CribbageMobileGameTable = ({
 
   // Latch pegboard data whenever we have valid gameplay state
   const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
-  const cutRevealPresentationBlocked = Boolean(
-    gameplayRenderState?.phase === 'pegging' &&
-      gameplayRenderState.cutCard &&
-      (
-        discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0) ||
-        cutRevealCompletedHandKey !== cutRevealHandKey
-      ),
-  );
+  const renderedCutPresentation = deriveCribbageCutPresentation({
+    entryMode,
+    phase: gameplayRenderState?.phase,
+    hasCutCard: !!gameplayRenderState?.cutCard,
+    authoritativeCribCount: gameplayRenderState?.crib?.length ?? 0,
+    locallySettledCribCount: discardsSettledInHand,
+    cutRevealCompletedHandKey,
+    handKey: cutRevealHandKey,
+  });
+  const resolvedDiscardsSettledInHand = renderedCutPresentation.settledCribCount;
+  const cutRevealPresentationBlocked = renderedCutPresentation.isPeggingPresentationBlocked;
   const latestAcceptedScoreStates = syncHandle.authoritativeState?.playerStates ?? null;
   const pegboardPlayerStates: CribbageState['playerStates'] = isGameplayMode && gameplayRenderState
     ? Object.fromEntries(
@@ -8958,7 +8954,7 @@ export const CribbageMobileGameTable = ({
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               visibleCribCount={Math.min(
-                discardsSettledInHand,
+                resolvedDiscardsSettledInHand,
                 gameplayRenderState.crib?.length ?? 0,
               )}
               reservedCribLayoutCount={(() => {
@@ -8976,7 +8972,7 @@ export const CribbageMobileGameTable = ({
                 const projected = Math.max(
                   authoritative,
                   intentProjected,
-                  discardsSettledInHand + inFlight,
+                  resolvedDiscardsSettledInHand + inFlight,
                 );
                 if (projected >= 3) return 4;
                 if (projected >= 1) return 2;
@@ -8987,7 +8983,7 @@ export const CribbageMobileGameTable = ({
               })()}
               deferCutReveal={
                 !!gameplayRenderState.cutCard &&
-                discardsSettledInHand < (gameplayRenderState.crib?.length ?? 0)
+                resolvedDiscardsSettledInHand < (gameplayRenderState.crib?.length ?? 0)
               }
               dealerDisplayName={
                 gameplayRenderState.dealerPlayerId
