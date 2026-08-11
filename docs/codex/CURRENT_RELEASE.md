@@ -2,6 +2,22 @@
 
 Date: 2026-08-10
 
+## Cribbage cut-reveal recovery for live pegging hands
+
+- The cut-reveal completion gate is now scoped to the canonical hand identity,
+  rather than the presentation identity that can change while a flip is in
+  progress. An interrupted flip acknowledges the current hand boundary as
+  face-up instead of leaving play, Go, and bot actions blocked forever.
+- This corrects the `Aug 10 - Victor Caratini` real-money P0. The frozen hand
+  remains database-owned pegging state; its cards, turn, results, settlement,
+  and transfer history are not changed by this client recovery. A freshly
+  loaded client reconciles the already-exposed cut and resumes the existing
+  legal turn.
+- Regression coverage covers a normal cut completion and a hand-identity
+  change during its flip. The production bundle build passes; the installed
+  Vitest/Vite versions still cannot start focused suites because Vitest imports
+  Vite's unavailable `module-runner` export.
+
 ## Harnesses Mode is the sole executable debug-harness gate
 
 - The production `harnesses_mode` setting now gates every executable harness

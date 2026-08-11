@@ -341,3 +341,17 @@ the atomic game transition.
 and later QA use, but it may not alter setup, rules, presentation, or an
 outcome while the global gate is off. A failed settings refresh resolves to no
 harness rather than retaining a stale override.
+
+## D-035 - A transient cut flip may not strand an authoritative pegging turn
+
+Cribbage may hold turn affordances while a local cut card visibly flips, but
+the hold is scoped to the authoritative round/hand identity. Presentation
+identity can advance, remount, or reconcile independently and must never
+cancel the completion acknowledgement for the same exposed cut card. When
+that identity changes during the flip, the renderer resolves the card face and
+acknowledges the new boundary exactly once.
+
+The database remains the owner of the cut, pegging turn, cards, scoring, and
+settlement. The client gate is presentation-only: a fresh/reconnecting client
+reconciles an already-exposed cut and resumes its existing legal action
+without altering state or replaying a card action.

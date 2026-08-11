@@ -6070,8 +6070,11 @@ export const CribbageMobileGameTable = ({
 
   // Cut-card presentation is hand-scoped: all discard flights must reach a
   // terminal visual outcome before the cut flips, and pegging stays locally
-  // gated until that flip completes.
-  const cutRevealHandKey = renderHandKey || `${currentRoundId}-${currentHandNumber}`;
+  // gated until that flip completes. This must use the canonical hand
+  // identity, not the presentation identity: the latter can legitimately
+  // advance while the flip is in progress and would cancel its completion
+  // callback, leaving a live pegging turn permanently blocked.
+  const cutRevealHandKey = currentHandKey || `${currentRoundId}-${currentHandNumber}`;
   const handleCutRevealComplete = useCallback((handKey: string | undefined) => {
     if (handKey !== cutRevealHandKey) return;
     cutRevealPresentationReadyRef.current = true;

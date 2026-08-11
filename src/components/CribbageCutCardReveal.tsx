@@ -91,6 +91,7 @@ export const CribbageCutCardReveal = ({
   const [showFace, setShowFace] = useState(alreadyConsumedAtMount);
 
   const currentCardKeyRef = useRef<string | null>(null);
+  const previousHandBoundaryKeyRef = useRef<string | undefined>(handBoundaryKey);
   const onRevealCompleteRef = useRef(onRevealComplete);
   useEffect(() => {
     onRevealCompleteRef.current = onRevealComplete;
@@ -128,7 +129,9 @@ export const CribbageCutCardReveal = ({
       ? `${handBoundaryKey ?? 'no-hand-key'}:${cardKey}`
       : null;
     const visibilityEdge = !previousVisibleCardKeyRef.current && !!cardKey;
+    const handBoundaryChanged = previousHandBoundaryKeyRef.current !== handBoundaryKey;
     previousVisibleCardKeyRef.current = cardKey;
+    previousHandBoundaryKeyRef.current = handBoundaryKey;
 
     if (!cardKey) {
       currentCardKeyRef.current = null;
@@ -138,6 +141,16 @@ export const CribbageCutCardReveal = ({
     }
 
     if (cardKey === currentCardKeyRef.current && !visibilityEdge) {
+      // Presentation identity can settle after a cut flip has begun. The
+      // effect cleanup cancels that flip's timer because handBoundaryKey is a
+      // dependency; finishing the already-visible card under the new key is
+      // the only safe result. Without this acknowledgement, the parent
+      // pegging gate waits forever and freezes a live hand.
+      if (handBoundaryChanged) {
+        setShowFace(true);
+        setIsFlipping(false);
+        onRevealCompleteRef.current?.(handBoundaryKey);
+      }
       return;
     }
 
