@@ -34,6 +34,7 @@ export type AnnouncementType =
   | 'dealer_selection_in_progress'
   | 'awaiting_ante'
   | 'awaiting_discards'
+  | 'solo_showdown'
   | 'cta_prompt'
   | 'session_ended';
 
@@ -125,6 +126,7 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   awaiting_ante: 45,
   dealing_next_hand: 44,
   awaiting_discards: 42,
+  solo_showdown: 41,
   waiting_for_players: 40,
   waiting_for_next_round: 40,
   cta_prompt: 35,
@@ -143,6 +145,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   dealer_selection_in_progress: 'ambient',
   awaiting_ante: 'ambient',
   awaiting_discards: 'ambient',
+  solo_showdown: 'ambient',
   cta_prompt: 'ambient',
   waiting_for_players: 'ambient',
   waiting_for_next_round: 'ambient',

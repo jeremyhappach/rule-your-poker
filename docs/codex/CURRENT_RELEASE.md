@@ -2,6 +2,17 @@
 
 Date: 2026-08-10
 
+## Holm solo-showdown pot context
+
+- In the mobile solo-vs-Chucky tabled-card presentation, the readable pot
+  value now moves to the existing canonical announcement rail as `Pot: $X`.
+  The felt pot remains mounted but invisible, preserving its transport anchor
+  while leaving the lone player's cards unobstructed.
+- The subsequent Holm result plate keeps the same pot value with the outcome.
+  Pot transfer, settlement, chip movement, and all other game layouts are
+  unchanged. TypeScript validation and the production bundle build pass;
+  published mobile solo-showdown smoke remains the acceptance gate.
+
 ## Cribbage discard, cut, then pegging presentation sequence
 
 - Discard-to-crib presentation now queues both players' discard pairs instead

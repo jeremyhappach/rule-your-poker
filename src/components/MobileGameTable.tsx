@@ -6732,6 +6732,45 @@ export const MobileGameTable = ({
   // to the active hand and are torn down on hand boundary by the provider.
   const announcements = useAnnouncements();
 
+  // Solo Holm showdown uses the same central space as the lone player's
+  // tabled cards. Keep the transfer anchor mounted, but surface the readable
+  // value in the shell-owned announcement rail for this presentation only.
+  const soloShowdownPotContextKey =
+    gameType === 'holm-game' &&
+    isSoloVsChucky &&
+    isShowdownActive &&
+    !sessionEndedPhase &&
+    !holmWinPotTriggerIdGated &&
+    !chuckyLossTriggerIdGated
+      ? `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:${Math.round(presentationPot)}`
+      : null;
+  const lastSoloShowdownPotContextRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!soloShowdownPotContextKey) {
+      if (lastSoloShowdownPotContextRef.current !== null) {
+        announcements.clearAmbient('solo_showdown');
+        lastSoloShowdownPotContextRef.current = null;
+      }
+      return;
+    }
+    if (lastSoloShowdownPotContextRef.current === soloShowdownPotContextKey) return;
+
+    announcements.emit({
+      id: `solo_showdown:${soloShowdownPotContextKey}`,
+      type: 'solo_showdown',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { potText: `Pot: $${formatChipValue(Math.round(presentationPot))}` },
+      behavior: 'ambient',
+    });
+    lastSoloShowdownPotContextRef.current = soloShowdownPotContextKey;
+  }, [
+    announcements,
+    gameId,
+    handContextId,
+    presentationPot,
+    soloShowdownPotContextKey,
+  ]);
+
   // (A) Horses / SCC turn announcement → peg_notice (transient).
   const lastEmittedTurnAnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
@@ -6821,6 +6860,11 @@ export const MobileGameTable = ({
           : lastRoundResult.split('|||')[0];
     if (!projectedText) return;
 
+    const soloShowdownPotText =
+      gameType === 'holm-game' && isSoloVsChucky
+        ? `Pot: $${formatChipValue(Math.round(presentationPot))}`
+        : undefined;
+
     const kind = isGameOver ? 'match' : 'round';
     // Game-scoped dedupe: identity churn (handContextId / currentRound) is
     // intentionally NOT part of the key. A given projectedText emits once
@@ -6837,7 +6881,11 @@ export const MobileGameTable = ({
         id: `match_win:${key}`,
         type: 'match_win',
         scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
-        payload: { text: projectedText, gameType: gameType ?? undefined },
+        payload: {
+          text: projectedText,
+          gameType: gameType ?? undefined,
+          potText: soloShowdownPotText,
+        },
         // Persist through chip transfer / pot animation overlays.
         ttlMs: 10000,
       });
@@ -6846,7 +6894,11 @@ export const MobileGameTable = ({
         id: `round_win:${key}`,
         type: 'round_win',
         scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
-        payload: { text: projectedText, gameType: gameType ?? undefined },
+        payload: {
+          text: projectedText,
+          gameType: gameType ?? undefined,
+          potText: soloShowdownPotText,
+        },
         ttlMs: 3000,
       });
     }
@@ -6854,7 +6906,7 @@ export const MobileGameTable = ({
     isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
     gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
     allDecisionsIn, chuckyActive, chuckyVisualRevealComplete, format357ShowdownAnnouncement, gameId, handContextId,
-    currentRound, announcements, threeFiveSevenTerminalDescriptor,
+    currentRound, announcements, threeFiveSevenTerminalDescriptor, isSoloVsChucky, presentationPot,
   ]);
 
   // (B.2) 3-5-7 terminal announcement owner — canonical HudStack row 1.
@@ -11872,7 +11924,7 @@ export const MobileGameTable = ({
         {/* Keep the pot mounted while hidden so its canonical transport anchor
             survives the terminal sequence. */}
         {(() => {
-          const shouldHidePot = !!(sessionEndedPhase || isWaitingPhase || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
+          const shouldHidePot = !!(sessionEndedPhase || isWaitingPhase || soloShowdownPotContextKey || holmWinPotTriggerIdGated || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
 
           // IMPORTANT: During the initial ante animation we must never briefly show a stale pre-ante pot

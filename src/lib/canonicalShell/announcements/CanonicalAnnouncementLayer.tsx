@@ -80,6 +80,8 @@ export function CanonicalAnnouncementLayer() {
   // dealer_configuring resumes between-games precedence.
   // SESSION ENDED outranks everything: it is the terminal-most phase
   // plate and must not be displaced by leftover gameplay announcements.
+  // Solo Holm showdown is a table-contextual ambient: it renders only while
+  // no transient result is active, so the result plate can take priority.
   const railActive =
     ctx.ambient?.type === 'session_ended'
       ? ctx.ambient
@@ -87,7 +89,7 @@ export function CanonicalAnnouncementLayer() {
       ? ctx.active
       : ctx.ambient?.type === 'dealer_configuring'
         ? ctx.ambient
-        : ctx.active;
+        : ctx.active ?? (ctx.ambient?.type === 'solo_showdown' ? ctx.ambient : null);
   if (!railActive) return null;
 
   // Celebration-tier events ALSO render a centered overlay via

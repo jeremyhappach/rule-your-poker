@@ -55,6 +55,12 @@ function formatCounts(counts?: RoundWinPayload['counts']): string | undefined {
   return parts.length ? parts.join(' · ') : undefined;
 }
 
+function renderTextWithPotContext(text: string, potText?: string): JSX.Element {
+  return potText
+    ? <LifecycleAnnouncement title={potText} subtitle={text} />
+    : <LifecycleAnnouncement title={text} />;
+}
+
 export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null {
   const p = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
@@ -69,11 +75,12 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         amount?: number | string;
         score?: { winner?: number; loser?: number };
         skunk?: 'single' | 'double';
+        potText?: string;
       };
       // Free-form `text` payload (used by Holm / 3-5-7 / Horses) takes
       // precedence — those games already build a localized result
       // string we want to render verbatim.
-      if (x.text) return <LifecycleAnnouncement title={x.text} />;
+      if (x.text) return renderTextWithPotContext(x.text, x.potText);
       const skunkPrefix =
         x.skunk === 'double' ? 'DOUBLE SKUNK! ' : x.skunk === 'single' ? 'SKUNK! ' : '';
       const title = x.winnerName
@@ -88,10 +95,10 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       return <LifecycleAnnouncement title={title} subtitle={subtitle} />;
     }
     case 'round_win': {
-      const x = p as RoundWinPayload & { text?: string };
+      const x = p as RoundWinPayload & { text?: string; potText?: string };
       // Free-form `text` override for non-Cribbage games (Holm chop,
       // 3-5-7 showdown summary, etc.) — render verbatim.
-      if (x.text) return <LifecycleAnnouncement title={x.text} />;
+      if (x.text) return renderTextWithPotContext(x.text, x.potText);
       const kindLabel =
         x.kind === 'crib'
           ? 'Crib counts'
@@ -200,6 +207,10 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       // action button ("Send to Crib (n/total)") already surfaces it.
       // The rail plate is the shared phase label only.
       return <LifecycleAnnouncement title="Waiting on Discards" />;
+    }
+    case 'solo_showdown': {
+      const x = p as { potText?: string };
+      return x.potText ? <LifecycleAnnouncement title={x.potText} /> : null;
     }
     case 'cta_prompt': {
       // Actor-only CTA plate. Visibility gating on
