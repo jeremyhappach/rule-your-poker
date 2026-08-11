@@ -55,6 +55,10 @@
 
 ## Holm
 
+- Mobile solo-vs-Chucky showdown presentation passed smoke on 2026-08-10 at
+  commit `abeeb3e06e46d9d1088467372ab808ac07fcf462`: the pot is legible in
+  the canonical announcement rail while tabled cards remain unobstructed, the
+  result keeps the pot context, and the established transfer still completes.
 - `holm_settle_hand` owns known terminal branches.
 - Chucky processing eligibility correction was accepted.
 - Ordinary and terminal presentation holds were stabilized.

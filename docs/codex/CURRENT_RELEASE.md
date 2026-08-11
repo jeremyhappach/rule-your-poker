@@ -11,7 +11,7 @@ Date: 2026-08-10
 - The subsequent Holm result plate keeps the same pot value with the outcome.
   Pot transfer, settlement, chip movement, and all other game layouts are
   unchanged. TypeScript validation and the production bundle build pass;
-  published mobile solo-showdown smoke remains the acceptance gate.
+  mobile solo-showdown smoke accepted this correction on 2026-08-10.
 
 ## Cribbage discard, cut, then pegging presentation sequence
 
