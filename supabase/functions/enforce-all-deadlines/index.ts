@@ -1926,7 +1926,10 @@ serve(async (req) => {
               
               await supabase
                 .from('rounds')
-                .update({ status: 'completed' })
+                .update({
+                  status: 'completed',
+                  ...(game.rabbit_hunt ? { community_cards_revealed: 4 } : {}),
+                })
                 .eq('id', currentRound.id);
               
               actionsTaken.push(`Showdown: Everyone folded, pussy tax collected: ${totalTaxCollected}`);

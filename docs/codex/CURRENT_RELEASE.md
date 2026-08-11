@@ -4,12 +4,17 @@ Date: 2026-08-11
 
 ## Holm Rabbit Hunt and terminal solo-showdown presentation correction
 
-- Rabbit Hunt now admits community cards three and four when the authoritative
-  all-fold result is published. The Pussy Tax call, existing player-to-pot tax
-  transport, and sequential community-card reveal therefore begin together;
-  no presentation wait is tied to the chip flight. Its card admission and
-  rabbit marker now depend only on that authoritative all-fold result and the
-  server's four-card reveal, never mutable player-decision or solo latches.
+- Migration `20260811223516_make_holm_rabbit_hunt_authoritative.sql` is
+  installed on production. The database-owned `holm_settle_hand` operation now
+  raises `community_cards_revealed` to four inside the same transaction that
+  claims an all-fold pussy-tax settlement when Rabbit Hunt is enabled. The
+  normal `holm_submit_decision` path can therefore return `server_resolved`
+  without bypassing the reveal. Rabbit Hunt off preserves the two-card state.
+- The deadline-enforcement fallback applies the same conditional reveal when
+  it completes an all-fold round. The unreachable client-side all-fold reveal
+  writer was removed, leaving settlement authority in the database. The Pussy
+  Tax call, existing player-to-pot tax transport, and sequential community-card
+  reveal can begin together; no presentation wait is tied to the chip flight.
 - A solo showdown now keeps the authoritative final result behind the full
   presentation sequence: tabled cards land, the configured after-tabled hold
   ends, community cards reveal, the lone player's hand call appears, the
@@ -18,10 +23,11 @@ Date: 2026-08-11
   ambient rail state through Chucky's reveal; the final result replaces it.
   The terminal result follows the same boundary, preventing a settled game
   from leaving Chucky hidden and the table frozen.
-- This is a client presentation admission correction only. Card availability,
-  Chucky's deal/reveal, settlement, tax collection, balances, and terminal
-  truth remain database-owned. TypeScript validation passes; production smoke
-  remains the acceptance gate.
+- The complete rollback proof passed before and after installation for Rabbit
+  Hunt on/off, winner, partial tie, duplicate/replay, late replay,
+  authorization, continuation, and terminal-state cases. Chucky's deal/reveal,
+  settlement, tax collection, balances, and terminal truth remain
+  database-owned. Production smoke remains the acceptance gate.
 
 ## Holm Game Defaults startup correction
 
