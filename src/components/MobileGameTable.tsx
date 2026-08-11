@@ -2643,7 +2643,7 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     let cancelled = false;
-    void supabase
+    void __mgtSupabase
       .from('game_defaults')
       .select('holm_after_tabled_delay_ms, holm_pre_chucky_delay_ms, holm_multi_showdown_delay_ms')
       .eq('game_type', 'holm')

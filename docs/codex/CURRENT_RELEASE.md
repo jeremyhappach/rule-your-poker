@@ -2,6 +2,15 @@
 
 Date: 2026-08-11
 
+## Holm Game Defaults startup correction
+
+- The active Holm table now reads the showdown-timing defaults through its
+  already-initialized Supabase client. The released timing change had imported
+  that client under the local `__mgtSupabase` name but referenced an undefined
+  `supabase` identifier, crashing Holm when the timing read ran. This is a
+  presentation-config read only; gameplay, cards, settlement, and defaults are
+  unchanged. Production smoke remains the acceptance gate.
+
 ## Holm configurable showdown presentation cadence
 
 - Migration `20260811113000_holm_showdown_presentation_timing_defaults.sql`
