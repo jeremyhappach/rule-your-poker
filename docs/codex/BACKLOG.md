@@ -601,7 +601,8 @@ Prove no callers; revoke/remove or mark migration-only; preserve transactional c
 
 ### Ante landing before initial card transport
 
-Status: Queued; reported during Holm production smoke on 2026-08-11.
+Status: Complete; production smoke passed on 2026-08-11 at commit
+`0bc5718ba8087df4ce19217f111b423bceba7ecd`.
 
 - In every game that collects an opening ante, the canonical player-to-pot
   transport must reach its pot endpoint before the initial card-deal transport
@@ -610,6 +611,9 @@ Status: Queued; reported during Holm production smoke on 2026-08-11.
   authoritative ante collection, card assignment, settlement, or game rules.
 - Audit all ante-bearing games and their common card/transport owners together;
   do not add Holm-only timers or let a client delay database-owned gameplay.
+- The final implementation closes admission in the first ante-trigger render
+  and reopens it only from the canonical ledger's aggregate ante-to-pot arrival
+  event. Holm, 3-5-7, Horses, and SCC retain database-owned gameplay truth.
 
 ### 8. Canonical win celebration
 

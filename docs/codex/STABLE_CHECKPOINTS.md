@@ -19,6 +19,11 @@
 - The `+L` leg cue scope passed production smoke on 2026-08-10 at commit
   `0e6498d83c1e65faf3872a21dd344223dfc51c22`: it remains visible for real
   3-5-7 leg wins and cannot survive into Holm or another shared-table game.
+- Opening ante presentation passed production smoke on 2026-08-11 at commit
+  `0bc5718ba8087df4ce19217f111b423bceba7ecd`: card transport stays closed
+  until the canonical ledger's aggregate ante-to-pot arrival boundary. Preserve
+  that transport event as the presentation owner; do not restore a timer-based
+  card-deal release.
 
 ## Cribbage
 

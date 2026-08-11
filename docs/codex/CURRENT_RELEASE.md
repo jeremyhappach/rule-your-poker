@@ -14,8 +14,10 @@ Date: 2026-08-11
   player's tabled cards have landed. The ambient announcement begins with
   `Pot $X`, adds the player's hand call after community cards three and four
   reveal, and remains in place until the final result replaces it.
-- The development production bundle build passes. Production smoke remains
-  the acceptance gate for the precise ante-to-deal and solo-showdown cadence.
+- TypeScript and the development production bundle build pass. Jeremy's
+  production smoke passed on 2026-08-11 at commit
+  `0bc5718ba8087df4ce19217f111b423bceba7ecd`: card transport waited for the
+  actual aggregate ante arrival at the pot before dispatching.
 
 ## Holm Rabbit Hunt and terminal solo-showdown presentation correction
 
