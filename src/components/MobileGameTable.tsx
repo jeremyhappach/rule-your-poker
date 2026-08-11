@@ -460,6 +460,7 @@ function CommunityStageHolmSwitch({
   kickerIndices,
   hasHighlights,
   tightOverlap,
+  onFullRevealComplete,
 }: {
   handContextId: string;
   cards: CardType[];
@@ -468,6 +469,7 @@ function CommunityStageHolmSwitch({
   kickerIndices: number[];
   hasHighlights: boolean;
   tightOverlap: boolean;
+  onFullRevealComplete: (handContextId: string) => void;
 }) {
   // Single component instance for the entire hand. The deal-phase
   // boundary (DEALING → READY → GAMEPLAY, plus additive waves) is
@@ -486,6 +488,7 @@ function CommunityStageHolmSwitch({
       kickerIndices={kickerIndices}
       hasHighlights={hasHighlights}
       tightOverlap={tightOverlap}
+      onFullRevealComplete={onFullRevealComplete}
     />
   );
 }
@@ -2612,11 +2615,13 @@ export const MobileGameTable = ({
   
 
   
-  // HOLM: Gate announcement display until community card 4 flip animation completes.
-  // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
-  // This prevents the hand result banner from appearing before card 4 is visually revealed.
+  // HOLM: Gate announcement display until the canonical community row reports
+  // that card 4 has visibly completed its flip for this hand.
   const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
-  const holmRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleHolmCommunityFullReveal = useCallback((completedHandContextId: string) => {
+    if (gameType !== 'holm-game' || completedHandContextId !== handContextId) return;
+    setHolmCommunityFullyRevealed(true);
+  }, [gameType, handContextId]);
   // Spotlight is a pure projection of currentTurnPosition — no sticky cache,
   // no visited-set, no independent turn ownership. See spotlight render site.
 
@@ -3682,7 +3687,6 @@ export const MobileGameTable = ({
     
     // Community reveal gate (prevents announcement before card 4 flip animation)
     setHolmCommunityFullyRevealed(false);
-    if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
     
     // (Spotlight has no per-hand cache to reset — it derives from currentTurnPosition.)
     void to;
@@ -7732,32 +7736,17 @@ export const MobileGameTable = ({
     return () => clearTimeout(recoveryTimeout);
   }, [gameType, currentRound, communityCards, showCommunityCards, isDelayingCommunityCards, isDealerConfigPhase, awaitingNextRound, handContextId, communityCardsRevealed, approvedRoundForDisplay]);
 
-  // HOLM: Track when community card 4 flip animation has completed.
-  // CommunityCards.tsx applies a 1500ms delay to the last card in a batch flip.
-  // Gate the result announcement on this to prevent it appearing before card 4 is visible.
+  // The row itself owns the live flip queue. This only clears the parent gate
+  // when an authoritative hand is not yet fully revealed; completion comes
+  // from the row callback instead of a guessed timeout.
   useEffect(() => {
     if (gameType !== 'holm-game') {
-      setHolmCommunityFullyRevealed(true); // Non-Holm: no gate
+      setHolmCommunityFullyRevealed(true);
       return;
     }
-    
-    const revealed = communityCardsRevealed ?? 0;
-    if (revealed >= 4) {
-      // Card 4 flip animation takes 1500ms in CommunityCards.tsx; add 200ms buffer
-      if (holmRevealTimerRef.current) clearTimeout(holmRevealTimerRef.current);
-      holmRevealTimerRef.current = setTimeout(() => {
-        setHolmCommunityFullyRevealed(true);
-        holmRevealTimerRef.current = null;
-      }, 1700);
-    } else {
-      // Not yet at 4 cards - reset gate
+    if ((communityCardsRevealed ?? 0) < 4) {
       setHolmCommunityFullyRevealed(false);
-      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
     }
-    
-    return () => {
-      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
-    };
   }, [gameType, communityCardsRevealed]);
 
   // Cache Chucky cards when available, clear only when buck passes or new game starts.
@@ -13157,6 +13146,7 @@ export const MobileGameTable = ({
                       kickerIndices={winningCardHighlights.kickerCommunityIndices}
                       hasHighlights={winningCardHighlights.hasHighlights}
                       tightOverlap={isHolmMultiPlayerShowdown}
+                      onFullRevealComplete={handleHolmCommunityFullReveal}
                     />
 
                   </HolmAnchoredSlot>
