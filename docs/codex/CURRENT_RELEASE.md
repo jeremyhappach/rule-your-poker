@@ -11,7 +11,7 @@ Date: 2026-08-11
   settlement remain database-owned.
 - In a Holm solo showdown, the felt pot box now yields as soon as the lone
   player's tabled cards have landed. The ambient announcement begins with
-  `Pot: $X`, adds the player's hand call after community cards three and four
+  `Pot $X`, adds the player's hand call after community cards three and four
   reveal, and remains in place until the final result replaces it.
 - The development production bundle build passes. Production smoke remains
   the acceptance gate for the precise ante-to-deal and solo-showdown cadence.

@@ -6949,7 +6949,7 @@ export const MobileGameTable = ({
       id: `solo_showdown:${soloShowdownPotContextKey}`,
       type: 'solo_showdown',
       scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
-      payload: { potText: `Pot: $${formatChipValue(Math.round(presentationPot))}` },
+      payload: { potText: `Pot $${formatChipValue(Math.round(presentationPot))}` },
       behavior: 'ambient',
     });
     lastSoloShowdownPotContextRef.current = soloShowdownPotContextKey;
@@ -7059,7 +7059,7 @@ export const MobileGameTable = ({
 
     const soloShowdownPotText =
       gameType === 'holm-game' && isSoloVsChucky
-        ? `Pot: $${formatChipValue(Math.round(presentationPot))}`
+        ? `Pot $${formatChipValue(Math.round(presentationPot))}`
         : undefined;
 
     const kind = isGameOver ? 'match' : 'round';
@@ -7149,7 +7149,7 @@ export const MobileGameTable = ({
       payload: {
         text: handText,
         gameType: gameType ?? undefined,
-        potText: `Pot: $${formatChipValue(Math.round(presentationPot))}`,
+        potText: `Pot $${formatChipValue(Math.round(presentationPot))}`,
       },
       behavior: 'ambient',
     });
