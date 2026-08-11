@@ -2,9 +2,9 @@
  * useDebugHarness — runtime accessor for the active debug harness
  * profile id for a given game type.
  *
- * Reads game_defaults.debug_harness. Returns 'none' (no-op) when not
- * configured or while loading, so consumers can branch safely with zero
- * runtime impact when the harness is disabled.
+ * Returns the executable game harness from the canonical runtime cache.
+ * A configured selection is intentionally not enough: this returns 'none'
+ * unless the global Harnesses Mode gate is on and the cache has loaded.
  *
  * Usage:
  *   const harness = useDebugHarness('cribbage');
@@ -12,8 +12,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { getHarnessProfile, type DebugHarnessId } from './profiles';
+import {
+  ensureHarnessCacheLoaded,
+  getActiveHarnessCached,
+  subscribeHarnessCache,
+  subscribeHarnessesMode,
+} from './runtimeCache';
 
 export function useDebugHarness(gameType: string | null | undefined): DebugHarnessId {
   const [harness, setHarness] = useState<DebugHarnessId>('none');
@@ -24,23 +29,21 @@ export function useDebugHarness(gameType: string | null | undefined): DebugHarne
       return;
     }
     let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from('game_defaults')
-        .select('debug_harness')
-        .eq('game_type', gameType)
-        .maybeSingle();
+
+    const sync = () => {
       if (cancelled) return;
-      if (error || !data) {
-        setHarness('none');
-        return;
-      }
-      const id = (data as { debug_harness?: string | null }).debug_harness ?? 'none';
       // Validate against the registry so a stale/unknown id never leaks into runtime branches.
-      setHarness(getHarnessProfile(gameType, id).id);
-    })();
+      setHarness(getHarnessProfile(gameType, getActiveHarnessCached(gameType)).id);
+    };
+
+    void ensureHarnessCacheLoaded().then(sync);
+    const unsubscribeHarness = subscribeHarnessCache(sync);
+    const unsubscribeMode = subscribeHarnessesMode(sync);
+
     return () => {
       cancelled = true;
+      unsubscribeHarness();
+      unsubscribeMode();
     };
   }, [gameType]);
 
@@ -49,12 +52,6 @@ export function useDebugHarness(gameType: string | null | undefined): DebugHarne
 
 /** Imperative one-shot read for non-component code (bots, setup helpers). */
 export async function readDebugHarness(gameType: string): Promise<DebugHarnessId> {
-  const { data, error } = await supabase
-    .from('game_defaults')
-    .select('debug_harness')
-    .eq('game_type', gameType)
-    .maybeSingle();
-  if (error || !data) return 'none';
-  const id = (data as { debug_harness?: string | null }).debug_harness ?? 'none';
-  return getHarnessProfile(gameType, id).id;
+  await ensureHarnessCacheLoaded();
+  return getHarnessProfile(gameType, getActiveHarnessCached(gameType)).id;
 }

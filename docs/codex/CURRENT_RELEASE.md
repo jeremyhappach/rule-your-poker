@@ -2,6 +2,23 @@
 
 Date: 2026-08-10
 
+## Harnesses Mode is the sole executable debug-harness gate
+
+- The production `harnesses_mode` setting now gates every executable harness
+  path: cached game rules, imperative setup helpers, React presentation
+  hooks, and Holm's solo-versus-Chucky result override.
+- Admin-selected profiles remain visible while the master switch is off, but
+  they resolve to `none` for gameplay. A failed fresh settings read also
+  fails closed rather than applying a stale configured profile.
+- This corrects the `Aug 10 - Here Comes Sunshine` P0: production had the
+  Holm `force_player_beats_chucky` profile selected with Harnesses Mode off,
+  causing Happach's two pair to defeat Chucky's actual three of a kind.
+  Cross-Country only exposed the issue; it never changed cards or results.
+- Focused regression coverage was added and the production bundle build
+  passes. The installed Vitest/Vite versions cannot start the focused suite
+  (`ERR_PACKAGE_PATH_NOT_EXPORTED` for Vite's `module-runner`); published
+  smoke remains required.
+
 ## Holm solo-showdown pot context
 
 - In the mobile solo-vs-Chucky tabled-card presentation, the readable pot

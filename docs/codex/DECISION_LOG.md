@@ -333,3 +333,11 @@ the default. Rollover uses its own hand-audit wording and result field while
 retaining the existing one-transaction chip-transfer projection, including an
 instant R1 sweep. This prevents a new presentation batch owner from splitting
 the atomic game transition.
+
+## D-034 - Harnesses Mode is the sole debug-harness execution authority
+
+`system_settings.harnesses_mode` governs every executable harness path.
+`game_defaults.debug_harness` retains the selected profile for Admin display
+and later QA use, but it may not alter setup, rules, presentation, or an
+outcome while the global gate is off. A failed settings refresh resolves to no
+harness rather than retaining a stale override.

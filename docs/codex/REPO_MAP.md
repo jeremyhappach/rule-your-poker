@@ -352,7 +352,10 @@ that overlap must be considered before changing fetch/realtime behavior.
 The canonical registry is
 `src/lib/debugHarness/profiles.ts:DEBUG_HARNESS_REGISTRY`; persistence/cache
 and hooks are `runtimeCache.ts`, `useDebugHarness.ts`, and
-`useGlobalDebugMode.ts`.
+`useGlobalDebugMode.ts`. `runtimeCache.ts:getActiveHarnessCached` is the sole
+execution boundary: a configured profile may execute only when the globally
+persisted `harnesses_mode` gate is on. `getConfiguredHarnessCached` is
+display-only for the Admin surface.
 
 | Game | Profiles excluding `none` |
 |---|---|

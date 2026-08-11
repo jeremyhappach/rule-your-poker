@@ -91,6 +91,22 @@ export function getConfiguredHarnessCached(gameType: string): string {
 }
 
 /**
+ * Resolve a configured harness to an executable one.
+ *
+ * This is the single execution boundary: selections remain visible in Admin
+ * while the master switch is off, but no gameplay path may receive one until
+ * both authoritative cache records have loaded and Harnesses Mode is enabled.
+ */
+export function resolveActiveHarnessId(
+  configuredHarness: string | null | undefined,
+  cacheReady: boolean,
+  harnessesModeIsEnabled: boolean,
+): string {
+  if (!cacheReady || !harnessesModeIsEnabled) return 'none';
+  return configuredHarness ?? 'none';
+}
+
+/**
  * Returns the *active* harness id for a game type.
  * Fail-closed: returns 'none' whenever Harnesses Mode is off, the
  * caches haven't hydrated, or no per-game selection exists.
@@ -105,8 +121,11 @@ export function getActiveHarnessCached(gameType: string): string {
     void ensureHarnessCacheLoaded();
     return 'none';
   }
-  if (!harnessesModeEnabled) return 'none';
-  return harnessCache[gameType] ?? 'none';
+  return resolveActiveHarnessId(
+    harnessCache[gameType],
+    true,
+    harnessesModeEnabled,
+  );
 }
 
 export function isHarnessCacheLoaded(): boolean {
@@ -160,7 +179,7 @@ function notifyAll(): void {
  * Used by harness-warning surfaces on mount and by realtime (re)subscription
  * so no client can drift onto a stale local projection.
  */
-export async function refreshHarnessCache(): Promise<void> {
+export async function refreshHarnessCache(): Promise<boolean> {
   const ok = await fetchAuthoritative();
   if (ok) {
     harnessLoaded = true;
@@ -169,6 +188,7 @@ export async function refreshHarnessCache(): Promise<void> {
   }
   bindRealtime();
   notifyAll();
+  return ok;
 }
 
 /** Idempotent hydrate + (lazy) realtime bind. Safe to call from many sites. */
