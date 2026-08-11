@@ -599,6 +599,18 @@ Prove no callers; revoke/remove or mark migration-only; preserve transactional c
 
 ## P1 — cross-game presentation
 
+### Ante landing before initial card transport
+
+Status: Queued; reported during Holm production smoke on 2026-08-11.
+
+- In every game that collects an opening ante, the canonical player-to-pot
+  transport must reach its pot endpoint before the initial card-deal transport
+  begins. The visible order is: antes land, then cards deal.
+- This is a shared presentation-admission requirement, not a change to
+  authoritative ante collection, card assignment, settlement, or game rules.
+- Audit all ante-bearing games and their common card/transport owners together;
+  do not add Holm-only timers or let a client delay database-owned gameplay.
+
 ### 8. Canonical win celebration
 
 3-5-7, Horses, and SCC historically completed pot-to-player transfer but missed canonical destination bounce/confetti. Apply the shared celebration owner without reopening settlement.
