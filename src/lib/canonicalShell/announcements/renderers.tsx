@@ -209,8 +209,12 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       return <LifecycleAnnouncement title="Waiting on Discards" />;
     }
     case 'solo_showdown': {
-      const x = p as { potText?: string };
-      return x.potText ? <LifecycleAnnouncement title={x.potText} /> : null;
+      const x = p as { potText?: string; text?: string };
+      return x.potText
+        ? <LifecycleAnnouncement title={x.potText} subtitle={x.text} />
+        : x.text
+          ? <LifecycleAnnouncement title={x.text} />
+          : null;
     }
     case 'cta_prompt': {
       // Actor-only CTA plate. Visibility gating on

@@ -4610,23 +4610,19 @@ export const MobileGameTable = ({
     gameType === 'holm-game' &&
     rabbitHunt &&
     isAllFoldRabbitHuntResult &&
-    stayedPlayersCount === 0 &&
-    !isSoloVsChucky &&
     (communityCardsRevealed ?? 0) >= 4;
   useEffect(() => {
     if (!isRabbitHuntRevealActive || !handContextId) return;
     setHolmCommunityRevealAdmission(4);
   }, [isRabbitHuntRevealActive, handContextId]);
 
-  // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
-  // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
+  // The explicit all-fold result is the authoritative Rabbit Hunt identity.
+  // Do not let mutable player-decision or solo-presentation latches suppress
+  // its icon after settlement has already committed the four-card reveal.
   const _rawShouldShowRabbitHuntLabel =
     shouldShowHolmCommunityCards &&
     rabbitHunt &&
-    stayedPlayersCount === 0 &&
     isAllFoldRabbitHuntResult &&
-    !soloVsChuckyTableLocked &&
-    !isSoloVsChucky &&
     revealedForRabbitUi > 2;
   const shouldShowRabbitHuntLabel = _rawShouldShowRabbitHuntLabel;
 
@@ -7124,17 +7120,17 @@ export const MobileGameTable = ({
       [...soloCards, ...communityForHandCall],
       false,
     )}`;
-    const key = `${gameId ?? 'no-game'}:${handContextId}:${handText}`;
+    if (!soloShowdownPotContextKey) return;
     announcements.emit({
-      id: `solo_hand:${key}`,
-      type: 'round_win',
+      id: `solo_showdown:${soloShowdownPotContextKey}`,
+      type: 'solo_showdown',
       scope: { dealerGameId: gameId ?? null, roundId: handContextId },
       payload: {
         text: handText,
         gameType: gameType ?? undefined,
         potText: `Pot: $${formatChipValue(Math.round(presentationPot))}`,
       },
-      ttlMs: 3000,
+      behavior: 'ambient',
     });
     setSoloAnnouncementEmittedHand(handContextId);
   }, [
@@ -7151,6 +7147,7 @@ export const MobileGameTable = ({
     presentationPot,
     soloAnnouncementEmittedHand,
     soloChuckyAdmissionHand,
+    soloShowdownPotContextKey,
     soloVsChuckyPlayerIdLocked,
   ]);
 

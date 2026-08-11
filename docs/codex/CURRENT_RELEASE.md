@@ -7,13 +7,17 @@ Date: 2026-08-11
 - Rabbit Hunt now admits community cards three and four when the authoritative
   all-fold result is published. The Pussy Tax call, existing player-to-pot tax
   transport, and sequential community-card reveal therefore begin together;
-  no presentation wait is tied to the chip flight.
+  no presentation wait is tied to the chip flight. Its card admission and
+  rabbit marker now depend only on that authoritative all-fold result and the
+  server's four-card reveal, never mutable player-decision or solo latches.
 - A solo showdown now keeps the authoritative final result behind the full
   presentation sequence: tabled cards land, the configured after-tabled hold
   ends, community cards reveal, the lone player's hand call appears, the
   configured pre-Chucky hold ends, and Chucky reveals before the outcome can
-  replace that call. The terminal result follows the same boundary, preventing
-  a settled game from leaving Chucky hidden and the table frozen.
+  replace that call. The hand call and `Pot: $X` now occupy the same persistent
+  ambient rail state through Chucky's reveal; the final result replaces it.
+  The terminal result follows the same boundary, preventing a settled game
+  from leaving Chucky hidden and the table frozen.
 - This is a client presentation admission correction only. Card availability,
   Chucky's deal/reveal, settlement, tax collection, balances, and terminal
   truth remain database-owned. TypeScript validation passes; production smoke
