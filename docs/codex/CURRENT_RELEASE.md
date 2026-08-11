@@ -13,6 +13,10 @@ Date: 2026-08-10
   cut animation, so it must not wait for a callback from an animation owner
   that is absent on rejoin. A live-transition hand keeps the normal cut-flip
   gate.
+- That reconciliation also seeds the local discard-settlement counter from
+  the already-authoritative crib. A stale zero counter had continued to hide
+  the turn spotlight and disable pegging cards despite the exposed-cut
+  acknowledgement.
 - If a rejoining player is already the authoritative actionable player, the
   client admits that one rejoin state to Cards rather than restoring a
   persisted Chat tab. Later tab selections remain explicit player choices.

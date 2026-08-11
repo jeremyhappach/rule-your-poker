@@ -6136,12 +6136,21 @@ export const CribbageMobileGameTable = ({
   // that known, authoritative presentation directly. A live hand transition
   // retains the normal flip gate above.
   useEffect(() => {
+    const authoritativeCribCount = cribbageState?.crib?.length ?? 0;
     const rejoinedAtExposedCut =
       entryMode === 'historical-entry' &&
       cribbageState?.phase === 'pegging' &&
       !!cribbageState.cutCard &&
-      (cribbageState.crib?.length ?? 0) > 0;
+      authoritativeCribCount > 0;
     if (!rejoinedAtExposedCut) return;
+    // The rejoining client did not own the earlier discard transports. Their
+    // authoritative crib cards are already parked, so seed the visual
+    // settlement counter from that state. Without this, the cut can be
+    // acknowledged as face-up while the stale zero counter still suppresses
+    // the spotlight and disables every pegging card.
+    setDiscardsSettledInHand((settled) =>
+      Math.max(settled, authoritativeCribCount),
+    );
     if (
       cutRevealPresentationReadyRef.current &&
       cutRevealCompletedHandKey === cutRevealHandKey

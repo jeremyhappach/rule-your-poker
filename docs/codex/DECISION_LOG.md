@@ -353,6 +353,11 @@ acknowledges the new boundary exactly once. A historical/rejoining client does
 not replay completed cut presentation, so an authoritative exposed cut is its
 own completion proof; only a live-transition hand waits for the flip callback.
 
+A historical rejoin must seed both parts of that presentation boundary: the
+face-up acknowledgement and the already-parked crib-card settlement count.
+Either stale local value can suppress the spotlight and the legal pegging
+actions, even while the authoritative turn is valid.
+
 The database remains the owner of the cut, pegging turn, cards, scoring, and
 settlement. The client gate is presentation-only: a fresh/reconnecting client
 reconciles an already-exposed cut and resumes its existing legal action
