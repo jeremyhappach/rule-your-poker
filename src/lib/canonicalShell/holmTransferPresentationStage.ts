@@ -38,6 +38,18 @@ export interface HolmChuckyLossPresentationIdentity {
   triggerId: string | null;
 }
 
+export interface HolmChuckyLossDecisionPlayer {
+  id: string;
+  current_decision?: string | null;
+  sitting_out?: boolean;
+  status?: string | null;
+}
+
+export interface HolmChuckyLossContext {
+  playerIds: string[];
+  amount: number;
+}
+
 /**
  * A Holm dealer game contains many hands whose game-level `current_round`
  * remains 1. Use the authoritative rounds-row identity for the phase-plan
@@ -67,6 +79,67 @@ export function buildHolmChuckyLossPresentationKey({
 }: HolmChuckyLossPresentationIdentity): string | null {
   if (!triggerId) return null;
   return [handContextId ?? 'no-hand', triggerId].join('|');
+}
+
+/**
+ * Stable identity for one database-owned Chucky-loss settlement. Unlike the
+ * former Date.now trigger, this value cannot churn when the awaiting effect
+ * re-enters during an otherwise unchanged render.
+ */
+export function buildHolmChuckyLossSettlementKey(
+  identity: HolmShowdownPresentationIdentity,
+): string {
+  return buildHolmShowdownPresentationKey(identity);
+}
+
+export function isHolmChuckyLossResult(result: string | null | undefined): boolean {
+  if (!result) return false;
+  return (
+    /^(?:Ya tie but ya lose! )?Chucky beat .+ with .+\. -\$\d+$/.test(result)
+    || /^(?:Tie broken by Chucky!|Ya tie but ya lose!) .+ lose to Chucky's .+\. \$\d+ added to pot\.?$/.test(result)
+  );
+}
+
+/**
+ * Derive financial participant UUIDs from authoritative hand decisions, never
+ * from a mutable display name embedded in result copy. The result text only
+ * supplies the already-published amount; the immutable transfer batch remains
+ * the financial authority.
+ */
+export function deriveHolmChuckyLossContext(
+  result: string | null | undefined,
+  players: readonly HolmChuckyLossDecisionPlayer[],
+): HolmChuckyLossContext | null {
+  if (!result) return null;
+  const stayedPlayers = players.filter((player) => (
+    player.current_decision === 'stay'
+    && !player.sitting_out
+    && player.status !== 'observer'
+    && player.status !== 'left'
+  ));
+
+  const single = result.match(/^(?:Ya tie but ya lose! )?Chucky beat .+ with .+\. -\$(\d+)$/);
+  if (single) {
+    const amount = Number(single[1]);
+    if (stayedPlayers.length !== 1 || !Number.isInteger(amount) || amount <= 0) return null;
+    return { playerIds: [stayedPlayers[0].id], amount };
+  }
+
+  const tied = result.match(
+    /^(?:Tie broken by Chucky!|Ya tie but ya lose!) .+ lose to Chucky's .+\. \$(\d+) added to pot\.?$/,
+  );
+  if (!tied) return null;
+  const totalAmount = Number(tied[1]);
+  if (
+    stayedPlayers.length < 2
+    || !Number.isInteger(totalAmount)
+    || totalAmount <= 0
+    || totalAmount % stayedPlayers.length !== 0
+  ) return null;
+  return {
+    playerIds: stayedPlayers.map((player) => player.id),
+    amount: totalAmount / stayedPlayers.length,
+  };
 }
 
 /**

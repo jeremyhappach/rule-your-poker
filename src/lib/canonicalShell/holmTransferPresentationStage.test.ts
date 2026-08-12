@@ -3,9 +3,12 @@ import type { ChipPresentationBatch } from './ChipPresentationLedger';
 import {
   buildHolmShowdownPresentationKey,
   buildHolmChuckyLossPresentationKey,
+  buildHolmChuckyLossSettlementKey,
   canAdmitHolmTransferPresentation,
   canPresentHolmChuckyLossTransport,
   classifyHolmTransferPresentationStage,
+  deriveHolmChuckyLossContext,
+  isHolmChuckyLossResult,
   isUnclassifiedHolmPlayerToPotTransfer,
 } from './holmTransferPresentationStage';
 
@@ -197,6 +200,71 @@ describe('buildHolmShowdownPresentationKey', () => {
 
     expect(buildHolmShowdownPresentationKey(identity))
       .toBe(buildHolmShowdownPresentationKey(identity));
+  });
+});
+
+describe('Holm Chucky-loss presentation identity', () => {
+  it('keeps the trigger identity stable across effect re-entry and advances on cursor change', () => {
+    const identity = {
+      dealerGameId: 'dealer-1',
+      roundId: 'round-3',
+      handNumber: 3,
+      transferCursor: 5,
+    };
+    expect(buildHolmChuckyLossSettlementKey(identity)).toBe(
+      buildHolmChuckyLossSettlementKey({ ...identity }),
+    );
+    expect(buildHolmChuckyLossSettlementKey({ ...identity, transferCursor: 6 })).not.toBe(
+      buildHolmChuckyLossSettlementKey(identity),
+    );
+  });
+
+  it('derives a solo loser from the stayed player UUID instead of result-copy alias lookup', () => {
+    expect(deriveHolmChuckyLossContext(
+      'Chucky beat a display name that is not loaded with One Pair. -$8',
+      [
+        { id: 'folded-player', current_decision: 'fold' },
+        { id: 'authoritative-loser', current_decision: 'stay' },
+      ],
+    )).toEqual({ playerIds: ['authoritative-loser'], amount: 8 });
+  });
+
+  it('classifies the solo tie-and-lose copy as the same committed loss stage', () => {
+    const result = 'Ya tie but ya lose! Chucky beat Player with One Pair. -$8';
+    expect(isHolmChuckyLossResult(result)).toBe(true);
+    expect(deriveHolmChuckyLossContext(result, [
+      { id: 'authoritative-loser', current_decision: 'stay' },
+    ])).toEqual({ playerIds: ['authoritative-loser'], amount: 8 });
+  });
+
+  it('derives tied losers and per-player amount from authoritative stayed UUIDs', () => {
+    const result = "Tie broken by Chucky! A and B lose to Chucky's Two Pair. $12 added to pot.";
+    expect(isHolmChuckyLossResult(result)).toBe(true);
+    expect(deriveHolmChuckyLossContext(result, [
+      { id: 'loser-a', current_decision: 'stay' },
+      { id: 'loser-b', current_decision: 'stay' },
+      { id: 'folded', current_decision: 'fold' },
+    ])).toEqual({ playerIds: ['loser-a', 'loser-b'], amount: 6 });
+  });
+
+  it('classifies the all-tied multi-player copy as the same committed loss stage', () => {
+    const result = "Ya tie but ya lose! A and B lose to Chucky's Two Pair. $12 added to pot.";
+    expect(isHolmChuckyLossResult(result)).toBe(true);
+    expect(deriveHolmChuckyLossContext(result, [
+      { id: 'loser-a', current_decision: 'stay' },
+      { id: 'loser-b', current_decision: 'stay' },
+    ])).toEqual({ playerIds: ['loser-a', 'loser-b'], amount: 6 });
+  });
+
+  it('fails closed when decision UUIDs are incomplete or the total cannot divide exactly', () => {
+    expect(deriveHolmChuckyLossContext(
+      'Chucky beat Alias with One Pair. -$8',
+      [{ id: 'a', current_decision: 'stay' }, { id: 'b', current_decision: 'stay' }],
+    )).toBeNull();
+    expect(deriveHolmChuckyLossContext(
+      "Tie broken by Chucky! A and B lose to Chucky's Two Pair. $11 added to pot.",
+      [{ id: 'a', current_decision: 'stay' }, { id: 'b', current_decision: 'stay' }],
+    )).toBeNull();
   });
 });
 

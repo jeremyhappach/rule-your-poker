@@ -104,7 +104,12 @@ import {
   terminalPresentationIdentityMatchesLiveScope,
   type LiveTerminalPresentationScope,
 } from "@/lib/canonicalShell/liveTerminalPresentationHold";
-import { buildHolmShowdownPresentationKey } from "@/lib/canonicalShell/holmTransferPresentationStage";
+import {
+  buildHolmChuckyLossSettlementKey,
+  buildHolmShowdownPresentationKey,
+  deriveHolmChuckyLossContext,
+  isHolmChuckyLossResult,
+} from "@/lib/canonicalShell/holmTransferPresentationStage";
 
 import { setHolmLedgerActive } from "@/lib/holm/holmPresentationLedger";
 // 3-5-7 presentation ledger removed (temporary tracking).
@@ -288,7 +293,11 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
 import { startHolmInitialHand, endHolmRound, proceedToNextHolmRound } from "@/lib/holmGameLogic";
-import { getHolmResolutionRecoveryKey } from "@/lib/holmResolutionRecovery";
+import {
+  getHolmChuckyLossContinuationKey,
+  getHolmChuckyLossContinuationSource,
+  getHolmResolutionRecoveryKey,
+} from "@/lib/holmResolutionRecovery";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
@@ -1565,6 +1574,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [chuckyLossTriggerId, setChuckyLossTriggerId] = useState<string | null>(null);
   const [chuckyLossAmount, setChuckyLossAmount] = useState<number>(0);
   const [chuckyLossPlayerIds, setChuckyLossPlayerIds] = useState<string[]>([]);
+  // The awaiting effect has intentionally broad dependencies and its wartime
+  // callback wrappers change identity as their render owner advances. A
+  // Chucky loss therefore needs the same database-identity latch as a Holm
+  // showdown; a Date.now trigger on every re-entry can never be acknowledged
+  // by the child's post-paint gate.
+  const holmChuckyLossSettlementKeyRef = useRef<string | null>(null);
+  const holmLiveRoundIdsObservedRef = useRef(new Set<string>());
+  const holmChuckyLossContinuationInFlightRef = useRef(new Set<string>());
+  const holmChuckyLossContinuationStateRef = useRef<{
+    key: string;
+    roundId: string;
+  } | null>(null);
+  const holmChuckyLossReconnectRecoveryRef = useRef<{
+    dealerGameId: string | null;
+    roundId: string | null;
+  } | null>(null);
+  const holmChuckyLossReconnectPendingRef = useRef(false);
+  const [holmChuckyLossReconnectTick, setHolmChuckyLossReconnectTick] = useState(0);
 
   // OBSERVER REPLAY FIX: Clear any pending ante animation trigger whenever the
   // game leaves the ante_decision phase. Without this, a triggerId set during a
@@ -3718,6 +3745,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let hasRealtimeSubscribed = false;
     const debouncedFetch = () => {
       if (debounceTimer) {
         __cancelWartimeAsyncOwner(debounceTimer as unknown as number, 'debounce_rescheduled');
@@ -4420,6 +4448,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
           stopFallbackPolling();
+          // The first SUBSCRIBED edge closes the cold-mount blind window. A
+          // later SUBSCRIBED edge is a true reconnect and may need to recover
+          // a committed Holm loss whose live batch callback was interrupted.
+          if (hasRealtimeSubscribed) {
+            holmChuckyLossReconnectPendingRef.current = true;
+          }
+          hasRealtimeSubscribed = true;
           // Close the fetch-before-subscribe blind window with one full
           // authoritative snapshot. This must be owned here rather than by the
           // auth-gated resume effect: a player INSERT can land after the cold
@@ -8079,38 +8114,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Single player format: "Chucky beat {username} with {hand}. -${amount}"
       // Multi player format: "Tie broken by Chucky! {names} lose to Chucky's {hand}. ${total} added to pot."
       if (game?.game_type === 'holm-game') {
-        // Single player Chucky loss
-        const singleLossMatch = lastResult.match(/Chucky beat (.+) with .+\. -\$(\d+)/);
-        if (singleLossMatch) {
-          const loserUsername = singleLossMatch[1];
-          const amount = parseInt(singleLossMatch[2], 10);
-          const loserPlayer = players.find(p => p.profiles?.username === loserUsername);
-          
-          if (loserPlayer && amount > 0) {
-            console.log('[CHUCKY_LOSS_ANIMATION] Single player loss', { loser: loserUsername, amount });
-            setChuckyLossAmount(amount);
-            setChuckyLossPlayerIds([loserPlayer.id]);
-            setChuckyLossTriggerId(`chucky-loss-${Date.now()}`);
-          }
-        }
-        
-        // Multiple players tied and lost to Chucky
-        const tieBreakMatch = lastResult.match(/Tie broken by Chucky! (.+) lose to Chucky's .+\. \$(\d+) added to pot/);
-        if (tieBreakMatch) {
-          const losersStr = tieBreakMatch[1];
-          const totalAmount = parseInt(tieBreakMatch[2], 10);
-          // Parse "X and Y" or "X, Y and Z" format
-          const loserNames = losersStr.split(/ and |, /).map(n => n.trim());
-          const loserPlayers = loserNames
-            .map(name => players.find(p => p.profiles?.username === name))
-            .filter(Boolean);
-          
-          if (loserPlayers.length > 0 && totalAmount > 0) {
-            const perPlayerAmount = Math.floor(totalAmount / loserPlayers.length);
-            console.log('[CHUCKY_LOSS_ANIMATION] Multi player loss', { losers: loserNames, perPlayerAmount, total: totalAmount });
-            setChuckyLossAmount(perPlayerAmount);
-            setChuckyLossPlayerIds(loserPlayers.map(p => p!.id));
-            setChuckyLossTriggerId(`chucky-loss-${Date.now()}`);
+        const chuckyLoss = deriveHolmChuckyLossContext(lastResult, players);
+        const hasExactLossIdentity = (
+          !!game.current_game_uuid
+          && !!currentRound?.id
+          && Number.isInteger(currentRound?.hand_number)
+          && (currentRound?.hand_number ?? 0) > 0
+          && Number.isInteger(game.chip_transfer_cursor)
+          && (game.chip_transfer_cursor ?? 0) > 0
+        );
+        if (chuckyLoss && hasExactLossIdentity) {
+          const settlementKey = buildHolmChuckyLossSettlementKey({
+            dealerGameId: game.current_game_uuid,
+            roundId: currentRound!.id,
+            handNumber: currentRound!.hand_number!,
+            transferCursor: game.chip_transfer_cursor!,
+          });
+          if (holmChuckyLossSettlementKeyRef.current === settlementKey) {
+            console.log('[CHUCKY_LOSS_ANIMATION] Duplicate dispatch suppressed', { settlementKey });
+          } else {
+            holmChuckyLossSettlementKeyRef.current = settlementKey;
+            console.log('[CHUCKY_LOSS_ANIMATION] Exact loss presentation admitted', {
+              settlementKey,
+              playerIds: chuckyLoss.playerIds,
+              amount: chuckyLoss.amount,
+            });
+            setChuckyLossAmount(chuckyLoss.amount);
+            setChuckyLossPlayerIds(chuckyLoss.playerIds);
+            setChuckyLossTriggerId(`chucky-loss-${settlementKey}`);
           }
         }
         
@@ -8164,7 +8195,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // reveal and player-to-pot transport. Starting this generic timer here
       // used to advance the hand while its result gate was still waiting for
       // cards that the same settlement had already hidden.
-      if (game?.game_type === 'holm-game' && lastResult.includes('Chucky beat')) {
+      if (game?.game_type === 'holm-game' && isHolmChuckyLossResult(lastResult)) {
         console.log('[AWAITING_NEXT_ROUND] Waiting for Holm Chucky-loss presentation completion');
         return;
       }
@@ -8579,7 +8610,129 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
+
+  const requestHolmChuckyLossContinuation = useCallback((
+    key: string,
+    roundId: string,
+    source: 'presentation-settled' | 'historical-entry' | 'realtime-reconnect',
+  ) => {
+    if (!gameId || holmChuckyLossContinuationInFlightRef.current.has(key)) return;
+    holmChuckyLossContinuationInFlightRef.current.add(key);
+    void proceedToNextHolmRound(gameId, roundId)
+      .catch((error) => {
+        console.error('[HOLM CHUCKY LOSS] Continuation request failed', {
+          key,
+          roundId,
+          source,
+          error,
+        });
+      })
+      .finally(() => {
+        holmChuckyLossContinuationInFlightRef.current.delete(key);
+      });
+  }, [gameId]);
+
+  const currentUserIsHolmParticipant = players.some((player) => (
+    player.user_id === user?.id && player.status !== 'left' && player.status !== 'observer'
+  ));
+
+  // Remember only a hand this mount actually observed in live betting. A
+  // completed Chucky loss seen without that observation is historical entry:
+  // the ledger intentionally baselines old transfers and will never emit a
+  // batch-settled callback for them.
+  useEffect(() => {
+    if (
+      game?.game_type === 'holm-game'
+      && game.status === 'in_progress'
+      && !game.awaiting_next_round
+      && currentRound?.id
+      && currentRound.status === 'betting'
+    ) {
+      holmLiveRoundIdsObservedRef.current.add(currentRound.id);
+      const reconnectIdentity = holmChuckyLossReconnectRecoveryRef.current;
+      if (
+        reconnectIdentity?.dealerGameId === game.current_game_uuid
+        && reconnectIdentity.roundId === currentRound.id
+      ) {
+        // The authoritative reconnect snapshot is still an ordinary betting
+        // hand, so it has no interrupted completed transfer to recover.
+        holmChuckyLossReconnectRecoveryRef.current = null;
+      }
+    }
+  }, [
+    game?.game_type,
+    game?.status,
+    game?.current_game_uuid,
+    game?.awaiting_next_round,
+    currentRound?.id,
+    currentRound?.status,
+    holmChuckyLossReconnectTick,
+  ]);
+
+  useEffect(() => {
+    const key = getHolmChuckyLossContinuationKey({
+      gameId,
+      gameType: game?.game_type,
+      gameStatus: game?.status,
+      dealerGameId: game?.current_game_uuid,
+      roundId: currentRound?.id,
+      roundStatus: currentRound?.status,
+      handNumber: currentRound?.hand_number,
+      transferCursor: game?.chip_transfer_cursor,
+      awaitingNextRound: game?.awaiting_next_round === true,
+      lastRoundResult: game?.last_round_result,
+      participantPresent: currentUserIsHolmParticipant,
+    });
+    if (!key || !currentRound?.id) {
+      holmChuckyLossContinuationStateRef.current = null;
+      return;
+    }
+
+    const observedLive = holmLiveRoundIdsObservedRef.current.has(currentRound.id);
+    holmChuckyLossContinuationStateRef.current = {
+      key,
+      roundId: currentRound.id,
+    };
+
+    const source = getHolmChuckyLossContinuationSource({
+      observedLive,
+      dealerGameId: game.current_game_uuid!,
+      roundId: currentRound.id,
+      reconnectIdentity: holmChuckyLossReconnectRecoveryRef.current,
+    });
+    if (source) {
+      holmChuckyLossReconnectRecoveryRef.current = null;
+      requestHolmChuckyLossContinuation(key, currentRound.id, source);
+    }
+  }, [
+    gameId,
+    game?.game_type,
+    game?.status,
+    game?.current_game_uuid,
+    game?.awaiting_next_round,
+    game?.last_round_result,
+    game?.chip_transfer_cursor,
+    currentRound?.id,
+    currentRound?.status,
+    currentRound?.hand_number,
+    currentUserIsHolmParticipant,
+    holmChuckyLossReconnectTick,
+    requestHolmChuckyLossContinuation,
+  ]);
+
+  const handleHolmChuckyLossPresentationComplete = useCallback(() => {
+    setChuckyLossTriggerId(null);
+    setChuckyLossPlayerIds([]);
+    setChuckyLossAmount(0);
+    const continuation = holmChuckyLossContinuationStateRef.current;
+    if (!continuation) return;
+    requestHolmChuckyLossContinuation(
+      continuation.key,
+      continuation.roundId,
+      'presentation-settled',
+    );
+  }, [requestHolmChuckyLossContinuation]);
 
   // Clear timer when results are shown
   useEffect(() => {
@@ -9488,6 +9641,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       userIdPresent: !!userIdAtFetchStart,
       setGameOffsetMs: postprocessStartOffsetMs,
     });
+
+    if (holmChuckyLossReconnectPendingRef.current) {
+      holmChuckyLossReconnectPendingRef.current = false;
+      const reconnectRound = gameDataToApply?.game_type === 'holm-game'
+        ? pickActiveSingleRoundGameRound(gameDataToApply.rounds as Round[], {
+          dealerGameId: gameDataToApply.current_game_uuid,
+          currentRoundNumber: gameDataToApply.current_round,
+          currentHandNumber: gameDataToApply.total_hands,
+        })
+        : null;
+      holmChuckyLossReconnectRecoveryRef.current = {
+        dealerGameId: gameDataToApply?.current_game_uuid ?? null,
+        roundId: reconnectRound?.id ?? null,
+      };
+      setHolmChuckyLossReconnectTick((tick) => tick + 1);
+    }
 
     setGame(gameDataToApply);
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
@@ -16368,18 +16537,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chuckyLossTriggerId={renderRoundContext ? chuckyLossTriggerId : null}
               chuckyLossAmount={renderRoundContext ? chuckyLossAmount : undefined}
               chuckyLossPlayerIds={renderRoundContext ? chuckyLossPlayerIds : []}
-              onChuckyLossEnded={isInProgress ? () => {
-                setChuckyLossTriggerId(null);
-                setChuckyLossPlayerIds([]);
-                setChuckyLossAmount(0);
-                // The canonical immutable batch has now settled after the
-                // full Chucky reveal and announcement gates. Its endpoint
-                // requests the exact-predecessor continuation RPC; PostgreSQL
-                // owns the idempotent next-hand transition.
-                if (gameId && currentRound?.id) {
-                  void proceedToNextHolmRound(gameId, currentRound.id);
-                }
-              } : undefined}
+              onChuckyLossEnded={isInProgress ? handleHolmChuckyLossPresentationComplete : undefined}
               holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
               holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}
               holmShowdownWinnerIds={renderRoundContext ? holmShowdownWinnerIds : []}

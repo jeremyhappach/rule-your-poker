@@ -2,6 +2,29 @@
 
 Date: 2026-08-12
 
+## Holm Chucky-loss stable completion and recovery
+
+- Production hand 3 in session `Aug 12 - Sampler` proved that the loss and its
+  immutable $8 player-to-pot batch committed correctly, but the live client
+  remained forever at their opening balances. The broad awaiting-result effect
+  re-entered on every render and replaced the Chucky-loss `Date.now` trigger;
+  the result announcement's post-paint acknowledgement was therefore always
+  one trigger behind, so fail-closed transfer admission could never open.
+- A Chucky loss is now latched by exact dealer-game, round, hand, and immutable
+  transfer-cursor identity. Financial participants come from authoritative
+  stayed-player UUIDs rather than display-name parsing, and the same classifier
+  covers normal losses plus solo and multi-player "ya tie but ya lose" results.
+  Every such result is excluded from the generic auto-proceed timer.
+- An uninterrupted live hand advances only from the canonical immutable
+  batch-settled callback. A fresh historical entry or true Realtime reconnect
+  may request the exact replay-safe successor directly because the ledger
+  intentionally baselines already-committed historical batches; ordinary live
+  presentation remains the owner and no polling or gameplay timer was added.
+- The focused Holm ownership/identity/recovery suite (44 assertions), canonical
+  ledger/transport/progress suite (29 assertions), both Holm community-reveal
+  checks, mandatory Cribbage suite (27 assertions), TypeScript validation, and
+  the production Vite build pass. Production Holm smoke remains required.
+
 ## Holm fail-closed terminal transfer admission
 
 - Production hand 3 in session `Aug 12 - Anthony Rizzo` proved that the
