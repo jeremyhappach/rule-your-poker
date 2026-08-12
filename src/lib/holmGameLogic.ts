@@ -1852,8 +1852,11 @@ async function handleChuckyShowdown(
         winnerUsername: 'Chucky Win',
         isChopped: false,
         potWon: 0, // money going INTO the pot
+        // The completed Chucky-loss round is the authoritative source for the
+        // reveal and loss transport. Keep it visible until the client starts
+        // the next hand; startHolmRound owns the subsequent reset.
         markRoundCompleted: true,
-        clearChuckyActive: true,
+        clearChuckyActive: false,
       });
     } catch (err) {
       reportHolmSettlementFailure('Chucky pot match', err);

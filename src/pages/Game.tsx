@@ -8160,7 +8160,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }
       
-      // Wait 4 seconds to show the result, then start next round
+      // A solo loss to Chucky owns its transition through the completed
+      // reveal and player-to-pot transport. Starting this generic timer here
+      // used to advance the hand while its result gate was still waiting for
+      // cards that the same settlement had already hidden.
+      if (game?.game_type === 'holm-game' && lastResult.includes('Chucky beat')) {
+        console.log('[AWAITING_NEXT_ROUND] Waiting for Holm Chucky-loss presentation completion');
+        return;
+      }
+
+      // Wait 4 seconds to show every other result, then start next round.
       awaitingTimerRef.current = __scheduleWartimeTimeout({
         sourceSiteId: __WARTIME_SRC.ASYNC_GAME_AWAITING_TIMER.id,
         ownerLabel: 'game.awaitingNextRound.autoProceedTimer',
@@ -16353,6 +16362,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChuckyLossEnded={isInProgress ? () => {
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
+                // The loss transport only begins after the full Chucky reveal
+                // and announcement gates are satisfied. Its endpoint is the
+                // single client continuation owner; proceedToNextHolmRound
+                // retains the authoritative compare-and-set dedupe.
+                if (gameId) {
+                  void proceedToNextHolmRound(gameId);
+                }
               } : undefined}
               holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
               holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}

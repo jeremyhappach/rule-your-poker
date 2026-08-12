@@ -427,3 +427,19 @@ settlement owner.
 The database owns Holm's solo-vs-Chucky outcome, so a selected debug profile
 is executable in `holm_submit_decision` only when `harnesses_mode.enabled` is
 true. Client-side gating alone cannot protect real-money settlement.
+
+## D-041 - A settled Holm Chucky loss remains revealable until continuation
+
+`holm_submit_decision` settles a solo Chucky loss atomically, including its
+carried pot and immutable player-to-pot transfer. Its completed `rounds` row
+must nevertheless retain `chucky_active` and the fully revealed authoritative
+cards until the next-hand continuation claims the transition. Clearing that
+flag in the settlement commit prevents a connected client from ever caching or
+revealing the cards, while a generic transition timer can still advance the
+hand.
+
+The client therefore defers only this Chucky-loss continuation to the existing
+reveal-gated player-to-pot transport completion. The normal continuation still
+uses `proceedToNextHolmRound`'s compare-and-set guard; no client becomes a
+settlement owner and a disconnected client remains recoverable from the
+durable awaiting state.

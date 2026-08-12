@@ -68,7 +68,10 @@ BEGIN
   IF v_result->>'event_kind' <> 'chucky_loss_pot_match'
      OR (SELECT status FROM public.games WHERE id = v_game_id) <> 'in_progress'
      OR (SELECT pot FROM public.games WHERE id = v_game_id) <> 4
-     OR (SELECT chips FROM public.players WHERE id = v_stayer_id) <> 97 THEN
+     OR (SELECT chips FROM public.players WHERE id = v_stayer_id) <> 97
+     OR (SELECT chucky_active FROM public.rounds WHERE id = v_round_id) IS DISTINCT FROM true
+     OR (SELECT chucky_cards_revealed FROM public.rounds WHERE id = v_round_id) <> 4
+     OR (SELECT status FROM public.rounds WHERE id = v_round_id) <> 'completed' THEN
     RAISE EXCEPTION 'holm_harness_gate_proof:disabled_gate_did_not_preserve_natural_loss:%', v_result;
   END IF;
   SELECT public.holm_submit_decision(v_game_id, v_folder_id, 'fold') INTO v_replay;

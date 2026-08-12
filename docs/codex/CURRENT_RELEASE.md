@@ -2,6 +2,22 @@
 
 Date: 2026-08-11
 
+## Holm Chucky-loss presentation and continuation correction
+
+- Migration `20260812020000_preserve_holm_chucky_loss_presentation.sql` is
+  installed on production. A settled solo loss to Chucky now retains the
+  completed round's active, fully revealed Chucky cards until the next hand
+  begins. The settlement, transfer batch, result claim, and carried pot remain
+  database-owned and unchanged.
+- The active Holm table no longer starts its generic auto-proceed timer for
+  that result. It advances through the existing compare-and-set continuation
+  only after the reveal-gated player-to-pot transport completes, so the felt
+  shows Chucky, the result, and the loss before the next hand can start.
+- The rollback proof passed before and after the migration. It covers the
+  globally disabled force-winner profile's natural Chucky loss, the retained
+  four-card presentation state, duplicate/replay inertness, and the enabled
+  harness control outcome. Production smoke remains required.
+
 ## Holm global harness gate and Brennen Davis live repair
 
 - Migration `20260812010000_gate_holm_forced_winner_and_restore_brennen_davis.sql`
