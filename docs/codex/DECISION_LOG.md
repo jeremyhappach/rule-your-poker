@@ -443,3 +443,16 @@ reveal-gated player-to-pot transport completion. The normal continuation still
 uses `proceedToNextHolmRound`'s compare-and-set guard; no client becomes a
 settlement owner and a disconnected client remains recoverable from the
 durable awaiting state.
+
+## D-042 - Deadline workers submit, never synthesize settlement
+
+An automated expiry owner may submit one exact expired action through the
+same replay-safe database rule path as a player. It must not independently
+deal opponent cards, set showdown/completed state, mark a result, move chips,
+or start the next hand. A stale, locked, or interrupted presentation identity
+is preserved for its canonical owner rather than guessed from a timer.
+
+Service-only expiry adapters require an exact game/dealer-game/round/player
+identity and browser roles cannot invoke them directly. Retired legacy
+workers must return before constructing a database client so accidental
+invocation is incapable of mutating gameplay.

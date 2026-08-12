@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { nextEligibleUndecided } from "../_shared/seatRing.ts";
 import { isNoTimersEnabled } from "../_shared/noTimersPolicy.ts";
 
 /**
@@ -122,7 +121,7 @@ serve(async (req) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const keyToUse = serviceRoleKey || anonKey;
 
-    if (!supabaseUrl || !keyToUse || keyToUse.length === 0) {
+    if (!supabaseUrl || !keyToUse || keyToUse.length === 0 || !serviceRoleKey) {
       console.error('[ENFORCE-CLIENT] Missing required env vars');
       return new Response(JSON.stringify({
         error: 'Backend configuration missing',
@@ -142,6 +141,10 @@ serve(async (req) => {
          headers: authHeader ? { Authorization: authHeader } : {},
        },
      });
+     // Keep the service client separate from the caller-scoped client.  The
+     // Holm timeout RPC is deliberately service-only, so forwarding a browser
+     // JWT to that call would silently downgrade it to the authenticated role.
+     const serviceSupabase = createClient(supabaseUrl, serviceRoleKey);
 
     let body: any;
     try {
@@ -163,6 +166,28 @@ serve(async (req) => {
     if (!gameId) {
       return new Response(JSON.stringify({ error: 'gameId required' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: callerParticipant, error: participantError } = await serviceSupabase
+      .from('players')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('user_id', authData.user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (participantError || !callerParticipant) {
+      return new Response(JSON.stringify({ error: 'Active game participant required' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -505,84 +530,12 @@ serve(async (req) => {
 
         const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentTurnPos);
 
-        // IMPORTANT: If the turn points at a player who already acted, we must still progress.
-        // Otherwise the table can freeze after a fold/stay where the client-side checker didn't run.
-        const undecidedPlayersNow = activePlayers.filter((p: any) => !p.decision_locked);
-
+        // A stale turn pointer is not evidence that a hand is settled.  Do not
+        // set all_decisions_in, complete a round, or manufacture a next hand
+        // here.  A connected presentation owner can recover the genuine state;
+        // the service adapter below handles only an exact, expired live turn.
         if (!currentTurnPlayer || currentTurnPlayer.decision_locked) {
-          // If nobody remains undecided, mark all_decisions_in so clients can proceed to showdown.
-          if (undecidedPlayersNow.length === 0) {
-            const { data: lockResult } = await supabase
-              .from('games')
-              .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
-              .eq('id', gameId)
-              .eq('all_decisions_in', false)
-              .select();
-
-            if (lockResult && lockResult.length > 0) {
-              actionsTaken.push('Holm recovery: all_decisions_in=true (no undecided players)');
-
-              // Clear round timer/turn so clients don't keep rendering timers.
-              await supabase
-                .from('rounds')
-                .update({ current_turn_position: null, decision_deadline: null })
-                .eq('id', currentRound.id);
-            }
-
-            return new Response(JSON.stringify({
-              success: true,
-              actionsTaken,
-              gameStatus: game.status,
-              timestamp: nowIso,
-              source,
-              requestId,
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-
-          // CANONICAL RESOLVER (Holm clockwise = descending/wrap).
-          // Walks the occupied ring with nextClockwise until the next
-          // undecided seat. Replaces the legacy ascending-sort selector
-          // that skipped lower-position eligible seats.
-          const occupiedRing = activePlayers.map((p: any) => p.position);
-          const undecidedRing = undecidedPlayersNow.map((p: any) => p.position);
-          const nextPos = nextEligibleUndecided(currentTurnPos, undecidedRing, occupiedRing);
-          const nextPlayer = nextPos != null
-            ? undecidedPlayersNow.find((p: any) => p.position === nextPos)
-            : null;
-
-          if (!nextPlayer) {
-            actionsTaken.push('Holm recovery: no eligible undecided seat (canonical resolver)');
-            return new Response(JSON.stringify({
-              success: true, actionsTaken, gameStatus: game.status, timestamp: nowIso, source, requestId,
-            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-          }
-
-          const { data: gameDefaults } = await supabase
-            .from('game_defaults')
-            .select('decision_timer_seconds')
-            .eq('game_type', 'holm')
-            .maybeSingle();
-          const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-          const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-
-          const { data: turnAdvanceResult } = await supabase
-            .from('rounds')
-            .update({
-              current_turn_position: nextPlayer.position,
-              decision_deadline: newDeadline,
-            })
-            .eq('id', currentRound.id)
-            .eq('current_turn_position', currentTurnPos)
-            .select();
-
-          if (turnAdvanceResult && turnAdvanceResult.length > 0) {
-            actionsTaken.push(`Holm recovery: advanced turn to position ${nextPlayer.position} (canonical clockwise)`);
-          } else {
-            actionsTaken.push('Holm recovery: turn advance skipped - another client already advanced');
-          }
-
+          actionsTaken.push('Holm timeout skipped: current turn is no longer an undecided active player');
           return new Response(JSON.stringify({
             success: true,
             actionsTaken,
@@ -647,8 +600,11 @@ serve(async (req) => {
 
          console.log('[ENFORCE-CLIENT] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
 
-         // Bots should never stall the table. If it's a bot's turn and it hasn't decided, force a decision.
-         // CRITICAL: Respect configured bot defaults (no 50/50 random folding).
+         // Decide the timeout action, then submit it through the same
+         // database-owned Holm resolver as an ordinary player decision.  This
+         // is the only deadline path allowed to produce a Chucky deal or chips.
+         let timeoutDecision: 'stay' | 'fold';
+         let markAutoFold = false;
          if (currentTurnPlayer.is_bot) {
            const { data: botDefaults } = await supabase
              .from('game_defaults')
@@ -660,21 +616,7 @@ serve(async (req) => {
              ? (botDefaults as any).bot_fold_probability
              : 0;
 
-           const shouldFold = Math.random() * 100 < foldProbability;
-           const botDecision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
-
-           const { data: botUpdateResult } = await supabase
-             .from('players')
-             .update({ current_decision: botDecision, decision_locked: true })
-             .eq('id', currentTurnPlayer.id)
-             .eq('decision_locked', false)
-             .select();
-
-           if (botUpdateResult && botUpdateResult.length > 0) {
-             actionsTaken.push(`Bot timeout: Forced decision '${botDecision}' for position ${currentTurnPos}`);
-           } else {
-             actionsTaken.push('Bot timeout: Skipped (already processed)');
-           }
+           timeoutDecision = Math.random() * 100 < foldProbability ? 'fold' : 'stay';
           } else {
             // Human turn: lock the decision to fold AND enable persistent auto_fold.
             // Config-backed gate: only proceed if authoritative timeout policy
@@ -698,121 +640,32 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               });
             }
-            // TIMEOUT CONTRACT: set auto_fold (persistent for remainder of this dealer game)
-            // AND sit_out_next_hand=true (converted to sitting_out at the next dealer-game
-            // boundary by evaluatePlayerStatesEndOfGame, NOT at each hand boundary).
-            const { data: humanUpdateResult } = await supabase
-              .from('players')
-              .update({ current_decision: 'fold', decision_locked: true, auto_fold: true, sit_out_next_hand: true })
-              .eq('id', currentTurnPlayer.id)
-              .eq('decision_locked', false)
-              .select();
-
-           if (!humanUpdateResult || humanUpdateResult.length === 0) {
-             console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
-             actionsTaken.push('Skipped - player already processed');
-           } else {
-             actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
-
-              // DEBUG LOG: Log the timeout decision with auto_fold now set to true
-              try {
-                await supabase
-                  .from('game_state_debug_log')
-                  .insert({
-                    game_id: gameId,
-                    dealer_game_id: game.current_game_uuid || null,
-                    round_id: currentRound.id,
-                    player_id: currentTurnPlayer.id,
-                    event_type: 'DEADLINE_EXPIRED',
-                    game_status: game.status,
-                    round_status: currentRound.status,
-                    player_decision: 'fold',
-                    decision_locked: true,
-                    auto_fold: true,
-                    deadline_expired: true,
-                   source_location: 'enforce-deadlines:holm-timeout',
-                   details: {
-                     position: currentTurnPos,
-                     deadline: currentRound.decision_deadline,
-                     source,
-                     requestId,
-                   },
-                 });
-             } catch (logErr) {
-               console.warn('[ENFORCE-CLIENT] Failed to log debug event:', logErr);
-             }
-           }
+            timeoutDecision = 'fold';
+            markAutoFold = true;
          }
 
-        // Advance turn to next undecided player (after bot forced decision OR human timeout).
-        const { data: freshPlayers } = await supabase
-          .from('players')
-          .select('*')
-          .eq('game_id', gameId);
-
-         // HOLM NOTE: Do NOT filter on ante_decision here.
-         const freshActivePlayers = freshPlayers?.filter((p: any) =>
-           p.status === 'active' && !p.sitting_out
-         ) || [];
-        const undecidedPlayers = freshActivePlayers.filter((p: any) => !p.decision_locked);
-
-        if (undecidedPlayers.length > 0) {
-          // CANONICAL RESOLVER (Holm clockwise = descending/wrap). Same
-          // helper as the recovery branch above; do not reintroduce a
-          // local ascending-position selector here.
-          const occupiedRingPost = freshActivePlayers.map((p: any) => p.position);
-          const undecidedRingPost = undecidedPlayers.map((p: any) => p.position);
-          const nextPosPost = nextEligibleUndecided(currentTurnPos, undecidedRingPost, occupiedRingPost);
-          const nextPlayer = nextPosPost != null
-            ? undecidedPlayers.find((p: any) => p.position === nextPosPost)
-            : null;
-
-          if (!nextPlayer) {
-            actionsTaken.push('Turn advance: no eligible undecided seat (canonical resolver)');
-          } else {
-            const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-
-            const { data: turnAdvanceResult } = await supabase
-              .from('rounds')
-              .update({
-                current_turn_position: nextPlayer.position,
-                decision_deadline: newDeadline,
-              })
-              .eq('id', currentRound.id)
-              .eq('current_turn_position', currentTurnPos)
-              .select();
-
-            if (turnAdvanceResult && turnAdvanceResult.length > 0) {
-              actionsTaken.push(`Turn advanced to position ${nextPlayer.position} (canonical clockwise)`);
-            } else {
-              actionsTaken.push('Turn advance skipped - another client already advanced');
-            }
-          }
+        const { data: deadlineResult, error: deadlineError } = await serviceSupabase.rpc(
+          'holm_apply_deadline_decision',
+          {
+            p_game_id: gameId,
+            p_round_id: currentRound.id,
+            p_player_id: currentTurnPlayer.id,
+            p_decision: timeoutDecision,
+            p_mark_auto_fold: markAutoFold,
+          },
+        );
+        if (deadlineError) {
+          console.error('[ENFORCE-CLIENT] Canonical Holm deadline decision failed:', deadlineError);
+          actionsTaken.push(`Holm timeout failed safely: ${deadlineError.message}`);
+        } else if ((deadlineResult as any)?.deadline_applied) {
+          actionsTaken.push(`Holm timeout submitted canonically: ${timeoutDecision} at position ${currentTurnPos}`);
         } else {
-          const { data: lockResult } = await supabase
-            .from('games')
-            .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
-            .eq('id', gameId)
-            .eq('all_decisions_in', false)
-            .select();
-
-          if (lockResult && lockResult.length > 0) {
-            actionsTaken.push('All players decided - flagged for showdown');
-
-            // CRITICAL: Clear turn/timer so clients don't keep rendering a turn spotlight/timer
-            // while waiting for the client-side end-of-round logic to run.
-            await supabase
-              .from('rounds')
-              .update({ current_turn_position: null, decision_deadline: null })
-              .eq('id', currentRound.id);
-          }
+          actionsTaken.push(`Holm timeout skipped safely: ${JSON.stringify(deadlineResult)}`);
         }
       }
 
-      // ============= 3A-2. HOLM STUCK SHOWDOWN RECOVERY =============
-      // If a Holm round is stuck in 'showdown' status with community_cards_revealed < 4,
-      // the client that was supposed to reveal the cards died mid-process.
-      // Force-complete the showdown to unblock the game.
+      // A presentation interruption is not a settlement signal.  Never use a
+      // deadline worker to reveal cards, complete a showdown, or advance Holm.
       if (game.game_type === 'holm-game') {
         const showdownQuery = supabase
           .from('rounds')
@@ -833,43 +686,13 @@ serve(async (req) => {
 
         if (stuckShowdown) {
           const cardsRevealed = stuckShowdown.community_cards_revealed ?? 0;
-          
-          // If stuck in showdown with cards not fully revealed, force completion
           if (cardsRevealed < 4) {
-            console.log('[ENFORCE-CLIENT] Holm stuck showdown detected:', {
+            console.warn('[ENFORCE-CLIENT] Holm presentation requires a canonical owner; leaving state unchanged:', {
               roundId: stuckShowdown.id,
               community_cards_revealed: cardsRevealed,
               status: stuckShowdown.status,
             });
-
-            // Force reveal all 4 community cards and mark as completed
-            // The client-side recovery path will handle chip distribution on next poll
-            const { data: forceRevealResult } = await supabase
-              .from('rounds')
-              .update({ 
-                community_cards_revealed: 4,
-                status: 'completed',
-                decision_deadline: null,
-                current_turn_position: null,
-              })
-              .eq('id', stuckShowdown.id)
-              .eq('status', 'showdown')
-              .select();
-
-            if (forceRevealResult && forceRevealResult.length > 0) {
-              // Also set game to awaiting_next_round so clients can advance
-              await supabase
-                .from('games')
-                .update({ 
-                  awaiting_next_round: true,
-                  last_round_result: 'Showdown recovered - advancing to next hand',
-                  all_decisions_in: false,
-                  all_decisions_in_round_id: null,
-                })
-                .eq('id', gameId);
-
-              actionsTaken.push(`Holm showdown recovery: Force-revealed all community cards for round ${stuckShowdown.id}`);
-            }
+            actionsTaken.push(`Holm presentation preserved: no unsafe showdown recovery for round ${stuckShowdown.id}`);
           }
         }
       }

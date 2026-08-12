@@ -246,6 +246,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Retired: this legacy worker contains independent gameplay progression and
+  // settlement code.  Production has no schedule or supported caller for it;
+  // returning before any database client is created makes accidental/manual
+  // invocation incapable of completing a hand, moving chips, or starting the
+  // next dealer game.  Canonical per-ruleset owners remain the only path.
+  return new Response(JSON.stringify({
+    success: false,
+    disabled: true,
+    reason: 'legacy_enforcer_retired_use_canonical_game_owners',
+  }), {
+    status: 410,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
   const startTime = Date.now();
   const cronRunId = crypto.randomUUID();
   console.log('[CRON-ENFORCE] Starting comprehensive deadline enforcement scan', { cronRunId });

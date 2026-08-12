@@ -1,6 +1,28 @@
 # Current release and cutover state
 
-Date: 2026-08-11
+Date: 2026-08-12
+
+## Holm deadline settlement containment
+
+- Migration `20260812030000_route_holm_deadlines_through_canonical_settlement.sql`
+  is installed on production. An expired Holm turn now locks its exact
+  game/dealer-game/round/player identity and delegates to
+  `public.holm_submit_decision`; it cannot independently deal Chucky, settle
+  chips, complete a showdown, or advance a dealer game. Solo and all-fold
+  results therefore retain the same database-owned outcome, cards, reveal
+  state, transfer batches, result claim, and continuation as a normal action.
+- The active `enforce-deadlines` Edge Function is version 3. It requires an
+  authenticated active participant, uses a separate service-role client only
+  for the service-only deadline adapter, and leaves stale/locked/showdown
+  state untouched. The prior forced-showdown recovery has been removed.
+- The unused legacy `enforce-all-deadlines` Edge Function is version 5 and
+  returns `410 Gone` before creating a database client. Production has no
+  schedule for it; accidental or manual invocation can no longer move chips,
+  settle a hand, or start a new dealer game.
+- Rollback proofs passed before and after the migration for continuation,
+  duplicate and late replay, terminal preservation, a natural Chucky loss
+  with retained four-card reveal, service-only access, and human auto-fold.
+  Production Holm smoke remains required.
 
 ## Holm Chucky-loss presentation and continuation correction
 

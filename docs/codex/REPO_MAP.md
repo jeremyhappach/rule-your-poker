@@ -120,6 +120,12 @@ reset transient/presentation state when those identities change.
   `proceedToNextHolmRound`; decisions enter through
   `src/lib/gameLogic.ts:makeDecision`; hand ranking is
   `src/lib/cardUtils.ts:evaluateHand`.
+- Deadline action owner: `supabase/functions/enforce-deadlines/index.ts`
+  authenticates an active participant and calls the service-only
+  `public.holm_apply_deadline_decision` adapter from migration
+  `20260812030000_route_holm_deadlines_through_canonical_settlement.sql`.
+  The adapter locks the exact identity and delegates every terminal branch to
+  `public.holm_submit_decision`; it is not a second settlement owner.
 - Bots: `src/lib/botPlayer.ts:makeBotDecisions` and
   `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling/authority
   recovery is mounted in `Game.tsx`.
