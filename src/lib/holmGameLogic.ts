@@ -7,17 +7,11 @@ import {
 } from "./holmRevealInstrumentation";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
-import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
+import { getActiveHolmRoundWithGame } from "./holmRoundUtils";
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
-import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
 import { getHolmForcedWinner, getHolmForcedWinnerAsync } from "./holm/holmDebugOverrides";
-// `recordGameResult` remains imported for the NON-terminal ante audit row only
-// (event_kind 'ante', which the settlement RPC explicitly rejects). No terminal
-// Holm outcome uses it any more.
-import { recordGameResult } from "./gameLogic";
 import { settleHolmHand } from "./holmSettleHand";
-import { playerToPot, settleGameplayChipTransfers } from "./gameplayChipTransfers";
 import { toast } from "sonner";
 
 /**
@@ -145,317 +139,64 @@ function resolveHolmDealerGameId(
   return id;
 }
 
-
 /**
- * Check if all players have decided in a Holm game round
- * In Holm, decisions are TURN-BASED starting from buck and rotating clockwise
- * 
- * @param gameId - The game ID
- * @param decidingPlayerPosition - OPTIONAL but CRITICAL: The position of the player who just made a decision.
- *                                  When provided, we KNOW this player just decided and should advance turn.
- *                                  When omitted, we infer from current_turn_position (legacy/recovery behavior).
+ * Observe exact server-published Holm decision completion.
+ * Decisions, turn position, deadline, and the completion marker are committed
+ * together by holm_submit_decision; this client only starts presentation after
+ * that exact-round marker is visible.
  */
-export async function checkHolmRoundComplete(gameId: string, decidingPlayerPosition?: number) {
-  console.log('[HOLM CHECK] Checking if round is complete for game:', gameId, 'decidingPlayerPosition:', decidingPlayerPosition);
-
-  // IMPORTANT: Avoid artificial delays here.
-  // makeDecision awaits the DB write, so delaying just widens the race window where bots/other clients
-  // can advance state and cause split-brain (all_decisions_in true but round not completed).
-  
-  // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
+export async function checkHolmRoundComplete(gameId: string) {
   const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
-  
-  if (error || !game) {
-    console.log('[HOLM CHECK] Game not found:', error);
+
+  if (error || !game || !round) {
+    console.warn('[HOLM CHECK] Active game/round unavailable', { gameId, error });
     return;
   }
-  
-  if (!round) {
-    console.log('[HOLM CHECK] Round not found');
-    return;
-  }
-  
-  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
-  
-  console.log('[HOLM CHECK] Using latest round for dealer game:', {
-    dealerGameId,
-    round_id: round.id,
-    hand_number: round.hand_number,
-    round_number: round.round_number,
-    game_current_round: game.current_round,
-    current_turn_position: round.current_turn_position,
-  });
-  
-  const { data: players } = await supabase
+
+  const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('*')
+    .select('position, decision_locked, current_decision')
     .eq('game_id', gameId)
     .eq('status', 'active')
     .eq('sitting_out', false)
     .order('position');
-    
-  if (!players || players.length === 0) {
-    console.log('[HOLM CHECK] No active players found');
+
+  if (playersError || !players?.length) {
+    console.warn('[HOLM CHECK] Active players unavailable', { gameId, playersError });
     return;
   }
-  
-  console.log('[HOLM CHECK] Players:', players.map(p => ({
-    position: p.position,
-    decided: p.decision_locked,
-    decision: p.current_decision,
-    is_bot: p.is_bot
-  })));
-  
-  // Check if all players have decided (must have both decision_locked AND a current_decision)
-  const allDecided = players.every(p => p.decision_locked && p.current_decision !== null);
-  
-  console.log('[HOLM CHECK] All players decided?', allDecided);
-  
-  if (allDecided) {
-    // CRITICAL: If already processing/showdown/completed, skip
-    if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
-      console.log('[HOLM CHECK] Round already in status:', round.status, '- skipping duplicate call');
-      return;
-    }
 
-    // IMPORTANT: Do NOT bail out just because game.all_decisions_in is already true.
-    // The backend timeout enforcer can set all_decisions_in without completing the round.
-    // endHolmRound itself has an atomic (betting -> processing) lock, so it's safe to call.
-    if (game.all_decisions_in) {
-      console.warn('[HOLM CHECK] all_decisions_in already true - attempting recovery by calling endHolmRound');
-    } else {
-      console.log('[HOLM CHECK] All players decided, setting all_decisions_in');
-
-      // Atomic guard to avoid thrashing writes; if we lose, we'll still proceed to endHolmRound safely.
-      const { error: updateError } = await supabase
-        .from('games')
-        .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
-        .eq('id', gameId)
-        .eq('all_decisions_in', false);
-
-      if (updateError) {
-        console.warn('[HOLM CHECK] Failed to set all_decisions_in (non-fatal):', updateError.message);
-      }
-    }
-    
-    // DEBUG LOG: all_decisions_in set
-    await logAllDecisionsIn(gameId, round.id, true, 'holmGameLogic:checkHolmRoundComplete', {
-      player_decisions: players.map(p => ({ position: p.position, decision: p.current_decision, locked: p.decision_locked })),
-      round_status: round.status,
-    });
-    
-    // Clear the timer and turn position since all decisions are in
-    await supabase
-      .from('rounds')
-      .update({ 
-        current_turn_position: null,
-        decision_deadline: null
-      })
-      .eq('id', round.id);
-    
-    // End the round
-    try {
-      await endHolmRound(gameId);
-    } catch (error) {
-      console.error('[HOLM CHECK] ERROR calling endHolmRound:', error);
-      throw error;
-    }
-  } else {
-    // CRITICAL FIX: When decidingPlayerPosition is provided, we KNOW this player just made a decision.
-    // We don't need to re-fetch and verify - we should just advance the turn.
-    // This eliminates the race condition where current_turn_position might have already been advanced.
-    
-    const positionToCheck = decidingPlayerPosition ?? round.current_turn_position;
-    
-    // Find the player at the position we're checking
-    const playerAtPosition = players.find(p => p.position === positionToCheck);
-    
-    console.log('[HOLM CHECK] Checking player at position:', positionToCheck, {
-      decidingPlayerPosition,
-      round_current_turn_position: round.current_turn_position,
-      playerFound: !!playerAtPosition,
-      decision_locked: playerAtPosition?.decision_locked,
-      current_decision: playerAtPosition?.current_decision
-    });
-    
-    // If we have a decidingPlayerPosition, we KNOW they just decided - don't second-guess it
-    // Just advance the turn immediately
-    if (decidingPlayerPosition !== undefined) {
-      console.log('[HOLM CHECK] Player at position', decidingPlayerPosition, 'just decided, advancing turn');
-      await moveToNextHolmPlayerTurn(gameId, decidingPlayerPosition);
-    } else if (playerAtPosition?.decision_locked && playerAtPosition.current_decision !== null) {
-      // Legacy/recovery path: check if current turn player has decided
-      console.log('[HOLM CHECK] Current player decided, moving to next turn from position', round.current_turn_position);
-      await moveToNextHolmPlayerTurn(gameId, round.current_turn_position);
-    } else {
-      console.log('[HOLM CHECK] Waiting for player at position', round.current_turn_position, 'to decide');
-    }
-  }
-}
-
-/**
- * Move to the next player's turn in Holm game (clockwise from buck)
- * 
- * @param gameId - The game ID
- * @param fromPosition - The position of the player who just finished their turn.
- *                       Used for atomic guard and calculating next position.
- */
-async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
-  console.log('[HOLM TURN] ========== Starting moveToNextHolmPlayerTurn from position', fromPosition, '==========');
-  
-  // Fetch game_defaults for decision timer
-  const { data: gameDefaults } = await supabase
-    .from('game_defaults')
-    .select('decision_timer_seconds')
-    .eq('game_type', 'holm')
-    .maybeSingle();
-  
-  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
-  console.log('[HOLM TURN] Using decision timer:', timerSeconds, 'seconds');
-  
-  // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
-  const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
-    
-  if (error || !game) {
-    console.error('[HOLM TURN] ERROR: Game not found:', error);
+  const allDecided = players.every(
+    player => player.decision_locked && player.current_decision !== null,
+  );
+  if (!allDecided) {
+    console.log('[HOLM CHECK] Decisions remain; server owns the next turn');
     return;
   }
-  
-  if (!round) {
-    console.error('[HOLM TURN] ERROR: No rounds found for game');
+
+  if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
     return;
   }
-  
-  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
-  
-  console.log('[HOLM TURN] Using latest round for dealer game:', {
-    dealerGameId,
-    round_id: round.id,
-    hand_number: round.hand_number,
-    round_number: round.round_number,
-    game_current_round: game.current_round,
-    current_turn_position: round.current_turn_position,
-    fromPosition,
+
+  if (!game.all_decisions_in || game.all_decisions_in_round_id !== round.id) {
+    console.warn('[HOLM CHECK] Exact-round completion was not published by the server; refusing client repair');
+    return;
+  }
+
+  await logAllDecisionsIn(gameId, round.id, true, 'holmGameLogic:checkHolmRoundComplete', {
+    player_decisions: players.map(player => ({
+      position: player.position,
+      decision: player.current_decision,
+      locked: player.decision_locked,
+    })),
+    round_status: round.status,
   });
-  
-  const { data: allPlayers } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('status', 'active')
-    .eq('sitting_out', false)
-    .order('position');
-    
-  if (!allPlayers || allPlayers.length === 0) {
-    console.error('[HOLM TURN] ERROR: No active players found');
-    return;
-  }
-  
-  // CRITICAL FIX: Only consider players who have NOT yet made their decision
-  // Players with decision_locked=true have already acted (stayed or folded)
-  // We should NOT advance the turn to them - skip them entirely
-  const undecidedPlayers = allPlayers.filter(p => !p.decision_locked);
-  
-  console.log('[HOLM TURN] All active players:', allPlayers.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
-  console.log('[HOLM TURN] Undecided players:', undecidedPlayers.map(p => p.position));
-  
-  if (undecidedPlayers.length === 0) {
-    console.log('[HOLM TURN] No undecided players left - triggering round completion via all_decisions_in');
 
-    // All players have decided - attempt to set all_decisions_in (best-effort), but ALWAYS attempt
-    // to end the round. endHolmRound has its own atomic (betting -> processing) lock.
-    const { error: allDecisionsError } = await supabase
-      .from('games')
-      .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
-      .eq('id', gameId)
-      .eq('all_decisions_in', false);
-
-    if (allDecisionsError) {
-      console.warn('[HOLM TURN] Failed to set all_decisions_in (non-fatal):', allDecisionsError.message);
-    }
-
-    // Clear the timer and turn position (prevents ghost spotlight)
-    const { error: clearError } = await supabase
-      .from('rounds')
-      .update({
-        current_turn_position: null,
-        decision_deadline: null,
-      })
-      .eq('id', round.id);
-
-    if (clearError) {
-      console.warn('[HOLM TURN] Failed to clear turn/deadline (non-fatal):', clearError.message);
-    }
-
-    try {
-      await endHolmRound(gameId);
-    } catch (err) {
-      console.error('[HOLM TURN] ERROR calling endHolmRound:', err);
-    }
-    return;
-  }
-  
-  // SHARED SEAT-RING CONTRACT: poker-clockwise = action passes to dealer's
-  // LEFT. nextClockwise resolves the visually-next occupied seat regardless
-  // of raw position numbering, so turn order matches the canonical seat
-  // anchors used by the shell renderer.
-  const positions = undecidedPlayers.map(p => p.position);
-
-  let nextPosition: number;
-  if (positions.includes(fromPosition)) {
-    // Edge case: the player who "just decided" is still flagged undecided
-    // (e.g. timer expiry race). Step from them.
-    nextPosition = nextClockwise(fromPosition, positions);
-  } else {
-    // fromPosition already cleared from the undecided ring — pick the seat
-    // immediately clockwise of it within the full active ring, then snap
-    // forward until we land on an undecided seat.
-    const allActivePositions = allPlayers.map(p => p.position);
-    let probe = nextClockwise(fromPosition, allActivePositions);
-    while (!positions.includes(probe)) probe = nextClockwise(probe, allActivePositions);
-    nextPosition = probe;
-  }
-
-  console.log('[HOLM TURN] *** MOVING TURN from position', fromPosition, 'to', nextPosition, '***');
-  console.log('[HOLM TURN] undecided positions:', positions, 'nextPosition (clockwise):', nextPosition);
-  
-  // Update turn position and reset timer using game_defaults
-  // CRITICAL: Use atomic guard - only update if current_turn_position equals fromPosition
-  // This ensures only the client whose player just decided can advance the turn
-  const deadline = new Date(Date.now() + timerSeconds * 1000);
-  const { data: updateResult, error: updateError } = await supabase
-    .from('rounds')
-    .update({ 
-      current_turn_position: nextPosition,
-      decision_deadline: deadline.toISOString()
-    })
-    .eq('id', round.id)
-    .eq('current_turn_position', fromPosition) // ATOMIC GUARD: only update if turn matches the player who just decided
-    .select();
-  
-  if (updateError) {
-    console.error('[HOLM TURN] ERROR updating turn position:', updateError);
-    return;
-  }
-  
-  if (!updateResult || updateResult.length === 0) {
-    console.log('[HOLM TURN] Turn advance skipped - current_turn_position no longer matches fromPosition (another client already advanced)');
-    return;
-  }
-    
-  console.log('[HOLM TURN] *** TURN UPDATE COMPLETE - DB updated to position', nextPosition, '***');
-  
-  console.log('[HOLM TURN] ========== moveToNextHolmPlayerTurn COMPLETE ==========');
+  await endHolmRound(gameId);
 }
 
 
-/**
- * Start a Holm game round
- * - Each player gets 4 cards
- * - 4 community cards (2 visible, 2 hidden initially)
- * - Decision starts with buck position and rotates clockwise
- * - Uses firstHand flag: true = collect antes; false = preserve pot from showdown
- */
+/** Result of the authoritative first-hand bootstrap. */
 export type HolmInitialHandStartResult = {
   outcome: 'started' | 'already-started' | 'rejected';
   reason?: string;
@@ -500,374 +241,6 @@ export async function startHolmInitialHand(
 
   console.log('[HOLM] Initial hand RPC complete', result);
   return result;
-}
-
-export async function startHolmRound(gameId: string, isFirstHand: boolean = false, passedBuckPosition?: number) {
-  console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
-  console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
-
-  // Keep every first-hand caller on the replay-safe server boundary. This also
-  // protects any older call site that still invokes startHolmRound(..., true).
-  if (isFirstHand) {
-    await startHolmInitialHand(gameId);
-    return;
-  }
-
-  // The caller may pass isFirstHand=true, but older stuck states can have is_first_hand already consumed.
-  // In that case, we can safely "recover" by starting the hand without first-hand logic (no re-ante),
-  // as long as the game is still in ante_decision and the pot is already populated.
-  let effectiveIsFirstHand = isFirstHand;
-  
-  // CRITICAL ATOMIC GUARD (Holm first hand): do NOT flip status to in_progress yet.
-  // Flipping status early makes clients fetch rounds while OLD rounds still exist, causing stale cards.
-  // Instead, atomically clear is_first_hand as a lock while keeping status in ante_decision.
-  if (effectiveIsFirstHand) {
-    const { data: lockResult, error: lockError } = await supabase
-      .from('games')
-      .update({ is_first_hand: false })
-      .eq('id', gameId)
-      .eq('status', 'ante_decision')
-      .eq('is_first_hand', true)
-      .select();
-
-    if (lockError || !lockResult || lockResult.length === 0) {
-      // Recovery check (see comment above)
-      const { data: guardGame } = await supabase
-        .from('games')
-        .select('status, pot')
-        .eq('id', gameId)
-        .maybeSingle();
-
-      const pot = typeof guardGame?.pot === 'number' ? guardGame.pot : 0;
-      const canRecover = guardGame?.status === 'ante_decision' && pot > 0;
-
-      if (canRecover) {
-        console.warn('[HOLM] ⚠️ First-hand lock already consumed but game is still in ante_decision; recovering by starting without first-hand logic');
-        effectiveIsFirstHand = false;
-      } else {
-        console.log('[HOLM] ⚠️ ATOMIC GUARD: Another client already started the first hand, skipping');
-        return;
-      }
-    }
-
-    if (effectiveIsFirstHand) {
-      console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
-      // IMPORTANT: Do NOT mutate rounds from previous dealer games.
-      // Correct isolation is achieved via dealer_game_id scoping everywhere we read/write rounds.
-    }
-  }
-  
-  // Fetch game configuration
-  const { data: gameConfig } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
-  
-  if (!gameConfig) {
-    throw new Error('Game not found');
-  }
-
-  console.log('[HOLM] Game config - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
-
-  // CORRECT APPROACH: Each dealer_game_id has its own hand numbering starting at 1.
-  // The unique constraint is now (dealer_game_id, hand_number, round_number).
-  // Query only rounds for THIS dealer game to find the next hand number.
-  const dealerGameId = gameConfig.current_game_uuid;
-  if (!dealerGameId) {
-    // This should never happen; dealer_game_id is the authoritative namespace for Holm rounds.
-    // If we proceed here, we'd create an orphan round that the app won't be able to find later.
-    console.error('[HOLM] CRITICAL: Missing current_game_uuid on game; aborting startHolmRound to prevent orphan rounds', {
-      gameId,
-      status: gameConfig.status,
-      gameType: gameConfig.game_type,
-    });
-    throw new Error('Holm game is missing current_game_uuid (dealer game id)');
-  }
-  
-  let handNumber: number;
-  if (effectiveIsFirstHand) {
-    // First hand of this dealer game = hand 1
-    handNumber = 1;
-    console.log('[HOLM] First hand of dealer game - starting at hand_number=1');
-  } else {
-    // Find max hand_number within THIS dealer game only
-    const { data: maxHandRow } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('hand_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    handNumber = (maxHandRow?.hand_number ?? 0) + 1;
-    console.log('[HOLM] Subsequent hand - next hand_number:', handNumber);
-  }
-  
-  console.log('[HOLM] Hand numbering:', { dealerGameId, handNumber, effectiveIsFirstHand });
-
-  const anteAmount = gameConfig.ante_amount || 1;
-  const dealerPosition = gameConfig.dealer_position || 1;
-  
-  // CRITICAL: Use passed buck position if provided, otherwise use existing or calculate
-  let buckPosition = passedBuckPosition ?? gameConfig.buck_position;
-  
-  if (!buckPosition || effectiveIsFirstHand) {
-    // First hand — buck starts one seat CLOCKWISE (left) of dealer per the
-    // shared seat-ring contract. The contract resolves "clockwise" against
-    // the canonical seat anchors so render and game logic cannot disagree.
-    //
-    // IMPORTANT: do NOT filter on status='active' here. When transitioning
-    // from another completed game (e.g. Gin → Holm), players retain stale
-    // per-hand statuses like 'folded' from the previous dealer game; the
-    // end-of-game evaluation does not reset status back to 'active'. Source
-    // the seat cohort the same way the round bootstrap does: seated, not
-    // sitting out, not observer/left.
-    const { data: allPlayers } = await supabase
-      .from('players')
-      .select('position, status, sitting_out')
-      .eq('game_id', gameId)
-      .eq('sitting_out', false)
-      .neq('status', 'observer')
-      .neq('status', 'left')
-      .order('position');
-
-    if (allPlayers && allPlayers.length > 0) {
-      const occupiedPositions = allPlayers.map(p => p.position);
-      buckPosition = getBuckStartPosition(dealerPosition, occupiedPositions);
-      console.log('[HOLM] Occupied positions:', occupiedPositions, 'dealer:', dealerPosition, 'buck (seatRing):', buckPosition);
-    } else {
-      buckPosition = dealerPosition;
-    }
-  }
-  
-  console.log('[HOLM] Final buckPosition for round:', buckPosition);
-
-  // Get all active players who aren't sitting out
-  const { data: players } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('status', 'active')
-    .eq('sitting_out', false)
-    .order('position');
-
-  if (!players || players.length === 0) {
-    throw new Error('No active players found');
-  }
-
-  // FIRST HAND: Collect antes and set initial pot
-  // SUBSEQUENT HANDS: Use pot value preserved from showdown (DO NOT re-ante)
-  let potForRound: number;
-  
-  if (effectiveIsFirstHand) {
-    console.log('[HOLM] FIRST HAND - Collecting antes');
-    
-    // One database operation moves every ante into the pot and emits its
-    // immutable presentation batch in the same transaction.
-    const playerIds = players.map(p => p.id);
-    try {
-      await settleGameplayChipTransfers(
-        gameId,
-        playerIds.map((playerId) => playerToPot(playerId, anteAmount)),
-        'ante',
-      );
-      console.log('[HOLM] Antes collected atomically from', playerIds.length, 'players, amount:', anteAmount);
-      
-      // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
-      // Each player's ante payment is tracked as a negative chip change
-      const anteChipChanges: Record<string, number> = {};
-      for (const player of players) {
-        anteChipChanges[player.id] = -anteAmount;
-      }
-      
-      // Fire-and-forget: Record antes (audit trail only)
-      recordGameResult(
-        gameId,
-         handNumber,
-        null, // no winner - this is ante collection
-        'Ante', // Description
-        `${players.length} players anted $${anteAmount}`,
-        0, // pot_won is 0 - this is money going INTO the pot
-        anteChipChanges,
-        false,
-        'holm', // game_type
-        gameConfig.current_game_uuid || null // dealer_game_id
-      );
-      console.log('[HOLM] Recorded ante chip changes in game_results:', anteChipChanges);
-    } catch (anteError) {
-      console.error('[HOLM] ERROR collecting antes:', anteError);
-      throw anteError;
-    }
-    
-    potForRound = players.length * anteAmount;
-    console.log('[HOLM] Total antes collected:', potForRound);
-    
-    // The transfer RPC has already updated the authoritative pot.  This
-    // remaining write is non-financial round metadata only.
-    await supabase
-      .from('games')
-      .update({
-        buck_position: buckPosition
-      })
-      .eq('id', gameId);
-  } else {
-    // SUBSEQUENT HAND: Use the pot value from the database (set during showdown)
-    potForRound = gameConfig.pot || 0;
-    console.log('[HOLM] SUBSEQUENT HAND - Using preserved pot:', potForRound);
-  }
-
-  // Fetch game_defaults for decision timer
-  const { data: gameDefaults } = await supabase
-    .from('game_defaults')
-    .select('decision_timer_seconds')
-    .eq('game_type', 'holm')
-    .maybeSingle();
-  
-  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
-  console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
-
-  // ARCHITECTURAL STANDARD: Holm ALWAYS uses round_number=1.
-  // Hand iteration is tracked via hand_number, NOT round_number.
-  // This differs from 3-5-7 where round_number cycles 1/2/3 within a single hand.
-  const nextRoundNumber = 1;
-  
-  console.log('[HOLM] Creating round with round_number=1 (always), hand_number:', handNumber, 'for dealer_game:', dealerGameId);
-
-  // Deal fresh cards
-  const deadline = new Date(Date.now() + timerSeconds * 1000);
-  const deck = shuffleDeck(createDeck());
-  let cardIndex = 0;
-
-  // Deal 4 community cards
-  const communityCards = [
-    deck[cardIndex++],
-    deck[cardIndex++],
-    deck[cardIndex++],
-    deck[cardIndex++]
-  ];
-
-  // CRITICAL FIX: Reset player decisions and game flags BEFORE creating the round.
-  // Previously these happened AFTER the round insert, causing a race condition:
-  // The round INSERT fires a realtime event and the client sees the new round immediately,
-  // but decision_locked is still true and all_decisions_in is still true from the previous hand.
-  // This means canDecide evaluates to false → no stay/fold buttons → player times out.
-  console.log('[HOLM] Pre-clearing player decisions and game flags before round creation');
-  
-  await supabase
-    .from('players')
-    .update({ 
-      current_decision: null,
-      decision_locked: false
-    })
-    .eq('game_id', gameId);
-
-  await supabase
-    .from('games')
-    .update({
-      all_decisions_in: false,
-      last_round_result: null,
-      is_first_hand: false,
-      // Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
-      config_deadline: null,
-      ante_decision_deadline: null,
-    })
-    .eq('id', gameId);
-
-  // Always create a new round for each hand - unique round_id prevents stale card fetching
-  const { data: round, error: roundError } = await supabase
-    .from('rounds')
-    .insert({
-      game_id: gameId,
-      round_number: nextRoundNumber,
-      cards_dealt: 4,
-      status: 'betting',
-      pot: potForRound,
-      decision_deadline: deadline.toISOString(),
-      community_cards_revealed: 2,
-      community_cards: communityCards as any,
-      chucky_active: false,
-      current_turn_position: buckPosition,
-      hand_number: handNumber,
-      dealer_game_id: dealerGameId
-    })
-    .select()
-    .single();
-
-  if (roundError || !round) {
-    const code = (roundError as any)?.code;
-    if (code === '23505') {
-      console.warn('[HOLM] Duplicate round insert blocked by DB (23505). Skipping startHolmRound.', {
-        gameId,
-        nextRoundNumber,
-      });
-      return;
-    }
-
-    throw new Error(`Failed to create round: ${roundError?.message}`);
-  }
-  
-  const roundId = round.id;
-
-  // BATCH: Deal 4 cards to each player in a single insert
-  const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
-  
-  for (const player of players) {
-    const playerCards = [
-      deck[cardIndex++],
-      deck[cardIndex++],
-      deck[cardIndex++],
-      deck[cardIndex++]
-    ];
-
-    playerCardInserts.push({
-      player_id: player.id,
-      round_id: roundId,
-      cards: playerCards as any
-    });
-  }
-  
-  // Single batch insert for all player cards
-  if (playerCardInserts.length > 0) {
-    const { error: cardsError } = await supabase
-      .from('player_cards')
-      .insert(playerCardInserts);
-    
-    if (cardsError) {
-      console.error('[HOLM] Error batch inserting cards:', cardsError);
-      throw new Error(`Failed to deal cards: ${cardsError.message}`);
-    }
-    console.log('[HOLM] Batch dealt cards to', playerCardInserts.length, 'players');
-  }
-
-  // Update game status AND current_round for Holm games
-  // CRITICAL: current_round MUST be updated so MobileGameTable can detect new rounds
-  console.log('[HOLM] Updating game status with current_round:', round.round_number);
-  const { error: gameUpdateError } = await supabase
-    .from('games')
-    .update({
-      status: 'in_progress',
-      current_round: round.round_number,
-      buck_position: buckPosition,
-      total_hands: round.hand_number,
-    })
-    .eq('id', gameId);
-
-  if (gameUpdateError) {
-    console.error('[HOLM] ERROR updating game status:', gameUpdateError);
-  } else {
-    console.log('[HOLM] ✅ Successfully updated game status, buck_position:', buckPosition);
-  }
-
-  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', effectiveIsFirstHand);
-
-  persistTransition(gameId, 'holm', handNumber, 'hand-start', {
-    buckPosition,
-    pot: potForRound,
-    firstHand: effectiveIsFirstHand,
-    dealerPosition: gameConfig.dealer_position,
-    playerCount: gameConfig.dealer_position ?? 0,
-  });
 }
 
 /**
@@ -936,114 +309,94 @@ export async function endHolmRound(gameId: string) {
     game_current_round: game.current_round,
   });
 
-  // =============================
-  // SHOWDOWN RECOVERY (MULTI-PLAYER)
-  // =============================
-  // If the client that acquired the atomic 'betting'->'processing' lock disconnects after switching
-  // the round to 'showdown' but before revealing the last 2 community cards, the game can deadlock
-  // because other clients previously exited early on round.status === 'showdown'.
-  //
-  // Recovery rule: If we are already in showdown but community_cards_revealed < 4, attempt an
-  // atomic claim via decision_deadline (as a temporary lock token) and finish the showdown.
+  // A dedicated presentation fallback lease keeps disconnected multi-player
+  // showdowns recoverable without ever overloading the gameplay decision timer.
   const roundCommunityRevealed = round.community_cards_revealed ?? 0;
   if (round.status === 'showdown' && roundCommunityRevealed < 4) {
-    const recoveryToken = new Date(Date.now() + 15_000).toISOString();
-    console.warn('[HOLM END] ⚠️ Detected stuck showdown (community_cards_revealed < 4). Attempting recovery claim...', {
-      roundId: round.id,
-      community_cards_revealed: roundCommunityRevealed,
-    });
-
-    // Atomic claim: only one client should proceed.
-    const { data: recoveryClaim, error: recoveryClaimError } = await supabase
-      .from('rounds')
-      .update({ decision_deadline: recoveryToken })
-      .eq('id', round.id)
-      .eq('status', 'showdown')
-      .is('decision_deadline', null)
-      .or('community_cards_revealed.is.null,community_cards_revealed.lt.4')
-      .select();
-
-    if (recoveryClaimError || !recoveryClaim || recoveryClaim.length === 0) {
-      console.log('[HOLM END] Recovery claim failed or already claimed by another client - skipping', {
-        error: recoveryClaimError?.message,
-      });
+    const observedFallbackAt = round.presentation_fallback_at ?? null;
+    const observedFallbackEpoch = observedFallbackAt ? Date.parse(observedFallbackAt) : Number.NaN;
+    if (Number.isFinite(observedFallbackEpoch) && observedFallbackEpoch > Date.now()) {
       return;
     }
 
-    // Extract community cards for later use - ensure proper parsing from JSON
+    const recoveryLease = new Date(Date.now() + 30_000).toISOString();
+    let recoveryClaimQuery = supabase
+      .from('rounds')
+      .update({ presentation_fallback_at: recoveryLease, decision_deadline: null })
+      .eq('id', round.id)
+      .eq('status', 'showdown')
+      .or('community_cards_revealed.is.null,community_cards_revealed.lt.4');
+
+    recoveryClaimQuery = observedFallbackAt
+      ? recoveryClaimQuery.eq('presentation_fallback_at', observedFallbackAt)
+      : recoveryClaimQuery.is('presentation_fallback_at', null);
+
+    const { data: recoveryClaim, error: recoveryClaimError } = await recoveryClaimQuery.select();
+    if (recoveryClaimError || !recoveryClaim?.length) {
+      return;
+    }
+
     let communityCards: Card[] = [];
     try {
       const rawCommunity = round.community_cards;
-      if (Array.isArray(rawCommunity)) {
-        communityCards = rawCommunity.map((c: any) => ({
-          suit: (c.suit || c.Suit) as Suit,
-          rank: String(c.rank || c.Rank).toUpperCase() as Rank,
-        }));
-      } else if (typeof rawCommunity === 'string') {
-        const parsed = JSON.parse(rawCommunity);
-        communityCards = parsed.map((c: any) => ({
-          suit: (c.suit || c.Suit) as Suit,
-          rank: String(c.rank || c.Rank).toUpperCase() as Rank,
+      const parsedCommunity = typeof rawCommunity === 'string'
+        ? JSON.parse(rawCommunity)
+        : rawCommunity;
+      if (Array.isArray(parsedCommunity)) {
+        communityCards = parsedCommunity.map((card: any) => ({
+          suit: (card.suit || card.Suit) as Suit,
+          rank: String(card.rank || card.Rank).toUpperCase() as Rank,
         }));
       }
-    } catch (e) {
-      console.error('[HOLM END] ERROR parsing community cards (recovery):', e);
+    } catch (parseError) {
+      console.error('[HOLM END] Unable to parse recovery community cards', parseError);
     }
 
-    const { data: players } = await supabase
-      .from('players')
-      .select('*, profiles(username)')
-      .eq('game_id', gameId)
-      .eq('status', 'active')
-      .eq('sitting_out', false)
-      .order('position');
+    const [{ data: players }, { data: allPlayerCardsData }] = await Promise.all([
+      supabase
+        .from('players')
+        .select('*, profiles(username)')
+        .eq('game_id', gameId)
+        .eq('status', 'active')
+        .eq('sitting_out', false)
+        .order('position'),
+      supabase
+        .from('player_cards')
+        .select('*, players!inner(*, profiles(username))')
+        .eq('round_id', round.id),
+    ]);
 
-    const stayedPlayers = (players || []).filter((p: any) => p.current_decision === 'stay');
-
-    // Fetch ALL player cards now (same as the normal endHolmRound path)
-    const { data: allPlayerCardsData } = await supabase
-      .from('player_cards')
-      .select('*, players!inner(*, profiles(username))')
-      .eq('round_id', round.id);
-
+    const stayedPlayers = (players ?? []).filter((player: any) => player.current_decision === 'stay');
     try {
-      if (stayedPlayers.length >= 2) {
-        // Fire-and-forget: Ensure visibility is correct (idempotent)
-        // Also set is_public = true since cards are tabled (exposed to everyone)
-        // CRITICAL: Only mark STAYED players' cards as public - folded players' cards must stay hidden
-        const seatedUserIds = (players || []).map((p: any) => p.user_id);
-        const stayedPlayerIds = stayedPlayers.map((p: any) => p.id);
-        supabase
-          .from('player_cards')
-          .update({ visible_to_user_ids: seatedUserIds, is_public: true })
-          .eq('round_id', round.id)
-          .in('player_id', stayedPlayerIds)
-          .then(({ error }) => { if (error) console.error('[HOLM] is_public update error:', error); });
-
-        const roundPot = round.pot || game.pot || 0;
-        await handleMultiPlayerShowdown(
-          gameId,
-          round.id,
-          stayedPlayers,
-          communityCards,
-          game,
-          roundPot,
-          allPlayerCardsData || []
-        );
-      } else {
-        console.error('[HOLM END] Recovery detected showdown but stayedPlayers < 2 - bailing', {
-          stayedPlayers: stayedPlayers.length,
-        });
+      if (stayedPlayers.length < 2) {
+        console.error('[HOLM END] Recovery invariant failed: multi-player showdown has fewer than two stayers');
+        return;
       }
+
+      const seatedUserIds = (players ?? []).map((player: any) => player.user_id);
+      const stayedPlayerIds = stayedPlayers.map((player: any) => player.id);
+      await supabase
+        .from('player_cards')
+        .update({ visible_to_user_ids: seatedUserIds, is_public: true })
+        .eq('round_id', round.id)
+        .in('player_id', stayedPlayerIds);
+
+      await handleMultiPlayerShowdown(
+        gameId,
+        round.id,
+        stayedPlayers,
+        communityCards,
+        game,
+        round.pot || game.pot || 0,
+        allPlayerCardsData ?? [],
+      );
     } finally {
-      // Release recovery token if it's still ours.
       await supabase
         .from('rounds')
-        .update({ decision_deadline: null })
+        .update({ presentation_fallback_at: null, decision_deadline: null })
         .eq('id', round.id)
-        .eq('decision_deadline', recoveryToken);
+        .eq('presentation_fallback_at', recoveryLease);
     }
-
     return;
   }
 
@@ -1216,14 +569,17 @@ export async function endHolmRound(gameId: string) {
     stayedPositions: stayedPlayers.map(p => p.position)
   });
 
-  // CRITICAL GUARD: If NO player has any decision (stay or fold), this is a premature call.
-  // A stale all_decisions_in=true from a previous hand can race with a new round creation,
-  // causing endHolmRound to fire with zero decisions (treating it as "everyone folded" → pussy tax).
+  // Exact-round completion makes an empty decision cohort impossible. Release
+  // only the presentation claim so a clean retry is possible; never rewrite
+  // the server-owned completion marker from the browser.
   const playersWithDecision = players.filter(p => p.current_decision === 'stay' || p.current_decision === 'fold');
   if (playersWithDecision.length === 0 && activePlayers.length > 0) {
-    console.error('[HOLM END] ❌ PREMATURE CALL - no player decisions exist. Reverting round lock and resetting stale flags.');
-    await supabase.from('rounds').update({ status: 'betting' }).eq('id', capturedRoundId);
-    await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+    console.error('[HOLM END] Exact-round completion invariant failed: no player decisions exist');
+    await supabase
+      .from('rounds')
+      .update({ status: 'betting' })
+      .eq('id', capturedRoundId)
+      .eq('status', 'processing');
     return;
   }
 
@@ -1274,7 +630,8 @@ export async function endHolmRound(gameId: string) {
         roundPot: newPot,
       });
     } catch (err) {
-      console.error('[HOLM END] Pussy tax settlement RPC failed:', err);
+      reportHolmSettlementFailure('Pussy-tax carryforward', err);
+      return;
     }
 
     console.log('[HOLM END] Pussy tax case completed with new pot:', newPot);
@@ -1316,13 +673,10 @@ export async function endHolmRound(gameId: string) {
       chuckyTotal: game.chucky_cards || 4,
     });
 
-    // Step 1: Expose player's cards by setting all_decisions_in
+    // The exact decision transaction already published all_decisions_in for
+    // this round. The client has no completion-marker write on this path.
     console.log('[HOLM END] Step 1: Exposing player cards...');
-    await supabase
-      .from('games')
-      .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
-      .eq('id', gameId);
-    
+
     // The canonical table also waits for the actual tabled-card landing;
     // this is the matching server-side availability delay.
     console.log('[HOLM END] Step 2: configured delay for card exposure:', showdownTiming.afterTabled, 'ms');
@@ -1366,14 +720,14 @@ export async function endHolmRound(gameId: string) {
       const handDescription = formatHandRankDetailed(playerAllCards, false);
       console.log('[HOLM END] Step 4: Player has:', handDescription);
       
-      // Show hand rank announcement with player name - explicitly ensure awaiting_next_round is false
+      // Publish only the exact-hand presentation string. Lifecycle flags remain
+      // owned by settlement/continuation transactions.
       await supabase
         .from('games')
-        .update({ 
-          last_round_result: `${playerUsername} has ${handDescription}`,
-          awaiting_next_round: false
-        })
-        .eq('id', gameId);
+        .update({ last_round_result: `${playerUsername} has ${handDescription}` })
+        .eq('id', gameId)
+        .eq('current_game_uuid', resolveHolmDealerGameId(round, game))
+        .eq('all_decisions_in_round_id', round.id);
     }
     
     // The canonical table guarantees the visible announcement hold before
@@ -1537,22 +891,10 @@ export async function endHolmRound(gameId: string) {
       logResolutionGate(revealCtx, 'hand-resolution-complete', { roundPot });
     } catch (error) {
       console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
-      // CRITICAL: On error, mark round as completed AND set awaiting_next_round to allow progression
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed', chucky_active: false })
-        .eq('id', capturedRoundId);
-      
-      // Also update game to allow progression - this was missing and caused stuck games
-      await supabase
-        .from('games')
-        .update({ 
-          awaiting_next_round: true,
-          last_round_result: 'Error occurred - advancing to next hand'
-        })
-        .eq('id', gameId);
-      
-      console.log('[HOLM END] Error recovery complete - set awaiting_next_round: true');
+      toast.error('Holm showdown halted', {
+        description: 'No result was fabricated and the hand did not advance. Reload to retry the authoritative hand.',
+        duration: 15000,
+      });
     }
     return;
   }
@@ -1582,16 +924,24 @@ export async function endHolmRound(gameId: string) {
   // by marking the round as "showdown" phase - the UI will handle showing all cards
   console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
   
-  // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards
-  // CRITICAL: Set decision_deadline to a non-null value to prevent the showdown recovery
-  // path (line ~727) from claiming this round while we're still processing it.
-  // The recovery path checks `.is('decision_deadline', null)` — by setting a value here,
-  // we ensure only a genuinely stuck showdown (where the original client died) gets recovered.
-  const showdownLockDeadline = new Date(Date.now() + 30_000).toISOString();
-  await supabase
+  // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards.
+  // presentation_fallback_at is a presentation-only lease; gameplay deadlines
+  // remain null after the final decision transaction clears them.
+  const showdownFallbackAt = new Date(Date.now() + 30_000).toISOString();
+  const { error: showdownStatusError } = await supabase
     .from('rounds')
-    .update({ status: 'showdown', decision_deadline: showdownLockDeadline })
-    .eq('id', capturedRoundId);
+    .update({
+      status: 'showdown',
+      decision_deadline: null,
+      presentation_fallback_at: showdownFallbackAt,
+    })
+    .eq('id', capturedRoundId)
+    .eq('status', 'processing');
+
+  if (showdownStatusError) {
+    console.error('[HOLM END] Failed to publish multi-player showdown presentation', showdownStatusError);
+    return;
+  }
   
   // VISIBILITY: Only STAYED players' cards should be public at showdown
   // Folded players' cards must remain hidden
@@ -1618,7 +968,15 @@ export async function endHolmRound(gameId: string) {
   const roundPot = round.pot || game.pot || 0;
   
   // CRITICAL: Pass the cached cards (fetched at START of endHolmRound) to avoid race conditions
-  await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot, allPlayerCardsData || []);
+  try {
+    await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot, allPlayerCardsData || []);
+  } finally {
+    await supabase
+      .from('rounds')
+      .update({ presentation_fallback_at: null, decision_deadline: null })
+      .eq('id', capturedRoundId)
+      .eq('presentation_fallback_at', showdownFallbackAt);
+  }
 }
 
 /**
@@ -1854,7 +1212,7 @@ async function handleChuckyShowdown(
         potWon: 0, // money going INTO the pot
         // The completed Chucky-loss round is the authoritative source for the
         // reveal and loss transport. Keep it visible until the client starts
-        // the next hand; startHolmRound owns the subsequent reset.
+        // the next hand; proceed_to_next_holm_hand owns the subsequent reset.
         markRoundCompleted: true,
         clearChuckyActive: false,
       });
@@ -1868,16 +1226,6 @@ async function handleChuckyShowdown(
     return;
   }
 
-  // Mark round complete but KEEP Chucky visible for result display (player win case - handled above)
-  await supabase
-    .from('rounds')
-    .update({ 
-      status: 'completed'
-      // Note: chucky_active stays true so cards remain visible during result announcement
-    })
-    .eq('id', roundId);
-
-  console.log('[HOLM SHOWDOWN] Showdown complete');
 }
 
 /**
@@ -2166,8 +1514,10 @@ async function handleMultiPlayerShowdown(
       });
       console.log('[HOLM MULTI] Settled showdown authoritatively, pot=', newPot);
     } catch (err) {
-      console.error('[HOLM MULTI] Showdown settlement RPC failed:', err);
+      reportHolmSettlementFailure('Multi-player showdown', err);
+      return;
     }
+    return;
   } else if (losers.length > 0) {
     // PARTIAL TIE: Multiple winners but there are also losers
     // Winners split the pot, losers match the pot, do NOT proceed with Chucky
@@ -2245,8 +1595,10 @@ async function handleMultiPlayerShowdown(
       });
       console.log('[HOLM PARTIAL TIE] Settled authoritatively, pot=', newPot);
     } catch (err) {
-      console.error('[HOLM PARTIAL TIE] Partial-tie settlement RPC failed:', err);
+      reportHolmSettlementFailure('Partial-tie showdown', err);
+      return;
     }
+    return;
   } else {
     // FULL TIE: ALL players tied - they must all face Chucky
     console.log('[HOLM TIE] Full tie detected (all players tied). Tied players must face Chucky.');
@@ -2259,20 +1611,10 @@ async function handleMultiPlayerShowdown(
       console.error('[HOLM TIE] cardsOfStayedPlayers count:', cardsOfStayedPlayers.length, 'cachedPlayerCards count:', cachedPlayerCards.length);
       console.error('[HOLM TIE] stayedPlayerIds:', Array.from(stayedPlayerIds));
       
-      // Mark round as completed and set awaiting_next_round to allow game to continue
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed' })
-        .eq('id', roundId);
-      
-      await supabase
-        .from('games')
-        .update({
-          last_round_result: 'Error: hand evaluation failed — advancing to next hand',
-          awaiting_next_round: true,
-        })
-        .eq('id', gameId);
-      
+      toast.error('Holm hand evaluation failed', {
+        description: 'The hand was left unchanged and did not advance. Reload to retry it.',
+        duration: 15000,
+      });
       return;
     }
     
@@ -2408,6 +1750,7 @@ async function handleMultiPlayerShowdown(
         reportHolmSettlementFailure('Chucky tie-break pot match', err);
         return;
       }
+      return;
     } else {
       // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
       console.log('[HOLM TIE] Players beat Chucky - GAME OVER');
@@ -2482,124 +1825,50 @@ async function handleMultiPlayerShowdown(
     }
   }
 
-  // Mark round complete to hide timer during showdown
-  await supabase
-    .from('rounds')
-    .update({ 
-      status: 'completed',
-      chucky_active: false // Ensure Chucky is hidden
-    })
-    .eq('id', roundId);
 }
 
 /**
  * Proceed to next Holm hand (always uses round 1, just resets state)
  */
-export async function proceedToNextHolmRound(gameId: string) {
-  console.log('[HOLM NEXT] ========== Proceeding to next hand ==========');
+export type HolmNextHandResult = {
+  outcome: 'started' | 'already-started' | 'rejected';
+  reason?: string;
+  round_id?: string;
+  dealer_game_id?: string;
+  hand_number?: number;
+  buck_position?: number;
+  pot?: number;
+  deduped?: boolean;
+};
 
-  const { data: game } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
+export async function proceedToNextHolmRound(
+  gameId: string,
+  expectedRoundId: string,
+): Promise<HolmNextHandResult> {
+  const { data, error } = await supabase.rpc('proceed_to_next_holm_hand', {
+    p_game_id: gameId,
+    p_expected_round_id: expectedRoundId,
+  });
 
-  if (!game) {
-    console.error('[HOLM NEXT] ERROR: Game not found');
-    return;
+  if (error) {
+    throw new Error(`Holm next-hand RPC failed: ${error.message}`);
   }
 
-  console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round, 'total_hands:', game.total_hands);
-
-  // Guard: only proceed when the game is actually awaiting the next hand
-  if (!game.awaiting_next_round) {
-    console.log('[HOLM NEXT] Not awaiting next round, skipping');
-    return;
+  const result = (data ?? {}) as HolmNextHandResult;
+  if (result.outcome !== 'started' && result.outcome !== 'already-started') {
+    throw new Error(`Holm next-hand RPC rejected: ${result.reason ?? 'unknown reason'}`);
   }
 
-  // Compute next buck position via shared seat-ring contract (clockwise =
-  // poker action-passing direction = one seat LEFT of current buck).
-  const { data: players } = await supabase
-    .from('players')
-    .select('position')
-    .eq('game_id', gameId)
-    .eq('status', 'active')
-    .eq('sitting_out', false)
-    .order('position');
-
-  if (!players || players.length === 0) {
-    console.error('[HOLM NEXT] ERROR: No active players found');
-    return;
+  if (result.outcome === 'started') {
+    persistTransition(gameId, 'holm', result.hand_number ?? 1, 'hand-start', {
+      roundId: result.round_id ?? null,
+      buckPosition: result.buck_position ?? null,
+      pot: result.pot ?? null,
+      firstHand: false,
+      atomic: true,
+    });
   }
 
-  const positions = players.map((p) => p.position);
-  const fromBuckPosition: number | null =
-    typeof game.buck_position === 'number' ? game.buck_position : null;
-  const newBuckPosition = nextClockwise(game.buck_position, positions);
-
-  console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
-
-  // Canonical server-authored Buck-transfer presentation event.
-  // Emitted ONLY when the buck actually moves between hands. Clients latch
-  // on `id` and gate next-hand deal launch when `toPosition === self`.
-  let buckTransferPresentation: Record<string, unknown> | null = null;
-  if (
-    typeof fromBuckPosition === 'number' &&
-    typeof newBuckPosition === 'number' &&
-    fromBuckPosition !== newBuckPosition
-  ) {
-    buckTransferPresentation = {
-      id:
-        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-          ? crypto.randomUUID()
-          : `btp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-      sessionId: gameId,
-      sequence: Date.now(),
-      fromPosition: fromBuckPosition,
-      toPosition: newBuckPosition,
-      createdAt: new Date().toISOString(),
-      source: 'SERVER_BUCK_TRANSFER',
-    };
-  }
-
-  // CRITICAL: Atomic guard so only ONE client proceeds (prevents duplicate round inserts)
-  const { data: updateResult, error: updateError } = await supabase
-    .from('games')
-    .update({
-      awaiting_next_round: false,
-      buck_position: newBuckPosition,
-      last_round_result: null,
-      ...(buckTransferPresentation ? { buck_transfer_presentation: buckTransferPresentation } : {}),
-    } as never)
-    .eq('id', gameId)
-    .eq('awaiting_next_round', true)
-    .select();
-
-
-  if (updateError || !updateResult || updateResult.length === 0) {
-    console.log('[HOLM NEXT] Another client already proceeding, skipping');
-    return;
-  }
-
-  // Mark existing rounds for THIS dealer game as completed before starting a new hand
-  // MEDIUM FIX: Scope to current dealer_game_id to avoid mutating rounds from other dealer games
-  const currentDealerGameId = game.current_game_uuid;
-  console.log('[HOLM NEXT] Marking existing rounds as completed for dealer game:', currentDealerGameId?.slice(0, 8));
-  const roundCleanupQuery = supabase
-    .from('rounds')
-    .update({ status: 'completed' })
-    .eq('game_id', gameId)
-    .neq('status', 'completed');
-  if (currentDealerGameId) {
-    await roundCleanupQuery.eq('dealer_game_id', currentDealerGameId);
-  } else {
-    await roundCleanupQuery;
-  }
-
-  console.log('[HOLM NEXT] Cleared awaiting_next_round; starting next hand');
-
-  // Start new hand (preserve pot), passing the buck explicitly
-  await startHolmRound(gameId, false, newBuckPosition);
-
-  console.log('[HOLM NEXT] Next hand ready');
+  console.log('[HOLM NEXT] Atomic successor-hand result', result);
+  return result;
 }

@@ -2,6 +2,42 @@
 
 Date: 2026-08-12
 
+## Holm atomic turn and successor-hand authority
+
+- Migration `20260812150000_atomic_holm_turn_and_continuation.sql` is installed
+  on production. A Holm action now supplies its exact `rounds.id`; PostgreSQL
+  locks that hand/current seat and commits the decision, next seat, deadline,
+  monotonic `holm_turn_sequence`, and any all-fold/solo settlement in one
+  transaction. Out-of-turn, stale-hand, paused, duplicate, and late calls are
+  inert.
+- `public.proceed_to_next_holm_hand` now owns the complete continuation commit:
+  predecessor completion, decision reset, Buck rotation event, new round,
+  community/private deal, `player_cards.hand_context_id`, and game pointers.
+  Clients no longer clear `awaiting_next_round` before cards/round identity
+  exist.
+- The Holm presentation progress vector includes both the server turn sequence
+  and exact deadline epoch. Betting snapshots retain real decision locks, the
+  physical Buck follows the one current-turn owner, and a reordered older
+  deadline cannot expire and then refill the visible timer.
+- A configured per-user network simulation is executable only while global
+  Harnesses Mode is enabled. With the master gate off, a persisted
+  `cross_country_chaos` profile resolves to `off` and cannot perturb ordinary
+  or real-money play.
+- `enforce-deadlines` version 4 no longer invents a replacement full timer when
+  a canonical Holm deadline is missing; it records the invariant failure and
+  makes no mutation. The exact-round service adapter remains the only expiry
+  action path.
+- Holm showdown recovery no longer stores a presentation lease in
+  `decision_deadline`; it uses `presentation_fallback_at`, leaving gameplay
+  timers null once decisions finish. Evaluation and settlement failures are
+  fail-closed: the client cannot mark a round complete, fabricate a result, or
+  set `awaiting_next_round` after an error.
+- The combined rollback proof passed before and after installation for
+  authorization, out-of-turn/stale/paused actions, continuation, duplicate and
+  late replay, early/expired deadlines, winner/tie projections, harness gating,
+  card-context integrity, and terminal preservation. Focused tests, TypeScript,
+  and the production Vite build pass. Production smoke remains required.
+
 ## Holm Chucky-loss announcement-before-payment correction
 
 - A settled solo loss to Chucky now keeps its committed player-to-pot transfer

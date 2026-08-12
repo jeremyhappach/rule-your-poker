@@ -1,12 +1,18 @@
 /**
  * Holm Progress Vector
  *
- * Vector: [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed,
+ * Vector: [handNumber, phaseOrdinal, turnSequence, decidedCount, decisionDeadlineEpoch,
+ *          communityCardsRevealed,
  *          chuckyActiveOrd, chuckyCardsRevealed]
  *
  * - handNumber:              rounds.hand_number — increments per deal
  * - phaseOrdinal:            derived from rounds.status (betting=0, processing=1, showdown=2, completed=3)
+ * - turnSequence:            rounds.holm_turn_sequence; increments in the same transaction as
+ *                            every accepted decision/turn/deadline transition
  * - decidedCount:            count of players where decisionLocked === true
+ * - decisionDeadlineEpoch:   exact server deadline in epoch milliseconds. This only
+ *                            changes for the same turn on an explicit pause/resume;
+ *                            a later resume must dominate the pre-pause deadline.
  * - communityCardsRevealed:  rounds.community_cards_revealed (0–4 during showdown)
  * - chuckyActiveOrd:         0 when chucky_active is false, 1 when true. Chucky activates
  *                            strictly after community reveal completes and never deactivates
@@ -66,6 +72,7 @@ export interface HolmAuthoritativeSnapshot {
   players: HolmPlayerSnapshot[];
 
   // Turn
+  turnSequence: number;
   currentTurnPosition: number | null;
   decisionDeadline: string | null;
 
@@ -101,10 +108,13 @@ export function getHolmProgress(state: HolmAuthoritativeSnapshot): ProgressVecto
   // authoritative hand_number cannot cancel the most-significant dim).
   const handNumber = state.__syncHandNumber ?? state.handNumber;
   const phaseOrdinal = PHASE_ORDINAL[state.roundStatus] ?? 0;
+  const turnSequence = state.turnSequence ?? 0;
   const decidedCount = state.players.filter(p => p.decisionLocked === true).length;
+  const parsedDeadline = state.decisionDeadline ? Date.parse(state.decisionDeadline) : 0;
+  const decisionDeadlineEpoch = Number.isFinite(parsedDeadline) ? parsedDeadline : 0;
   const communityCardsRevealed = state.communityCardsRevealed ?? 0;
   const chuckyActiveOrd = state.chuckyActive ? 1 : 0;
   const chuckyCardsRevealed = state.chuckyCardsRevealed ?? 0;
 
-  return [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed, chuckyActiveOrd, chuckyCardsRevealed];
+  return [handNumber, phaseOrdinal, turnSequence, decidedCount, decisionDeadlineEpoch, communityCardsRevealed, chuckyActiveOrd, chuckyCardsRevealed];
 }

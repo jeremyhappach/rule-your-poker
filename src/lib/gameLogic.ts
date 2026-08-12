@@ -1286,7 +1286,12 @@ export async function startRound(gameId: string, roundNumber: number) {
   return round;
 }
 
-export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold') {
+export async function makeDecision(
+  gameId: string,
+  playerId: string,
+  decision: 'stay' | 'fold',
+  expectedRoundId?: string,
+) {
   const decisionTimestamp = new Date().toISOString();
   const shortGameId = gameId.slice(0, 8);
   const shortPlayerId = playerId.slice(0, 8);
@@ -1472,8 +1477,16 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // browser closing after its Stay/Fold write cannot be the thing that decides
   // whether a LAST HAND session ever reaches session_ended.
   if (isHolmGame) {
+    if (!expectedRoundId) {
+      throw new Error('Holm decision requires an exact round identity');
+    }
+    if (currentRound.id !== expectedRoundId) {
+      throw new Error('Holm decision rejected: stale round identity');
+    }
+
     const { data, error } = await supabase.rpc('holm_submit_decision', {
       p_game_id: gameId,
+      p_round_id: expectedRoundId,
       p_player_id: playerId,
       p_decision: decision,
     });
@@ -1487,6 +1500,9 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       already_locked?: boolean;
       already_terminal?: boolean;
       round_not_betting?: boolean;
+      stale_round?: boolean;
+      not_current_turn?: boolean;
+      game_paused?: boolean;
       all_decisions_in?: boolean;
       server_resolved?: boolean;
       terminal_disposition?: 'game_over' | 'session_ended' | null;
@@ -1494,7 +1510,14 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
     console.log('[MAKE_DECISION] Holm server decision result:', result);
 
-    if (result.already_locked || result.already_terminal || result.round_not_betting) {
+    if (
+      result.already_locked
+      || result.already_terminal
+      || result.round_not_betting
+      || result.stale_round
+      || result.not_current_turn
+      || result.game_paused
+    ) {
       return;
     }
 
@@ -1506,8 +1529,10 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       return;
     }
 
-    const { checkHolmRoundComplete } = await import('./holmGameLogic');
-    await checkHolmRoundComplete(gameId, player.position);
+    if (result.all_decisions_in) {
+      const { checkHolmRoundComplete } = await import('./holmGameLogic');
+      await checkHolmRoundComplete(gameId);
+    }
     return;
   }
 
@@ -1677,21 +1702,10 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     });
   }
 
-  console.log(`[MAKE_DECISION] Is Holm game? ${isHolmGame} - proceeding to check round completion`);
-  
-  if (isHolmGame) {
-    // For Holm games, check if round is complete and advance turn
-    // Import dynamically to avoid circular dependency
-    // CRITICAL: Pass player.position so checkHolmRoundComplete knows exactly who decided
-    // This eliminates the race condition where current_turn_position might have already changed
-    const { checkHolmRoundComplete } = await import('./holmGameLogic');
-    console.log(`[MAKE_DECISION] Holm game - calling checkHolmRoundComplete with position ${player.position}`);
-    await checkHolmRoundComplete(gameId, player.position);
-  } else {
-    // Check if all players have decided (only for non-Holm games)
-    console.log(`[MAKE_DECISION] 3-5-7 game - calling checkAllDecisionsIn for game=${shortGameId}`);
-    await checkAllDecisionsIn(gameId);
-  }
+  // Holm returned through its exact-round server RPC above. This remaining
+  // path is exclusively the simultaneous-decision 3-5-7 owner.
+  console.log(`[MAKE_DECISION] 3-5-7 game - calling checkAllDecisionsIn for game=${shortGameId}`);
+  await checkAllDecisionsIn(gameId);
   
   console.log(`[MAKE_DECISION] ===== COMPLETE ===== game=${shortGameId} player=${shortPlayerId} decision=${decision}`);
 }

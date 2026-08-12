@@ -6,6 +6,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { configureNetworkSim, NetworkSimMode } from '@/lib/networkSim';
+import { resolveNetworkSimulation } from '@/lib/networkSimGate';
+import {
+  isHarnessesModeCached,
+  refreshHarnessCache,
+  subscribeHarnessesMode,
+} from '@/lib/debugHarness/runtimeCache';
 
 interface NetworkSimContextValue {
   mode: NetworkSimMode;
@@ -16,14 +22,19 @@ interface NetworkSimContextValue {
 const NetworkSimContext = createContext<NetworkSimContextValue | null>(null);
 
 export function NetworkSimProvider({ children, userId }: { children: ReactNode; userId: string | undefined }) {
-  const [mode, setMode] = useState<NetworkSimMode>('off');
-  const [loggingEnabled, setLoggingEnabled] = useState(false);
+  const [configuredMode, setConfiguredMode] = useState<NetworkSimMode>('off');
+  const [configuredLogging, setConfiguredLogging] = useState(false);
+  const [harnessesModeEnabled, setHarnessesModeEnabled] = useState(false);
+  const effective = resolveNetworkSimulation(
+    configuredMode,
+    configuredLogging,
+    harnessesModeEnabled,
+  );
 
   const refresh = useCallback(async () => {
     if (!userId) {
-      configureNetworkSim({ mode: 'off', loggingEnabled: false, userId: null });
-      setMode('off');
-      setLoggingEnabled(false);
+      setConfiguredMode('off');
+      setConfiguredLogging(false);
       return;
     }
     const { data } = await supabase
@@ -33,14 +44,35 @@ export function NetworkSimProvider({ children, userId }: { children: ReactNode; 
       .maybeSingle();
     const nextMode = ((data as any)?.network_sim_mode ?? 'off') as NetworkSimMode;
     const nextLogging = Boolean((data as any)?.network_sim_logging);
-    configureNetworkSim({ mode: nextMode, loggingEnabled: nextLogging, userId });
-    setMode(nextMode);
-    setLoggingEnabled(nextLogging);
+    setConfiguredMode(nextMode);
+    setConfiguredLogging(nextLogging);
   }, [userId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = subscribeHarnessesMode((enabled) => {
+      if (!cancelled) setHarnessesModeEnabled(enabled);
+    });
+    void refreshHarnessCache().then((ok) => {
+      if (!cancelled) setHarnessesModeEnabled(ok && isHarnessesModeCached());
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    configureNetworkSim({
+      mode: effective.mode,
+      loggingEnabled: effective.loggingEnabled,
+      userId: userId ?? null,
+    });
+  }, [effective.loggingEnabled, effective.mode, userId]);
 
   // Subscribe to live changes on this user's profile so toggling from settings
   // takes effect immediately without a reload.
@@ -55,9 +87,8 @@ export function NetworkSimProvider({ children, userId }: { children: ReactNode; 
           const row = payload.new as any;
           const nextMode = (row?.network_sim_mode ?? 'off') as NetworkSimMode;
           const nextLogging = Boolean(row?.network_sim_logging);
-          configureNetworkSim({ mode: nextMode, loggingEnabled: nextLogging, userId });
-          setMode(nextMode);
-          setLoggingEnabled(nextLogging);
+          setConfiguredMode(nextMode);
+          setConfiguredLogging(nextLogging);
         },
       )
       .subscribe();
@@ -65,7 +96,11 @@ export function NetworkSimProvider({ children, userId }: { children: ReactNode; 
   }, [userId]);
 
   return (
-    <NetworkSimContext.Provider value={{ mode, loggingEnabled, refresh }}>
+    <NetworkSimContext.Provider value={{
+      mode: effective.mode,
+      loggingEnabled: effective.loggingEnabled,
+      refresh,
+    }}>
       {children}
     </NetworkSimContext.Provider>
   );

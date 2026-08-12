@@ -548,28 +548,11 @@ serve(async (req) => {
           });
         }
 
-        // Always ensure there is a deadline in the DB so clients can render a timer.
-        // Missing decision_deadline is a known freeze vector (clients won't start countdown; timeouts won't fire).
-        const { data: gameDefaults } = await supabase
-          .from('game_defaults')
-          .select('decision_timer_seconds')
-          .eq('game_type', 'holm')
-          .maybeSingle();
-
-        const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-
+        // The atomic hand/turn owner always publishes a deadline together with
+        // the turn. A missing value is an invariant failure, not authority for
+        // a cron path to invent a fresh full timer.
         if (!currentRound.decision_deadline) {
-          const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-          const { data: healRes } = await supabase
-            .from('rounds')
-            .update({ decision_deadline: healedDeadline })
-            .eq('id', currentRound.id)
-            .is('decision_deadline', null)
-            .select();
-
-          if (healRes && healRes.length > 0) {
-            actionsTaken.push(`Healed missing decision_deadline for position ${currentTurnPos}`);
-          }
+          actionsTaken.push(`Holm timeout skipped: missing canonical deadline for position ${currentTurnPos}`);
 
           return new Response(JSON.stringify({
             success: true,

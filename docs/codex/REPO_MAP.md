@@ -115,17 +115,25 @@ reset transient/presentation state when those identities change.
   Holm hand identity because it remains `1` across hands.
 - Non-financial leg cue: the shared `+L` `ValueChangeFlash` is a 3-5-7-only
   child of `MobileGameTable.tsx`; it is never a Holm/pot/chip-balance effect.
-- State/actions: `src/lib/holmGameLogic.ts:startHolmRound`,
-  `checkHolmRoundComplete`, `endHolmRound`, and
-  `proceedToNextHolmRound`; decisions enter through
-  `src/lib/gameLogic.ts:makeDecision`; hand ranking is
+- State/actions: initial creation enters `public.start_holm_initial_hand`;
+  decisions enter through `src/lib/gameLogic.ts:makeDecision` and the
+  exact-round `public.holm_submit_decision`; successor creation enters
+  `public.proceed_to_next_holm_hand` through
+  `src/lib/holmGameLogic.ts:proceedToNextHolmRound`.
+  `checkHolmRoundComplete`/`endHolmRound` retain multi-player showdown
+  presentation orchestration and submit terminal inputs to
+  `public.holm_settle_hand`; they do not advance a turn, publish a successor
+  hand, or fail open after evaluation/settlement errors. Showdown recovery uses
+  the presentation-only `rounds.presentation_fallback_at` lease, never the
+  gameplay `decision_deadline`. Hand ranking is
   `src/lib/cardUtils.ts:evaluateHand`.
 - Deadline action owner: `supabase/functions/enforce-deadlines/index.ts`
   authenticates an active participant and calls the service-only
-  `public.holm_apply_deadline_decision` adapter from migration
-  `20260812030000_route_holm_deadlines_through_canonical_settlement.sql`.
-  The adapter locks the exact identity and delegates every terminal branch to
-  `public.holm_submit_decision`; it is not a second settlement owner.
+  `public.holm_apply_deadline_decision` adapter, most recently defined by
+  `20260812150000_atomic_holm_turn_and_continuation.sql`. The adapter locks the
+  exact identity and delegates the action, next turn/deadline, and terminal
+  branch to `public.holm_submit_decision`; it is not a second settlement owner
+  and cannot invent a replacement deadline.
 - Bots: `src/lib/botPlayer.ts:makeBotDecisions` and
   `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling/authority
   recovery is mounted in `Game.tsx`.

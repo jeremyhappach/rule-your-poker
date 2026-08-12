@@ -374,7 +374,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     setTimeout(async () => {
       try {
-        await makeDecision(gameId, bot.id, decision);
+        await makeDecision(gameId, bot.id, decision, currentRound.id);
         // NOTE: makeDecision already calls checkHolmRoundComplete internally for Holm games
       } catch (err) {
         console.error('[BOT DECISIONS] Error in delayed bot decision:', err);

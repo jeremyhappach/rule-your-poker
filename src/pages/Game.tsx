@@ -287,7 +287,7 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
-import { startHolmInitialHand, startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
+import { startHolmInitialHand, endHolmRound, proceedToNextHolmRound } from "@/lib/holmGameLogic";
 import { getHolmResolutionRecoveryKey } from "@/lib/holmResolutionRecovery";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
@@ -483,6 +483,7 @@ interface Round {
   chucky_cards?: any;
   chucky_cards_revealed?: number;
   current_turn_position?: number | null;
+  holm_turn_sequence?: number;
   created_at?: string;
   horses_state?: any; // Horses dice game state
   gin_rummy_state?: any; // Gin Rummy JSONB state
@@ -777,15 +778,15 @@ function buildHolmSnapshot(
       playerId: p.id,
       userId: p.user_id,
       position: p.position,
-      decision: roundStatus === 'betting' ? (p.decision_locked ? p.current_decision : p.current_decision) : p.current_decision,
-      // P0-2 FIX: Force decisionLocked=false during betting phase.
-      // The DB pre-clears decision_locked before round creation (holmGameLogic.ts:553),
-      // but realtime can deliver the new round BEFORE the player update propagates,
-      // causing stale decision_locked=true to leak into the new hand's snapshot.
-      decisionLocked: roundStatus === 'betting' ? false : (p.decision_locked ?? false),
+      decision: p.current_decision,
+      // Successor-hand creation now clears every player decision before the
+      // round/card/game publication commits. Preserve the real lock here: a
+      // folded hand must never render as unlocked while retaining its fold.
+      decisionLocked: p.decision_locked ?? false,
       autoFold: p.auto_fold,
       sittingOut: p.sitting_out,
     })),
+    turnSequence: currentRound.holm_turn_sequence ?? 0,
     currentTurnPosition: currentRound.current_turn_position ?? null,
     decisionDeadline: currentRound.decision_deadline,
     communityCards: (currentRound.community_cards ?? []) as unknown[],
@@ -5420,9 +5421,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }
 
-      // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
-      // The proper flow is: ante collection (line 2959) -> startHolmRound -> round created.
-      // Polling should only fetch data, not create rounds.
+      // Polling is presentation recovery only. The first-hand RPC owns round
+      // creation; a poller never repairs or creates authoritative state.
       if (holmNoRound) {
         console.log('[CRITICAL POLL] Holm game with no round detected - waiting for proper round creation');
       }
@@ -8233,7 +8233,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
           
           if (isHolmGame) {
-            await proceedToNextHolmRound(gameId);
+            if (!currentRound?.id) {
+              throw new Error('Holm continuation requires an exact predecessor round');
+            }
+            await proceedToNextHolmRound(gameId, currentRound.id);
           } else {
             // CRITICAL: Fetch FRESH game state to check for 357 sweep or final leg win
             // The closure's `game` variable is stale from when useEffect was created
@@ -9902,14 +9905,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }
 
-      // For Holm, prefer presentation-layer deadline; fall back to the raw round
-      // deadline if presentation has not yet hydrated it (e.g. during visual
-      // contract / freeze window). This closes the regression where the timer
-      // meter and observer ring disappeared even though enforcement worked.
+      // A deadline is inseparable from its exact rounds row. Reusing a
+      // presentation snapshot's deadline here allowed a previous hand's timer
+      // to be combined with a newer hand/turn under reordered delivery.
       const isHolmDeadline = gameData.game_type === 'holm-game';
-      const holmPresentationDeadline = isHolmDeadline ? holmSync.presentationState?.decisionDeadline : null;
       const effectiveDeadline = isHolmDeadline
-        ? (holmPresentationDeadline ?? currentRound?.decision_deadline ?? null)
+        ? (currentRound?.decision_deadline ?? null)
         : (currentRound?.decision_deadline ?? null);
       
       if (effectiveDeadline) {
@@ -13328,7 +13329,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    console.log('[ANTE] Starting first round (status will be set by startHolmRound/startRound)');
+    console.log('[ANTE] Starting first round through its authoritative owner');
 
     // Start first round - let the round start functions handle the status change
     try {
@@ -13888,7 +13889,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     try {
-      await makeDecision(gameId, currentPlayer.id, 'stay');
+      if (game?.game_type === 'holm-game' && !currentRound?.id) {
+        throw new Error('Holm Stay requires an active round');
+      }
+      await makeDecision(gameId, currentPlayer.id, 'stay', game?.game_type === 'holm-game' ? currentRound!.id : undefined);
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
@@ -13983,7 +13987,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setPendingDecision('fold');
 
     try {
-      await makeDecision(gameId, currentPlayer.id, 'fold');
+      if (game?.game_type === 'holm-game' && !currentRound?.id) {
+        throw new Error('Holm Fold requires an active round');
+      }
+      await makeDecision(gameId, currentPlayer.id, 'fold', game?.game_type === 'holm-game' ? currentRound!.id : undefined);
       recordHolmDecisionSubmission({
         source: traceSource,
         actor: currentPlayer,
@@ -14023,7 +14030,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     try {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
-        await proceedToNextHolmRound(gameId);
+        if (!currentRound?.id) {
+          throw new Error('Holm continuation requires an exact predecessor round');
+        }
+        await proceedToNextHolmRound(gameId, currentRound.id);
       } else {
         await proceedToNextRound(gameId);
       }
@@ -16313,7 +16323,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onNextGame={isTerminalSlotPresentation ? handleDealerConfirmGameOver : undefined}
               communityCards={renderRoundContext ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
               buckTransferPresentation={game.game_type === 'holm-game' ? ((game as unknown as { buck_transfer_presentation?: { id: string; sessionId: string; sequence: number; fromPosition: number; toPosition: number; createdAt: string; source: string } | null }).buck_transfer_presentation ?? null) : null}
               currentTurnPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
               chuckyCards={renderRoundContext ? chuckyCardsForPresentation : undefined}
@@ -16363,11 +16373,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
                 // The loss transport only begins after the full Chucky reveal
-                // and announcement gates are satisfied. Its endpoint is the
-                // single client continuation owner; proceedToNextHolmRound
-                // retains the authoritative compare-and-set dedupe.
-                if (gameId) {
-                  void proceedToNextHolmRound(gameId);
+                // and announcement gates are satisfied. Its endpoint requests
+                // the exact-predecessor continuation RPC; PostgreSQL owns the
+                // idempotent next-hand transition.
+                if (gameId && currentRound?.id) {
+                  void proceedToNextHolmRound(gameId, currentRound.id);
                 }
               } : undefined}
               holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}

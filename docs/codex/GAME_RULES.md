@@ -41,8 +41,8 @@ contradictions.
 | Responsibility | Source |
 |---|---|
 | Setup/config | `src/components/DealerGameSetup.tsx`: ante, Chucky card count (2-7), optional Pussy Tax/value, optional pot cap/value, and Rabbit Hunt. |
-| Start/lifecycle | `src/lib/holmGameLogic.ts:startHolmRound`, `checkHolmRoundComplete`, `endHolmRound`, `proceedToNextHolmRound`. |
-| Legal action | `src/lib/gameLogic.ts:makeDecision`; current actor is represented by `rounds.current_turn_position` and guarded by `players.decision_locked`. |
+| Start/lifecycle | `public.start_holm_initial_hand` owns hand one; `public.proceed_to_next_holm_hand` owns later hands; `src/lib/holmGameLogic.ts:endHolmRound` orchestrates multi-player showdown presentation. |
+| Legal action | `src/lib/gameLogic.ts:makeDecision` submits exact `(game, round, player)` identity to `public.holm_submit_decision`; the database guards `rounds.current_turn_position` and atomically advances the next turn/deadline. |
 | Hand ranking | `src/lib/cardUtils.ts:evaluateHand`. |
 | Bots | `src/lib/botPlayer.ts:makeBotDecisions`; fold probability in `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduler/recovery in `src/pages/Game.tsx`. |
 | State acceptance | `src/lib/gameStateSync/holmProgress.ts:getHolmProgress`. |
@@ -100,9 +100,6 @@ contradictions.
 - Partial-tie payout uses floor division. If the pot is not divisible by the
   number of tied winners, the remainder is not assigned by the client
   calculation, so chip-plus-pot conservation needs a direct proof.
-- `startHolmRound` still performs ante, round, deal, and audit writes from the
-  client before the transactional terminal owner applies. Initial hand creation
-  is not one database transaction.
 - The terminal RPC is replay-safe, but the bot scheduler remains a connected
   client owner. Source contains authority keys, wake replay, and DB action
   guards; no ingestion-time production smoke proves every recovery edge.

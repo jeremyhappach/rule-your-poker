@@ -438,11 +438,10 @@ flag in the settlement commit prevents a connected client from ever caching or
 revealing the cards, while a generic transition timer can still advance the
 hand.
 
-The client therefore defers only this Chucky-loss continuation to the existing
-reveal-gated player-to-pot transport completion. The normal continuation still
-uses `proceedToNextHolmRound`'s compare-and-set guard; no client becomes a
-settlement owner and a disconnected client remains recoverable from the
-durable awaiting state.
+The client therefore defers only this Chucky-loss continuation until the
+reveal-gated player-to-pot transport completes. It then submits the exact
+predecessor round to `public.proceed_to_next_holm_hand`, which owns the complete
+successor commit; no client becomes a settlement or hand-publication owner.
 
 ## D-042 - Deadline workers submit, never synthesize settlement
 
@@ -456,3 +455,26 @@ Service-only expiry adapters require an exact game/dealer-game/round/player
 identity and browser roles cannot invoke them directly. Retired legacy
 workers must return before constructing a database client so accidental
 invocation is incapable of mutating gameplay.
+
+## D-043 - Holm turn and hand publication are atomic identities
+
+A Holm action is authorized by `(game_id, round_id, player_id)` and only the
+player at `rounds.current_turn_position` may act. The accepted decision, next
+seat, next deadline, monotonic `holm_turn_sequence`, and terminal decision
+state commit together. A browser observes this result; it never advances or
+repairs the turn.
+
+The successor hand is a second replay-safe transaction keyed by the completed
+predecessor `rounds.id`. It completes that row, clears decisions, rotates the
+Buck, inserts the new round and all private-card rows with the new hand context,
+and publishes the game pointers together. Reordered transport can delay a
+snapshot but cannot expose a hybrid hand.
+
+Network simulation is an executable harness and therefore obeys the global
+Harnesses Mode gate. A profile selection may remain stored for later testing,
+but while the gate is off its effective runtime mode is `off`.
+
+Showdown recovery leases are presentation state and use
+`rounds.presentation_fallback_at`, never `rounds.decision_deadline`. A failed
+evaluation or settlement preserves the exact hand for retry; no browser error
+handler may complete the round or publish `awaiting_next_round`.

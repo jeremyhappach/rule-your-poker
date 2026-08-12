@@ -227,12 +227,19 @@ export function emit357RuntimeDiag(
       }
     }
 
+    const uuidOrUndefined = (value: string | null | undefined): string | undefined => {
+      if (!value) return undefined;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+        ? value
+        : undefined;
+    };
+
     void supabase
       .from("debug_events")
       .insert({
         event_type: eventType,
-        game_id: identity.gameId ?? undefined,
-        round_id: identity.roundId ?? undefined,
+        game_id: uuidOrUndefined(identity.gameId),
+        round_id: uuidOrUndefined(identity.roundId),
         payload: insertPayload as unknown as Record<string, unknown>,
       } as never)
       .then(

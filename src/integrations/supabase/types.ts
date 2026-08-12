@@ -2416,6 +2416,7 @@ export type Database = {
           game_id: string
           gin_rummy_state: Json | null
           hand_number: number | null
+          holm_turn_sequence: number
           horses_state: Json | null
           id: string
           pending_turn_position: number | null
@@ -2444,6 +2445,7 @@ export type Database = {
           game_id: string
           gin_rummy_state?: Json | null
           hand_number?: number | null
+          holm_turn_sequence?: number
           horses_state?: Json | null
           id?: string
           pending_turn_position?: number | null
@@ -2472,6 +2474,7 @@ export type Database = {
           game_id?: string
           gin_rummy_state?: Json | null
           hand_number?: number | null
+          holm_turn_sequence?: number
           horses_state?: Json | null
           id?: string
           pending_turn_position?: number | null
@@ -3450,11 +3453,22 @@ export type Database = {
         Returns: Json
       }
       holm_submit_decision: {
-        Args: {
-          p_decision: string
-          p_game_id: string
-          p_player_id: string
-        }
+        Args:
+          | {
+              p_decision: string
+              p_game_id: string
+              p_player_id: string
+            }
+          | {
+              p_decision: string
+              p_game_id: string
+              p_player_id: string
+              p_round_id: string
+            }
+        Returns: Json
+      }
+      proceed_to_next_holm_hand: {
+        Args: { p_expected_round_id: string; p_game_id: string }
         Returns: Json
       }
       horses_advance_turn: {
