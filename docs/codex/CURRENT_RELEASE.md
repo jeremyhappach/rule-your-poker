@@ -2,6 +2,20 @@
 
 Date: 2026-08-11
 
+## Horses / SCC roller-only timer and observer felt correction
+
+- The shared dice-table owner now renders the canonical timer rail only for
+  the local active roller. An authoritative dice deadline is still shared for
+  rules and timeout handling, but it no longer creates a visible timer for the
+  observing player; the same ownership rule applies while a dice game is
+  paused.
+- The observer's pre-roll felt stage now always stays a placeholder until the
+  roller's dice are available. It cannot reuse a cached active-roller Beat
+  badge, so that badge cannot mask observer dice presentation.
+- Horses and Ship/Captain/Crew share this owner and receive the same behavior.
+  TypeScript and the production Vite bundle build pass. Production smoke
+  remains the acceptance gate.
+
 ## Horses / SCC autonomous disconnect settlement
 
 - Migrations `20260811010000_horses_scc_disconnect_safe_settlement.sql` and

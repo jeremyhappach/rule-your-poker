@@ -6585,13 +6585,21 @@ export const MobileGameTable = ({
   // paused, actorLabel). The shell owns all rendering, colors, and
   // mount-frame snapping. There is no game-specific timer presentation.
   {
-    const diceTimerActive =
+    // The authoritative deadline is shared, but the timer rail belongs only
+    // to the client whose player owns the dice turn.
+    const diceTimerOwnedByThisClient =
       diceGameplayUiActive &&
       horsesController.enabled &&
       horsesController.gamePhase === 'playing' &&
       !!horsesController.currentTurnPlayerId &&
       !horsesController.currentTurnPlayer?.is_bot &&
+      horsesController.isMyTurn;
+    const diceTimerActive =
+      diceTimerOwnedByThisClient &&
       horsesController.timeLeft !== null;
+    const pausedTimerVisible = isPaused && (
+      !diceGameplayUiActive || diceTimerOwnedByThisClient
+    );
 
     const turnTimerActive =
       !diceTimerActive &&
@@ -6604,7 +6612,7 @@ export const MobileGameTable = ({
       !!maxTime;
 
     let shellTimerState: Parameters<typeof useShellTimer>[0] = null;
-    if (isPaused) {
+    if (pausedTimerVisible) {
       shellTimerState = {
         secondsRemaining: 0,
         totalSeconds: 1,
@@ -6636,14 +6644,7 @@ export const MobileGameTable = ({
     // ShellHudGrid render site). When this is false even though
     // `shellTimerState` is non-null, the rail is never mounted — the
     // provider has state, but no <ShellTimerRail/> exists to consume it.
-    const hasTimerGateMirror = !!isPaused || (
-      diceGameplayUiActive &&
-      horsesController.enabled &&
-      horsesController.gamePhase === 'playing' &&
-      !!horsesController.currentTurnPlayerId &&
-      !horsesController.currentTurnPlayer?.is_bot &&
-      horsesController.timeLeft !== null
-    ) || (
+    const hasTimerGateMirror = pausedTimerVisible || diceTimerActive || (
       !!currentPlayer &&
       isPlayerTurn &&
       roundStatus === 'betting' &&
@@ -12706,14 +12707,11 @@ export const MobileGameTable = ({
           }
           
           // If observing someone else who hasn't rolled yet, keep a stable placeholder.
-          // We also reuse a short-lived cached node to prevent flicker during turn/player transitions.
+          // A cached node can only have been produced by this client's prior
+          // active-roller view, so it must never be replayed into an observer
+          // stage. Otherwise a stale Beat badge masks the roller's dice.
           if (!horsesController.isMyTurn && !hasRolled && !showResult) {
-
-            const cachedNode = getCachedFeltNode();
-            if (cachedNode) {
-              if (!feltBlockMounted) setTimeout(() => setFeltBlockMounted(true), 0);
-              return cachedNode;
-            }
+            cachedFeltBlockNodeRef.current = null;
 
             return (
               <div
@@ -14010,12 +14008,18 @@ export const MobileGameTable = ({
              row-5 owner. No game-specific timer visuals, no free-flowing
              content below ShellTabBar. Containment / scaling issues exposed
              by this migration are deferred to a subsequent phase. */
-          const hasTimer = !sessionEndedPhase && (!!isPaused || (
+          const diceTimerOwnedByThisClient =
             diceGameplayUiActive &&
             horsesController.enabled &&
             horsesController.gamePhase === 'playing' &&
             !!horsesController.currentTurnPlayerId &&
             !horsesController.currentTurnPlayer?.is_bot &&
+            horsesController.isMyTurn;
+          const pausedTimerVisible = isPaused && (
+            !diceGameplayUiActive || diceTimerOwnedByThisClient
+          );
+          const hasTimer = !sessionEndedPhase && (pausedTimerVisible || (
+            diceTimerOwnedByThisClient &&
             horsesController.timeLeft !== null
           ) || (
             !!currentPlayer &&
