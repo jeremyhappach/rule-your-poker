@@ -4,6 +4,7 @@ export type HolmTransferPresentationStage =
   | 'showdown-pot-award'
   | 'showdown-replacement-pot'
   | 'chucky-loss'
+  | 'pussy-tax'
   | null;
 
 export interface HolmTransferPresentationContext {
@@ -12,6 +13,17 @@ export interface HolmTransferPresentationContext {
   showdownMatchAmount: number;
   chuckyLossPlayerIds: readonly string[];
   chuckyLossAmount: number;
+  pussyTaxPlayerIds: readonly string[];
+  pussyTaxAmount: number;
+}
+
+export interface HolmTransferPresentationAdmissionState extends HolmTransferPresentationContext {
+  communityFullyRevealed: boolean;
+  chuckyVisualRevealComplete: boolean;
+  chuckyLossTransportPresentationReady: boolean;
+  winPotPresentationReady: boolean;
+  showdownPhase: 'idle' | 'pot-to-winner' | 'losers-to-pot';
+  pussyTaxPresentationReady: boolean;
 }
 
 export interface HolmShowdownPresentationIdentity {
@@ -142,5 +154,80 @@ export function classifyHolmTransferPresentationStage(
     return 'chucky-loss';
   }
 
+  if (
+    samePlayerSet(contributors, context.pussyTaxPlayerIds)
+    && allTransfersMatchAmount(potContributions, context.pussyTaxAmount)
+  ) {
+    return 'pussy-tax';
+  }
+
   return null;
+}
+
+/**
+ * A Holm `transfer` batch whose entire topology is player-to-pot is a
+ * hand-resolution consequence (showdown replacement pot, Chucky loss, or
+ * pussy tax). Realtime may deliver the immutable batch before the matching
+ * result/context update. That ordering must fail closed: an unclassified
+ * terminal contribution may wait for context, but it may never animate as an
+ * ordinary ante.
+ */
+export function isUnclassifiedHolmPlayerToPotTransfer(
+  batch: ChipPresentationBatch,
+  stage: HolmTransferPresentationStage,
+): boolean {
+  return (
+    stage === null
+    && batch.reason === 'transfer'
+    && batch.transfers.length > 0
+    && batch.transfers.every(
+      (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'pot',
+    )
+  );
+}
+
+/**
+ * Complete Holm admission policy for immutable chip batches. This is kept
+ * pure so the batch-first/result-second realtime ordering can be proved in a
+ * unit test instead of depending on React effect timing.
+ */
+export function canAdmitHolmTransferPresentation(
+  batch: ChipPresentationBatch,
+  state: HolmTransferPresentationAdmissionState,
+): boolean {
+  const stage = classifyHolmTransferPresentationStage(batch, state);
+
+  if (stage === 'showdown-pot-award') {
+    return (
+      state.communityFullyRevealed
+      && state.chuckyVisualRevealComplete
+      && state.showdownPhase === 'pot-to-winner'
+    );
+  }
+  if (stage === 'showdown-replacement-pot') {
+    return state.showdownPhase === 'losers-to-pot';
+  }
+  if (stage === 'chucky-loss') {
+    return state.chuckyLossTransportPresentationReady;
+  }
+  if (stage === 'pussy-tax') {
+    return state.pussyTaxPresentationReady;
+  }
+  if (isUnclassifiedHolmPlayerToPotTransfer(batch, stage)) {
+    return false;
+  }
+
+  const movesPotToPlayer = batch.transfers.some(
+    (transfer) => transfer.from.kind === 'pot' && transfer.to.kind === 'player',
+  );
+  if (movesPotToPlayer) {
+    return (
+      state.communityFullyRevealed
+      && state.chuckyVisualRevealComplete
+      && state.winPotPresentationReady
+    );
+  }
+
+  // Immutable antes and non-terminal transfers do not borrow a showdown gate.
+  return true;
 }

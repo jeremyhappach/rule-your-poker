@@ -266,6 +266,7 @@ import {
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import {
   buildHolmChuckyLossPresentationKey,
+  canAdmitHolmTransferPresentation,
   canPresentHolmChuckyLossTransport,
   classifyHolmTransferPresentationStage,
 } from "@/lib/canonicalShell/holmTransferPresentationStage";
@@ -4010,38 +4011,24 @@ export const MobileGameTable = ({
     );
 
     if (gameType === 'holm-game') {
-      const holmStage = classifyHolmTransferPresentationStage(batch, {
+      return canAdmitHolmTransferPresentation(batch, {
         showdownWinnerIds: holmShowdownWinnerIds,
         showdownLoserIds: holmShowdownLoserIds,
         showdownMatchAmount: holmShowdownMatchAmount,
         chuckyLossPlayerIds,
         chuckyLossAmount,
+        pussyTaxPlayerIds: players
+          .filter((player) =>
+            !player.sitting_out && player.status !== 'observer' && player.status !== 'left')
+          .map((player) => player.id),
+        pussyTaxAmount: pussyTaxValue ?? 0,
+        communityFullyRevealed: holmCommunityFullyRevealed,
+        chuckyVisualRevealComplete,
+        chuckyLossTransportPresentationReady,
+        winPotPresentationReady: holmWinPotTriggerIdGated !== null,
+        showdownPhase: holmShowdownPhase,
+        pussyTaxPresentationReady: !!anteAnimationTriggerId?.startsWith('pussy-tax-'),
       });
-
-      if (holmStage === 'showdown-pot-award') {
-        return (
-          holmCommunityFullyRevealed &&
-          chuckyVisualRevealComplete &&
-          holmShowdownPhase === 'pot-to-winner'
-        );
-      }
-      if (holmStage === 'showdown-replacement-pot') {
-        return holmShowdownPhase === 'losers-to-pot';
-      }
-      if (holmStage === 'chucky-loss') {
-        return chuckyLossTransportPresentationReady;
-      }
-      if (movesPotToPlayer) {
-        return (
-          holmCommunityFullyRevealed &&
-          chuckyVisualRevealComplete &&
-          holmWinPotTriggerIdGated !== null
-        );
-      }
-      // An initial ante or other non-terminal player-to-pot batch must never
-      // wait for a terminal phase. Its immutable reason/topology is enough to
-      // admit it at the hand boundary.
-      return true;
     }
 
     // Settlement can publish the 3-5-7 pot batch before the final-leg
@@ -4088,6 +4075,9 @@ export const MobileGameTable = ({
     holmShowdownMatchAmount,
     chuckyLossPlayerIds,
     chuckyLossAmount,
+    players,
+    pussyTaxValue,
+    anteAnimationTriggerId,
     threeFiveSevenWinPhase,
     chipTransferWinnerId,
     chipTransferLoserIds,
@@ -4102,6 +4092,11 @@ export const MobileGameTable = ({
         showdownMatchAmount: holmShowdownMatchAmount,
         chuckyLossPlayerIds,
         chuckyLossAmount,
+        pussyTaxPlayerIds: players
+          .filter((player) =>
+            !player.sitting_out && player.status !== 'observer' && player.status !== 'left')
+          .map((player) => player.id),
+        pussyTaxAmount: pussyTaxValue ?? 0,
       });
       if (holmStage === 'showdown-pot-award' && holmShowdownPhase === 'pot-to-winner') {
         onHolmShowdownPotToWinnerEnded?.();
@@ -4109,6 +4104,10 @@ export const MobileGameTable = ({
       }
       if (holmStage === 'showdown-replacement-pot' && holmShowdownPhase === 'losers-to-pot') {
         onHolmShowdownLosersEnded?.();
+        return;
+      }
+      if (holmStage === 'chucky-loss') {
+        onChuckyLossEnded?.();
         return;
       }
     }
@@ -4133,6 +4132,9 @@ export const MobileGameTable = ({
     holmShowdownPhase,
     chuckyLossPlayerIds,
     chuckyLossAmount,
+    players,
+    pussyTaxValue,
+    onChuckyLossEnded,
     onHolmShowdownPotToWinnerEnded,
     onHolmShowdownLosersEnded,
   ]);
@@ -11787,7 +11789,6 @@ export const MobileGameTable = ({
             console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
             // Chips arrived at pot - clear override so actual (post-loss) values show
             setDisplayedChips({});
-            onChuckyLossEnded?.();
           }}
         />
         

@@ -16368,14 +16368,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chuckyLossTriggerId={renderRoundContext ? chuckyLossTriggerId : null}
               chuckyLossAmount={renderRoundContext ? chuckyLossAmount : undefined}
               chuckyLossPlayerIds={renderRoundContext ? chuckyLossPlayerIds : []}
-              onChuckyLossStarted={isInProgress ? () => setChuckyLossTriggerId(null) : undefined}
               onChuckyLossEnded={isInProgress ? () => {
+                setChuckyLossTriggerId(null);
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
-                // The loss transport only begins after the full Chucky reveal
-                // and announcement gates are satisfied. Its endpoint requests
-                // the exact-predecessor continuation RPC; PostgreSQL owns the
-                // idempotent next-hand transition.
+                // The canonical immutable batch has now settled after the
+                // full Chucky reveal and announcement gates. Its endpoint
+                // requests the exact-predecessor continuation RPC; PostgreSQL
+                // owns the idempotent next-hand transition.
                 if (gameId && currentRound?.id) {
                   void proceedToNextHolmRound(gameId, currentRound.id);
                 }

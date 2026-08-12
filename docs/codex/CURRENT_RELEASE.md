@@ -2,6 +2,27 @@
 
 Date: 2026-08-12
 
+## Holm fail-closed terminal transfer admission
+
+- Production hand 3 in session `Aug 12 - Anthony Rizzo` proved that the
+  database-owned solo settlement and immutable player-to-pot batch can reach a
+  client before React has received and classified the accompanying Chucky
+  result. The prior Holm admission fallback treated that temporarily unknown
+  `transfer` batch as ordinary movement and launched it while the felt was
+  still tabling the player's cards.
+- Holm player-to-pot settlement batches now fail closed until their exact
+  showdown-replacement, Chucky-loss, or pussy-tax context is present. Initial
+  antes remain independently admitted by their immutable `ante` reason. The
+  same pure policy covers batch-first/result-second delivery, multi-player
+  replacement pots, Chucky losses, and pussy tax.
+- A Chucky-loss successor hand is now requested only from the canonical
+  immutable batch-settled boundary. The presentation-only `AnteUpAnimation`
+  arrival timer no longer owns continuation, so an early, replayed, or missing
+  local callback cannot consume the hand transition.
+- The focused ordering/admission suite, Holm authority/recovery/progress tests,
+  canonical chip-ledger/provider tests, and TypeScript validation pass.
+  Production build verification also passes; Holm smoke remains required.
+
 ## Holm atomic turn and successor-hand authority
 
 - Migration `20260812150000_atomic_holm_turn_and_continuation.sql` is installed
