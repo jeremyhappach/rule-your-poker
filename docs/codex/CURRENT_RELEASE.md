@@ -2,6 +2,26 @@
 
 Date: 2026-08-11
 
+## Holm global harness gate and Brennen Davis live repair
+
+- Migration `20260812010000_gate_holm_forced_winner_and_restore_brennen_davis.sql`
+  is installed on production. `public.holm_submit_decision` now treats a
+  configured forced-winner profile as executable only when the globally
+  persisted `harnesses_mode.value.enabled` is true. With the global gate off,
+  Holm always uses the stored card evaluation; this matches the existing
+  client-side execution boundary and fails closed when the setting is absent.
+- The real-money `Aug 11 - Brennen Davis` final Holm dealer game was verified
+  to have awarded a one-pair hand over Chucky's two pair while the global gate
+  was off. Its false terminal award, final snapshots, and SessionResult rows
+  were removed under exact identity/card preconditions. The $6 award reversal
+  is preserved as an immutable canonical `restore` transfer batch, returning
+  the pot to $6 rather than deleting financial history.
+- The session is restored to the recorded pre-award action state and paused:
+  the prior fold remains locked, the remaining player is active to decide,
+  Chucky is unrevealed, and the normal 30-second decision window is frozen.
+  The combined rollback proofs passed before and after deployment. Production
+  smoke remains the acceptance gate.
+
 ## Horses / SCC roller-only timer and observer felt correction
 
 - The shared dice-table owner now renders the canonical timer rail only for

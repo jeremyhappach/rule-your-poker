@@ -421,3 +421,9 @@ three missed-heartbeat lease activates all-absent rollover/terminal completion.
 It is intentionally separate from post-game presence reconciliation and the
 legacy generic deadline Edge Function; neither may become an alternate dice
 settlement owner.
+
+## D-040 - Global Harnesses Mode gates database execution too
+
+The database owns Holm's solo-vs-Chucky outcome, so a selected debug profile
+is executable in `holm_submit_decision` only when `harnesses_mode.enabled` is
+true. Client-side gating alone cannot protect real-money settlement.
