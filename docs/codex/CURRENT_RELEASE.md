@@ -2,6 +2,27 @@
 
 Date: 2026-08-11
 
+## Horses / SCC autonomous disconnect settlement
+
+- Migrations `20260811010000_horses_scc_disconnect_safe_settlement.sql` and
+  `20260811011500_preserve_horses_scc_partial_turn_rolls.sql` are installed on
+  production. `public.horses_settle_game` is now the one
+  replay-safe financial owner for both dice games: it derives the terminal
+  outcome from stored dice, claims the result, transfers the pot, records
+  post-payout snapshots, and selects `game_over` or `session_ended` in one
+  transaction.
+- The isolated five-second `enforce-horses-scc-deadlines-5s` database job
+  advances expired auto-roll turns without a browser. A single timed-out human
+  becomes auto-roll while a live opponent continues normally. When every human
+  heartbeat is absent for the established three-window lease, the server also
+  carries ties into their successor hands and resolves the dealer game to
+  `session_ended` without an available client.
+- The initial complete rollback proof passed before and after installation for
+  Horses and SCC winner, tie rollover, duplicate/late replay, authorization,
+  continuation, single-player timeout, and all-player-disconnect terminal
+  cases. The post-correction proof also covers interrupted one-/two-roll
+  turns. Production smoke remains the acceptance gate.
+
 ## Ante landing admission and solo pot-rail timing
 
 - Player-to-pot ante presentation now owns the local admission boundary for

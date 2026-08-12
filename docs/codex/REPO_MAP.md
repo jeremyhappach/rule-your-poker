@@ -278,9 +278,16 @@ reset transient/presentation state when those identities change.
   `supabase/migrations/20260208181247_b7f5d957-7530-40fb-84b6-a850c77197f6.sql`;
   `horses_advance_turn` latest in
   `supabase/migrations/20260322190632_da97037f-98a4-44a0-b9c3-1b3822ee7ff0.sql`.
-- Settlement/terminal: `useHorsesMobileController` claims the game row and
-  then separately pays, records, snapshots, and clears the pot. No
-  game-specific settlement RPC or focused rule/terminal test exists.
+- Settlement/terminal: `src/lib/horsesSettleGame.ts:settleHorsesGame` submits
+  immutable identity to `public.horses_settle_game`, defined by
+  `supabase/migrations/20260811010000_horses_scc_disconnect_safe_settlement.sql`,
+  with interrupted-turn preservation in
+  `20260811011500_preserve_horses_scc_partial_turn_rolls.sql`.
+  The RPC derives the persisted-dice outcome and atomically owns the result
+  claim, pot transfer, snapshots, and terminal disposition. The dedicated
+  `enforce-horses-scc-deadlines-5s` database job resolves expired no-client
+  turns and all-absent tie rollovers; mounted code retains presentation and
+  connected tie rollover only.
 
 ### Ship Captain Crew
 
@@ -292,9 +299,9 @@ reset transient/presentation state when those identities change.
   `determineSCCWinners`; `useHorsesMobileController` is the mounted owner.
 - Lifecycle/bots: `sccRoundLogic.ts:startSCCRound` and `endSCCRound`;
   `sccBotLogic.ts:getSCCBotDecision` and `shouldSCCBotStopRolling`.
-- RPC/settlement: reuses the three Horses RPCs and the same client terminal
-  sequence. It has no SCC-specific settlement RPC or focused rule/terminal
-  test.
+- RPC/settlement: reuses the Horses action RPCs and the shared
+  `public.horses_settle_game` terminal owner above. Its server evaluator keeps
+  6-5-4 qualification/cargo rules distinct from Horses wild scoring.
 
 ## Snapshot and result pipeline
 
@@ -306,7 +313,7 @@ Canonical snapshot identity is
 | Shared current-roster writer | `src/lib/gameLogic.ts:snapshotPlayerChips`. |
 | Departing-player writer | `src/lib/gameLogic.ts:snapshotDepartingPlayer`. |
 | Holm transactional writer | `public.holm_settle_hand`, latest projection change in `supabase/migrations/20260810201500_stage_holm_showdown_transfer_projection.sql`. |
-| Game-specific client writers | Gin in its round logic, Horses/SCC in `useHorsesMobileController.ts`, and normal 3-5-7 in `gameLogic.ts`. |
+| Game-specific client writers | Gin in its round logic and normal 3-5-7 in `gameLogic.ts`; Horses/SCC client code submits terminal identity only through `src/lib/horsesSettleGame.ts`. |
 | Cribbage transactional writer | `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 | Yahtzee transactional writer | `public.yahtzee_settle_game` in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest definition in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`. |
 | Session Ended reader | `SessionEndedTablePhase.tsx:SessionEndedFeltPanel` merges the latest snapshot participants with the current roster; humans dedupe by `user_id`, bots by `player_id`. |
@@ -343,7 +350,7 @@ that overlap must be considered before changing fetch/realtime behavior.
 | Cribbage next hand | `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`. |
 | Cribbage terminal settlement | `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`; wrapper `src/lib/cribbageSettleGame.ts`. |
 | Yahtzee terminal settlement | `yahtzee_settle_game` introduced in `supabase/migrations/20260803234111_atomic_yahtzee_terminal_settlement.sql`, latest in `supabase/migrations/20260804000259_fix_yahtzee_settlement_replay.sql`; wrapper `src/lib/yahtzeeSettleGame.ts`. |
-| Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map. |
+| Horses/SCC action state | `claim_horses_bot_controller`, `horses_set_player_state`, and `horses_advance_turn` in the files named in the game map; autonomous expiry/terminal ownership is `20260811010000_horses_scc_disconnect_safe_settlement.sql`. |
 | Generic chip mutation | `decrement_player_chips` in `supabase/migrations/20251212213623_e036d1c1-7eaa-45d8-9496-a35379c38f67.sql`; `increment_player_chips` in `supabase/migrations/20260120005657_d59027a0-1301-4da2-adf5-a85b6dfef87b.sql`. |
 | Transactional Add Bot | `allocate_bot_alias_number` and `create_session_bot` in `supabase/migrations/20260801001032_5d3bce26-50f5-4087-bbcb-d6c7d78d1a7e.sql`. |
 | Session snapshots/results | `record_session_results` in `supabase/migrations/20260208145329_0a5d4d26-1d1d-4653-8077-2143eec69bfd.sql`; canonical identity migrations `supabase/migrations/20260801011431_c899bfad-30e4-4d26-9201-57755fb9c896.sql` and `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`. |

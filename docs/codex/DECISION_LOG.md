@@ -406,3 +406,18 @@ Those intervals never advance cards, evaluate a hand, move chips, settle a
 pot, or change terminal state. A direct/rejoining client resolves an
 already-authoritative showdown directly instead of replaying a historical
 hold.
+
+## D-039 - Dice disconnect recovery is a dedicated server owner
+
+Horses and Ship-Captain-Crew may use mounted clients for visible rolls and
+connected tie presentation, but they may not require a client for expired-turn
+progress or terminal settlement. `public.horses_settle_game` derives the
+outcome from locked persisted dice and atomically owns its replay-safe result,
+chip transfer, snapshots, and terminal disposition.
+
+The narrowly scoped database deadline driver advances only those dice games.
+It honors each turn deadline for a single timed-out player, while the existing
+three missed-heartbeat lease activates all-absent rollover/terminal completion.
+It is intentionally separate from post-game presence reconciliation and the
+legacy generic deadline Edge Function; neither may become an alternate dice
+settlement owner.

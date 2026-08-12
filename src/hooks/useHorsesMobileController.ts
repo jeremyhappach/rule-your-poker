@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
-import { snapshotPlayerChips } from "@/lib/gameLogic";
 import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
 import { useGameStateSync } from "@/lib/gameStateSync/useGameStateSync";
@@ -43,7 +42,7 @@ import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { getRollNumber } from "@/lib/diceAudit";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
-import { potToPlayer, settleGameplayChipTransfers } from "@/lib/gameplayChipTransfers";
+import { settleHorsesGame } from "@/lib/horsesSettleGame";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -2717,88 +2716,26 @@ export function useHorsesMobileController({
         return;
       }
 
-      const winnerId = winningPlayerIds[0];
-      const winnerPlayer = players.find((p) => p.id === winnerId);
-      const winnerResult = completedResults.find((r) => r.playerId === winnerId);
-
-      if (!winnerPlayer || !winnerResult) return;
-
-      // ATOMIC GUARD: Claim the right to process this win by atomically
-      // transitioning game status. Only one client will succeed.
-      const { data: claimed, error: claimError } = await supabase
-        .from("games")
-        .update({
-          status: "game_over",
-          game_over_at: new Date().toISOString(),
-        })
-        .eq("id", gameId)
-        .eq("status", "in_progress") // Only succeeds if still in_progress
-        .select("id, pot, total_hands, current_game_uuid");
-
-      if (claimError || !claimed || claimed.length === 0) {
-        return;
-      }
-
-      const actualPot = claimed[0].pot || pot || 0;
-      const handNumber = claimed[0].total_hands || 1;
-      const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
-
       try {
-        if (actualPot > 0) {
-          await settleGameplayChipTransfers(
-            gameId,
-            [potToPlayer(winnerId, actualPot)],
-            'win',
-          );
-        }
-      } catch (updateError) {
-        console.error("[HORSES] Failed to update winner chips:", updateError);
-        return;
+        const { data: identity, error: identityError } = await supabase
+          .from("games")
+          .select("current_game_uuid, total_hands")
+          .eq("id", gameId)
+          .maybeSingle();
+        if (identityError || !identity?.current_game_uuid || !identity.total_hands) return;
+
+        // The browser submits only immutable identity. PostgreSQL re-evaluates
+        // persisted dice, claims the settlement key, pays the pot, snapshots,
+        // and chooses game_over/session_ended atomically.
+        await settleHorsesGame(
+          gameId,
+          originatingRoundId,
+          identity.current_game_uuid,
+          identity.total_hands,
+        );
+      } catch (settlementError) {
+        console.error("[HORSES] Terminal settlement replay failed:", settlementError);
       }
-
-      const winnerName = getPlayerUsername(winnerPlayer);
-
-      // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
-      // the showdown event only records the winner's GROSS pot award.
-      // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
-      const chipChanges: Record<string, number> = {};
-      chipChanges[winnerId] = actualPot; // Winner receives the full pot
-
-      // CRITICAL FIX: AWAIT the game_results insert to ensure the winner is recorded
-      // BEFORE transitioning game state. This prevents dealer selection from failing
-      // to find the winner when determining who deals next.
-      const { error: resultError } = await supabase.from("game_results").insert({
-        game_id: gameId,
-        hand_number: handNumber,
-        winner_player_id: winnerId,
-        winner_username: winnerName,
-        winning_hand_description: winnerResult.result.description,
-        pot_won: actualPot,
-        player_chip_changes: chipChanges,
-        is_chopped: false,
-        game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
-        dealer_game_id: currentGameUuid,
-      });
-
-      if (resultError) {
-        console.error("[HORSES] CRITICAL: Failed to record game result:", resultError);
-        // Still continue - chips were already awarded, but log the error
-      } else {
-      }
-
-      // Note: No toast here - dealer announcement already shows the win message
-      
-      // Fire-and-forget: Snapshot player chips (audit trail only)
-      snapshotPlayerChips(gameId, handNumber);
-
-      // The canonical payout transaction already set games.pot to zero.
-      // Keep this lifecycle write free of a second financial mutation.
-      await supabase
-        .from("games")
-        .update({
-          last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
-        })
-        .eq("id", gameId);
     };
 
     processWin();
