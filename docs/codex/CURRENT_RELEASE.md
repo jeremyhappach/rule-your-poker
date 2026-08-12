@@ -12,6 +12,14 @@ Date: 2026-08-11
 - The observer's pre-roll felt stage now always stays a placeholder until the
   roller's dice are available. It cannot reuse a cached active-roller Beat
   badge, so that badge cannot mask observer dice presentation.
+- Live-play Horses and SCC over-seat result badges are now suppressed. Those
+  badges used the same result visuals as the Beat target and were published to
+  every client, making a completed observer's own hand look like a second Beat
+  badge. They remain available for terminal result comparison; during play the
+  active roller's center-felt Beat artifact is the sole score owner.
+- The center-felt Beat artifact now renders at its authored responsive size.
+  Its pre-roll branch no longer passes the two-row label through the generic
+  assigned-rectangle fitter that compressed it into the shallow Beat stage.
 - Horses and Ship/Captain/Crew share this owner and receive the same behavior.
   TypeScript and the production Vite bundle build pass. Production smoke
   remains the acceptance gate.

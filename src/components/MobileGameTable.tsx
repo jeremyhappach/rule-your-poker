@@ -10943,8 +10943,14 @@ export const MobileGameTable = ({
     // byte-identical to pre-migration; the visible copy is portaled
     // into ShellOverlay:transient via OverSeatBadgePortal anchored to
     // [data-chip-center]. No bespoke offsets, no z-hacks.
+    // During live play the center-felt Beat artifact is the sole score owner
+    // and is visible only to the active roller. Over-seat result badges are
+    // terminal comparison artifacts; admitting them while another player is
+    // rolling exposes the prior player's hand on every observing client.
     const horsesResultBadge =
-      diceGameplayUiActive && horsesPlayerResult?.description ? (
+      diceGameplayUiActive &&
+      horsesController.gamePhase === 'complete' &&
+      horsesPlayerResult?.description ? (
         <HorsesHandResultDisplay
           description={horsesPlayerResult.description}
           isWinning={isHorsesCurrentlyWinning}
@@ -11099,7 +11105,11 @@ export const MobileGameTable = ({
     // is portaled into ShellOverlay:transient via OverSeatBadgePortal
     // anchored to [data-chip-center]. No bespoke offsets, no z-hacks.
     let sccResultBadge: ReactNode = null;
-    if (diceGameplayUiActive && horsesPlayerResult) {
+    if (
+      diceGameplayUiActive &&
+      horsesController.gamePhase === 'complete' &&
+      horsesPlayerResult
+    ) {
       const hasSccShape = typeof (horsesPlayerResult as any).isQualified === 'boolean';
       if (hasSccShape) {
         const isQualified = (horsesPlayerResult as any).isQualified;
@@ -12654,51 +12664,59 @@ export const MobileGameTable = ({
             const node = (
               <DiceAnchoredSlot
                 artifactId={diceBeatBadgeId(gameType as DiceGameType)}
-                innerStyle={{ pointerEvents: 'auto' }}
+                innerStyle={{ pointerEvents: 'auto', flexDirection: 'column', gap: '0.5rem' }}
               >
-                <AssignedRectFitter>
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                      You are rolling
-                    </p>
-                    {/* Beat badge - show what hand to beat */}
-                    {winningResultToBeat && (
-                      <div className="flex items-center justify-center gap-2 mt-1">
-                        <Target className="text-muted-foreground w-3 h-3" />
-                        <span className="text-muted-foreground text-xs">
-                          Beat:
-                        </span>
-                        {isSCCGame && cargoDice && cargoDice.length === 2 ? (
-                          <div className="flex items-center gap-1">
-                            {cargoDice.map((die, idx) => (
-                              <HorsesDie
-                                key={idx}
-                                value={die.value}
-                                isHeld={false}
-                                isRolling={false}
-                                canToggle={false}
-                                size="sm"
-                                showWildHighlight={false}
-                                forceWhiteBackground={true}
-                              />
-                            ))}
-                          </div>
-                        ) : gameType === 'horses' ? (
-                          <HorsesHandResultDisplay
-                            description={winningResultToBeat.description}
-                            isWinning={true}
-                            size="sm"
+                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                  You are rolling
+                </p>
+                {/* Beat badge - show what hand to beat */}
+                {winningResultToBeat && (
+                  <div className={cn(
+                    "flex items-center justify-center gap-2",
+                    isTablet && "gap-4",
+                  )}>
+                    <Target className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "w-10 h-10" : "w-3 h-3",
+                    )} />
+                    <span className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "text-xl font-medium" : "text-xs",
+                    )}>
+                      Beat:
+                    </span>
+                    {isSCCGame && cargoDice && cargoDice.length === 2 ? (
+                      <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
+                        {cargoDice.map((die, idx) => (
+                          <HorsesDie
+                            key={idx}
+                            value={die.value}
+                            isHeld={false}
+                            isRolling={false}
+                            canToggle={false}
+                            size={isTablet ? "md" : "sm"}
+                            showWildHighlight={false}
+                            forceWhiteBackground={true}
                           />
-                        ) : null}
-                        {horsesController.isCurrentWinningTied && (
-                          <span className="font-medium text-amber-400 text-xs">
-                            (Tied)
-                          </span>
-                        )}
+                        ))}
                       </div>
+                    ) : gameType === 'horses' ? (
+                      <HorsesHandResultDisplay
+                        description={winningResultToBeat.description}
+                        isWinning={true}
+                        size={isTablet ? "md" : "sm"}
+                      />
+                    ) : null}
+                    {horsesController.isCurrentWinningTied && (
+                      <span className={cn(
+                        "font-medium text-amber-400",
+                        isTablet ? "text-base" : "text-xs",
+                      )}>
+                        (Tied)
+                      </span>
                     )}
                   </div>
-                </AssignedRectFitter>
+                )}
               </DiceAnchoredSlot>
             );
 
