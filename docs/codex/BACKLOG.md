@@ -677,6 +677,25 @@ Status: Queued; reproduced by production smoke on 2026-08-04.
   not be revived when the client mounts already in counting. Preserve the live
   final Last/Go notice and the persisted counting sequence.
 
+### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
+
+Status: Queued; reported by Chrome desktop mobile-emulator smoke on 2026-08-12.
+
+- The Holm Chucky stage is positioned through the canonical felt-relative
+  `HolmAnchoredSlot`, and it renders the shared `PlayingCard` / Card Front
+  Design component. In the active call site, though, `PlayingCard` receives
+  `width: '100%'` and `height: '100%'`. Its face-density resolver accepts only
+  concrete pixel dimensions, so it falls back to the `lg` device-size values
+  when calculating rank and suit typography.
+- The resulting front density is visibly overlapped and cropped in Chrome
+  desktop mobile emulation. Preserve the canonical stage geometry, deck art,
+  card aspect ratio, and the normal card-front design; do not add viewport
+  breakpoints, device-specific pixel patches, or a Holm-only card component.
+- Route the assigned canonical stage dimensions into the shared card-front
+  resolver (for example via its existing explicit face dimensions or a bounded
+  measurement owner), then verify Chucky card faces in desktop mobile
+  emulation and supported mobile layouts without overlap or crop.
+
 ## P2 — known low-severity defects
 
 ### 11. 3-5-7 refresh transport
