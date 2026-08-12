@@ -2,6 +2,20 @@
 
 Date: 2026-08-12
 
+## Holm Chucky-loss announcement-before-payment correction
+
+- A settled solo loss to Chucky now keeps its committed player-to-pot transfer
+  in the canonical presentation ledger until the exact result announcement has
+  rendered. Chucky's visible cards alone are no longer sufficient to start
+  the loss animation or change its displayed player/pot balances.
+- The gate is keyed by the settled hand and loss trigger, so a prior hand's
+  rendered result cannot admit a later loss. It is shared by the ledger
+  admission, pre-flight pot lock, and legacy loss animation trigger; settlement,
+  cards, pot amount, and compare-and-set continuation remain unchanged.
+- Focused regression coverage, TypeScript, and the production Vite bundle
+  build pass. Production Holm smoke remains required: tabled cards, community
+  cards three/four, Chucky, result announcement, then loss transport.
+
 ## Holm deadline settlement containment
 
 - Migration `20260812030000_route_holm_deadlines_through_canonical_settlement.sql`

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { ChipPresentationBatch } from './ChipPresentationLedger';
 import {
   buildHolmShowdownPresentationKey,
+  buildHolmChuckyLossPresentationKey,
+  canPresentHolmChuckyLossTransport,
   classifyHolmTransferPresentationStage,
 } from './holmTransferPresentationStage';
 
@@ -87,5 +89,43 @@ describe('buildHolmShowdownPresentationKey', () => {
 
     expect(buildHolmShowdownPresentationKey(identity))
       .toBe(buildHolmShowdownPresentationKey(identity));
+  });
+});
+
+describe('canPresentHolmChuckyLossTransport', () => {
+  const firstLoss = buildHolmChuckyLossPresentationKey({
+    handContextId: 'dealer-game#hand-1',
+    triggerId: 'chucky-loss-1',
+  });
+
+  it('holds the loss until that exact result announcement has painted', () => {
+    expect(canPresentHolmChuckyLossTransport({
+      chuckyVisualRevealComplete: true,
+      lossPresentationKey: firstLoss,
+      announcementPaintedKey: null,
+    })).toBe(false);
+
+    expect(canPresentHolmChuckyLossTransport({
+      chuckyVisualRevealComplete: true,
+      lossPresentationKey: firstLoss,
+      announcementPaintedKey: buildHolmChuckyLossPresentationKey({
+        handContextId: 'dealer-game#hand-2',
+        triggerId: 'chucky-loss-2',
+      }),
+    })).toBe(false);
+
+    expect(canPresentHolmChuckyLossTransport({
+      chuckyVisualRevealComplete: true,
+      lossPresentationKey: firstLoss,
+      announcementPaintedKey: firstLoss,
+    })).toBe(true);
+  });
+
+  it('does not admit a loss before the Chucky reveal completes', () => {
+    expect(canPresentHolmChuckyLossTransport({
+      chuckyVisualRevealComplete: false,
+      lossPresentationKey: firstLoss,
+      announcementPaintedKey: firstLoss,
+    })).toBe(false);
   });
 });

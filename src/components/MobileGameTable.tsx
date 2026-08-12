@@ -264,7 +264,11 @@ import {
   usePresentationPotChipBalance,
 } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
-import { classifyHolmTransferPresentationStage } from "@/lib/canonicalShell/holmTransferPresentationStage";
+import {
+  buildHolmChuckyLossPresentationKey,
+  canPresentHolmChuckyLossTransport,
+  classifyHolmTransferPresentationStage,
+} from "@/lib/canonicalShell/holmTransferPresentationStage";
 import { PresentationChipBalance } from "@/lib/canonicalShell/PresentationChipBalance";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
@@ -2686,6 +2690,11 @@ export const MobileGameTable = ({
     () => chuckyActive && handContextId ? handContextId : null,
   );
   const [multiShowdownDelayCompleteHand, setMultiShowdownDelayCompleteHand] = useState<string | null>(null);
+  const chuckyLossPresentationKey = buildHolmChuckyLossPresentationKey({
+    handContextId: handContextId ?? null,
+    triggerId: chuckyLossTriggerId ?? null,
+  });
+  const [chuckyLossAnnouncementPaintedKey, setChuckyLossAnnouncementPaintedKey] = useState<string | null>(null);
 
   // Read this hand's presentation cadence before showdown. Fetching per hand
   // lets an admin tune Game Defaults without a browser restart; safe values
@@ -2971,6 +2980,7 @@ export const MobileGameTable = ({
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
   const chuckyVisualRevealCompleteRef = useRef(false);
+  const chuckyLossTransportPresentationReadyRef = useRef(false);
   const chuckyNormalRevealBranchLockedRef = useRef(false);
   const chuckyVisualStepperMountedRef = useRef(false);
   const chuckyVisualStepperTimeoutActiveRef = useRef(false);
@@ -3013,7 +3023,7 @@ export const MobileGameTable = ({
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
     // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
-    if (chuckyLossTriggerId && chuckyVisualRevealCompleteRef.current && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
+    if (chuckyLossTriggerId && chuckyLossTransportPresentationReadyRef.current && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
       const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
       const postPot = pot;
       const prePot = Math.max(0, postPot - totalAmount);
@@ -3030,6 +3040,7 @@ export const MobileGameTable = ({
     chuckyLossTriggerId,
     chuckyLossAmount,
     chuckyLossPlayerIds,
+    chuckyLossAnnouncementPaintedKey,
   ]);
 
   // Freeze displayedPot BEFORE the first paint whenever a pot-in animation is pending.
@@ -3972,6 +3983,12 @@ export const MobileGameTable = ({
   const chuckyVisualRevealComplete =
     !isHolmSoloChucky || visualRevealCount >= requiredRevealCount;
   chuckyVisualRevealCompleteRef.current = chuckyVisualRevealComplete;
+  const chuckyLossTransportPresentationReady = canPresentHolmChuckyLossTransport({
+    chuckyVisualRevealComplete,
+    lossPresentationKey: chuckyLossPresentationKey,
+    announcementPaintedKey: chuckyLossAnnouncementPaintedKey,
+  });
+  chuckyLossTransportPresentationReadyRef.current = chuckyLossTransportPresentationReady;
   const chuckyNormalRevealBranchLocked =
     isHolmSoloChucky &&
     requiredRevealCount > 0 &&
@@ -3980,7 +3997,7 @@ export const MobileGameTable = ({
     cachedChuckyCards.length > 0;
   chuckyNormalRevealBranchLockedRef.current = chuckyNormalRevealBranchLocked;
   const holmWinPotTriggerIdGated = chuckyVisualRevealComplete ? holmWinPotTriggerId : null;
-  const chuckyLossTriggerIdGated = chuckyVisualRevealComplete ? chuckyLossTriggerId : null;
+  const chuckyLossTriggerIdGated = chuckyLossTransportPresentationReady ? chuckyLossTriggerId : null;
 
   // The ledger owns endpoint display as soon as an immutable batch arrives,
   // while this gate preserves game-owned prerequisite presentation ordering.
@@ -4012,7 +4029,7 @@ export const MobileGameTable = ({
         return holmShowdownPhase === 'losers-to-pot';
       }
       if (holmStage === 'chucky-loss') {
-        return chuckyVisualRevealComplete;
+        return chuckyLossTransportPresentationReady;
       }
       if (movesPotToPlayer) {
         return (
@@ -4063,6 +4080,7 @@ export const MobileGameTable = ({
     gameType,
     holmCommunityFullyRevealed,
     chuckyVisualRevealComplete,
+    chuckyLossTransportPresentationReady,
     holmWinPotTriggerIdGated,
     holmShowdownPhase,
     holmShowdownWinnerIds,
@@ -6760,6 +6778,19 @@ export const MobileGameTable = ({
     (awaitingNextRound || isGameOver) &&
     holmServerResultPresentationReady;
   const isShowingAnnouncement = _rawIsShowingAnnouncement;
+
+  // This runs after the result announcement render commits. The exact loss
+  // identity keeps a prior hand's acknowledgement from admitting a new loss.
+  useEffect(() => {
+    if (
+      gameType !== 'holm-game' ||
+      !isShowingAnnouncement ||
+      !chuckyLossPresentationKey
+    ) return;
+    setChuckyLossAnnouncementPaintedKey((current) =>
+      current === chuckyLossPresentationKey ? current : chuckyLossPresentationKey,
+    );
+  }, [gameType, isShowingAnnouncement, chuckyLossPresentationKey]);
 
   const multiShowdownExposureHandRef = useRef<string | null>(null);
   useEffect(() => {

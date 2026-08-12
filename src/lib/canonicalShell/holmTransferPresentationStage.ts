@@ -21,6 +21,11 @@ export interface HolmShowdownPresentationIdentity {
   transferCursor: number | null;
 }
 
+export interface HolmChuckyLossPresentationIdentity {
+  handContextId: string | null;
+  triggerId: string | null;
+}
+
 /**
  * A Holm dealer game contains many hands whose game-level `current_round`
  * remains 1. Use the authoritative rounds-row identity for the phase-plan
@@ -38,6 +43,39 @@ export function buildHolmShowdownPresentationKey({
     roundId ?? `hand-${handNumber ?? 'unknown'}`,
     `cursor-${transferCursor ?? 'unknown'}`,
   ].join('|');
+}
+
+/**
+ * The Chucky-loss transport belongs to one settled hand and must not borrow an
+ * announcement acknowledgement from another hand or replay of the same table.
+ */
+export function buildHolmChuckyLossPresentationKey({
+  handContextId,
+  triggerId,
+}: HolmChuckyLossPresentationIdentity): string | null {
+  if (!triggerId) return null;
+  return [handContextId ?? 'no-hand', triggerId].join('|');
+}
+
+/**
+ * A committed Chucky-loss transfer may start only after the exact result
+ * announcement has rendered. Card reveal completion alone is insufficient:
+ * the community row and result rail have their own presentation boundary.
+ */
+export function canPresentHolmChuckyLossTransport({
+  chuckyVisualRevealComplete,
+  lossPresentationKey,
+  announcementPaintedKey,
+}: {
+  chuckyVisualRevealComplete: boolean;
+  lossPresentationKey: string | null;
+  announcementPaintedKey: string | null;
+}): boolean {
+  return (
+    chuckyVisualRevealComplete &&
+    lossPresentationKey !== null &&
+    lossPresentationKey === announcementPaintedKey
+  );
 }
 
 function samePlayerSet(
