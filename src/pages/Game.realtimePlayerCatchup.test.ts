@@ -12,7 +12,7 @@ const source = readFileSync(join(__dirname, 'Game.tsx'), 'utf8');
 
 describe('Game Realtime player catch-up', () => {
   const subscribedBlock = source.match(
-    /if \(status === 'SUBSCRIBED'\) \{[\s\S]*?\n\s*return;\n\s*\}/,
+    /if \(status === 'SUBSCRIBED'\) \{[\s\S]*?\r?\n\s*return;\r?\n\s*\}/,
   )?.[0];
 
   it('takes a full authoritative snapshot when the channel becomes subscribed', () => {

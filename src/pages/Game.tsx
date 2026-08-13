@@ -298,6 +298,7 @@ import {
   getHolmChuckyLossContinuationSource,
   getHolmResolutionRecoveryKey,
 } from "@/lib/holmResolutionRecovery";
+import { getHolmPhysicalBuckPosition } from "@/lib/holmBuckOwnership";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
@@ -16492,7 +16493,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onNextGame={isTerminalSlotPresentation ? handleDealerConfirmGameOver : undefined}
               communityCards={renderRoundContext ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView ? getHolmPhysicalBuckPosition(holmView) : null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
               buckTransferPresentation={game.game_type === 'holm-game' ? ((game as unknown as { buck_transfer_presentation?: { id: string; sessionId: string; sequence: number; fromPosition: number; toPosition: number; createdAt: string; source: string } | null }).buck_transfer_presentation ?? null) : null}
               currentTurnPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
               chuckyCards={renderRoundContext ? chuckyCardsForPresentation : undefined}

@@ -2,6 +2,25 @@
 
 Date: 2026-08-12
 
+## Holm physical Buck hand-boundary ownership
+
+- Paused production session `Aug 12 - Till the Morning Comes` exposed a
+  client-only ownership regression in hand 1: PostgreSQL retained the one
+  authoritative Buck at position 4 after that player folded and advanced the
+  decision turn to position 7, with no server Buck-transfer event, while the
+  table prop incorrectly preferred `currentTurnPosition` and rendered the Buck
+  at position 7 as well.
+- Holm now supplies the table's physical Buck, deal origin, self-hand deal
+  ordinals, and roster Buck marker solely from authoritative
+  `games.buck_position`. `rounds.current_turn_position` remains the independent
+  action-button and timer owner. A fold can therefore advance the turn without
+  moving the Buck; only `public.proceed_to_next_holm_hand` publishes the next
+  hand's rotated Buck and server presentation event.
+- No production session or database state was mutated. The focused Holm
+  ownership/progress/continuation suite (69 assertions), both Holm community
+  reveal checks, mandatory Cribbage suite (27 assertions), TypeScript, and the
+  production Vite build pass. Production smoke remains required.
+
 ## Holm Chucky-loss stable completion and recovery
 
 - Production hand 3 in session `Aug 12 - Sampler` proved that the loss and its
