@@ -1,6 +1,26 @@
 # Current release and cutover state
 
-Date: 2026-08-12
+Date: 2026-08-13
+
+## Cribbage counting presentation lease
+
+- Production hand 1 in real-money `Aug 13 - Down with Disease` applied the
+  correct count, then jumped from pegging directly into hand 2. The successor
+  was prepared correctly, but `cribbage_complete_counting` let an early or
+  stale browser acknowledgement activate it immediately; the service fallback
+  lease was not involved.
+- Migration
+  `20260813220000_enforce_cribbage_counting_presentation_lease.sql` makes the
+  server-derived count timeline a hard normal-client release boundary. Before
+  that point the exact successor remains `dealing` and the RPC returns
+  `presentation_pending`; the client preserves the finished count and retries
+  only at the returned release time. The service-only fallback remains later
+  as the disconnect recovery owner. Legacy clients flow through the same
+  protected RPC wrapper.
+- Rollback proofs cover early acknowledgement, tied continuation,
+  authorization, normal release, duplicate and late replay, service fallback,
+  and terminal winner preservation. TypeScript, mandatory Cribbage tests, and
+  the production Vite build pass. Production smoke remains required.
 
 ## Cribbage durable final-discard transition
 

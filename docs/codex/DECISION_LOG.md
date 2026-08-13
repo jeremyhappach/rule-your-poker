@@ -495,6 +495,17 @@ boundary is lost, only the service role may activate after the durable
 terminal-aware. Endpoint cursor advancement may recover one exact missing
 immutable transfer batch; it may not infer an amount or replay historical
 financial motion.
+
+## D-045 - A prepared Cribbage hand is not actionable before its count releases
+
+Cribbage counting resolves score truth and prepares exactly one successor in
+PostgreSQL, but that successor must remain non-actionable through the
+server-derived visible-count timeline. A browser callback is an acknowledgement
+of presentation, not authority to bypass it: an early or stale callback gets a
+durable `presentation_pending` result and retains the completed count until
+the returned release point. The service-only fallback remains later than that
+release point and activates the same prepared successor only if presentation
+callbacks disappear. This applies equally to the legacy next-hand RPC wrapper.
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission

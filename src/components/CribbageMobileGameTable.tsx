@@ -2376,6 +2376,15 @@ export const CribbageMobileGameTable = ({
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
+  // A normal counting acknowledgement may arrive a fraction early because the
+  // visual sequence and its durable server lease resolve independently. Keep
+  // the finished count on screen and retry at the server-issued release point;
+  // this retry never creates cards or advances client authority.
+  const countingActivationRetryRef = useRef<{
+    handKey: string;
+    roundId: string;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   // Sync framework handles optimistic write protection — no manual timestamp needed.
 
@@ -6924,8 +6933,9 @@ export const CribbageMobileGameTable = ({
       if (error) throw error;
 
       const result = data as {
-        outcome?: 'activated' | 'already_active' | 'terminal';
+        outcome?: 'activated' | 'already_active' | 'presentation_pending' | 'terminal';
         state?: CribbageState;
+        presentation_release_at?: string;
       } | null;
       if (!result?.outcome) throw new Error('Missing counting-handoff outcome');
 
@@ -6947,6 +6957,34 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
+      if (result.outcome === 'presentation_pending') {
+        const releaseAtMs = result.presentation_release_at
+          ? new Date(result.presentation_release_at).getTime()
+          : Number.NaN;
+        if (!Number.isFinite(releaseAtMs)) {
+          throw new Error('Counting handoff omitted its presentation release time');
+        }
+
+        if (countingActivationRetryRef.current?.handKey === handKey) return;
+        if (countingActivationRetryRef.current) {
+          clearTimeout(countingActivationRetryRef.current.timer);
+        }
+
+        const retryDelayMs = Math.max(0, releaseAtMs - Date.now()) + 25;
+        const timer = setTimeout(() => {
+          if (countingActivationRetryRef.current?.handKey !== handKey) return;
+          countingActivationRetryRef.current = null;
+          startNextHandFiredRef.current = null;
+          void handleCountingComplete(false);
+        }, retryDelayMs);
+        countingActivationRetryRef.current = {
+          handKey,
+          roundId: expectedIdentity?.roundId ?? currentRoundId,
+          timer,
+        };
+        return;
+      }
+
       if (result.outcome !== 'activated' && result.outcome !== 'already_active') {
         throw new Error(`Unexpected counting-handoff outcome: ${result.outcome}`);
       }
@@ -6958,6 +6996,10 @@ export const CribbageMobileGameTable = ({
       setPostCountingTransitionActive(true);
       syncHandle.unfreezePresentation();
     } catch (error) {
+      if (countingActivationRetryRef.current?.handKey === handKey) {
+        clearTimeout(countingActivationRetryRef.current.timer);
+        countingActivationRetryRef.current = null;
+      }
       startNextHandFiredRef.current = null;
       console.error('[CRIBBAGE] Failed to complete durable counting handoff:', error);
       toast.error('Unable to finish counting. The hand is preserved; reconnect to retry.');
@@ -6972,6 +7014,22 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence,
     syncHandle,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (countingActivationRetryRef.current) {
+        clearTimeout(countingActivationRetryRef.current.timer);
+        countingActivationRetryRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const pendingRetry = countingActivationRetryRef.current;
+    if (!pendingRetry || pendingRetry.roundId === currentRoundId) return;
+    clearTimeout(pendingRetry.timer);
+    countingActivationRetryRef.current = null;
+  }, [currentRoundId]);
 
   /*
    * Deprecated browser-owned counting handoff. Kept as disabled migration
