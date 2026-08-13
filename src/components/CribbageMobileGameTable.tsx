@@ -5775,6 +5775,43 @@ export const CribbageMobileGameTable = ({
     roundId,
   ]);
 
+  // Historical hands may have both discards committed by the legacy
+  // browser-owned path. Rejoin asks the database to reconcile that exact,
+  // already-complete state once; it never invents a cut card client-side.
+  const discardTransitionRecoveryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cribbageState || !currentRoundId || cribbageState.phase !== 'discarding') return;
+    const playerStates = Object.values(cribbageState.playerStates);
+    const expectedDiscard = playerStates.length === 2 ? 2 : 1;
+    const allDiscardsCommitted =
+      playerStates.length >= 2 &&
+      playerStates.every((playerState) => playerState.discardedToCrib.length === expectedDiscard) &&
+      (cribbageState.crib?.length ?? 0) === playerStates.length * expectedDiscard;
+    if (!allDiscardsCommitted) return;
+
+    const recoveryKey = `${currentRoundId}:${cribbageState.crib.length}`;
+    if (discardTransitionRecoveryRef.current === recoveryKey) return;
+    discardTransitionRecoveryRef.current = recoveryKey;
+
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase.rpc('cribbage_reconcile_discard_transition', {
+        _round_id: currentRoundId,
+      });
+      if (error) {
+        console.error('[CRIBBAGE] Discard transition recovery failed:', error);
+        discardTransitionRecoveryRef.current = null;
+        return;
+      }
+      if (cancelled || !data) return;
+      const recovered = data as unknown as CribbageState;
+      syncHandle.receiveAuthoritativeUpdate(recovered);
+      setCribbageState(recovered);
+    })();
+
+    return () => { cancelled = true; };
+  }, [cribbageState, currentRoundId, syncHandle]);
+
   const updateState = async (newState: CribbageState, traceId?: string) => {
     if (!currentRoundId) return;
     setIsProcessing(true);

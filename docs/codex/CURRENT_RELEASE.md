@@ -2,6 +2,21 @@
 
 Date: 2026-08-12
 
+## Cribbage durable final-discard transition
+
+- Production hand 8 in real-money `Aug 12 - Piper` committed both players'
+  discards but remained in `discarding` with no cut card. The former
+  `cribbage_apply_discard` RPC saved the crib while the last browser alone
+  owned the second cut/pegging write; a lost cross-country callback therefore
+  left no legal action.
+- Migration `20260812213000_atomic_cribbage_discard_cut_transition.sql` adds
+  a row-triggered authoritative cut transition and an authenticated,
+  idempotent rejoin reconciliation RPC. It selects only a card absent from the
+  stored hands and crib, preserves the globally gated test harness paths, and
+  applies His Heels/terminal state when required. Piper recovered to pegging
+  with a legal 5-diamonds cut; chips, scores, discards, and settlement history
+  were unchanged.
+
 ## Holm durable Chucky-loss continuation
 
 - Production hand 4 in `Aug 12 - The Wheel` proved that PostgreSQL settled the

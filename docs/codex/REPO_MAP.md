@@ -34,6 +34,10 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 
 | Area | Source owner |
 |---|---|
+| Cribbage final-discard transition | `supabase/migrations/20260812213000_atomic_cribbage_discard_cut_transition.sql`: `cribbage_finish_discard_transition` trigger and authenticated `cribbage_reconcile_discard_transition`; client recovery is in `src/components/CribbageMobileGameTable.tsx`. |
+
+| Area | Source owner |
+|---|---|
 | Typed browser client | `src/integrations/supabase/client.ts` creates the singleton `supabase` client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, with local-storage session persistence and token refresh. |
 | Generated schema/RPC types | `src/integrations/supabase/types.ts`. This is generated evidence, not a replacement for migration inspection. |
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |

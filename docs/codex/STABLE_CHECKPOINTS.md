@@ -174,3 +174,9 @@ Published runtime smoke is acceptance. Typecheck alone is never a stable checkpo
   2026-08-03 with valid configuration and HTTPS HTTP 200. The owned Supabase
   Auth Site URL is `https://holm357.com`; preserve both its `/**` redirect entry
   and the protected owned-preview redirect entry through backend cutover.
+## 2026-08-12 — Cribbage final-discard recovery proof
+
+- The rollback proof against preserved real-money `Aug 12 - Piper` confirmed
+  one legal non-duplicated cut, pegging admission, and inert duplicate/late
+  replay. Production recovery selected 5-diamonds and preserved all financial
+  and historical state.

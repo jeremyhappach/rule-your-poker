@@ -495,3 +495,9 @@ boundary is lost, only the service role may activate after the durable
 terminal-aware. Endpoint cursor advancement may recover one exact missing
 immutable transfer batch; it may not infer an amount or replay historical
 financial motion.
+# Cribbage final discard is a database transition — 2026-08-12
+
+The last discard, cut-card selection, His Heels result, and pegging admission
+are one database-owned transition. Browsers may present the cut and may request
+an idempotent reconciliation for a legacy completed crib, but may not be the
+sole owner capable of progressing play.
