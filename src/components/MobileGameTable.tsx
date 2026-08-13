@@ -5005,7 +5005,8 @@ export const MobileGameTable = ({
   //    expression at L~11478. Fire-and-forget, no behavior change.
   const showCardsEligibilitySigRef = useRef<string | null>(null);
   useEffect(() => {
-    if (gameType === 'holm-game') return;
+    const isThreeFiveSevenGame = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357';
+    if (!isThreeFiveSevenGame) return;
     const isInstant357TerminalActive = threeFiveSevenTerminalDescriptor?.source === 'instant-357';
     const isWinner357InAnimation =
       !isInstant357TerminalActive &&
@@ -5038,7 +5039,7 @@ export const MobileGameTable = ({
     void import('@/lib/threeFiveSeven/runtimeDiag').then(({ emit357RuntimeDiag }) => {
       emit357RuntimeDiag('show_cards_eligibility_changed', {
         gameId: gameId ?? null,
-        roundId: currentRound != null ? String(currentRound) : null,
+        roundId: threeFiveSevenAuthoritativeRoundId ?? null,
         viewerPlayerId: currentPlayer?.id ?? null,
         winnerPlayerId: threeFiveSevenWinnerId ?? null,
         terminalResultIdentity: lastRoundResult ?? null,
@@ -5057,7 +5058,7 @@ export const MobileGameTable = ({
     gameType, gameStatus, currentRound, lastRoundResult, gameId,
     threeFiveSevenWinnerId, threeFiveSevenWinPhase,
     is357MultiPlayerShowdown, winner357ShowCards, currentPlayer?.id, playerCards,
-    threeFiveSevenTerminalDescriptor?.source,
+    threeFiveSevenTerminalDescriptor?.source, threeFiveSevenAuthoritativeRoundId,
   ]);
 
   // Bounded Show Cards trace — one event per terminal generation after the

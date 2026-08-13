@@ -21,10 +21,13 @@ describe('Game Holm Chucky-loss presentation ownership', () => {
     expect(lossDispatchSection).toContain('return;');
   });
 
-  it('continues only from the canonical batch-settled callback during live presentation', () => {
+  it('prepares the successor before presentation and activates it after the canonical batch settles', () => {
+    expect(source).toContain('prepareNextHolmRound(gameId, roundId)');
+    expect(source).toContain('activatePreparedHolmRound(gameId, roundId, prepared.round_id!)');
     expect(source).toContain(
       'onChuckyLossEnded={isInProgress ? handleHolmChuckyLossPresentationComplete : undefined}',
     );
     expect(source).toContain("'presentation-settled'");
+    expect(source).not.toContain("void proceedToNextHolmRound(gameId, roundId)\n      .catch");
   });
 });

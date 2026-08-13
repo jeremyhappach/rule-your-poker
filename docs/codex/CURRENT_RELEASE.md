@@ -2,6 +2,41 @@
 
 Date: 2026-08-12
 
+## Holm durable Chucky-loss continuation
+
+- Production hand 4 in `Aug 12 - The Wheel` proved that PostgreSQL settled the
+  Chucky loss and immutable cursor-6 player-to-pot batch exactly once, and both
+  live clients received the completed result, but no successor hand existed.
+  The uninterrupted-live branch had made
+  `ChipPresentationLedger.finishBatch` the sole caller of gameplay
+  continuation; a missed or abandoned local transport therefore suppressed the
+  animation, displayed balance release, and next hand together.
+- Migrations `20260812194500_durable_holm_chucky_loss_continuation.sql` and
+  `20260812201000_prepare_holm_successor_in_settlement.sql` add a replay-safe
+  two-stage successor. Chucky-loss settlement invokes
+  `prepare_next_holm_hand` in the same transaction, dealing one exact
+  non-actionable successor while retaining the completed predecessor and its
+  result. `activate_prepared_holm_hand` publishes the turn, decision deadline,
+  Buck rotation, decision reset, and game pointers only after presentation.
+  A service-only `rounds.presentation_fallback_at` lease is the recovery owner
+  if every browser callback is lost; a paused or terminal game remains inert.
+  The legacy `proceed_to_next_holm_hand` contract now activates a prepared
+  successor when one exists and otherwise delegates to its unchanged core.
+- `ChipPresentationLedger` now treats a newer authoritative endpoint cursor as
+  an exact cue to fetch the single missing immutable batch. The recovery is
+  event-driven, cursor-deduped, and does not poll or synthesize financial state.
+  The Chucky-loss callback activates an already-prepared hand; it is no longer
+  capable of being the sole creator of gameplay progression.
+- The invalid non-3-5-7 `show_cards_eligibility_changed` diagnostic emission
+  that wrote numeric `round_id="0"` into a UUID column is removed. The
+  diagnostic is now 3-5-7-only and uses the authoritative round UUID.
+- The pre-migration and post-migration rollback suites cover ordinary winner,
+  partial tie, duplicate settlement, decision/continuation replay, late replay,
+  authorization, pause, normal prepared activation, service-lease recovery,
+  and terminal preservation. Focused Holm/ledger tests, TypeScript, mandatory
+  Cribbage tests, and the production Vite build pass. Production smoke remains
+  required.
+
 ## Holm physical Buck hand-boundary ownership
 
 - Paused production session `Aug 12 - Till the Morning Comes` exposed a
@@ -34,11 +69,10 @@ Date: 2026-08-12
   stayed-player UUIDs rather than display-name parsing, and the same classifier
   covers normal losses plus solo and multi-player "ya tie but ya lose" results.
   Every such result is excluded from the generic auto-proceed timer.
-- An uninterrupted live hand advances only from the canonical immutable
-  batch-settled callback. A fresh historical entry or true Realtime reconnect
-  may request the exact replay-safe successor directly because the ledger
-  intentionally baselines already-committed historical batches; ordinary live
-  presentation remains the owner and no polling or gameplay timer was added.
+- Superseded by the durable two-stage continuation above: uninterrupted live
+  presentation still supplies the normal activation acknowledgement, but the
+  successor is already prepared and the database presentation lease owns
+  callback-loss recovery.
 - The focused Holm ownership/identity/recovery suite (44 assertions), canonical
   ledger/transport/progress suite (29 assertions), both Holm community-reveal
   checks, mandatory Cribbage suite (27 assertions), TypeScript validation, and

@@ -39,18 +39,16 @@ policy specifies `bunx tsgo --noEmit`; a production build is `bun run build`.
 | Local project/function config | `supabase/config.toml`, owned production project id `xvhmbuppghwmwpwrkzao`; Vercel production at `holm357.com` targets this project. |
 | Schema history | `supabase/migrations/` (260 versioned migration files). Later definitions supersede earlier same-named functions. |
 | Edge Functions | `supabase/functions/enforce-deadlines`, `enforce-all-deadlines`, `generate-incident-report`, `reset-password`, and `voice-to-text`; shared helpers live in `supabase/functions/_shared/`. |
-| Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql` preserves one normal final-leg 3-5-7 settlement while publishing its reserve-return and pot-award batches in order. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. `ChipTransportProvider` and `CanonicalSeatCluster` keep the ledger-owned source seat visible throughout an outbound flight. |
+| Canonical chip transfer projection | `supabase/migrations/20260809170000_canonical_chip_transfer_ledger.sql` journals every player/pot chip mutation and emits immutable game-scoped batches; `20260809210000_stage_chip_transfer_cursors.sql` stages endpoint cursors with the mutation. `20260810193000_split_normal_357_leg_sweep_transfer_projection.sql` preserves one normal final-leg 3-5-7 settlement while publishing its reserve-return and pot-award batches in order. `src/lib/gameplayChipTransfers.ts` is the browser writer, while `enforce-all-deadlines` uses the same RPC for watchdog transfers. `ChipPresentationLedger` performs an exact one-shot batch lookup when an endpoint cursor proves its INSERT event was missed. `ChipTransportProvider` and `CanonicalSeatCluster` keep the ledger-owned source seat visible throughout an outbound flight. |
 | Real-money abandonment owner | `supabase/migrations/20260809190000_fast_postgame_presence_confirmation.sql` owns result-backed post-game watches, server-lease evaluation, three consecutive five-second missed windows, absent-player sit-out, and exactly-once terminal closure. Its due-watch index makes the five-second cron inert without an armed post-game watch; initial waiting, gameplay, setup, and ante remain outside the owner. The legacy `enforce-all-deadlines` Edge Function remains outside this owner. |
 
 Owned-target rehearsal evidence, the retained/excluded data boundary, function
 deployment status, and final cutover gates are recorded in
 `docs/codex/SUPABASE_CUTOVER.md`.
 
-`src/integrations/supabase/types.ts` lists
-`activate_holm_round_after_deal_presentation` and `start_holm_initial_hand`,
-but no defining migration or live call site is present in this checkout. Treat
-those generated declarations as unproven/stale until deployed definitions are
-inspected.
+`src/integrations/supabase/types.ts` records the deployed Holm preparation and
+activation RPCs. Their current defining migrations and rollback proofs remain
+the authority over generated declarations.
 
 ## Session and table orchestration
 
@@ -117,9 +115,11 @@ reset transient/presentation state when those identities change.
   child of `MobileGameTable.tsx`; it is never a Holm/pot/chip-balance effect.
 - State/actions: initial creation enters `public.start_holm_initial_hand`;
   decisions enter through `src/lib/gameLogic.ts:makeDecision` and the
-  exact-round `public.holm_submit_decision`; successor creation enters
-  `public.proceed_to_next_holm_hand` through
-  `src/lib/holmGameLogic.ts:proceedToNextHolmRound`.
+  exact-round `public.holm_submit_decision`; ordinary successor creation enters
+  `public.proceed_to_next_holm_hand`. Chucky-loss settlement enters the durable
+  `public.prepare_next_holm_hand` / `public.activate_prepared_holm_hand` pair
+  through `src/lib/holmGameLogic.ts`; the service-only presentation lease in
+  `supabase/functions/enforce-deadlines/index.ts` recovers a lost activation.
   `checkHolmRoundComplete`/`endHolmRound` retain multi-player showdown
   presentation orchestration and submit terminal inputs to
   `public.holm_settle_hand`; they do not advance a turn, publish a successor

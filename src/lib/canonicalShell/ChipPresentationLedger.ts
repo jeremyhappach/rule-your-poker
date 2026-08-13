@@ -165,6 +165,22 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+export function shouldRecoverCommittedCursor(input: {
+  gameId: string | null | undefined;
+  hydrated: boolean;
+  disposed: boolean;
+  cursor: number;
+  known: boolean;
+  recovering: boolean;
+}): boolean {
+  return !!input.gameId
+    && input.hydrated
+    && !input.disposed
+    && input.cursor > 0
+    && !input.known
+    && !input.recovering;
+}
+
 function normalizeBatch(value: unknown, gameId: string): ChipPresentationBatch | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
@@ -235,6 +251,8 @@ export function useChipPresentationLedger(
   const rawCursorsRef = useRef(new Map<EndpointKey, number>());
   const releasedCursorsRef = useRef(new Map<EndpointKey, number>());
   const seenBatchIdsRef = useRef(new Set<string>());
+  const knownBatchCursorsRef = useRef(new Set<number>());
+  const recoveringBatchCursorsRef = useRef(new Set<number>());
   const queuedRef = useRef<ChipPresentationBatch[]>([]);
   const runningRef = useRef(new Map<string, RunningBatch>());
   const activeEndpointsRef = useRef(new Map<EndpointKey, string>());
@@ -250,6 +268,7 @@ export function useChipPresentationLedger(
   const onBalanceDeltasAbandonedRef = useRef(onBalanceDeltasAbandoned);
   onBalanceDeltasAbandonedRef.current = onBalanceDeltasAbandoned;
   const emittedBalanceDeltaIdsRef = useRef(new Set<string>());
+  const recoverCommittedCursorRef = useRef<(cursor: number) => void>(() => {});
 
   const emitBalanceDelta = useCallback((delta: ChipPresentationBalanceDelta) => {
     if (!Number.isFinite(delta.amount) || delta.amount === 0) return;
@@ -282,6 +301,11 @@ export function useChipPresentationLedger(
     const released = releasedCursorsRef.current.get(key) ?? 0;
     if (!hydratedRef.current || cursor == null || cursor <= released) {
       writeVisible([[key, chips]]);
+    } else {
+      // Endpoint rows and immutable batches commit together, but Realtime may
+      // deliver their events independently. A newer endpoint cursor is an
+      // exact, durable cue to recover that one missing batch by identity.
+      recoverCommittedCursorRef.current(cursor);
     }
   }, [writeVisible]);
 
@@ -294,6 +318,8 @@ export function useChipPresentationLedger(
     const released = releasedCursorsRef.current.get('pot') ?? 0;
     if (!hydratedRef.current || cursor == null || cursor <= released) {
       writeVisible([['pot', pot]]);
+    } else {
+      recoverCommittedCursorRef.current(cursor);
     }
   }, [writeVisible]);
 
@@ -567,6 +593,7 @@ export function useChipPresentationLedger(
 
   const acceptBatch = useCallback((batch: ChipPresentationBatch) => {
     if (seenBatchIdsRef.current.has(batch.id)) return;
+    knownBatchCursorsRef.current.add(batch.cursor);
     const endpoints = Object.keys(batch.opening_balances) as EndpointKey[];
     // A reconnect may deliver an INSERT that was already fully settled while
     // this client was away.  Its raw rows are our new baseline, not a cue to
@@ -583,11 +610,49 @@ export function useChipPresentationLedger(
     startQueuedRef.current();
   }, []);
 
+  const recoverCommittedCursor = useCallback((cursor: number) => {
+    if (!shouldRecoverCommittedCursor({
+      gameId,
+      hydrated: hydratedRef.current,
+      disposed: disposedRef.current,
+      cursor,
+      known: knownBatchCursorsRef.current.has(cursor),
+      recovering: recoveringBatchCursorsRef.current.has(cursor),
+    })) return;
+
+    recoveringBatchCursorsRef.current.add(cursor);
+    const client = supabase as any;
+    void (async () => {
+      try {
+        const { data } = await client
+          .from('gameplay_transfer_batches')
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('cursor', cursor)
+          .maybeSingle();
+        if (disposedRef.current || !data) return;
+        const batch = normalizeBatch(data, gameId);
+        if (batch) acceptBatch(batch);
+      } catch (error) {
+        console.warn('[canonical-shell] exact chip batch cursor recovery failed', {
+          gameId,
+          cursor,
+          error,
+        });
+      } finally {
+        recoveringBatchCursorsRef.current.delete(cursor);
+      }
+    })();
+  }, [acceptBatch, gameId]);
+  recoverCommittedCursorRef.current = recoverCommittedCursor;
+
   useEffect(() => {
     if (!gameId) return;
     disposedRef.current = false;
     hydratedRef.current = false;
     emittedBalanceDeltaIdsRef.current.clear();
+    knownBatchCursorsRef.current.clear();
+    recoveringBatchCursorsRef.current.clear();
     const client = supabase as any;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -653,7 +718,10 @@ export function useChipPresentationLedger(
       // directly and never replay their financial effects.
       for (const row of batchRows ?? []) {
         const batch = normalizeBatch(row, gameId);
-        if (batch) seenBatchIdsRef.current.add(batch.id);
+        if (batch) {
+          seenBatchIdsRef.current.add(batch.id);
+          knownBatchCursorsRef.current.add(batch.cursor);
+        }
       }
       for (const row of playerRows ?? []) setRawPlayer(row as Record<string, unknown>);
       if (gameRow) setRawPot(gameRow as Record<string, unknown>);

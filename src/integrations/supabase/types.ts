@@ -2416,6 +2416,7 @@ export type Database = {
           game_id: string
           gin_rummy_state: Json | null
           hand_number: number | null
+          holm_predecessor_round_id: string | null
           holm_turn_sequence: number
           horses_state: Json | null
           id: string
@@ -2445,6 +2446,7 @@ export type Database = {
           game_id: string
           gin_rummy_state?: Json | null
           hand_number?: number | null
+          holm_predecessor_round_id?: string | null
           holm_turn_sequence?: number
           horses_state?: Json | null
           id?: string
@@ -2474,6 +2476,7 @@ export type Database = {
           game_id?: string
           gin_rummy_state?: Json | null
           hand_number?: number | null
+          holm_predecessor_round_id?: string | null
           holm_turn_sequence?: number
           horses_state?: Json | null
           id?: string
@@ -2500,6 +2503,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_holm_predecessor_round_id_fkey"
+            columns: ["holm_predecessor_round_id"]
+            isOneToOne: true
+            referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
           {
@@ -3115,6 +3125,15 @@ export type Database = {
         }
         Returns: Json
       }
+      activate_prepared_holm_hand: {
+        Args: {
+          p_from_fallback?: boolean
+          p_game_id: string
+          p_predecessor_round_id: string
+          p_successor_round_id: string
+        }
+        Returns: Json
+      }
       admin_delete_fake_money_games: { Args: never; Returns: number }
       advance_357_round: {
         Args: {
@@ -3468,6 +3487,10 @@ export type Database = {
         Returns: Json
       }
       proceed_to_next_holm_hand: {
+        Args: { p_expected_round_id: string; p_game_id: string }
+        Returns: Json
+      }
+      prepare_next_holm_hand: {
         Args: { p_expected_round_id: string; p_game_id: string }
         Returns: Json
       }

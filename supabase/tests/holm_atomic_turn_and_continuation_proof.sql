@@ -237,6 +237,17 @@ BEGIN
     RAISE EXCEPTION 'holm_atomic_authority_proof:deadline_not_atomic:%', v_result;
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM public.rounds
+    WHERE holm_predecessor_round_id = v_round_one_id
+      AND status = 'dealing'
+      AND current_turn_position IS NULL
+      AND pending_turn_position IS NOT NULL
+      AND decision_deadline IS NULL
+  ) THEN
+    RAISE EXCEPTION 'holm_atomic_authority_proof:chucky_loss_successor_not_prepared_with_settlement';
+  END IF;
+
   -- Continuation authorization is checked before any successor is published.
   PERFORM set_config('request.jwt.claim.sub', v_unauthorized_id::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);

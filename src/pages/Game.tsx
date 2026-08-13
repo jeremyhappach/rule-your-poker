@@ -292,7 +292,14 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
-import { startHolmInitialHand, endHolmRound, proceedToNextHolmRound } from "@/lib/holmGameLogic";
+import {
+  activatePreparedHolmRound,
+  startHolmInitialHand,
+  endHolmRound,
+  prepareNextHolmRound,
+  proceedToNextHolmRound,
+  type HolmPreparedNextHandResult,
+} from "@/lib/holmGameLogic";
 import {
   getHolmChuckyLossContinuationKey,
   getHolmChuckyLossContinuationSource,
@@ -1582,7 +1589,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // by the child's post-paint gate.
   const holmChuckyLossSettlementKeyRef = useRef<string | null>(null);
   const holmLiveRoundIdsObservedRef = useRef(new Set<string>());
-  const holmChuckyLossContinuationInFlightRef = useRef(new Set<string>());
+  const holmChuckyLossPreparationPromisesRef = useRef(
+    new Map<string, Promise<HolmPreparedNextHandResult>>(),
+  );
+  const holmChuckyLossActivationInFlightRef = useRef(new Set<string>());
   const holmChuckyLossContinuationStateRef = useRef<{
     key: string;
     roundId: string;
@@ -8613,16 +8623,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result, game?.chip_transfer_cursor, currentRound?.id, currentRound?.hand_number, players, __cancelWartimeAsyncOwner, __scheduleWartimeTimeout, __wartimeLiveGameIdentity]);
 
-  const requestHolmChuckyLossContinuation = useCallback((
+  const requestHolmChuckyLossPreparation = useCallback((
+    key: string,
+    roundId: string,
+  ): Promise<HolmPreparedNextHandResult> | null => {
+    if (!gameId) return null;
+    const existing = holmChuckyLossPreparationPromisesRef.current.get(key);
+    if (existing) return existing;
+
+    const request = prepareNextHolmRound(gameId, roundId)
+      .catch((error) => {
+        holmChuckyLossPreparationPromisesRef.current.delete(key);
+        console.error('[HOLM CHUCKY LOSS] Successor preparation failed', {
+          key,
+          roundId,
+          error,
+        });
+        throw error;
+      });
+    holmChuckyLossPreparationPromisesRef.current.set(key, request);
+    return request;
+  }, [gameId]);
+
+  const requestHolmChuckyLossActivation = useCallback((
     key: string,
     roundId: string,
     source: 'presentation-settled' | 'historical-entry' | 'realtime-reconnect',
   ) => {
-    if (!gameId || holmChuckyLossContinuationInFlightRef.current.has(key)) return;
-    holmChuckyLossContinuationInFlightRef.current.add(key);
-    void proceedToNextHolmRound(gameId, roundId)
+    if (!gameId || holmChuckyLossActivationInFlightRef.current.has(key)) return;
+    const preparation = requestHolmChuckyLossPreparation(key, roundId);
+    if (!preparation) return;
+
+    holmChuckyLossActivationInFlightRef.current.add(key);
+    void preparation
+      .then((prepared) => activatePreparedHolmRound(gameId, roundId, prepared.round_id!))
       .catch((error) => {
-        console.error('[HOLM CHUCKY LOSS] Continuation request failed', {
+        console.error('[HOLM CHUCKY LOSS] Prepared successor activation failed', {
           key,
           roundId,
           source,
@@ -8630,9 +8666,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         });
       })
       .finally(() => {
-        holmChuckyLossContinuationInFlightRef.current.delete(key);
+        holmChuckyLossActivationInFlightRef.current.delete(key);
       });
-  }, [gameId]);
+  }, [gameId, requestHolmChuckyLossPreparation]);
 
   const currentUserIsHolmParticipant = players.some((player) => (
     player.user_id === user?.id && player.status !== 'left' && player.status !== 'observer'
@@ -8664,6 +8700,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [
     game?.game_type,
     game?.status,
+    game?.is_paused,
     game?.current_game_uuid,
     game?.awaiting_next_round,
     currentRound?.id,
@@ -8696,6 +8733,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       roundId: currentRound.id,
     };
 
+    // Preparation is gameplay durability, not presentation progression. It
+    // deals one exact non-actionable successor immediately while preserving
+    // the completed predecessor, result, balances, and visible countdown.
+    void requestHolmChuckyLossPreparation(key, currentRound.id)?.catch(() => {});
+
     const source = getHolmChuckyLossContinuationSource({
       observedLive,
       dealerGameId: game.current_game_uuid!,
@@ -8704,12 +8746,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     if (source) {
       holmChuckyLossReconnectRecoveryRef.current = null;
-      requestHolmChuckyLossContinuation(key, currentRound.id, source);
+      requestHolmChuckyLossActivation(key, currentRound.id, source);
     }
   }, [
     gameId,
     game?.game_type,
     game?.status,
+    game?.is_paused,
     game?.current_game_uuid,
     game?.awaiting_next_round,
     game?.last_round_result,
@@ -8719,7 +8762,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.hand_number,
     currentUserIsHolmParticipant,
     holmChuckyLossReconnectTick,
-    requestHolmChuckyLossContinuation,
+    requestHolmChuckyLossActivation,
+    requestHolmChuckyLossPreparation,
   ]);
 
   const handleHolmChuckyLossPresentationComplete = useCallback(() => {
@@ -8728,12 +8772,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setChuckyLossAmount(0);
     const continuation = holmChuckyLossContinuationStateRef.current;
     if (!continuation) return;
-    requestHolmChuckyLossContinuation(
+    requestHolmChuckyLossActivation(
       continuation.key,
       continuation.roundId,
       'presentation-settled',
     );
-  }, [requestHolmChuckyLossContinuation]);
+  }, [requestHolmChuckyLossActivation]);
 
   // Clear timer when results are shown
   useEffect(() => {

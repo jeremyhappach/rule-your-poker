@@ -1872,3 +1872,87 @@ export async function proceedToNextHolmRound(
   console.log('[HOLM NEXT] Atomic successor-hand result', result);
   return result;
 }
+
+export type HolmPreparedNextHandResult = {
+  outcome: 'prepared' | 'already-prepared' | 'already-active' | 'rejected';
+  reason?: string;
+  round_id?: string;
+  dealer_game_id?: string;
+  hand_number?: number;
+  pending_turn_position?: number;
+  pot?: number;
+  presentation_fallback_at?: string;
+  deduped?: boolean;
+};
+
+/**
+ * Durably deal the successor without publishing its turn or countdown. This
+ * is safe to call as soon as a completed Chucky loss is observed; the
+ * predecessor remains the authoritative visible hand until activation.
+ */
+export async function prepareNextHolmRound(
+  gameId: string,
+  expectedRoundId: string,
+): Promise<HolmPreparedNextHandResult> {
+  const { data, error } = await (supabase as any).rpc('prepare_next_holm_hand', {
+    p_game_id: gameId,
+    p_expected_round_id: expectedRoundId,
+  });
+
+  if (error) {
+    throw new Error(`Holm next-hand preparation RPC failed: ${error.message}`);
+  }
+
+  const result = (data ?? {}) as HolmPreparedNextHandResult;
+  if (
+    result.outcome !== 'prepared'
+    && result.outcome !== 'already-prepared'
+    && result.outcome !== 'already-active'
+  ) {
+    throw new Error(`Holm next-hand preparation rejected: ${result.reason ?? 'unknown reason'}`);
+  }
+  if (!result.round_id) {
+    throw new Error('Holm next-hand preparation returned no successor identity');
+  }
+  return result;
+}
+
+export type HolmPreparedActivationResult = {
+  outcome: 'activated' | 'already-active' | 'rejected';
+  reason?: string;
+  round_id?: string;
+  dealer_game_id?: string;
+  hand_number?: number;
+  buck_position?: number;
+  decision_deadline?: string;
+  pot?: number;
+  from_fallback?: boolean;
+  deduped?: boolean;
+};
+
+/**
+ * Publish one exact prepared successor after the predecessor presentation.
+ * The database also owns a service-only lease for callback-loss recovery.
+ */
+export async function activatePreparedHolmRound(
+  gameId: string,
+  predecessorRoundId: string,
+  successorRoundId: string,
+): Promise<HolmPreparedActivationResult> {
+  const { data, error } = await (supabase as any).rpc('activate_prepared_holm_hand', {
+    p_game_id: gameId,
+    p_predecessor_round_id: predecessorRoundId,
+    p_successor_round_id: successorRoundId,
+    p_from_fallback: false,
+  });
+
+  if (error) {
+    throw new Error(`Holm prepared-hand activation RPC failed: ${error.message}`);
+  }
+
+  const result = (data ?? {}) as HolmPreparedActivationResult;
+  if (result.outcome !== 'activated' && result.outcome !== 'already-active') {
+    throw new Error(`Holm prepared-hand activation rejected: ${result.reason ?? 'unknown reason'}`);
+  }
+  return result;
+}

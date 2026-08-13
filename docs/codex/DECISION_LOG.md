@@ -438,10 +438,11 @@ flag in the settlement commit prevents a connected client from ever caching or
 revealing the cards, while a generic transition timer can still advance the
 hand.
 
-The client therefore defers only this Chucky-loss continuation until the
-reveal-gated player-to-pot transport completes. It then submits the exact
-predecessor round to `public.proceed_to_next_holm_hand`, which owns the complete
-successor commit; no client becomes a settlement or hand-publication owner.
+The client therefore retains the completed predecessor while PostgreSQL
+durably prepares one non-actionable successor. The reveal-gated player-to-pot
+transport acknowledges activation only after it settles. A service-only
+presentation lease activates the same successor if every local callback is
+lost; no presentation callback is the sole hand-creation owner.
 
 ## D-042 - Deadline workers submit, never synthesize settlement
 
@@ -478,3 +479,19 @@ Showdown recovery leases are presentation state and use
 `rounds.presentation_fallback_at`, never `rounds.decision_deadline`. A failed
 evaluation or settlement preserves the exact hand for retry; no browser error
 handler may complete the round or publish `awaiting_next_round`.
+
+## D-044 - Holm successor creation and actionability are separate durable identities
+
+A completed Chucky loss prepares its exact successor inside the settlement
+transaction and therefore before the financial flight starts. Preparation
+deals community/private cards into a `dealing`
+round keyed uniquely by `holm_predecessor_round_id`, but it does not reset
+decisions, rotate the Buck, clear the result, publish game pointers, or start a
+decision deadline.
+
+Normal activation follows the canonical presentation boundary. If that
+boundary is lost, only the service role may activate after the durable
+`presentation_fallback_at` lease. Activation is replay-safe, pause-aware, and
+terminal-aware. Endpoint cursor advancement may recover one exact missing
+immutable transfer batch; it may not infer an amount or replay historical
+financial motion.

@@ -472,6 +472,46 @@ serve(async (req) => {
     if (game.status === 'in_progress' || game.status === 'betting') {
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
+        // A completed Chucky-loss presentation prepares its successor before
+        // the local chip flight begins. The prepared round is deliberately
+        // non-actionable. If every connected presentation callback is lost,
+        // this service-only lease activates that exact successor; it never
+        // settles a hand, invents cards, or starts a second successor.
+        const { data: duePreparedRows, error: duePreparedError } = await serviceSupabase
+          .from('rounds')
+          .select('id, holm_predecessor_round_id, presentation_fallback_at')
+          .eq('game_id', gameId)
+          .eq('status', 'dealing')
+          .not('holm_predecessor_round_id', 'is', null)
+          .not('presentation_fallback_at', 'is', null)
+          .lte('presentation_fallback_at', nowIso)
+          .order('presentation_fallback_at', { ascending: true })
+          .limit(1);
+
+        if (duePreparedError) {
+          console.error('[ENFORCE-CLIENT] Failed to inspect prepared Holm successor:', duePreparedError);
+          actionsTaken.push(`Holm prepared-successor inspection failed safely: ${duePreparedError.message}`);
+        } else {
+          const duePrepared = duePreparedRows?.[0];
+          if (duePrepared?.id && duePrepared.holm_predecessor_round_id) {
+            const { data: activationResult, error: activationError } = await serviceSupabase.rpc(
+              'activate_prepared_holm_hand',
+              {
+                p_game_id: gameId,
+                p_predecessor_round_id: duePrepared.holm_predecessor_round_id,
+                p_successor_round_id: duePrepared.id,
+                p_from_fallback: true,
+              },
+            );
+            if (activationError) {
+              console.error('[ENFORCE-CLIENT] Prepared Holm successor recovery failed:', activationError);
+              actionsTaken.push(`Holm prepared-successor recovery failed safely: ${activationError.message}`);
+            } else {
+              actionsTaken.push(`Holm prepared successor recovery: ${JSON.stringify(activationResult)}`);
+            }
+          }
+        }
+
         // IMPORTANT: Determine the active Holm round by dealer_game_id + (hand_number, round_number), never by created_at.
         const baseRoundQuery = supabase
           .from('rounds')

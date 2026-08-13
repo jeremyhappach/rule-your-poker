@@ -2,9 +2,33 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregatesConcurrentPotArrival,
   residualDeltaForEndpoint,
+  shouldRecoverCommittedCursor,
   transferDeltaForEndpoint,
   type ChipPresentationBatch,
 } from './ChipPresentationLedger';
+
+describe('ChipPresentationLedger cursor-gap recovery', () => {
+  const base = {
+    gameId: 'game-1',
+    hydrated: true,
+    disposed: false,
+    cursor: 6,
+    known: false,
+    recovering: false,
+  };
+
+  it('recovers one exact committed cursor only after live hydration', () => {
+    expect(shouldRecoverCommittedCursor(base)).toBe(true);
+    expect(shouldRecoverCommittedCursor({ ...base, hydrated: false })).toBe(false);
+    expect(shouldRecoverCommittedCursor({ ...base, cursor: 0 })).toBe(false);
+  });
+
+  it('dedupes known and already-recovering cursors', () => {
+    expect(shouldRecoverCommittedCursor({ ...base, known: true })).toBe(false);
+    expect(shouldRecoverCommittedCursor({ ...base, recovering: true })).toBe(false);
+    expect(shouldRecoverCommittedCursor({ ...base, disposed: true })).toBe(false);
+  });
+});
 
 function batch(overrides: Partial<ChipPresentationBatch>): ChipPresentationBatch {
   return {
