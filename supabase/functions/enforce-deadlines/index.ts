@@ -470,6 +470,46 @@ serve(async (req) => {
 
     // ============= 3. ENFORCE DECISION DEADLINE (stay/fold) =============
     if (game.status === 'in_progress' || game.status === 'betting') {
+      // Counting has already been resolved and the successor has already been
+      // dealt by PostgreSQL. If every presentation callback disappears, activate
+      // that exact prepared Cribbage hand after its explicit display lease.
+      if (game.game_type === 'cribbage') {
+        const { data: duePreparedRows, error: duePreparedError } = await serviceSupabase
+          .from('rounds')
+          .select('id, predecessor_round_id, presentation_fallback_at')
+          .eq('game_id', gameId)
+          .eq('status', 'dealing')
+          .not('predecessor_round_id', 'is', null)
+          .not('presentation_fallback_at', 'is', null)
+          .lte('presentation_fallback_at', nowIso)
+          .order('presentation_fallback_at', { ascending: true })
+          .limit(1);
+
+        if (duePreparedError) {
+          console.error('[ENFORCE-CLIENT] Failed to inspect prepared Cribbage successor:', duePreparedError);
+          actionsTaken.push('Cribbage prepared-successor inspection failed safely: ' + duePreparedError.message);
+        } else {
+          const duePrepared = duePreparedRows?.[0];
+          if (duePrepared?.id && duePrepared.predecessor_round_id) {
+            const { data: activationResult, error: activationError } = await serviceSupabase.rpc(
+              'activate_prepared_cribbage_hand',
+              {
+                p_game_id: gameId,
+                p_predecessor_round_id: duePrepared.predecessor_round_id,
+                p_successor_round_id: duePrepared.id,
+                p_from_fallback: true,
+              },
+            );
+            if (activationError) {
+              console.error('[ENFORCE-CLIENT] Prepared Cribbage successor recovery failed:', activationError);
+              actionsTaken.push('Cribbage prepared-successor recovery failed safely: ' + activationError.message);
+            } else {
+              actionsTaken.push('Cribbage prepared successor recovery: ' + JSON.stringify(activationResult));
+            }
+          }
+        }
+      }
+
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
         // A completed Chucky-loss presentation prepares its successor before

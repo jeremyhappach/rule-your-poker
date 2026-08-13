@@ -9,13 +9,10 @@ import {
   discardToCrib, 
   playPeggingCard, 
   callGo,
-  applyHandCountScores,
 } from '@/lib/cribbageGameLogic';
-import { startNextCribbageHand, updateCribbageState } from '@/lib/cribbageRoundLogic';
 import { settleCribbageGame } from '@/lib/cribbageSettleGame';
 import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
 import { fetchSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHost';
-import { archiveCribbageHand } from '@/lib/cribbageHandArchive';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
@@ -1041,8 +1038,12 @@ export const CribbageMobileGameTable = ({
 
   useEffect(() => {
     if (cribbageState?.phase !== 'complete' || !cribbageState.winnerPlayerId) return;
+    // Counting terminal state is durable before the animation starts.  Keep
+    // settlement behind the presentation boundary; the reactive crossing or
+    // completed-count callback will submit the immutable terminal identity.
+    if (cribbageState.lastHandCount) return;
     requestCribbageSettlement('persisted-terminal-state');
-  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, requestCribbageSettlement]);
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, cribbageState?.lastHandCount, requestCribbageSettlement]);
 
   useEffect(() => {
     const retryVisibleTerminalSettlement = () => {
@@ -3478,16 +3479,8 @@ export const CribbageMobileGameTable = ({
     // Write countingHandKey to state so reconnecting clients can validate
     const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
     setCountingStateSnapshot(stateWithHandKey);
-    // Persist countingHandKey to DB (fire-and-forget)
-    if (currentRoundId) {
-      supabase
-        .from('rounds')
-        .update({ cribbage_state: JSON.parse(JSON.stringify({ ...state, countingHandKey: countingStartKey })) })
-        .eq('id', currentRoundId)
-        .then(({ error }) => {
-          if (error) console.warn('[CRIBBAGE] Failed to persist countingHandKey:', error.message);
-        });
-    }
+    // This key is presentation-only. Persisting it from a stale browser snapshot could
+    // overwrite the server's durable countingResolution marker.
     // Freeze sync framework presentation so authoritative updates don't clobber the counting UI
     syncHandle.freezePresentation();
 
@@ -4056,36 +4049,6 @@ export const CribbageMobileGameTable = ({
           setTerminalPath(isCribTarget ? 'crib-counting' : 'hand-counting');
         }
         
-        const loserScores = Object.entries(countingScoreOverrides)
-          .filter(([id]) => id !== playerId)
-          .map(([, s]) => s);
-        const minLoserScore = loserScores.length > 0 ? Math.min(...loserScores) : 0;
-
-        const multiplier = (() => {
-          if (cribbageState.doubleSkunkEnabled && minLoserScore < cribbageState.doubleSkunkThreshold) return 3;
-          if (cribbageState.skunkEnabled && minLoserScore < cribbageState.skunkThreshold) return 2;
-          return 1;
-        })();
-
-        // Persist *final* scores at the moment of win (so backend results match what players saw).
-        const nextPlayerStates: CribbageState['playerStates'] = { ...cribbageState.playerStates };
-        for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
-          nextPlayerStates[pid] = {
-            ...ps,
-            pegScore: countingScoreOverrides[pid] ?? ps.pegScore,
-          };
-        }
-
-        // Build state with winner for the win sequence
-        const stateWithWinner: CribbageState = {
-          ...cribbageState,
-          phase: 'complete',
-          playerStates: nextPlayerStates,
-          winnerPlayerId: playerId,
-          loserScore: minLoserScore,
-          payoutMultiplier: multiplier,
-        };
-
         // Capture identity at schedule time — re-validate at fire time so a hand
         // boundary during the 2s delay aborts the win trigger.
         const scheduledIdentity = expectedIdentity
@@ -4131,30 +4094,32 @@ export const CribbageMobileGameTable = ({
             return;
           }
 
-          // This reactive path derives the terminal score locally while the
-          // counting presentation is still frozen. Persist that terminal game
-          // state first so the settlement RPC reads database-owned truth. If
-          // this client disappears after the write, any peer or reconnect can
-          // replay settlement from the durable terminal snapshot.
+          // PostgreSQL committed scores and terminal identity when pegging
+          // entered counting. The browser only acknowledges the visible
+          // crossing; it never derives or writes a terminal state.
           if (!scheduledIdentity.roundId) {
-            console.error('[CRIBBAGE] Reactive win: missing round identity for terminal persistence');
+            console.error('[CRIBBAGE] Reactive win: missing round identity for terminal acknowledgement');
             winSequenceScheduledRef.current = null;
             return;
           }
-          const terminalPersisted = await updateCribbageState(
-            scheduledIdentity.roundId,
-            stateWithWinner,
-          );
-          if (!terminalPersisted) {
-            console.error('[CRIBBAGE] Reactive win: terminal state persistence failed');
+          const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, {
+            _round_id: scheduledIdentity.roundId,
+          });
+          const result = data as { outcome?: string; state?: CribbageState } | null;
+          const terminalState = result?.state;
+          if (error || result?.outcome !== 'terminal' || !terminalState?.winnerPlayerId) {
+            console.error('[CRIBBAGE] Reactive win: authoritative terminal acknowledgement failed', {
+              error: error?.message ?? null,
+              outcome: result?.outcome ?? null,
+            });
             winSequenceScheduledRef.current = null;
             return;
           }
-          syncHandle.receiveAuthoritativeUpdate(stateWithWinner);
-          setCribbageState(stateWithWinner);
-          cribbageStateRef.current = stateWithWinner;
-          requestCribbageSettlement('reactive-terminal-state-persisted');
-          triggerWinSequence(stateWithWinner);
+          syncHandle.receiveAuthoritativeUpdate(terminalState);
+          setCribbageState(terminalState);
+          cribbageStateRef.current = terminalState;
+          requestCribbageSettlement('reactive-terminal-presentation-complete');
+          triggerWinSequence(terminalState);
         }, 2000);
         
         return; // Only one winner
@@ -5812,6 +5777,43 @@ export const CribbageMobileGameTable = ({
     return () => { cancelled = true; };
   }, [cribbageState, currentRoundId, syncHandle]);
 
+  // If every browser disappears immediately after pegging, the database trigger normally
+  // finalizes counting. This rejoin path is a one-shot durable reconciliation for an
+  // older/in-flight unmarked counting round; it never scores or deals in the browser.
+  const countingResolutionRecoveryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !cribbageState ||
+      !currentRoundId ||
+      cribbageState.phase !== 'counting' ||
+      cribbageState.countingResolution
+    ) {
+      return;
+    }
+
+    const recoveryKey = `${currentRoundId}:counting`;
+    if (countingResolutionRecoveryRef.current === recoveryKey) return;
+    countingResolutionRecoveryRef.current = recoveryKey;
+
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase.rpc('cribbage_finalize_counting' as any, {
+        _round_id: currentRoundId,
+      });
+      if (error) {
+        console.error('[CRIBBAGE] Counting resolution recovery failed:', error);
+        countingResolutionRecoveryRef.current = null;
+        return;
+      }
+      const resolved = (data as { state?: CribbageState } | null)?.state;
+      if (cancelled || !resolved) return;
+      syncHandle.receiveAuthoritativeUpdate(resolved);
+      setCribbageState(resolved);
+    })();
+
+    return () => { cancelled = true; };
+  }, [cribbageState, currentRoundId, syncHandle]);
+
   const updateState = async (newState: CribbageState, traceId?: string) => {
     if (!currentRoundId) return;
     setIsProcessing(true);
@@ -6875,12 +6877,112 @@ export const CribbageMobileGameTable = ({
     });
   }, [currentRoundId, debugCtx]);
 
-  // Handle counting phase completion - start new hand
+  // Counting presentation is deliberately not a state owner. PostgreSQL has already
+  // resolved scores and prepared (or terminalized) the successor. This callback only
+  // acknowledges that durable result after the visible counting sequence completes.
+  const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
+    void _winDetected;
+    if (!cribbageState || !dealerGameId) return;
+
+    const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
+    const expectedIdentity = countingIdentityRef.current;
+    if (
+      expectedIdentity &&
+      (expectedIdentity.roundId !== currentRoundId ||
+        expectedIdentity.handNumber !== currentHandNumber)
+    ) {
+      console.warn('[CRIBBAGE] handleCountingComplete: rejected stale counting completion', {
+        expected: expectedIdentity,
+        live: { roundId: currentRoundId, handNumber: currentHandNumber },
+      });
+      return;
+    }
+
+    const peggingComplete = Object.values(cribbageState.playerStates).every(
+      (playerState) => Array.isArray(playerState.hand) && playerState.hand.length === 0,
+    );
+    if (
+      (cribbageState.phase !== 'counting' && cribbageState.phase !== 'complete') ||
+      !peggingComplete ||
+      !currentRoundId
+    ) {
+      console.warn('[CRIBBAGE] handleCountingComplete: rejected invalid durable hand state', {
+        phase: cribbageState.phase,
+        peggingComplete,
+        roundId: currentRoundId,
+      });
+      return;
+    }
+
+    if (startNextHandFiredRef.current === handKey) return;
+    startNextHandFiredRef.current = handKey;
+
+    try {
+      const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, {
+        _round_id: expectedIdentity?.roundId ?? currentRoundId,
+      });
+      if (error) throw error;
+
+      const result = data as {
+        outcome?: 'activated' | 'already_active' | 'terminal';
+        state?: CribbageState;
+      } | null;
+      if (!result?.outcome) throw new Error('Missing counting-handoff outcome');
+
+      if (result.outcome === 'terminal') {
+        const terminalState = result.state;
+        if (!terminalState?.winnerPlayerId) {
+          throw new Error('Terminal counting handoff omitted winner state');
+        }
+        setCountingWinFrozen(true);
+        const targetIndex = countingStateSnapshot?.countingTargetIndex ?? null;
+        setTerminalPath(
+          targetIndex === cribbageState.turnOrder.length ? 'crib-counting' : 'hand-counting',
+        );
+        syncHandle.receiveAuthoritativeUpdate(terminalState);
+        setCribbageState(terminalState);
+        cribbageStateRef.current = terminalState;
+        requestCribbageSettlement('counting-terminal-presentation-complete');
+        triggerWinSequence(terminalState);
+        return;
+      }
+
+      if (result.outcome !== 'activated' && result.outcome !== 'already_active') {
+        throw new Error(`Unexpected counting-handoff outcome: ${result.outcome}`);
+      }
+
+      // Game.tsx exposes the successor only after the server advances games.total_hands.
+      // The browser must never create or write a successor deal.
+      setCountingStateSnapshot(null);
+      setCountingWinFrozen(false);
+      setPostCountingTransitionActive(true);
+      syncHandle.unfreezePresentation();
+    } catch (error) {
+      startNextHandFiredRef.current = null;
+      console.error('[CRIBBAGE] Failed to complete durable counting handoff:', error);
+      toast.error('Unable to finish counting. The hand is preserved; reconnect to retry.');
+    }
+  }, [
+    cribbageState,
+    dealerGameId,
+    currentRoundId,
+    currentHandNumber,
+    countingStateSnapshot?.countingTargetIndex,
+    requestCribbageSettlement,
+    triggerWinSequence,
+    syncHandle,
+  ]);
+
+  /*
+   * Deprecated browser-owned counting handoff. Kept as disabled migration
+   * context only; it is not callable from presentation or player input.
+   */
+  /*
   // NOTE: Win sequences are now triggered reactively via score subscription,
   // so this callback is only called when counting completes WITHOUT a win.
   // HOWEVER: As a safety catch, applyHandCountScores now returns a 'complete' state
   // if someone exceeds pointsToWin, which we must handle here.
-  const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
+  const legacyHandleCountingComplete = useCallback(async (_winDetected: boolean) => {
     if (!cribbageState || !dealerGameId) return;
 
     // Atomic guard: Prevent double-firing on the same client for the same counting instance
@@ -7168,6 +7270,7 @@ export const CribbageMobileGameTable = ({
       toast.error('Failed to start new hand');
     }
   }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber, recordCribDoubleSkunkTrace, terminalEventIdFor]);
+  */
 
   // Phase E: handleSkunkComplete retired — skunk now rides inside the
   // canonical match_win announcement, so the bespoke overlay phase is gone.

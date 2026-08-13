@@ -82,6 +82,16 @@ export interface CribbageCountingPlan {
   targets: CribbageCountingPlanTarget[];
 }
 
+/** Database-owned result of resolving a completed counting plan. */
+export interface CribbageCountingResolution {
+  version: 1;
+  outcome: 'prepared' | 'active' | 'terminal';
+  resolvedAt: string;
+  successorRoundId?: string;
+  successorHandNumber?: number;
+  presentationFallbackAt?: string;
+}
+
 export type CribbagePhase = 
   | 'dealer-select' // High-card draw / cut for first dealer (incl. tie redraws)
   | 'dealing' 
@@ -125,6 +135,8 @@ export interface CribbageState {
   countingBeatIndex?: number | null;
   /** Immutable, database-persisted source for counting-phase score presentation. */
   countingPlan?: CribbageCountingPlan | null;
+  /** Durable counting outcome; presentation may safely lag this state. */
+  countingResolution?: CribbageCountingResolution | null;
   // Skunk tracking
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk

@@ -3398,6 +3398,23 @@ export type Database = {
         Args: { _card_indices: number[]; _player_id: string; _round_id: string }
         Returns: Json
       }
+      activate_prepared_cribbage_hand: {
+        Args: {
+          p_from_fallback?: boolean
+          p_game_id: string
+          p_predecessor_round_id: string
+          p_successor_round_id: string
+        }
+        Returns: Json
+      }
+      cribbage_complete_counting: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
+      cribbage_finalize_counting: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
       cribbage_reconcile_discard_transition: {
         Args: { _round_id: string }
         Returns: Json

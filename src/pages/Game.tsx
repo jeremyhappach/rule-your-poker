@@ -6093,8 +6093,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const liveRound = (() => {
     if (!game?.rounds?.length) return null as Round | null;
 
-    if (game.game_type === "holm-game") {
-      // Holm: always scope to dealer_game_id to avoid collisions with 3-5-7 Round 1.
+    if (game.game_type === "holm-game" || game.game_type === "cribbage") {
+      // Single-round games: select the exact game.total_hands identity. A prepared
+      // Cribbage successor must stay invisible until its server activation advances it.
       return pickActiveSingleRoundGameRound(game.rounds, {
         dealerGameId: game.current_game_uuid,
         currentRoundNumber: game.current_round,
