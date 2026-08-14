@@ -18,6 +18,7 @@ export interface HolmTransferPresentationContext {
 }
 
 export interface HolmTransferPresentationAdmissionState extends HolmTransferPresentationContext {
+  presentationTransferCursor: number | null;
   communityFullyRevealed: boolean;
   chuckyVisualRevealComplete: boolean;
   chuckyLossTransportPresentationReady: boolean;
@@ -270,6 +271,17 @@ export function canAdmitHolmTransferPresentation(
 ): boolean {
   const stage = classifyHolmTransferPresentationStage(batch, state);
 
+  // A hidden authoritative successor can commit while this client is still
+  // presenting its predecessor. Never let that later batch borrow the
+  // predecessor's otherwise-identical result context or presentation gate.
+  if (
+    stage !== null
+    && state.presentationTransferCursor !== null
+    && batch.cursor > state.presentationTransferCursor
+  ) {
+    return false;
+  }
+
   if (stage === 'showdown-pot-award') {
     return (
       state.communityFullyRevealed
@@ -278,13 +290,16 @@ export function canAdmitHolmTransferPresentation(
     );
   }
   if (stage === 'showdown-replacement-pot') {
-    return state.showdownPhase === 'losers-to-pot';
+    return batch.cursor === state.presentationTransferCursor
+      && state.showdownPhase === 'losers-to-pot';
   }
   if (stage === 'chucky-loss') {
-    return state.chuckyLossTransportPresentationReady;
+    return batch.cursor === state.presentationTransferCursor
+      && state.chuckyLossTransportPresentationReady;
   }
   if (stage === 'pussy-tax') {
-    return state.pussyTaxPresentationReady;
+    return batch.cursor === state.presentationTransferCursor
+      && state.pussyTaxPresentationReady;
   }
   if (isUnclassifiedHolmPlayerToPotTransfer(batch, stage)) {
     return false;

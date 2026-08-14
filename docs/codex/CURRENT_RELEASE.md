@@ -4,6 +4,15 @@ Date: 2026-08-14
 
 ## Holm server-owned continuation and ordered presentation
 
+- The first post-release Rabbit Hunt smoke in the paused `Mike Olt` session
+  proved authority remained healthy while both clients deadlocked locally:
+  hand 1 settled Pussy Tax, the server published hand 2 after its lease, hidden
+  hand 2 timed out, and the server published hand 3. Both connected clients
+  continued to display completed hand 1 because its Pussy Tax transfer could
+  miss a one-render admission trigger; raw hand 2 was then incorrectly marked
+  observed-live and replaced the active hand-1 barrier. Hand 1 deducted $1
+  from each player and hidden hand 2 later deducted another $1 from each; the
+  paused production session was not mutated during investigation.
 - Production inspection proved the existing 20-second "service fallback" was
   not operationally server-owned: `enforce-deadlines` was invoked by a browser
   poller, and no deployed cron job called either Holm activation path. A table
@@ -16,9 +25,14 @@ Date: 2026-08-14
   terminal-aware; no client action can advance authoritative Holm state.
 - Each client that actually observed the predecessor in live betting holds its
   own Holm presentation snapshot until its final canonical result/transfer
-  paint completes. A faster server snapshot is buffered from the presentation
-  owner only; tabled showdown cards stay beside the applicable chip stacks/self
-  and solo cards stay in the tabled area. Fresh mounts admit current authority
+  paint completes. The barrier is now an exact presented-hand identity and is
+  non-overwritable: raw/hidden successors cannot mark themselves observed,
+  borrow a predecessor result gate, or release it with a later transfer cursor.
+  Rabbit Hunt completion joins the exact result paint, visible card-4 flip when
+  enabled, and exact Pussy Tax batch settlement in either realtime ordering.
+  A faster server snapshot is buffered from the presentation owner only;
+  tabled showdown cards stay beside the applicable chip stacks/self and solo
+  cards stay in the tabled area. Fresh mounts admit current authority
   immediately instead of replaying historical results.
 - Buck events now carry exact session, dealer-game, round, hand-context, and
   hand-number identity. The recipient shows `Buck's on you` only when the
@@ -26,9 +40,12 @@ Date: 2026-08-14
   changes clear any prior Buck event.
 - The deployed rollback suite passes winner, tie, duplicate, replay,
   late-replay, authorization, pause, continuation, terminal-state, exact Buck
-  identity, and no-client worker cases. Eight focused tests, TypeScript, and the
-  Vite production build pass. The reported Dire Wolf game remains paused and
-  unmodified; production smoke remains required.
+  identity, and no-client worker cases. The follow-up client correction passes
+  88 focused Holm tests, TypeScript, and the Vite production build. The
+  repository-wide suite still contains unrelated pre-existing Cribbage, Gin,
+  Yahtzee, participant-scoping, and snapshot assertion failures. The reported
+  `Mike Olt` game remains paused and unmodified; production smoke remains
+  required.
 
 ## Holm presented-hand continuation correction
 

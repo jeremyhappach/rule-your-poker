@@ -580,6 +580,16 @@ moving or re-latching cards: multiplayer showdown cards remain tabled at the
 applicable seat/self cluster, and solo cards remain in the tabled area. A fresh
 mount creates no predecessor barrier and admits current authority directly.
 
+The barrier identity must come entirely from the hand that client is actually
+presenting. It is immutable until an exact completion for the same dealer game,
+round, hand number, and final transfer cursor arrives; a raw or hidden successor
+may neither mark itself observed-live, overwrite the predecessor, borrow its
+result/transfer gate, nor release it. For all-fold Rabbit Hunt, completion is
+the join of the exact result paint, the visible final community-card flip when
+Rabbit Hunt is enabled, and the exact Pussy Tax transfer settlement when one
+exists. These boundaries may arrive in either order and are not replaced by a
+timer.
+
 A Holm Buck presentation event is scoped to exact session, dealer game, round,
 hand context, and hand number. Only its receiving player may display it, only
 for a live transition, and only at the accepted hands-wave transport start.

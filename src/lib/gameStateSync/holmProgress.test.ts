@@ -38,6 +38,7 @@ function makeSnapshot(overrides: Partial<HolmAuthoritativeSnapshot> = {}): HolmA
     chuckyActive: false,
     chuckyCardsRevealed: 0,
     pot: 4,
+    chipTransferCursor: 1,
     lastRoundResult: null,
     buckPosition: 0,
     dealerPosition: 1,

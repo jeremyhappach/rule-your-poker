@@ -41,14 +41,17 @@ describe('Holm database resolution ownership', () => {
     expect(holmTimerSection).not.toContain('proceedToNextHolmRound');
     expect(gameSource).not.toContain('activatePreparedHolmRound(');
     expect(gameSource).not.toContain('prepareNextHolmRound(');
-    expect(mobileTableSource).toContain('onHolmContinuationPresentationComplete?.();');
+    expect(mobileTableSource).toContain('onHolmContinuationPresentationComplete?.(completion);');
+    expect(mobileTableSource).toContain("stage: 'zero-transfer'");
     expect(mobileTableSource).toContain("holmStage === 'pussy-tax'");
+    expect(mobileTableSource).toContain("pussyTaxPresentationReady: lastRoundResult === 'Pussy Tax!'");
+    expect(mobileTableSource).not.toContain("pussyTaxPresentationReady: !!anteAnimationTriggerId");
     expect(mobileTableSource).toContain('requestAnimationFrame');
   });
 
   it('releases prepared successors from a durable database scheduler only after the lease', () => {
     expect(serverReleaseMigration).toContain('CREATE OR REPLACE FUNCTION private.release_due_holm_presentations()');
-    expect(serverReleaseMigration).toContain("cron.schedule(\n    'release-due-holm-presentations-1s'");
+    expect(serverReleaseMigration).toMatch(/cron\.schedule\(\r?\n\s*'release-due-holm-presentations-1s'/);
     expect(serverReleaseMigration).toContain("clock_timestamp() + interval '9 seconds'");
     expect(serverReleaseMigration).toContain("activate_prepared_holm_hand:server_only");
     expect(serverReleaseMigration).toContain('REVOKE ALL ON FUNCTION public.activate_prepared_holm_hand');

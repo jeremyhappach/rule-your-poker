@@ -85,6 +85,7 @@ export interface HolmAuthoritativeSnapshot {
 
   // Pot & game context
   pot: number;
+  chipTransferCursor: number;
   lastRoundResult: string | null;
   buckPosition: number;
   dealerPosition: number;

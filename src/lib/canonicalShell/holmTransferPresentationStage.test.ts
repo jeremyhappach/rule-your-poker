@@ -35,6 +35,7 @@ const context = {
 
 const admissionState = (overrides: Partial<Parameters<typeof canAdmitHolmTransferPresentation>[1]> = {}) => ({
   ...context,
+  presentationTransferCursor: 1,
   communityFullyRevealed: false,
   chuckyVisualRevealComplete: false,
   chuckyLossTransportPresentationReady: false,
@@ -160,6 +161,22 @@ describe('canAdmitHolmTransferPresentation', () => {
     expect(canAdmitHolmTransferPresentation(pussyTax, admissionState({
       pussyTaxPresentationReady: true,
     }))).toBe(true);
+  });
+
+  it('never lets a hidden successor borrow the presented hand result gate', () => {
+    const hiddenSuccessorTax = baseBatch({
+      cursor: 2,
+      transfers: [
+        { id: '1', amount: 1, from: { kind: 'player', playerId: 'winner-a' }, to: { kind: 'pot' } },
+        { id: '2', amount: 1, from: { kind: 'player', playerId: 'winner-b' }, to: { kind: 'pot' } },
+        { id: '3', amount: 1, from: { kind: 'player', playerId: 'loser-a' }, to: { kind: 'pot' } },
+      ],
+    });
+
+    expect(canAdmitHolmTransferPresentation(hiddenSuccessorTax, admissionState({
+      presentationTransferCursor: 1,
+      pussyTaxPresentationReady: true,
+    }))).toBe(false);
   });
 
   it('still admits an immutable ante without terminal context', () => {
