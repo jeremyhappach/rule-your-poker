@@ -27,6 +27,12 @@
 
 ## Cribbage
 
+- Cribbage count rejoin passed production smoke on 2026-08-13 at commit
+  `938d89437d888323ab63fc5be254d917f3d5101c`: a refresh, reconnect, or
+  connection change during the visible count resumes at the durable monotonic
+  cursor (or the database start-anchor fallback before the first cursor write)
+  and remains in presentation through the authoritative release. Preserve the
+  RPC-only cursor write; do not restore browser full-state replacements.
 - Atomic Cribbage settlement and connected-client terminal presentation are an
   accepted production checkpoint as of 2026-08-03. The disconnect/LAST HAND
   path settles immediately and exactly once in the database while a remaining

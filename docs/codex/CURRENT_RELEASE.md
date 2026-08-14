@@ -18,8 +18,8 @@ Date: 2026-08-13
   that cursor arrives.
 - The production rollback proof covers cursor advance, regressive replay,
   result preservation, and unauthorized calls. Focused resume/progress tests,
-  TypeScript, and the production Vite build pass. Vercel publication and
-  production smoke remain required.
+  TypeScript, and the production Vite build pass. The `938d89437` production
+  deployment and Jeremy's reconnect/refresh counting smoke both passed.
 
 ## Cribbage lazy successor release
 
