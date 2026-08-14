@@ -2,6 +2,23 @@
 
 Date: 2026-08-14
 
+## Game-route temporal-dead-zone hotfix
+
+- Production smoke immediately after commit `fa64f8c05` created the waiting
+  game `Aug 14 - Carl Edwards Jr` successfully, then Safari's Game route error
+  boundary reported `Cannot access uninitialized variable` before the room
+  rendered. Database creation and the waiting game row were intact.
+- The Holm timer correction had added `currentRound` to an effect dependency
+  array before that component-local `const` was initialized. Dependency arrays
+  are evaluated synchronously during render, so every fresh Game-screen mount
+  on the new bundle was exposed even though TypeScript and Vite both passed.
+- The timer now depends on the already-initialized authoritative round inputs
+  (`current_game_uuid`, `current_round`, `total_hands`, and `rounds`) that fully
+  determine the in-progress round. Exact-hand timer presentation and
+  server-owned timeout enforcement are unchanged. A focused source-order
+  regression assertion, TypeScript, and the production build pass; production
+  publication and fresh Game-screen smoke remain required.
+
 ## Holm durable predecessor-completion reconciliation
 
 - Production session `Aug 14 - Jeff Samardzija`, dealer game

@@ -102,4 +102,17 @@ describe('Holm database resolution ownership', () => {
     );
     expect(gameSource).toContain('holmDecisionPresentationReady');
   });
+
+  it('does not eagerly read the later currentRound binding from the timer dependency array', () => {
+    const timerEffectEnd = gameSource.indexOf('// Ante timer countdown effect - SKIP when game is paused');
+    const timerDependencyStart = gameSource.lastIndexOf('}, [decisionDeadline', timerEffectEnd);
+    const timerDependencies = gameSource.slice(timerDependencyStart, timerEffectEnd);
+
+    expect(timerDependencyStart).toBeGreaterThan(-1);
+    expect(timerDependencies).not.toContain('currentRound?.');
+    expect(timerDependencies).toContain('game?.current_game_uuid');
+    expect(timerDependencies).toContain('game?.current_round');
+    expect(timerDependencies).toContain('game?.total_hands');
+    expect(timerDependencies).toContain('game?.rounds');
+  });
 });
