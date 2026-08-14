@@ -116,8 +116,6 @@ import {
   type LiveTerminalPresentationScope,
 } from "@/lib/canonicalShell/liveTerminalPresentationHold";
 import {
-  buildHolmChuckyLossSettlementKey,
-  buildHolmShowdownPresentationKey,
   deriveHolmChuckyLossContext,
   isHolmChuckyLossResult,
 } from "@/lib/canonicalShell/holmTransferPresentationStage";
@@ -1605,12 +1603,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [chuckyLossTriggerId, setChuckyLossTriggerId] = useState<string | null>(null);
   const [chuckyLossAmount, setChuckyLossAmount] = useState<number>(0);
   const [chuckyLossPlayerIds, setChuckyLossPlayerIds] = useState<string[]>([]);
-  // The awaiting effect has intentionally broad dependencies and its wartime
-  // callback wrappers change identity as their render owner advances. A
-  // Chucky loss therefore needs the same database-identity latch as a Holm
-  // showdown; a Date.now trigger on every re-entry can never be acknowledged
-  // by the child's post-paint gate.
-  const holmChuckyLossSettlementKeyRef = useRef<string | null>(null);
+  // A presentation PLAN spans every immutable transfer batch in one hand.
+  // Keep its latch on dealer-game + rounds-row + hand identity; exact transfer
+  // cursor identity belongs only to admitted-batch completion evidence below.
+  const holmChuckyLossPresentationPlanKeyRef = useRef<string | null>(null);
+  const holmPussyTaxPresentationPlanKeyRef = useRef<string | null>(null);
   const holmLiveRoundIdsObservedRef = useRef(new Set<string>());
   const holmReleasedPresentationHandsRef = useRef(new Set<string>());
   const holmPresentationDealerGameRef = useRef<string | null>(null);
@@ -1725,13 +1722,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownWinnerIds, setHolmShowdownWinnerIds] = useState<string[]>([]);
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
-  // ONE SETTLEMENT = ONE PLAN. The awaiting_next_round effect can re-enter
+  // ONE HAND = ONE PLAN. The awaiting_next_round effect can re-enter
   // (its 4s timer clears awaitingTimerRef while awaiting_next_round is still
   // true, so any subsequent games/players realtime update re-runs the block).
   // Without an identity latch, re-entry re-dispatched phase 1 (a SECOND
   // pot-to-winner) and clobbered phase 2 back to 'pot-to-winner', so the
-  // losers-to-pot transfer never rendered. Latch on the settlement identity.
-  const holmShowdownSettlementKeyRef = useRef<string | null>(null);
+  // losers-to-pot transfer never rendered. The two adjacent settlement
+  // cursors must therefore share one stable hand-level presentation plan.
+  const holmShowdownPresentationPlanKeyRef = useRef<string | null>(null);
   
   // Holm win pot animation state (when player beats Chucky - dramatic pot to winner)
   const [holmWinPotTriggerId, setHolmWinPotTriggerId] = useState<string | null>(null);
@@ -8145,10 +8143,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot((game?.pot || 0)); // Pot already includes the tax
         // Guard against duplicate triggers
-        const pussyTaxTriggerKey = holmPresentationIdentity
-          ? `pussy-tax-${getHolmPresentationHandKey(holmPresentationIdentity)}-cursor-${holmPresentationIdentity.transferCursor}`
+        const pussyTaxPresentationPlanKey = holmPresentationIdentity
+          ? getHolmPresentationHandKey(holmPresentationIdentity)
           : null;
-        if (pussyTaxTriggerKey && anteAnimationFiredRef.current !== pussyTaxTriggerKey) {
+        if (
+          pussyTaxPresentationPlanKey
+          && holmPussyTaxPresentationPlanKeyRef.current !== pussyTaxPresentationPlanKey
+        ) {
+          holmPussyTaxPresentationPlanKeyRef.current = pussyTaxPresentationPlanKey;
+          const pussyTaxTriggerKey = `pussy-tax-${pussyTaxPresentationPlanKey}`;
           anteAnimationFiredRef.current = pussyTaxTriggerKey;
           setAnteAnimationTriggerId(pussyTaxTriggerKey);
         }
@@ -8230,24 +8233,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           && holmPresentationIdentity.transferCursor > 0
         );
         if (chuckyLoss && hasExactLossIdentity) {
-          const settlementKey = buildHolmChuckyLossSettlementKey({
-            dealerGameId: holmPresentationIdentity!.dealerGameId,
-            roundId: holmPresentationIdentity!.roundId,
-            handNumber: holmPresentationIdentity!.handNumber,
-            transferCursor: holmPresentationIdentity!.transferCursor,
-          });
-          if (holmChuckyLossSettlementKeyRef.current === settlementKey) {
-            console.log('[CHUCKY_LOSS_ANIMATION] Duplicate dispatch suppressed', { settlementKey });
+          const presentationPlanKey = getHolmPresentationHandKey(holmPresentationIdentity!);
+          if (holmChuckyLossPresentationPlanKeyRef.current === presentationPlanKey) {
+            console.log('[CHUCKY_LOSS_ANIMATION] Duplicate dispatch suppressed', { presentationPlanKey });
           } else {
-            holmChuckyLossSettlementKeyRef.current = settlementKey;
+            holmChuckyLossPresentationPlanKeyRef.current = presentationPlanKey;
             console.log('[CHUCKY_LOSS_ANIMATION] Exact loss presentation admitted', {
-              settlementKey,
+              presentationPlanKey,
               playerIds: chuckyLoss.playerIds,
               amount: chuckyLoss.amount,
             });
             setChuckyLossAmount(chuckyLoss.amount);
             setChuckyLossPlayerIds(chuckyLoss.playerIds);
-            setChuckyLossTriggerId(`chucky-loss-${settlementKey}`);
+            setChuckyLossTriggerId(`chucky-loss-${presentationPlanKey}`);
           }
         }
         
@@ -8255,29 +8253,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // match it). `WINNERS` is the partial-tie form and shares the same
         // canonical batch-stage gate.
         const holmShowdownMatch = lastResult.match(/\|\|\|(WINNER|WINNERS):([^|]+)\|\|\|LOSERS:([^|]+)\|\|\|POT:(\d+)\|\|\|MATCH:(\d+)/);
-        if (holmShowdownMatch && game?.game_type === 'holm-game') {
+        if (holmShowdownMatch && holmPresentationIdentity) {
           const winnerIds = holmShowdownMatch[2].split(',').filter(Boolean);
           const loserIds = holmShowdownMatch[3].split(',').filter(Boolean);
           const potAmount = parseInt(holmShowdownMatch[4], 10);
           const matchAmount = parseInt(holmShowdownMatch[5], 10);
 
-          // `games.current_round` is 1 for every Holm hand. The latch must
-          // instead follow the authoritative rounds row / hand and immutable
-          // transfer cursor so identical consecutive results are not merged.
-          const settlementKey = buildHolmShowdownPresentationKey({
-            dealerGameId: holmPresentationIdentity?.dealerGameId ?? null,
-            roundId: holmPresentationIdentity?.roundId ?? null,
-            handNumber: holmPresentationIdentity?.handNumber ?? null,
-            transferCursor: holmPresentationIdentity?.transferCursor ?? null,
-          });
+          // `games.current_round` is 1 for every Holm hand. The plan latch
+          // follows the authoritative rounds row / hand, while each ledger
+          // batch retains its own exact cursor identity through completion.
+          const presentationPlanKey = getHolmPresentationHandKey(holmPresentationIdentity);
 
-          if (holmShowdownSettlementKeyRef.current === settlementKey) {
-            console.log('[HOLM_SHOWDOWN_ANIMATION] Duplicate dispatch suppressed', { settlementKey });
+          if (holmShowdownPresentationPlanKeyRef.current === presentationPlanKey) {
+            console.log('[HOLM_SHOWDOWN_ANIMATION] Duplicate dispatch suppressed', { presentationPlanKey });
           } else {
-            holmShowdownSettlementKeyRef.current = settlementKey;
+            holmShowdownPresentationPlanKeyRef.current = presentationPlanKey;
 
             console.log('[HOLM_SHOWDOWN_ANIMATION] Detected multi-player showdown', {
-              settlementKey,
+              presentationPlanKey,
               winnerIds,
               loserIds,
               potAmount,
@@ -8292,7 +8285,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setHolmShowdownWinnerIds(winnerIds);
             setHolmShowdownLoserIds(loserIds);
             setHolmShowdownPhase('pot-to-winner');
-            setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`);
+            setHolmShowdownTriggerId(`holm-showdown-${presentationPlanKey}`);
           }
         }
       }

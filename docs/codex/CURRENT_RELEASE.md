@@ -2,6 +2,34 @@
 
 Date: 2026-08-14
 
+## Holm split-showdown presentation-plan identity correction
+
+- Production session `Aug 14 - Metamora`, dealer game
+  `a429c78c-c476-4386-bf67-fd6567c73e04`, hand 1 proved that PostgreSQL
+  settled the multiplayer showdown correctly but both connected clients could
+  remain presenting hand 1 while hidden successor hands continued. The hand
+  published adjacent immutable batches at cursors 8 (`pot -> winner`) and 9
+  (`loser -> pot`); neither client produced hand-1 completion evidence or
+  acknowledged prepared hand 2.
+- The regression came from conflating two identity scopes. The client keyed
+  the one-hand showdown phase plan by transfer cursor, so arrival of cursor 9
+  re-created the same hand's plan at `pot-to-winner` after cursor 8 had already
+  settled. Cursor 8 could not replay and cursor 9 required
+  `losers-to-pot`, producing a permanent local deadlock. The stricter
+  acknowledgement/barrier release added on August 14 exposed this formerly
+  masked missed callback instead of letting a generic timer skip it.
+- Holm nonterminal presentation plans now use one stable
+  `(dealer game, rounds row, hand number)` key across every batch in that hand.
+  Exact transfer cursor remains mandatory only for immutable batch admission,
+  completion evidence, and predecessor-barrier release. Prepared-successor
+  acknowledgement retains its separate exact predecessor/successor identity.
+  The same separation now governs multiplayer showdown, Chucky loss, and Pussy
+  Tax latches; terminal win/reveal retains its separate stable result identity.
+- No database, settlement, balance, card-placement, authoritative timeout, or
+  recovery-fallback behavior changes. All 118 focused Holm assertions plus the
+  two isolated community-row cases pass; TypeScript and the production build
+  pass. Publication and two-client production smoke remain required.
+
 ## Game-route temporal-dead-zone hotfix
 
 - Production smoke immediately after commit `fa64f8c05` created the waiting
@@ -683,15 +711,17 @@ to the matching highlighted combo, without a stale pegging or next-hand frame.
 
 ## Holm repeated-showdown presentation identity
 
-- The Holm showdown phase-plan latch is now keyed by the authoritative
-  `rounds.id`/hand identity and immutable transfer cursor, not
-  `games.current_round`. Holm keeps that game-level round number at `1` across
-  hands, so otherwise two identical consecutive showdowns are incorrectly
-  treated as a replay of the first.
+- The original August 10 correction moved the Holm showdown latch off
+  `games.current_round`, which remains `1` across hands, and onto the
+  authoritative rounds-row/hand identity. Its inclusion of transfer cursor was
+  superseded on August 14: cursor distinguishes exact immutable batch
+  completion, but cannot distinguish a presentation plan because one showdown
+  intentionally contains adjacent pot-award and replacement-pot cursors.
 - This is a client admission correction only. The existing `holm_settle_hand`
   transaction, its ordered immutable `pot -> winner` then `loser -> pot`
   batches, endpoint ownership, and disconnect/reconnect reconciliation are
-  unchanged. Production smoke accepted the correction on 2026-08-10.
+  unchanged. Production smoke accepted the consecutive-hand correction on
+  2026-08-10; the split-showdown follow-up is documented above.
 
 ## 3-5-7-only leg cue scope
 

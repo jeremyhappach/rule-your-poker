@@ -3,23 +3,37 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync(join(__dirname, 'Game.tsx'), 'utf8');
-const lossDispatchSection = source.slice(
-  source.indexOf('// Check if this is a Holm Chucky loss'),
+const holmDispatchSection = source.slice(
+  source.indexOf('// Check if this is a pussy tax scenario'),
   source.indexOf('// Wait 4 seconds to show every non-Holm result'),
 );
 
 describe('Game Holm Chucky-loss presentation ownership', () => {
-  it('dispatches one stable database-identity trigger across effect re-entry', () => {
-    expect(lossDispatchSection).toContain('buildHolmChuckyLossSettlementKey');
-    expect(lossDispatchSection).toContain('holmChuckyLossSettlementKeyRef.current === settlementKey');
-    expect(lossDispatchSection).toContain('setChuckyLossTriggerId(`chucky-loss-${settlementKey}`)');
-    expect(lossDispatchSection).not.toContain('setChuckyLossTriggerId(`chucky-loss-${Date.now()}`)');
+  it('dispatches one stable hand-plan trigger across effect re-entry', () => {
+    expect(holmDispatchSection).toContain('getHolmPresentationHandKey(holmPresentationIdentity!)');
+    expect(holmDispatchSection).toContain('holmChuckyLossPresentationPlanKeyRef.current === presentationPlanKey');
+    expect(holmDispatchSection).toContain('setChuckyLossTriggerId(`chucky-loss-${presentationPlanKey}`)');
+    expect(holmDispatchSection).not.toContain('setChuckyLossTriggerId(`chucky-loss-${Date.now()}`)');
+  });
+
+  it('keeps one multi-batch showdown plan while exact cursor evidence remains separate', () => {
+    expect(holmDispatchSection).toContain('holmShowdownPresentationPlanKeyRef.current === presentationPlanKey');
+    expect(holmDispatchSection).toContain('setHolmShowdownTriggerId(`holm-showdown-${presentationPlanKey}`)');
+    expect(holmDispatchSection).not.toContain('buildHolmShowdownPresentationKey');
+    expect(holmDispatchSection).not.toContain('setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`)');
+    expect(source).toContain('getHolmPresentationIdentityKey(completion)');
+  });
+
+  it('latches Pussy Tax on its hand plan rather than its mutable transfer cursor', () => {
+    expect(holmDispatchSection).toContain('holmPussyTaxPresentationPlanKeyRef.current !== pussyTaxPresentationPlanKey');
+    expect(holmDispatchSection).toContain('const pussyTaxTriggerKey = `pussy-tax-${pussyTaxPresentationPlanKey}`');
+    expect(holmDispatchSection).not.toContain('cursor-${holmPresentationIdentity.transferCursor}');
   });
 
   it('keeps every Holm result out of the generic auto-proceed timer', () => {
-    expect(lossDispatchSection).toContain("game?.game_type === 'holm-game'");
-    expect(lossDispatchSection).toContain('Waiting for exact Holm presentation acknowledgement');
-    expect(lossDispatchSection).toContain('return;');
+    expect(holmDispatchSection).toContain("game?.game_type === 'holm-game'");
+    expect(holmDispatchSection).toContain('Waiting for exact Holm presentation acknowledgement');
+    expect(holmDispatchSection).toContain('return;');
   });
 
   it('holds only local presentation while PostgreSQL owns successor release', () => {

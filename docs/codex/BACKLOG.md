@@ -51,6 +51,13 @@ changes.
 - Deliver a ranked land-mine report and bounded correction plan with focused
   race tests before changing additional product code. Do not use timers,
   polling, or per-symptom patches to bridge a missed identity transition.
+- Partial result on 2026-08-14: the bounded nonterminal presentation/release
+  identity audit found one repeated invariant violation across multiplayer
+  showdown, Chucky loss, and Pussy Tax. Their one-hand plan latches included
+  mutable transfer cursor even though exact cursor belongs only to batch
+  completion/release evidence. The approved correction removes that duplicate
+  cursor-bearing plan-key API and adds cursor-reordering regressions. The wider
+  setup/Buck/deal/betting/reconnect/terminal seam audit remains queued here.
 
 ### 2A. Cribbage LAST HAND win presentation bypass
 
@@ -510,11 +517,13 @@ Status: Completed; production smoke accepted on 2026-08-10 at commit
   winner, loser, pot, and match values collide with the prior hand. Key the
   presentation plan by the authoritative round identity/hand, preserving
   duplicate suppression only for re-delivery of that exact settlement.
-- Correction: `buildHolmShowdownPresentationKey` now combines the
-  authoritative `rounds.id` (with hand fallback) and immutable transfer cursor.
-  A focused unit regression covers equal outcomes across consecutive hands and
-  repeat delivery of one exact settlement. Financial settlement and the frozen
-  session remain untouched.
+- Original correction: `buildHolmShowdownPresentationKey` combined the
+  authoritative rounds-row/hand identity with immutable transfer cursor and
+  fixed equal outcomes across consecutive hands. August 14 production evidence
+  proved that cursor-bearing plan identity was incomplete: the normal two-batch
+  showdown changed cursor inside one plan and could reset its phase. The helper
+  is now removed; hand identity owns the plan and cursor-exact identity owns
+  batch completion/release evidence. Financial settlement remains untouched.
 
 ### 3J. Gin iPhone screen dim regression
 

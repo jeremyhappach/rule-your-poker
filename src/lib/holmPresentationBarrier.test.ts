@@ -24,6 +24,19 @@ const hand = (
 });
 
 describe('Holm presented-hand barrier', () => {
+  it('separates stable hand-plan identity from exact transfer completion identity', () => {
+    const firstShowdownBatch = hand('round-1', 1, 8);
+    const secondShowdownBatch = hand('round-1', 1, 9);
+    const nextHand = hand('round-2', 2, 10);
+
+    expect(getHolmPresentationHandKey(firstShowdownBatch))
+      .toBe(getHolmPresentationHandKey(secondShowdownBatch));
+    expect(getHolmPresentationIdentityKey(firstShowdownBatch))
+      .not.toBe(getHolmPresentationIdentityKey(secondShowdownBatch));
+    expect(getHolmPresentationHandKey(nextHand))
+      .not.toBe(getHolmPresentationHandKey(firstShowdownBatch));
+  });
+
   it('latches only a hand this client observed in presented live betting', () => {
     const first = hand('round-1', 1, 2);
     expect(latchHolmPresentationBarrier({

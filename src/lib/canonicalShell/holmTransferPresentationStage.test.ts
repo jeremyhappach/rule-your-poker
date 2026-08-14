@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChipPresentationBatch } from './ChipPresentationLedger';
 import {
-  buildHolmShowdownPresentationKey,
   buildHolmChuckyLossPresentationKey,
-  buildHolmChuckyLossSettlementKey,
   canAdmitHolmTransferPresentation,
   canPresentHolmChuckyLossTransport,
   classifyHolmTransferPresentationStage,
@@ -189,53 +187,7 @@ describe('canAdmitHolmTransferPresentation', () => {
   });
 });
 
-describe('buildHolmShowdownPresentationKey', () => {
-  it('does not collapse identical results from consecutive Holm hands', () => {
-    const firstHand = buildHolmShowdownPresentationKey({
-      dealerGameId: 'dealer-game',
-      roundId: 'round-hand-1',
-      handNumber: 1,
-      transferCursor: 11,
-    });
-    const secondHand = buildHolmShowdownPresentationKey({
-      dealerGameId: 'dealer-game',
-      roundId: 'round-hand-2',
-      handNumber: 2,
-      transferCursor: 13,
-    });
-
-    expect(secondHand).not.toBe(firstHand);
-  });
-
-  it('still dedupes repeated delivery of the exact same settlement', () => {
-    const identity = {
-      dealerGameId: 'dealer-game',
-      roundId: 'round-hand-2',
-      handNumber: 2,
-      transferCursor: 13,
-    };
-
-    expect(buildHolmShowdownPresentationKey(identity))
-      .toBe(buildHolmShowdownPresentationKey(identity));
-  });
-});
-
 describe('Holm Chucky-loss presentation identity', () => {
-  it('keeps the trigger identity stable across effect re-entry and advances on cursor change', () => {
-    const identity = {
-      dealerGameId: 'dealer-1',
-      roundId: 'round-3',
-      handNumber: 3,
-      transferCursor: 5,
-    };
-    expect(buildHolmChuckyLossSettlementKey(identity)).toBe(
-      buildHolmChuckyLossSettlementKey({ ...identity }),
-    );
-    expect(buildHolmChuckyLossSettlementKey({ ...identity, transferCursor: 6 })).not.toBe(
-      buildHolmChuckyLossSettlementKey(identity),
-    );
-  });
-
   it('derives a solo loser from the stayed player UUID instead of result-copy alias lookup', () => {
     expect(deriveHolmChuckyLossContext(
       'Chucky beat a display name that is not loaded with One Pair. -$8',

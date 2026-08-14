@@ -302,14 +302,19 @@ source-seat visibility suppression as a bounce workaround.
 
 `games.current_round` is a rule-round number, not a Holm hand identity: it is
 normally `1` for every hand. Holm showdown duplicate suppression must therefore
-use the authoritative `rounds.id` (with the hand number as fallback) plus the
-database-published immutable transfer cursor. Consecutive equal outcomes then
-admit their own staged pot-award/replacement-pot batches, while a repeated
-delivery of the exact same settlement remains deduped.
+use the authoritative dealer-game, `rounds.id`, and hand number. That key is
+stable for the entire presentation plan even when one logical showdown emits
+adjacent immutable pot-award and replacement-pot batches at different cursors.
+Consecutive equal outcomes remain distinct because their rounds-row/hand
+identity changes.
 
-This key selects only a local non-financial phase plan. It does not alter
-settlement, balances, transfer batches, cursor ownership, or the established
-abandon-and-reconcile behavior on disconnect.
+Transfer cursor is deliberately excluded from the plan key and retained in the
+separate exact batch-admission/completion identity. A repeated delivery of one
+batch is therefore deduped, a later batch in the same hand advances the
+existing plan, and only exact `(dealer game, round, hand, cursor)` completion
+evidence may release the client-local predecessor barrier. These keys remain
+non-financial and do not alter settlement, balances, transfer batches, cursor
+ownership, or disconnect recovery.
 
 ## D-032 - A leg cue is a 3-5-7-only transient, never a balance effect
 

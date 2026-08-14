@@ -27,13 +27,6 @@ export interface HolmTransferPresentationAdmissionState extends HolmTransferPres
   pussyTaxPresentationReady: boolean;
 }
 
-export interface HolmShowdownPresentationIdentity {
-  dealerGameId: string | null;
-  roundId: string | null;
-  handNumber: number | null;
-  transferCursor: number | null;
-}
-
 export interface HolmChuckyLossPresentationIdentity {
   handContextId: string | null;
   triggerId: string | null;
@@ -52,25 +45,6 @@ export interface HolmChuckyLossContext {
 }
 
 /**
- * A Holm dealer game contains many hands whose game-level `current_round`
- * remains 1. Use the authoritative rounds-row identity for the phase-plan
- * latch so identical consecutive showdowns are distinct, while the immutable
- * transfer cursor keeps re-delivery of that exact settlement deduped.
- */
-export function buildHolmShowdownPresentationKey({
-  dealerGameId,
-  roundId,
-  handNumber,
-  transferCursor,
-}: HolmShowdownPresentationIdentity): string {
-  return [
-    dealerGameId ?? 'no-dealer-game',
-    roundId ?? `hand-${handNumber ?? 'unknown'}`,
-    `cursor-${transferCursor ?? 'unknown'}`,
-  ].join('|');
-}
-
-/**
  * The Chucky-loss transport belongs to one settled hand and must not borrow an
  * announcement acknowledgement from another hand or replay of the same table.
  */
@@ -80,17 +54,6 @@ export function buildHolmChuckyLossPresentationKey({
 }: HolmChuckyLossPresentationIdentity): string | null {
   if (!triggerId) return null;
   return [handContextId ?? 'no-hand', triggerId].join('|');
-}
-
-/**
- * Stable identity for one database-owned Chucky-loss settlement. Unlike the
- * former Date.now trigger, this value cannot churn when the awaiting effect
- * re-enters during an otherwise unchanged render.
- */
-export function buildHolmChuckyLossSettlementKey(
-  identity: HolmShowdownPresentationIdentity,
-): string {
-  return buildHolmShowdownPresentationKey(identity);
 }
 
 export function isHolmChuckyLossResult(result: string | null | undefined): boolean {
