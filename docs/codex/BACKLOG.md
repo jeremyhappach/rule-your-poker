@@ -28,6 +28,30 @@ Codex follow-up:
 - preserve no-polling and DB exactly-once behavior;
 - add a focused deterministic test only if existing test architecture supports it reliably.
 
+### 2C. End-to-end Holm lifecycle seam audit
+
+Status: Queued (P0 follow-up); requested during the 2026-08-14 multiplayer-
+showdown client freeze investigation. Correct the proven H4-to-H5 client
+release seam first, then perform this audit read-only before proposing broader
+changes.
+
+- Inventory every Holm identity boundary and presentation handoff: dealer
+  setup/ante, Buck transport, deal transport, betting and deadline enforcement,
+  fold/all-fold, Rabbit Hunt/Pussy Tax, multiplayer showdown/table placement,
+  immutable chip-transfer stages, prepared-successor acknowledgement/fallback,
+  reconnect/remount, and dealer-game/session terminal flow.
+- For each seam, prove the authoritative owner, exact dealer-game/round/hand
+  identity, lifecycle reset, duplicate/replay behavior, disconnect behavior,
+  and whether completion is durable/level-triggered rather than a lossy
+  one-shot callback.
+- Preserve the contract that authoritative deadlines continue independently of
+  client presentation. A connected client must present hands in order, while
+  a disconnected or stuck client must not block the server or another client
+  from observing an enforceable current-turn timeout.
+- Deliver a ranked land-mine report and bounded correction plan with focused
+  race tests before changing additional product code. Do not use timers,
+  polling, or per-symptom patches to bridge a missed identity transition.
+
 ### 2A. Cribbage LAST HAND win presentation bypass
 
 Status: Resolved and accepted in published production smoke on 2026-08-03.
