@@ -26,8 +26,9 @@ Date: 2026-08-13
   a next-hand state from absence. A slow initial load may leave the rail briefly
   blank; gameplay and the explicit live next-hand transition are unchanged.
 - Focused cursor/announcement tests, TypeScript, and the production Vite build
-pass locally. Replacement production refresh and disconnect/reconnect smoke
-during a highlighted counting combo remain required.
+pass locally. Production refresh and disconnect/reconnect smoke during a
+highlighted counting combo passed on 2026-08-13: the rail now restores directly
+to the matching highlighted combo, without a stale pegging or next-hand frame.
 
 ## Cribbage counting rejoin cursor
 

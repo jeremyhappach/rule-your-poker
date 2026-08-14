@@ -681,7 +681,7 @@ Status: Queued; reported by production smoke on 2026-08-04.
 
 ### 12. Cribbage reconnect inherits stale final-pegging announcement
 
-Status: Implemented locally; replacement production smoke pending. Reproduced by production smoke on 2026-08-04.
+Status: Completed; production smoke passed on 2026-08-13. Reproduced by production smoke on 2026-08-04.
 
 - Refreshing during counting correctly resumes the authoritative counting
   sequence and score presentation, but the announcement rail initially shows
@@ -706,6 +706,9 @@ Status: Implemented locally; replacement production smoke pending. Reproduced by
   notice. Bootstrap now remains silent until an authoritative phase arrives;
   the acceptable tradeoff is a brief blank rail on a slow load, never a
   misleading next-hand announcement.
+- Final production smoke passed: refreshing and disconnecting/reconnecting
+  during a highlighted counting combo restores the matching combo directly,
+  without a stale final-pegging or next-hand announcement frame.
 
 ### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
 

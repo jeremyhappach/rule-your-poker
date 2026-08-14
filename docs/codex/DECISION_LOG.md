@@ -541,6 +541,8 @@ absence of a local Cribbage state is not evidence of a next-hand lifecycle.
 This may leave a slow-loading rail blank briefly, but cannot produce a false
 phase announcement.
 
+Production refresh and disconnect/reconnect smoke passed on 2026-08-13.
+
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission

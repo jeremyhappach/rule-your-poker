@@ -33,6 +33,12 @@
   cursor (or the database start-anchor fallback before the first cursor write)
   and remains in presentation through the authoritative release. Preserve the
   RPC-only cursor write; do not restore browser full-state replacements.
+- Cribbage counting-announcement rejoin passed production smoke on 2026-08-13
+  at commit `2914488bea66377bd3b5606ca27bebc538ba18c1`: a refresh or
+  reconnect during a highlighted combo immediately presents that matching
+  combo, never a stale final-pegging or inferred next-hand announcement.
+  Preserve counting-cursor rail ownership and the no-authoritative-snapshot
+  bootstrap silence.
 - Atomic Cribbage settlement and connected-client terminal presentation are an
   accepted production checkpoint as of 2026-08-03. The disconnect/LAST HAND
   path settles immediately and exactly once in the database while a remaining
