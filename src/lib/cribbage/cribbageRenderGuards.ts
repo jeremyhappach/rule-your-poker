@@ -81,9 +81,10 @@ export function getCribbageBootstrapAnnouncementKind({
   isBootstrapMode: boolean;
   shouldShowAwaitingAnteAnnouncement: boolean;
 }): CribbageBootstrapAnnouncementKind | null {
-  // Counting owns its restored-combo announcement. A parent bootstrap notice
-  // here briefly replaces it during reconnect hydration.
-  if (authoritativePhase === 'counting' || !isBootstrapMode) {
+  // Bootstrap has no authority to infer a rail message before its first
+  // authoritative snapshot. Counting then owns the restored-combo
+  // announcement rather than a parent bootstrap notice.
+  if (!authoritativePhase || authoritativePhase === 'counting' || !isBootstrapMode) {
     return null;
   }
 

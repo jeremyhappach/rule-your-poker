@@ -160,6 +160,16 @@ describe('Cribbage render guards', () => {
     ).toBeNull();
   });
 
+  it('does not infer a bootstrap ambient before the authoritative phase arrives', () => {
+    expect(
+      getCribbageBootstrapAnnouncementKind({
+        authoritativePhase: undefined,
+        isBootstrapMode: true,
+        shouldShowAwaitingAnteAnnouncement: false,
+      }),
+    ).toBeNull();
+  });
+
   it('preserves the bootstrap next-round notice outside counting', () => {
     expect(
       getCribbageBootstrapAnnouncementKind({

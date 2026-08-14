@@ -701,6 +701,11 @@ Status: Implemented locally; replacement production smoke pending. Reproduced by
   claim the rail when the authoritative phase is already `counting`. The
   candidate now suppresses that ambient only for counting and leaves real
   pre-deal and post-count next-hand transitions intact.
+- The next smoke showed that the first client paint has no local Cribbage state
+  yet, so phase-aware suppression alone still allowed one inferred bootstrap
+  notice. Bootstrap now remains silent until an authoritative phase arrives;
+  the acceptable tradeoff is a brief blank rail on a slow load, never a
+  misleading next-hand announcement.
 
 ### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
 

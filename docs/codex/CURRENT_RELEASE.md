@@ -20,6 +20,11 @@ Date: 2026-08-13
   interval. An authoritative `counting` phase now suppresses every bootstrap
   rail message; the counting cursor remains the sole announcement owner until
   the current combo is restored.
+- A replacement smoke still caught that notice for one paint because the
+  component begins with no local Cribbage snapshot at all. Bootstrap now emits
+  no rail message until an authoritative phase has arrived, so it cannot infer
+  a next-hand state from absence. A slow initial load may leave the rail briefly
+  blank; gameplay and the explicit live next-hand transition are unchanged.
 - Focused cursor/announcement tests, TypeScript, and the production Vite build
 pass locally. Replacement production refresh and disconnect/reconnect smoke
 during a highlighted counting combo remain required.

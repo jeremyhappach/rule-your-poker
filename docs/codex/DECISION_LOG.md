@@ -536,6 +536,11 @@ an ambient pre-deal/next-hand announcement when the authoritative phase is
 `counting`: the resumed counting cursor is the sole rail owner until its active
 combo is published.
 
+Before the first authoritative snapshot, bootstrap must likewise remain silent:
+absence of a local Cribbage state is not evidence of a next-hand lifecycle.
+This may leave a slow-loading rail blank briefly, but cannot produce a false
+phase announcement.
+
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission
