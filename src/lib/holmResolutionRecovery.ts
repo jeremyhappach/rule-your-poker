@@ -1,5 +1,3 @@
-import { isHolmChuckyLossResult } from './canonicalShell/holmTransferPresentationStage';
-
 export interface HolmResolutionRecoveryInput {
   gameId: string | null | undefined;
   gameType: string | null | undefined;
@@ -11,26 +9,26 @@ export interface HolmResolutionRecoveryInput {
   participantPresent: boolean;
 }
 
-export interface HolmChuckyLossContinuationInput {
+export interface HolmContinuationInput {
   gameId: string | null | undefined;
   gameType: string | null | undefined;
   gameStatus: string | null | undefined;
+  gamePaused: boolean | null | undefined;
   dealerGameId: string | null | undefined;
   roundId: string | null | undefined;
   roundStatus: string | null | undefined;
   handNumber: number | null | undefined;
-  transferCursor: number | null | undefined;
   awaitingNextRound: boolean;
   lastRoundResult: string | null | undefined;
   participantPresent: boolean;
 }
 
-export interface HolmChuckyLossReconnectIdentity {
+export interface HolmContinuationReconnectIdentity {
   dealerGameId: string | null;
   roundId: string | null;
 }
 
-export type HolmChuckyLossContinuationSource =
+export type HolmContinuationSource =
   | 'historical-entry'
   | 'realtime-reconnect'
   | null;
@@ -59,39 +57,40 @@ export function getHolmResolutionRecoveryKey({
 }
 
 /**
- * Exact predecessor identity for a Chucky-loss continuation. A fresh mount or
- * realtime reconnect may reconcile an already-committed transfer without
- * replaying it; that client may request the same idempotent successor RPC
- * directly instead of waiting for a batch-settled callback that cannot recur.
+ * Exact predecessor identity for any committed continuing Holm result. A
+ * fresh mount or realtime reconnect may reconcile an already-committed result
+ * without replaying its immutable transfer batch; that client may request the
+ * same idempotent successor RPC directly instead of waiting for a
+ * batch-settled callback that cannot recur.
  */
-export function getHolmChuckyLossContinuationKey({
+export function getHolmContinuationKey({
   gameId,
   gameType,
   gameStatus,
+  gamePaused,
   dealerGameId,
   roundId,
   roundStatus,
   handNumber,
-  transferCursor,
   awaitingNextRound,
   lastRoundResult,
   participantPresent,
-}: HolmChuckyLossContinuationInput): string | null {
+}: HolmContinuationInput): string | null {
   if (!gameId || gameType !== 'holm-game' || gameStatus !== 'in_progress') return null;
+  if (gamePaused) return null;
   if (!dealerGameId || !roundId || roundStatus !== 'completed') return null;
   if (!Number.isInteger(handNumber) || (handNumber ?? 0) <= 0) return null;
-  if (!Number.isInteger(transferCursor) || (transferCursor ?? 0) <= 0) return null;
-  if (!awaitingNextRound || !participantPresent || !isHolmChuckyLossResult(lastRoundResult)) return null;
-  return `${gameId}:${dealerGameId}:${roundId}:h${handNumber}:c${transferCursor}`;
+  if (!awaitingNextRound || !participantPresent || !lastRoundResult?.trim()) return null;
+  return `${gameId}:${dealerGameId}:${roundId}:h${handNumber}`;
 }
 
 /**
- * A loss observed live must finish through presentation. The only direct
+ * A result observed live must finish through presentation. The only direct
  * continuation exceptions are a historical entry (whose immutable batch the
  * ledger intentionally baselines) or an authoritative reconnect snapshot for
  * this exact dealer-game/round identity.
  */
-export function getHolmChuckyLossContinuationSource({
+export function getHolmContinuationSource({
   observedLive,
   dealerGameId,
   roundId,
@@ -100,8 +99,8 @@ export function getHolmChuckyLossContinuationSource({
   observedLive: boolean;
   dealerGameId: string;
   roundId: string;
-  reconnectIdentity: HolmChuckyLossReconnectIdentity | null;
-}): HolmChuckyLossContinuationSource {
+  reconnectIdentity: HolmContinuationReconnectIdentity | null;
+}): HolmContinuationSource {
   if (!observedLive) return 'historical-entry';
   if (
     reconnectIdentity?.dealerGameId === dealerGameId

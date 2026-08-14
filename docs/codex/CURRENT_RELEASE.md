@@ -1,6 +1,37 @@
 # Current release and cutover state
 
-Date: 2026-08-13
+Date: 2026-08-14
+
+## Holm presented-hand continuation correction
+
+- The first live smoke after database-owned multiplayer resolution settled
+  hand 2 and prepared hidden hand 3 correctly, but both browsers appeared
+  frozen for roughly 25 seconds. `Game.tsx` kept the official presentation
+  round on hand 2 while its separate card fetch selected the newest round in
+  the dealer game, which was already hand 3. The presentation identity gate
+  correctly rejected those successor cards, leaving no stayed-player cards to
+  open the showdown reveal and transfer stages. The service fallback later
+  activated hand 3. The authoritative transfers and balances had already
+  committed exactly once; no balance repair or production-session mutation is
+  required.
+- Holm card hydration now selects the exact published
+  `(dealer_game_id, games.total_hands, games.current_round)` identity. A
+  prepared successor and its cards remain invisible until activation advances
+  the published hand. Missing published identity fails closed instead of
+  falling back to a newest-round query.
+- This correction preserves the existing render owners rather than latching a
+  screen position: multiplayer stayed cards remain tabled through their
+  canonical seat clusters beside the chip stacks (including self when
+  applicable), solo cards remain in the dedicated tabled-self area before
+  Chucky appears, the private self-hand region relinquishes ownership, and
+  folded cards remain hidden.
+- Historical-entry and exact realtime-reconnect recovery now covers every
+  completed continuing Holm result, including decisive/partial showdowns,
+  solo or multi-player Chucky losses/ties, and zero-transfer all-fold results.
+  Uninterrupted live play still waits for canonical presentation completion;
+  paused and terminal games remain ineligible. The 88-test focused Holm and
+  mandatory Cribbage suite, TypeScript, and the production Vite build pass.
+  Production smoke remains required.
 
 ## Holm database-owned multiplayer resolution hardening
 
@@ -24,8 +55,8 @@ Date: 2026-08-13
 - Production rollback proofs passed authorization, winner, tie, duplicate and
   late replay, terminal, all-fold, legacy recovery, and the real final-action
   path. Focused Holm tests, TypeScript, and the Vite production-mode build
-  pass. Vercel publication and Jeremy's live two-player Holm smoke remain
-  required.
+  passed. Vercel publication completed; Jeremy's live two-player Holm smoke
+  exposed the client presentation mismatch documented above.
 
 ## Cribbage counting rejoin announcement
 

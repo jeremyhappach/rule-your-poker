@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  getHolmChuckyLossContinuationKey,
-  getHolmChuckyLossContinuationSource,
+  getHolmContinuationKey,
+  getHolmContinuationSource,
   getHolmResolutionRecoveryKey,
 } from './holmResolutionRecovery';
 
@@ -35,41 +35,53 @@ describe('getHolmResolutionRecoveryKey', () => {
   });
 });
 
-describe('getHolmChuckyLossContinuationKey', () => {
-  const chuckyLoss = {
+describe('getHolmContinuationKey', () => {
+  const continuingResult = {
     gameId: 'game-1',
     gameType: 'holm-game',
     gameStatus: 'in_progress',
+    gamePaused: false,
     dealerGameId: 'dealer-1',
     roundId: 'round-3',
     roundStatus: 'completed',
     handNumber: 3,
-    transferCursor: 5,
     awaitingNextRound: true,
-    lastRoundResult: 'Chucky beat Player with One Pair. -$8',
+    lastRoundResult: 'Player won showdown and continues vs Chucky.',
     participantPresent: true,
   };
 
-  it('keys an exact committed loss for historical/reconnect continuation', () => {
-    expect(getHolmChuckyLossContinuationKey(chuckyLoss)).toBe(
-      'game-1:dealer-1:round-3:h3:c5',
+  it('keys the exact committed predecessor for historical/reconnect continuation', () => {
+    expect(getHolmContinuationKey(continuingResult)).toBe(
+      'game-1:dealer-1:round-3:h3',
+    );
+  });
+
+  it.each([
+    'Player won showdown and continues vs Chucky.',
+    'Players tied the showdown and continue vs Chucky.',
+    'Chucky beat Player with One Pair. -$8',
+    'Chucky tied the remaining players. Stakes continue.',
+    'Everyone folded. Pussy Tax resolved; next hand prepared.',
+  ])('admits every continuing result shape, including zero-transfer results: %s', (lastRoundResult) => {
+    expect(getHolmContinuationKey({ ...continuingResult, lastRoundResult })).toBe(
+      'game-1:dealer-1:round-3:h3',
     );
   });
 
   it.each([
     { awaitingNextRound: false },
     { roundStatus: 'betting' },
-    { transferCursor: null },
+    { gamePaused: true },
     { participantPresent: false },
-    { lastRoundResult: 'Player beat Chucky with Two Pair! Won $8' },
+    { lastRoundResult: '' },
   ])('rejects a non-recovery continuation state %#', (override) => {
-    expect(getHolmChuckyLossContinuationKey({ ...chuckyLoss, ...override })).toBeNull();
+    expect(getHolmContinuationKey({ ...continuingResult, ...override })).toBeNull();
   });
 });
 
-describe('getHolmChuckyLossContinuationSource', () => {
+describe('getHolmContinuationSource', () => {
   it('recovers a historical entry whose committed batch cannot replay', () => {
-    expect(getHolmChuckyLossContinuationSource({
+    expect(getHolmContinuationSource({
       observedLive: false,
       dealerGameId: 'dealer-1',
       roundId: 'round-3',
@@ -78,13 +90,13 @@ describe('getHolmChuckyLossContinuationSource', () => {
   });
 
   it('recovers only the exact live round from an authoritative reconnect', () => {
-    expect(getHolmChuckyLossContinuationSource({
+    expect(getHolmContinuationSource({
       observedLive: true,
       dealerGameId: 'dealer-1',
       roundId: 'round-3',
       reconnectIdentity: { dealerGameId: 'dealer-1', roundId: 'round-3' },
     })).toBe('realtime-reconnect');
-    expect(getHolmChuckyLossContinuationSource({
+    expect(getHolmContinuationSource({
       observedLive: true,
       dealerGameId: 'dealer-1',
       roundId: 'round-4',
@@ -92,8 +104,8 @@ describe('getHolmChuckyLossContinuationSource', () => {
     })).toBeNull();
   });
 
-  it('leaves an uninterrupted live loss owned by presentation completion', () => {
-    expect(getHolmChuckyLossContinuationSource({
+  it('leaves an uninterrupted live result owned by presentation completion', () => {
+    expect(getHolmContinuationSource({
       observedLive: true,
       dealerGameId: 'dealer-1',
       roundId: 'round-3',
