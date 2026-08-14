@@ -1,5 +1,5 @@
 -- Rollback-only proof for durable Holm Chucky-loss successor preparation,
--- presentation activation, fallback recovery, authorization, and replay.
+-- server-owned presentation release, authorization, Buck identity, and replay.
 BEGIN;
 
 DO $proof$
@@ -31,7 +31,13 @@ BEGIN
   IF has_function_privilege('anon', 'public.prepare_next_holm_hand(uuid,uuid)', 'EXECUTE')
      OR NOT has_function_privilege('authenticated', 'public.prepare_next_holm_hand(uuid,uuid)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.activate_prepared_holm_hand(uuid,uuid,uuid,boolean)', 'EXECUTE')
-     OR NOT has_function_privilege('authenticated', 'public.activate_prepared_holm_hand(uuid,uuid,uuid,boolean)', 'EXECUTE') THEN
+     OR has_function_privilege('authenticated', 'public.activate_prepared_holm_hand(uuid,uuid,uuid,boolean)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.activate_prepared_holm_hand(uuid,uuid,uuid,boolean)', 'EXECUTE')
+     OR NOT EXISTS (
+       SELECT 1 FROM cron.job
+       WHERE jobname = 'release-due-holm-presentations-1s'
+         AND schedule = '1 second'
+     ) THEN
     RAISE EXCEPTION 'holm_durable_continuation_proof:grants_invalid';
   END IF;
 
@@ -114,15 +120,16 @@ BEGIN
     RAISE EXCEPTION 'holm_durable_continuation_proof:unauthorized_activation_accepted';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'holm_durable_continuation_proof:unauthorized_activation_accepted'
-       OR SQLERRM NOT LIKE '%activate_prepared_holm_hand:not_participant%' THEN
+       OR SQLERRM NOT LIKE '%activate_prepared_holm_hand:server_only%' THEN
       RAISE;
     END IF;
   END;
 
   UPDATE public.games SET is_paused = true WHERE id = v_game_id;
-  PERFORM set_config('request.jwt.claim.sub', v_users[1]::text, true);
-  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_users[1], 'role', 'authenticated')::text, true);
-  SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, false) INTO v_result;
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', 'service_role', true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('role', 'service_role')::text, true);
+  SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, true) INTO v_result;
   IF v_result->>'reason' <> 'game-paused'
      OR (SELECT status FROM public.rounds WHERE id = v_successor_id) <> 'dealing' THEN
     RAISE EXCEPTION 'holm_durable_continuation_proof:paused_activation_mutated:%', v_result;
@@ -130,6 +137,14 @@ BEGIN
   UPDATE public.games SET is_paused = false WHERE id = v_game_id;
 
   SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, false) INTO v_result;
+  IF v_result->>'reason' <> 'server-release-required' THEN
+    RAISE EXCEPTION 'holm_durable_continuation_proof:nonlease_activation_accepted:%', v_result;
+  END IF;
+
+  UPDATE public.rounds
+  SET presentation_fallback_at = clock_timestamp() - interval '1 second'
+  WHERE id = v_successor_id;
+  SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, true) INTO v_result;
   IF v_result->>'outcome' <> 'activated'
      OR (SELECT status FROM public.rounds WHERE id = v_successor_id) <> 'betting'
      OR (SELECT current_turn_position FROM public.rounds WHERE id = v_successor_id) <> 5
@@ -139,6 +154,14 @@ BEGIN
      OR (SELECT total_hands FROM public.games WHERE id = v_game_id) <> 2
      OR (SELECT buck_position FROM public.games WHERE id = v_game_id) <> 5
      OR (SELECT last_round_result FROM public.games WHERE id = v_game_id) IS NOT NULL
+     OR (SELECT buck_transfer_presentation->>'sessionId' FROM public.games WHERE id = v_game_id) <> v_game_id::text
+     OR (SELECT buck_transfer_presentation->>'dealerGameId' FROM public.games WHERE id = v_game_id) <> v_dealer_game_id::text
+     OR (SELECT buck_transfer_presentation->>'roundId' FROM public.games WHERE id = v_game_id) <> v_successor_id::text
+     OR (SELECT buck_transfer_presentation->>'handContextId' FROM public.games WHERE id = v_game_id) <> v_successor_id::text
+     OR (SELECT (buck_transfer_presentation->>'handNumber')::integer FROM public.games WHERE id = v_game_id) <> 2
+     OR (SELECT buck_transfer_presentation->>'source' FROM public.games WHERE id = v_game_id) <> 'SERVER_BUCK_TRANSFER'
+     OR (SELECT (buck_transfer_presentation->>'fromPosition')::integer FROM public.games WHERE id = v_game_id) <> 1
+     OR (SELECT (buck_transfer_presentation->>'toPosition')::integer FROM public.games WHERE id = v_game_id) <> 5
      OR EXISTS (
        SELECT 1 FROM public.players
        WHERE game_id = v_game_id AND (decision_locked OR current_decision IS NOT NULL)
@@ -146,7 +169,7 @@ BEGIN
     RAISE EXCEPTION 'holm_durable_continuation_proof:activation_not_atomic:%', v_result;
   END IF;
 
-  SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, false) INTO v_replay;
+  SELECT public.activate_prepared_holm_hand(v_game_id, v_round_id, v_successor_id, true) INTO v_replay;
   IF v_replay->>'outcome' <> 'already-active'
      OR (SELECT count(*) FROM public.rounds WHERE game_id = v_game_id) <> 2 THEN
     RAISE EXCEPTION 'holm_durable_continuation_proof:activation_replay_mutated:%', v_replay;
@@ -158,6 +181,11 @@ BEGIN
      OR (v_replay->>'round_id')::uuid <> v_successor_id
      OR (SELECT status FROM public.games WHERE id = v_game_id) <> 'session_ended' THEN
     RAISE EXCEPTION 'holm_durable_continuation_proof:late_replay_mutated_terminal:%', v_replay;
+  END IF;
+
+  UPDATE public.games SET current_game_uuid = gen_random_uuid() WHERE id = v_game_id;
+  IF (SELECT buck_transfer_presentation FROM public.games WHERE id = v_game_id) IS NOT NULL THEN
+    RAISE EXCEPTION 'holm_durable_continuation_proof:dealer_game_boundary_retained_buck_event';
   END IF;
 
   -- A second game proves the service lease, including its not-yet-due guard.
@@ -190,23 +218,18 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', '', true);
   PERFORM set_config('request.jwt.claim.role', 'service_role', true);
   PERFORM set_config('request.jwt.claims', jsonb_build_object('role', 'service_role')::text, true);
-  SELECT public.activate_prepared_holm_hand(
-    v_fallback_game_id, v_fallback_round_id, v_fallback_successor_id, true
-  ) INTO v_result;
-  IF v_result->>'reason' <> 'fallback-not-yet-due' THEN
-    RAISE EXCEPTION 'holm_durable_continuation_proof:early_fallback_accepted:%', v_result;
+  SELECT to_jsonb(private.release_due_holm_presentations()) INTO v_result;
+  IF v_result <> '0'::jsonb THEN
+    RAISE EXCEPTION 'holm_durable_continuation_proof:early_server_release_accepted:%', v_result;
   END IF;
 
   UPDATE public.rounds SET presentation_fallback_at = clock_timestamp() - interval '1 second'
   WHERE id = v_fallback_successor_id;
-  SELECT public.activate_prepared_holm_hand(
-    v_fallback_game_id, v_fallback_round_id, v_fallback_successor_id, true
-  ) INTO v_result;
-  IF v_result->>'outcome' <> 'activated'
-     OR coalesce((v_result->>'from_fallback')::boolean, false) IS NOT TRUE
+  SELECT to_jsonb(private.release_due_holm_presentations()) INTO v_result;
+  IF v_result <> '1'::jsonb
      OR (SELECT status FROM public.rounds WHERE id = v_fallback_successor_id) <> 'betting'
      OR (SELECT awaiting_next_round FROM public.games WHERE id = v_fallback_game_id) IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'holm_durable_continuation_proof:fallback_not_atomic:%', v_result;
+    RAISE EXCEPTION 'holm_durable_continuation_proof:server_release_not_atomic:%', v_result;
   END IF;
 
   -- A terminal game with no successor cannot prepare one.

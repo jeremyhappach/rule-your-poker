@@ -88,6 +88,8 @@ export interface HolmDealOrchestratorProps {
   chuckyCards: CardType[] | null | undefined;
   /** Local presentation boundary for a player-to-pot ante. */
   dispatchAllowed?: boolean;
+  /** Fires at the exact accepted hands-wave transport boundary. */
+  onHandsWaveStarted?: (handContextId: string) => void;
 }
 
 export function HolmDealOrchestrator({
@@ -103,6 +105,7 @@ export function HolmDealOrchestrator({
   soloDeclared,
   chuckyCards,
   dispatchAllowed = true,
+  onHandsWaveStarted,
 }: HolmDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -369,6 +372,7 @@ export function HolmDealOrchestrator({
       },
     });
     holmTimelineResetForHand(handContextId);
+    onHandsWaveStarted?.(handContextId);
     deal.beginDeal(intents.length);
     holmDealDbgRecordWave({
       handContextId,
@@ -397,6 +401,7 @@ export function HolmDealOrchestrator({
   }, [
     deal, ct, handContextId, seats, buckPosition, dealerPosition,
     selfPlayerId, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated, dispatchAllowed,
+    onHandsWaveStarted,
   ]);
 
   // ── 2. COMMUNITY WAVE (4 cards) ───────────────────────────────────

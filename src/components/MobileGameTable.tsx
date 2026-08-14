@@ -152,15 +152,10 @@ function __mgtFlashPersist(row: { game_id: string; event_type: string; payload: 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import {
   recordBucksForensic,
-  recordBucksViolation,
-  evaluateBucksShowRequest,
   notifyBucksShowGranted,
   buildBucksForensicsText,
   getBucksForensics,
 } from "@/lib/canonicalShell/holmBucksOverlayForensics";
-import {
-  releaseBuckPresentationGate,
-} from "@/lib/canonicalShell/holmBuckPresentationGate";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -952,6 +947,10 @@ interface MobileGameTableProps {
   buckTransferPresentation?: {
     id: string;
     sessionId: string;
+    dealerGameId: string;
+    roundId: string;
+    handContextId: string;
+    handNumber: number;
     sequence: number;
     fromPosition: number;
     toPosition: number;
@@ -970,6 +969,8 @@ interface MobileGameTableProps {
   horsesDealerGameId?: string | null;
   /** Active dealer-game (session) UUID for Holm presentation admission gating. */
   holmDealerGameId?: string | null;
+  /** Presentation-owned Holm hand number. */
+  holmHandNumber?: number | null;
   /** Authoritative hand_number of the current round (drives progress vector). */
   horsesHandNumber?: number | null;
   /** 3-5-7 lower-zone trace: authoritative DB current round id from Game.tsx. */
@@ -1019,7 +1020,7 @@ interface MobileGameTableProps {
   chuckyLossPlayerIds?: string[];
   onChuckyLossStarted?: () => void;
   onChuckyLossEnded?: () => void;
-  /** Exact post-result acknowledgement for a durably prepared Holm successor. */
+  /** Releases this client's local predecessor presentation barrier. */
   onHolmContinuationPresentationComplete?: () => void;
   // Holm multi-player showdown animation props (pot-to-winner, then losers-to-pot)
   holmShowdownTriggerId?: string | null;
@@ -1094,6 +1095,8 @@ interface MobileGameTableProps {
    * replay historical animations.
    */
   three57EntryMode?: 'live-transition' | 'historical-entry';
+  /** Persistent-owner Holm identity provenance used to reject historical Buck events. */
+  holmEntryMode?: 'live-transition' | 'historical-entry';
   // Canonical slot-owned waiting content (rendered inside the table container,
   // not as a floating overlay). Used by WaitingForPlayersTable to fold the
   // seated-count message into the canonical stage.
@@ -1269,6 +1272,7 @@ export const MobileGameTable = ({
   horsesState,
   horsesDealerGameId,
   holmDealerGameId,
+  holmHandNumber,
   horsesHandNumber,
   threeFiveSevenAuthoritativeRoundId,
   threeFiveSevenAuthoritativeRoundNumber,
@@ -1376,6 +1380,7 @@ export const MobileGameTable = ({
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
   three57EntryMode,
+  holmEntryMode,
 }: MobileGameTableProps) => {
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
@@ -2374,25 +2379,12 @@ export const MobileGameTable = ({
   const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
   const feltBranchCountRef = useRef(0);
 
-  // Buck's on you overlay — event-driven, strictly scoped to handContextId.
-  // SINGLE OWNER. Fires once per handContextId iff: the prior-hand observed
-  // buckPosition existed AND differed AND the new-hand buckPosition === self.
-  // No phase/roundStatus/dealer/announcement/result triggers. No fallback writers.
+  // Buck's on you overlay — event-driven, strictly scoped to the exact
+  // server-authored successor identity and the accepted hands-wave boundary.
   const [activeBuckPresentationId, setActiveBuckPresentationId] = useState<string | null>(null);
-  // Latched server-authored buck-transfer presentation waiting for the
-  // prior-hand teardown boundary before promoting to active (showing
-  // BucksOnYou). Cleared once promoted or once a newer event supersedes.
-  const [pendingBuckPresentation, setPendingBuckPresentation] =
-    useState<{ id: string; hci: string | null } | null>(null);
   // Latch on Buck-transfer event ID (NOT handContextId). Server-authored events
   // carry stable IDs; we render exactly once per ID for the receiving viewer.
   const buckOverlayFiredEventIdRef = useRef<string | null>(null);
-  // The active gated handContextId — retained as no-op for legacy gate
-  // release on overlay completion. Deal is NOT blocked by buck overlay.
-  const buckOverlayGatedHciRef = useRef<string | null>(null);
-  // Retained for legacy forensic shape; no longer used for show eligibility.
-  const priorHandBuckRef = useRef<{ hci: string; buckPosition: number } | null>(null);
-  const buckOverlayFiredForHciRef = useRef<string | null>(null);
 
   
   // Leg earned animation state
@@ -7836,80 +7828,69 @@ export const MobileGameTable = ({
     setShowSweepsPot(true);
   }, [lastRoundResult, gameType, gameId, threeFiveSevenDealerGameScope, handContextId, horsesRoundId, horsesHandNumber, threeFiveSevenTerminalDescriptor]);
 
-  // BUCK'S ON YOU — SINGLE OWNER. Consumes ONLY the server-authored
-  // `buckTransferPresentation` event written in the same DB transaction
-  // that mutates `games.buck_position`. No HCI/phase/position derivation.
-  // Latched on event.id. Stale sessions, duplicate IDs, non-server source,
-  // and recipient!=self are rejected silently (no violation spam).
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
+  // BUCK'S ON YOU — SINGLE OWNER. The event is eligible only for the exact
+  // successor identity currently presented by this live client. Visibility is
+  // then coupled to HolmDealOrchestrator's accepted hands-wave dispatch.
+  const eligibleBuckPresentation = useMemo(() => {
     const ev = buckTransferPresentation;
-    if (!ev || !ev.id) return;
+    const selfPosition = currentPlayer && typeof currentPlayer.position === 'number'
+      ? currentPlayer.position
+      : null;
+    const presentationRoundId = handContextId?.split(':h')[0] ?? null;
+    if (
+      gameType !== 'holm-game'
+      || holmEntryMode !== 'live-transition'
+      || !ev?.id
+      || ev.source !== 'SERVER_BUCK_TRANSFER'
+      || buckOverlayFiredEventIdRef.current === ev.id
+      || !gameId
+      || ev.sessionId !== gameId
+      || !holmDealerGameId
+      || ev.dealerGameId !== holmDealerGameId
+      || !presentationRoundId
+      || ev.roundId !== presentationRoundId
+      || ev.handContextId !== presentationRoundId
+      || ev.handNumber !== holmHandNumber
+      || selfPosition == null
+      || ev.toPosition !== selfPosition
+    ) {
+      return null;
+    }
+    return ev;
+  }, [
+    buckTransferPresentation,
+    currentPlayer,
+    gameId,
+    gameType,
+    handContextId,
+    holmDealerGameId,
+    holmEntryMode,
+    holmHandNumber,
+  ]);
 
-    const selfPos = currentPlayer && typeof currentPlayer.position === 'number'
-      ? currentPlayer.position : null;
-    const sessionId = (currentPlayer as { game_id?: string } | null | undefined)?.game_id ?? null;
+  const handleHolmHandsWaveStarted = useCallback((startedHandContextId: string) => {
+    const ev = eligibleBuckPresentation;
+    if (!ev || startedHandContextId !== handContextId) return;
 
-    // Session scope
-    if (sessionId && ev.sessionId && ev.sessionId !== sessionId) {
-      recordBucksForensic('SHOW_SUPPRESSED', {
-        predicate: 'session-mismatch', eventId: ev.id, evSession: ev.sessionId, selfSession: sessionId,
-      });
-      return;
-    }
-    // Source authority
-    if (ev.source !== 'SERVER_BUCK_TRANSFER') {
-      recordBucksViolation('HOLM_BUCKS_OVERLAY_EVENT_SOURCE_NOT_SERVER', {
-        eventId: ev.id, source: ev.source,
-      });
-      return;
-    }
-    // Duplicate latch
-    if (buckOverlayFiredEventIdRef.current === ev.id) {
-      return;
-    }
-    // Recipient must be self
-    if (selfPos == null || ev.toPosition !== selfPos) {
-      recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
-        eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
-        selfPosition: selfPos, recipientIsSelf: false,
-      });
-      return;
-    }
-
-    // Authoritative: latch event id as PENDING. Promotion to active
-    // (visible overlay) waits for prior-hand teardown boundary.
     buckOverlayFiredEventIdRef.current = ev.id;
     recordBucksForensic('SERVER_BUCK_TRANSFER_RECEIVED', {
-      eventId: ev.id, fromPosition: ev.fromPosition, toPosition: ev.toPosition,
-      selfPosition: selfPos, recipientIsSelf: true,
+      eventId: ev.id,
+      fromPosition: ev.fromPosition,
+      toPosition: ev.toPosition,
+      selfPosition: currentPlayer?.position ?? null,
+      recipientIsSelf: true,
     });
-
-    setPendingBuckPresentation({ id: ev.id, hci: handContextId ?? null });
-    recordBucksForensic('LATCH_SET', {
-      eventId: ev.id, handContextId: handContextId ?? null,
-      predicate: 'BUCKS_PENDING_AWAITING_TEARDOWN',
+    setActiveBuckPresentationId(ev.id);
+    notifyBucksShowGranted({
+      currentHandContextId: startedHandContextId,
+      authoritativeEventId: ev.id,
     });
-  }, [buckTransferPresentation, gameType, currentPlayer, handContextId]);
-
-  // BUCK'S ON YOU — promote PENDING → ACTIVE once prior-hand teardown
-  // boundary is reached. Teardown = community cards no longer mounted
-  // AND no in-flight result announcement. Deal is NOT blocked.
-  useEffect(() => {
-    if (!pendingBuckPresentation) return;
-    if (showCommunityCards) return;
-    if (isShowingAnnouncement) return;
-    // Single-shot promotion.
-    const { id, hci } = pendingBuckPresentation;
-    setPendingBuckPresentation(null);
-    buckOverlayGatedHciRef.current = hci;
-    setActiveBuckPresentationId(id);
-    notifyBucksShowGranted({ currentHandContextId: handContextId ?? null, authoritativeEventId: id });
     recordBucksForensic('SHOW_GRANTED', {
-      eventId: id, handContextId: handContextId ?? null,
-      predicate: 'BUCKS_OVERLAY_SHOWN_AFTER_TEARDOWN',
+      eventId: ev.id,
+      handContextId: startedHandContextId,
+      predicate: 'BUCKS_OVERLAY_SHOWN_AT_HANDS_WAVE_START',
     });
-  }, [pendingBuckPresentation, showCommunityCards, isShowingAnnouncement, handContextId]);
+  }, [currentPlayer?.position, eligibleBuckPresentation, handContextId]);
 
 
 
@@ -11297,6 +11278,7 @@ export const MobileGameTable = ({
       <>
         <HolmDealOrchestrator
           handContextId={handContextId}
+          onHandsWaveStarted={handleHolmHandsWaveStarted}
           seats={players.filter(p => p.status === 'active' && !p.sitting_out).map(p => ({ playerId: p.id, position: p.position }))}
           buckPosition={buckPosition}
           dealerPosition={dealerPosition}
@@ -11990,24 +11972,14 @@ export const MobileGameTable = ({
               });
               return;
             }
-            const gatedHci = buckOverlayGatedHciRef.current;
             recordBucksForensic('DISMISSED', {
               ownerFile: 'src/components/MobileGameTable.tsx',
               ownerComponent: 'MobileGameTable',
               ownerBranch: 'BucksOnYouAnimation.onComplete',
               handContextId: handContextId ?? null,
-              gatedHci,
               completedId,
             });
-            // Single state transition: clear active id + release gate.
             setActiveBuckPresentationId(null);
-            if (gatedHci) {
-              releaseBuckPresentationGate(gatedHci);
-              buckOverlayGatedHciRef.current = null;
-              recordBucksForensic('LATCH_CLEARED', {
-                handContextId: gatedHci, predicate: 'BUCKS_GATE_RELEASED',
-              });
-            }
           }}
         />
 

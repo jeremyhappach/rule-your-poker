@@ -22,16 +22,20 @@ describe('Game Holm Chucky-loss presentation ownership', () => {
     expect(lossDispatchSection).toContain('return;');
   });
 
-  it('prepares the successor before presentation and activates it after the canonical batch settles', () => {
-    expect(source).toContain('prepareNextHolmRound(gameId, roundId)');
-    expect(source).toContain('activatePreparedHolmRound(gameId, roundId, prepared.round_id!)');
+  it('holds only local presentation while PostgreSQL owns successor release', () => {
+    expect(source).toContain('holmPresentationBarrierRef.current = {');
+    expect(source).toContain('Buffered authoritative successor behind local predecessor');
+    expect(source).toContain("releaseHolmPresentationBarrier('transfer-ledger-settled')");
+    expect(source).toContain('? holmView.lastRoundResult');
+    expect(source).toContain("? (holmView.roundStatus === 'completed' && !!holmView.lastRoundResult)");
     expect(source).toContain(
       'onChuckyLossEnded={isInProgress ? handleHolmChuckyLossPresentationComplete : undefined}',
     );
     expect(source).toContain(
       'onHolmContinuationPresentationComplete={isInProgress ? handleHolmContinuationPresentationComplete : undefined}',
     );
-    expect(source).toContain("'presentation-settled'");
-    expect(source).not.toContain("void proceedToNextHolmRound(gameId, roundId)\n      .catch");
+    expect(source).not.toContain('prepareNextHolmRound(');
+    expect(source).not.toContain('activatePreparedHolmRound(');
+    expect(source).not.toContain('proceedToNextHolmRound(');
   });
 });

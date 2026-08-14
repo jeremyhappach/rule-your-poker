@@ -2,6 +2,34 @@
 
 Date: 2026-08-14
 
+## Holm server-owned continuation and ordered presentation
+
+- Production inspection proved the existing 20-second "service fallback" was
+  not operationally server-owned: `enforce-deadlines` was invoked by a browser
+  poller, and no deployed cron job called either Holm activation path. A table
+  with every client disconnected could therefore remain prepared forever.
+- Migration `20260814130000_holm_server_owned_presentation_release.sql` is
+  installed on owned production. Settlement still prepares one exact
+  non-actionable successor, but a one-second PostgreSQL cron worker now
+  publishes it after a nine-second durable lease. Activation and the legacy
+  proceed RPC are service-only, release-due-only, replay-safe, pause-aware, and
+  terminal-aware; no client action can advance authoritative Holm state.
+- Each client that actually observed the predecessor in live betting holds its
+  own Holm presentation snapshot until its final canonical result/transfer
+  paint completes. A faster server snapshot is buffered from the presentation
+  owner only; tabled showdown cards stay beside the applicable chip stacks/self
+  and solo cards stay in the tabled area. Fresh mounts admit current authority
+  immediately instead of replaying historical results.
+- Buck events now carry exact session, dealer-game, round, hand-context, and
+  hand-number identity. The recipient shows `Buck's on you` only when the
+  matching live hand's accepted hands-wave transport starts. Dealer-game
+  changes clear any prior Buck event.
+- The deployed rollback suite passes winner, tie, duplicate, replay,
+  late-replay, authorization, pause, continuation, terminal-state, exact Buck
+  identity, and no-client worker cases. Eight focused tests, TypeScript, and the
+  Vite production build pass. The reported Dire Wolf game remains paused and
+  unmodified; production smoke remains required.
+
 ## Holm presented-hand continuation correction
 
 - The first live smoke after database-owned multiplayer resolution settled
@@ -10,8 +38,8 @@ Date: 2026-08-14
   round on hand 2 while its separate card fetch selected the newest round in
   the dealer game, which was already hand 3. The presentation identity gate
   correctly rejected those successor cards, leaving no stayed-player cards to
-  open the showdown reveal and transfer stages. The service fallback later
-  activated hand 3. The authoritative transfers and balances had already
+  open the showdown reveal and transfer stages. The browser-invoked fallback
+  later activated hand 3. The authoritative transfers and balances had already
   committed exactly once; no balance repair or production-session mutation is
   required.
 - Holm card hydration now selects the exact published
@@ -25,13 +53,9 @@ Date: 2026-08-14
   applicable), solo cards remain in the dedicated tabled-self area before
   Chucky appears, the private self-hand region relinquishes ownership, and
   folded cards remain hidden.
-- Historical-entry and exact realtime-reconnect recovery now covers every
-  completed continuing Holm result, including decisive/partial showdowns,
-  solo or multi-player Chucky losses/ties, and zero-transfer all-fold results.
-  Uninterrupted live play still waits for canonical presentation completion;
-  paused and terminal games remain ineligible. The 88-test focused Holm and
-  mandatory Cribbage suite, TypeScript, and the production Vite build pass.
-  Production smoke remains required.
+- The follow-up server-owned continuation release above replaces client
+  activation/reconnect recovery. Every browser now orders only its own
+  presentation, while PostgreSQL advances independently of every connection.
 
 ## Holm database-owned multiplayer resolution hardening
 

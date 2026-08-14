@@ -564,3 +564,23 @@ All-fold and solo-vs-Chucky outcomes retain their existing atomic action
 owners. A service-only worker may replay the same resolver for a legacy
 all-decisions-in multi-player hand, never invent a result or use a timer as the
 normal resolution path.
+
+## D-049 - Holm authority advances without a client; presentation remains per-client
+
+A continuing Holm settlement prepares one exact non-actionable successor, and
+PostgreSQL publishes it after a durable server-owned lease. Public clients may
+neither activate that successor nor use the legacy proceed path. A database
+cron worker is the normal release owner, so simultaneous disconnects cannot
+strand the dealer game; duplicate jobs and late calls remain replay-safe.
+
+Each browser may independently retain the completed predecessor until its own
+canonical result and transfer presentation settles. This barrier holds the
+existing Holm presentation snapshot and card-placement caches rather than
+moving or re-latching cards: multiplayer showdown cards remain tabled at the
+applicable seat/self cluster, and solo cards remain in the tabled area. A fresh
+mount creates no predecessor barrier and admits current authority directly.
+
+A Holm Buck presentation event is scoped to exact session, dealer game, round,
+hand context, and hand number. Only its receiving player may display it, only
+for a live transition, and only at the accepted hands-wave transport start.
+Changing dealer games clears the event so a previous game cannot replay it.
