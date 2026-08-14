@@ -101,7 +101,9 @@ BEGIN
   IF has_function_privilege('anon', 'public.cribbage_release_counting(uuid,boolean)', 'EXECUTE')
      OR NOT has_function_privilege('authenticated', 'public.cribbage_release_counting(uuid,boolean)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.cribbage_complete_counting(uuid)', 'EXECUTE')
-     OR NOT has_function_privilege('authenticated', 'public.cribbage_complete_counting(uuid)', 'EXECUTE') THEN
+     OR NOT has_function_privilege('authenticated', 'public.cribbage_complete_counting(uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.cribbage_record_counting_progress(uuid,integer,integer)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.cribbage_record_counting_progress(uuid,integer,integer)', 'EXECUTE') THEN
     RAISE EXCEPTION 'cribbage_lazy_successor_proof:grants_invalid';
   END IF;
 
@@ -150,9 +152,37 @@ BEGIN
     RAISE EXCEPTION 'cribbage_lazy_successor_proof:finalize_created_or_mis-scored_successor:%', v_result;
   END IF;
 
+  -- Reconnect cursor writes are authenticated, monotonic, and mutate only the
+  -- cursor. A stale client cannot replace the ready resolution or move the
+  -- sequence backward after another client has advanced it.
+  SELECT public.cribbage_record_counting_progress(v_round_id, 0, 0) INTO v_result;
+  SELECT public.cribbage_record_counting_progress(v_round_id, 1, -1) INTO v_replay;
+  IF v_result->>'outcome' <> 'advanced'
+     OR v_replay->>'outcome' <> 'advanced'
+     OR (SELECT cribbage_state -> 'countingResolution' ->> 'outcome' FROM public.rounds WHERE id = v_round_id) <> 'ready'
+     OR (SELECT cribbage_state ->> 'countingTargetIndex' FROM public.rounds WHERE id = v_round_id) <> '1'
+     OR (SELECT cribbage_state ->> 'countingBeatIndex' FROM public.rounds WHERE id = v_round_id) <> '-1' THEN
+    RAISE EXCEPTION 'cribbage_lazy_successor_proof:cursor_advance_mutated_resolution:%/%', v_result, v_replay;
+  END IF;
+  SELECT public.cribbage_record_counting_progress(v_round_id, 0, 0) INTO v_replay;
+  IF v_replay->>'outcome' <> 'ignored'
+     OR (SELECT cribbage_state ->> 'countingTargetIndex' FROM public.rounds WHERE id = v_round_id) <> '1'
+     OR (SELECT cribbage_state ->> 'countingBeatIndex' FROM public.rounds WHERE id = v_round_id) <> '-1' THEN
+    RAISE EXCEPTION 'cribbage_lazy_successor_proof:cursor_regressed:%', v_replay;
+  END IF;
+
   -- Unauthorized callers cannot release the scored hand.
   PERFORM set_config('request.jwt.claim.sub', v_unauthorized_id::text, true);
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_unauthorized_id, 'role', 'authenticated')::text, true);
+  BEGIN
+    PERFORM public.cribbage_record_counting_progress(v_round_id, 1, 0);
+    RAISE EXCEPTION 'cribbage_lazy_successor_proof:unauthorized_cursor_accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'cribbage_lazy_successor_proof:unauthorized_cursor_accepted'
+       OR SQLERRM NOT LIKE '%cribbage_record_counting_progress:caller_not_in_session%' THEN
+      RAISE;
+    END IF;
+  END;
   BEGIN
     PERFORM public.cribbage_release_counting(v_round_id, false);
     RAISE EXCEPTION 'cribbage_lazy_successor_proof:unauthorized_release_accepted';

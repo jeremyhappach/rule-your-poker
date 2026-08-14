@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
+import { getCountingResumeCursorFromElapsed, type CountingTimelineBeat } from '@/lib/cribbage/countingResume';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -693,12 +694,8 @@ export const CribbageCountingPhase = ({
   // Each beat has a duration. Cumulative start times let us binary-search
   // elapsed time → current beat in O(n) at mount.
 
-  type BeatType = 'enter' | 'initial' | 'combo' | 'zero' | 'total' | 'exit' | 'complete';
-  interface Beat {
-    type: BeatType;
-    targetIndex: number;
-    comboIndex: number; // -1 for non-combo beats
-    durationMs: number;
+  interface Beat extends CountingTimelineBeat {
+    // -1 for non-combo beats
     /** Points this beat awards (only for 'combo' type) */
     points: number;
     /** Player who receives points */
@@ -797,6 +794,13 @@ export const CribbageCountingPhase = ({
 
     const hasPersistedProgress = persistedTargetIndex != null && persistedTargetIndex > 0;
     const hasPersistedBeat = persistedBeatIndex != null && persistedBeatIndex > -1;
+    const hasPersistedCursor = hasPersistedProgress || hasPersistedBeat;
+    const elapsedMs = countingStartedAt
+      ? Math.max(0, Date.now() - new Date(countingStartedAt).getTime())
+      : 0;
+    const timeFallbackCursor = !hasPersistedCursor && countingStartedAt
+      ? getCountingResumeCursorFromElapsed(buildBeatTimeline().beats, elapsedMs - 2_000)
+      : null;
 
     // TERMINAL-SNAPSHOT GUARD:
     // If the authoritative cribbage state has already resolved this hand
@@ -819,13 +823,18 @@ export const CribbageCountingPhase = ({
         skipIsTerminal: true,
         baselineScores,
       });
-    } else if ((hasPersistedProgress || hasPersistedBeat) && !skipAheadAppliedRef.current) {
-      const pTargetIdx = persistedTargetIndex ?? 0;
-      const pBeatIdx = persistedBeatIndex ?? -1;
-      const { beats, targets: targetTimelines, totalDuration } = buildBeatTimeline();
+    } else if ((hasPersistedCursor || timeFallbackCursor) && !skipAheadAppliedRef.current) {
+      const pTargetIdx = hasPersistedCursor
+        ? persistedTargetIndex ?? 0
+        : timeFallbackCursor!.targetIndex;
+      const pBeatIdx = hasPersistedCursor
+        ? persistedBeatIndex ?? -1
+        : timeFallbackCursor!.beatIndex;
+      const resumeSource = hasPersistedCursor ? 'persisted_progress' : 'time_fallback';
+      const { targets: targetTimelines } = buildBeatTimeline();
 
       // Terminal check: if persisted target is beyond all targets, skip to completion
-      if (pTargetIdx >= targetTimelines.length) {
+      if (timeFallbackCursor?.complete || pTargetIdx >= targetTimelines.length) {
         skipIsTerminal = true;
       } else {
 
@@ -850,7 +859,7 @@ export const CribbageCountingPhase = ({
         if (pBeatIdx <= -1) {
           // Still entering
           skipComboIndex = -1;
-          skipPhase = 'entering';
+          skipPhase = timeFallbackCursor?.phase ?? 'entering';
         } else if (pBeatIdx === 0) {
           // At first combo, start scoring
           skipComboIndex = 0;
@@ -877,7 +886,7 @@ export const CribbageCountingPhase = ({
       });
 
       logCountingDebug('crib:counting_resume_skip_compute', {
-        source: 'persisted_progress',
+        source: resumeSource,
         persistedTargetIndex: pTargetIdx,
         persistedBeatIndex: pBeatIdx,
         persistedHandKey: persistedHandKey ?? null,
@@ -888,29 +897,6 @@ export const CribbageCountingPhase = ({
         skipIsTerminal,
         baselineScores,
         baselineScoresUsed: { ...scoresToInit },
-      });
-
-      skipAheadAppliedRef.current = true;
-    } else if (countingStartedAt && !skipAheadAppliedRef.current) {
-      // Fallback: time-based skip for cases where persisted progress is 0/0
-      // (i.e., the writing client hasn't advanced yet but time has elapsed)
-      const rawElapsed = Date.now() - new Date(countingStartedAt).getTime();
-      const elapsedMs = Math.max(0, rawElapsed);
-      const PRE_DELAY = 2000;
-      const timeIntoAnimation = elapsedMs - PRE_DELAY;
-      const { totalDuration } = buildBeatTimeline();
-
-      if (timeIntoAnimation >= totalDuration && totalDuration > 0) {
-        skipIsTerminal = true;
-      }
-
-      logCountingDebug('crib:counting_resume_skip_compute', {
-        source: 'time_fallback',
-        elapsedMs,
-        timeIntoAnimation,
-        totalDuration,
-        skipIsTerminal,
-        baselineScores,
       });
 
       skipAheadAppliedRef.current = true;

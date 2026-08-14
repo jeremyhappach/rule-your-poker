@@ -2,6 +2,25 @@
 
 Date: 2026-08-13
 
+## Cribbage counting rejoin cursor
+
+- During the visible count, a refreshing or returning client could bootstrap at
+  the initial beat when no browser had yet persisted progress, then lose the
+  rest of the count when the database-owned presentation lease released the
+  successor. The count start anchor was durable, but the client did not derive
+  a resumable cursor from it.
+- Migration `20260814010000_cribbage_counting_rejoin_cursor.sql` adds
+  `public.cribbage_record_counting_progress`. It advances only the lexicographic
+  `(countingProgressTargetIndex, countingProgressBeatIndex)` tuple under the
+  locked active round; it cannot regress progress or overwrite the finalized
+  score, release lease, or another state field. `CribbageCountingPhase` uses
+  the same database start anchor as a deterministic bootstrap fallback until
+  that cursor arrives.
+- The production rollback proof covers cursor advance, regressive replay,
+  result preservation, and unauthorized calls. Focused resume/progress tests,
+  TypeScript, and the production Vite build pass. Vercel publication and
+  production smoke remain required.
+
 ## Cribbage lazy successor release
 
 - The Aug. 13 counting handoff introduced an eager PostgreSQL successor: the

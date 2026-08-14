@@ -510,6 +510,17 @@ the same after the later fallback lease. Early calls return
 inert. The prepared-row activator is compatibility-only for successors created
 before this decision was corrected.
 
+## D-046 - Cribbage count presentation progress is a monotonic durable cursor
+
+`rounds.cribbage_state` retains the database-owned start anchor and a
+lexicographic `(targetIndex, beatIndex)` cursor for the current visible count.
+The authenticated `cribbage_record_counting_progress` RPC may only advance that
+cursor on the exact active count; it must not replace the full JSON state or
+modify score truth, the release lease, or lifecycle state. A mounting client
+uses the durable cursor when present and derives the equivalent beat from the
+start anchor only while the cursor is still initial. The derived cursor is
+presentation continuity, never a source of gameplay or settlement authority.
+
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission

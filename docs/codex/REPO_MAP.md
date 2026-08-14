@@ -171,6 +171,11 @@ reset transient/presentation state when those identities change.
   `updateCribbageState`; counting resolution and lazy next-hand release are
   owned by `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
   in `supabase/migrations/20260814003750_defer_cribbage_successor_until_release.sql`.
+  `public.cribbage_record_counting_progress` in
+  `supabase/migrations/20260814010000_cribbage_counting_rejoin_cursor.sql`
+  owns the monotonic presentation cursor; `CribbageCountingPhase.tsx` derives
+  a reconnect cursor from the durable count-start anchor only until that
+  cursor is persisted.
   The service-only fallback caller is in
   `supabase/functions/enforce-deadlines/index.ts`.
 - Bots/scoring: `cribbageBotLogic.ts:getBotDiscardIndices` and

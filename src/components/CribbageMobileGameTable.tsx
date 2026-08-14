@@ -6850,42 +6850,26 @@ export const CribbageMobileGameTable = ({
   // Called by CribbageCountingPhase whenever target/combo advances.
   const handleCountingProgressUpdate = useCallback((targetIndex: number, beatIndex: number) => {
     if (!currentRoundId) return;
-    const handKey = countingHandKeyRef.current;
-    
-    // Lightweight DB write — only update the counting progress fields
-    supabase
-      .from('rounds')
-      .select('cribbage_state')
-      .eq('id', currentRoundId)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data?.cribbage_state) return;
-        const state = data.cribbage_state as unknown as CribbageState;
-        // Only write if handKey matches (prevent cross-hand writes)
-        if (state.countingHandKey && state.countingHandKey !== handKey) return;
-        
-        const updated = {
-          ...state,
-          countingTargetIndex: targetIndex,
-          countingBeatIndex: beatIndex,
-        };
-        supabase
-          .from('rounds')
-          .update({ cribbage_state: JSON.parse(JSON.stringify(updated)) })
-          .eq('id', currentRoundId)
-          .then(({ error: writeErr }) => {
-            if (writeErr) console.warn('[CRIBBAGE] Failed to persist counting progress:', writeErr.message);
-          });
-      });
-    
+    const roundId = currentRoundId;
+
+    // PostgreSQL owns the monotonic cursor. Never replace the full persisted
+    // state from a browser snapshot: that could regress a peer's cursor or
+    // erase the durable counting-resolution / presentation lease.
+    void supabase.rpc('cribbage_record_counting_progress' as any, {
+      _round_id: roundId,
+      _target_index: targetIndex,
+      _beat_index: beatIndex,
+    }).then(({ error }) => {
+      if (error) console.warn('[CRIBBAGE] Failed to persist counting progress:', error.message);
+    });
+
     logCribbageDebug(debugCtx, 'counting_progress_write', {
       targetIndex,
       beatIndex,
-      handKey,
-      roundId: currentRoundId,
+      handKey: countingHandKeyRef.current,
+      roundId,
     });
   }, [currentRoundId, debugCtx]);
-
   // Counting presentation is deliberately not a state owner. PostgreSQL has already
   // resolved scores and persisted the successor release lease (or terminal state).
   // This callback releases creation of the next hand only after the visible count.
