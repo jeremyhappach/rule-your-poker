@@ -15462,7 +15462,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             {(!is357WinAnimationActive && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
-              ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
+              // A terminal session is never an unfinished dealer setup. The
+              // former dealer can remain seated after Sitting Out, but must
+              // not regain setup ownership when the session subsequently
+              // closes from post-game waiting.
+              (game.status === 'game_over' && !(game as any).config_complete)
             )) ? (
               <div className="relative">
                 {/* Phase 1: A2 status-keyed sibling table. `!_treatAsCanonicalRoute`
