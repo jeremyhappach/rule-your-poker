@@ -117,7 +117,7 @@ contradictions.
 | Bots | `src/lib/cribbageBotLogic.ts:getBotDiscardIndices`, `getBotPeggingCardIndex`, and `shouldBotCallGo`. |
 | State acceptance | `src/lib/gameStateSync/cribbageProgress.ts:getCribbageProgressFn`. |
 | Settlement | `src/lib/cribbageSettleGame.ts:settleCribbageGame` and `public.cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
-| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; `cribbage_create_next_hand` in `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`; `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
+| RPC seams | `cribbage_apply_discard` in `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; counting resolution/release and the current `cribbage_create_next_hand` wrapper in `supabase/migrations/20260814003750_defer_cribbage_successor_until_release.sql`; `cribbage_settle_game` in `supabase/migrations/20260802001500_atomic_cribbage_terminal_settlement.sql`. |
 
 ### Implemented rules
 

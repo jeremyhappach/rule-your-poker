@@ -6887,8 +6887,8 @@ export const CribbageMobileGameTable = ({
   }, [currentRoundId, debugCtx]);
 
   // Counting presentation is deliberately not a state owner. PostgreSQL has already
-  // resolved scores and prepared (or terminalized) the successor. This callback only
-  // acknowledges that durable result after the visible counting sequence completes.
+  // resolved scores and persisted the successor release lease (or terminal state).
+  // This callback releases creation of the next hand only after the visible count.
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     void _winDetected;
     if (!cribbageState || !dealerGameId) return;
@@ -6989,8 +6989,8 @@ export const CribbageMobileGameTable = ({
         throw new Error(`Unexpected counting-handoff outcome: ${result.outcome}`);
       }
 
-      // Game.tsx exposes the successor only after the server advances games.total_hands.
-      // The browser must never create or write a successor deal.
+      // The release RPC creates the successor and advances games.total_hands in one
+      // transaction. The browser must never create or write a successor deal.
       setCountingStateSnapshot(null);
       setCountingWinFrozen(false);
       setPostCountingTransitionActive(true);

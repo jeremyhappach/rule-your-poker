@@ -3415,6 +3415,10 @@ export type Database = {
         Args: { _round_id: string }
         Returns: Json
       }
+      cribbage_release_counting: {
+        Args: { _from_fallback?: boolean; _round_id: string }
+        Returns: Json
+      }
       cribbage_reconcile_discard_transition: {
         Args: { _round_id: string }
         Returns: Json

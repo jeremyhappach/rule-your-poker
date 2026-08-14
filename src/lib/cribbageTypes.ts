@@ -84,11 +84,12 @@ export interface CribbageCountingPlan {
 
 /** Database-owned result of resolving a completed counting plan. */
 export interface CribbageCountingResolution {
-  version: 1;
-  outcome: 'prepared' | 'active' | 'terminal';
+  version: 1 | 2;
+  outcome: 'ready' | 'prepared' | 'active' | 'terminal';
   resolvedAt: string;
   successorRoundId?: string;
   successorHandNumber?: number;
+  presentationReleaseAt?: string;
   presentationFallbackAt?: string;
 }
 

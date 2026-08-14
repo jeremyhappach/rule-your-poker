@@ -2,25 +2,30 @@
 
 Date: 2026-08-13
 
-## Cribbage counting presentation lease
+## Cribbage lazy successor release
 
-- Production hand 1 in real-money `Aug 13 - Down with Disease` applied the
-  correct count, then jumped from pegging directly into hand 2. The successor
-  was prepared correctly, but `cribbage_complete_counting` let an early or
-  stale browser acknowledgement activate it immediately; the service fallback
-  lease was not involved.
+- The Aug. 13 counting handoff introduced an eager PostgreSQL successor: the
+  trigger resolving Hand N inserted Hand N+1 as `dealing` before the visible
+  count. `Game.tsx` retained the official Hand N pointer, but the child
+  authoritative-state selector still admitted `max(hand_number)`. Both clients
+  therefore switched to the hidden successor and reset presentation before any
+  count could render. The later presentation lease only delayed the official
+  pointer and could not make that already-inserted row invisible.
 - Migration
-  `20260813220000_enforce_cribbage_counting_presentation_lease.sql` makes the
-  server-derived count timeline a hard normal-client release boundary. Before
-  that point the exact successor remains `dealing` and the RPC returns
-  `presentation_pending`; the client preserves the finished count and retries
-  only at the returned release time. The service-only fallback remains later
-  as the disconnect recovery owner. Legacy clients flow through the same
-  protected RPC wrapper.
-- Rollback proofs cover early acknowledgement, tied continuation,
-  authorization, normal release, duplicate and late replay, service fallback,
-  and terminal winner preservation. TypeScript, mandatory Cribbage tests, and
-  the production Vite build pass. Production smoke remains required.
+  `20260814003750_defer_cribbage_successor_until_release.sql` leaves no successor
+  row or next-hand cards behind counting. PostgreSQL applies the score and
+  persists the exact release/fallback lease on Hand N; normal presentation
+  release or the service-only disconnect fallback then creates Hand N+1,
+  player cards, predecessor completion, and the game pointer in one transaction.
+  Already-prepared rows from the superseded implementation remain compatible.
+  The migration is installed on owned production Supabase and
+  `enforce-deadlines` version 7 owns the service-only fallback.
+- The rollback proof covers tied continuation, no pre-release successor,
+  authorization, early acknowledgement, atomic release, duplicate and late
+  replay, service fallback, pause preservation, terminal winner preservation,
+  and legacy prepared-row compatibility. TypeScript, all 27 mandatory Cribbage
+  tests, and the production Vite build pass. Vercel publication and production
+  smoke remain required.
 
 ## Cribbage durable final-discard transition
 

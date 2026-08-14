@@ -470,10 +470,47 @@ serve(async (req) => {
 
     // ============= 3. ENFORCE DECISION DEADLINE (stay/fold) =============
     if (game.status === 'in_progress' || game.status === 'betting') {
-      // Counting has already been resolved and the successor has already been
-      // dealt by PostgreSQL. If every presentation callback disappears, activate
-      // that exact prepared Cribbage hand after its explicit display lease.
+      // Counting score truth is already durable, but current Cribbage hands do
+      // not mint a successor until the visible count releases. If every browser
+      // callback disappears, the service creates and activates that successor
+      // atomically after the explicit fallback lease.
       if (game.game_type === 'cribbage') {
+        const { data: dueReadyRows, error: dueReadyError } = await serviceSupabase
+          .from('rounds')
+          .select('id, presentation_fallback_at')
+          .eq('game_id', gameId)
+          .eq('status', 'betting')
+          .eq('cribbage_state->>phase', 'counting')
+          .eq('cribbage_state->countingResolution->>outcome', 'ready')
+          .not('presentation_fallback_at', 'is', null)
+          .lte('presentation_fallback_at', nowIso)
+          .order('presentation_fallback_at', { ascending: true })
+          .limit(1);
+
+        if (dueReadyError) {
+          console.error('[ENFORCE-CLIENT] Failed to inspect ready Cribbage count:', dueReadyError);
+          actionsTaken.push('Cribbage ready-count inspection failed safely: ' + dueReadyError.message);
+        } else {
+          const dueReady = dueReadyRows?.[0];
+          if (dueReady?.id) {
+            const { data: releaseResult, error: releaseError } = await serviceSupabase.rpc(
+              'cribbage_release_counting',
+              {
+                _round_id: dueReady.id,
+                _from_fallback: true,
+              },
+            );
+            if (releaseError) {
+              console.error('[ENFORCE-CLIENT] Ready Cribbage count recovery failed:', releaseError);
+              actionsTaken.push('Cribbage ready-count recovery failed safely: ' + releaseError.message);
+            } else {
+              actionsTaken.push('Cribbage ready count recovery: ' + JSON.stringify(releaseResult));
+            }
+          }
+        }
+
+        // Compatibility for successors already prepared by the superseded eager
+        // implementation at deploy time.
         const { data: duePreparedRows, error: duePreparedError } = await serviceSupabase
           .from('rounds')
           .select('id, predecessor_round_id, presentation_fallback_at')

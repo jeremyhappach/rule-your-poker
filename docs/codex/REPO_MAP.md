@@ -167,8 +167,12 @@ reset transient/presentation state when those identities change.
   `src/lib/cribbageGameLogic.ts:initializeCribbageGame`, `discardToCrib`,
   `playPeggingCard`, `callGo`, `applyHandCountScores`, and `startNewHand`;
   component action persistence is in `CribbageMobileGameTable.tsx`.
-- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound`,
-  `startNextCribbageHand`, and `updateCribbageState`.
+- Lifecycle: `src/lib/cribbageRoundLogic.ts:startCribbageRound` and
+  `updateCribbageState`; counting resolution and lazy next-hand release are
+  owned by `public.cribbage_finalize_counting` / `public.cribbage_release_counting`
+  in `supabase/migrations/20260814003750_defer_cribbage_successor_until_release.sql`.
+  The service-only fallback caller is in
+  `supabase/functions/enforce-deadlines/index.ts`.
 - Bots/scoring: `cribbageBotLogic.ts:getBotDiscardIndices` and
   `getBotPeggingCardIndex`; `cribbageScoring.ts:evaluateHand`,
   `evaluatePegging`, and `checkHisHeels`; scoring detail expansion is in
@@ -186,9 +190,9 @@ reset transient/presentation state when those identities change.
   fresh terminal mount has no latch and follows the direct-to-lobby path.
   Discard RPC
   `cribbage_apply_discard` is defined by
-  `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`; next-hand RPC
-  `cribbage_create_next_hand` is defined by
-  `supabase/migrations/20260702221620_32c1e1a0-167e-44b3-925f-bb6bd704c760.sql`.
+  `supabase/migrations/20260427222814_cc092d72-fc73-4e06-8d21-d9baccc1bebb.sql`;
+  the current next-hand compatibility wrapper delegates through the lazy
+  counting release migration above.
 - Focused tests: Cribbage deal orchestrator, cards-tab render/measurement,
   Go bubble, pegging Go, artifact descriptor, render guard, stress, and hand
   render invariant tests under `src/components/` and `src/lib/cribbage/`,

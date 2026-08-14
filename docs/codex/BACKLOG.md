@@ -113,6 +113,21 @@ Durable settlement and connected-client terminal presentation are clean.
   cut-card reveal and win presentation. This closes the separate presentation
   defect without reopening the already-proven atomic financial settlement.
 
+### 2B. Cribbage refresh replays the deal and temporarily drops crib backs
+
+Status: Queued; reproduced in real-money cross-country smoke on 2026-08-13.
+
+- Refresh Player 1 after the deal, before or after that player's discard but
+  before pegging. The deal presentation replays even though the authoritative
+  hand identity did not change, and the existing crib card backs disappear.
+  They return only when the other player discards; cut and pegging then proceed.
+- A no-refresh run also reproduced the crib/presentation instability during the
+  same incident window. Treat identity-before-state initialization and crib-back
+  seeding as the suspected presentation boundaries, not as proven causes.
+- Preserve the authoritative deal, committed discards, cut, scores, and the
+  lazy counting successor correction. Reconnect must restore the current hand
+  without replaying a completed deal or hiding already-committed crib cards.
+
 ### 3. Remaining terminal-authority migrations
 
 Yahtzee delivery status: the atomic RPC, identity-only client cutover, and
