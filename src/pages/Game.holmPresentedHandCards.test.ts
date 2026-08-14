@@ -14,18 +14,19 @@ const holmRoundSelection = gameSource.slice(
 );
 
 describe('Game Holm presented-hand card ownership', () => {
-  it('loads the published predecessor hand instead of a newer prepared successor', () => {
+  it('loads the exact per-client selected hand without any latest-round fallback', () => {
     expect(holmRoundSelection).toContain("timedQuery('rounds.holm-presented'");
+    expect(holmRoundSelection).toContain(".eq('id', selectedHolmRound.id)");
     expect(holmRoundSelection).toContain(".eq('dealer_game_id', gameData.current_game_uuid)");
-    expect(holmRoundSelection).toContain(".eq('hand_number', gameData.total_hands)");
-    expect(holmRoundSelection).toContain(".eq('round_number', gameData.current_round)");
+    expect(holmRoundSelection).toContain(".eq('hand_number', selectedHolmRound.hand_number ?? 0)");
+    expect(holmRoundSelection).toContain(".eq('round_number', selectedHolmRound.round_number)");
     expect(holmRoundSelection).not.toContain(".order('hand_number'");
     expect(holmRoundSelection).not.toContain("timedQuery('rounds.holm-latest'");
   });
 
   it('fails closed when the published hand identity is incomplete', () => {
     expect(holmRoundSelection).toContain('holm_branch_skipped_no_published_hand');
-    expect(holmRoundSelection).toContain("skipReason: 'missing-published-hand-identity'");
+    expect(holmRoundSelection).toContain("skipReason: 'missing-client-presentation-identity'");
     expect(holmRoundSelection).toContain('setPlayerCards([])');
   });
 

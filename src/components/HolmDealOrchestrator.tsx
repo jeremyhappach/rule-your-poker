@@ -697,10 +697,12 @@ export function HolmDealPhaseHost({
   handContextId,
   soloDeclared,
   chuckyCount,
+  onPresentationComplete,
 }: {
   handContextId: string;
   soloDeclared: boolean;
   chuckyCount: number;
+  onPresentationComplete?: (handContextId: string) => void;
 }) {
   const deal = useDealRuntime();
   const firedRef = useRef(false);
@@ -721,7 +723,8 @@ export function HolmDealPhaseHost({
 
     firedRef.current = true;
     deal.enterGameplay();
-  }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.readyReleased, deal?.phase]);
+    onPresentationComplete?.(handContextId);
+  }, [deal, handContextId, soloDeclared, chuckyCount, onPresentationComplete, deal?.dealSettled, deal?.readyReleased, deal?.phase]);
   return null;
 }
 

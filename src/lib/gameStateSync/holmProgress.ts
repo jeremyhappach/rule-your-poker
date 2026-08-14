@@ -66,7 +66,7 @@ export interface HolmAuthoritativeSnapshot {
   __syncHandNumber?: number;
 
   // Phase
-  roundStatus: 'betting' | 'processing' | 'showdown' | 'completed';
+  roundStatus: 'dealing' | 'betting' | 'processing' | 'showdown' | 'completed';
 
   // Players & decisions
   players: HolmPlayerSnapshot[];
@@ -94,6 +94,7 @@ export interface HolmAuthoritativeSnapshot {
 // ── Phase ordinal mapping ──────────────────────────────────────
 
 const PHASE_ORDINAL: Record<string, number> = {
+  dealing: -1,
   betting: 0,
   processing: 1,
   showdown: 2,

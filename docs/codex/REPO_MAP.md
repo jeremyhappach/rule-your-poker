@@ -124,10 +124,14 @@ reset transient/presentation state when those identities change.
   `20260814020000_holm_database_resolution_hardening.sql`, which owns card
   evaluation, final reveal, settlement, and successor creation in one
   transaction. `src/lib/holmGameLogic.ts:endHolmRound` can only request that
-  exact resolver; it does not evaluate, settle, or create a hand. The canonical
-  ledger paint acknowledgement in `MobileGameTable.tsx` activates the exact
-  non-actionable successor through the existing
-  `prepare_next_holm_hand` / `activate_prepared_holm_hand` path. The
+  exact resolver; it does not evaluate, settle, or create a hand. Per-client
+  selection of the completed predecessor or its exact prepared successor lives
+  in `src/lib/holmPreparedPresentation.ts`. `HolmDealOrchestrator.tsx` reports
+  the shared deal-ready boundary through `MobileGameTable.tsx`; `Game.tsx`
+  then calls authenticated `public.acknowledge_holm_prepared_hand_dealt`.
+  Migration `20260814190000_holm_acknowledged_presentation_release.sql` owns
+  the private immutable active-human cohort, final-ack publication, and the
+  configurable server-only missing-acknowledgement fallback. The
   service-only `recover_pending_holm_showdowns` call in
   `supabase/functions/enforce-deadlines/index.ts` replays only a legacy
   all-decisions-in multi-player hand. All-fold and solo-vs-Chucky retain their
@@ -152,9 +156,10 @@ reset transient/presentation state when those identities change.
   snapshot unique index in
   `supabase/migrations/20260801013407_1fce27d9-ddff-4616-b08b-0231bcb2d114.sql`.
 - Focused tests: `holmProgress.test.ts`,
+  `holmPreparedPresentation.test.ts`,
+  `holm_acknowledged_presentation_release_proof.sql`,
   `PersistentTableShell.lifecycle.test.tsx`, Holm transport/slot tests under
-  `src/lib/canonicalShell/`, and the harness profiles listed below. There is
-  no focused SQL/settlement behavior test in this checkout.
+  `src/lib/canonicalShell/`, and the harness profiles listed below.
 
 ### Cribbage
 

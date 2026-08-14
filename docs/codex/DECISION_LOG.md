@@ -594,3 +594,29 @@ A Holm Buck presentation event is scoped to exact session, dealer game, round,
 hand context, and hand number. Only its receiving player may display it, only
 for a live transition, and only at the accepted hands-wave transport start.
 Changing dealer games clears the event so a previous game cannot replay it.
+
+## D-050 - Holm normal continuation release is presentation-acknowledged
+
+D-049's fixed server lease remains only as disconnect recovery; it is not the
+normal presentation cadence. A continuing Holm settlement prepares one exact
+non-actionable successor and an immutable cohort of the active human players.
+After a browser finishes the predecessor's canonical presentation, it may deal
+that exact successor locally. At the shared deal-settled/ready boundary it
+acknowledges the full game, dealer-game, predecessor, successor, and hand
+identity for its authenticated player. The last required acknowledgement
+atomically publishes the already-prepared hand and begins its decision clock.
+
+The acknowledgement conveys presentation completion only. It cannot choose
+cards, settle chips, create a successor, or activate a different identity.
+Duplicate and late acknowledgements are replay-safe, and each browser retains
+its own exact predecessor barrier, so a faster client can never make a slower
+client skip unfinished result or chip presentation. A reconnect that did not
+observe the predecessor live enters the prepared successor instead of replaying
+history.
+
+If a required acknowledgement never arrives, PostgreSQL releases the same
+prepared successor after a configurable durable recovery lease. Paused games
+remain paused, terminal games remain terminal, and bot-only/zero-human cohorts
+release server-side. This fallback guarantees authority cannot freeze when all
+clients disconnect without imposing a fixed delay on the connected-client
+normal path.

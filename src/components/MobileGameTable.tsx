@@ -1032,6 +1032,8 @@ interface MobileGameTableProps {
   onHolmContinuationPresentationComplete?: (
     completion: HolmContinuationPresentationCompletion,
   ) => void;
+  /** Exact canonical H2 deal-ready boundary; parent filters prepared identity. */
+  onHolmDealPresentationComplete?: (handContextId: string) => void;
   // Holm multi-player showdown animation props (pot-to-winner, then losers-to-pot)
   holmShowdownTriggerId?: string | null;
   holmShowdownMatchAmount?: number;
@@ -1314,6 +1316,7 @@ export const MobileGameTable = ({
   onChuckyLossStarted,
   onChuckyLossEnded,
   onHolmContinuationPresentationComplete,
+  onHolmDealPresentationComplete,
   holmShowdownTriggerId,
   holmShowdownMatchAmount = 0,
   holmShowdownWinnerIds = [],
@@ -11403,6 +11406,7 @@ export const MobileGameTable = ({
           handContextId={handContextId}
           soloDeclared={!!isSoloVsChucky}
           chuckyCount={(chuckyCards ?? []).length}
+          onPresentationComplete={onHolmDealPresentationComplete}
         />
       </>
     )}

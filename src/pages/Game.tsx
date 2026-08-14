@@ -302,9 +302,14 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
 import {
+  acknowledgePreparedHolmHandDealt,
   startHolmInitialHand,
   endHolmRound,
 } from "@/lib/holmGameLogic";
+import {
+  selectHolmClientPresentationRound,
+  type HolmClientPresentationRoundSelection,
+} from "@/lib/holmPreparedPresentation";
 import {
   getHolmResolutionRecoveryKey,
 } from "@/lib/holmResolutionRecovery";
@@ -503,6 +508,9 @@ interface Round {
   chucky_cards?: any;
   chucky_cards_revealed?: number;
   current_turn_position?: number | null;
+  pending_turn_position?: number | null;
+  holm_predecessor_round_id?: string | null;
+  presentation_fallback_at?: string | null;
   holm_turn_sequence?: number;
   created_at?: string;
   horses_state?: any; // Horses dice game state
@@ -770,7 +778,7 @@ function buildHolmSnapshot(
     gameData.status !== 'session_ended'
   ) return null;
 
-  const roundStatus = (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting';
+  const roundStatus = (currentRound.status as 'dealing' | 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting';
   const rawRevealed = currentRound.community_cards_revealed ?? 0;
 
   // CLAMP FIX: The DB round row may carry community_cards_revealed=4 from the previous
@@ -1606,6 +1614,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // fetch pipeline, but Holm presentation/caches stay on H1 until this exact
   // client settles its final result stage. Fresh mounts never create a hold.
   const holmPresentationBarrierRef = useRef<HolmPresentationBarrier | null>(null);
+  // Exact H2 that this browser is presenting before games.total_hands moves.
+  // It never grants authority; it only binds the deal-ready acknowledgement
+  // to the predecessor/successor identity prepared by PostgreSQL.
+  const holmLocallyPreparedSuccessorRef = useRef<{
+    dealerGameId: string;
+    predecessorRoundId: string;
+    successorRoundId: string;
+    handNumber: number;
+    handContextId: string;
+  } | null>(null);
+  const holmPreparedAckInFlightRef = useRef<string | null>(null);
+  const holmPreparedAckCompletedRef = useRef(new Set<string>());
 
   // OBSERVER REPLAY FIX: Clear any pending ante animation trigger whenever the
   // game leaves the ante_decision phase. Without this, a triggerId set during a
@@ -8719,6 +8739,65 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     releaseHolmPresentationBarrier(completion);
   }, [releaseHolmPresentationBarrier]);
 
+  const handleHolmDealPresentationComplete = useCallback((handContextId: string) => {
+    const prepared = holmLocallyPreparedSuccessorRef.current;
+    if (!gameId || !prepared || prepared.handContextId !== handContextId) return;
+
+    const acknowledgementKey = [
+      gameId,
+      prepared.dealerGameId,
+      prepared.predecessorRoundId,
+      prepared.successorRoundId,
+      prepared.handNumber,
+    ].join('|');
+    if (
+      holmPreparedAckCompletedRef.current.has(acknowledgementKey)
+      || holmPreparedAckInFlightRef.current === acknowledgementKey
+    ) return;
+
+    holmPreparedAckInFlightRef.current = acknowledgementKey;
+    void (async () => {
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          if (attempt > 0) {
+            // Transport retry only. This delay never releases presentation or
+            // starts gameplay; the database recovery lease remains the sole
+            // missing-acknowledgement fallback.
+            await new Promise((resolve) => window.setTimeout(resolve, attempt * 500));
+          }
+          const result = await acknowledgePreparedHolmHandDealt(
+            gameId,
+            prepared.dealerGameId,
+            prepared.predecessorRoundId,
+            prepared.successorRoundId,
+            prepared.handNumber,
+          );
+          holmPreparedAckCompletedRef.current.add(acknowledgementKey);
+          console.log('[HOLM PRESENTATION] Exact prepared deal acknowledged', {
+            ...prepared,
+            outcome: result.outcome,
+            pendingAcknowledgements: result.pending_acknowledgements ?? null,
+          });
+          if (result.outcome === 'activated' || result.outcome === 'already-active') {
+            await fetchGameData('manual');
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      console.error('[HOLM PRESENTATION] Prepared deal acknowledgement delivery failed; server fallback remains armed', {
+        ...prepared,
+        error: lastError,
+      });
+    })().finally(() => {
+      if (holmPreparedAckInFlightRef.current === acknowledgementKey) {
+        holmPreparedAckInFlightRef.current = null;
+      }
+    });
+  }, [gameId]);
+
   // Clear timer when results are shown
   useEffect(() => {
     if (game?.last_round_result) {
@@ -8946,6 +9025,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         : [];
     }
 
+    // Resolve the exact round this browser may present. This is independent
+    // from games.total_hands only while PostgreSQL has prepared a non-actionable
+    // H2. A live H1 barrier always wins; a released or historical H1 admits its
+    // exact prepared successor immediately.
+    let holmPublishedRound: Round | null = null;
+    let holmClientRoundSelection: HolmClientPresentationRoundSelection<Round> | null = null;
+    if (gameData.game_type === 'holm-game' && gameData.current_game_uuid) {
+      holmPublishedRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+        dealerGameId: gameData.current_game_uuid,
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+      });
+      if (holmPublishedRound) {
+        const predecessorHandKey = getHolmPresentationHandKey({
+          dealerGameId: gameData.current_game_uuid,
+          roundId: holmPublishedRound.id,
+          handNumber: holmPublishedRound.hand_number ?? 1,
+        });
+        holmClientRoundSelection = selectHolmClientPresentationRound({
+          rounds: gameData.rounds as Round[],
+          dealerGameId: gameData.current_game_uuid,
+          publishedRound: holmPublishedRound,
+          barrierRoundId: holmPresentationBarrierRef.current?.roundId ?? null,
+          predecessorObservedLive: holmLiveRoundIdsObservedRef.current.has(predecessorHandKey),
+          predecessorReleased: holmReleasedPresentationHandsRef.current.has(predecessorHandKey),
+          awaitingNextRound: gameData.awaiting_next_round === true,
+        });
+      }
+
+      const localPrepared = holmLocallyPreparedSuccessorRef.current;
+      if (localPrepared && localPrepared.dealerGameId !== gameData.current_game_uuid) {
+        holmLocallyPreparedSuccessorRef.current = null;
+        holmPreparedAckInFlightRef.current = null;
+        holmPreparedAckCompletedRef.current.clear();
+      } else if (
+        localPrepared
+        && holmPublishedRound?.id === localPrepared.successorRoundId
+        && holmPublishedRound.status === 'betting'
+        && gameData.awaiting_next_round !== true
+      ) {
+        // Authority has caught up to the locally-dealt identity. Keeping H2
+        // mounted is now handled by the normal authoritative projection.
+        holmLocallyPreparedSuccessorRef.current = null;
+      }
+    }
+
     if (!isStale()) {
       setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
     }
@@ -9085,6 +9210,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         let roundQueryRowsReturned357 = 0;
         
         if (isHolmGame) {
+          const selectedHolmRound = holmClientRoundSelection?.round ?? null;
           // HOLM HARD GATE: round selection is scoped to the active
           // dealer_game_id. If no active dealer game, do NOT run any
           // cross-session "latest historical round" fallback — that
@@ -9117,12 +9243,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 bumpedFetchToken: cardFetchTokenRef.current,
               },
             });
-          } else if (
-            !Number.isInteger(gameData.total_hands)
-            || (gameData.total_hands ?? 0) <= 0
-            || !Number.isInteger(gameData.current_round)
-            || (gameData.current_round ?? 0) <= 0
-          ) {
+          } else if (!selectedHolmRound) {
             roundSelectionBranch357 = 'holm_branch_skipped_no_published_hand';
             cardFetchTokenRef.current = (cardFetchTokenRef.current ?? 0) + 1;
             if (!isStale()) {
@@ -9141,9 +9262,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload: {
                 trigger: 'fetchPlayers',
                 dealerGameIdFilter: gameData.current_game_uuid,
-                publishedHandNumber: gameData.total_hands,
-                publishedRoundNumber: gameData.current_round,
-                skipReason: 'missing-published-hand-identity',
+                publishedHandNumber: holmPublishedRound?.hand_number ?? gameData.total_hands,
+                publishedRoundNumber: holmPublishedRound?.round_number ?? gameData.current_round,
+                skipReason: 'missing-client-presentation-identity',
                 clearedPlayerCards: true,
                 bumpedFetchToken: cardFetchTokenRef.current,
               },
@@ -9154,10 +9275,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               supabase
                 .from('rounds')
                 .select('id, round_number, hand_number, cards_dealt')
+                .eq('id', selectedHolmRound.id)
                 .eq('game_id', gameId)
                 .eq('dealer_game_id', gameData.current_game_uuid)
-                .eq('hand_number', gameData.total_hands)
-                .eq('round_number', gameData.current_round)
+                .eq('hand_number', selectedHolmRound.hand_number ?? 0)
+                .eq('round_number', selectedHolmRound.round_number)
                 .maybeSingle());
 
             roundData = data;
@@ -9175,8 +9297,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               payload: {
                 trigger: 'fetchPlayers',
                 dealerGameIdFilter: gameData.current_game_uuid,
-                publishedHandNumber: gameData.total_hands,
-                publishedRoundNumber: gameData.current_round,
+                presentationMode: holmClientRoundSelection?.mode ?? 'published',
+                publishedRoundId: holmPublishedRound?.id ?? null,
                 selectedRoundId: roundData?.id ?? null,
                 selectedHandNumber: roundData?.hand_number ?? null,
                 selectedRoundNumber: roundData?.round_number ?? null,
@@ -9453,7 +9575,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Bind the accepted cards to the exact identity that produced them.
             setPlayerCardsIdentity({
               dealerGameId: gameData.current_game_uuid ?? null,
-              handNumber: typeof gameData.total_hands === 'number' ? gameData.total_hands : null,
+              handNumber: typeof roundData.hand_number === 'number'
+                ? roundData.hand_number
+                : (typeof gameData.total_hands === 'number' ? gameData.total_hands : null),
               roundId: targetRoundId,
               handContextId: targetRoundId,
             });
@@ -9694,12 +9818,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // ── Holm shadow sync feed (Phase 2: read-only) ──
     if (gameData.game_type === 'holm-game') {
-      const holmRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
-        dealerGameId: gameData.current_game_uuid,
-        currentRoundNumber: gameData.current_round,
-        currentHandNumber: gameData.total_hands,
-      });
-      if (holmRound && isHolmTraceArmed()) {
+      const isLocallyPreparedPresentation =
+        holmClientRoundSelection?.mode === 'prepared-successor';
+      const holmRound = isLocallyPreparedPresentation
+        ? holmClientRoundSelection!.round
+        : holmPublishedRound;
+      const snapshotGameData: GameData = isLocallyPreparedPresentation && holmRound
+        ? {
+            ...gameData,
+            total_hands: holmRound.hand_number ?? gameData.total_hands,
+            all_decisions_in: false,
+            all_decisions_in_round_id: null,
+            last_round_result: null,
+            buck_position: holmRound.pending_turn_position ?? gameData.buck_position,
+          }
+        : gameData;
+      const snapshotPlayers = isLocallyPreparedPresentation
+        ? (playersData || []).map((player) => ({
+            ...player,
+            current_decision: null,
+            decision_locked: false,
+          })) as Player[]
+        : (playersData || []) as Player[];
+
+      if (isLocallyPreparedPresentation && holmRound && gameData.current_game_uuid) {
+        holmLocallyPreparedSuccessorRef.current = {
+          dealerGameId: gameData.current_game_uuid,
+          predecessorRoundId: holmClientRoundSelection!.predecessorRound.id,
+          successorRoundId: holmRound.id,
+          handNumber: holmRound.hand_number ?? 1,
+          handContextId: `${holmRound.id}:h${holmRound.hand_number ?? 1}`,
+        };
+      }
+
+      if (holmRound && !isLocallyPreparedPresentation && isHolmTraceArmed()) {
         const prior = latestAuthoritativeTurnRef.current;
         const previousCurrentTurnPosition = prior?.roundId === holmRound.id
           ? prior.currentTurnPosition
@@ -9713,7 +9865,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }),
         );
       }
-      const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
+      const snapshot = buildHolmSnapshot(snapshotGameData, snapshotPlayers, holmRound);
       if (snapshot) {
         const prevRoundId = holmSyncLastRoundIdRef.current;
         const isBoundary = !!prevRoundId && prevRoundId !== snapshot.roundId;
@@ -16506,7 +16658,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
             const _holmBaseline = initialHolmIdentityRef.current;
             _holmEntryMode =
-              _holmBaseline.dealerGameId === _authDealerGameIdHolm
+              holmView.roundStatus === 'dealing'
+                ? 'live-transition'
+                : _holmBaseline.dealerGameId === _authDealerGameIdHolm
               && _holmBaseline.roundId === _authRoundIdHolm
               && _holmBaseline.handNumber === _authHandNumberHolm
                 ? 'historical-entry'
@@ -16528,11 +16682,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
-              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.remainingSeconds ?? null) : timeLeft)) : (isAnteDecision ? anteTimeLeft : null)}
-              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (game.game_type === 'holm-game' ? (currentDecisionTimerPresentation?.totalSeconds ?? decisionTimerSeconds) : (decisionMaxTime ?? decisionTimerSeconds)) : undefined}
+              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : (game.game_type === 'holm-game' ? (isHolmHandReady(handContextKey) ? (currentDecisionTimerPresentation?.remainingSeconds ?? null) : null) : timeLeft)) : (isAnteDecision ? anteTimeLeft : null)}
+              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (game.game_type === 'holm-game' ? (isHolmHandReady(handContextKey) ? (currentDecisionTimerPresentation?.totalSeconds ?? decisionTimerSeconds) : undefined) : (decisionMaxTime ?? decisionTimerSeconds)) : undefined}
               timerEpoch={isInProgress
                 ? (game.game_type === 'holm-game'
-                    ? (currentDecisionTimerPresentation?.deadline ?? null)
+                    ? (isHolmHandReady(handContextKey) ? (currentDecisionTimerPresentation?.deadline ?? null) : null)
                     : (is357GameType ? decisionDeadline : null))
                 : null}
               lastRoundResult={renderRoundContext ? (game.game_type === 'holm-game' && holmView
@@ -16601,6 +16755,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chuckyLossPlayerIds={renderRoundContext ? chuckyLossPlayerIds : []}
               onChuckyLossEnded={isInProgress ? handleHolmChuckyLossPresentationComplete : undefined}
               onHolmContinuationPresentationComplete={isInProgress ? handleHolmContinuationPresentationComplete : undefined}
+              onHolmDealPresentationComplete={isInProgress ? handleHolmDealPresentationComplete : undefined}
               holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
               holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}
               holmShowdownWinnerIds={renderRoundContext ? holmShowdownWinnerIds : []}

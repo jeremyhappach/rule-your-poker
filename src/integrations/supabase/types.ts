@@ -1496,6 +1496,7 @@ export type Database = {
           gin_bonus: number
           holm_after_tabled_delay_ms: number
           holm_multi_showdown_delay_ms: number
+          holm_presentation_ack_fallback_seconds: number
           holm_pre_chucky_delay_ms: number
           id: string
           leg_value: number
@@ -1535,6 +1536,7 @@ export type Database = {
           gin_bonus?: number
           holm_after_tabled_delay_ms?: number
           holm_multi_showdown_delay_ms?: number
+          holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
           id?: string
           leg_value?: number
@@ -1574,6 +1576,7 @@ export type Database = {
           gin_bonus?: number
           holm_after_tabled_delay_ms?: number
           holm_multi_showdown_delay_ms?: number
+          holm_presentation_ack_fallback_seconds?: number
           holm_pre_chucky_delay_ms?: number
           id?: string
           leg_value?: number
@@ -3116,6 +3119,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_holm_prepared_hand_dealt: {
+        Args: {
+          p_dealer_game_id: string
+          p_game_id: string
+          p_hand_number: number
+          p_predecessor_round_id: string
+          p_successor_round_id: string
+        }
+        Returns: Json
+      }
       activate_holm_round_after_deal_presentation: {
         Args: {
           _from_fallback?: boolean

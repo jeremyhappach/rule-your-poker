@@ -1896,6 +1896,7 @@ export type HolmPreparedNextHandResult = {
   pending_turn_position?: number;
   pot?: number;
   presentation_fallback_at?: string;
+  acknowledgements_required?: number;
   deduped?: boolean;
 };
 
@@ -1931,8 +1932,13 @@ export async function prepareNextHolmRound(
   return result;
 }
 
-export type HolmPreparedActivationResult = {
-  outcome: 'activated' | 'already-active' | 'rejected';
+export type HolmPreparedDealAcknowledgementResult = {
+  outcome:
+    | 'acknowledged-waiting'
+    | 'acknowledged-paused'
+    | 'activated'
+    | 'already-active'
+    | 'rejected';
   reason?: string;
   round_id?: string;
   dealer_game_id?: string;
@@ -1940,33 +1946,45 @@ export type HolmPreparedActivationResult = {
   buck_position?: number;
   decision_deadline?: string;
   pot?: number;
+  pending_acknowledgements?: number;
+  acknowledged?: boolean;
   from_fallback?: boolean;
   deduped?: boolean;
 };
 
 /**
- * Publish one exact prepared successor after the predecessor presentation.
- * The database also owns a service-only lease for callback-loss recovery.
+ * Record that this authenticated player's exact prepared successor reached
+ * DealRuntime's canonical ready boundary. This is not a generic activation
+ * call: the database derives the player from auth.uid(), stamps only the
+ * immutable cohort row, and activates only when the full human cohort is done.
  */
-export async function activatePreparedHolmRound(
+export async function acknowledgePreparedHolmHandDealt(
   gameId: string,
+  dealerGameId: string,
   predecessorRoundId: string,
   successorRoundId: string,
-): Promise<HolmPreparedActivationResult> {
-  const { data, error } = await (supabase as any).rpc('activate_prepared_holm_hand', {
+  handNumber: number,
+): Promise<HolmPreparedDealAcknowledgementResult> {
+  const { data, error } = await (supabase as any).rpc('acknowledge_holm_prepared_hand_dealt', {
     p_game_id: gameId,
+    p_dealer_game_id: dealerGameId,
     p_predecessor_round_id: predecessorRoundId,
     p_successor_round_id: successorRoundId,
-    p_from_fallback: false,
+    p_hand_number: handNumber,
   });
 
   if (error) {
-    throw new Error(`Holm prepared-hand activation RPC failed: ${error.message}`);
+    throw new Error(`Holm prepared-deal acknowledgement RPC failed: ${error.message}`);
   }
 
-  const result = (data ?? {}) as HolmPreparedActivationResult;
-  if (result.outcome !== 'activated' && result.outcome !== 'already-active') {
-    throw new Error(`Holm prepared-hand activation rejected: ${result.reason ?? 'unknown reason'}`);
+  const result = (data ?? {}) as HolmPreparedDealAcknowledgementResult;
+  if (
+    result.outcome !== 'acknowledged-waiting'
+    && result.outcome !== 'acknowledged-paused'
+    && result.outcome !== 'activated'
+    && result.outcome !== 'already-active'
+  ) {
+    throw new Error(`Holm prepared-deal acknowledgement rejected: ${result.reason ?? 'unknown reason'}`);
   }
   return result;
 }

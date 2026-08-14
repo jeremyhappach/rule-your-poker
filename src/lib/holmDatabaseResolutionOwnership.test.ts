@@ -11,6 +11,10 @@ const serverReleaseMigration = readFileSync(
   join(root, 'supabase', 'migrations', '20260814130000_holm_server_owned_presentation_release.sql'),
   'utf8',
 );
+const acknowledgedReleaseMigration = readFileSync(
+  join(root, 'supabase', 'migrations', '20260814190000_holm_acknowledged_presentation_release.sql'),
+  'utf8',
+);
 const gameSource = readFileSync(join(root, 'src', 'pages', 'Game.tsx'), 'utf8');
 const holmLogicSource = readFileSync(join(root, 'src', 'lib', 'holmGameLogic.ts'), 'utf8');
 const mobileTableSource = readFileSync(join(root, 'src', 'components', 'MobileGameTable.tsx'), 'utf8');
@@ -41,7 +45,9 @@ describe('Holm database resolution ownership', () => {
     expect(holmTimerSection).not.toContain('proceedToNextHolmRound');
     expect(gameSource).not.toContain('activatePreparedHolmRound(');
     expect(gameSource).not.toContain('prepareNextHolmRound(');
+    expect(gameSource).toContain('acknowledgePreparedHolmHandDealt(');
     expect(mobileTableSource).toContain('onHolmContinuationPresentationComplete?.(completion);');
+    expect(mobileTableSource).toContain('onPresentationComplete={onHolmDealPresentationComplete}');
     expect(mobileTableSource).toContain("stage: 'zero-transfer'");
     expect(mobileTableSource).toContain("holmStage === 'pussy-tax'");
     expect(mobileTableSource).toContain("pussyTaxPresentationReady: lastRoundResult === 'Pussy Tax!'");
@@ -49,14 +55,21 @@ describe('Holm database resolution ownership', () => {
     expect(mobileTableSource).toContain('requestAnimationFrame');
   });
 
-  it('releases prepared successors from a durable database scheduler only after the lease', () => {
-    expect(serverReleaseMigration).toContain('CREATE OR REPLACE FUNCTION private.release_due_holm_presentations()');
-    expect(serverReleaseMigration).toMatch(/cron\.schedule\(\r?\n\s*'release-due-holm-presentations-1s'/);
+  it('activates normally from exact human deal acknowledgements and retains only a configurable recovery lease', () => {
     expect(serverReleaseMigration).toContain("clock_timestamp() + interval '9 seconds'");
-    expect(serverReleaseMigration).toContain("activate_prepared_holm_hand:server_only");
-    expect(serverReleaseMigration).toContain('REVOKE ALL ON FUNCTION public.activate_prepared_holm_hand');
-    expect(serverReleaseMigration).toContain("'dealerGameId', v_successor.dealer_game_id");
-    expect(serverReleaseMigration).toContain("'handContextId', v_successor.id::text");
+    expect(acknowledgedReleaseMigration).toContain('CREATE TABLE IF NOT EXISTS private.holm_hand_presentation_ack_requirements');
+    expect(acknowledgedReleaseMigration).toContain('holm_presentation_ack_fallback_seconds');
+    expect(acknowledgedReleaseMigration).not.toContain("interval '9 seconds'");
+    expect(acknowledgedReleaseMigration).toContain('CREATE OR REPLACE FUNCTION public.acknowledge_holm_prepared_hand_dealt');
+    expect(acknowledgedReleaseMigration).toContain("'acknowledged-waiting'");
+    expect(acknowledgedReleaseMigration).toContain("'acknowledged-paused'");
+    expect(acknowledgedReleaseMigration).toContain("p_release_mode = 'acknowledged'");
+    expect(acknowledgedReleaseMigration).toContain('CREATE OR REPLACE FUNCTION private.release_due_holm_presentations()');
+    expect(acknowledgedReleaseMigration).toMatch(/cron\.schedule\(\r?\n\s*'release-due-holm-presentations-1s'/);
+    expect(acknowledgedReleaseMigration).toContain("activate_prepared_holm_hand:server_only");
+    expect(acknowledgedReleaseMigration).toContain('GRANT EXECUTE ON FUNCTION public.acknowledge_holm_prepared_hand_dealt');
+    expect(acknowledgedReleaseMigration).toContain("'dealerGameId', v_game.current_game_uuid");
+    expect(acknowledgedReleaseMigration).toContain("'handContextId', v_round_id::text");
   });
 
   it('fires an exact live Buck event only at accepted hands-wave transport start', () => {
@@ -68,5 +81,20 @@ describe('Holm database resolution ownership', () => {
     expect(dealOrchestratorSource).toContain('onHandsWaveStarted?.(handContextId);');
     expect(dealOrchestratorSource.indexOf('onHandsWaveStarted?.(handContextId);'))
       .toBeLessThan(dealOrchestratorSource.indexOf('deal.beginDeal(intents.length);'));
+  });
+
+  it('acknowledges prepared H2 only from the canonical deal-ready boundary', () => {
+    const phaseHost = dealOrchestratorSource.slice(
+      dealOrchestratorSource.indexOf('export function HolmDealPhaseHost'),
+      dealOrchestratorSource.indexOf('export function useHolmSettledIds'),
+    );
+    expect(phaseHost).toContain('if (!deal.dealSettled) return;');
+    expect(phaseHost).toContain('if (!deal.readyReleased) return;');
+    expect(phaseHost).toContain("if (deal.phase !== 'READY') return;");
+    expect(phaseHost).toContain('onPresentationComplete?.(handContextId);');
+    expect(phaseHost.indexOf('deal.enterGameplay();'))
+      .toBeLessThan(phaseHost.indexOf('onPresentationComplete?.(handContextId);'));
+    expect(gameSource).toContain('holmLocallyPreparedSuccessorRef.current');
+    expect(gameSource).toContain('isHolmHandReady(handContextKey) ? (currentDecisionTimerPresentation?.remainingSeconds');
   });
 });

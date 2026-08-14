@@ -2,6 +2,37 @@
 
 Date: 2026-08-14
 
+## Holm acknowledgement-driven presentation release
+
+- The fixed nine-second publication lease introduced by the preceding Holm
+  continuation release is replaced. A continuing settlement still prepares
+  one exact, non-actionable successor, but each browser now keeps the completed
+  predecessor mounted through its exact result, Rabbit Hunt/Pussy Tax, and
+  settlement presentation, then locally deals only that successor.
+- At `DealRuntime`'s canonical deal-settled/ready boundary, the authenticated
+  player acknowledges the exact
+  `(game, dealer game, predecessor, successor, hand)` identity. PostgreSQL
+  records that acknowledgement against the immutable active-human cohort made
+  when the successor was prepared. The final required acknowledgement
+  atomically publishes the already-dealt successor and starts a fresh decision
+  deadline; duplicate and late acknowledgements are replay-safe.
+- A browser acknowledgement does not select cards, settle money, or manufacture
+  a hand. Tabs remain independently ordered behind their own predecessor
+  barriers even if another client publishes the successor first. Fresh mounts
+  during a prepared successor skip historical predecessor presentation, deal
+  that exact successor, and acknowledge it. Buck presentation is minted at
+  preparation but remains exact-hand gated until the successor deal starts.
+- Migration `20260814190000_holm_acknowledged_presentation_release.sql` is
+  installed on owned production. Its private acknowledgement cohort is not
+  client-readable or client-writable. If acknowledgements never arrive, a
+  pause-aware PostgreSQL worker publishes after the configurable 30-second
+  recovery lease; zero-human/bot-only cohorts release server-side without a
+  client. The fallback is disconnect recovery, not normal presentation timing.
+- The rollback proof covers winner, tie, duplicate, replay, late replay,
+  authorization, continuation, pause/resume, terminal state, no-ack fallback,
+  and bot-only release. Focused client ownership/selection tests and TypeScript
+  pass; production publication and live two-client smoke remain required.
+
 ## Holm server-owned continuation and ordered presentation
 
 - The first post-release Rabbit Hunt smoke in the paused `Mike Olt` session
