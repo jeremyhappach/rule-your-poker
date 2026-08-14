@@ -68,6 +68,30 @@ export interface CribbageParentRenderMode {
   isGameplayMode: boolean;
 }
 
+export type CribbageBootstrapAnnouncementKind =
+  | 'awaiting_ante'
+  | 'waiting_for_next_round';
+
+export function getCribbageBootstrapAnnouncementKind({
+  authoritativePhase,
+  isBootstrapMode,
+  shouldShowAwaitingAnteAnnouncement,
+}: {
+  authoritativePhase: CribbageState['phase'] | undefined;
+  isBootstrapMode: boolean;
+  shouldShowAwaitingAnteAnnouncement: boolean;
+}): CribbageBootstrapAnnouncementKind | null {
+  // Counting owns its restored-combo announcement. A parent bootstrap notice
+  // here briefly replaces it during reconnect hydration.
+  if (authoritativePhase === 'counting' || !isBootstrapMode) {
+    return null;
+  }
+
+  return shouldShowAwaitingAnteAnnouncement
+    ? 'awaiting_ante'
+    : 'waiting_for_next_round';
+}
+
 export function deriveCribbageParentRenderMode(args: CribbageParentRenderModeArgs): CribbageParentRenderMode {
   const viewStateIsCurrentRound = !!(
     args.renderHandKey &&

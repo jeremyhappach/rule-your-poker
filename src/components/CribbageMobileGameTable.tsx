@@ -118,6 +118,7 @@ import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/mat
 import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
+  getCribbageBootstrapAnnouncementKind,
   hasAnyCribbageAuthoritativeHand,
   isCribbagePostDealPhase,
   shouldEnterCribbageStaleCompleteBootstrap,
@@ -8225,7 +8226,13 @@ export const CribbageMobileGameTable = ({
     effectiveShowHighCardSelection ||
     (!initialLoadComplete && !renderHandKey && !postCountingTransitionActive)
   );
-  const shouldShowPreparingNextHand = isBootstrapMode && !shouldShowAwaitingAnteAnnouncement;
+  const bootstrapAnnouncementKind = getCribbageBootstrapAnnouncementKind({
+    authoritativePhase: cribbageState?.phase,
+    isBootstrapMode,
+    shouldShowAwaitingAnteAnnouncement,
+  });
+  const shouldShowPreparingNextHand =
+    bootstrapAnnouncementKind === 'waiting_for_next_round';
 
   // ────────────────────────────────────────────────────────────────────────
   // Phase 2 — passive bootstrap lifecycle ambient (Cribbage).
@@ -8246,12 +8253,7 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    let kind: 'awaiting_ante' | 'waiting_for_next_round' | null = null;
-    if (isBootstrapMode && shouldShowAwaitingAnteAnnouncement) {
-      kind = 'awaiting_ante';
-    } else if (shouldShowPreparingNextHand) {
-      kind = 'waiting_for_next_round';
-    }
+    const kind = bootstrapAnnouncementKind;
 
     if (!kind) {
       if (lastBootstrapAmbientIdRef.current) {
@@ -8276,9 +8278,7 @@ export const CribbageMobileGameTable = ({
     currentRoundId,
     currentHandNumber,
     effectiveShowHighCardSelection,
-    isBootstrapMode,
-    shouldShowAwaitingAnteAnnouncement,
-    shouldShowPreparingNextHand,
+    bootstrapAnnouncementKind,
     announcements,
   ]);
 

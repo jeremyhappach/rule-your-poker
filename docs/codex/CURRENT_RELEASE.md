@@ -13,9 +13,16 @@ Date: 2026-08-13
   separately admitted cut-card event. `CribbageCountingPhase` publishes an
   active resumed combo with its restored highlight and suppresses the normal
   duplicate publish while retaining its one score application and duration.
+- Follow-up reconnect smoke exposed a second, one-frame owner collision:
+  counting has no authoritative player hands, so the parent intentionally
+  retains its safe bootstrap shell while render identity hydrates. Its ambient
+  bootstrap effect incorrectly emitted `waiting_for_next_round` during that
+  interval. An authoritative `counting` phase now suppresses every bootstrap
+  rail message; the counting cursor remains the sole announcement owner until
+  the current combo is restored.
 - Focused cursor/announcement tests, TypeScript, and the production Vite build
-  pass locally. Production refresh and disconnect/reconnect smoke during a
-  highlighted counting combo remain required.
+pass locally. Replacement production refresh and disconnect/reconnect smoke
+during a highlighted counting combo remain required.
 
 ## Cribbage counting rejoin cursor
 

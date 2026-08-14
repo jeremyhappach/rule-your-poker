@@ -3,6 +3,7 @@ import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import {
   cribbageAuthoritativeHandCounts,
   deriveCribbageParentRenderMode,
+  getCribbageBootstrapAnnouncementKind,
   resolveCribbageVisibleHand,
   shouldEnterCribbageStaleCompleteBootstrap,
 } from './cribbageRenderGuards';
@@ -147,6 +148,26 @@ describe('Cribbage render guards', () => {
     expect(mode.parentAuthoritativeGameplayFallback).toBe(true);
     expect(mode.isGameplayMode).toBe(true);
     expect(mode.isBootstrapMode).toBe(false);
+  });
+
+  it('suppresses bootstrap ambient while counting owns the restored announcement', () => {
+    expect(
+      getCribbageBootstrapAnnouncementKind({
+        authoritativePhase: 'counting',
+        isBootstrapMode: true,
+        shouldShowAwaitingAnteAnnouncement: true,
+      }),
+    ).toBeNull();
+  });
+
+  it('preserves the bootstrap next-round notice outside counting', () => {
+    expect(
+      getCribbageBootstrapAnnouncementKind({
+        authoritativePhase: 'discarding',
+        isBootstrapMode: true,
+        shouldShowAwaitingAnteAnnouncement: false,
+      }),
+    ).toBe('waiting_for_next_round');
   });
 
   it('parent suppressed during non-terminal deal lifecycle WITH NO SETTLED PREFIX → empty', () => {

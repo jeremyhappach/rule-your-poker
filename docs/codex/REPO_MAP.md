@@ -178,7 +178,8 @@ reset transient/presentation state when those identities change.
   cursor is persisted. `src/lib/cribbage/countingResume.ts` derives the
   active resumed combo announcement and guards historical final-pegging events;
   `CribbageMobileGameTable.tsx` admits that event only to a client that observed
-  the same hand in `pegging`.
+  the same hand in `pegging`, and suppresses bootstrap ambient announcements
+  while authoritative counting owns the restored-combo rail.
   The service-only fallback caller is in
   `supabase/functions/enforce-deadlines/index.ts`.
 - Bots/scoring: `cribbageBotLogic.ts:getBotDiscardIndices` and

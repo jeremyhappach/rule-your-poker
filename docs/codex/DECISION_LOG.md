@@ -530,6 +530,12 @@ in counting instead derives its rail announcement from the durable counting
 cursor and the matching highlighted combo. This presentation admission neither
 changes the cursor nor replays score, settlement, or hand release.
 
+The parent may retain its bootstrap shell during counting identity hydration
+because count state does not carry dealt player hands. That shell may not emit
+an ambient pre-deal/next-hand announcement when the authoritative phase is
+`counting`: the resumed counting cursor is the sole rail owner until its active
+combo is published.
+
 # Cribbage final discard is a database transition — 2026-08-12
 
 The last discard, cut-card selection, His Heels result, and pegging admission

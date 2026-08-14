@@ -681,7 +681,7 @@ Status: Queued; reported by production smoke on 2026-08-04.
 
 ### 12. Cribbage reconnect inherits stale final-pegging announcement
 
-Status: Implemented locally; production smoke pending. Reproduced by production smoke on 2026-08-04.
+Status: Implemented locally; replacement production smoke pending. Reproduced by production smoke on 2026-08-04.
 
 - Refreshing during counting correctly resumes the authoritative counting
   sequence and score presentation, but the announcement rail initially shows
@@ -695,6 +695,12 @@ Status: Implemented locally; production smoke pending. Reproduced by production 
   observed the same hand in `pegging`, then immediately publishes the resumed
   combo announcement that matches the restored highlight. It does not change
   the durable cursor, scoring, or hand release.
+- Follow-up smoke found a separate one-frame `waiting_for_next_round`/“next
+  hand” notice before that combo: counting legitimately retains the bootstrap
+  shell while its render identity hydrates, but the bootstrap ambient must not
+  claim the rail when the authoritative phase is already `counting`. The
+  candidate now suppresses that ambient only for counting and leaves real
+  pre-deal and post-count next-hand transitions intact.
 
 ### 13. Holm Chucky card fronts use a fixed-pixel fallback in desktop mobile emulation
 
